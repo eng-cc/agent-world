@@ -1,8 +1,9 @@
 use crate::geometry::GeoPos;
+use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_AGENT_HEIGHT_CM: i64 = 100;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobotBodySpec {
     pub kind: String,
     pub height_cm: i64,
@@ -23,7 +24,7 @@ impl RobotBodySpec {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AgentState {
     pub agent_id: String,
     pub pos: GeoPos,
@@ -39,4 +40,3 @@ impl AgentState {
         }
     }
 }
-
