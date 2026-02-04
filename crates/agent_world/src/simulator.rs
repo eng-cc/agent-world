@@ -10,6 +10,10 @@ pub type WorldTime = u64;
 pub type WorldEventId = u64;
 pub type ActionId = u64;
 
+pub const CM_PER_KM: i64 = 100_000;
+pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
+pub const MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResourceKind {
@@ -147,6 +151,32 @@ pub struct WorldModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Observation {
+    pub time: WorldTime,
+    pub agent_id: AgentId,
+    pub pos: GeoPos,
+    pub visibility_range_cm: i64,
+    pub visible_agents: Vec<ObservedAgent>,
+    pub visible_locations: Vec<ObservedLocation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ObservedAgent {
+    pub agent_id: AgentId,
+    pub location_id: LocationId,
+    pub pos: GeoPos,
+    pub distance_cm: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ObservedLocation {
+    pub location_id: LocationId,
+    pub name: String,
+    pub pos: GeoPos,
+    pub distance_cm: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionEnvelope {
     pub id: ActionId,
     pub action: Action,
@@ -201,6 +231,52 @@ impl WorldKernel {
 
     pub fn journal(&self) -> &[WorldEvent] {
         &self.journal
+    }
+
+    pub fn observe(&self, agent_id: &str) -> Result<Observation, RejectReason> {
+        let Some(agent) = self.model.agents.get(agent_id) else {
+            return Err(RejectReason::AgentNotFound {
+                agent_id: agent_id.to_string(),
+            });
+        };
+        let visibility_range_cm = DEFAULT_VISIBILITY_RANGE_CM;
+        let mut visible_agents = Vec::new();
+        for (other_id, other) in &self.model.agents {
+            if other_id == agent_id {
+                continue;
+            }
+            let distance_cm = great_circle_distance_cm(agent.pos, other.pos);
+            if distance_cm <= visibility_range_cm {
+                visible_agents.push(ObservedAgent {
+                    agent_id: other_id.clone(),
+                    location_id: other.location_id.clone(),
+                    pos: other.pos,
+                    distance_cm,
+                });
+            }
+        }
+
+        let mut visible_locations = Vec::new();
+        for (location_id, location) in &self.model.locations {
+            let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
+            if distance_cm <= visibility_range_cm {
+                visible_locations.push(ObservedLocation {
+                    location_id: location_id.clone(),
+                    name: location.name.clone(),
+                    pos: location.pos,
+                    distance_cm,
+                });
+            }
+        }
+
+        Ok(Observation {
+            time: self.time,
+            agent_id: agent_id.to_string(),
+            pos: agent.pos,
+            visibility_range_cm,
+            visible_agents,
+            visible_locations,
+        })
     }
 
     pub fn submit_action(&mut self, action: Action) -> ActionId {
@@ -285,8 +361,56 @@ impl WorldKernel {
                         reason: RejectReason::AgentNotFound { agent_id },
                     };
                 };
+                if agent.location_id == to {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentAlreadyAtLocation {
+                            agent_id,
+                            location_id: to,
+                        },
+                    };
+                }
                 let from = agent.location_id.clone();
                 let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
+                let electricity_cost = movement_cost(distance_cm);
+                if electricity_cost > 0 {
+                    let available = agent.resources.get(ResourceKind::Electricity);
+                    if available < electricity_cost {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::InsufficientResource {
+                                owner: ResourceOwner::Agent {
+                                    agent_id: agent.id.clone(),
+                                },
+                                kind: ResourceKind::Electricity,
+                                requested: electricity_cost,
+                                available,
+                            },
+                        };
+                    }
+                    if let Err(err) = agent
+                        .resources
+                        .remove(ResourceKind::Electricity, electricity_cost)
+                    {
+                        return WorldEventKind::ActionRejected {
+                            reason: match err {
+                                StockError::NegativeAmount { amount } => {
+                                    RejectReason::InvalidAmount { amount }
+                                }
+                                StockError::Insufficient {
+                                    requested,
+                                    available,
+                                    ..
+                                } => RejectReason::InsufficientResource {
+                                    owner: ResourceOwner::Agent {
+                                        agent_id: agent.id.clone(),
+                                    },
+                                    kind: ResourceKind::Electricity,
+                                    requested,
+                                    available,
+                                },
+                            },
+                        };
+                    }
+                }
                 agent.location_id = to.clone();
                 agent.pos = location.pos;
                 WorldEventKind::AgentMoved {
@@ -294,6 +418,7 @@ impl WorldKernel {
                     from,
                     to,
                     distance_cm,
+                    electricity_cost,
                 }
             }
             Action::TransferResource {
@@ -443,7 +568,17 @@ impl WorldKernel {
                     });
                 }
             }
-            _ => {}
+            (
+                ResourceOwner::Location { location_id },
+                ResourceOwner::Location {
+                    location_id: other_location_id,
+                },
+            ) => {
+                return Err(RejectReason::LocationTransferNotAllowed {
+                    from: location_id.clone(),
+                    to: other_location_id.clone(),
+                });
+            }
         }
         Ok(())
     }
@@ -529,6 +664,14 @@ impl WorldKernel {
     }
 }
 
+fn movement_cost(distance_cm: i64) -> i64 {
+    if distance_cm <= 0 {
+        return 0;
+    }
+    let km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
+    km.saturating_mul(MOVE_COST_PER_KM_ELECTRICITY)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldEvent {
     pub id: WorldEventId,
@@ -553,6 +696,7 @@ pub enum WorldEventKind {
         from: LocationId,
         to: LocationId,
         distance_cm: i64,
+        electricity_cost: i64,
     },
     ResourceTransferred {
         from: ResourceOwner,
@@ -572,6 +716,7 @@ pub enum RejectReason {
     AgentNotFound { agent_id: AgentId },
     LocationAlreadyExists { location_id: LocationId },
     LocationNotFound { location_id: LocationId },
+    AgentAlreadyAtLocation { agent_id: AgentId, location_id: LocationId },
     InvalidAmount { amount: i64 },
     InsufficientResource {
         owner: ResourceOwner,
@@ -579,6 +724,7 @@ pub enum RejectReason {
         requested: i64,
         available: i64,
     },
+    LocationTransferNotAllowed { from: LocationId, to: LocationId },
     AgentNotAtLocation { agent_id: AgentId, location_id: LocationId },
     AgentsNotCoLocated {
         agent_id: AgentId,
@@ -651,6 +797,66 @@ mod tests {
             location_id: "loc-1".to_string(),
         });
         kernel.step().unwrap();
+        let starting_energy = 500;
+        kernel
+            .model
+            .agents
+            .get_mut("agent-1")
+            .unwrap()
+            .resources
+            .add(ResourceKind::Electricity, starting_energy)
+            .unwrap();
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        let event = kernel.step().unwrap();
+        let recorded_cost = match event.kind {
+            WorldEventKind::AgentMoved {
+                agent_id,
+                from,
+                to,
+                distance_cm,
+                electricity_cost,
+            } => {
+                assert_eq!(agent_id, "agent-1");
+                assert_eq!(from, "loc-1");
+                assert_eq!(to, "loc-2");
+                assert!(distance_cm > 0);
+                assert_eq!(electricity_cost, movement_cost(distance_cm));
+                electricity_cost
+            }
+            other => panic!("unexpected event: {other:?}"),
+        };
+
+        let agent = kernel.model.agents.get("agent-1").unwrap();
+        assert_eq!(agent.location_id, "loc-2");
+        assert_eq!(agent.pos, pos(1.0, 1.0));
+        assert_eq!(
+            agent.resources.get(ResourceKind::Electricity),
+            starting_energy - recorded_cost
+        );
+    }
+
+    #[test]
+    fn kernel_move_requires_energy() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(1.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
 
         kernel.submit_action(Action::MoveAgent {
             agent_id: "agent-1".to_string(),
@@ -658,23 +864,104 @@ mod tests {
         });
         let event = kernel.step().unwrap();
         match event.kind {
-            WorldEventKind::AgentMoved {
-                agent_id,
-                from,
-                to,
-                distance_cm,
-            } => {
-                assert_eq!(agent_id, "agent-1");
-                assert_eq!(from, "loc-1");
-                assert_eq!(to, "loc-2");
-                assert!(distance_cm > 0);
+            WorldEventKind::ActionRejected { reason } => {
+                assert!(matches!(reason, RejectReason::InsufficientResource { .. }));
             }
             other => panic!("unexpected event: {other:?}"),
         }
+    }
 
-        let agent = kernel.model.agents.get("agent-1").unwrap();
-        assert_eq!(agent.location_id, "loc-2");
-        assert_eq!(agent.pos, pos(1.0, 1.0));
+    #[test]
+    fn kernel_rejects_move_to_same_location() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-1".to_string(),
+        });
+        let event = kernel.step().unwrap();
+        match event.kind {
+            WorldEventKind::ActionRejected { reason } => {
+                assert!(matches!(reason, RejectReason::AgentAlreadyAtLocation { .. }));
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn kernel_observe_visibility_range() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "near".to_string(),
+            pos: pos(0.4, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-3".to_string(),
+            name: "far".to_string(),
+            pos: pos(1.5, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-2".to_string(),
+            location_id: "loc-2".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-3".to_string(),
+            location_id: "loc-3".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let observation = kernel.observe("agent-1").unwrap();
+        assert!(
+            observation
+                .visible_locations
+                .iter()
+                .any(|loc| loc.location_id == "loc-1")
+        );
+        assert!(
+            observation
+                .visible_locations
+                .iter()
+                .any(|loc| loc.location_id == "loc-2")
+        );
+        assert!(
+            !observation
+                .visible_locations
+                .iter()
+                .any(|loc| loc.location_id == "loc-3")
+        );
+        assert!(
+            observation
+                .visible_agents
+                .iter()
+                .any(|agent| agent.agent_id == "agent-2")
+        );
+        assert!(
+            !observation
+                .visible_agents
+                .iter()
+                .any(|agent| agent.agent_id == "agent-3")
+        );
+        assert_eq!(observation.visibility_range_cm, DEFAULT_VISIBILITY_RANGE_CM);
     }
 
     #[test]
@@ -731,15 +1018,17 @@ mod tests {
     #[test]
     fn kernel_closed_loop_example() {
         let mut kernel = WorldKernel::new();
+        let loc1_pos = pos(0.0, 0.0);
+        let loc2_pos = pos(2.0, 2.0);
         kernel.submit_action(Action::RegisterLocation {
             location_id: "loc-1".to_string(),
             name: "plant".to_string(),
-            pos: pos(0.0, 0.0),
+            pos: loc1_pos,
         });
         kernel.submit_action(Action::RegisterLocation {
             location_id: "loc-2".to_string(),
             name: "lab".to_string(),
-            pos: pos(2.0, 2.0),
+            pos: loc2_pos,
         });
         kernel.submit_action(Action::RegisterAgent {
             agent_id: "agent-1".to_string(),
@@ -757,7 +1046,7 @@ mod tests {
             .get_mut("loc-1")
             .unwrap()
             .resources
-            .add(ResourceKind::Electricity, 50)
+            .add(ResourceKind::Electricity, 1000)
             .unwrap();
         kernel
             .model
@@ -767,6 +1056,19 @@ mod tests {
             .resources
             .add(ResourceKind::Electricity, 20)
             .unwrap();
+
+        kernel.submit_action(Action::TransferResource {
+            from: ResourceOwner::Location {
+                location_id: "loc-1".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 500,
+        });
+        kernel.step().unwrap();
+        let move_cost = movement_cost(great_circle_distance_cm(loc1_pos, loc2_pos));
 
         kernel.submit_action(Action::MoveAgent {
             agent_id: "agent-1".to_string(),
@@ -805,6 +1107,9 @@ mod tests {
         kernel.step().unwrap();
 
         let agent = kernel.model.agents.get("agent-1").unwrap();
-        assert_eq!(agent.resources.get(ResourceKind::Electricity), 10);
+        assert_eq!(
+            agent.resources.get(ResourceKind::Electricity),
+            500 - move_cost + 10
+        );
     }
 }

@@ -62,6 +62,15 @@
 - `Event`
   - `event_id`, `time`, `type`, `payload`, `caused_by`（action_id/agent_id）
 
+### M1 行动规则（初版）
+- **时间推进**：每个 Action 处理会推进 1 tick；事件按队列顺序确定性处理。
+- **移动成本**：`MoveAgent` 按球面距离计费，电力消耗 = `ceil(distance_km) * 1`（电力单位/公里）；若电力不足则拒绝。
+- **移动约束**：移动到相同 `location_id` 视为无效动作并拒绝。
+- **可见性**：`query_observation` 以固定可见半径输出可见 Agent/Location（默认 **100 km**）。
+- **资源交互**：
+  - 资源转移需要同地（Agent 与 Location 同处，或 Agent 与 Agent 同处）。
+  - Location 与 Location 之间的直接转移不允许（需由 Agent 搬运）。
+
 ### 运行时接口（草案）
 - **World Kernel**
   - `step(n_ticks)`：推进世界 n 个 tick
