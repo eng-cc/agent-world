@@ -7,6 +7,7 @@ use super::effect::{EffectIntent, EffectReceipt};
 use super::events::{CausedBy, DomainEvent};
 use super::governance::GovernanceEvent;
 use super::manifest::ManifestUpdate;
+use super::modules::ModuleEvent;
 use super::policy::PolicyDecisionRecord;
 use super::snapshot::{RollbackEvent, SnapshotMeta};
 use super::types::{WorldEventId, WorldTime};
@@ -28,6 +29,7 @@ impl WorldEvent {
             WorldEventBody::ReceiptAppended(_) => AuditEventKind::ReceiptAppended,
             WorldEventBody::PolicyDecisionRecorded(_) => AuditEventKind::PolicyDecision,
             WorldEventBody::Governance(_) => AuditEventKind::Governance,
+            WorldEventBody::ModuleEvent(_) => AuditEventKind::ModuleEvent,
             WorldEventBody::SnapshotCreated(_) => AuditEventKind::SnapshotCreated,
             WorldEventBody::ManifestUpdated(_) => AuditEventKind::ManifestUpdated,
             WorldEventBody::RollbackApplied(_) => AuditEventKind::RollbackApplied,
@@ -44,6 +46,7 @@ pub enum WorldEventBody {
     ReceiptAppended(EffectReceipt),
     PolicyDecisionRecorded(PolicyDecisionRecord),
     Governance(GovernanceEvent),
+    ModuleEvent(ModuleEvent),
     SnapshotCreated(SnapshotMeta),
     ManifestUpdated(ManifestUpdate),
     RollbackApplied(RollbackEvent),

@@ -19,6 +19,7 @@ pub enum WorldError {
     PatchBaseMismatch { expected: String, found: String },
     PatchInvalidPath { path: String },
     PatchNonObject { path: String },
+    ModuleChangeInvalid { reason: String },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),

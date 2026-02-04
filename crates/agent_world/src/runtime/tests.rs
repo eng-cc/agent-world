@@ -196,6 +196,97 @@ fn governance_patch_updates_manifest() {
 }
 
 #[test]
+fn apply_module_changes_registers_and_activates() {
+    let mut world = World::new();
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash: "hash-weather-001".to_string(),
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["WeatherTick".to_string()],
+            action_kinds: Vec::new(),
+            filters: None,
+        }],
+        required_caps: vec!["cap.weather".to_string()],
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 2048,
+            max_effects: 2,
+            max_emits: 2,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let key = ModuleRegistry::record_key(&module_manifest.module_id, &module_manifest.version);
+    let record = world.module_registry().records.get(&key).unwrap();
+    assert_eq!(record.manifest, module_manifest);
+    assert_eq!(record.registered_by, "alice");
+    assert_eq!(
+        world
+            .module_registry()
+            .active
+            .get(&module_manifest.module_id),
+        Some(&module_manifest.version)
+    );
+
+    let module_events: Vec<_> = world
+        .journal()
+        .events
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::ModuleEvent(module_event) => Some(module_event),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(module_events.len(), 2);
+    assert!(matches!(
+        module_events[0].kind,
+        ModuleEventKind::RegisterModule { .. }
+    ));
+    assert!(matches!(
+        module_events[1].kind,
+        ModuleEventKind::ActivateModule { .. }
+    ));
+
+    if let serde_json::Value::Object(map) = &world.manifest().content {
+        assert!(!map.contains_key("module_changes"));
+    }
+}
+
+#[test]
 fn manifest_diff_and_merge() {
     let base = Manifest {
         version: 1,

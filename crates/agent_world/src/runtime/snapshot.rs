@@ -9,6 +9,7 @@ use super::error::WorldError;
 use super::events::ActionEnvelope;
 use super::governance::Proposal;
 use super::manifest::Manifest;
+use super::modules::ModuleRegistry;
 use super::policy::PolicySet;
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId, WorldTime};
@@ -57,6 +58,7 @@ impl Default for SnapshotCatalog {
 pub struct Snapshot {
     pub snapshot_catalog: SnapshotCatalog,
     pub manifest: Manifest,
+    pub module_registry: ModuleRegistry,
     pub state: WorldState,
     pub journal_len: usize,
     pub last_event_id: WorldEventId,

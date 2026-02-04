@@ -15,6 +15,7 @@ pub enum AuditEventKind {
     ReceiptAppended,
     PolicyDecision,
     Governance,
+    ModuleEvent,
     SnapshotCreated,
     ManifestUpdated,
     RollbackApplied,

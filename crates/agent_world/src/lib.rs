@@ -13,12 +13,14 @@ pub use runtime::{
     Action, ActionEnvelope, ActionId, AgentCell, AgentSchedule, CausedBy, CapabilityGrant,
     AuditCausedBy, AuditEventKind, AuditFilter, ConflictKind, DomainEvent, EffectIntent,
     EffectOrigin, EffectReceipt, GovernanceEvent, IntentSeq, Journal, Manifest, ManifestPatch,
-    ManifestPatchOp, ManifestUpdate, OriginKind, PatchConflict, PatchMergeResult, PatchOpKind,
-    PatchOpSummary, PatchPath, PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet,
-    PolicyWhen, Proposal, ProposalDecision, ProposalId, ProposalStatus, ReceiptSignature,
-    ReceiptSigner, RejectReason, RollbackEvent, SignatureAlgorithm, Snapshot, SnapshotCatalog,
-    SnapshotMeta, SnapshotRecord, SnapshotRetentionPolicy, World, WorldError, WorldEvent,
-    WorldEventBody, WorldEventId, WorldState, WorldTime,
+    ManifestPatchOp, ManifestUpdate, ModuleActivation, ModuleChangeSet, ModuleDeactivation,
+    ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
+    ModuleRecord, ModuleSubscription, ModuleUpgrade, OriginKind, PatchConflict, PatchMergeResult,
+    PatchOpKind, PatchOpSummary, PatchPath, PolicyDecision, PolicyDecisionRecord, PolicyRule,
+    PolicySet, PolicyWhen, Proposal, ProposalDecision, ProposalId, ProposalStatus,
+    ReceiptSignature, ReceiptSigner, RejectReason, RollbackEvent, SignatureAlgorithm, Snapshot,
+    SnapshotCatalog, SnapshotMeta, SnapshotRecord, SnapshotRetentionPolicy, World, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId, WorldState, WorldTime,
 };
 
 pub use runtime::{

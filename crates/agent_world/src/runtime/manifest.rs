@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use super::error::WorldError;
+use super::modules::ModuleChangeSet;
 use super::types::PatchPath;
 use super::util::hash_json;
 
@@ -20,6 +21,37 @@ impl Default for Manifest {
             version: 1,
             content: JsonValue::Object(serde_json::Map::new()),
         }
+    }
+}
+
+impl Manifest {
+    pub fn module_changes(&self) -> Result<Option<ModuleChangeSet>, WorldError> {
+        let JsonValue::Object(map) = &self.content else {
+            return Ok(None);
+        };
+        let Some(value) = map.get("module_changes") else {
+            return Ok(None);
+        };
+        if value.is_null() {
+            return Ok(None);
+        }
+        let changes: ModuleChangeSet = serde_json::from_value(value.clone()).map_err(|err| {
+            WorldError::ModuleChangeInvalid {
+                reason: err.to_string(),
+            }
+        })?;
+        Ok(Some(changes))
+    }
+
+    pub fn without_module_changes(&self) -> Result<Manifest, WorldError> {
+        let mut content = self.content.clone();
+        if let JsonValue::Object(map) = &mut content {
+            map.remove("module_changes");
+        }
+        Ok(Manifest {
+            version: self.version,
+            content,
+        })
     }
 }
 

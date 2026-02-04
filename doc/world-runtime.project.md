@@ -42,7 +42,7 @@
 - [x] 定义模块事件 schema 与校验规则（Register/Activate/Upgrade）
 - [x] 模块注册表/存储设计（哈希寻址、缓存、审计元数据）
 - [x] 模块注册/激活/升级事件与治理流程接入（设计草案）
-- [ ] 实现 apply 阶段模块事件落盘与注册表更新
+- [x] 实现 apply 阶段模块事件落盘与注册表更新
 - [ ] 实现 shadow 校验路径（hash/ABI/limits/caps）
 - [x] 衔接 manifest/registry 的变更计划结构（ModuleChangeSet）
 - [x] 补充 ModuleChangeSet 校验规则（冲突/重复/顺序约束）

@@ -12,6 +12,7 @@ use super::error::WorldError;
 use super::events::{Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason};
 use super::governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecision, ProposalStatus};
 use super::manifest::{apply_manifest_patch, Manifest, ManifestPatch, ManifestUpdate};
+use super::modules::{ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleRegistry, ModuleRecord};
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
 use super::snapshot::{Journal, RollbackEvent, Snapshot, SnapshotCatalog, SnapshotRecord, SnapshotRetentionPolicy};
@@ -24,6 +25,7 @@ use super::world_event::{WorldEvent, WorldEventBody};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct World {
     manifest: Manifest,
+    module_registry: ModuleRegistry,
     snapshot_catalog: SnapshotCatalog,
     state: WorldState,
     journal: Journal,
@@ -50,6 +52,7 @@ impl World {
     pub fn new_with_state(state: WorldState) -> Self {
         Self {
             manifest: Manifest::default(),
+            module_registry: ModuleRegistry::default(),
             snapshot_catalog: SnapshotCatalog::default(),
             state,
             journal: Journal::new(),
@@ -78,6 +81,10 @@ impl World {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    pub fn module_registry(&self) -> &ModuleRegistry {
+        &self.module_registry
     }
 
     pub fn snapshot_catalog(&self) -> &SnapshotCatalog {
@@ -341,10 +348,8 @@ impl World {
             .proposals
             .get(&proposal_id)
             .ok_or(WorldError::ProposalNotFound { proposal_id })?;
-        let (manifest, manifest_hash) = match &proposal.status {
-            ProposalStatus::Approved { manifest_hash, .. } => {
-                (proposal.manifest.clone(), manifest_hash.clone())
-            }
+        let (manifest, actor) = match &proposal.status {
+            ProposalStatus::Approved { .. } => (proposal.manifest.clone(), proposal.author.clone()),
             other => {
                 return Err(WorldError::ProposalInvalidState {
                     proposal_id,
@@ -353,14 +358,32 @@ impl World {
                 })
             }
         };
-        let event = GovernanceEvent::Applied { proposal_id };
+
+        let module_changes = manifest.module_changes()?;
+        if let Some(changes) = &module_changes {
+            self.validate_module_changes(changes)?;
+        }
+        let applied_manifest = if module_changes.is_some() {
+            manifest.without_module_changes()?
+        } else {
+            manifest.clone()
+        };
+        let applied_hash = hash_json(&applied_manifest)?;
+
+        let event = GovernanceEvent::Applied {
+            proposal_id,
+            manifest_hash: Some(applied_hash.clone()),
+        };
         self.append_event(WorldEventBody::Governance(event), None)?;
+        if let Some(changes) = module_changes {
+            self.apply_module_changes(proposal_id, &changes, &actor)?;
+        }
         let update = ManifestUpdate {
-            manifest,
-            manifest_hash: manifest_hash.clone(),
+            manifest: applied_manifest,
+            manifest_hash: applied_hash.clone(),
         };
         self.append_event(WorldEventBody::ManifestUpdated(update), None)?;
-        Ok(manifest_hash)
+        Ok(applied_hash)
     }
 
     // -------------------------------------------------------------------------
@@ -528,6 +551,7 @@ impl World {
         Snapshot {
             snapshot_catalog: self.snapshot_catalog.clone(),
             manifest: self.manifest.clone(),
+            module_registry: self.module_registry.clone(),
             state: self.state.clone(),
             journal_len: self.journal.len(),
             last_event_id: self.next_event_id.saturating_sub(1),
@@ -600,6 +624,7 @@ impl World {
         let mut world = Self::new_with_state(snapshot.state);
         world.journal = journal;
         world.manifest = snapshot.manifest;
+        world.module_registry = snapshot.module_registry;
         world.snapshot_catalog = snapshot.snapshot_catalog;
         world.next_event_id = snapshot.last_event_id.saturating_add(1);
         world.next_action_id = snapshot.next_action_id;
@@ -711,6 +736,9 @@ impl World {
             WorldEventBody::Governance(event) => {
                 self.apply_governance_event(event)?;
             }
+            WorldEventBody::ModuleEvent(event) => {
+                self.apply_module_event(event, time)?;
+            }
             WorldEventBody::SnapshotCreated(_) => {}
             WorldEventBody::ManifestUpdated(update) => {
                 self.manifest = update.manifest.clone();
@@ -787,23 +815,343 @@ impl World {
                     }
                 }
             }
-            GovernanceEvent::Applied { proposal_id } => {
+            GovernanceEvent::Applied {
+                proposal_id,
+                manifest_hash,
+            } => {
                 let proposal = self
                     .proposals
                     .get_mut(proposal_id)
                     .ok_or(WorldError::ProposalNotFound {
                         proposal_id: *proposal_id,
                     })?;
-                let ProposalStatus::Approved { manifest_hash, .. } = &proposal.status else {
+                let ProposalStatus::Approved {
+                    manifest_hash: approved_hash,
+                    ..
+                } = &proposal.status
+                else {
                     return Err(WorldError::ProposalInvalidState {
                         proposal_id: *proposal_id,
                         expected: "approved".to_string(),
                         found: proposal.status.label(),
                     });
                 };
+                let applied_hash = manifest_hash
+                    .clone()
+                    .unwrap_or_else(|| approved_hash.clone());
                 proposal.status = ProposalStatus::Applied {
-                    manifest_hash: manifest_hash.clone(),
+                    manifest_hash: applied_hash,
                 };
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_module_changes(&self, changes: &ModuleChangeSet) -> Result<(), WorldError> {
+        let mut register_ids = BTreeSet::new();
+        let mut activate_ids = BTreeSet::new();
+        let mut deactivate_ids = BTreeSet::new();
+        let mut upgrade_ids = BTreeSet::new();
+
+        for module in &changes.register {
+            if !register_ids.insert(module.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate register module_id {}", module.module_id),
+                });
+            }
+        }
+
+        for activation in &changes.activate {
+            if !activate_ids.insert(activation.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate activate module_id {}", activation.module_id),
+                });
+            }
+        }
+
+        for deactivation in &changes.deactivate {
+            if !deactivate_ids.insert(deactivation.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate deactivate module_id {}", deactivation.module_id),
+                });
+            }
+        }
+
+        for upgrade in &changes.upgrade {
+            if !upgrade_ids.insert(upgrade.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate upgrade module_id {}", upgrade.module_id),
+                });
+            }
+            if upgrade.manifest.module_id != upgrade.module_id {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "upgrade manifest module_id mismatch {}",
+                        upgrade.module_id
+                    ),
+                });
+            }
+            if upgrade.manifest.version != upgrade.to_version {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "upgrade manifest version mismatch {}",
+                        upgrade.module_id
+                    ),
+                });
+            }
+            if upgrade.manifest.wasm_hash != upgrade.wasm_hash {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "upgrade manifest wasm_hash mismatch {}",
+                        upgrade.module_id
+                    ),
+                });
+            }
+        }
+
+        for module_id in register_ids.iter() {
+            if upgrade_ids.contains(module_id) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("register and upgrade both target {module_id}"),
+                });
+            }
+        }
+
+        let mut planned_records = BTreeSet::new();
+        for module in &changes.register {
+            let key = ModuleRegistry::record_key(&module.module_id, &module.version);
+            if !planned_records.insert(key.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate planned record {key}"),
+                });
+            }
+        }
+        for upgrade in &changes.upgrade {
+            let key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.to_version);
+            if !planned_records.insert(key.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate planned record {key}"),
+                });
+            }
+        }
+
+        for module in &changes.register {
+            let key = ModuleRegistry::record_key(&module.module_id, &module.version);
+            if self.module_registry.records.contains_key(&key) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module already registered {key}"),
+                });
+            }
+        }
+
+        for upgrade in &changes.upgrade {
+            let to_key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.to_version);
+            if self.module_registry.records.contains_key(&to_key) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module version already registered {to_key}"),
+                });
+            }
+
+            let from_key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.from_version);
+            if !self.module_registry.records.contains_key(&from_key) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("upgrade source missing {from_key}"),
+                });
+            }
+
+            if let Some(active_version) = self.module_registry.active.get(&upgrade.module_id) {
+                if active_version != &upgrade.from_version {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!(
+                            "upgrade source version mismatch for {} (active {})",
+                            upgrade.module_id, active_version
+                        ),
+                    });
+                }
+            }
+        }
+
+        for activation in &changes.activate {
+            let key = ModuleRegistry::record_key(&activation.module_id, &activation.version);
+            let exists = self.module_registry.records.contains_key(&key)
+                || planned_records.contains(&key);
+            if !exists {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("activate target missing {key}"),
+                });
+            }
+        }
+
+        let mut will_activate = BTreeSet::new();
+        for activation in &changes.activate {
+            will_activate.insert(activation.module_id.clone());
+        }
+        for deactivation in &changes.deactivate {
+            let has_active = self
+                .module_registry
+                .active
+                .contains_key(&deactivation.module_id);
+            if !has_active && !will_activate.contains(&deactivation.module_id) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "deactivate target not active {}",
+                        deactivation.module_id
+                    ),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn apply_module_changes(
+        &mut self,
+        proposal_id: ProposalId,
+        changes: &ModuleChangeSet,
+        actor: &str,
+    ) -> Result<(), WorldError> {
+        let mut registers = changes.register.clone();
+        registers.sort_by(|left, right| left.module_id.cmp(&right.module_id));
+        for module in registers {
+            let event = ModuleEvent {
+                proposal_id,
+                kind: ModuleEventKind::RegisterModule {
+                    module,
+                    registered_by: actor.to_string(),
+                },
+            };
+            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
+        }
+
+        let mut upgrades = changes.upgrade.clone();
+        upgrades.sort_by(|left, right| left.module_id.cmp(&right.module_id));
+        for upgrade in upgrades {
+            let event = ModuleEvent {
+                proposal_id,
+                kind: ModuleEventKind::UpgradeModule {
+                    module_id: upgrade.module_id,
+                    from_version: upgrade.from_version,
+                    to_version: upgrade.to_version,
+                    wasm_hash: upgrade.wasm_hash,
+                    manifest: upgrade.manifest,
+                    upgraded_by: actor.to_string(),
+                },
+            };
+            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
+        }
+
+        let mut activations = changes.activate.clone();
+        activations.sort_by(|left, right| left.module_id.cmp(&right.module_id));
+        for activation in activations {
+            let event = ModuleEvent {
+                proposal_id,
+                kind: ModuleEventKind::ActivateModule {
+                    module_id: activation.module_id,
+                    version: activation.version,
+                    activated_by: actor.to_string(),
+                },
+            };
+            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
+        }
+
+        let mut deactivations = changes.deactivate.clone();
+        deactivations.sort_by(|left, right| left.module_id.cmp(&right.module_id));
+        for deactivation in deactivations {
+            let event = ModuleEvent {
+                proposal_id,
+                kind: ModuleEventKind::DeactivateModule {
+                    module_id: deactivation.module_id,
+                    reason: deactivation.reason,
+                    deactivated_by: actor.to_string(),
+                },
+            };
+            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
+        }
+
+        Ok(())
+    }
+
+    fn apply_module_event(
+        &mut self,
+        event: &ModuleEvent,
+        time: super::types::WorldTime,
+    ) -> Result<(), WorldError> {
+        match &event.kind {
+            ModuleEventKind::RegisterModule {
+                module,
+                registered_by,
+            } => {
+                let key = ModuleRegistry::record_key(&module.module_id, &module.version);
+                if self.module_registry.records.contains_key(&key) {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!("module already registered {key}"),
+                    });
+                }
+                let record = ModuleRecord {
+                    manifest: module.clone(),
+                    registered_at: time,
+                    registered_by: registered_by.clone(),
+                    audit_event_id: None,
+                };
+                self.module_registry.records.insert(key, record);
+            }
+            ModuleEventKind::UpgradeModule {
+                module_id,
+                from_version,
+                to_version,
+                wasm_hash,
+                manifest,
+                upgraded_by,
+                ..
+            } => {
+                if manifest.module_id != *module_id || manifest.version != *to_version {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!("upgrade manifest mismatch for {module_id}"),
+                    });
+                }
+                if manifest.wasm_hash != *wasm_hash {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!("upgrade wasm_hash mismatch for {module_id}"),
+                    });
+                }
+
+                let to_key = ModuleRegistry::record_key(module_id, to_version);
+                if self.module_registry.records.contains_key(&to_key) {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!("module already registered {to_key}"),
+                    });
+                }
+                let record = ModuleRecord {
+                    manifest: manifest.clone(),
+                    registered_at: time,
+                    registered_by: upgraded_by.clone(),
+                    audit_event_id: None,
+                };
+                self.module_registry.records.insert(to_key, record);
+
+                if let Some(active_version) = self.module_registry.active.get(module_id) {
+                    if active_version == from_version {
+                        self.module_registry
+                            .active
+                            .insert(module_id.clone(), to_version.clone());
+                    }
+                }
+            }
+            ModuleEventKind::ActivateModule {
+                module_id, version, ..
+            } => {
+                let key = ModuleRegistry::record_key(module_id, version);
+                if !self.module_registry.records.contains_key(&key) {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!("activate target missing {key}"),
+                    });
+                }
+                self.module_registry
+                    .active
+                    .insert(module_id.clone(), version.clone());
+            }
+            ModuleEventKind::DeactivateModule { module_id, .. } => {
+                self.module_registry.active.remove(module_id);
             }
         }
         Ok(())

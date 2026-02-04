@@ -15,6 +15,7 @@ mod error;
 mod events;
 mod governance;
 mod manifest;
+mod modules;
 mod policy;
 mod signer;
 mod snapshot;
@@ -58,6 +59,13 @@ pub use manifest::{
     apply_manifest_patch, diff_manifest, merge_manifest_patches,
     merge_manifest_patches_with_conflicts, ConflictKind, Manifest, ManifestPatch, ManifestPatchOp,
     ManifestUpdate, PatchConflict, PatchMergeResult, PatchOpKind, PatchOpSummary,
+};
+
+// Modules
+pub use modules::{
+    ModuleActivation, ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRecord, ModuleSubscription,
+    ModuleUpgrade,
 };
 
 // Policy

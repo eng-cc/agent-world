@@ -70,6 +70,8 @@ pub enum GovernanceEvent {
     },
     Applied {
         proposal_id: ProposalId,
+        #[serde(default)]
+        manifest_hash: Option<String>,
     },
 }
 
