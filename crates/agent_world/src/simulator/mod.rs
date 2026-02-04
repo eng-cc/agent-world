@@ -42,7 +42,9 @@ pub use types::{
 pub use world_model::{Agent, Asset, AssetKind, Location, WorldConfig, WorldModel};
 
 // Re-export power system types
-pub use power::{AgentPowerState, AgentPowerStatus, ConsumeReason, PowerConfig, PowerEvent};
+pub use power::{
+    AgentPowerState, AgentPowerStatus, ConsumeReason, PlantStatus, PowerConfig, PowerEvent,
+};
 
 // Re-export event types from kernel
 pub use kernel::{RejectReason, WorldEvent, WorldEventKind};

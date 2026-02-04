@@ -189,6 +189,25 @@ impl Default for AgentPowerStatus {
 }
 
 // ============================================================================
+// Power Facilities
+// ============================================================================
+
+/// Status of a power plant facility.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlantStatus {
+    Running,
+    Offline,
+    Maintenance,
+}
+
+impl Default for PlantStatus {
+    fn default() -> Self {
+        PlantStatus::Running
+    }
+}
+
+// ============================================================================
 // Power Events
 // ============================================================================
 
