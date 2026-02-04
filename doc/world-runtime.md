@@ -570,6 +570,14 @@ ArtifactWrite(wasm_hash)
 - **upgrade_flow**：升级成功后版本更新、旧版本不可激活
 - **audit_export_contains_module_events**：审计导出包含 GovernanceEvent + Module*Failed/ShadowReport
 
+### 测试基架建议（草案）
+
+- 文件组织：`crates/agent_world/tests/module_lifecycle.rs`
+- 共享夹具：`TestWorldBuilder`（构造 world + manifest + registry 初始态）
+- 伪造工件：内存内生成 dummy wasm bytes + 计算 hash
+- Shadow 注入：允许在测试中强制 shadow 失败/通过
+- 断言：事件流顺序、注册表内容、审计导出记录
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
