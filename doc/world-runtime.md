@@ -720,6 +720,37 @@ fn wasm_hash(bytes: &[u8]) -> String;         // 计算内容哈希（sha256/hex
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
 
+### 模块加载与缓存（草案）
+
+- **加载键**：仅允许按 `wasm_hash` 加载，拒绝同名覆盖。
+- **缓存策略**：LRU + `max_cached_modules` 上限；超限时淘汰最久未使用模块。
+- **编译缓存**：可选缓存已编译实例（WASM → 本地可执行表示）。
+- **失败事件**：加载失败写入 `ModuleLoadFailed`（含 hash/原因）。
+
+### 沙箱执行器与资源限制（草案）
+
+- **资源限额**：`max_mem_bytes`、`max_gas`、`max_call_rate`、`max_output_bytes`。
+- **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`。
+- **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
+
+### Capability/Policy 绑定（草案）
+
+- **绑定点**：模块输出的每个 `EffectIntent` 必须关联 `cap_ref`。
+- **校验**：`required_caps` 与系统 grants 匹配；policy 允许才执行。
+- **审计**：策略拒绝记录为 `PolicyDecisionRecorded`。
+
+### 事件订阅与路由（草案）
+
+- **订阅来源**：`ModuleManifest.subscriptions` 指定 event/action kinds。
+- **路由顺序**：按 `module_id` 字典序调用，保证确定性。
+- **隔离性**：模块之间不共享状态，状态由 reducer 自身维护。
+
+### 模块输出校验（草案）
+
+- **数量限制**：`effects`/`emits` 数量不得超过 `ModuleLimits`。
+- **大小限制**：`ModuleOutput` 编码后大小不得超过 `max_output_bytes`。
+- **拒绝策略**：违反规则写入 `ModuleCallFailed` 并丢弃输出。
+
 ### 模块治理流程接入（草案）
 
 **流程（概要）**

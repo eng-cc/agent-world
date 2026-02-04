@@ -65,6 +65,11 @@
 - [x] 补充 Dummy WASM 工件工具说明（bytes/hash）
 - [x] 补充 Shadow 注入建议（测试专用策略）
 - [x] 补充 ShadowPolicy 配置字段与 ShadowReport 关联
+- [x] 补充模块加载与缓存设计草案
+- [x] 补充沙箱执行器与资源限制设计草案
+- [x] 补充 Capability/Policy 绑定设计草案
+- [x] 补充事件订阅与路由设计草案
+- [x] 补充模块输出校验设计草案
 - [x] 补充 ModuleChangeSet 应用算法伪代码
 - [x] 补充代码结构调整清单（Manifest/Applied/Audit）
 - [x] 补充 Manifest 版本与迁移策略（向后兼容/向前拒绝/迁移函数）
