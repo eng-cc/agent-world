@@ -832,6 +832,18 @@ struct Manifest {
 - **迁移路径**：提供 `migrate_manifest(from, to)` 辅助函数；迁移需可确定性重放。
 - **Patch 约束**：`ManifestPatch` 必须基于同一 `base_manifest_hash`，跨版本 patch 直接拒绝。
 
+**加载/恢复流程（示意）**
+```
+load_manifest()
+  -> if version == supported: use
+  -> else if version < supported: migrate_manifest(version, supported) -> new_manifest
+  -> else: reject + audit
+```
+
+**base_manifest_hash 行为**
+- 迁移后生成新的 `manifest_hash`，用于后续 patch 基线。
+- 迁移前后的哈希需记录在审计事件中，保证可追溯。
+
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
 - **M1**：确定性 world kernel + 事件日志 + 最小快照
