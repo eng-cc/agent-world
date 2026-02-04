@@ -17,6 +17,8 @@ pub type ActionId = u64;
 pub const CM_PER_KM: i64 = 100_000;
 pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 pub const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
+pub const SNAPSHOT_VERSION: u32 = 1;
+pub const JOURNAL_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -285,6 +287,7 @@ impl WorldKernel {
 
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
+            version: SNAPSHOT_VERSION,
             time: self.time,
             config: self.config.clone(),
             model: self.model.clone(),
@@ -297,6 +300,7 @@ impl WorldKernel {
 
     pub fn journal_snapshot(&self) -> WorldJournal {
         WorldJournal {
+            version: JOURNAL_VERSION,
             events: self.journal.clone(),
         }
     }
@@ -305,6 +309,8 @@ impl WorldKernel {
         snapshot: WorldSnapshot,
         journal: WorldJournal,
     ) -> Result<Self, PersistError> {
+        snapshot.validate_version()?;
+        journal.validate_version()?;
         if snapshot.journal_len != journal.events.len() {
             return Err(PersistError::SnapshotMismatch {
                 expected: snapshot.journal_len,
@@ -326,6 +332,8 @@ impl WorldKernel {
         snapshot: WorldSnapshot,
         journal: WorldJournal,
     ) -> Result<Self, PersistError> {
+        snapshot.validate_version()?;
+        journal.validate_version()?;
         if journal.events.len() < snapshot.journal_len {
             return Err(PersistError::SnapshotMismatch {
                 expected: snapshot.journal_len,
@@ -1029,6 +1037,14 @@ fn movement_cost(distance_cm: i64, per_km_cost: i64) -> i64 {
     km.saturating_mul(per_km_cost)
 }
 
+fn default_snapshot_version() -> u32 {
+    SNAPSHOT_VERSION
+}
+
+fn default_journal_version() -> u32 {
+    JOURNAL_VERSION
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldEvent {
     pub id: WorldEventId,
@@ -1092,6 +1108,8 @@ pub enum RejectReason {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldSnapshot {
+    #[serde(default = "default_snapshot_version")]
+    pub version: u32,
     pub time: WorldTime,
     pub config: WorldConfig,
     pub model: WorldModel,
@@ -1107,7 +1125,9 @@ impl WorldSnapshot {
     }
 
     pub fn from_json(input: &str) -> Result<Self, PersistError> {
-        Ok(serde_json::from_str(input)?)
+        let snapshot: Self = serde_json::from_str(input)?;
+        snapshot.validate_version()?;
+        Ok(snapshot)
     }
 
     pub fn save_json(&self, path: impl AsRef<Path>) -> Result<(), PersistError> {
@@ -1115,18 +1135,37 @@ impl WorldSnapshot {
     }
 
     pub fn load_json(path: impl AsRef<Path>) -> Result<Self, PersistError> {
-        read_json_from_path(path.as_ref())
+        let snapshot: Self = read_json_from_path(path.as_ref())?;
+        snapshot.validate_version()?;
+        Ok(snapshot)
+    }
+
+    fn validate_version(&self) -> Result<(), PersistError> {
+        if self.version == SNAPSHOT_VERSION {
+            Ok(())
+        } else {
+            Err(PersistError::UnsupportedVersion {
+                kind: "snapshot".to_string(),
+                version: self.version,
+                expected: SNAPSHOT_VERSION,
+            })
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldJournal {
+    #[serde(default = "default_journal_version")]
+    pub version: u32,
     pub events: Vec<WorldEvent>,
 }
 
 impl WorldJournal {
     pub fn new() -> Self {
-        Self { events: Vec::new() }
+        Self {
+            version: JOURNAL_VERSION,
+            events: Vec::new(),
+        }
     }
 
     pub fn to_json(&self) -> Result<String, PersistError> {
@@ -1134,7 +1173,9 @@ impl WorldJournal {
     }
 
     pub fn from_json(input: &str) -> Result<Self, PersistError> {
-        Ok(serde_json::from_str(input)?)
+        let journal: Self = serde_json::from_str(input)?;
+        journal.validate_version()?;
+        Ok(journal)
     }
 
     pub fn save_json(&self, path: impl AsRef<Path>) -> Result<(), PersistError> {
@@ -1142,7 +1183,21 @@ impl WorldJournal {
     }
 
     pub fn load_json(path: impl AsRef<Path>) -> Result<Self, PersistError> {
-        read_json_from_path(path.as_ref())
+        let journal: Self = read_json_from_path(path.as_ref())?;
+        journal.validate_version()?;
+        Ok(journal)
+    }
+
+    fn validate_version(&self) -> Result<(), PersistError> {
+        if self.version == JOURNAL_VERSION {
+            Ok(())
+        } else {
+            Err(PersistError::UnsupportedVersion {
+                kind: "journal".to_string(),
+                version: self.version,
+                expected: JOURNAL_VERSION,
+            })
+        }
     }
 }
 
@@ -1152,6 +1207,11 @@ pub enum PersistError {
     Serde(String),
     SnapshotMismatch { expected: usize, actual: usize },
     ReplayConflict { message: String },
+    UnsupportedVersion {
+        kind: String,
+        version: u32,
+        expected: u32,
+    },
 }
 
 impl From<io::Error> for PersistError {
@@ -1521,6 +1581,24 @@ mod tests {
 
         let err = WorldKernel::from_snapshot(snapshot, journal).unwrap_err();
         assert!(matches!(err, PersistError::SnapshotMismatch { .. }));
+    }
+
+    #[test]
+    fn snapshot_version_validation_rejects_unknown() {
+        let mut snapshot = WorldKernel::new().snapshot();
+        snapshot.version = SNAPSHOT_VERSION + 1;
+        let json = snapshot.to_json().unwrap();
+        let err = WorldSnapshot::from_json(&json).unwrap_err();
+        assert!(matches!(err, PersistError::UnsupportedVersion { .. }));
+    }
+
+    #[test]
+    fn journal_version_validation_rejects_unknown() {
+        let mut journal = WorldKernel::new().journal_snapshot();
+        journal.version = JOURNAL_VERSION + 1;
+        let json = journal.to_json().unwrap();
+        let err = WorldJournal::from_json(&json).unwrap_err();
+        assert!(matches!(err, PersistError::UnsupportedVersion { .. }));
     }
 
     #[test]
