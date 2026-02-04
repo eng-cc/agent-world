@@ -250,6 +250,33 @@ ShadowReport {
 - `errors[]` / `warnings[]`
 - `module_id` 维度摘要（ok/error/warning 计数）
 
+### GovernanceEvent 负载结构（草案）
+
+**Proposed**
+```
+{ "proposal_id": "...", "author": "...", "base_manifest_hash": "..." }
+```
+
+**ShadowReport**
+```
+{ "proposal_id": "...", "manifest_hash": "...", "report": { ... } }
+```
+
+**Approved**
+```
+{ "proposal_id": "...", "approver": "...", "decision": "approve|reject", "reason": "..." }
+```
+
+**Applied**
+```
+{
+  "proposal_id": "...",
+  "manifest_hash": "...",
+  "module_changes": { ... },  // ModuleChangeSet（若存在）
+  "module_events": [ "RegisterModule", "UpgradeModule", "ActivateModule", "DeactivateModule" ]
+}
+```
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
