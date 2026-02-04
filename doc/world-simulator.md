@@ -70,6 +70,9 @@
 - **资源交互**：
   - 资源转移需要同地（Agent 与 Location 同处，或 Agent 与 Agent 同处）。
   - Location 与 Location 之间的直接转移不允许（需由 Agent 搬运）。
+- **配置参数（内核级）**：
+  - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
+  - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
 
 ### 运行时接口（草案）
 - **World Kernel**

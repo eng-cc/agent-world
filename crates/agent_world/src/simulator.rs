@@ -12,7 +12,7 @@ pub type ActionId = u64;
 
 pub const CM_PER_KM: i64 = 100_000;
 pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
-pub const MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
+pub const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -151,6 +151,37 @@ pub struct WorldModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldConfig {
+    pub visibility_range_cm: i64,
+    pub move_cost_per_km_electricity: i64,
+}
+
+impl Default for WorldConfig {
+    fn default() -> Self {
+        Self {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+        }
+    }
+}
+
+impl WorldConfig {
+    pub fn sanitized(mut self) -> Self {
+        if self.visibility_range_cm < 0 {
+            self.visibility_range_cm = 0;
+        }
+        if self.move_cost_per_km_electricity < 0 {
+            self.move_cost_per_km_electricity = 0;
+        }
+        self
+    }
+
+    pub fn movement_cost(&self, distance_cm: i64) -> i64 {
+        movement_cost(distance_cm, self.move_cost_per_km_electricity)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Observation {
     pub time: WorldTime,
     pub agent_id: AgentId,
@@ -209,6 +240,7 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorldKernel {
     time: WorldTime,
+    config: WorldConfig,
     next_event_id: WorldEventId,
     next_action_id: ActionId,
     pending_actions: VecDeque<ActionEnvelope>,
@@ -221,8 +253,22 @@ impl WorldKernel {
         Self::default()
     }
 
+    pub fn with_config(config: WorldConfig) -> Self {
+        let mut kernel = Self::default();
+        kernel.config = config.sanitized();
+        kernel
+    }
+
     pub fn time(&self) -> WorldTime {
         self.time
+    }
+
+    pub fn config(&self) -> &WorldConfig {
+        &self.config
+    }
+
+    pub fn set_config(&mut self, config: WorldConfig) {
+        self.config = config.sanitized();
     }
 
     pub fn model(&self) -> &WorldModel {
@@ -239,7 +285,7 @@ impl WorldKernel {
                 agent_id: agent_id.to_string(),
             });
         };
-        let visibility_range_cm = DEFAULT_VISIBILITY_RANGE_CM;
+        let visibility_range_cm = self.config.visibility_range_cm;
         let mut visible_agents = Vec::new();
         for (other_id, other) in &self.model.agents {
             if other_id == agent_id {
@@ -371,7 +417,10 @@ impl WorldKernel {
                 }
                 let from = agent.location_id.clone();
                 let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
-                let electricity_cost = movement_cost(distance_cm);
+                let electricity_cost = movement_cost(
+                    distance_cm,
+                    self.config.move_cost_per_km_electricity,
+                );
                 if electricity_cost > 0 {
                     let available = agent.resources.get(ResourceKind::Electricity);
                     if available < electricity_cost {
@@ -664,12 +713,12 @@ impl WorldKernel {
     }
 }
 
-fn movement_cost(distance_cm: i64) -> i64 {
-    if distance_cm <= 0 {
+fn movement_cost(distance_cm: i64, per_km_cost: i64) -> i64 {
+    if distance_cm <= 0 || per_km_cost <= 0 {
         return 0;
     }
     let km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
-    km.saturating_mul(MOVE_COST_PER_KM_ELECTRICITY)
+    km.saturating_mul(per_km_cost)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -824,7 +873,7 @@ mod tests {
                 assert_eq!(from, "loc-1");
                 assert_eq!(to, "loc-2");
                 assert!(distance_cm > 0);
-                assert_eq!(electricity_cost, movement_cost(distance_cm));
+                assert_eq!(electricity_cost, kernel.config().movement_cost(distance_cm));
                 electricity_cost
             }
             other => panic!("unexpected event: {other:?}"),
@@ -965,6 +1014,45 @@ mod tests {
     }
 
     #[test]
+    fn kernel_config_overrides_defaults() {
+        let config = WorldConfig {
+            visibility_range_cm: CM_PER_KM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config.clone());
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.1, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let observation = kernel.observe("agent-1").unwrap();
+        assert_eq!(observation.visibility_range_cm, config.visibility_range_cm);
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        let event = kernel.step().unwrap();
+        match event.kind {
+            WorldEventKind::AgentMoved { electricity_cost, .. } => {
+                assert_eq!(electricity_cost, 0);
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
     fn kernel_transfer_requires_colocation() {
         let mut kernel = WorldKernel::new();
         kernel.submit_action(Action::RegisterLocation {
@@ -1068,7 +1156,10 @@ mod tests {
             amount: 500,
         });
         kernel.step().unwrap();
-        let move_cost = movement_cost(great_circle_distance_cm(loc1_pos, loc2_pos));
+        let move_cost =
+            kernel
+                .config()
+                .movement_cost(great_circle_distance_cm(loc1_pos, loc2_pos));
 
         kernel.submit_action(Action::MoveAgent {
             agent_id: "agent-1".to_string(),
