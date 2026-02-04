@@ -15,7 +15,7 @@
 - **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`。
 - **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
 - **执行入口**：`World::execute_module_call` 通过沙箱接口执行模块并返回 `ModuleOutput`。
-- **最小执行 ABI**：导出 `memory`/`alloc`/`call`，`call(i32, i32) -> (i32, i32)` 返回输出指针与长度（使用 Canonical CBOR 反序列化）。
+- **最小执行 ABI**：导出 `memory`/`alloc`/`reduce|call`，`reduce/call(i32, i32) -> (i32, i32)` 返回输出指针与长度（入口取决于 ModuleKind，输出使用 Canonical CBOR 反序列化）。
 - **输入编码**：事件/动作输入使用 Canonical CBOR 编码，封装在 `ModuleCallInput { ctx, event|action }` 中，确保可回放与确定性。
 - **配置哈希**：`ModuleContext.world_config_hash` 采用当前 manifest 哈希，便于模块检测配置变更。
 

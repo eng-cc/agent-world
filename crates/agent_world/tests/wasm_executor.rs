@@ -36,7 +36,7 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
         module_id: "m.wasm".to_string(),
         name: "Wasm".to_string(),
         version: "0.1.0".to_string(),
-        kind: ModuleKind::Reducer,
+        kind: ModuleKind::Pure,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],

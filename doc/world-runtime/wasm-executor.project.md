@@ -19,10 +19,12 @@
 - [x] E7 补充输入 envelope 编码测试
 - [x] E8 补充 world_config_hash（manifest hash）到 ModuleContext
 - [x] E8 补充 world_config_hash 测试
+- [x] E9 模块调用入口按 ModuleKind 选择（reduce/call）
+- [x] E9 补充入口选择测试
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module-storage.md`）
 
 ## 状态
-- 当前阶段：E8（context hash 已接入）
+- 当前阶段：E9（入口选择已接入）

@@ -580,6 +580,7 @@ fn wasm_executor_skeleton_reports_unavailable() {
         module_id: "m.test".to_string(),
         wasm_hash: "hash".to_string(),
         trace_id: "trace-1".to_string(),
+        entrypoint: "call".to_string(),
         input: vec![],
         limits: ModuleLimits::default(),
         wasm_bytes: Vec::new(),
@@ -780,6 +781,134 @@ fn step_with_modules_routes_actions() {
     let action_emit_index = action_emit_index.expect("expected action subscription emit");
     let domain_event_index = domain_event_index.expect("expected agent registration event");
     assert!(action_emit_index < domain_event_index);
+}
+
+#[derive(Default)]
+struct CaptureEntrypointSandbox {
+    entrypoints: Vec<String>,
+}
+
+impl ModuleSandbox for CaptureEntrypointSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        self.entrypoints.push(request.entrypoint.clone());
+        Ok(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            output_bytes: 0,
+        })
+    }
+}
+
+#[test]
+fn module_calls_use_entrypoint_for_kind() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let reducer_bytes = b"module-reducer";
+    let reducer_hash = util::sha256_hex(reducer_bytes);
+    world
+        .register_module_artifact(reducer_hash.clone(), reducer_bytes)
+        .unwrap();
+
+    let pure_bytes = b"module-pure";
+    let pure_hash = util::sha256_hex(pure_bytes);
+    world
+        .register_module_artifact(pure_hash.clone(), pure_bytes)
+        .unwrap();
+
+    let reducer_manifest = ModuleManifest {
+        module_id: "m.reducer".to_string(),
+        name: "Reducer".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash: reducer_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    let pure_manifest = ModuleManifest {
+        module_id: "m.pure".to_string(),
+        name: "Pure".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash: pure_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![reducer_manifest.clone(), pure_manifest.clone()],
+        activate: vec![
+            ModuleActivation {
+                module_id: reducer_manifest.module_id.clone(),
+                version: reducer_manifest.version.clone(),
+            },
+            ModuleActivation {
+                module_id: pure_manifest.module_id.clone(),
+                version: pure_manifest.version.clone(),
+            },
+        ],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+
+    let mut sandbox = CaptureEntrypointSandbox::default();
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    assert!(sandbox.entrypoints.contains(&"reduce".to_string()));
+    assert!(sandbox.entrypoints.contains(&"call".to_string()));
 }
 
 #[test]

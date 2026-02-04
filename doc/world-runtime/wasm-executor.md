@@ -55,7 +55,7 @@
 - 编译过程与缓存锁分离，避免长时间持锁。
 
 ### 实现要点（E4）
-- Wasmtime 执行器使用 `memory`/`alloc`/`call` 导出进行最小调用（`call(i32, i32) -> (i32, i32)`）。
+- Wasmtime 执行器使用 `memory`/`alloc`/`reduce|call` 导出进行最小调用（`reduce/call(i32, i32) -> (i32, i32)`，入口取决于 ModuleKind）。
 - `ModuleCallRequest` 增加 `wasm_bytes`，由 `World::execute_module_call` 注入真实工件。
 - 集成测试通过 `--features wasmtime` 验证真实 wasm 调用与回放事件一致性。
 

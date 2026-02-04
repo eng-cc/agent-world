@@ -345,6 +345,7 @@ impl World {
             module_id: module_id.to_string(),
             wasm_hash,
             trace_id: trace_id.clone(),
+            entrypoint: manifest.kind.entrypoint().to_string(),
             input,
             limits: manifest.limits.clone(),
             wasm_bytes: artifact.bytes,
@@ -1415,10 +1416,7 @@ impl World {
             });
         }
 
-        let expected_export = match module.kind {
-            super::modules::ModuleKind::Reducer => "reduce",
-            super::modules::ModuleKind::Pure => "call",
-        };
+        let expected_export = module.kind.entrypoint();
         if !module.exports.iter().any(|name| name == expected_export) {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!(

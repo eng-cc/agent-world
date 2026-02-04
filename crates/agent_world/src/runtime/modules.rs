@@ -14,6 +14,15 @@ pub enum ModuleKind {
     Pure,
 }
 
+impl ModuleKind {
+    pub fn entrypoint(&self) -> &'static str {
+        match self {
+            ModuleKind::Reducer => "reduce",
+            ModuleKind::Pure => "call",
+        }
+    }
+}
+
 /// Resource limits for module execution.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleLimits {

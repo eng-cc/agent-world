@@ -41,6 +41,7 @@ pub struct ModuleCallRequest {
     pub module_id: String,
     pub wasm_hash: String,
     pub trace_id: String,
+    pub entrypoint: String,
     pub input: Vec<u8>,
     pub limits: ModuleLimits,
     #[serde(default)]
@@ -246,6 +247,7 @@ impl WasmExecutor {
                     module_id: wasm_hash.to_string(),
                     wasm_hash: wasm_hash.to_string(),
                     trace_id: "compile".to_string(),
+                    entrypoint: "call".to_string(),
                     input: Vec::new(),
                     limits: ModuleLimits::default(),
                     wasm_bytes: Vec::new(),
@@ -403,12 +405,15 @@ impl ModuleSandbox for WasmExecutor {
                     )
                 })?;
             let call = instance
-                .get_typed_func::<(i32, i32), (i32, i32)>(&mut store, "call")
+                .get_typed_func::<(i32, i32), (i32, i32)>(
+                    &mut store,
+                    request.entrypoint.as_str(),
+                )
                 .map_err(|err| {
                     self.failure(
                         request,
                         ModuleCallErrorCode::InvalidOutput,
-                        format!("missing call export: {err}"),
+                        format!("missing {} export: {err}", request.entrypoint),
                     )
                 })?;
 
@@ -558,6 +563,7 @@ mod tests {
             module_id: "m.test".to_string(),
             wasm_hash: "hash".to_string(),
             trace_id: "trace-1".to_string(),
+            entrypoint: "call".to_string(),
             input: vec![],
             limits: ModuleLimits {
                 max_mem_bytes: executor.config().max_mem_bytes,
@@ -592,6 +598,7 @@ mod tests {
             module_id: "m.test".to_string(),
             wasm_hash: "hash".to_string(),
             trace_id: "trace-2".to_string(),
+            entrypoint: "call".to_string(),
             input: vec![],
             limits: ModuleLimits {
                 max_mem_bytes: executor.config().max_mem_bytes,
