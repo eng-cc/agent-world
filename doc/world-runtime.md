@@ -277,6 +277,27 @@ ShadowReport {
 }
 ```
 
+### 审计导出统一记录格式（草案）
+
+> 目标：统一治理事件、ShadowReport、模块失败事件的审计导出格式，便于检索与归档。
+
+**AuditRecord（示意）**
+```
+{
+  "time": i64,
+  "kind": "GovernanceEvent|ShadowReport|ModuleLoadFailed|ModuleValidationFailed|ModuleCallFailed",
+  "proposal_id": "...",
+  "module_id": "...",
+  "trace_id": "...",
+  "payload": { ... }   // 对应事件的原始负载
+}
+```
+
+**索引建议**
+- `proposal_id` 维度：追踪一次治理链路的全量记录。
+- `module_id` 维度：追踪模块生命周期与失败原因。
+- `trace_id` 维度：追踪运行时调用链路。
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。

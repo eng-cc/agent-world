@@ -53,6 +53,7 @@
 - [x] 补充模块失败事件的审计关联字段（trace_id/proposal_id）
 - [x] 定义模块失败事件负载结构与错误码
 - [x] 补充 GovernanceEvent 负载结构（含 ShadowReport/ModuleChangeSet）
+- [x] 补充统一审计导出记录格式（AuditRecord）
 - [ ] 集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
