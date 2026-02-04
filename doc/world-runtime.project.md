@@ -98,6 +98,9 @@
 - [x] 模块输出校验（effects/emits 限额与大小）
 - [x] 单元测试/集成测试（确定性回放 + 权限拒绝）
 
+### 6. 维护
+- [x] 拆分 runtime world 模块文件以满足单文件行数上限
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
