@@ -354,6 +354,10 @@ ShadowReport {
 - **导出接口**：`save_audit_log(path, filter, limit?, cursor?) -> next_cursor?`
 - **chunk 导出**：支持按固定数量分片写出多个文件（如 `audit_0001.json`）。
 
+**cursor 约定（示意）**
+- 使用 `event_id` 作为 cursor（单调递增，字符串或 u64）。
+- 若 cursor 不存在或已过期（日志裁剪后），返回可恢复错误 `CURSOR_INVALID`。
+
 ### 审计导出示例（草案）
 
 ```
