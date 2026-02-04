@@ -23,7 +23,7 @@
 - [x] 实现 RegisterPowerPlant/RegisterPowerStorage 动作
 - [x] 实现每 tick 发电逻辑
 - [x] 实现充放电逻辑
-- [ ] 编写单元测试（发电、储能、设施状态）
+- [x] 编写单元测试（发电、储能、设施状态）
 
 ### M4.3 电力传输与交易
 - [ ] 定义 DrawPower/StorePower 动作

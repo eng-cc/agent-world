@@ -1870,3 +1870,130 @@ fn shutdown_agents_list() {
     assert_eq!(shutdown.len(), 1);
     assert!(shutdown.contains(&"agent-2".to_string()));
 }
+
+#[test]
+fn power_generation_creates_electricity() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "PlantBase".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterPowerPlant {
+        facility_id: "plant-1".to_string(),
+        location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        capacity_per_tick: 10,
+        fuel_cost_per_pu: 0,
+        maintenance_cost: 0,
+        efficiency: 1.0,
+        degradation: 0.0,
+    });
+    kernel.step_until_empty();
+
+    let events = kernel.process_power_generation_tick();
+    assert_eq!(events.len(), 1);
+    match &events[0].kind {
+        WorldEventKind::Power(PowerEvent::PowerGenerated {
+            plant_id,
+            location_id,
+            amount,
+        }) => {
+            assert_eq!(plant_id, "plant-1");
+            assert_eq!(location_id, "loc-1");
+            assert_eq!(*amount, 10);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let location = kernel.model().locations.get("loc-1").unwrap();
+    assert_eq!(location.resources.get(ResourceKind::Electricity), 10);
+
+    let plant = kernel.model().power_plants.get("plant-1").unwrap();
+    assert_eq!(plant.current_output, 10);
+    assert_eq!(plant.status, PlantStatus::Running);
+}
+
+#[test]
+fn power_storage_charge_and_discharge() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "StorageBase".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterPowerPlant {
+        facility_id: "plant-1".to_string(),
+        location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        capacity_per_tick: 10,
+        fuel_cost_per_pu: 0,
+        maintenance_cost: 0,
+        efficiency: 1.0,
+        degradation: 0.0,
+    });
+    kernel.submit_action(Action::RegisterPowerStorage {
+        facility_id: "storage-1".to_string(),
+        location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        capacity: 20,
+        current_level: 0,
+        charge_efficiency: 0.5,
+        discharge_efficiency: 0.5,
+        max_charge_rate: 10,
+        max_discharge_rate: 10,
+    });
+    kernel.step_until_empty();
+
+    kernel.process_power_generation_tick();
+
+    let event = kernel.charge_power_storage(&"storage-1".to_string(), 10);
+    let event = event.expect("expected charge event");
+    match &event.kind {
+        WorldEventKind::Power(PowerEvent::PowerStored {
+            storage_id,
+            location_id,
+            input,
+            stored,
+        }) => {
+            assert_eq!(storage_id, "storage-1");
+            assert_eq!(location_id, "loc-1");
+            assert_eq!(*input, 10);
+            assert_eq!(*stored, 5);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let storage = kernel.model().power_storages.get("storage-1").unwrap();
+    assert_eq!(storage.current_level, 5);
+    let location = kernel.model().locations.get("loc-1").unwrap();
+    assert_eq!(location.resources.get(ResourceKind::Electricity), 0);
+
+    let event = kernel.discharge_power_storage(&"storage-1".to_string(), 2);
+    let event = event.expect("expected discharge event");
+    match &event.kind {
+        WorldEventKind::Power(PowerEvent::PowerDischarged {
+            storage_id,
+            location_id,
+            output,
+            drawn,
+        }) => {
+            assert_eq!(storage_id, "storage-1");
+            assert_eq!(location_id, "loc-1");
+            assert_eq!(*output, 2);
+            assert_eq!(*drawn, 4);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let storage = kernel.model().power_storages.get("storage-1").unwrap();
+    assert_eq!(storage.current_level, 1);
+    let location = kernel.model().locations.get("loc-1").unwrap();
+    assert_eq!(location.resources.get(ResourceKind::Electricity), 2);
+}
