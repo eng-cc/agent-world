@@ -16,7 +16,7 @@
 
 ### M4.2 发电与储能设施
 - [x] 定义 FacilityId 类型别名
-- [ ] 定义 PowerPlant 结构（发电设施）
+- [x] 定义 PowerPlant 结构（发电设施）
 - [ ] 定义 PowerStorage 结构（储能设施）
 - [x] 定义 PlantStatus 枚举（Running/Offline/Maintenance）
 - [ ] 扩展 WorldModel 添加 facilities 字段

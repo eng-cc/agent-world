@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::types::AgentId;
+use super::types::{AgentId, FacilityId, LocationId, ResourceOwner};
 
 // ============================================================================
 // Power State
@@ -204,6 +204,52 @@ pub enum PlantStatus {
 impl Default for PlantStatus {
     fn default() -> Self {
         PlantStatus::Running
+    }
+}
+
+/// Power generation facility.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerPlant {
+    pub id: FacilityId,
+    pub location_id: LocationId,
+    pub owner: ResourceOwner,
+    pub capacity_per_tick: i64,
+    pub current_output: i64,
+    pub fuel_cost_per_pu: i64,
+    pub maintenance_cost: i64,
+    pub status: PlantStatus,
+    pub efficiency: f64,
+    pub degradation: f64,
+}
+
+impl PowerPlant {
+    pub fn new(
+        id: FacilityId,
+        location_id: LocationId,
+        owner: ResourceOwner,
+        capacity_per_tick: i64,
+    ) -> Self {
+        Self {
+            id,
+            location_id,
+            owner,
+            capacity_per_tick,
+            current_output: 0,
+            fuel_cost_per_pu: 0,
+            maintenance_cost: 0,
+            status: PlantStatus::Running,
+            efficiency: 1.0,
+            degradation: 0.0,
+        }
+    }
+
+    /// Effective output after efficiency and degradation.
+    pub fn effective_output(&self) -> i64 {
+        if self.capacity_per_tick <= 0 {
+            return 0;
+        }
+        let output = (self.capacity_per_tick as f64) * self.efficiency * (1.0 - self.degradation);
+        output.floor().max(0.0) as i64
     }
 }
 
