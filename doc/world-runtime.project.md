@@ -72,6 +72,7 @@
 - [x] 补充迁移审计事件（ManifestMigrated）
 - [x] 补充 ManifestMigrated 的 AuditRecord 集成示例
 - [x] 补充 ManifestMigrated 的审计过滤说明
+- [x] 补充 AuditFilter 示例（模块 + 迁移）
 - [ ] 实现集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）

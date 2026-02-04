@@ -337,6 +337,16 @@ ShadowReport {
 **审计过滤建议**
 - `AuditFilter.kinds` 应支持 `ManifestMigrated`，便于按迁移事件筛选导出。
 
+**AuditFilter 示例（模块 + 迁移）**
+```
+{
+  "kinds": ["GovernanceEvent", "ShadowReport", "ModuleValidationFailed", "ManifestMigrated"],
+  "from_time": 100,
+  "to_time": 500,
+  "caused_by": "proposal:p-002"
+}
+```
+
 ### 审计导出示例（草案）
 
 ```
