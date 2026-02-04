@@ -364,6 +364,21 @@ struct Manifest {
 }
 ```
 
+### 多补丁冲突处理（草案）
+
+> 目标：在 merge/patch 叠加时，确保模块变更的确定性与可审计性。
+
+**冲突判定**
+- 同一 `module_id` 在不同 patch 中出现 `register/upgrade/activate/deactivate` 任一重叠，即视为冲突。
+- `register` 与 `upgrade` 对同一 `module_id` 视为硬冲突，必须人工选择。
+- `activate` 与 `deactivate` 对同一 `module_id` 视为软冲突，允许选择保留其一。
+- `upgrade` 的 `from_version` 不一致视为冲突。
+
+**合并策略**
+- 默认 **拒绝自动合并**，返回 `PatchMergeResult.conflicts` 供治理人工裁决。
+- 若治理提供显式决策（保留 patch A 或 B），则按决策应用并记录审计事件。
+- 合并后的 `ModuleChangeSet` 需重新通过 shadow 校验。
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
