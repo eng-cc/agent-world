@@ -375,7 +375,9 @@ impl World {
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let event_kind = event_kind_label(&event.body);
-        let module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
+        let mut module_ids: Vec<String> =
+            self.module_registry.active.keys().cloned().collect();
+        module_ids.sort();
         let mut invoked = 0;
         for module_id in module_ids {
             let subscribed = {
@@ -414,7 +416,9 @@ impl World {
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
-        let module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
+        let mut module_ids: Vec<String> =
+            self.module_registry.active.keys().cloned().collect();
+        module_ids.sort();
         let input = serde_json::to_vec(envelope)?;
         let mut invoked = 0;
 
