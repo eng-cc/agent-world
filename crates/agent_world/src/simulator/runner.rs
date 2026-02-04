@@ -1,0 +1,779 @@
+//! AgentRunner: multi-agent scheduling, quota, rate limiting, metrics.
+
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+use super::agent::{ActionResult, AgentBehavior, AgentDecision};
+use super::kernel::{WorldEvent, WorldEventKind, WorldKernel};
+use super::types::{Action, WorldTime};
+
+// ============================================================================
+// Quota and Rate Limiting
+// ============================================================================
+
+/// Quota limits for an agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AgentQuota {
+    /// Maximum number of actions the agent can take.
+    pub max_actions: Option<u64>,
+    /// Maximum number of decisions the agent can make.
+    pub max_decisions: Option<u64>,
+}
+
+impl AgentQuota {
+    /// Create a quota with a maximum number of actions.
+    pub fn max_actions(limit: u64) -> Self {
+        Self {
+            max_actions: Some(limit),
+            max_decisions: None,
+        }
+    }
+
+    /// Create a quota with a maximum number of decisions.
+    pub fn max_decisions(limit: u64) -> Self {
+        Self {
+            max_actions: None,
+            max_decisions: Some(limit),
+        }
+    }
+
+    /// Create a quota with both action and decision limits.
+    pub fn new(max_actions: Option<u64>, max_decisions: Option<u64>) -> Self {
+        Self {
+            max_actions,
+            max_decisions,
+        }
+    }
+
+    /// Check if the quota is exhausted.
+    pub fn is_exhausted(&self, action_count: u64, decision_count: u64) -> bool {
+        if let Some(max) = self.max_actions {
+            if action_count >= max {
+                return true;
+            }
+        }
+        if let Some(max) = self.max_decisions {
+            if decision_count >= max {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Returns remaining actions, or None if unlimited.
+    pub fn remaining_actions(&self, action_count: u64) -> Option<u64> {
+        self.max_actions.map(|max| max.saturating_sub(action_count))
+    }
+
+    /// Returns remaining decisions, or None if unlimited.
+    pub fn remaining_decisions(&self, decision_count: u64) -> Option<u64> {
+        self.max_decisions.map(|max| max.saturating_sub(decision_count))
+    }
+}
+
+/// Rate limiting policy.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RateLimitPolicy {
+    /// Maximum actions per time window.
+    pub max_actions_per_window: u64,
+    /// Time window size in ticks.
+    pub window_size_ticks: u64,
+}
+
+impl RateLimitPolicy {
+    /// Create a new rate limit policy.
+    pub fn new(max_actions_per_window: u64, window_size_ticks: u64) -> Self {
+        Self {
+            max_actions_per_window,
+            window_size_ticks,
+        }
+    }
+
+    /// Create a policy allowing N actions per tick.
+    pub fn actions_per_tick(n: u64) -> Self {
+        Self {
+            max_actions_per_window: n,
+            window_size_ticks: 1,
+        }
+    }
+}
+
+/// Rate limiting state for an agent.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct RateLimitState {
+    /// Start of the current window.
+    pub window_start: WorldTime,
+    /// Actions taken in the current window.
+    pub actions_in_window: u64,
+}
+
+impl RateLimitState {
+    /// Check if the agent is rate limited.
+    pub fn is_limited(&self, now: WorldTime, policy: &RateLimitPolicy) -> bool {
+        if policy.window_size_ticks == 0 {
+            return false;
+        }
+        // Check if we're still in the same window
+        let window_end = self.window_start.saturating_add(policy.window_size_ticks);
+        if now < window_end {
+            // Still in the same window, check action count
+            self.actions_in_window >= policy.max_actions_per_window
+        } else {
+            // New window, not limited
+            false
+        }
+    }
+
+    /// Record an action.
+    pub fn record_action(&mut self, now: WorldTime, policy: &RateLimitPolicy) {
+        if policy.window_size_ticks == 0 {
+            return;
+        }
+        let window_end = self.window_start.saturating_add(policy.window_size_ticks);
+        if now >= window_end {
+            // Start a new window
+            self.window_start = now;
+            self.actions_in_window = 1;
+        } else {
+            // Same window
+            self.actions_in_window += 1;
+        }
+    }
+
+    /// Reset the rate limit state.
+    pub fn reset(&mut self) {
+        self.window_start = 0;
+        self.actions_in_window = 0;
+    }
+}
+
+// ============================================================================
+// Registered Agent
+// ============================================================================
+
+/// An agent registration with behavior and state tracking.
+#[derive(Debug)]
+pub struct RegisteredAgent<B: AgentBehavior> {
+    /// The agent behavior implementation.
+    pub behavior: B,
+    /// Number of ticks to wait before next decision.
+    pub wait_until: Option<WorldTime>,
+    /// Total actions taken by this agent.
+    pub action_count: u64,
+    /// Total decisions made by this agent.
+    pub decision_count: u64,
+    /// Per-agent quota (overrides runner-level quota).
+    pub quota: Option<AgentQuota>,
+    /// Rate limiting state.
+    pub rate_limit_state: RateLimitState,
+}
+
+impl<B: AgentBehavior> RegisteredAgent<B> {
+    /// Create a new registered agent.
+    pub fn new(behavior: B) -> Self {
+        Self {
+            behavior,
+            wait_until: None,
+            action_count: 0,
+            decision_count: 0,
+            quota: None,
+            rate_limit_state: RateLimitState::default(),
+        }
+    }
+
+    /// Create a new registered agent with quota.
+    pub fn with_quota(behavior: B, quota: AgentQuota) -> Self {
+        Self {
+            behavior,
+            wait_until: None,
+            action_count: 0,
+            decision_count: 0,
+            quota: Some(quota),
+            rate_limit_state: RateLimitState::default(),
+        }
+    }
+
+    /// Returns true if the agent is ready to act at the given time.
+    pub fn is_ready(&self, now: WorldTime) -> bool {
+        match self.wait_until {
+            Some(until) => now >= until,
+            None => true,
+        }
+    }
+
+    /// Check if the agent has exhausted its quota.
+    pub fn is_quota_exhausted(&self) -> bool {
+        if let Some(quota) = &self.quota {
+            quota.is_exhausted(self.action_count, self.decision_count)
+        } else {
+            false
+        }
+    }
+
+    /// Check if the agent is rate limited at the given time.
+    pub fn is_rate_limited(&self, now: WorldTime, policy: Option<&RateLimitPolicy>) -> bool {
+        if let Some(policy) = policy {
+            self.rate_limit_state.is_limited(now, policy)
+        } else {
+            false
+        }
+    }
+
+    /// Record an action for rate limiting purposes.
+    pub fn record_action(&mut self, now: WorldTime, policy: Option<&RateLimitPolicy>) {
+        if let Some(policy) = policy {
+            self.rate_limit_state.record_action(now, policy);
+        }
+    }
+}
+
+// ============================================================================
+// Agent Runner
+// ============================================================================
+
+/// Runs the observe → decide → act loop for multiple agents.
+///
+/// The AgentRunner manages registered agents and coordinates their
+/// interactions with the WorldKernel.
+pub struct AgentRunner<B: AgentBehavior> {
+    agents: BTreeMap<String, RegisteredAgent<B>>,
+    /// Cursor for round-robin scheduling.
+    scheduler_cursor: Option<String>,
+    /// Total ticks executed.
+    total_ticks: u64,
+    /// Default quota for all agents (can be overridden per-agent).
+    default_quota: Option<AgentQuota>,
+    /// Rate limit policy for all agents.
+    rate_limit_policy: Option<RateLimitPolicy>,
+}
+
+impl<B: AgentBehavior> Default for AgentRunner<B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B: AgentBehavior> AgentRunner<B> {
+    /// Create a new agent runner.
+    pub fn new() -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+            default_quota: None,
+            rate_limit_policy: None,
+        }
+    }
+
+    /// Create a new agent runner with a rate limit policy.
+    pub fn with_rate_limit(rate_limit: RateLimitPolicy) -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+            default_quota: None,
+            rate_limit_policy: Some(rate_limit),
+        }
+    }
+
+    /// Create a new agent runner with a default quota.
+    pub fn with_quota(quota: AgentQuota) -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+            default_quota: Some(quota),
+            rate_limit_policy: None,
+        }
+    }
+
+    /// Set the default quota for all agents.
+    pub fn set_default_quota(&mut self, quota: Option<AgentQuota>) {
+        self.default_quota = quota;
+    }
+
+    /// Set the rate limit policy for all agents.
+    pub fn set_rate_limit(&mut self, policy: Option<RateLimitPolicy>) {
+        self.rate_limit_policy = policy;
+    }
+
+    /// Get the rate limit policy.
+    pub fn rate_limit_policy(&self) -> Option<&RateLimitPolicy> {
+        self.rate_limit_policy.as_ref()
+    }
+
+    /// Get the default quota.
+    pub fn default_quota(&self) -> Option<&AgentQuota> {
+        self.default_quota.as_ref()
+    }
+
+    /// Register an agent with the runner.
+    pub fn register(&mut self, behavior: B) {
+        let agent_id = behavior.agent_id().to_string();
+        self.agents.insert(agent_id, RegisteredAgent::new(behavior));
+    }
+
+    /// Register an agent with a specific quota.
+    pub fn register_with_quota(&mut self, behavior: B, quota: AgentQuota) {
+        let agent_id = behavior.agent_id().to_string();
+        self.agents.insert(agent_id, RegisteredAgent::with_quota(behavior, quota));
+    }
+
+    /// Unregister an agent from the runner.
+    pub fn unregister(&mut self, agent_id: &str) -> Option<RegisteredAgent<B>> {
+        self.agents.remove(agent_id)
+    }
+
+    /// Get a reference to a registered agent.
+    pub fn get(&self, agent_id: &str) -> Option<&RegisteredAgent<B>> {
+        self.agents.get(agent_id)
+    }
+
+    /// Get a mutable reference to a registered agent.
+    pub fn get_mut(&mut self, agent_id: &str) -> Option<&mut RegisteredAgent<B>> {
+        self.agents.get_mut(agent_id)
+    }
+
+    /// Returns the number of registered agents.
+    pub fn agent_count(&self) -> usize {
+        self.agents.len()
+    }
+
+    /// Returns the IDs of all registered agents.
+    pub fn agent_ids(&self) -> Vec<String> {
+        self.agents.keys().cloned().collect()
+    }
+
+    /// Returns the total ticks executed.
+    pub fn total_ticks(&self) -> u64 {
+        self.total_ticks
+    }
+
+    /// Run one tick of the agent loop.
+    ///
+    /// This method:
+    /// 1. Selects the next ready agent (round-robin), respecting quota and rate limits
+    /// 2. Gets an observation for that agent
+    /// 3. Calls the agent's decide method
+    /// 4. Submits the action to the kernel if the agent decides to act
+    /// 5. Executes one step and notifies the agent of the result
+    ///
+    /// Returns the action result if an action was taken, or None if
+    /// no agent was ready or all agents chose to wait.
+    pub fn tick(&mut self, kernel: &mut WorldKernel) -> Option<AgentTickResult> {
+        self.total_ticks += 1;
+        let now = kernel.time();
+
+        // Find the next ready agent using round-robin
+        // Exclude agents that are quota-exhausted or rate-limited
+        let rate_policy = self.rate_limit_policy.as_ref();
+        let default_quota = self.default_quota.as_ref();
+
+        let ready_agents: Vec<String> = self
+            .agents
+            .iter()
+            .filter(|(id, agent)| {
+                // Check if agent is registered in the world
+                if !kernel.model().agents.contains_key(*id) {
+                    return false;
+                }
+                // Check if agent is ready (not waiting)
+                if !agent.is_ready(now) {
+                    return false;
+                }
+                // Check quota (per-agent or default)
+                let quota = agent.quota.as_ref().or(default_quota);
+                if let Some(q) = quota {
+                    if q.is_exhausted(agent.action_count, agent.decision_count) {
+                        return false;
+                    }
+                }
+                // Check rate limit
+                if agent.is_rate_limited(now, rate_policy) {
+                    return false;
+                }
+                true
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        if ready_agents.is_empty() {
+            return None;
+        }
+
+        // Round-robin selection
+        let agent_id = match &self.scheduler_cursor {
+            None => ready_agents[0].clone(),
+            Some(cursor) => ready_agents
+                .iter()
+                .find(|id| id.as_str() > cursor.as_str())
+                .cloned()
+                .unwrap_or_else(|| ready_agents[0].clone()),
+        };
+
+        self.scheduler_cursor = Some(agent_id.clone());
+
+        // Get observation for the selected agent
+        let observation = match kernel.observe(&agent_id) {
+            Ok(obs) => obs,
+            Err(_) => return None,
+        };
+
+        // Get decision from the agent
+        let agent = self.agents.get_mut(&agent_id)?;
+        agent.decision_count += 1;
+
+        let decision = agent.behavior.decide(&observation);
+
+        match decision {
+            AgentDecision::Wait => {
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::Wait,
+                    action_result: None,
+                    skipped_reason: None,
+                })
+            }
+            AgentDecision::WaitTicks(ticks) => {
+                agent.wait_until = Some(now.saturating_add(ticks));
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::WaitTicks(ticks),
+                    action_result: None,
+                    skipped_reason: None,
+                })
+            }
+            AgentDecision::Act(action) => {
+                agent.action_count += 1;
+                // Record action for rate limiting
+                let rate_policy = self.rate_limit_policy.as_ref();
+                let agent = self.agents.get_mut(&agent_id).unwrap();
+                agent.record_action(now, rate_policy);
+
+                let action_id = kernel.submit_action(action.clone());
+                let event = kernel.step();
+
+                let action_result = event.map(|event| {
+                    let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
+                    ActionResult {
+                        action: action.clone(),
+                        action_id,
+                        success,
+                        event,
+                    }
+                });
+
+                // Notify agent of the result
+                if let Some(ref result) = action_result {
+                    let agent = self.agents.get_mut(&agent_id).unwrap();
+                    agent.behavior.on_action_result(result);
+                }
+
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::Act(action),
+                    action_result,
+                    skipped_reason: None,
+                })
+            }
+        }
+    }
+
+    /// Check if an agent is quota-exhausted.
+    pub fn is_quota_exhausted(&self, agent_id: &str) -> bool {
+        if let Some(agent) = self.agents.get(agent_id) {
+            let quota = agent.quota.as_ref().or(self.default_quota.as_ref());
+            if let Some(q) = quota {
+                return q.is_exhausted(agent.action_count, agent.decision_count);
+            }
+        }
+        false
+    }
+
+    /// Check if an agent is rate-limited.
+    pub fn is_rate_limited(&self, agent_id: &str, now: WorldTime) -> bool {
+        if let Some(agent) = self.agents.get(agent_id) {
+            return agent.is_rate_limited(now, self.rate_limit_policy.as_ref());
+        }
+        false
+    }
+
+    /// Reset rate limit state for an agent.
+    pub fn reset_rate_limit(&mut self, agent_id: &str) {
+        if let Some(agent) = self.agents.get_mut(agent_id) {
+            agent.rate_limit_state.reset();
+        }
+    }
+
+    /// Reset rate limit state for all agents.
+    pub fn reset_all_rate_limits(&mut self) {
+        for agent in self.agents.values_mut() {
+            agent.rate_limit_state.reset();
+        }
+    }
+
+    /// Run the agent loop for a specified number of ticks.
+    ///
+    /// Returns the results of all ticks where an agent was active.
+    pub fn run(&mut self, kernel: &mut WorldKernel, max_ticks: u64) -> Vec<AgentTickResult> {
+        let mut results = Vec::new();
+        for _ in 0..max_ticks {
+            if let Some(result) = self.tick(kernel) {
+                results.push(result);
+            }
+        }
+        results
+    }
+
+    /// Run the agent loop until all pending actions are processed.
+    pub fn run_until_idle(&mut self, kernel: &mut WorldKernel, max_ticks: u64) -> Vec<AgentTickResult> {
+        let mut results = Vec::new();
+        let mut consecutive_waits = 0;
+        let max_consecutive_waits = self.agents.len().max(1);
+
+        for _ in 0..max_ticks {
+            match self.tick(kernel) {
+                Some(result) => {
+                    if result.action_result.is_some() {
+                        consecutive_waits = 0;
+                    } else {
+                        consecutive_waits += 1;
+                    }
+                    results.push(result);
+
+                    if consecutive_waits >= max_consecutive_waits {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+        results
+    }
+
+    /// Broadcast an event to all registered agents.
+    pub fn broadcast_event(&mut self, event: &WorldEvent) {
+        for agent in self.agents.values_mut() {
+            agent.behavior.on_event(event);
+        }
+    }
+
+    /// Get the current metrics for the runner.
+    pub fn metrics(&self) -> RunnerMetrics {
+        let mut total_actions = 0u64;
+        let mut total_decisions = 0u64;
+        let mut agents_active = 0usize;
+        let mut agents_quota_exhausted = 0usize;
+
+        for agent in self.agents.values() {
+            total_actions += agent.action_count;
+            total_decisions += agent.decision_count;
+            // Check quota: use agent-specific quota or default quota
+            let quota = agent.quota.as_ref().or(self.default_quota.as_ref());
+            let is_exhausted = quota
+                .map(|q| q.is_exhausted(agent.action_count, agent.decision_count))
+                .unwrap_or(false);
+            if !is_exhausted {
+                agents_active += 1;
+            } else {
+                agents_quota_exhausted += 1;
+            }
+        }
+
+        RunnerMetrics {
+            total_ticks: self.total_ticks,
+            total_agents: self.agents.len(),
+            agents_active,
+            agents_quota_exhausted,
+            total_actions,
+            total_decisions,
+            actions_per_tick: if self.total_ticks > 0 {
+                total_actions as f64 / self.total_ticks as f64
+            } else {
+                0.0
+            },
+            decisions_per_tick: if self.total_ticks > 0 {
+                total_decisions as f64 / self.total_ticks as f64
+            } else {
+                0.0
+            },
+            success_rate: 0.0, // Will be computed in extended metrics
+        }
+    }
+
+    /// Get detailed metrics with timing information.
+    pub fn metrics_with_kernel(&self, kernel: &WorldKernel) -> RunnerMetrics {
+        let mut metrics = self.metrics();
+        let now = kernel.time();
+
+        // Compute agents that are rate-limited
+        let mut agents_rate_limited = 0usize;
+        for agent in self.agents.values() {
+            if agent.is_rate_limited(now, self.rate_limit_policy.as_ref()) {
+                agents_rate_limited += 1;
+            }
+        }
+
+        // Update active count to exclude rate-limited agents
+        metrics.agents_active = metrics.agents_active.saturating_sub(agents_rate_limited);
+        metrics
+    }
+
+    /// Get per-agent statistics.
+    pub fn agent_stats(&self) -> Vec<AgentStats> {
+        self.agents
+            .iter()
+            .map(|(id, agent)| AgentStats {
+                agent_id: id.clone(),
+                action_count: agent.action_count,
+                decision_count: agent.decision_count,
+                is_quota_exhausted: agent.is_quota_exhausted(),
+                wait_until: agent.wait_until,
+            })
+            .collect()
+    }
+}
+
+// ============================================================================
+// Metrics and Statistics
+// ============================================================================
+
+/// Metrics for the AgentRunner.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunnerMetrics {
+    /// Total number of ticks executed.
+    pub total_ticks: u64,
+    /// Total number of registered agents.
+    pub total_agents: usize,
+    /// Number of agents that are active (not quota-exhausted, not rate-limited).
+    pub agents_active: usize,
+    /// Number of agents that have exhausted their quota.
+    pub agents_quota_exhausted: usize,
+    /// Total actions taken across all agents.
+    pub total_actions: u64,
+    /// Total decisions made across all agents.
+    pub total_decisions: u64,
+    /// Average actions per tick.
+    pub actions_per_tick: f64,
+    /// Average decisions per tick.
+    pub decisions_per_tick: f64,
+    /// Success rate of actions (0.0 to 1.0).
+    pub success_rate: f64,
+}
+
+impl Default for RunnerMetrics {
+    fn default() -> Self {
+        Self {
+            total_ticks: 0,
+            total_agents: 0,
+            agents_active: 0,
+            agents_quota_exhausted: 0,
+            total_actions: 0,
+            total_decisions: 0,
+            actions_per_tick: 0.0,
+            decisions_per_tick: 0.0,
+            success_rate: 0.0,
+        }
+    }
+}
+
+/// Statistics for a single agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AgentStats {
+    /// The agent's ID.
+    pub agent_id: String,
+    /// Total actions taken by this agent.
+    pub action_count: u64,
+    /// Total decisions made by this agent.
+    pub decision_count: u64,
+    /// Whether the agent has exhausted its quota.
+    pub is_quota_exhausted: bool,
+    /// Time until which the agent is waiting (if any).
+    pub wait_until: Option<WorldTime>,
+}
+
+/// A log entry for runner events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunnerLogEntry {
+    /// The tick number when this event occurred.
+    pub tick: u64,
+    /// The world time when this event occurred.
+    pub time: WorldTime,
+    /// The event kind.
+    pub kind: RunnerLogKind,
+}
+
+/// Kinds of runner log events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum RunnerLogKind {
+    /// An agent was registered.
+    AgentRegistered { agent_id: String },
+    /// An agent was unregistered.
+    AgentUnregistered { agent_id: String },
+    /// An agent made a decision.
+    AgentDecision {
+        agent_id: String,
+        decision: AgentDecision,
+    },
+    /// An action was executed.
+    ActionExecuted {
+        agent_id: String,
+        action: Action,
+        success: bool,
+    },
+    /// An agent was skipped.
+    AgentSkipped {
+        agent_id: String,
+        reason: SkippedReason,
+    },
+    /// An agent exhausted its quota.
+    QuotaExhausted { agent_id: String },
+    /// An agent was rate-limited.
+    RateLimited { agent_id: String },
+    /// Metrics snapshot.
+    MetricsSnapshot { metrics: RunnerMetrics },
+}
+
+/// Reason why an agent was skipped during scheduling.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SkippedReason {
+    /// Agent has exhausted its quota.
+    QuotaExhausted,
+    /// Agent is rate limited.
+    RateLimited,
+    /// Agent is waiting (wait_until not reached).
+    Waiting,
+    /// Agent is not registered in the world.
+    NotInWorld,
+}
+
+/// Result of a single agent tick.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentTickResult {
+    /// The agent that was ticked.
+    pub agent_id: String,
+    /// The decision made by the agent.
+    pub decision: AgentDecision,
+    /// The result of the action if one was taken.
+    pub action_result: Option<ActionResult>,
+    /// Reason why the agent was skipped (if applicable).
+    pub skipped_reason: Option<SkippedReason>,
+}
+
+impl AgentTickResult {
+    /// Returns true if an action was taken.
+    pub fn has_action(&self) -> bool {
+        self.action_result.is_some()
+    }
+
+    /// Returns true if the action succeeded (or no action was taken).
+    pub fn is_success(&self) -> bool {
+        self.action_result.as_ref().map(|r| r.success).unwrap_or(true)
+    }
+
+    /// Returns true if the agent was skipped.
+    pub fn was_skipped(&self) -> bool {
+        self.skipped_reason.is_some()
+    }
+}
