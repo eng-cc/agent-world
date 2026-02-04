@@ -389,6 +389,12 @@ next_request: { cursor: "120" }
 - **并发写入**：导出过程中新增事件不进入当前导出；需下一次导出获取。
 - **审计记录**：导出元信息中记录 `start_event_id/end_event_id`，便于重放与对齐。
 
+**导出元信息建议**
+- `export_id`：导出批次标识
+- `start_event_id` / `end_event_id`
+- `total_records`
+- `generated_at`
+
 ### 审计导出示例（草案）
 
 ```
