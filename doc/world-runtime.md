@@ -601,6 +601,10 @@ fn dummy_wasm_bytes(label: &str) -> Vec<u8>;  // 生成确定性字节
 fn wasm_hash(bytes: &[u8]) -> String;         // 计算内容哈希（sha256/hex）
 ```
 
+**Shadow 注入建议（示意）**
+- 在 `WorldConfig` 或测试构造器中注入 `ShadowPolicy`（`AlwaysPass` / `AlwaysFail` / `ByModuleId(HashSet)`）。
+- 测试中将 `ShadowPolicy` 设置为 `AlwaysFail` 以触发 shadow reject 分支。
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
