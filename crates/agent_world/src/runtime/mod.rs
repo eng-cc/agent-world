@@ -16,6 +16,7 @@ mod events;
 mod governance;
 mod manifest;
 mod modules;
+mod module_store;
 mod policy;
 mod sandbox;
 mod signer;
@@ -68,6 +69,9 @@ pub use modules::{
     ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
     ModuleRecord, ModuleSubscription, ModuleUpgrade,
 };
+
+// Module store
+pub use module_store::ModuleStore;
 
 // Policy
 pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen};

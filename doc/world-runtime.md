@@ -60,6 +60,7 @@
 - `doc/world-runtime/module-lifecycle.md`：模块治理与兼容性、注册表、治理流程、ModuleChangeSet、冲突与迁移
 - `doc/world-runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
 - `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
+- `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）

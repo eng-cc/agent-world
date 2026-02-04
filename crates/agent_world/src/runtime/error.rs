@@ -27,6 +27,7 @@ pub enum WorldError {
         code: ModuleCallErrorCode,
         detail: String,
     },
+    ModuleStoreVersionMismatch { expected: u64, found: u64 },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),
