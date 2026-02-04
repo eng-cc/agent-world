@@ -80,6 +80,7 @@
 - [x] 补充 cursor 编码安全建议
 - [x] 补充 cursor 与 AuditFilter 的交互说明
 - [x] 补充 cursor 编码示例
+- [x] 补充并发导出一致性说明（start/end event_id）
 - [ ] 实现集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）

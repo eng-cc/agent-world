@@ -383,6 +383,12 @@ response: { error: "CURSOR_INVALID", min_valid_cursor: "120" }
 next_request: { cursor: "120" }
 ```
 
+### 并发导出一致性（草案）
+
+- **快照导出**：导出开始时锁定事件边界（`end_event_id`），导出范围固定为 `[start, end]`。
+- **并发写入**：导出过程中新增事件不进入当前导出；需下一次导出获取。
+- **审计记录**：导出元信息中记录 `start_event_id/end_event_id`，便于重放与对齐。
+
 ### 审计导出示例（草案）
 
 ```
