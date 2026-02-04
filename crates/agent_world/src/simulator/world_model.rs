@@ -5,9 +5,9 @@ use crate::models::RobotBodySpec;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use super::power::{AgentPowerStatus, PowerConfig};
+use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
-    AgentId, AssetId, LocationId, ResourceKind, ResourceStock, CM_PER_KM,
+    AgentId, AssetId, FacilityId, LocationId, ResourceKind, ResourceStock, CM_PER_KM,
     DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
 };
 use super::ResourceOwner;
@@ -104,6 +104,10 @@ pub struct WorldModel {
     pub agents: BTreeMap<AgentId, Agent>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,
+    #[serde(default)]
+    pub power_plants: BTreeMap<FacilityId, PowerPlant>,
+    #[serde(default)]
+    pub power_storages: BTreeMap<FacilityId, PowerStorage>,
 }
 
 // ============================================================================

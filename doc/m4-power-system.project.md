@@ -19,7 +19,7 @@
 - [x] 定义 PowerPlant 结构（发电设施）
 - [x] 定义 PowerStorage 结构（储能设施）
 - [x] 定义 PlantStatus 枚举（Running/Offline/Maintenance）
-- [ ] 扩展 WorldModel 添加 facilities 字段
+- [x] 扩展 WorldModel 添加 facilities 字段
 - [ ] 实现 RegisterPowerPlant/RegisterPowerStorage 动作
 - [ ] 实现每 tick 发电逻辑
 - [ ] 实现充放电逻辑

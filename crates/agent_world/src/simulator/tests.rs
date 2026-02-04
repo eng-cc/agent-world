@@ -44,6 +44,8 @@ fn world_model_starts_empty() {
     assert!(model.agents.is_empty());
     assert!(model.locations.is_empty());
     assert!(model.assets.is_empty());
+    assert!(model.power_plants.is_empty());
+    assert!(model.power_storages.is_empty());
 }
 
 #[test]
