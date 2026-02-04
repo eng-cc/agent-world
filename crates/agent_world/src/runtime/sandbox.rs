@@ -106,6 +106,7 @@ impl ModuleSandbox for FixedSandbox {
 /// Configuration for a real WASM executor backend.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasmExecutorConfig {
+    pub engine: WasmEngineKind,
     pub max_fuel: u64,
     pub max_mem_bytes: u64,
     pub max_output_bytes: u64,
@@ -113,9 +114,16 @@ pub struct WasmExecutorConfig {
     pub max_cache_entries: usize,
 }
 
+/// Selected WASM engine backend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WasmEngineKind {
+    Wasmtime,
+}
+
 impl Default for WasmExecutorConfig {
     fn default() -> Self {
         Self {
+            engine: WasmEngineKind::Wasmtime,
             max_fuel: 10_000_000,
             max_mem_bytes: 64 * 1024 * 1024,
             max_output_bytes: 4 * 1024 * 1024,

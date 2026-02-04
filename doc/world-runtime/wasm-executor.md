@@ -3,7 +3,7 @@
 本分册描述将真实 WASM 执行器接入 `ModuleSandbox` 的最小方案。
 
 ## 目标
-- 在现有 `ModuleSandbox` 抽象之上提供真实 WASM 执行实现（可选 Wasmtime/Wasmer）。
+- 在现有 `ModuleSandbox` 抽象之上提供真实 WASM 执行实现（首选 Wasmtime）。
 - 与既有 ABI/序列化约定对齐，保证输入/输出可验证、可回放。
 - 提供确定性与资源限制（内存、燃料、超时、输出大小）并可审计。
 
@@ -15,6 +15,7 @@
 - 最小编译缓存：按 `wasm_hash` 缓存已编译模块。
 - 可配置的执行器参数（燃料、超时、并发上限、缓存容量）。
 - 过渡期占位实现：未接入引擎时返回 `SandboxUnavailable`。
+- 基础依赖通过 Cargo feature `wasmtime` 引入。
 
 ### Out of Scope（V1 不做）
 - 多线程并行执行与跨模块共享状态。
