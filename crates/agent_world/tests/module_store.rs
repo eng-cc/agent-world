@@ -157,3 +157,69 @@ fn world_module_store_roundtrip() {
 
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn world_save_to_dir_with_modules_roundtrip() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("agent-world-store-full-{unique}"));
+
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    let wasm_bytes = b"world-store-full";
+    let hash = wasm_hash(wasm_bytes);
+    world.register_module_artifact(hash.clone(), wasm_bytes).unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.full".to_string(),
+        name: "WorldFullStore".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash: hash.clone(),
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: Vec::new(),
+        limits: ModuleLimits::unbounded(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    world.save_to_dir_with_modules(&dir).unwrap();
+
+    let mut restored = World::load_from_dir_with_modules(&dir).unwrap();
+    let key = ModuleRegistry::record_key("m.full", "0.1.0");
+    assert!(restored.module_registry().records.contains_key(&key));
+    let artifact = restored.load_module(&hash).unwrap();
+    assert_eq!(artifact.bytes, wasm_bytes.to_vec());
+
+    let _ = fs::remove_dir_all(&dir);
+}

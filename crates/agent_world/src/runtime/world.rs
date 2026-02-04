@@ -792,6 +792,13 @@ impl World {
         Ok(())
     }
 
+    pub fn save_to_dir_with_modules(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
+        let dir = dir.as_ref();
+        self.save_to_dir(dir)?;
+        self.save_module_store_to_dir(dir)?;
+        Ok(())
+    }
+
     pub fn save_module_store_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
         let store = ModuleStore::new(dir);
         store.save_registry(&self.module_registry)?;
@@ -816,6 +823,13 @@ impl World {
         let journal = Journal::load_json(journal_path)?;
         let snapshot = Snapshot::load_json(snapshot_path)?;
         Self::from_snapshot(snapshot, journal)
+    }
+
+    pub fn load_from_dir_with_modules(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
+        let dir = dir.as_ref();
+        let mut world = Self::load_from_dir(dir)?;
+        world.load_module_store_from_dir(dir)?;
+        Ok(world)
     }
 
     pub fn load_module_store_from_dir(

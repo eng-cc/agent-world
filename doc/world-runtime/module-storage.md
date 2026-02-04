@@ -46,6 +46,8 @@ struct ModuleRegistryFile {
 ### World 集成 API（示意）
 - `World::save_module_store_to_dir(dir)`：保存 registry/meta/artifacts
 - `World::load_module_store_from_dir(dir)`：加载 registry/meta/artifacts
+- `World::save_to_dir_with_modules(dir)`：保存 world + 模块存储（同目录）
+- `World::load_from_dir_with_modules(dir)`：加载 world + 模块存储（同目录）
   - 读取 registry
   - 校验 meta 与 registry 一致
   - 加载工件 bytes 到内存缓存

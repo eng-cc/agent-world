@@ -45,6 +45,8 @@
 - `World::create_snapshot()`：创建并记录快照
 - `World::set_snapshot_retention(policy)`：快照保留策略
 - `World::save_snapshot_to_dir(dir)` / `World::prune_snapshot_files(dir)`：快照文件落盘与清理
+- `World::save_to_dir_with_modules(dir)`：保存 world + 模块存储
+- `World::load_from_dir_with_modules(dir)`：加载 world + 模块存储
 - `World::propose_manifest_update(manifest)`：提交治理提案
 - `World::propose_manifest_patch(patch)`：以 patch 形式提交治理提案
 - `World::shadow_proposal(id)`：影子运行并生成候选 hash
