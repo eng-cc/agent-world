@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -128,6 +128,41 @@ pub struct AuditFilter {
     pub from_event_id: Option<WorldEventId>,
     pub to_event_id: Option<WorldEventId>,
     pub caused_by: Option<AuditCausedBy>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PatchConflict {
+    pub path: PatchPath,
+    pub kind: ConflictKind,
+    pub patches: Vec<usize>,
+    pub ops: Vec<PatchOpSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PatchMergeResult {
+    pub patch: ManifestPatch,
+    pub conflicts: Vec<PatchConflict>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConflictKind {
+    SamePath,
+    PrefixOverlap,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PatchOpKind {
+    Set,
+    Remove,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PatchOpSummary {
+    pub patch_index: usize,
+    pub kind: PatchOpKind,
+    pub path: PatchPath,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -311,6 +346,15 @@ impl World {
             .collect()
     }
 
+    pub fn save_audit_log(
+        &self,
+        path: impl AsRef<Path>,
+        filter: &AuditFilter,
+    ) -> Result<(), WorldError> {
+        let events = self.audit_events(filter);
+        write_json_to_path(&events, path.as_ref())
+    }
+
     pub fn set_snapshot_retention(&mut self, policy: SnapshotRetentionPolicy) {
         self.snapshot_catalog.retention = policy;
         self.apply_snapshot_retention();
@@ -322,7 +366,7 @@ impl World {
         Ok(snapshot)
     }
 
-    pub fn record_snapshot(&mut self, snapshot: &Snapshot) -> Result<(), WorldError> {
+    pub fn record_snapshot(&mut self, snapshot: &Snapshot) -> Result<SnapshotRecord, WorldError> {
         let snapshot_hash = hash_json(snapshot)?;
         let manifest_hash = hash_json(&snapshot.manifest)?;
         let record = SnapshotRecord {
@@ -331,8 +375,50 @@ impl World {
             created_at: snapshot.state.time,
             manifest_hash,
         };
-        self.snapshot_catalog.records.push(record);
+        self.snapshot_catalog.records.push(record.clone());
         self.apply_snapshot_retention();
+        Ok(record)
+    }
+
+    pub fn save_snapshot_to_dir(
+        &mut self,
+        dir: impl AsRef<Path>,
+    ) -> Result<SnapshotRecord, WorldError> {
+        let snapshot = self.snapshot();
+        let record = self.record_snapshot(&snapshot)?;
+
+        let dir = dir.as_ref().join("snapshots");
+        fs::create_dir_all(&dir)?;
+        let path = dir.join(format!("{}.json", record.snapshot_hash));
+        write_json_to_path(&snapshot, &path)?;
+
+        self.prune_snapshot_files(&dir)?;
+        Ok(record)
+    }
+
+    pub fn prune_snapshot_files(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
+        let dir = dir.as_ref();
+        if !dir.exists() {
+            return Ok(());
+        }
+
+        let keep: BTreeSet<String> = self
+            .snapshot_catalog
+            .records
+            .iter()
+            .map(|record| format!("{}.json", record.snapshot_hash))
+            .collect();
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let file_name = match entry.file_name().into_string() {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
+            if file_name.ends_with(".json") && !keep.contains(&file_name) {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
         Ok(())
     }
 
@@ -1554,6 +1640,15 @@ pub fn merge_manifest_patches(
     diff_manifest(base, &current)
 }
 
+pub fn merge_manifest_patches_with_conflicts(
+    base: &Manifest,
+    patches: &[ManifestPatch],
+) -> Result<PatchMergeResult, WorldError> {
+    let conflicts = detect_patch_conflicts(patches);
+    let patch = merge_manifest_patches(base, patches)?;
+    Ok(PatchMergeResult { patch, conflicts })
+}
+
 fn apply_manifest_patch_op(root: &mut JsonValue, op: &ManifestPatchOp) -> Result<(), WorldError> {
     match op {
         ManifestPatchOp::Set { path, value } => apply_patch_set(root, path, value.clone()),
@@ -1674,6 +1769,94 @@ fn diff_json(
                 value: target.clone(),
             });
         }
+    }
+}
+
+fn detect_patch_conflicts(patches: &[ManifestPatch]) -> Vec<PatchConflict> {
+    let mut entries: Vec<(PatchPath, PatchOpSummary)> = Vec::new();
+    for (idx, patch) in patches.iter().enumerate() {
+        for op in &patch.ops {
+            let (path, kind) = match op {
+                ManifestPatchOp::Set { path, .. } => (path.clone(), PatchOpKind::Set),
+                ManifestPatchOp::Remove { path } => (path.clone(), PatchOpKind::Remove),
+            };
+            entries.push((
+                path.clone(),
+                PatchOpSummary {
+                    patch_index: idx,
+                    kind,
+                    path,
+                },
+            ));
+        }
+    }
+
+    let mut conflicts: BTreeMap<String, PatchConflict> = BTreeMap::new();
+    for i in 0..entries.len() {
+        for j in (i + 1)..entries.len() {
+            let (path_a, summary_a) = &entries[i];
+            let (path_b, summary_b) = &entries[j];
+            if path_is_prefix(path_a, path_b) || path_is_prefix(path_b, path_a) {
+                let conflict_path = if path_a.len() <= path_b.len() {
+                    path_a.clone()
+                } else {
+                    path_b.clone()
+                };
+                let key = conflict_path.join(".");
+                let kind = if path_a == path_b {
+                    ConflictKind::SamePath
+                } else {
+                    ConflictKind::PrefixOverlap
+                };
+                let entry = conflicts.entry(key.clone()).or_insert(PatchConflict {
+                    path: conflict_path,
+                    kind: kind.clone(),
+                    patches: Vec::new(),
+                    ops: Vec::new(),
+                });
+                if kind == ConflictKind::SamePath {
+                    entry.kind = ConflictKind::SamePath;
+                }
+                insert_patch_index(&mut entry.patches, summary_a.patch_index);
+                insert_patch_index(&mut entry.patches, summary_b.patch_index);
+                insert_op_summary(&mut entry.ops, summary_a.clone());
+                insert_op_summary(&mut entry.ops, summary_b.clone());
+            }
+        }
+    }
+
+    let mut results: Vec<PatchConflict> = conflicts.into_values().collect();
+    for conflict in &mut results {
+        conflict.patches.sort();
+        conflict.ops.sort_by(|left, right| {
+            left.patch_index
+                .cmp(&right.patch_index)
+                .then_with(|| left.path.cmp(&right.path))
+        });
+    }
+    results
+}
+
+fn path_is_prefix(a: &PatchPath, b: &PatchPath) -> bool {
+    if a.len() > b.len() {
+        return false;
+    }
+    a.iter().zip(b.iter()).all(|(left, right)| left == right)
+}
+
+fn insert_patch_index(target: &mut Vec<usize>, index: usize) {
+    if !target.contains(&index) {
+        target.push(index);
+    }
+}
+
+fn insert_op_summary(target: &mut Vec<PatchOpSummary>, summary: PatchOpSummary) {
+    if !target.iter().any(|existing| {
+        existing.patch_index == summary.patch_index
+            && existing.kind == summary.kind
+            && existing.path == summary.path
+    }) {
+        target.push(summary);
     }
 }
 
@@ -1927,6 +2110,38 @@ mod tests {
     }
 
     #[test]
+    fn merge_reports_conflicts() {
+        let base = Manifest {
+            version: 1,
+            content: json!({ "a": { "b": 1 }, "x": 1 }),
+        };
+        let base_hash = hash_json(&base).unwrap();
+        let patch1 = ManifestPatch {
+            base_manifest_hash: base_hash.clone(),
+            ops: vec![ManifestPatchOp::Set {
+                path: vec!["a".to_string(), "b".to_string()],
+                value: json!(2),
+            }],
+            new_version: None,
+        };
+        let patch2 = ManifestPatch {
+            base_manifest_hash: base_hash,
+            ops: vec![ManifestPatchOp::Set {
+                path: vec!["a".to_string()],
+                value: json!({ "b": 3 }),
+            }],
+            new_version: None,
+        };
+
+        let result = merge_manifest_patches_with_conflicts(&base, &[patch1, patch2]).unwrap();
+        assert_eq!(result.conflicts.len(), 1);
+        assert_eq!(result.conflicts[0].path, vec!["a".to_string()]);
+        assert_eq!(result.conflicts[0].kind, ConflictKind::PrefixOverlap);
+        assert_eq!(result.conflicts[0].patches, vec![0, 1]);
+        assert_eq!(result.conflicts[0].ops.len(), 2);
+    }
+
+    #[test]
     fn persist_and_restore_world() {
         let mut world = World::new();
         world.submit_action(Action::RegisterAgent {
@@ -2002,6 +2217,37 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_file_pruning_removes_old_files() {
+        let mut world = World::new();
+        world.set_snapshot_retention(SnapshotRetentionPolicy { max_snapshots: 1 });
+
+        let dir = std::env::temp_dir().join(format!(
+            "agent-world-snapshots-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+
+        world.save_snapshot_to_dir(&dir).unwrap();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        world.step().unwrap();
+        world.save_snapshot_to_dir(&dir).unwrap();
+
+        let snapshots_dir = dir.join("snapshots");
+        let file_count = fs::read_dir(&snapshots_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .count();
+        assert_eq!(file_count, 1);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn audit_filter_by_kind_and_cause() {
         let mut world = World::new();
         world.add_capability(CapabilityGrant::allow_all("cap_all"));
@@ -2039,6 +2285,34 @@ mod tests {
             events[0].caused_by,
             Some(CausedBy::Effect { .. })
         ));
+    }
+
+    #[test]
+    fn audit_log_export_writes_file() {
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        world.step().unwrap();
+
+        let dir = std::env::temp_dir().join(format!(
+            "agent-world-audit-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("audit.json");
+
+        world
+            .save_audit_log(&path, &AuditFilter::default())
+            .unwrap();
+        let events: Vec<WorldEvent> = read_json_from_path(&path).unwrap();
+        assert!(!events.is_empty());
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

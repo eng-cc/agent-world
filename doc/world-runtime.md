@@ -18,6 +18,7 @@
 - **受控升级**：支持 propose → shadow → approve → apply 的最小治理流程（用于 manifest 级别变更）。
 - **回滚与审计**：支持基于快照的回滚，并记录 RollbackApplied 审计事件。
 - **Patch 与 Diff/Merge**：支持 manifest patch（set/remove）与 diff/merge 辅助函数。
+- **冲突检测与快照清理**：merge 时报告冲突；快照保留策略可驱动文件清理。
 - **可观测性**：事件尾随、收据查询、per-agent timeline。
 - **文件级持久化**：journal/snapshot 的落盘与恢复接口。
 
@@ -47,6 +48,8 @@
 - `PolicyRule`：`{ when, decision }`
 - `Manifest`：`{ reducers, effects, caps, policies, routing, defaults }`
 - `ManifestPatch`：`{ base_manifest_hash, ops[], new_version? }`，支持 set/remove（merge 要求基于同一 base hash）
+- `PatchMergeResult`：`{ patch, conflicts[] }`，冲突包含路径与涉及的 patch 索引
+- `PatchConflict`：`{ path, kind, patches[], ops[] }`（kind: same_path/prefix_overlap）
 - `Proposal`：`{ id, author, base_manifest_hash, manifest, status }`
 - `GovernanceEvent`：`Proposed/ShadowReport/Approved/Applied`
 - `RollbackEvent`：`{ snapshot_hash, snapshot_journal_len, prior_journal_len, reason }`
@@ -64,6 +67,7 @@
 - `World::snapshot()` / `World::restore()`：快照与恢复
 - `World::create_snapshot()`：创建并记录快照
 - `World::set_snapshot_retention(policy)`：快照保留策略
+- `World::save_snapshot_to_dir(dir)` / `World::prune_snapshot_files(dir)`：快照文件落盘与清理
 - `World::propose_manifest_update(manifest)`：提交治理提案
 - `World::propose_manifest_patch(patch)`：以 patch 形式提交治理提案
 - `World::shadow_proposal(id)`：影子运行并生成候选 hash
@@ -71,7 +75,8 @@
 - `World::apply_proposal(id)`：应用并更新 manifest
 - `World::rollback_to_snapshot(snapshot, journal)`：回滚并记录审计事件
 - `World::audit_events(filter)`：审计筛选（按类型/时间/因果）
-- `diff_manifest(base, target)` / `merge_manifest_patches(base, patches)`：diff/merge 辅助
+- `World::save_audit_log(path, filter)`：导出审计事件到文件
+- `diff_manifest(base, target)` / `merge_manifest_patches(base, patches)` / `merge_manifest_patches_with_conflicts(...)`：diff/merge 辅助
 - `Scheduler::tick()`：按确定性顺序调度 agent cells
 
 ## 里程碑

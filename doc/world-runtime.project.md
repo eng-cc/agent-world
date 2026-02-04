@@ -30,6 +30,10 @@
 - [x] Manifest diff/merge 辅助函数
 - [x] 审计筛选（AuditFilter）
 - [x] 快照保留策略（SnapshotRetentionPolicy）
+- [x] 冲突检测 merge（PatchMergeResult）
+- [x] 快照文件清理接口
+- [x] 冲突严重级别与 op 元数据
+- [x] 审计日志导出接口
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -37,5 +41,5 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M4（治理闭环 + patch + 回滚已具备最小闭环）
+- 当前阶段：M4（治理闭环 + patch + 回滚 + 审计/保留已具备最小闭环）
 - 下一步：评估是否需要更细粒度审计与 manifest 语义约束
