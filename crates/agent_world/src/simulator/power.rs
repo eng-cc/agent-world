@@ -253,6 +253,20 @@ impl PowerPlant {
     }
 }
 
+/// Power storage facility.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerStorage {
+    pub id: FacilityId,
+    pub location_id: LocationId,
+    pub owner: ResourceOwner,
+    pub capacity: i64,
+    pub current_level: i64,
+    pub charge_efficiency: f64,
+    pub discharge_efficiency: f64,
+    pub max_charge_rate: i64,
+    pub max_discharge_rate: i64,
+}
+
 // ============================================================================
 // Power Events
 // ============================================================================
