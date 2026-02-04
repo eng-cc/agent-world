@@ -4,6 +4,7 @@
 ### 0. 对齐与准备
 - [x] 输出设计文档（`doc/world-runtime.md`）
 - [x] 输出项目管理文档（本文件）
+- [x] 设计文档拆分为分册（`doc/world-runtime/`）
 
 ### 1. 确定性内核与事件溯源（M1）
 - [x] WorldEvent 结构与事件日志格式
