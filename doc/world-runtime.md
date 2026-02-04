@@ -99,6 +99,48 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `RegisterModule / ActivateModule / DeactivateModule / UpgradeModule`
 - 以事件写入日志，支持审计与回放
 
+### 模块事件与校验（草案）
+
+**事件结构（示意）**
+```
+RegisterModule {
+  module_id,
+  wasm_hash,
+  manifest,         // ModuleManifest 快照
+  registered_by,
+}
+
+ActivateModule {
+  module_id,
+  version,
+  activated_by,
+}
+
+DeactivateModule {
+  module_id,
+  reason,
+  deactivated_by,
+}
+
+UpgradeModule {
+  module_id,
+  from_version,
+  to_version,
+  new_wasm_hash,
+  manifest,         // 新 ModuleManifest 快照
+  upgraded_by,
+}
+```
+
+**校验规则（示意）**
+- `wasm_hash` 必须与工件内容哈希一致；不存在则拒绝并记录失败事件。
+- `manifest` 与 `module_id/wasm_hash/interface_version` 必须一致且合法。
+- `required_caps` 必须有对应 CapabilityGrant，且通过 Policy 校验。
+- `limits` 必须在系统允许范围内（内存/gas/频率/输出大小）。
+- `RegisterModule` 不允许覆盖已有 `module_id` + `version`。
+- `UpgradeModule` 需满足版本单调递增，且 `from_version` 与当前激活版本一致。
+- 任何模块事件必须来自治理闭环 `apply` 结果，不允许绕过治理直接写入。
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。

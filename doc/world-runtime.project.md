@@ -38,6 +38,7 @@
 ### 5. 自由沙盒与 WASM 模块接入（M5）
 - [ ] 定义 ModuleManifest/ModuleKind/ModuleSubscription/ModuleLimits 数据结构
 - [x] 定义 reducer/pure module 的 ABI 签名与序列化约定
+- [x] 定义模块事件 schema 与校验规则（Register/Activate/Upgrade）
 - [x] 模块注册表/存储设计（哈希寻址、缓存、审计元数据）
 - [ ] 模块注册/激活/升级事件与治理流程接入
 - [ ] 模块加载与缓存（按 wasm_hash）
