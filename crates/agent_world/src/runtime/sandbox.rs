@@ -47,6 +47,36 @@ pub struct ModuleCallRequest {
     pub wasm_bytes: Vec<u8>,
 }
 
+/// Origin metadata for a module call.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleCallOrigin {
+    pub kind: String,
+    pub id: String,
+}
+
+/// Execution context passed into a module call.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleContext {
+    pub v: String,
+    pub module_id: String,
+    pub trace_id: String,
+    pub time: u64,
+    pub origin: ModuleCallOrigin,
+    pub limits: ModuleLimits,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub world_config_hash: Option<String>,
+}
+
+/// Canonical input envelope passed into module calls.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleCallInput {
+    pub ctx: ModuleContext,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub event: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<Vec<u8>>,
+}
+
 /// Error codes for module call failures.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

@@ -687,8 +687,13 @@ fn module_route_encodes_event_input_as_cbor() {
     world.route_event_to_modules(&event, &mut sandbox).unwrap();
 
     let request = sandbox.last_request.unwrap();
-    let decoded: WorldEvent = serde_cbor::from_slice(&request.input).unwrap();
-    assert_eq!(decoded.id, event.id);
+    let decoded: ModuleCallInput = serde_cbor::from_slice(&request.input).unwrap();
+    assert_eq!(decoded.ctx.module_id, "m.cbor");
+    assert_eq!(decoded.ctx.origin.kind, "event");
+    assert_eq!(decoded.ctx.origin.id, event.id.to_string());
+    let event_bytes = decoded.event.expect("event bytes");
+    let decoded_event: WorldEvent = serde_cbor::from_slice(&event_bytes).unwrap();
+    assert_eq!(decoded_event.id, event.id);
 }
 
 

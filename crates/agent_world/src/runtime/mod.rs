@@ -81,9 +81,9 @@ pub use signer::ReceiptSigner;
 
 // Sandbox
 pub use sandbox::{
-    FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit,
-    ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox, WasmEngineKind,
-    WasmExecutor, WasmExecutorConfig,
+    FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin,
+    ModuleCallRequest, ModuleContext, ModuleEmit, ModuleEmitEvent, ModuleEffectIntent,
+    ModuleOutput, ModuleSandbox, WasmEngineKind, WasmExecutor, WasmExecutorConfig,
 };
 
 // Snapshot

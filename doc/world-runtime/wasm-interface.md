@@ -103,6 +103,10 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 { "ctx": ModuleContext, "input": Bytes }
 ```
 
+**ModuleCallInput（当前运行时）**
+- 当前 runtime 以 `ModuleCallInput { ctx, event? , action? }` 作为调用输入封装。
+- `event`/`action` 字段均为 canonical CBOR bytes（无 state 字段）。
+
 **ModuleOutput（CBOR Map）**
 ```
 {

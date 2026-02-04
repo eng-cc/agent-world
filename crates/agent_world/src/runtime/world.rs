@@ -18,8 +18,8 @@ use super::modules::{
 };
 use super::module_store::ModuleStore;
 use super::sandbox::{
-    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmitEvent, ModuleOutput,
-    ModuleSandbox,
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest,
+    ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox,
 };
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
@@ -379,9 +379,10 @@ impl World {
         let mut module_ids: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
+        let event_bytes = to_canonical_cbor(event)?;
         let mut invoked = 0;
         for module_id in module_ids {
-            let subscribed = {
+            let (subscribed, manifest) = {
                 let version = self
                     .module_registry
                     .active
@@ -397,15 +398,34 @@ impl World {
                     .ok_or_else(|| WorldError::ModuleChangeInvalid {
                         reason: format!("module record missing {key}"),
                     })?;
-                module_subscribes_to_event(&record.manifest.subscriptions, event_kind)
+                let manifest = record.manifest.clone();
+                let subscribed = module_subscribes_to_event(&manifest.subscriptions, event_kind);
+                (subscribed, manifest)
             };
             if !subscribed {
                 continue;
             }
 
-            let input = to_canonical_cbor(event)?;
             let trace_id = format!("event-{}-{}", event.id, module_id);
-            self.execute_module_call(&module_id, trace_id, input, sandbox)?;
+            let ctx = ModuleContext {
+                v: "wasm-1".to_string(),
+                module_id: module_id.clone(),
+                trace_id: trace_id.clone(),
+                time: event.time,
+                origin: ModuleCallOrigin {
+                    kind: "event".to_string(),
+                    id: event.id.to_string(),
+                },
+                limits: manifest.limits.clone(),
+                world_config_hash: None,
+            };
+            let input = ModuleCallInput {
+                ctx,
+                event: Some(event_bytes.clone()),
+                action: None,
+            };
+            let input_bytes = to_canonical_cbor(&input)?;
+            self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
             invoked += 1;
         }
         Ok(invoked)
@@ -420,11 +440,11 @@ impl World {
         let mut module_ids: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
-        let input = to_canonical_cbor(envelope)?;
+        let action_bytes = to_canonical_cbor(envelope)?;
         let mut invoked = 0;
 
         for module_id in module_ids {
-            let subscribed = {
+            let (subscribed, manifest) = {
                 let version = self
                     .module_registry
                     .active
@@ -440,14 +460,34 @@ impl World {
                     .ok_or_else(|| WorldError::ModuleChangeInvalid {
                         reason: format!("module record missing {key}"),
                     })?;
-                module_subscribes_to_action(&record.manifest.subscriptions, action_kind)
+                let manifest = record.manifest.clone();
+                let subscribed = module_subscribes_to_action(&manifest.subscriptions, action_kind);
+                (subscribed, manifest)
             };
             if !subscribed {
                 continue;
             }
 
             let trace_id = format!("action-{}-{}", envelope.id, module_id);
-            self.execute_module_call(&module_id, trace_id, input.clone(), sandbox)?;
+            let ctx = ModuleContext {
+                v: "wasm-1".to_string(),
+                module_id: module_id.clone(),
+                trace_id: trace_id.clone(),
+                time: self.state.time,
+                origin: ModuleCallOrigin {
+                    kind: "action".to_string(),
+                    id: envelope.id.to_string(),
+                },
+                limits: manifest.limits.clone(),
+                world_config_hash: None,
+            };
+            let input = ModuleCallInput {
+                ctx,
+                event: None,
+                action: Some(action_bytes.clone()),
+            };
+            let input_bytes = to_canonical_cbor(&input)?;
+            self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
             invoked += 1;
         }
 

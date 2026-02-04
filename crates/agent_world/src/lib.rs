@@ -30,7 +30,8 @@ pub use runtime::{
 
 pub use runtime::{
     FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit,
-    ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox,
+    ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox, ModuleCallInput,
+    ModuleCallOrigin, ModuleContext,
 };
 
 // Agent interface (observe → decide → act)

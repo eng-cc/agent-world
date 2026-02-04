@@ -67,6 +67,11 @@
 - 事件/动作输入改为 Canonical CBOR 编码，满足 `wasm-1` ABI 的确定性要求。
 - 新增模块输入 CBOR 编码的路由测试。
 
+### 实现要点（E7）
+- 模块输入封装为 `ModuleCallInput { ctx, event|action }`，携带 `ModuleContext` 元信息。
+- `ModuleContext` 包含 `v/module_id/trace_id/time/origin/limits` 等字段。
+- 新增输入 envelope 编码测试，校验 ctx 与 event/action bytes。
+
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。
 - **E2**：接入燃料/超时/内存限制，输出校验与错误码映射。
@@ -74,6 +79,7 @@
 - **E4**：补充集成测试（真实 wasm、超限失败、确定性回放）。
 - **E5**：切换 ModuleOutput 编码为 Canonical CBOR，并完善 ABI 说明与测试。
 - **E6**：模块输入切换为 Canonical CBOR 编码并补充测试。
+- **E7**：模块输入封装 ModuleContext + event/action envelope 并补充测试。
 
 ## 风险
 - 引擎版本升级导致行为变化（需锁定版本/回放验证）。
