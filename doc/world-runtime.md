@@ -529,6 +529,19 @@ struct ModuleRecord {
 - **LRU 缓存**：内存中缓存已编译模块（带 `max_cached_modules` 上限）。
 - **冷启动**：按需从 `modules/` 读取工件；找不到则拒绝加载并记录事件。
 
+### 模块注册 Happy Path（草案）
+
+```
+ArtifactWrite(wasm_hash) 
+  -> ProposeModuleChangeSet(register+activate)
+    -> ShadowReport(pass)
+      -> Approve
+        -> Apply
+          -> RegisterModule event
+          -> ActivateModule event
+          -> module_registry.json 更新
+```
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
