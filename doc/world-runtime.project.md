@@ -50,6 +50,7 @@
 - [x] 补充 ModuleChangeSet 生命周期（提案/Shadow/Apply/回放）
 - [x] 补充 ShadowReport 结构与错误码（shadow 诊断）
 - [x] 补充 ShadowReport 与 GovernanceEvent/Audit 导出关系
+- [x] 补充模块失败事件的审计关联字段（trace_id/proposal_id）
 - [ ] 集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）

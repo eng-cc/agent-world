@@ -116,6 +116,18 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `ModuleValidationFailed { module_id, reason }`
 - `ModuleCallFailed { module_id, trace_id, reason }`
 
+### 模块失败事件的审计关联（草案）
+
+**关联字段（建议）**
+- `proposal_id`：若发生在治理 apply/shadow 流程中
+- `trace_id`：运行时调用链路标识
+- `module_id` / `wasm_hash` / `version`
+- `cause_event_id`：触发该失败的事件/动作
+
+**审计导出建议**
+- 对 `ModuleValidationFailed` 输出 `proposal_id` 与 `ShadowReport` 引用（若存在）。
+- 对 `ModuleCallFailed` 输出 `trace_id` 与导致的 `EffectIntent`/`WorldEvent` 关联。
+
 ### 模块事件与校验（草案）
 
 **事件结构（示意）**
