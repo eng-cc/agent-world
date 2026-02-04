@@ -333,6 +333,55 @@ fn shadow_rejects_missing_module_artifact() {
 }
 
 #[test]
+fn module_cache_loads_and_evicts() {
+    let mut world = World::new();
+    let wasm_a = b"module-a";
+    let wasm_b = b"module-b";
+    let hash_a = util::sha256_hex(wasm_a);
+    let hash_b = util::sha256_hex(wasm_b);
+
+    world.register_module_artifact(hash_a.clone(), wasm_a).unwrap();
+    world.register_module_artifact(hash_b.clone(), wasm_b).unwrap();
+    world.set_module_cache_max(1);
+
+    let artifact_a = world.load_module(&hash_a).unwrap();
+    assert_eq!(artifact_a.wasm_hash, hash_a);
+    assert_eq!(artifact_a.bytes, wasm_a.to_vec());
+    assert_eq!(world.module_cache_len(), 1);
+
+    let artifact_b = world.load_module(&hash_b).unwrap();
+    assert_eq!(artifact_b.wasm_hash, hash_b);
+    assert_eq!(world.module_cache_len(), 1);
+
+    let artifact_a_again = world.load_module(&hash_a).unwrap();
+    assert_eq!(artifact_a_again.wasm_hash, hash_a);
+    assert_eq!(world.module_cache_len(), 1);
+}
+
+#[test]
+fn module_output_limits_reject_excess() {
+    let world = World::new();
+    let limits = ModuleLimits {
+        max_mem_bytes: u64::MAX,
+        max_gas: u64::MAX,
+        max_call_rate: u32::MAX,
+        max_output_bytes: 8,
+        max_effects: 1,
+        max_emits: 1,
+    };
+
+    let err = world
+        .validate_module_output_limits("m.test", &limits, 2, 0, 4)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+
+    let err = world
+        .validate_module_output_limits("m.test", &limits, 1, 1, 12)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+}
+
+#[test]
 fn manifest_diff_and_merge() {
     let base = Manifest {
         version: 1,

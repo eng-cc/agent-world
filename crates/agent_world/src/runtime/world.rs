@@ -13,8 +13,8 @@ use super::events::{Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason}
 use super::governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecision, ProposalStatus};
 use super::manifest::{apply_manifest_patch, Manifest, ManifestPatch, ManifestUpdate};
 use super::modules::{
-    ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits, ModuleManifest, ModuleRegistry,
-    ModuleRecord,
+    ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits,
+    ModuleManifest, ModuleRegistry, ModuleRecord,
 };
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
@@ -30,6 +30,10 @@ pub struct World {
     manifest: Manifest,
     module_registry: ModuleRegistry,
     module_artifacts: BTreeSet<String>,
+    #[serde(skip)]
+    module_artifact_bytes: BTreeMap<String, Vec<u8>>,
+    #[serde(skip)]
+    module_cache: ModuleCache,
     module_limits_max: ModuleLimits,
     snapshot_catalog: SnapshotCatalog,
     state: WorldState,
@@ -59,6 +63,8 @@ impl World {
             manifest: Manifest::default(),
             module_registry: ModuleRegistry::default(),
             module_artifacts: BTreeSet::new(),
+            module_artifact_bytes: BTreeMap::new(),
+            module_cache: ModuleCache::default(),
             module_limits_max: ModuleLimits::unbounded(),
             snapshot_catalog: SnapshotCatalog::default(),
             state,
@@ -96,6 +102,10 @@ impl World {
 
     pub fn module_limits_max(&self) -> &ModuleLimits {
         &self.module_limits_max
+    }
+
+    pub fn module_cache_len(&self) -> usize {
+        self.module_cache.len()
     }
 
     pub fn snapshot_catalog(&self) -> &SnapshotCatalog {
@@ -256,11 +266,62 @@ impl World {
             });
         }
         self.module_artifacts.insert(wasm_hash);
+        self.module_artifact_bytes
+            .insert(computed, bytes.to_vec());
         Ok(())
     }
 
     pub fn set_module_limits_max(&mut self, limits: ModuleLimits) {
         self.module_limits_max = limits;
+    }
+
+    pub fn set_module_cache_max(&mut self, max_cached_modules: usize) {
+        self.module_cache.set_max_cached_modules(max_cached_modules);
+    }
+
+    pub fn load_module(&mut self, wasm_hash: &str) -> Result<ModuleArtifact, WorldError> {
+        if let Some(artifact) = self.module_cache.get(wasm_hash) {
+            return Ok(artifact);
+        }
+        let bytes = self
+            .module_artifact_bytes
+            .get(wasm_hash)
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!("module artifact bytes missing {wasm_hash}"),
+            })?
+            .clone();
+        let artifact = ModuleArtifact {
+            wasm_hash: wasm_hash.to_string(),
+            bytes,
+        };
+        self.module_cache.insert(artifact.clone());
+        Ok(artifact)
+    }
+
+    pub fn validate_module_output_limits(
+        &self,
+        module_id: &str,
+        limits: &ModuleLimits,
+        effect_count: usize,
+        emit_count: usize,
+        output_bytes: u64,
+    ) -> Result<(), WorldError> {
+        if effect_count as u32 > limits.max_effects {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module output effects exceeded {module_id}"),
+            });
+        }
+        if emit_count as u32 > limits.max_emits {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module output emits exceeded {module_id}"),
+            });
+        }
+        if output_bytes > limits.max_output_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module output bytes exceeded {module_id}"),
+            });
+        }
+        Ok(())
     }
 
     // -------------------------------------------------------------------------
@@ -667,6 +728,8 @@ impl World {
         world.manifest = snapshot.manifest;
         world.module_registry = snapshot.module_registry;
         world.module_artifacts = snapshot.module_artifacts;
+        world.module_artifact_bytes = BTreeMap::new();
+        world.module_cache = ModuleCache::default();
         world.module_limits_max = snapshot.module_limits_max;
         world.snapshot_catalog = snapshot.snapshot_catalog;
         world.next_event_id = snapshot.last_event_id.saturating_add(1);

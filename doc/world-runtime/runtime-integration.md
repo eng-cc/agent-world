@@ -53,6 +53,9 @@
 - `diff_manifest(base, target)` / `merge_manifest_patches(base, patches)` / `merge_manifest_patches_with_conflicts(...)`：diff/merge 辅助
 - `Scheduler::tick()`：按确定性顺序调度 agent cells
 - `World::register_module_artifact(wasm_hash, bytes)`：写入模块工件
+- `World::load_module(wasm_hash)`：按哈希加载模块（命中缓存或从工件库读取）
+- `World::set_module_cache_max(max_cached_modules)`：调整模块缓存容量
+- `World::set_module_limits_max(limits)`：调整模块资源上限
 - `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
 - `World::module_registry()`：读取模块索引
 

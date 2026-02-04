@@ -63,9 +63,9 @@ pub use manifest::{
 
 // Modules
 pub use modules::{
-    ModuleActivation, ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind,
-    ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRecord, ModuleSubscription,
-    ModuleUpgrade,
+    ModuleActivation, ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleDeactivation,
+    ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
+    ModuleRecord, ModuleSubscription, ModuleUpgrade,
 };
 
 // Policy
