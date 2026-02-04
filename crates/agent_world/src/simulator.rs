@@ -108,6 +108,10 @@ pub struct RegisteredAgent<B: AgentBehavior> {
     pub action_count: u64,
     /// Total decisions made by this agent.
     pub decision_count: u64,
+    /// Per-agent quota (overrides runner-level quota).
+    pub quota: Option<AgentQuota>,
+    /// Rate limiting state.
+    pub rate_limit_state: RateLimitState,
 }
 
 impl<B: AgentBehavior> RegisteredAgent<B> {
@@ -118,6 +122,20 @@ impl<B: AgentBehavior> RegisteredAgent<B> {
             wait_until: None,
             action_count: 0,
             decision_count: 0,
+            quota: None,
+            rate_limit_state: RateLimitState::default(),
+        }
+    }
+
+    /// Create a new registered agent with quota.
+    pub fn with_quota(behavior: B, quota: AgentQuota) -> Self {
+        Self {
+            behavior,
+            wait_until: None,
+            action_count: 0,
+            decision_count: 0,
+            quota: Some(quota),
+            rate_limit_state: RateLimitState::default(),
         }
     }
 
@@ -127,6 +145,167 @@ impl<B: AgentBehavior> RegisteredAgent<B> {
             Some(until) => now >= until,
             None => true,
         }
+    }
+
+    /// Check if the agent has exhausted its quota.
+    pub fn is_quota_exhausted(&self) -> bool {
+        if let Some(quota) = &self.quota {
+            quota.is_exhausted(self.action_count, self.decision_count)
+        } else {
+            false
+        }
+    }
+
+    /// Check if the agent is rate limited at the given time.
+    pub fn is_rate_limited(&self, now: WorldTime, policy: Option<&RateLimitPolicy>) -> bool {
+        if let Some(policy) = policy {
+            self.rate_limit_state.is_limited(now, policy)
+        } else {
+            false
+        }
+    }
+
+    /// Record an action for rate limiting purposes.
+    pub fn record_action(&mut self, now: WorldTime, policy: Option<&RateLimitPolicy>) {
+        if let Some(policy) = policy {
+            self.rate_limit_state.record_action(now, policy);
+        }
+    }
+}
+
+/// Quota limits for an agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AgentQuota {
+    /// Maximum number of actions the agent can take.
+    pub max_actions: Option<u64>,
+    /// Maximum number of decisions the agent can make.
+    pub max_decisions: Option<u64>,
+}
+
+impl AgentQuota {
+    /// Create a quota with a maximum number of actions.
+    pub fn max_actions(limit: u64) -> Self {
+        Self {
+            max_actions: Some(limit),
+            max_decisions: None,
+        }
+    }
+
+    /// Create a quota with a maximum number of decisions.
+    pub fn max_decisions(limit: u64) -> Self {
+        Self {
+            max_actions: None,
+            max_decisions: Some(limit),
+        }
+    }
+
+    /// Create a quota with both action and decision limits.
+    pub fn new(max_actions: Option<u64>, max_decisions: Option<u64>) -> Self {
+        Self {
+            max_actions,
+            max_decisions,
+        }
+    }
+
+    /// Check if the quota is exhausted.
+    pub fn is_exhausted(&self, action_count: u64, decision_count: u64) -> bool {
+        if let Some(max) = self.max_actions {
+            if action_count >= max {
+                return true;
+            }
+        }
+        if let Some(max) = self.max_decisions {
+            if decision_count >= max {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Returns remaining actions, or None if unlimited.
+    pub fn remaining_actions(&self, action_count: u64) -> Option<u64> {
+        self.max_actions.map(|max| max.saturating_sub(action_count))
+    }
+
+    /// Returns remaining decisions, or None if unlimited.
+    pub fn remaining_decisions(&self, decision_count: u64) -> Option<u64> {
+        self.max_decisions.map(|max| max.saturating_sub(decision_count))
+    }
+}
+
+/// Rate limiting policy.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RateLimitPolicy {
+    /// Maximum actions per time window.
+    pub max_actions_per_window: u64,
+    /// Time window size in ticks.
+    pub window_size_ticks: u64,
+}
+
+impl RateLimitPolicy {
+    /// Create a new rate limit policy.
+    pub fn new(max_actions_per_window: u64, window_size_ticks: u64) -> Self {
+        Self {
+            max_actions_per_window,
+            window_size_ticks,
+        }
+    }
+
+    /// Create a policy allowing N actions per tick.
+    pub fn actions_per_tick(n: u64) -> Self {
+        Self {
+            max_actions_per_window: n,
+            window_size_ticks: 1,
+        }
+    }
+}
+
+/// Rate limiting state for an agent.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct RateLimitState {
+    /// Start of the current window.
+    pub window_start: WorldTime,
+    /// Actions taken in the current window.
+    pub actions_in_window: u64,
+}
+
+impl RateLimitState {
+    /// Check if the agent is rate limited.
+    pub fn is_limited(&self, now: WorldTime, policy: &RateLimitPolicy) -> bool {
+        if policy.window_size_ticks == 0 {
+            return false;
+        }
+        // Check if we're still in the same window
+        let window_end = self.window_start.saturating_add(policy.window_size_ticks);
+        if now < window_end {
+            // Still in the same window, check action count
+            self.actions_in_window >= policy.max_actions_per_window
+        } else {
+            // New window, not limited
+            false
+        }
+    }
+
+    /// Record an action.
+    pub fn record_action(&mut self, now: WorldTime, policy: &RateLimitPolicy) {
+        if policy.window_size_ticks == 0 {
+            return;
+        }
+        let window_end = self.window_start.saturating_add(policy.window_size_ticks);
+        if now >= window_end {
+            // Start a new window
+            self.window_start = now;
+            self.actions_in_window = 1;
+        } else {
+            // Same window
+            self.actions_in_window += 1;
+        }
+    }
+
+    /// Reset the rate limit state.
+    pub fn reset(&mut self) {
+        self.window_start = 0;
+        self.actions_in_window = 0;
     }
 }
 
@@ -140,6 +319,10 @@ pub struct AgentRunner<B: AgentBehavior> {
     scheduler_cursor: Option<String>,
     /// Total ticks executed.
     total_ticks: u64,
+    /// Default quota for all agents (can be overridden per-agent).
+    default_quota: Option<AgentQuota>,
+    /// Rate limit policy for all agents.
+    rate_limit_policy: Option<RateLimitPolicy>,
 }
 
 impl<B: AgentBehavior> Default for AgentRunner<B> {
@@ -155,13 +338,63 @@ impl<B: AgentBehavior> AgentRunner<B> {
             agents: BTreeMap::new(),
             scheduler_cursor: None,
             total_ticks: 0,
+            default_quota: None,
+            rate_limit_policy: None,
         }
+    }
+
+    /// Create a new agent runner with a rate limit policy.
+    pub fn with_rate_limit(rate_limit: RateLimitPolicy) -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+            default_quota: None,
+            rate_limit_policy: Some(rate_limit),
+        }
+    }
+
+    /// Create a new agent runner with a default quota.
+    pub fn with_quota(quota: AgentQuota) -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+            default_quota: Some(quota),
+            rate_limit_policy: None,
+        }
+    }
+
+    /// Set the default quota for all agents.
+    pub fn set_default_quota(&mut self, quota: Option<AgentQuota>) {
+        self.default_quota = quota;
+    }
+
+    /// Set the rate limit policy for all agents.
+    pub fn set_rate_limit(&mut self, policy: Option<RateLimitPolicy>) {
+        self.rate_limit_policy = policy;
+    }
+
+    /// Get the rate limit policy.
+    pub fn rate_limit_policy(&self) -> Option<&RateLimitPolicy> {
+        self.rate_limit_policy.as_ref()
+    }
+
+    /// Get the default quota.
+    pub fn default_quota(&self) -> Option<&AgentQuota> {
+        self.default_quota.as_ref()
     }
 
     /// Register an agent with the runner.
     pub fn register(&mut self, behavior: B) {
         let agent_id = behavior.agent_id().to_string();
         self.agents.insert(agent_id, RegisteredAgent::new(behavior));
+    }
+
+    /// Register an agent with a specific quota.
+    pub fn register_with_quota(&mut self, behavior: B, quota: AgentQuota) {
+        let agent_id = behavior.agent_id().to_string();
+        self.agents.insert(agent_id, RegisteredAgent::with_quota(behavior, quota));
     }
 
     /// Unregister an agent from the runner.
@@ -197,7 +430,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
     /// Run one tick of the agent loop.
     ///
     /// This method:
-    /// 1. Selects the next ready agent (round-robin)
+    /// 1. Selects the next ready agent (round-robin), respecting quota and rate limits
     /// 2. Gets an observation for that agent
     /// 3. Calls the agent's decide method
     /// 4. Submits the action to the kernel if the agent decides to act
@@ -210,11 +443,34 @@ impl<B: AgentBehavior> AgentRunner<B> {
         let now = kernel.time();
 
         // Find the next ready agent using round-robin
+        // Exclude agents that are quota-exhausted or rate-limited
+        let rate_policy = self.rate_limit_policy.as_ref();
+        let default_quota = self.default_quota.as_ref();
+
         let ready_agents: Vec<String> = self
             .agents
             .iter()
             .filter(|(id, agent)| {
-                agent.is_ready(now) && kernel.model().agents.contains_key(*id)
+                // Check if agent is registered in the world
+                if !kernel.model().agents.contains_key(*id) {
+                    return false;
+                }
+                // Check if agent is ready (not waiting)
+                if !agent.is_ready(now) {
+                    return false;
+                }
+                // Check quota (per-agent or default)
+                let quota = agent.quota.as_ref().or(default_quota);
+                if let Some(q) = quota {
+                    if q.is_exhausted(agent.action_count, agent.decision_count) {
+                        return false;
+                    }
+                }
+                // Check rate limit
+                if agent.is_rate_limited(now, rate_policy) {
+                    return false;
+                }
+                true
             })
             .map(|(id, _)| id.clone())
             .collect();
@@ -253,6 +509,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     agent_id,
                     decision: AgentDecision::Wait,
                     action_result: None,
+                    skipped_reason: None,
                 })
             }
             AgentDecision::WaitTicks(ticks) => {
@@ -261,10 +518,16 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     agent_id,
                     decision: AgentDecision::WaitTicks(ticks),
                     action_result: None,
+                    skipped_reason: None,
                 })
             }
             AgentDecision::Act(action) => {
                 agent.action_count += 1;
+                // Record action for rate limiting
+                let rate_policy = self.rate_limit_policy.as_ref();
+                let agent = self.agents.get_mut(&agent_id).unwrap();
+                agent.record_action(now, rate_policy);
+
                 let action_id = kernel.submit_action(action.clone());
                 let event = kernel.step();
 
@@ -288,8 +551,42 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     agent_id,
                     decision: AgentDecision::Act(action),
                     action_result,
+                    skipped_reason: None,
                 })
             }
+        }
+    }
+
+    /// Check if an agent is quota-exhausted.
+    pub fn is_quota_exhausted(&self, agent_id: &str) -> bool {
+        if let Some(agent) = self.agents.get(agent_id) {
+            let quota = agent.quota.as_ref().or(self.default_quota.as_ref());
+            if let Some(q) = quota {
+                return q.is_exhausted(agent.action_count, agent.decision_count);
+            }
+        }
+        false
+    }
+
+    /// Check if an agent is rate-limited.
+    pub fn is_rate_limited(&self, agent_id: &str, now: WorldTime) -> bool {
+        if let Some(agent) = self.agents.get(agent_id) {
+            return agent.is_rate_limited(now, self.rate_limit_policy.as_ref());
+        }
+        false
+    }
+
+    /// Reset rate limit state for an agent.
+    pub fn reset_rate_limit(&mut self, agent_id: &str) {
+        if let Some(agent) = self.agents.get_mut(agent_id) {
+            agent.rate_limit_state.reset();
+        }
+    }
+
+    /// Reset rate limit state for all agents.
+    pub fn reset_all_rate_limits(&mut self) {
+        for agent in self.agents.values_mut() {
+            agent.rate_limit_state.reset();
         }
     }
 
@@ -340,6 +637,19 @@ impl<B: AgentBehavior> AgentRunner<B> {
     }
 }
 
+/// Reason why an agent was skipped during scheduling.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SkippedReason {
+    /// Agent has exhausted its quota.
+    QuotaExhausted,
+    /// Agent is rate limited.
+    RateLimited,
+    /// Agent is waiting (wait_until not reached).
+    Waiting,
+    /// Agent is not registered in the world.
+    NotInWorld,
+}
+
 /// Result of a single agent tick.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentTickResult {
@@ -349,6 +659,8 @@ pub struct AgentTickResult {
     pub decision: AgentDecision,
     /// The result of the action if one was taken.
     pub action_result: Option<ActionResult>,
+    /// Reason why the agent was skipped (if applicable).
+    pub skipped_reason: Option<SkippedReason>,
 }
 
 impl AgentTickResult {
@@ -360,6 +672,11 @@ impl AgentTickResult {
     /// Returns true if the action succeeded (or no action was taken).
     pub fn is_success(&self) -> bool {
         self.action_result.as_ref().map(|r| r.success).unwrap_or(true)
+    }
+
+    /// Returns true if the agent was skipped.
+    pub fn was_skipped(&self) -> bool {
+        self.skipped_reason.is_some()
     }
 }
 
@@ -2528,5 +2845,284 @@ mod tests {
         assert!(!waiting_agent.is_ready(5));
         assert!(waiting_agent.is_ready(10));
         assert!(waiting_agent.is_ready(15));
+    }
+
+    // ========================================================================
+    // Quota and Rate Limiting Tests
+    // ========================================================================
+
+    #[test]
+    fn agent_quota_max_actions() {
+        let quota = AgentQuota::max_actions(5);
+        assert!(!quota.is_exhausted(0, 0));
+        assert!(!quota.is_exhausted(4, 0));
+        assert!(quota.is_exhausted(5, 0));
+        assert!(quota.is_exhausted(10, 0));
+
+        assert_eq!(quota.remaining_actions(3), Some(2));
+        assert_eq!(quota.remaining_actions(5), Some(0));
+        assert_eq!(quota.remaining_decisions(10), None);
+    }
+
+    #[test]
+    fn agent_quota_max_decisions() {
+        let quota = AgentQuota::max_decisions(3);
+        assert!(!quota.is_exhausted(0, 0));
+        assert!(!quota.is_exhausted(100, 2));
+        assert!(quota.is_exhausted(100, 3));
+        assert!(quota.is_exhausted(0, 5));
+
+        assert_eq!(quota.remaining_decisions(1), Some(2));
+        assert_eq!(quota.remaining_actions(100), None);
+    }
+
+    #[test]
+    fn agent_quota_both_limits() {
+        let quota = AgentQuota::new(Some(5), Some(10));
+        assert!(!quota.is_exhausted(4, 9));
+        assert!(quota.is_exhausted(5, 9)); // actions exhausted
+        assert!(quota.is_exhausted(4, 10)); // decisions exhausted
+        assert!(quota.is_exhausted(5, 10)); // both exhausted
+    }
+
+    #[test]
+    fn rate_limit_policy_actions_per_tick() {
+        let policy = RateLimitPolicy::actions_per_tick(2);
+        assert_eq!(policy.max_actions_per_window, 2);
+        assert_eq!(policy.window_size_ticks, 1);
+    }
+
+    #[test]
+    fn rate_limit_state_basic() {
+        let policy = RateLimitPolicy::new(2, 5); // 2 actions per 5 ticks
+        let mut state = RateLimitState::default();
+
+        // Initially not limited
+        assert!(!state.is_limited(0, &policy));
+
+        // Record first action
+        state.record_action(0, &policy);
+        assert!(!state.is_limited(0, &policy));
+
+        // Record second action - should hit the limit
+        state.record_action(0, &policy);
+        assert!(state.is_limited(0, &policy));
+        assert!(state.is_limited(4, &policy)); // Still in same window
+
+        // New window should reset
+        assert!(!state.is_limited(5, &policy));
+
+        // Recording action in new window resets count
+        state.record_action(5, &policy);
+        assert!(!state.is_limited(5, &policy));
+        assert_eq!(state.window_start, 5);
+        assert_eq!(state.actions_in_window, 1);
+    }
+
+    #[test]
+    fn rate_limit_state_reset() {
+        let policy = RateLimitPolicy::new(1, 10);
+        let mut state = RateLimitState::default();
+
+        state.record_action(0, &policy);
+        assert!(state.is_limited(0, &policy));
+
+        state.reset();
+        assert!(!state.is_limited(0, &policy));
+        assert_eq!(state.window_start, 0);
+        assert_eq!(state.actions_in_window, 0);
+    }
+
+    #[test]
+    fn agent_runner_with_quota() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "patrol-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        // Create runner with default quota of 3 actions
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::with_quota(AgentQuota::max_actions(3));
+        runner.register(PatrolAgent::new(
+            "patrol-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run 5 ticks - should only get 3 results due to quota
+        let mut action_count = 0;
+        for _ in 0..5 {
+            if let Some(result) = runner.tick(&mut kernel) {
+                if result.has_action() {
+                    action_count += 1;
+                }
+            }
+        }
+        assert_eq!(action_count, 3);
+        assert!(runner.is_quota_exhausted("patrol-1"));
+    }
+
+    #[test]
+    fn agent_runner_with_rate_limit() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "patrol-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        // Create runner with rate limit of 1 action per 10 ticks
+        let mut runner: AgentRunner<PatrolAgent> =
+            AgentRunner::with_rate_limit(RateLimitPolicy::new(1, 10));
+        runner.register(PatrolAgent::new(
+            "patrol-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // First tick should succeed
+        let result = runner.tick(&mut kernel);
+        assert!(result.is_some());
+        assert!(result.as_ref().unwrap().has_action());
+
+        // Second tick should be rate-limited (no agent ready)
+        let result = runner.tick(&mut kernel);
+        assert!(result.is_none());
+
+        // Agent should be rate-limited
+        let now = kernel.time();
+        assert!(runner.is_rate_limited("patrol-1", now));
+    }
+
+    #[test]
+    fn agent_runner_per_agent_quota() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-a".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-b".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        // agent-a has quota of 2 actions
+        runner.register_with_quota(
+            PatrolAgent::new("agent-a", vec!["loc-1".to_string(), "loc-2".to_string()]),
+            AgentQuota::max_actions(2),
+        );
+        // agent-b has no quota (unlimited)
+        runner.register(PatrolAgent::new(
+            "agent-b",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run 10 ticks
+        let results = runner.run(&mut kernel, 10);
+
+        // agent-a should have only 2 actions
+        let agent_a = runner.get("agent-a").unwrap();
+        assert_eq!(agent_a.action_count, 2);
+        assert!(runner.is_quota_exhausted("agent-a"));
+
+        // agent-b should have more actions (limited only by round-robin)
+        let agent_b = runner.get("agent-b").unwrap();
+        assert!(agent_b.action_count > 2);
+        assert!(!runner.is_quota_exhausted("agent-b"));
+
+        // Should have gotten results for all ticks
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn agent_runner_reset_rate_limits() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "patrol-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> =
+            AgentRunner::with_rate_limit(RateLimitPolicy::new(1, 100));
+        runner.register(PatrolAgent::new(
+            "patrol-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // First action
+        runner.tick(&mut kernel);
+        let now = kernel.time();
+        assert!(runner.is_rate_limited("patrol-1", now));
+
+        // Reset rate limit
+        runner.reset_rate_limit("patrol-1");
+        assert!(!runner.is_rate_limited("patrol-1", now));
+
+        // Can take another action
+        let result = runner.tick(&mut kernel);
+        assert!(result.is_some());
+        assert!(result.unwrap().has_action());
     }
 }

@@ -110,12 +110,30 @@
   - `WaitTicks(n)`：等待 n 个 tick
 - **AgentRunner<B: AgentBehavior>**：多 Agent 调度器
   - `register(behavior)`：注册 Agent
+  - `register_with_quota(behavior, quota)`：注册带配额的 Agent
   - `tick(kernel) -> Option<AgentTickResult>`：执行一轮 observe → decide → act
   - `run(kernel, max_ticks)`：运行指定数量的 tick
   - `run_until_idle(kernel, max_ticks)`：运行直到所有 Agent 空闲
 - **RegisteredAgent<B>**：已注册 Agent 的状态跟踪
   - `wait_until`：等待到期时间
   - `action_count` / `decision_count`：统计信息
+  - `quota`：可选的 Agent 配额
+  - `rate_limit_state`：限速状态
+
+### M3 调度器：公平性、限速、配额（已实现）
+- **公平调度**：Round-Robin 轮转调度，确保多 Agent 公平执行
+- **配额系统 (AgentQuota)**：
+  - `max_actions`：限制 Agent 可执行的动作总数
+  - `max_decisions`：限制 Agent 可做出的决策总数
+  - 支持全局默认配额和 Agent 级别的独立配额
+  - `is_quota_exhausted(agent_id)`：检查 Agent 是否已耗尽配额
+- **限速系统 (RateLimitPolicy)**：
+  - `max_actions_per_window`：每个时间窗口内的最大动作数
+  - `window_size_ticks`：时间窗口大小（tick 数）
+  - 基于滑动窗口的限速控制
+  - `is_rate_limited(agent_id, now)`：检查 Agent 是否被限速
+  - `reset_rate_limit(agent_id)`：重置 Agent 的限速状态
+- **调度过滤**：在每个 tick 中自动跳过已耗尽配额或被限速的 Agent
 
 ## 里程碑
 - M0：对齐愿景与边界（本设计文档 + 项目管理文档）
