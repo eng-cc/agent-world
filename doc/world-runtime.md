@@ -171,6 +171,39 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - **能力/政策**：模块不能直接 I/O，只能产出 `EffectIntent`，由 capability/policy 决定是否执行。
 - **确定性约束**：禁止读取真实时间/随机数；非确定性来源必须通过 receipt 写回事件流。
 
+### 模块注册表与存储（草案）
+
+> 目标：用**内容寻址**与**审计元数据**管理 WASM 模块，支持可回放、可治理的动态装载。
+
+**存储布局（示意）**
+- `module_registry.json`：模块索引（哈希 → 元数据）
+- `modules/<wasm_hash>.wasm`：WASM 工件（只读、内容地址）
+- `modules/<wasm_hash>.meta.json`：模块元信息（manifest 快照）
+
+**ModuleRecord（索引条目）**
+```rust
+struct ModuleRecord {
+    wasm_hash: String,
+    module_id: String,
+    name: String,
+    version: String,
+    interface_version: String,
+    kind: ModuleKind,
+    registered_at: i64,
+    registered_by: String,   // agent_id / system
+    audit_ref: String,       // 对应 RegisterModule 事件 id
+}
+```
+
+**加载/缓存策略**
+- **按哈希装载**：模块加载必须提供 `wasm_hash`，不允许同名替换。
+- **LRU 缓存**：内存中缓存已编译模块（带 `max_cached_modules` 上限）。
+- **冷启动**：按需从 `modules/` 读取工件；找不到则拒绝加载并记录事件。
+
+**审计与可回放**
+- 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
+- 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
