@@ -38,6 +38,19 @@ impl Default for ModuleLimits {
     }
 }
 
+impl ModuleLimits {
+    pub fn unbounded() -> Self {
+        Self {
+            max_mem_bytes: u64::MAX,
+            max_gas: u64::MAX,
+            max_call_rate: u32::MAX,
+            max_output_bytes: u64::MAX,
+            max_effects: u32::MAX,
+            max_emits: u32::MAX,
+        }
+    }
+}
+
 /// Subscription specification for module event routing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleSubscription {

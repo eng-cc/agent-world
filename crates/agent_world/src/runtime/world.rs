@@ -12,7 +12,10 @@ use super::error::WorldError;
 use super::events::{Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason};
 use super::governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecision, ProposalStatus};
 use super::manifest::{apply_manifest_patch, Manifest, ManifestPatch, ManifestUpdate};
-use super::modules::{ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleRegistry, ModuleRecord};
+use super::modules::{
+    ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits, ModuleManifest, ModuleRegistry,
+    ModuleRecord,
+};
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
 use super::snapshot::{Journal, RollbackEvent, Snapshot, SnapshotCatalog, SnapshotRecord, SnapshotRetentionPolicy};
@@ -26,6 +29,8 @@ use super::world_event::{WorldEvent, WorldEventBody};
 pub struct World {
     manifest: Manifest,
     module_registry: ModuleRegistry,
+    module_artifacts: BTreeSet<String>,
+    module_limits_max: ModuleLimits,
     snapshot_catalog: SnapshotCatalog,
     state: WorldState,
     journal: Journal,
@@ -53,6 +58,8 @@ impl World {
         Self {
             manifest: Manifest::default(),
             module_registry: ModuleRegistry::default(),
+            module_artifacts: BTreeSet::new(),
+            module_limits_max: ModuleLimits::unbounded(),
             snapshot_catalog: SnapshotCatalog::default(),
             state,
             journal: Journal::new(),
@@ -85,6 +92,10 @@ impl World {
 
     pub fn module_registry(&self) -> &ModuleRegistry {
         &self.module_registry
+    }
+
+    pub fn module_limits_max(&self) -> &ModuleLimits {
+        &self.module_limits_max
     }
 
     pub fn snapshot_catalog(&self) -> &SnapshotCatalog {
@@ -229,6 +240,30 @@ impl World {
     }
 
     // -------------------------------------------------------------------------
+    // Module artifact and limits
+    // -------------------------------------------------------------------------
+
+    pub fn register_module_artifact(
+        &mut self,
+        wasm_hash: impl Into<String>,
+        bytes: &[u8],
+    ) -> Result<(), WorldError> {
+        let wasm_hash = wasm_hash.into();
+        let computed = super::util::sha256_hex(bytes);
+        if computed != wasm_hash {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("artifact hash mismatch expected {wasm_hash} found {computed}"),
+            });
+        }
+        self.module_artifacts.insert(wasm_hash);
+        Ok(())
+    }
+
+    pub fn set_module_limits_max(&mut self, limits: ModuleLimits) {
+        self.module_limits_max = limits;
+    }
+
+    // -------------------------------------------------------------------------
     // Manifest and governance
     // -------------------------------------------------------------------------
 
@@ -293,6 +328,10 @@ impl World {
                 expected: "proposed".to_string(),
                 found: proposal.status.label(),
             });
+        }
+        if let Some(changes) = proposal.manifest.module_changes()? {
+            self.validate_module_changes(&changes)?;
+            self.shadow_validate_module_changes(&changes)?;
         }
         let manifest_hash = hash_json(&proposal.manifest)?;
         let event = GovernanceEvent::ShadowReport {
@@ -552,6 +591,8 @@ impl World {
             snapshot_catalog: self.snapshot_catalog.clone(),
             manifest: self.manifest.clone(),
             module_registry: self.module_registry.clone(),
+            module_artifacts: self.module_artifacts.clone(),
+            module_limits_max: self.module_limits_max.clone(),
             state: self.state.clone(),
             journal_len: self.journal.len(),
             last_event_id: self.next_event_id.saturating_sub(1),
@@ -625,6 +666,8 @@ impl World {
         world.journal = journal;
         world.manifest = snapshot.manifest;
         world.module_registry = snapshot.module_registry;
+        world.module_artifacts = snapshot.module_artifacts;
+        world.module_limits_max = snapshot.module_limits_max;
         world.snapshot_catalog = snapshot.snapshot_catalog;
         world.next_event_id = snapshot.last_event_id.saturating_add(1);
         world.next_action_id = snapshot.next_action_id;
@@ -1001,6 +1044,122 @@ impl World {
             }
         }
 
+        Ok(())
+    }
+
+    fn shadow_validate_module_changes(&self, changes: &ModuleChangeSet) -> Result<(), WorldError> {
+        for module in &changes.register {
+            self.validate_module_manifest(module)?;
+        }
+        for upgrade in &changes.upgrade {
+            self.validate_module_manifest(&upgrade.manifest)?;
+        }
+        Ok(())
+    }
+
+    fn validate_module_manifest(&self, module: &ModuleManifest) -> Result<(), WorldError> {
+        if module.module_id.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: "module_id is empty".to_string(),
+            });
+        }
+        if module.version.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module version missing for {}", module.module_id),
+            });
+        }
+        if module.wasm_hash.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module wasm_hash missing for {}", module.module_id),
+            });
+        }
+        if module.interface_version.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module interface_version missing for {}", module.module_id),
+            });
+        }
+        if !self.module_artifacts.contains(&module.wasm_hash) {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module artifact missing {}", module.wasm_hash),
+            });
+        }
+
+        if module.interface_version != "wasm-1" {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module interface_version unsupported {}",
+                    module.interface_version
+                ),
+            });
+        }
+
+        let expected_export = match module.kind {
+            super::modules::ModuleKind::Reducer => "reduce",
+            super::modules::ModuleKind::Pure => "call",
+        };
+        if !module.exports.iter().any(|name| name == expected_export) {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module exports missing {} for {}",
+                    expected_export, module.module_id
+                ),
+            });
+        }
+
+        self.validate_module_limits(&module.module_id, &module.limits)?;
+
+        for cap in &module.required_caps {
+            let grant = self.capabilities.get(cap).ok_or_else(|| {
+                WorldError::ModuleChangeInvalid {
+                    reason: format!("module cap missing {cap}"),
+                }
+            })?;
+            if grant.is_expired(self.state.time) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module cap expired {cap}"),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_module_limits(
+        &self,
+        module_id: &str,
+        limits: &ModuleLimits,
+    ) -> Result<(), WorldError> {
+        let max = &self.module_limits_max;
+        if limits.max_mem_bytes > max.max_mem_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_mem_bytes exceeded {module_id}"),
+            });
+        }
+        if limits.max_gas > max.max_gas {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_gas exceeded {module_id}"),
+            });
+        }
+        if limits.max_call_rate > max.max_call_rate {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_call_rate exceeded {module_id}"),
+            });
+        }
+        if limits.max_output_bytes > max.max_output_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_output_bytes exceeded {module_id}"),
+            });
+        }
+        if limits.max_effects > max.max_effects {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_effects exceeded {module_id}"),
+            });
+        }
+        if limits.max_emits > max.max_emits {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_emits exceeded {module_id}"),
+            });
+        }
         Ok(())
     }
 

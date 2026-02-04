@@ -1,7 +1,7 @@
 //! Snapshot and journal types for world state persistence.
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use super::effect::{CapabilityGrant, EffectIntent};
@@ -9,7 +9,7 @@ use super::error::WorldError;
 use super::events::ActionEnvelope;
 use super::governance::Proposal;
 use super::manifest::Manifest;
-use super::modules::ModuleRegistry;
+use super::modules::{ModuleLimits, ModuleRegistry};
 use super::policy::PolicySet;
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId, WorldTime};
@@ -58,7 +58,12 @@ impl Default for SnapshotCatalog {
 pub struct Snapshot {
     pub snapshot_catalog: SnapshotCatalog,
     pub manifest: Manifest,
+    #[serde(default)]
     pub module_registry: ModuleRegistry,
+    #[serde(default)]
+    pub module_artifacts: BTreeSet<String>,
+    #[serde(default = "module_limits_unbounded")]
+    pub module_limits_max: ModuleLimits,
     pub state: WorldState,
     pub journal_len: usize,
     pub last_event_id: WorldEventId,
@@ -72,6 +77,10 @@ pub struct Snapshot {
     pub policies: PolicySet,
     pub proposals: BTreeMap<ProposalId, Proposal>,
     pub scheduler_cursor: Option<String>,
+}
+
+fn module_limits_unbounded() -> ModuleLimits {
+    ModuleLimits::unbounded()
 }
 
 impl Snapshot {
