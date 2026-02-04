@@ -1,7 +1,11 @@
 use crate::geometry::{great_circle_distance_cm, GeoPos};
 use crate::models::RobotBodySpec;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
+use std::fs;
+use std::io;
+use std::path::Path;
 
 pub type AgentId = String;
 pub type LocationId = String;
@@ -277,6 +281,64 @@ impl WorldKernel {
 
     pub fn journal(&self) -> &[WorldEvent] {
         &self.journal
+    }
+
+    pub fn snapshot(&self) -> WorldSnapshot {
+        WorldSnapshot {
+            time: self.time,
+            config: self.config.clone(),
+            model: self.model.clone(),
+            next_event_id: self.next_event_id,
+            next_action_id: self.next_action_id,
+            pending_actions: self.pending_actions.iter().cloned().collect(),
+            journal_len: self.journal.len(),
+        }
+    }
+
+    pub fn journal_snapshot(&self) -> WorldJournal {
+        WorldJournal {
+            events: self.journal.clone(),
+        }
+    }
+
+    pub fn from_snapshot(
+        snapshot: WorldSnapshot,
+        journal: WorldJournal,
+    ) -> Result<Self, PersistError> {
+        if snapshot.journal_len != journal.events.len() {
+            return Err(PersistError::SnapshotMismatch {
+                expected: snapshot.journal_len,
+                actual: journal.events.len(),
+            });
+        }
+        Ok(Self {
+            time: snapshot.time,
+            config: snapshot.config.sanitized(),
+            next_event_id: snapshot.next_event_id,
+            next_action_id: snapshot.next_action_id,
+            pending_actions: VecDeque::from(snapshot.pending_actions),
+            journal: journal.events,
+            model: snapshot.model,
+        })
+    }
+
+    pub fn save_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), PersistError> {
+        let dir = dir.as_ref();
+        fs::create_dir_all(dir)?;
+        let snapshot_path = dir.join("snapshot.json");
+        let journal_path = dir.join("journal.json");
+        self.snapshot().save_json(&snapshot_path)?;
+        self.journal_snapshot().save_json(&journal_path)?;
+        Ok(())
+    }
+
+    pub fn load_from_dir(dir: impl AsRef<Path>) -> Result<Self, PersistError> {
+        let dir = dir.as_ref();
+        let snapshot_path = dir.join("snapshot.json");
+        let journal_path = dir.join("journal.json");
+        let snapshot = WorldSnapshot::load_json(&snapshot_path)?;
+        let journal = WorldJournal::load_json(&journal_path)?;
+        Self::from_snapshot(snapshot, journal)
     }
 
     pub fn observe(&self, agent_id: &str) -> Result<Observation, RejectReason> {
@@ -781,10 +843,98 @@ pub enum RejectReason {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldSnapshot {
+    pub time: WorldTime,
+    pub config: WorldConfig,
+    pub model: WorldModel,
+    pub next_event_id: WorldEventId,
+    pub next_action_id: ActionId,
+    pub pending_actions: Vec<ActionEnvelope>,
+    pub journal_len: usize,
+}
+
+impl WorldSnapshot {
+    pub fn to_json(&self) -> Result<String, PersistError> {
+        Ok(serde_json::to_string_pretty(self)?)
+    }
+
+    pub fn from_json(input: &str) -> Result<Self, PersistError> {
+        Ok(serde_json::from_str(input)?)
+    }
+
+    pub fn save_json(&self, path: impl AsRef<Path>) -> Result<(), PersistError> {
+        write_json_to_path(self, path.as_ref())
+    }
+
+    pub fn load_json(path: impl AsRef<Path>) -> Result<Self, PersistError> {
+        read_json_from_path(path.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldJournal {
+    pub events: Vec<WorldEvent>,
+}
+
+impl WorldJournal {
+    pub fn new() -> Self {
+        Self { events: Vec::new() }
+    }
+
+    pub fn to_json(&self) -> Result<String, PersistError> {
+        Ok(serde_json::to_string_pretty(self)?)
+    }
+
+    pub fn from_json(input: &str) -> Result<Self, PersistError> {
+        Ok(serde_json::from_str(input)?)
+    }
+
+    pub fn save_json(&self, path: impl AsRef<Path>) -> Result<(), PersistError> {
+        write_json_to_path(self, path.as_ref())
+    }
+
+    pub fn load_json(path: impl AsRef<Path>) -> Result<Self, PersistError> {
+        read_json_from_path(path.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PersistError {
+    Io(String),
+    Serde(String),
+    SnapshotMismatch { expected: usize, actual: usize },
+}
+
+impl From<io::Error> for PersistError {
+    fn from(err: io::Error) -> Self {
+        PersistError::Io(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for PersistError {
+    fn from(err: serde_json::Error) -> Self {
+        PersistError::Serde(err.to_string())
+    }
+}
+
+fn write_json_to_path<T: Serialize>(value: &T, path: &Path) -> Result<(), PersistError> {
+    let data = serde_json::to_vec_pretty(value)?;
+    fs::write(path, data)?;
+    Ok(())
+}
+
+fn read_json_from_path<T: DeserializeOwned>(path: &Path) -> Result<T, PersistError> {
+    let data = fs::read(path)?;
+    Ok(serde_json::from_slice(&data)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::DEFAULT_AGENT_HEIGHT_CM;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn pos(lat: f64, lon: f64) -> GeoPos {
         GeoPos {
@@ -1050,6 +1200,79 @@ mod tests {
             }
             other => panic!("unexpected event: {other:?}"),
         }
+    }
+
+    #[test]
+    fn kernel_snapshot_roundtrip() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let snapshot = kernel.snapshot();
+        let journal = kernel.journal_snapshot();
+        let restored = WorldKernel::from_snapshot(snapshot, journal).unwrap();
+
+        assert_eq!(restored.time(), kernel.time());
+        assert_eq!(restored.config(), kernel.config());
+        assert_eq!(restored.model(), kernel.model());
+        assert_eq!(restored.journal().len(), kernel.journal().len());
+        assert_eq!(restored.pending_actions(), kernel.pending_actions());
+    }
+
+    #[test]
+    fn kernel_persist_and_restore() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("agent-world-sim-{unique}"));
+
+        kernel.save_to_dir(&dir).unwrap();
+        let restored = WorldKernel::load_from_dir(&dir).unwrap();
+
+        assert_eq!(restored.model(), kernel.model());
+        assert_eq!(restored.journal().len(), kernel.journal().len());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn restore_rejects_mismatched_journal_len() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.step_until_empty();
+
+        let mut snapshot = kernel.snapshot();
+        let mut journal = kernel.journal_snapshot();
+        snapshot.journal_len = snapshot.journal_len + 1;
+        journal.events.pop();
+
+        let err = WorldKernel::from_snapshot(snapshot, journal).unwrap_err();
+        assert!(matches!(err, PersistError::SnapshotMismatch { .. }));
     }
 
     #[test]

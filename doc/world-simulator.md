@@ -74,11 +74,19 @@
   - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
   - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
 
+### M2 持久化与回放（最小）
+- **快照**：保存世界内核的完整状态（时间、配置、世界模型、待处理队列、事件游标）。
+- **日志**：追加式事件列表（Journal），与快照配合恢复。
+- **存储布局**：目录内 `snapshot.json` + `journal.json`（JSON 格式）。
+- **恢复语义**：加载快照与日志，校验 `journal_len` 一致后恢复内核；回放与分叉在后续阶段完善。
+
 ### 运行时接口（草案）
 - **World Kernel**
   - `step(n_ticks)`：推进世界 n 个 tick
   - `apply_action(action)`：校验并生成事件、更新状态
   - `query_observation(agent_id)`：生成该 Agent 可见信息
+  - `snapshot()` / `restore_from_snapshot(...)`：快照与恢复
+  - `save_to_dir(path)` / `load_from_dir(path)`：落盘与冷启动恢复
 - **Agent Runtime**
   - `register_agent(agent_spec)`：注册/加载 Agent
   - `tick(agent_id)`：为 Agent 提供 observation，获取 action（或行动计划），提交到世界
