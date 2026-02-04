@@ -844,6 +844,17 @@ load_manifest()
 - 迁移后生成新的 `manifest_hash`，用于后续 patch 基线。
 - 迁移前后的哈希需记录在审计事件中，保证可追溯。
 
+**迁移审计事件（草案）**
+```
+ManifestMigrated {
+  from_version,
+  to_version,
+  from_hash,
+  to_hash,
+  reason,
+}
+```
+
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
 - **M1**：确定性 world kernel + 事件日志 + 最小快照
