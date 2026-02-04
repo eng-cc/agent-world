@@ -311,6 +311,59 @@ struct ModuleUpgrade { module_id: String, from_version: String, to_version: Stri
 - `register` 后默认不自动激活，需显式 `activate`（保证可审计变更意图）。
 - 所有变更均需通过 shadow 校验（hash/ABI/limits/caps）。
 
+### ModuleChangeSet 在 Manifest/Patch 中的编码（草案）
+
+**Manifest 扩展**
+```rust
+struct Manifest {
+    reducers: Vec<ReducerSpec>,
+    modules: Vec<ModuleManifest>,
+    module_changes: Option<ModuleChangeSet>,
+    effects: Vec<EffectSpec>,
+    caps: Vec<CapabilityGrant>,
+    policies: Vec<PolicyRule>,
+    routing: RoutingSpec,
+    defaults: Defaults,
+}
+```
+
+**Patch 路径约定（示意）**
+- `/modules`：替换模块清单（`set`）
+- `/module_changes`：提交模块变更计划（`set`）
+
+**Patch 示例（注册 + 激活）**
+```
+{
+  "base_manifest_hash": "...",
+  "ops": [
+    { "op": "set", "path": "/modules", "value": [ ... ] },
+    { "op": "set", "path": "/module_changes", "value": {
+        "register": [ { "module_id": "m.weather", "version": "0.1.0", ... } ],
+        "activate": [ { "module_id": "m.weather", "version": "0.1.0" } ],
+        "deactivate": [],
+        "upgrade": []
+    } }
+  ]
+}
+```
+
+**Patch 示例（升级）**
+```
+{
+  "ops": [
+    { "op": "set", "path": "/modules", "value": [ ... ] },
+    { "op": "set", "path": "/module_changes", "value": {
+        "register": [],
+        "activate": [],
+        "deactivate": [],
+        "upgrade": [
+          { "module_id": "m.weather", "from_version": "0.1.0", "to_version": "0.2.0", "wasm_hash": "..." }
+        ]
+    } }
+  ]
+}
+```
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
