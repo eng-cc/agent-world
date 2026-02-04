@@ -15,7 +15,7 @@
 - [x] 编写单元测试（空闲消耗、状态切换、休眠恢复、充电）- 5 个新测试
 
 ### M4.2 发电与储能设施
-- [ ] 定义 FacilityId 类型别名
+- [x] 定义 FacilityId 类型别名
 - [ ] 定义 PowerPlant 结构（发电设施）
 - [ ] 定义 PowerStorage 结构（储能设施）
 - [ ] 定义 PlantStatus 枚举（Running/Offline/Maintenance）

@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 pub type AgentId = String;
 pub type LocationId = String;
 pub type AssetId = String;
+pub type FacilityId = String;
 pub type WorldTime = u64;
 pub type WorldEventId = u64;
 pub type ActionId = u64;

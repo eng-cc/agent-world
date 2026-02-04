@@ -34,9 +34,10 @@ pub use runner::{
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, SkippedReason,
 };
 pub use types::{
-    Action, ActionEnvelope, ActionId, AgentId, AssetId, LocationId, ResourceKind, ResourceOwner,
-    ResourceStock, StockError, WorldEventId, WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
-    DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, SNAPSHOT_VERSION,
+    Action, ActionEnvelope, ActionId, AgentId, AssetId, FacilityId, LocationId, ResourceKind,
+    ResourceOwner, ResourceStock, StockError, WorldEventId, WorldTime, CM_PER_KM,
+    DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION,
+    SNAPSHOT_VERSION,
 };
 pub use world_model::{Agent, Asset, AssetKind, Location, WorldConfig, WorldModel};
 
