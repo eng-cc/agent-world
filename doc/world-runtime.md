@@ -542,6 +542,26 @@ ArtifactWrite(wasm_hash)
           -> module_registry.json 更新
 ```
 
+### 模块注册 Failure Path（草案）
+
+```
+ArtifactWrite(wasm_hash)
+  -> ProposeModuleChangeSet(register+activate)
+    -> ShadowReport(failed)
+      -> Reject
+        -> 无 Apply（不写入模块事件/注册表）
+```
+
+```
+ArtifactWrite(wasm_hash)
+  -> ProposeModuleChangeSet(register+activate)
+    -> ShadowReport(pass)
+      -> Approve
+        -> Apply
+          -> ModuleValidationFailed
+          -> 无 Register/Activate（不更新注册表）
+```
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。

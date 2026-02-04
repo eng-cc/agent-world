@@ -58,6 +58,7 @@
 - [x] 补充审计导出示例（升级警告与失败记录）
 - [x] 补充 module_registry.json / meta.json 结构示例
 - [x] 补充模块注册 Happy Path（artifact → propose → shadow → apply）
+- [x] 补充模块注册 Failure Path（shadow fail / apply fail）
 - [ ] 集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
