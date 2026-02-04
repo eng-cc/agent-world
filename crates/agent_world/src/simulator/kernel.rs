@@ -405,6 +405,52 @@ impl WorldKernel {
         events
     }
 
+    /// Process power generation for all power plants.
+    /// Returns a list of power events generated.
+    pub fn process_power_generation_tick(&mut self) -> Vec<WorldEvent> {
+        let mut events = Vec::new();
+        let plant_ids: Vec<FacilityId> = self.model.power_plants.keys().cloned().collect();
+
+        for plant_id in plant_ids {
+            let (output, location_id) = {
+                let plant = match self.model.power_plants.get_mut(&plant_id) {
+                    Some(plant) => plant,
+                    None => continue,
+                };
+                if plant.status != PlantStatus::Running {
+                    plant.current_output = 0;
+                    continue;
+                }
+                let output = plant.effective_output();
+                plant.current_output = output;
+                (output, plant.location_id.clone())
+            };
+
+            if output <= 0 {
+                continue;
+            }
+
+            if let Some(location) = self.model.locations.get_mut(&location_id) {
+                if location
+                    .resources
+                    .add(ResourceKind::Electricity, output)
+                    .is_err()
+                {
+                    continue;
+                }
+                let power_event = PowerEvent::PowerGenerated {
+                    plant_id: plant_id.clone(),
+                    location_id: location_id.clone(),
+                    amount: output,
+                };
+                let event = self.record_event(WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+        }
+
+        events
+    }
+
     /// Consume power from an agent for a specific reason.
     /// Returns the power event if power was consumed.
     pub fn consume_agent_power(
@@ -993,6 +1039,44 @@ impl WorldKernel {
                         self.model
                             .power_storages
                             .insert(storage.id.clone(), storage.clone());
+                    }
+                    PowerEvent::PowerGenerated {
+                        plant_id,
+                        location_id,
+                        amount,
+                    } => {
+                        if *amount < 0 {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!("invalid power generated amount: {amount}"),
+                            });
+                        }
+                        let plant = self.model.power_plants.get_mut(plant_id).ok_or_else(|| {
+                            PersistError::ReplayConflict {
+                                message: format!("power plant not found: {plant_id}"),
+                            }
+                        })?;
+                        if &plant.location_id != location_id {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power plant location mismatch: expected {}, got {}",
+                                    plant.location_id, location_id
+                                ),
+                            });
+                        }
+                        let location =
+                            self.model
+                                .locations
+                                .get_mut(location_id)
+                                .ok_or_else(|| PersistError::ReplayConflict {
+                                    message: format!("location not found: {location_id}"),
+                                })?;
+                        location
+                            .resources
+                            .add(ResourceKind::Electricity, *amount)
+                            .map_err(|err| PersistError::ReplayConflict {
+                                message: format!("failed to apply power generation: {err:?}"),
+                            })?;
+                        plant.current_output = *amount;
                     }
                     PowerEvent::PowerConsumed { agent_id, amount, .. } => {
                         if let Some(agent) = self.model.agents.get_mut(agent_id) {

@@ -21,7 +21,7 @@
 - [x] 定义 PlantStatus 枚举（Running/Offline/Maintenance）
 - [x] 扩展 WorldModel 添加 facilities 字段
 - [x] 实现 RegisterPowerPlant/RegisterPowerStorage 动作
-- [ ] 实现每 tick 发电逻辑
+- [x] 实现每 tick 发电逻辑
 - [ ] 实现充放电逻辑
 - [ ] 编写单元测试（发电、储能、设施状态）
 
