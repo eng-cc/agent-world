@@ -59,6 +59,7 @@
 - `doc/world-runtime/governance-events.md`：模块事件、ShadowReport、失败事件与治理事件负载
 - `doc/world-runtime/audit-export.md`：审计导出记录、分页/分片、一致性与示例
 - `doc/world-runtime/module-lifecycle.md`：模块治理与兼容性、注册表、治理流程、ModuleChangeSet、冲突与迁移
+- `doc/world-runtime/module-subscription-filters.md`：模块订阅过滤器（JSON Pointer + eq）
 - `doc/world-runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
 - `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
 - `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
