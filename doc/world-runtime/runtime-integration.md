@@ -26,6 +26,8 @@
 
 - **订阅来源**：`ModuleManifest.subscriptions` 指定 event/action kinds。
 - **路由顺序**：按 `module_id` 字典序调用，保证确定性。
+- **Action 路由**：`action.*` 订阅在 action → event 转换前触发；用于捕获意图阶段。
+- **Event 路由**：`event.*` 订阅在事件追加后触发；用于捕获已落盘事件。
 - **隔离性**：模块之间不共享状态，状态由 reducer 自身维护。
 - **事件 kind 命名**：`domain.agent_registered`、`domain.agent_moved`、`domain.action_rejected` 等；其它系统事件使用 `effect.*`/`module.*`/`snapshot.*`/`manifest.*` 前缀。
 
@@ -37,7 +39,7 @@
 
 ## 运行时接口（草案）
 - `World::step(n_ticks)`：推进时间并处理事件队列
-- `World::step_with_modules(sandbox)`：推进时间并处理事件队列，同时路由事件到模块
+- `World::step_with_modules(sandbox)`：推进时间并处理事件队列，同时路由 action/event 到模块
 - `World::apply_action(action)`：校验与入队事件
 - `World::emit_effect(intent)`：校验 capability + policy → 入队
 - `World::ingest_receipt(receipt)`：写入事件流并唤醒等待
@@ -62,6 +64,7 @@
 - `World::set_module_cache_max(max_cached_modules)`：调整模块缓存容量
 - `World::set_module_limits_max(limits)`：调整模块资源上限
 - `World::execute_module_call(module_id, trace_id, input, sandbox)`：执行模块调用并写入 ModuleCallFailed/ModuleEmitted
+- `World::route_action_to_modules(envelope, sandbox)`：按订阅路由 action 并触发模块调用
 - `World::route_event_to_modules(event, sandbox)`：按订阅路由事件并触发模块调用
 - `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
 - `World::module_registry()`：读取模块索引

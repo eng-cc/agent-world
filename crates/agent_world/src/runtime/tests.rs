@@ -661,6 +661,107 @@ fn step_with_modules_routes_domain_events() {
 }
 
 #[test]
+fn step_with_modules_routes_actions() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-action-router";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.action-router".to_string(),
+        name: "ActionRouter".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: vec!["action.register_agent".to_string()],
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "ActionSeen".to_string(),
+            payload: json!({"agent": "agent-1"}),
+        }],
+        output_bytes: 64,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let mut action_emit_index = None;
+    let mut domain_event_index = None;
+    for (idx, event) in world.journal().events.iter().enumerate() {
+        match &event.body {
+            WorldEventBody::ModuleEmitted(emit) if emit.trace_id.starts_with("action-") => {
+                action_emit_index = Some(idx);
+            }
+            WorldEventBody::Domain(DomainEvent::AgentRegistered { agent_id, .. })
+                if agent_id == "agent-1" =>
+            {
+                domain_event_index = Some(idx);
+            }
+            _ => {}
+        }
+    }
+
+    let action_emit_index = action_emit_index.expect("expected action subscription emit");
+    let domain_event_index = domain_event_index.expect("expected agent registration event");
+    assert!(action_emit_index < domain_event_index);
+}
+
+#[test]
 fn manifest_diff_and_merge() {
     let base = Manifest {
         version: 1,

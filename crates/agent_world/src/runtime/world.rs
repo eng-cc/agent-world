@@ -394,7 +394,7 @@ impl World {
                     .ok_or_else(|| WorldError::ModuleChangeInvalid {
                         reason: format!("module record missing {key}"),
                     })?;
-                module_subscribes_to(&record.manifest.subscriptions, event_kind)
+                module_subscribes_to_event(&record.manifest.subscriptions, event_kind)
             };
             if !subscribed {
                 continue;
@@ -405,6 +405,47 @@ impl World {
             self.execute_module_call(&module_id, trace_id, input, sandbox)?;
             invoked += 1;
         }
+        Ok(invoked)
+    }
+
+    pub fn route_action_to_modules(
+        &mut self,
+        envelope: &ActionEnvelope,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<usize, WorldError> {
+        let action_kind = action_kind_label(&envelope.action);
+        let module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
+        let input = serde_json::to_vec(envelope)?;
+        let mut invoked = 0;
+
+        for module_id in module_ids {
+            let subscribed = {
+                let version = self
+                    .module_registry
+                    .active
+                    .get(&module_id)
+                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                        reason: format!("module not active {module_id}"),
+                    })?;
+                let key = ModuleRegistry::record_key(&module_id, version);
+                let record = self
+                    .module_registry
+                    .records
+                    .get(&key)
+                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                        reason: format!("module record missing {key}"),
+                    })?;
+                module_subscribes_to_action(&record.manifest.subscriptions, action_kind)
+            };
+            if !subscribed {
+                continue;
+            }
+
+            let trace_id = format!("action-{}-{}", envelope.id, module_id);
+            self.execute_module_call(&module_id, trace_id, input.clone(), sandbox)?;
+            invoked += 1;
+        }
+
         Ok(invoked)
     }
 
@@ -745,6 +786,7 @@ impl World {
     ) -> Result<(), WorldError> {
         self.state.time = self.state.time.saturating_add(1);
         while let Some(envelope) = self.pending_actions.pop_front() {
+            self.route_action_to_modules(&envelope, sandbox)?;
             let event_body = self.action_to_event(&envelope)?;
             self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
             if let Some(event) = self.journal.events.last() {
@@ -1720,12 +1762,28 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
     }
 }
 
-fn module_subscribes_to(subscriptions: &[ModuleSubscription], event_kind: &str) -> bool {
+fn action_kind_label(action: &Action) -> &'static str {
+    match action {
+        Action::RegisterAgent { .. } => "action.register_agent",
+        Action::MoveAgent { .. } => "action.move_agent",
+    }
+}
+
+fn module_subscribes_to_event(subscriptions: &[ModuleSubscription], event_kind: &str) -> bool {
     subscriptions.iter().any(|subscription| {
         subscription
             .event_kinds
             .iter()
             .any(|pattern| subscription_match(pattern, event_kind))
+    })
+}
+
+fn module_subscribes_to_action(subscriptions: &[ModuleSubscription], action_kind: &str) -> bool {
+    subscriptions.iter().any(|subscription| {
+        subscription
+            .action_kinds
+            .iter()
+            .any(|pattern| subscription_match(pattern, action_kind))
     })
 }
 
