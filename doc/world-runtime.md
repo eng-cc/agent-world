@@ -358,6 +358,10 @@ ShadowReport {
 - 使用 `event_id` 作为 cursor（单调递增，字符串或 u64）。
 - 若 cursor 不存在或已过期（日志裁剪后），返回可恢复错误 `CURSOR_INVALID`。
 
+**cursor 编码建议**
+- 可用不透明字符串（如 base64 编码的 event_id + 校验和）以避免直接猜测事件编号。
+- 解析失败视为 `CURSOR_INVALID`，不泄露内部事件结构。
+
 **与快照保留/裁剪的关系**
 - 当旧事件被裁剪时，低于最早保留 event_id 的 cursor 视为失效。
 - 建议返回 `min_valid_cursor`，提示客户端从最新可用位置继续导出。
