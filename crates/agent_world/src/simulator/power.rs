@@ -305,6 +305,20 @@ pub enum PowerEvent {
         location_id: LocationId,
         amount: i64,
     },
+    /// Power stored in a storage facility.
+    PowerStored {
+        storage_id: FacilityId,
+        location_id: LocationId,
+        input: i64,
+        stored: i64,
+    },
+    /// Power discharged from a storage facility.
+    PowerDischarged {
+        storage_id: FacilityId,
+        location_id: LocationId,
+        output: i64,
+        drawn: i64,
+    },
     /// Power was consumed by an agent.
     PowerConsumed {
         agent_id: AgentId,

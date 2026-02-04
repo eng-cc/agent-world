@@ -451,6 +451,132 @@ impl WorldKernel {
         events
     }
 
+    /// Charge a power storage facility using electricity at its location.
+    /// Returns the power event if charging occurred.
+    pub fn charge_power_storage(
+        &mut self,
+        storage_id: &FacilityId,
+        requested_input: i64,
+    ) -> Option<WorldEvent> {
+        if requested_input <= 0 {
+            return None;
+        }
+        let location_id = self
+            .model
+            .power_storages
+            .get(storage_id)
+            .map(|storage| storage.location_id.clone())?;
+        let available = self
+            .model
+            .locations
+            .get(&location_id)
+            .map(|location| location.resources.get(ResourceKind::Electricity))
+            .unwrap_or(0);
+        if available <= 0 {
+            return None;
+        }
+        let (input, stored) = {
+            let storage = self.model.power_storages.get_mut(storage_id)?;
+            let remaining_capacity = storage.capacity - storage.current_level;
+            if remaining_capacity <= 0 {
+                return None;
+            }
+            if storage.charge_efficiency <= 0.0 {
+                return None;
+            }
+            let max_input_by_capacity =
+                (remaining_capacity as f64 / storage.charge_efficiency).floor() as i64;
+            let input = requested_input
+                .min(available)
+                .min(storage.max_charge_rate)
+                .min(max_input_by_capacity);
+            if input <= 0 {
+                return None;
+            }
+            let stored = (input as f64 * storage.charge_efficiency).floor() as i64;
+            if stored <= 0 {
+                return None;
+            }
+            storage.current_level = storage.current_level.saturating_add(stored);
+            (input, stored)
+        };
+
+        let location = self.model.locations.get_mut(&location_id)?;
+        if location
+            .resources
+            .remove(ResourceKind::Electricity, input)
+            .is_err()
+        {
+            return None;
+        }
+
+        let power_event = PowerEvent::PowerStored {
+            storage_id: storage_id.clone(),
+            location_id,
+            input,
+            stored,
+        };
+        Some(self.record_event(WorldEventKind::Power(power_event)))
+    }
+
+    /// Discharge a power storage facility, adding electricity to its location.
+    /// Returns the power event if discharging occurred.
+    pub fn discharge_power_storage(
+        &mut self,
+        storage_id: &FacilityId,
+        requested_output: i64,
+    ) -> Option<WorldEvent> {
+        if requested_output <= 0 {
+            return None;
+        }
+        let location_id = self
+            .model
+            .power_storages
+            .get(storage_id)
+            .map(|storage| storage.location_id.clone())?;
+        if !self.model.locations.contains_key(&location_id) {
+            return None;
+        }
+        let (output, drawn) = {
+            let storage = self.model.power_storages.get_mut(storage_id)?;
+            if storage.discharge_efficiency <= 0.0 {
+                return None;
+            }
+            let max_output_by_storage =
+                (storage.current_level as f64 * storage.discharge_efficiency).floor() as i64;
+            let output = requested_output
+                .min(storage.max_discharge_rate)
+                .min(max_output_by_storage);
+            if output <= 0 {
+                return None;
+            }
+            let drawn = (output as f64 / storage.discharge_efficiency).ceil() as i64;
+            let drawn = drawn.min(storage.current_level);
+            if drawn <= 0 {
+                return None;
+            }
+            storage.current_level = storage.current_level.saturating_sub(drawn);
+            (output, drawn)
+        };
+
+        let location = self.model.locations.get_mut(&location_id)?;
+        if location
+            .resources
+            .add(ResourceKind::Electricity, output)
+            .is_err()
+        {
+            return None;
+        }
+
+        let power_event = PowerEvent::PowerDischarged {
+            storage_id: storage_id.clone(),
+            location_id,
+            output,
+            drawn,
+        };
+        Some(self.record_event(WorldEventKind::Power(power_event)))
+    }
+
     /// Consume power from an agent for a specific reason.
     /// Returns the power event if power was consumed.
     pub fn consume_agent_power(
@@ -1077,6 +1203,102 @@ impl WorldKernel {
                                 message: format!("failed to apply power generation: {err:?}"),
                             })?;
                         plant.current_output = *amount;
+                    }
+                    PowerEvent::PowerStored {
+                        storage_id,
+                        location_id,
+                        input,
+                        stored,
+                    } => {
+                        if *input < 0 || *stored < 0 {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "invalid power stored values: input {input}, stored {stored}"
+                                ),
+                            });
+                        }
+                        let storage =
+                            self.model
+                                .power_storages
+                                .get_mut(storage_id)
+                                .ok_or_else(|| PersistError::ReplayConflict {
+                                    message: format!("power storage not found: {storage_id}"),
+                                })?;
+                        if &storage.location_id != location_id {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power storage location mismatch: expected {}, got {}",
+                                    storage.location_id, location_id
+                                ),
+                            });
+                        }
+                        let location =
+                            self.model
+                                .locations
+                                .get_mut(location_id)
+                                .ok_or_else(|| PersistError::ReplayConflict {
+                                    message: format!("location not found: {location_id}"),
+                                })?;
+                        location
+                            .resources
+                            .remove(ResourceKind::Electricity, *input)
+                            .map_err(|err| PersistError::ReplayConflict {
+                                message: format!("failed to apply power storage input: {err:?}"),
+                            })?;
+                        if storage.current_level.saturating_add(*stored) > storage.capacity {
+                            return Err(PersistError::ReplayConflict {
+                                message: "power storage capacity exceeded".to_string(),
+                            });
+                        }
+                        storage.current_level = storage.current_level.saturating_add(*stored);
+                    }
+                    PowerEvent::PowerDischarged {
+                        storage_id,
+                        location_id,
+                        output,
+                        drawn,
+                    } => {
+                        if *output < 0 || *drawn < 0 {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "invalid power discharged values: output {output}, drawn {drawn}"
+                                ),
+                            });
+                        }
+                        let storage =
+                            self.model
+                                .power_storages
+                                .get_mut(storage_id)
+                                .ok_or_else(|| PersistError::ReplayConflict {
+                                    message: format!("power storage not found: {storage_id}"),
+                                })?;
+                        if &storage.location_id != location_id {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power storage location mismatch: expected {}, got {}",
+                                    storage.location_id, location_id
+                                ),
+                            });
+                        }
+                        if storage.current_level < *drawn {
+                            return Err(PersistError::ReplayConflict {
+                                message: "power storage underflow".to_string(),
+                            });
+                        }
+                        storage.current_level = storage.current_level.saturating_sub(*drawn);
+                        let location =
+                            self.model
+                                .locations
+                                .get_mut(location_id)
+                                .ok_or_else(|| PersistError::ReplayConflict {
+                                    message: format!("location not found: {location_id}"),
+                                })?;
+                        location
+                            .resources
+                            .add(ResourceKind::Electricity, *output)
+                            .map_err(|err| PersistError::ReplayConflict {
+                                message: format!("failed to apply power discharge output: {err:?}"),
+                            })?;
                     }
                     PowerEvent::PowerConsumed { agent_id, amount, .. } => {
                         if let Some(agent) = self.model.agents.get_mut(agent_id) {
