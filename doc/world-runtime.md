@@ -595,6 +595,12 @@ impl TestWorldBuilder {
 }
 ```
 
+**Dummy WASM 工件工具（示意）**
+```rust
+fn dummy_wasm_bytes(label: &str) -> Vec<u8>;  // 生成确定性字节
+fn wasm_hash(bytes: &[u8]) -> String;         // 计算内容哈希（sha256/hex）
+```
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
