@@ -44,6 +44,7 @@
 - [ ] 实现 apply 阶段模块事件落盘与注册表更新
 - [ ] 实现 shadow 校验路径（hash/ABI/limits/caps）
 - [x] 衔接 manifest/registry 的变更计划结构（ModuleChangeSet）
+- [x] 补充 ModuleChangeSet 校验规则（冲突/重复/顺序约束）
 - [ ] 集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）

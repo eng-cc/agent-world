@@ -303,6 +303,14 @@ struct ModuleUpgrade { module_id: String, from_version: String, to_version: Stri
 4. `DeactivateModule`（若有 deactivate）
 > 顺序固定以保证回放确定性；同类事件按 `module_id` 字典序处理。
 
+**ModuleChangeSet 校验规则（示意）**
+- `module_id` 在 `register/activate/deactivate/upgrade` 内不得重复冲突。
+- `register` 与 `upgrade` 不能同时针对同一 `module_id`。
+- `activate` 与 `deactivate` 若同时出现，按顺序执行，但必须显式声明（避免隐式切换）。
+- `upgrade` 需要 `from_version` == 当前激活版本；`to_version` 必须单调递增。
+- `register` 后默认不自动激活，需显式 `activate`（保证可审计变更意图）。
+- 所有变更均需通过 shadow 校验（hash/ABI/limits/caps）。
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
