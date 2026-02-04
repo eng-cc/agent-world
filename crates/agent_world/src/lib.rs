@@ -24,3 +24,8 @@ pub use runtime::{
 pub use runtime::{
     apply_manifest_patch, diff_manifest, merge_manifest_patches, merge_manifest_patches_with_conflicts,
 };
+
+// Agent interface (observe → decide → act)
+pub use simulator::{
+    AgentBehavior, AgentDecision, AgentRunner, AgentTickResult, ActionResult, RegisteredAgent,
+};

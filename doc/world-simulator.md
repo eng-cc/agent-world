@@ -98,6 +98,25 @@
   - `tick(agent_id)`：为 Agent 提供 observation，获取 action（或行动计划），提交到世界
   - `throttle(policy)`：速率限制、预算控制（token/步数/事件量）
 
+### M3 Agent 接口（已实现）
+- **AgentBehavior trait**：Agent 行为的核心抽象
+  - `agent_id()`：返回 Agent 的唯一标识符
+  - `decide(observation) -> AgentDecision`：基于观察做出决策
+  - `on_action_result(result)`：行动结果回调（可选）
+  - `on_event(event)`：事件通知回调（可选）
+- **AgentDecision**：Agent 决策类型
+  - `Act(Action)`：执行一个行动
+  - `Wait`：本轮跳过
+  - `WaitTicks(n)`：等待 n 个 tick
+- **AgentRunner<B: AgentBehavior>**：多 Agent 调度器
+  - `register(behavior)`：注册 Agent
+  - `tick(kernel) -> Option<AgentTickResult>`：执行一轮 observe → decide → act
+  - `run(kernel, max_ticks)`：运行指定数量的 tick
+  - `run_until_idle(kernel, max_ticks)`：运行直到所有 Agent 空闲
+- **RegisteredAgent<B>**：已注册 Agent 的状态跟踪
+  - `wait_until`：等待到期时间
+  - `action_count` / `decision_count`：统计信息
+
 ## 里程碑
 - M0：对齐愿景与边界（本设计文档 + 项目管理文档）
 - M1：世界内核最小闭环（时间、地点、移动、基础事件、可恢复）

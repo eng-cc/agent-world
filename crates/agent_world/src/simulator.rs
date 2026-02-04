@@ -7,6 +7,362 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+// ============================================================================
+// Agent Interface (observe → decide → act)
+// ============================================================================
+
+/// Core trait for Agent behavior in the world.
+///
+/// An Agent follows the observe → decide → act loop:
+/// 1. `observe`: Receive the current observation of the world
+/// 2. `decide`: Based on observation, decide what action to take
+/// 3. `act`: The kernel executes the decided action and produces events
+///
+/// This trait is designed to be implemented by various agent types:
+/// - Simple rule-based agents
+/// - LLM-powered agents
+/// - Scripted agents for testing
+pub trait AgentBehavior {
+    /// Returns the agent's unique identifier.
+    fn agent_id(&self) -> &str;
+
+    /// Called when the agent receives a new observation.
+    /// Returns an optional action to take, or None if the agent chooses to wait.
+    fn decide(&mut self, observation: &Observation) -> AgentDecision;
+
+    /// Called after an action is executed to notify the agent of the result.
+    /// This allows the agent to update internal state based on action outcomes.
+    fn on_action_result(&mut self, _result: &ActionResult) {
+        // Default: no-op
+    }
+
+    /// Called when an event affecting this agent occurs.
+    /// This allows the agent to react to external events.
+    fn on_event(&mut self, _event: &WorldEvent) {
+        // Default: no-op
+    }
+}
+
+/// The result of an agent's decision process.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum AgentDecision {
+    /// The agent decides to perform an action.
+    Act(Action),
+    /// The agent decides to wait/skip this turn.
+    Wait,
+    /// The agent decides to wait for a specific number of ticks.
+    WaitTicks(u64),
+}
+
+impl AgentDecision {
+    /// Returns true if the agent decided to act.
+    pub fn is_act(&self) -> bool {
+        matches!(self, AgentDecision::Act(_))
+    }
+
+    /// Returns the action if the agent decided to act.
+    pub fn action(&self) -> Option<&Action> {
+        match self {
+            AgentDecision::Act(action) => Some(action),
+            _ => None,
+        }
+    }
+}
+
+/// Result of an action execution, providing feedback to the agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActionResult {
+    /// The action that was executed.
+    pub action: Action,
+    /// The action ID assigned by the kernel.
+    pub action_id: ActionId,
+    /// Whether the action succeeded.
+    pub success: bool,
+    /// The resulting event (success or rejection).
+    pub event: WorldEvent,
+}
+
+impl ActionResult {
+    /// Returns true if the action was rejected.
+    pub fn is_rejected(&self) -> bool {
+        matches!(self.event.kind, WorldEventKind::ActionRejected { .. })
+    }
+
+    /// Returns the rejection reason if the action was rejected.
+    pub fn reject_reason(&self) -> Option<&RejectReason> {
+        match &self.event.kind {
+            WorldEventKind::ActionRejected { reason } => Some(reason),
+            _ => None,
+        }
+    }
+}
+
+/// An agent registration with behavior and state tracking.
+#[derive(Debug)]
+pub struct RegisteredAgent<B: AgentBehavior> {
+    /// The agent behavior implementation.
+    pub behavior: B,
+    /// Number of ticks to wait before next decision.
+    pub wait_until: Option<WorldTime>,
+    /// Total actions taken by this agent.
+    pub action_count: u64,
+    /// Total decisions made by this agent.
+    pub decision_count: u64,
+}
+
+impl<B: AgentBehavior> RegisteredAgent<B> {
+    /// Create a new registered agent.
+    pub fn new(behavior: B) -> Self {
+        Self {
+            behavior,
+            wait_until: None,
+            action_count: 0,
+            decision_count: 0,
+        }
+    }
+
+    /// Returns true if the agent is ready to act at the given time.
+    pub fn is_ready(&self, now: WorldTime) -> bool {
+        match self.wait_until {
+            Some(until) => now >= until,
+            None => true,
+        }
+    }
+}
+
+/// Runs the observe → decide → act loop for multiple agents.
+///
+/// The AgentRunner manages registered agents and coordinates their
+/// interactions with the WorldKernel.
+pub struct AgentRunner<B: AgentBehavior> {
+    agents: BTreeMap<String, RegisteredAgent<B>>,
+    /// Cursor for round-robin scheduling.
+    scheduler_cursor: Option<String>,
+    /// Total ticks executed.
+    total_ticks: u64,
+}
+
+impl<B: AgentBehavior> Default for AgentRunner<B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B: AgentBehavior> AgentRunner<B> {
+    /// Create a new agent runner.
+    pub fn new() -> Self {
+        Self {
+            agents: BTreeMap::new(),
+            scheduler_cursor: None,
+            total_ticks: 0,
+        }
+    }
+
+    /// Register an agent with the runner.
+    pub fn register(&mut self, behavior: B) {
+        let agent_id = behavior.agent_id().to_string();
+        self.agents.insert(agent_id, RegisteredAgent::new(behavior));
+    }
+
+    /// Unregister an agent from the runner.
+    pub fn unregister(&mut self, agent_id: &str) -> Option<RegisteredAgent<B>> {
+        self.agents.remove(agent_id)
+    }
+
+    /// Get a reference to a registered agent.
+    pub fn get(&self, agent_id: &str) -> Option<&RegisteredAgent<B>> {
+        self.agents.get(agent_id)
+    }
+
+    /// Get a mutable reference to a registered agent.
+    pub fn get_mut(&mut self, agent_id: &str) -> Option<&mut RegisteredAgent<B>> {
+        self.agents.get_mut(agent_id)
+    }
+
+    /// Returns the number of registered agents.
+    pub fn agent_count(&self) -> usize {
+        self.agents.len()
+    }
+
+    /// Returns the IDs of all registered agents.
+    pub fn agent_ids(&self) -> Vec<String> {
+        self.agents.keys().cloned().collect()
+    }
+
+    /// Returns the total ticks executed.
+    pub fn total_ticks(&self) -> u64 {
+        self.total_ticks
+    }
+
+    /// Run one tick of the agent loop.
+    ///
+    /// This method:
+    /// 1. Selects the next ready agent (round-robin)
+    /// 2. Gets an observation for that agent
+    /// 3. Calls the agent's decide method
+    /// 4. Submits the action to the kernel if the agent decides to act
+    /// 5. Executes one step and notifies the agent of the result
+    ///
+    /// Returns the action result if an action was taken, or None if
+    /// no agent was ready or all agents chose to wait.
+    pub fn tick(&mut self, kernel: &mut WorldKernel) -> Option<AgentTickResult> {
+        self.total_ticks += 1;
+        let now = kernel.time();
+
+        // Find the next ready agent using round-robin
+        let ready_agents: Vec<String> = self
+            .agents
+            .iter()
+            .filter(|(id, agent)| {
+                agent.is_ready(now) && kernel.model().agents.contains_key(*id)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        if ready_agents.is_empty() {
+            return None;
+        }
+
+        // Round-robin selection
+        let agent_id = match &self.scheduler_cursor {
+            None => ready_agents[0].clone(),
+            Some(cursor) => ready_agents
+                .iter()
+                .find(|id| id.as_str() > cursor.as_str())
+                .cloned()
+                .unwrap_or_else(|| ready_agents[0].clone()),
+        };
+
+        self.scheduler_cursor = Some(agent_id.clone());
+
+        // Get observation for the selected agent
+        let observation = match kernel.observe(&agent_id) {
+            Ok(obs) => obs,
+            Err(_) => return None,
+        };
+
+        // Get decision from the agent
+        let agent = self.agents.get_mut(&agent_id)?;
+        agent.decision_count += 1;
+
+        let decision = agent.behavior.decide(&observation);
+
+        match decision {
+            AgentDecision::Wait => {
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::Wait,
+                    action_result: None,
+                })
+            }
+            AgentDecision::WaitTicks(ticks) => {
+                agent.wait_until = Some(now.saturating_add(ticks));
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::WaitTicks(ticks),
+                    action_result: None,
+                })
+            }
+            AgentDecision::Act(action) => {
+                agent.action_count += 1;
+                let action_id = kernel.submit_action(action.clone());
+                let event = kernel.step();
+
+                let action_result = event.map(|event| {
+                    let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
+                    ActionResult {
+                        action: action.clone(),
+                        action_id,
+                        success,
+                        event,
+                    }
+                });
+
+                // Notify agent of the result
+                if let Some(ref result) = action_result {
+                    let agent = self.agents.get_mut(&agent_id).unwrap();
+                    agent.behavior.on_action_result(result);
+                }
+
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::Act(action),
+                    action_result,
+                })
+            }
+        }
+    }
+
+    /// Run the agent loop for a specified number of ticks.
+    ///
+    /// Returns the results of all ticks where an agent was active.
+    pub fn run(&mut self, kernel: &mut WorldKernel, max_ticks: u64) -> Vec<AgentTickResult> {
+        let mut results = Vec::new();
+        for _ in 0..max_ticks {
+            if let Some(result) = self.tick(kernel) {
+                results.push(result);
+            }
+        }
+        results
+    }
+
+    /// Run the agent loop until all pending actions are processed.
+    pub fn run_until_idle(&mut self, kernel: &mut WorldKernel, max_ticks: u64) -> Vec<AgentTickResult> {
+        let mut results = Vec::new();
+        let mut consecutive_waits = 0;
+        let max_consecutive_waits = self.agents.len().max(1);
+
+        for _ in 0..max_ticks {
+            match self.tick(kernel) {
+                Some(result) => {
+                    if result.action_result.is_some() {
+                        consecutive_waits = 0;
+                    } else {
+                        consecutive_waits += 1;
+                    }
+                    results.push(result);
+
+                    if consecutive_waits >= max_consecutive_waits {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+        results
+    }
+
+    /// Broadcast an event to all registered agents.
+    pub fn broadcast_event(&mut self, event: &WorldEvent) {
+        for agent in self.agents.values_mut() {
+            agent.behavior.on_event(event);
+        }
+    }
+}
+
+/// Result of a single agent tick.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentTickResult {
+    /// The agent that was ticked.
+    pub agent_id: String,
+    /// The decision made by the agent.
+    pub decision: AgentDecision,
+    /// The result of the action if one was taken.
+    pub action_result: Option<ActionResult>,
+}
+
+impl AgentTickResult {
+    /// Returns true if an action was taken.
+    pub fn has_action(&self) -> bool {
+        self.action_result.is_some()
+    }
+
+    /// Returns true if the action succeeded (or no action was taken).
+    pub fn is_success(&self) -> bool {
+        self.action_result.as_ref().map(|r| r.success).unwrap_or(true)
+    }
+}
+
 pub type AgentId = String;
 pub type LocationId = String;
 pub type AssetId = String;
@@ -1794,5 +2150,383 @@ mod tests {
             agent.resources.get(ResourceKind::Electricity),
             500 - move_cost + 10
         );
+    }
+
+    // ========================================================================
+    // Agent Interface Tests
+    // ========================================================================
+
+    /// A simple test agent that moves toward a target location.
+    struct PatrolAgent {
+        id: String,
+        target_locations: Vec<String>,
+        current_target_index: usize,
+        action_results: Vec<bool>,
+    }
+
+    impl PatrolAgent {
+        fn new(id: impl Into<String>, target_locations: Vec<String>) -> Self {
+            Self {
+                id: id.into(),
+                target_locations,
+                current_target_index: 0,
+                action_results: Vec::new(),
+            }
+        }
+    }
+
+    impl AgentBehavior for PatrolAgent {
+        fn agent_id(&self) -> &str {
+            &self.id
+        }
+
+        fn decide(&mut self, observation: &Observation) -> AgentDecision {
+            if self.target_locations.is_empty() {
+                return AgentDecision::Wait;
+            }
+
+            let target_id = &self.target_locations[self.current_target_index];
+
+            // Check if we're already at the target
+            let current_location = observation
+                .visible_locations
+                .iter()
+                .find(|loc| loc.distance_cm == 0);
+
+            if let Some(current) = current_location {
+                if &current.location_id == target_id {
+                    // Move to next target
+                    self.current_target_index =
+                        (self.current_target_index + 1) % self.target_locations.len();
+                    let next_target = &self.target_locations[self.current_target_index];
+
+                    return AgentDecision::Act(Action::MoveAgent {
+                        agent_id: self.id.clone(),
+                        to: next_target.clone(),
+                    });
+                }
+            }
+
+            // Move to current target
+            AgentDecision::Act(Action::MoveAgent {
+                agent_id: self.id.clone(),
+                to: target_id.clone(),
+            })
+        }
+
+        fn on_action_result(&mut self, result: &ActionResult) {
+            self.action_results.push(result.success);
+        }
+    }
+
+    /// A simple agent that always waits.
+    struct WaitingAgent {
+        id: String,
+        wait_ticks: u64,
+    }
+
+    impl WaitingAgent {
+        fn new(id: impl Into<String>, wait_ticks: u64) -> Self {
+            Self {
+                id: id.into(),
+                wait_ticks,
+            }
+        }
+    }
+
+    impl AgentBehavior for WaitingAgent {
+        fn agent_id(&self) -> &str {
+            &self.id
+        }
+
+        fn decide(&mut self, _observation: &Observation) -> AgentDecision {
+            if self.wait_ticks > 0 {
+                AgentDecision::WaitTicks(self.wait_ticks)
+            } else {
+                AgentDecision::Wait
+            }
+        }
+    }
+
+    #[test]
+    fn agent_decision_helpers() {
+        let wait = AgentDecision::Wait;
+        assert!(!wait.is_act());
+        assert!(wait.action().is_none());
+
+        let wait_ticks = AgentDecision::WaitTicks(5);
+        assert!(!wait_ticks.is_act());
+        assert!(wait_ticks.action().is_none());
+
+        let action = Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        };
+        let act = AgentDecision::Act(action.clone());
+        assert!(act.is_act());
+        assert_eq!(act.action(), Some(&action));
+    }
+
+    #[test]
+    fn action_result_helpers() {
+        let action = Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        };
+
+        // Success result
+        let success_event = WorldEvent {
+            id: 1,
+            time: 1,
+            kind: WorldEventKind::AgentMoved {
+                agent_id: "agent-1".to_string(),
+                from: "loc-1".to_string(),
+                to: "loc-2".to_string(),
+                distance_cm: 1000,
+                electricity_cost: 1,
+            },
+        };
+        let success_result = ActionResult {
+            action: action.clone(),
+            action_id: 1,
+            success: true,
+            event: success_event,
+        };
+        assert!(!success_result.is_rejected());
+        assert!(success_result.reject_reason().is_none());
+
+        // Rejected result
+        let reject_event = WorldEvent {
+            id: 2,
+            time: 2,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::AgentNotFound {
+                    agent_id: "agent-1".to_string(),
+                },
+            },
+        };
+        let reject_result = ActionResult {
+            action,
+            action_id: 2,
+            success: false,
+            event: reject_event,
+        };
+        assert!(reject_result.is_rejected());
+        assert!(matches!(
+            reject_result.reject_reason(),
+            Some(RejectReason::AgentNotFound { .. })
+        ));
+    }
+
+    #[test]
+    fn agent_runner_register_and_tick() {
+        // Zero-cost movement config for simpler testing
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        // Setup world
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "patrol-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        // Create agent runner
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        let patrol_agent = PatrolAgent::new(
+            "patrol-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        );
+        runner.register(patrol_agent);
+
+        assert_eq!(runner.agent_count(), 1);
+        assert_eq!(runner.agent_ids(), vec!["patrol-1".to_string()]);
+
+        // Run one tick - agent should move from loc-1 to loc-2
+        let result = runner.tick(&mut kernel);
+        assert!(result.is_some());
+        let result = result.unwrap();
+        assert_eq!(result.agent_id, "patrol-1");
+        assert!(result.has_action());
+        assert!(result.is_success());
+
+        // Verify agent moved
+        let agent = kernel.model().agents.get("patrol-1").unwrap();
+        assert_eq!(agent.location_id, "loc-2");
+
+        // Check agent stats
+        let registered = runner.get("patrol-1").unwrap();
+        assert_eq!(registered.action_count, 1);
+        assert_eq!(registered.decision_count, 1);
+        assert_eq!(registered.behavior.action_results.len(), 1);
+        assert!(registered.behavior.action_results[0]);
+    }
+
+    #[test]
+    fn agent_runner_round_robin() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        // Setup world with two agents
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-a".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-b".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        runner.register(PatrolAgent::new(
+            "agent-a",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+        runner.register(PatrolAgent::new(
+            "agent-b",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run ticks - should alternate between agents
+        let result1 = runner.tick(&mut kernel).unwrap();
+        let result2 = runner.tick(&mut kernel).unwrap();
+        let result3 = runner.tick(&mut kernel).unwrap();
+
+        // Round-robin: agent-a, agent-b, agent-a
+        assert_eq!(result1.agent_id, "agent-a");
+        assert_eq!(result2.agent_id, "agent-b");
+        assert_eq!(result3.agent_id, "agent-a");
+    }
+
+    #[test]
+    fn agent_runner_wait_ticks() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "waiter".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<WaitingAgent> = AgentRunner::new();
+        runner.register(WaitingAgent::new("waiter", 3));
+
+        // First tick - agent decides to wait 3 ticks
+        let result = runner.tick(&mut kernel).unwrap();
+        assert_eq!(result.decision, AgentDecision::WaitTicks(3));
+        assert!(!result.has_action());
+
+        // Agent should not be ready for the next 3 ticks
+        let registered = runner.get("waiter").unwrap();
+        assert!(registered.wait_until.is_some());
+    }
+
+    #[test]
+    fn agent_runner_run_multiple_ticks() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "patrol-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        runner.register(PatrolAgent::new(
+            "patrol-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run 4 ticks
+        let results = runner.run(&mut kernel, 4);
+        assert_eq!(results.len(), 4);
+        assert_eq!(runner.total_ticks(), 4);
+
+        // Each result should have an action
+        for result in &results {
+            assert!(result.has_action());
+        }
+
+        // Agent should have patrolled back and forth
+        let registered = runner.get("patrol-1").unwrap();
+        assert_eq!(registered.action_count, 4);
+    }
+
+    #[test]
+    fn agent_runner_unregister() {
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        runner.register(PatrolAgent::new("agent-1", vec![]));
+        runner.register(PatrolAgent::new("agent-2", vec![]));
+
+        assert_eq!(runner.agent_count(), 2);
+
+        let removed = runner.unregister("agent-1");
+        assert!(removed.is_some());
+        assert_eq!(runner.agent_count(), 1);
+        assert!(runner.get("agent-1").is_none());
+        assert!(runner.get("agent-2").is_some());
+    }
+
+    #[test]
+    fn registered_agent_is_ready() {
+        let agent = RegisteredAgent::new(PatrolAgent::new("test", vec![]));
+        assert!(agent.is_ready(0));
+        assert!(agent.is_ready(100));
+
+        let mut waiting_agent = RegisteredAgent::new(PatrolAgent::new("test2", vec![]));
+        waiting_agent.wait_until = Some(10);
+        assert!(!waiting_agent.is_ready(5));
+        assert!(waiting_agent.is_ready(10));
+        assert!(waiting_agent.is_ready(15));
     }
 }
