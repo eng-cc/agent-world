@@ -1,13 +1,14 @@
-use crate::geometry::GeoPos;
+use crate::geometry::{great_circle_distance_cm, GeoPos};
 use crate::models::RobotBodySpec;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 pub type AgentId = String;
 pub type LocationId = String;
 pub type AssetId = String;
 pub type WorldTime = u64;
 pub type WorldEventId = u64;
+pub type ActionId = u64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -146,6 +147,389 @@ pub struct WorldModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActionEnvelope {
+    pub id: ActionId,
+    pub action: Action,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum Action {
+    RegisterLocation {
+        location_id: LocationId,
+        name: String,
+        pos: GeoPos,
+    },
+    RegisterAgent {
+        agent_id: AgentId,
+        location_id: LocationId,
+    },
+    MoveAgent {
+        agent_id: AgentId,
+        to: LocationId,
+    },
+    TransferResource {
+        from: ResourceOwner,
+        to: ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct WorldKernel {
+    time: WorldTime,
+    next_event_id: WorldEventId,
+    next_action_id: ActionId,
+    pending_actions: VecDeque<ActionEnvelope>,
+    journal: Vec<WorldEvent>,
+    model: WorldModel,
+}
+
+impl WorldKernel {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn time(&self) -> WorldTime {
+        self.time
+    }
+
+    pub fn model(&self) -> &WorldModel {
+        &self.model
+    }
+
+    pub fn journal(&self) -> &[WorldEvent] {
+        &self.journal
+    }
+
+    pub fn submit_action(&mut self, action: Action) -> ActionId {
+        let id = self.next_action_id;
+        self.next_action_id = self.next_action_id.saturating_add(1);
+        self.pending_actions.push_back(ActionEnvelope { id, action });
+        id
+    }
+
+    pub fn pending_actions(&self) -> usize {
+        self.pending_actions.len()
+    }
+
+    pub fn step(&mut self) -> Option<WorldEvent> {
+        let envelope = self.pending_actions.pop_front()?;
+        self.time = self.time.saturating_add(1);
+        let kind = self.apply_action(envelope.action);
+        let event = WorldEvent {
+            id: self.next_event_id,
+            time: self.time,
+            kind,
+        };
+        self.next_event_id = self.next_event_id.saturating_add(1);
+        self.journal.push(event.clone());
+        Some(event)
+    }
+
+    pub fn step_until_empty(&mut self) -> Vec<WorldEvent> {
+        let mut events = Vec::new();
+        while let Some(event) = self.step() {
+            events.push(event);
+        }
+        events
+    }
+
+    fn apply_action(&mut self, action: Action) -> WorldEventKind {
+        match action {
+            Action::RegisterLocation {
+                location_id,
+                name,
+                pos,
+            } => {
+                if self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationAlreadyExists { location_id },
+                    };
+                }
+                let location = Location::new(location_id.clone(), name, pos);
+                self.model.locations.insert(location_id.clone(), location);
+                WorldEventKind::LocationRegistered { location_id, pos }
+            }
+            Action::RegisterAgent {
+                agent_id,
+                location_id,
+            } => {
+                if self.model.agents.contains_key(&agent_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentAlreadyExists { agent_id },
+                    };
+                }
+                let Some(location) = self.model.locations.get(&location_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                };
+                let agent = Agent::new(agent_id.clone(), location_id.clone(), location.pos);
+                self.model.agents.insert(agent_id.clone(), agent);
+                WorldEventKind::AgentRegistered {
+                    agent_id,
+                    location_id,
+                    pos: location.pos,
+                }
+            }
+            Action::MoveAgent { agent_id, to } => {
+                let Some(location) = self.model.locations.get(&to) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id: to },
+                    };
+                };
+                let Some(agent) = self.model.agents.get_mut(&agent_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentNotFound { agent_id },
+                    };
+                };
+                let from = agent.location_id.clone();
+                let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
+                agent.location_id = to.clone();
+                agent.pos = location.pos;
+                WorldEventKind::AgentMoved {
+                    agent_id,
+                    from,
+                    to,
+                    distance_cm,
+                }
+            }
+            Action::TransferResource {
+                from,
+                to,
+                kind,
+                amount,
+            } => match self.validate_transfer(&from, &to, kind, amount) {
+                Ok(()) => {
+                    if let Err(reason) = self.apply_transfer(&from, &to, kind, amount) {
+                        WorldEventKind::ActionRejected { reason }
+                    } else {
+                        WorldEventKind::ResourceTransferred {
+                            from,
+                            to,
+                            kind,
+                            amount,
+                        }
+                    }
+                }
+                Err(reason) => WorldEventKind::ActionRejected { reason },
+            },
+        }
+    }
+
+    fn validate_transfer(
+        &self,
+        from: &ResourceOwner,
+        to: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), RejectReason> {
+        if amount <= 0 {
+            return Err(RejectReason::InvalidAmount { amount });
+        }
+
+        self.ensure_owner_exists(from)?;
+        self.ensure_owner_exists(to)?;
+        self.ensure_colocated(from, to)?;
+
+        let available = self.owner_stock(from).map(|stock| stock.get(kind)).unwrap_or(0);
+        if available < amount {
+            return Err(RejectReason::InsufficientResource {
+                owner: from.clone(),
+                kind,
+                requested: amount,
+                available,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn apply_transfer(
+        &mut self,
+        from: &ResourceOwner,
+        to: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), RejectReason> {
+        self.remove_from_owner(from, kind, amount)?;
+        self.add_to_owner(to, kind, amount)?;
+        Ok(())
+    }
+
+    fn ensure_owner_exists(&self, owner: &ResourceOwner) -> Result<(), RejectReason> {
+        match owner {
+            ResourceOwner::Agent { agent_id } => {
+                if self.model.agents.contains_key(agent_id) {
+                    Ok(())
+                } else {
+                    Err(RejectReason::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    })
+                }
+            }
+            ResourceOwner::Location { location_id } => {
+                if self.model.locations.contains_key(location_id) {
+                    Ok(())
+                } else {
+                    Err(RejectReason::LocationNotFound {
+                        location_id: location_id.clone(),
+                    })
+                }
+            }
+        }
+    }
+
+    fn ensure_colocated(
+        &self,
+        from: &ResourceOwner,
+        to: &ResourceOwner,
+    ) -> Result<(), RejectReason> {
+        match (from, to) {
+            (
+                ResourceOwner::Agent { agent_id },
+                ResourceOwner::Location { location_id },
+            ) => {
+                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
+                    RejectReason::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    }
+                })?;
+                if agent.location_id != *location_id {
+                    return Err(RejectReason::AgentNotAtLocation {
+                        agent_id: agent_id.clone(),
+                        location_id: location_id.clone(),
+                    });
+                }
+            }
+            (
+                ResourceOwner::Location { location_id },
+                ResourceOwner::Agent { agent_id },
+            ) => {
+                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
+                    RejectReason::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    }
+                })?;
+                if agent.location_id != *location_id {
+                    return Err(RejectReason::AgentNotAtLocation {
+                        agent_id: agent_id.clone(),
+                        location_id: location_id.clone(),
+                    });
+                }
+            }
+            (
+                ResourceOwner::Agent { agent_id },
+                ResourceOwner::Agent {
+                    agent_id: other_agent_id,
+                },
+            ) => {
+                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
+                    RejectReason::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    }
+                })?;
+                let other = self.model.agents.get(other_agent_id).ok_or_else(|| {
+                    RejectReason::AgentNotFound {
+                        agent_id: other_agent_id.clone(),
+                    }
+                })?;
+                if agent.location_id != other.location_id {
+                    return Err(RejectReason::AgentsNotCoLocated {
+                        agent_id: agent_id.clone(),
+                        other_agent_id: other_agent_id.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn owner_stock(&self, owner: &ResourceOwner) -> Option<&ResourceStock> {
+        match owner {
+            ResourceOwner::Agent { agent_id } => self.model.agents.get(agent_id).map(|a| &a.resources),
+            ResourceOwner::Location { location_id } => {
+                self.model.locations.get(location_id).map(|l| &l.resources)
+            }
+        }
+    }
+
+    fn remove_from_owner(
+        &mut self,
+        owner: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), RejectReason> {
+        let stock = match owner {
+            ResourceOwner::Agent { agent_id } => self
+                .model
+                .agents
+                .get_mut(agent_id)
+                .map(|agent| &mut agent.resources)
+                .ok_or_else(|| RejectReason::AgentNotFound {
+                    agent_id: agent_id.clone(),
+                })?,
+            ResourceOwner::Location { location_id } => self
+                .model
+                .locations
+                .get_mut(location_id)
+                .map(|location| &mut location.resources)
+                .ok_or_else(|| RejectReason::LocationNotFound {
+                    location_id: location_id.clone(),
+                })?,
+        };
+
+        stock.remove(kind, amount).map_err(|err| match err {
+            StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
+            StockError::Insufficient {
+                requested,
+                available,
+                ..
+            } => RejectReason::InsufficientResource {
+                owner: owner.clone(),
+                kind,
+                requested,
+                available,
+            },
+        })
+    }
+
+    fn add_to_owner(
+        &mut self,
+        owner: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), RejectReason> {
+        let stock = match owner {
+            ResourceOwner::Agent { agent_id } => self
+                .model
+                .agents
+                .get_mut(agent_id)
+                .map(|agent| &mut agent.resources)
+                .ok_or_else(|| RejectReason::AgentNotFound {
+                    agent_id: agent_id.clone(),
+                })?,
+            ResourceOwner::Location { location_id } => self
+                .model
+                .locations
+                .get_mut(location_id)
+                .map(|location| &mut location.resources)
+                .ok_or_else(|| RejectReason::LocationNotFound {
+                    location_id: location_id.clone(),
+                })?,
+        };
+
+        stock.add(kind, amount).map_err(|err| match err {
+            StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
+            StockError::Insufficient { .. } => RejectReason::InvalidAmount { amount },
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldEvent {
     pub id: WorldEventId,
     pub time: WorldTime,
@@ -207,6 +591,13 @@ mod tests {
     use super::*;
     use crate::models::DEFAULT_AGENT_HEIGHT_CM;
 
+    fn pos(lat: f64, lon: f64) -> GeoPos {
+        GeoPos {
+            lat_deg: lat,
+            lon_deg: lon,
+        }
+    }
+
     #[test]
     fn resource_stock_add_remove() {
         let mut stock = ResourceStock::new();
@@ -223,12 +614,9 @@ mod tests {
 
     #[test]
     fn agent_and_location_defaults() {
-        let pos = GeoPos {
-            lat_deg: 0.0,
-            lon_deg: 0.0,
-        };
-        let location = Location::new("loc-1", "base", pos);
-        let agent = Agent::new("agent-1", "loc-1", pos);
+        let position = pos(0.0, 0.0);
+        let location = Location::new("loc-1", "base", position);
+        let agent = Agent::new("agent-1", "loc-1", position);
 
         assert_eq!(location.id, "loc-1");
         assert_eq!(agent.location_id, "loc-1");
@@ -241,5 +629,182 @@ mod tests {
         assert!(model.agents.is_empty());
         assert!(model.locations.is_empty());
         assert!(model.assets.is_empty());
+    }
+
+    #[test]
+    fn kernel_registers_and_moves_agent() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(1.0, 1.0),
+        });
+        kernel.step_until_empty();
+
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step().unwrap();
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        let event = kernel.step().unwrap();
+        match event.kind {
+            WorldEventKind::AgentMoved {
+                agent_id,
+                from,
+                to,
+                distance_cm,
+            } => {
+                assert_eq!(agent_id, "agent-1");
+                assert_eq!(from, "loc-1");
+                assert_eq!(to, "loc-2");
+                assert!(distance_cm > 0);
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+
+        let agent = kernel.model.agents.get("agent-1").unwrap();
+        assert_eq!(agent.location_id, "loc-2");
+        assert_eq!(agent.pos, pos(1.0, 1.0));
+    }
+
+    #[test]
+    fn kernel_transfer_requires_colocation() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(1.0, 1.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-2".to_string(),
+            location_id: "loc-2".to_string(),
+        });
+        kernel.step_until_empty();
+
+        kernel
+            .model
+            .agents
+            .get_mut("agent-1")
+            .unwrap()
+            .resources
+            .add(ResourceKind::Electricity, 10)
+            .unwrap();
+
+        kernel.submit_action(Action::TransferResource {
+            from: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 5,
+        });
+        let event = kernel.step().unwrap();
+        match event.kind {
+            WorldEventKind::ActionRejected { reason } => {
+                assert!(matches!(reason, RejectReason::AgentsNotCoLocated { .. }));
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn kernel_closed_loop_example() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "plant".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "lab".to_string(),
+            pos: pos(2.0, 2.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-2".to_string(),
+            location_id: "loc-2".to_string(),
+        });
+        kernel.step_until_empty();
+
+        kernel
+            .model
+            .locations
+            .get_mut("loc-1")
+            .unwrap()
+            .resources
+            .add(ResourceKind::Electricity, 50)
+            .unwrap();
+        kernel
+            .model
+            .locations
+            .get_mut("loc-2")
+            .unwrap()
+            .resources
+            .add(ResourceKind::Electricity, 20)
+            .unwrap();
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        kernel.step().unwrap();
+
+        kernel.submit_action(Action::TransferResource {
+            from: ResourceOwner::Location {
+                location_id: "loc-1".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 10,
+        });
+        let event = kernel.step().unwrap();
+        match event.kind {
+            WorldEventKind::ActionRejected { reason } => {
+                assert!(matches!(reason, RejectReason::AgentNotAtLocation { .. }));
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+
+        kernel.submit_action(Action::TransferResource {
+            from: ResourceOwner::Location {
+                location_id: "loc-2".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 10,
+        });
+        kernel.step().unwrap();
+
+        let agent = kernel.model.agents.get("agent-1").unwrap();
+        assert_eq!(agent.resources.get(ResourceKind::Electricity), 10);
     }
 }
