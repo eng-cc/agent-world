@@ -13,10 +13,12 @@
 - [x] E5 切换 ModuleOutput ABI 为 Canonical CBOR
 - [x] E5 引入 CBOR 编解码与输出校验测试
 - [x] E5 更新 wasm-interface 与执行器文档说明
+- [x] E6 模块输入采用 Canonical CBOR 编码
+- [x] E6 补充模块输入 CBOR 编码测试
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module-storage.md`）
 
 ## 状态
-- 当前阶段：E5（CBOR ABI 切换完成）
+- 当前阶段：E6（输入/输出均使用 CBOR 编码）

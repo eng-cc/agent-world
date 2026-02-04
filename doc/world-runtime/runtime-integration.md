@@ -16,6 +16,7 @@
 - **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
 - **执行入口**：`World::execute_module_call` 通过沙箱接口执行模块并返回 `ModuleOutput`。
 - **最小执行 ABI**：导出 `memory`/`alloc`/`call`，`call(i32, i32) -> (i32, i32)` 返回输出指针与长度（使用 Canonical CBOR 反序列化）。
+- **输入编码**：事件/动作输入使用 Canonical CBOR 编码，确保可回放与确定性。
 
 ## Capability/Policy 绑定（草案）
 

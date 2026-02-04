@@ -14,6 +14,16 @@ pub fn hash_json<T: Serialize>(value: &T) -> Result<String, WorldError> {
     Ok(sha256_hex(&bytes))
 }
 
+/// Serialize a value into canonical CBOR bytes using deterministic ordering.
+pub fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
+    let mut buf = Vec::with_capacity(256);
+    let canonical_value = serde_cbor::value::to_value(value)?;
+    let mut serializer = serde_cbor::ser::Serializer::new(&mut buf);
+    serializer.self_describe()?;
+    canonical_value.serialize(&mut serializer)?;
+    Ok(buf)
+}
+
 /// Compute SHA256 hash of bytes and return as hex string.
 pub fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();

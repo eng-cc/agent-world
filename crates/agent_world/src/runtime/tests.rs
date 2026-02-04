@@ -591,6 +591,106 @@ fn wasm_executor_skeleton_reports_unavailable() {
     assert_eq!(err.trace_id, "trace-1");
 }
 
+struct InspectSandbox {
+    last_request: Option<ModuleCallRequest>,
+}
+
+impl InspectSandbox {
+    fn new() -> Self {
+        Self { last_request: None }
+    }
+}
+
+impl ModuleSandbox for InspectSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        self.last_request = Some(request.clone());
+        Ok(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            output_bytes: 0,
+        })
+    }
+}
+
+#[test]
+fn module_route_encodes_event_input_as_cbor() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-cbor-input";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.cbor".to_string(),
+        name: "CBOR".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let event = world.journal().events.last().unwrap().clone();
+    let mut sandbox = InspectSandbox::new();
+    world.route_event_to_modules(&event, &mut sandbox).unwrap();
+
+    let request = sandbox.last_request.unwrap();
+    let decoded: WorldEvent = serde_cbor::from_slice(&request.input).unwrap();
+    assert_eq!(decoded.id, event.id);
+}
+
 
 #[test]
 fn step_with_modules_routes_domain_events() {

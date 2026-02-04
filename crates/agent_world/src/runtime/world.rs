@@ -26,7 +26,7 @@ use super::signer::ReceiptSigner;
 use super::snapshot::{Journal, RollbackEvent, Snapshot, SnapshotCatalog, SnapshotRecord, SnapshotRetentionPolicy};
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId};
-use super::util::{hash_json, write_json_to_path};
+use super::util::{hash_json, to_canonical_cbor, write_json_to_path};
 use super::world_event::{WorldEvent, WorldEventBody};
 
 /// The main World runtime that orchestrates the simulation.
@@ -403,7 +403,7 @@ impl World {
                 continue;
             }
 
-            let input = serde_json::to_vec(event)?;
+            let input = to_canonical_cbor(event)?;
             let trace_id = format!("event-{}-{}", event.id, module_id);
             self.execute_module_call(&module_id, trace_id, input, sandbox)?;
             invoked += 1;
@@ -420,7 +420,7 @@ impl World {
         let mut module_ids: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
-        let input = serde_json::to_vec(envelope)?;
+        let input = to_canonical_cbor(envelope)?;
         let mut invoked = 0;
 
         for module_id in module_ids {
