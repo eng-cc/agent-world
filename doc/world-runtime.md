@@ -578,6 +578,23 @@ ArtifactWrite(wasm_hash)
 - Shadow 注入：允许在测试中强制 shadow 失败/通过
 - 断言：事件流顺序、注册表内容、审计导出记录
 
+**TestWorldBuilder（示意 API）**
+```rust
+struct TestWorldBuilder {
+    with_registry: bool,
+    with_manifest: bool,
+    caps: Vec<CapabilityGrant>,
+}
+
+impl TestWorldBuilder {
+    fn new() -> Self;
+    fn with_registry(mut self) -> Self;
+    fn with_manifest(mut self) -> Self;
+    fn with_caps(mut self, caps: Vec<CapabilityGrant>) -> Self;
+    fn build(self) -> World;
+}
+```
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
