@@ -95,7 +95,7 @@
 - [x] Capability/Policy 与模块调用的绑定校验
 - [x] 事件订阅与路由（事件 → 模块）
 - [x] 模块输出校验（effects/emits 限额与大小）
-- [ ] 单元测试/集成测试（确定性回放 + 权限拒绝）
+- [x] 单元测试/集成测试（确定性回放 + 权限拒绝）
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
