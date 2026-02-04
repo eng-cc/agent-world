@@ -232,6 +232,26 @@ UpgradeModule {
 - `LIMITS_EXCEEDED`：资源上限超出
 - `VERSION_CONFLICT`：版本冲突或非单调升级
 
+### ShadowPolicy 配置与传播（草案）
+
+**WorldConfig 扩展**
+```rust
+struct WorldConfig {
+    // ...
+    shadow_policy: ShadowPolicy,
+}
+
+enum ShadowPolicy {
+    AlwaysPass,
+    AlwaysFail,
+    ByModuleId(HashSet<String>),
+}
+```
+
+**ShadowReport 关联**
+- 报告中可附加 `shadow_policy` 字段用于审计（测试环境可选）。
+- 当 `AlwaysFail` 或命中 `ByModuleId` 时，`status=failed` 且错误码为 `SHADOW_FORCED_FAIL`。
+
 ### ShadowReport 事件与审计输出（草案）
 
 **GovernanceEvent::ShadowReport（示意）**

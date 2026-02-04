@@ -64,6 +64,7 @@
 - [x] 补充 TestWorldBuilder API 草案
 - [x] 补充 Dummy WASM 工件工具说明（bytes/hash）
 - [x] 补充 Shadow 注入建议（测试专用策略）
+- [x] 补充 ShadowPolicy 配置字段与 ShadowReport 关联
 - [ ] 实现集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
