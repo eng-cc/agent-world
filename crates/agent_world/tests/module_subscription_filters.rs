@@ -1,7 +1,7 @@
 use agent_world::{
     Action, CapabilityGrant, FixedSandbox, Manifest, ModuleActivation, ModuleChangeSet, ModuleEmit,
     ModuleKind, ModuleLimits, ModuleManifest, ModuleSubscription, PolicySet, ProposalDecision,
-    World,
+    World, WorldError,
 };
 use agent_world::GeoPos;
 use serde_json::json;
@@ -198,4 +198,70 @@ fn module_subscription_action_filters_by_agent_id() {
         .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
+}
+
+#[test]
+fn module_subscription_invalid_filter_is_rejected() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-invalid";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.invalid".to_string(),
+        name: "FilterInvalid".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: Some(json!({
+                "event": [
+                    {"path": "body/payload/data/agent_id", "eq": "agent-1"}
+                ]
+            })),
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }

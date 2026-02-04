@@ -466,6 +466,10 @@ impl World {
             });
         }
 
+        for subscription in &module.subscriptions {
+            validate_subscription_filters(&subscription.filters, &module.module_id)?;
+        }
+
         self.validate_module_limits(&module.module_id, &module.limits)?;
 
         for cap in &module.required_caps {
@@ -855,6 +859,7 @@ fn subscription_match(pattern: &str, value: &str) -> bool {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SubscriptionFilters {
     #[serde(default)]
     event: Vec<MatchRule>,
@@ -863,6 +868,7 @@ struct SubscriptionFilters {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct MatchRule {
     path: String,
     eq: JsonValue,
@@ -902,4 +908,38 @@ fn subscription_filters_match(
             .map(|current| current == &rule.eq)
             .unwrap_or(false)
     })
+}
+
+fn validate_subscription_filters(
+    filters: &Option<JsonValue>,
+    module_id: &str,
+) -> Result<(), WorldError> {
+    let Some(filters_value) = filters else {
+        return Ok(());
+    };
+    if filters_value.is_null() {
+        return Ok(());
+    }
+    let parsed: SubscriptionFilters =
+        serde_json::from_value(filters_value.clone()).map_err(|err| {
+            WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module {module_id} subscription filters invalid: {err}"
+                ),
+            }
+        })?;
+    for rule in parsed.event.iter().chain(parsed.action.iter()) {
+        if rule.path.is_empty() {
+            continue;
+        }
+        if !rule.path.starts_with('/') {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module {module_id} subscription filter path must start with '/': {}",
+                    rule.path
+                ),
+            });
+        }
+    }
+    Ok(())
 }
