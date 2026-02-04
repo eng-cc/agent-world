@@ -40,7 +40,11 @@
 - [x] 定义 reducer/pure module 的 ABI 签名与序列化约定
 - [x] 定义模块事件 schema 与校验规则（Register/Activate/Upgrade）
 - [x] 模块注册表/存储设计（哈希寻址、缓存、审计元数据）
-- [ ] 模块注册/激活/升级事件与治理流程接入
+- [x] 模块注册/激活/升级事件与治理流程接入（设计草案）
+- [ ] 实现 apply 阶段模块事件落盘与注册表更新
+- [ ] 实现 shadow 校验路径（hash/ABI/limits/caps）
+- [ ] 衔接 manifest/registry 的变更计划结构（ModuleChangeSet）
+- [ ] 集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
 - [ ] Capability/Policy 与模块调用的绑定校验

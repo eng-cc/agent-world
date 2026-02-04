@@ -212,7 +212,7 @@ UpgradeModule {
 - `EffectReceipt`：`{ intent_id, status, payload, cost?, timestamps, hash }`
 - `CapabilityGrant`：`{ name, cap_type, params, expiry? }`
 - `PolicyRule`：`{ when, decision }`
-- `Manifest`：`{ reducers, effects, caps, policies, routing, defaults }`
+- `Manifest`：`{ reducers, modules, effects, caps, policies, routing, defaults }`
 - `ManifestPatch`：`{ base_manifest_hash, ops[], new_version? }`，支持 set/remove（merge 要求基于同一 base hash）
 - `PatchMergeResult`：`{ patch, conflicts[] }`，冲突包含路径与涉及的 patch 索引
 - `PatchConflict`：`{ path, kind, patches[], ops[] }`（kind: same_path/prefix_overlap）
@@ -263,6 +263,25 @@ struct ModuleRecord {
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
 
+### 模块治理流程接入（草案）
+
+**流程（概要）**
+1. Agent 编译模块 → 计算 `wasm_hash` → 将工件写入 `modules/<wasm_hash>.wasm`。
+2. 生成 `ModuleManifest` 与变更计划（Register/Activate/Upgrade）。
+3. `propose → shadow → approve → apply`：治理闭环审查模块变更。
+4. `apply` 成功后写入 `RegisterModule/ActivateModule/UpgradeModule` 事件，并更新模块注册表。
+
+**Shadow 校验（示意）**
+- 工件存在性与哈希一致性校验（`wasm_hash`）。
+- 接口版本与 ABI 兼容性校验（`interface_version`）。
+- `required_caps` 与 `Policy` 规则校验。
+- `limits` 合法性校验（不超过系统上限）。
+
+**Apply 行为（示意）**
+- 生成模块生命周期事件并追加到事件流。
+- 更新 `module_registry.json` 与内存缓存索引。
+- 若任何校验失败，拒绝 apply 并记录 `ModuleValidationFailed`。
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
@@ -284,6 +303,9 @@ struct ModuleRecord {
 - `World::save_audit_log(path, filter)`：导出审计事件到文件
 - `diff_manifest(base, target)` / `merge_manifest_patches(base, patches)` / `merge_manifest_patches_with_conflicts(...)`：diff/merge 辅助
 - `Scheduler::tick()`：按确定性顺序调度 agent cells
+- `World::register_module_artifact(wasm_hash, bytes)`：写入模块工件
+- `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
+- `World::module_registry()`：读取模块索引
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
