@@ -99,6 +99,54 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `RegisterModule / ActivateModule / DeactivateModule / UpgradeModule`
 - 以事件写入日志，支持审计与回放
 
+### ABI 与序列化（草案）
+
+> 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
+
+**编码格式**
+- 使用 **Canonical CBOR**（键排序、确定性编码）。
+- 禁止 NaN；浮点仅在明确字段允许时使用（默认使用整数与字节串）。
+- `Bytes` 一律使用 CBOR byte string。
+
+**ModuleContext（CBOR Map）**
+```
+{
+  "v": "wasm-1",
+  "module_id": "...",
+  "trace_id": "...",
+  "time": i64,
+  "origin": { "kind": "event|action|system", "id": "..." },
+  "world_config_hash": "...",
+  "limits": { "max_mem_bytes": u64, "max_gas": u64, "max_output_bytes": u64 }
+}
+```
+
+**Reducer 输入（CBOR Map）**
+```
+{
+  "ctx": ModuleContext,
+  "event": Bytes,   // WorldEvent 的 canonical CBOR
+  "state": Bytes    // reducer 当前状态（canonical CBOR）
+}
+```
+
+**Pure 输入（CBOR Map）**
+```
+{ "ctx": ModuleContext, "input": Bytes }
+```
+
+**ModuleOutput（CBOR Map）**
+```
+{
+  "new_state": Bytes | null,
+  "effects": [ Bytes ], // EffectIntent 的 canonical CBOR 列表
+  "emits": [ Bytes ]    // WorldEvent 的 canonical CBOR 列表
+}
+```
+
+**错误约定**
+- 模块返回非规范 CBOR、输出超限或字段缺失时，宿主记录 `ModuleCallFailed` 事件并拒绝输出。
+
 ### 关键数据结构（草案）
 - `WorldEvent`：`{ id, time, kind, payload, caused_by }`
 - `EffectIntent`：`{ intent_id, kind, params, cap_ref, origin }`
