@@ -30,7 +30,7 @@
 - **冲突检测与快照清理**：merge 时报告冲突；快照保留策略可驱动文件清理。
 - **可观测性**：事件尾随、收据查询、per-agent timeline。
 - **文件级持久化**：journal/snapshot 的落盘与恢复接口。
-- **WASM 模块沙箱（接口预留）**：模块以内容哈希登记，支持动态装载/调用；模块仅通过事件/Effect 与外部交互。
+- **WASM 模块沙箱（最小接入）**：模块以内容哈希登记，支持动态装载/调用；模块仅通过事件/Effect 与外部交互。
 
 ### Agent 机制（已选）
 - **Agent = Cell（keyed reducer）**：每个 agent 由同一 reducer 的 keyed 实例表示（key = `agent_id`），拥有独立状态与 mailbox；事件路由按 key 分发，调度器以确定性顺序轮询。
@@ -67,6 +67,7 @@
 - **M2**：Effect/Receipt 路径 + capability + policy gate
 - **M3**：Agent cells + 调度器 + 基础可观测性
 - **M4**：受控升级（propose/shadow/approve/apply）最小闭环
+- **M5**：WASM 模块治理接入（注册表/路由/沙箱最小执行）
 
 ## 风险
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。
