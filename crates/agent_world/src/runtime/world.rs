@@ -380,6 +380,7 @@ impl World {
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
         let event_bytes = to_canonical_cbor(event)?;
+        let world_config_hash = self.current_manifest_hash()?;
         let mut invoked = 0;
         for module_id in module_ids {
             let (subscribed, manifest) = {
@@ -417,7 +418,7 @@ impl World {
                     id: event.id.to_string(),
                 },
                 limits: manifest.limits.clone(),
-                world_config_hash: None,
+                world_config_hash: Some(world_config_hash.clone()),
             };
             let input = ModuleCallInput {
                 ctx,
@@ -441,6 +442,7 @@ impl World {
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
         let action_bytes = to_canonical_cbor(envelope)?;
+        let world_config_hash = self.current_manifest_hash()?;
         let mut invoked = 0;
 
         for module_id in module_ids {
@@ -479,7 +481,7 @@ impl World {
                     id: envelope.id.to_string(),
                 },
                 limits: manifest.limits.clone(),
-                world_config_hash: None,
+                world_config_hash: Some(world_config_hash.clone()),
             };
             let input = ModuleCallInput {
                 ctx,

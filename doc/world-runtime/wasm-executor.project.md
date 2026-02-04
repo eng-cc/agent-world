@@ -17,10 +17,12 @@
 - [x] E6 补充模块输入 CBOR 编码测试
 - [x] E7 模块输入封装 ModuleContext + event/action envelope
 - [x] E7 补充输入 envelope 编码测试
+- [x] E8 补充 world_config_hash（manifest hash）到 ModuleContext
+- [x] E8 补充 world_config_hash 测试
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module-storage.md`）
 
 ## 状态
-- 当前阶段：E7（输入 envelope 完成）
+- 当前阶段：E8（context hash 已接入）

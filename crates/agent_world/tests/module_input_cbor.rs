@@ -112,6 +112,7 @@ fn module_route_encodes_event_input_as_cbor() {
     world.step().unwrap();
 
     let event = world.journal().events.last().unwrap().clone();
+    let config_hash = world.current_manifest_hash().unwrap();
     let mut sandbox = InspectSandbox::new();
     world.route_event_to_modules(&event, &mut sandbox).unwrap();
 
@@ -120,6 +121,7 @@ fn module_route_encodes_event_input_as_cbor() {
     assert_eq!(decoded.ctx.module_id, "m.cbor");
     assert_eq!(decoded.ctx.origin.kind, "event");
     assert_eq!(decoded.ctx.origin.id, event.id.to_string());
+    assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
     let event_bytes = decoded.event.expect("event bytes");
     let decoded_event: WorldEvent = serde_cbor::from_slice(&event_bytes).unwrap();
     assert_eq!(decoded_event.id, event.id);
@@ -169,6 +171,7 @@ fn module_route_encodes_action_input_as_cbor() {
             pos: pos(0.0, 0.0),
         },
     };
+    let config_hash = world.current_manifest_hash().unwrap();
 
     let mut sandbox = InspectSandbox::new();
     world
@@ -180,6 +183,7 @@ fn module_route_encodes_action_input_as_cbor() {
     assert_eq!(decoded.ctx.module_id, "m.cbor.action");
     assert_eq!(decoded.ctx.origin.kind, "action");
     assert_eq!(decoded.ctx.origin.id, envelope.id.to_string());
+    assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
     let action_bytes = decoded.action.expect("action bytes");
     let decoded_action: ActionEnvelope = serde_cbor::from_slice(&action_bytes).unwrap();
     assert_eq!(decoded_action.id, envelope.id);

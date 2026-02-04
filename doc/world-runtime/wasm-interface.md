@@ -84,7 +84,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
   "trace_id": "...",
   "time": i64,
   "origin": { "kind": "event|action|system", "id": "..." },
-  "world_config_hash": "...",
+  "world_config_hash": "...", // 当前 manifest 哈希
   "limits": { "max_mem_bytes": u64, "max_gas": u64, "max_output_bytes": u64 }
 }
 ```
