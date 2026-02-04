@@ -128,6 +128,38 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - 对 `ModuleValidationFailed` 输出 `proposal_id` 与 `ShadowReport` 引用（若存在）。
 - 对 `ModuleCallFailed` 输出 `trace_id` 与导致的 `EffectIntent`/`WorldEvent` 关联。
 
+### 模块失败事件负载结构（草案）
+
+**ModuleLoadFailed**
+```
+{
+  "module_id": "...",
+  "wasm_hash": "...",
+  "code": "ARTIFACT_MISSING|HASH_MISMATCH|IO_ERROR",
+  "detail": "..."
+}
+```
+
+**ModuleValidationFailed**
+```
+{
+  "module_id": "...",
+  "proposal_id": "...",
+  "code": "ABI_INCOMPATIBLE|CAPS_DENIED|LIMITS_EXCEEDED|VERSION_CONFLICT",
+  "detail": "..."
+}
+```
+
+**ModuleCallFailed**
+```
+{
+  "module_id": "...",
+  "trace_id": "...",
+  "code": "TRAP|TIMEOUT|OUTPUT_TOO_LARGE|EFFECT_LIMIT_EXCEEDED",
+  "detail": "..."
+}
+```
+
 ### 模块事件与校验（草案）
 
 **事件结构（示意）**
