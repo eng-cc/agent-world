@@ -362,6 +362,13 @@ ShadowReport {
 - 当旧事件被裁剪时，低于最早保留 event_id 的 cursor 视为失效。
 - 建议返回 `min_valid_cursor`，提示客户端从最新可用位置继续导出。
 
+**cursor 失效恢复示例**
+```
+request: { cursor: "42" }
+response: { error: "CURSOR_INVALID", min_valid_cursor: "120" }
+next_request: { cursor: "120" }
+```
+
 ### 审计导出示例（草案）
 
 ```
