@@ -435,11 +435,11 @@ impl ModuleSandbox for WasmExecutor {
                     "execution exceeded max_call_ms",
                 ));
             }
-            let mut output: ModuleOutput = serde_json::from_slice(&output_buf).map_err(|err| {
+            let mut output: ModuleOutput = serde_cbor::from_slice(&output_buf).map_err(|err| {
                 self.failure(
                     request,
                     ModuleCallErrorCode::InvalidOutput,
-                    format!("output decode failed: {err}"),
+                    format!("output CBOR decode failed: {err}"),
                 )
             })?;
             output.output_bytes = output_buf.len() as u64;

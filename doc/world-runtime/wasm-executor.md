@@ -57,8 +57,11 @@
 ### 实现要点（E4）
 - Wasmtime 执行器使用 `memory`/`alloc`/`call` 导出进行最小调用（`call(i32, i32) -> (i32, i32)`）。
 - `ModuleCallRequest` 增加 `wasm_bytes`，由 `World::execute_module_call` 注入真实工件。
-- 输出采用 JSON 解码为 `ModuleOutput`（过渡实现，后续对齐 Canonical CBOR）。
 - 集成测试通过 `--features wasmtime` 验证真实 wasm 调用与回放事件一致性。
+
+### 实现要点（E5）
+- 输出采用 Canonical CBOR 解码为 `ModuleOutput`。
+- 集成测试的 wasm 工件输出切换为 CBOR 编码。
 
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。

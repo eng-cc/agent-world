@@ -10,13 +10,13 @@
 - [x] E3 编译缓存与并发安全策略
 - [x] E4 集成测试：真实 wasm 调用、确定性回放
 - [x] 文档更新：运行时集成分册补充执行器细节
-- [ ] E5 切换 ModuleOutput ABI 为 Canonical CBOR
-- [ ] E5 引入 CBOR 编解码与输出校验测试
-- [ ] E5 更新 wasm-interface 与执行器文档说明
+- [x] E5 切换 ModuleOutput ABI 为 Canonical CBOR
+- [x] E5 引入 CBOR 编解码与输出校验测试
+- [x] E5 更新 wasm-interface 与执行器文档说明
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module-storage.md`）
 
 ## 状态
-- 当前阶段：E4（真实 wasm 调用与回放测试已完成，待 CBOR ABI 切换）
+- 当前阶段：E5（CBOR ABI 切换完成）

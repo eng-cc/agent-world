@@ -74,12 +74,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - 使用 **Canonical CBOR**（键排序、确定性编码）。
 - 禁止 NaN；浮点仅在明确字段允许时使用（默认使用整数与字节串）。
 - `Bytes` 一律使用 CBOR byte string。
-- 注：当前 WasmExecutor 测试路径暂以 JSON 编码 `ModuleOutput`，后续切换至 Canonical CBOR。
-
-### CBOR 迁移计划（E5）
-- 增加 `wasm-1` 的 CBOR 规范示例与编码约束说明。
-- WasmExecutor 输出解码由 JSON 切换到 Canonical CBOR（失败映射为 InvalidOutput）。
-- 集成测试改用 CBOR 输出的最小 wasm 工件。
+- WasmExecutor 输出解码使用 Canonical CBOR（失败映射为 InvalidOutput）。
 
 **ModuleContext（CBOR Map）**
 ```
