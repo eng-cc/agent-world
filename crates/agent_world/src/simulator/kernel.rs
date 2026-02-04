@@ -7,9 +7,11 @@ use std::fs;
 use std::path::Path;
 
 use super::persist::{PersistError, WorldJournal, WorldSnapshot};
-use super::power::{AgentPowerState, ConsumeReason, PowerEvent};
+use super::power::{
+    AgentPowerState, ConsumeReason, PlantStatus, PowerEvent, PowerPlant, PowerStorage,
+};
 use super::types::{
-    Action, ActionEnvelope, ActionId, AgentId, LocationId, ResourceKind, ResourceOwner,
+    Action, ActionEnvelope, ActionId, AgentId, FacilityId, LocationId, ResourceKind, ResourceOwner,
     StockError, WorldEventId, WorldTime, JOURNAL_VERSION, SNAPSHOT_VERSION,
 };
 use super::world_model::{movement_cost, Agent, Location, WorldConfig, WorldModel};
@@ -95,6 +97,7 @@ pub enum RejectReason {
     AgentNotFound { agent_id: AgentId },
     LocationAlreadyExists { location_id: LocationId },
     LocationNotFound { location_id: LocationId },
+    FacilityAlreadyExists { facility_id: FacilityId },
     AgentAlreadyAtLocation { agent_id: AgentId, location_id: LocationId },
     InvalidAmount { amount: i64 },
     InsufficientResource {
@@ -582,6 +585,135 @@ impl WorldKernel {
                     pos: location.pos,
                 }
             }
+            Action::RegisterPowerPlant {
+                facility_id,
+                location_id,
+                owner,
+                capacity_per_tick,
+                fuel_cost_per_pu,
+                maintenance_cost,
+                efficiency,
+                degradation,
+            } => {
+                if self.model.power_plants.contains_key(&facility_id)
+                    || self.model.power_storages.contains_key(&facility_id)
+                {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityAlreadyExists { facility_id },
+                    };
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if capacity_per_tick < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: capacity_per_tick,
+                        },
+                    };
+                }
+                if fuel_cost_per_pu < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: fuel_cost_per_pu,
+                        },
+                    };
+                }
+                if maintenance_cost < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: maintenance_cost,
+                        },
+                    };
+                }
+                let plant = PowerPlant {
+                    id: facility_id.clone(),
+                    location_id,
+                    owner,
+                    capacity_per_tick,
+                    current_output: 0,
+                    fuel_cost_per_pu,
+                    maintenance_cost,
+                    status: PlantStatus::Running,
+                    efficiency,
+                    degradation,
+                };
+                self.model.power_plants.insert(facility_id, plant.clone());
+                WorldEventKind::Power(PowerEvent::PowerPlantRegistered { plant })
+            }
+            Action::RegisterPowerStorage {
+                facility_id,
+                location_id,
+                owner,
+                capacity,
+                current_level,
+                charge_efficiency,
+                discharge_efficiency,
+                max_charge_rate,
+                max_discharge_rate,
+            } => {
+                if self.model.power_plants.contains_key(&facility_id)
+                    || self.model.power_storages.contains_key(&facility_id)
+                {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityAlreadyExists { facility_id },
+                    };
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if capacity < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: capacity },
+                    };
+                }
+                if current_level < 0 || current_level > capacity {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: current_level,
+                        },
+                    };
+                }
+                if max_charge_rate < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: max_charge_rate,
+                        },
+                    };
+                }
+                if max_discharge_rate < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: max_discharge_rate,
+                        },
+                    };
+                }
+                let storage = PowerStorage {
+                    id: facility_id.clone(),
+                    location_id,
+                    owner,
+                    capacity,
+                    current_level,
+                    charge_efficiency,
+                    discharge_efficiency,
+                    max_charge_rate,
+                    max_discharge_rate,
+                };
+                self.model
+                    .power_storages
+                    .insert(facility_id, storage.clone());
+                WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage })
+            }
             Action::MoveAgent { agent_id, to } => {
                 let Some(location) = self.model.locations.get(&to) else {
                     return WorldEventKind::ActionRejected {
@@ -814,6 +946,54 @@ impl WorldKernel {
             WorldEventKind::Power(power_event) => {
                 // Replay power events by applying their effects
                 match power_event {
+                    PowerEvent::PowerPlantRegistered { plant } => {
+                        if self.model.power_plants.contains_key(&plant.id)
+                            || self.model.power_storages.contains_key(&plant.id)
+                        {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!("power plant already exists: {}", plant.id),
+                            });
+                        }
+                        if !self.model.locations.contains_key(&plant.location_id) {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "location not found for power plant: {}",
+                                    plant.location_id
+                                ),
+                            });
+                        }
+                        self.ensure_owner_exists(&plant.owner).map_err(|reason| {
+                            PersistError::ReplayConflict {
+                                message: format!("invalid power plant owner: {reason:?}"),
+                            }
+                        })?;
+                        self.model.power_plants.insert(plant.id.clone(), plant.clone());
+                    }
+                    PowerEvent::PowerStorageRegistered { storage } => {
+                        if self.model.power_plants.contains_key(&storage.id)
+                            || self.model.power_storages.contains_key(&storage.id)
+                        {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!("power storage already exists: {}", storage.id),
+                            });
+                        }
+                        if !self.model.locations.contains_key(&storage.location_id) {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "location not found for power storage: {}",
+                                    storage.location_id
+                                ),
+                            });
+                        }
+                        self.ensure_owner_exists(&storage.owner).map_err(|reason| {
+                            PersistError::ReplayConflict {
+                                message: format!("invalid power storage owner: {reason:?}"),
+                            }
+                        })?;
+                        self.model
+                            .power_storages
+                            .insert(storage.id.clone(), storage.clone());
+                    }
                     PowerEvent::PowerConsumed { agent_id, amount, .. } => {
                         if let Some(agent) = self.model.agents.get_mut(agent_id) {
                             let power_config = self.config.power.clone();

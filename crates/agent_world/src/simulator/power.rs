@@ -291,6 +291,14 @@ pub enum ConsumeReason {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum PowerEvent {
+    /// Power plant registered.
+    PowerPlantRegistered {
+        plant: PowerPlant,
+    },
+    /// Power storage registered.
+    PowerStorageRegistered {
+        storage: PowerStorage,
+    },
     /// Power was consumed by an agent.
     PowerConsumed {
         agent_id: AgentId,
