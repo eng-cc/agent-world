@@ -81,6 +81,18 @@ struct ModuleManifest {
 - `action_kinds`: Vec<String>（可选，订阅的动作类型）
 - `filters`: 可选过滤条件（例如仅关注某类 owner/地点）
 
+**ModuleLimits（示意字段）**
+```rust
+struct ModuleLimits {
+    max_mem_bytes: u64,        // 线性内存上限
+    max_gas: u64,              // 指令燃料
+    max_call_rate: u32,        // 每 tick 最大调用次数
+    max_output_bytes: u64,     // 输出上限（ModuleOutput 编码后大小）
+    max_effects: u32,          // 单次调用最大 effect 数量
+    max_emits: u32,            // 单次调用最大 event 数量
+}
+```
+
 **Reducer 调用签名（示意）**
 ```rust
 fn reduce(event: WorldEvent, state: Bytes, ctx: ModuleContext) -> ModuleOutput
@@ -98,6 +110,11 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 **模块生命周期事件（占位）**
 - `RegisterModule / ActivateModule / DeactivateModule / UpgradeModule`
 - 以事件写入日志，支持审计与回放
+
+**模块失败事件（占位）**
+- `ModuleLoadFailed { module_id, wasm_hash, reason }`
+- `ModuleValidationFailed { module_id, reason }`
+- `ModuleCallFailed { module_id, trace_id, reason }`
 
 ### 模块事件与校验（草案）
 
