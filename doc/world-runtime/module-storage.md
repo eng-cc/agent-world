@@ -11,6 +11,7 @@
 - 本地目录结构与文件格式约定（registry/meta/artifacts）。
 - `ModuleStore` 读写 API（写入工件、读写注册表、读写 meta）。
 - 版本号校验与基础错误处理。
+- `World` 侧集成 API：保存/加载模块存储（S2）。
 
 ### Out of Scope
 - 远端对象存储、分布式一致性、加密存储。
@@ -42,12 +43,19 @@ struct ModuleRegistryFile {
 - `save_registry(registry)`：保存注册表
 - `load_registry()`：读取注册表并校验版本
 
+### World 集成 API（示意）
+- `World::save_module_store_to_dir(dir)`：保存 registry/meta/artifacts
+- `World::load_module_store_from_dir(dir)`：加载 registry/meta/artifacts
+  - 读取 registry
+  - 校验 meta 与 registry 一致
+  - 加载工件 bytes 到内存缓存
+
 ### 版本策略
 - `module_registry.json` 使用 `version=1`，不支持版本直接拒绝加载。
 
 ## 里程碑
 - **S1**：实现本地文件存储 ModuleStore
-- **S2**：接入 world 保存/加载流程（可选）
+- **S2**：接入 world 保存/加载流程
 
 ## 风险
 - 文件写入中断导致部分写入，需要原子写入策略。

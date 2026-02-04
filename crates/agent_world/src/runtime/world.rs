@@ -16,6 +16,7 @@ use super::modules::{
     ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits,
     ModuleManifest, ModuleRegistry, ModuleRecord, ModuleSubscription,
 };
+use super::module_store::ModuleStore;
 use super::sandbox::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmitEvent, ModuleOutput,
     ModuleSandbox,
@@ -791,6 +792,23 @@ impl World {
         Ok(())
     }
 
+    pub fn save_module_store_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
+        let store = ModuleStore::new(dir);
+        store.save_registry(&self.module_registry)?;
+        for record in self.module_registry.records.values() {
+            store.write_meta(&record.manifest)?;
+            let wasm_hash = &record.manifest.wasm_hash;
+            let bytes = self
+                .module_artifact_bytes
+                .get(wasm_hash)
+                .ok_or_else(|| WorldError::ModuleStoreArtifactMissing {
+                    wasm_hash: wasm_hash.clone(),
+                })?;
+            store.write_artifact(wasm_hash, bytes)?;
+        }
+        Ok(())
+    }
+
     pub fn load_from_dir(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
         let dir = dir.as_ref();
         let journal_path = dir.join("journal.json");
@@ -798,6 +816,31 @@ impl World {
         let journal = Journal::load_json(journal_path)?;
         let snapshot = Snapshot::load_json(snapshot_path)?;
         Self::from_snapshot(snapshot, journal)
+    }
+
+    pub fn load_module_store_from_dir(
+        &mut self,
+        dir: impl AsRef<Path>,
+    ) -> Result<(), WorldError> {
+        let store = ModuleStore::new(dir);
+        let registry = store.load_registry()?;
+        self.module_registry = registry;
+        self.module_artifacts.clear();
+        self.module_artifact_bytes.clear();
+
+        for record in self.module_registry.records.values() {
+            let wasm_hash = &record.manifest.wasm_hash;
+            let meta = store.read_meta(wasm_hash)?;
+            if meta != record.manifest {
+                return Err(WorldError::ModuleStoreManifestMismatch {
+                    wasm_hash: wasm_hash.clone(),
+                });
+            }
+            let bytes = store.read_artifact(wasm_hash)?;
+            self.module_artifacts.insert(wasm_hash.clone());
+            self.module_artifact_bytes.insert(wasm_hash.clone(), bytes);
+        }
+        Ok(())
     }
 
     pub fn rollback_to_snapshot(

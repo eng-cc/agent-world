@@ -28,6 +28,8 @@ pub enum WorldError {
         detail: String,
     },
     ModuleStoreVersionMismatch { expected: u64, found: u64 },
+    ModuleStoreArtifactMissing { wasm_hash: String },
+    ModuleStoreManifestMismatch { wasm_hash: String },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),
