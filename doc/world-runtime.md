@@ -158,6 +158,36 @@ UpgradeModule {
 - `UpgradeModule` 需满足版本单调递增，且 `from_version` 与当前激活版本一致。
 - 任何模块事件必须来自治理闭环 `apply` 结果，不允许绕过治理直接写入。
 
+### ShadowReport 结构（草案）
+
+> 目标：在 shadow 阶段输出可审计的诊断结果，阻断不可用模块变更。
+
+**ShadowReport（示意）**
+```
+{
+  "proposal_id": "...",
+  "status": "passed|failed|warning",
+  "checked_at": i64,
+  "errors": [
+    { "code": "HASH_MISMATCH", "module_id": "m.weather", "detail": "..." }
+  ],
+  "warnings": [
+    { "code": "LIMITS_HIGH", "module_id": "m.weather", "detail": "..." }
+  ],
+  "modules": [
+    { "module_id": "m.weather", "result": "ok|error|warning", "notes": [ "..." ] }
+  ]
+}
+```
+
+**常见错误码（示意）**
+- `HASH_MISMATCH`：工件哈希不一致
+- `ARTIFACT_MISSING`：工件缺失
+- `ABI_INCOMPATIBLE`：接口版本不兼容
+- `CAPS_DENIED`：能力/政策拒绝
+- `LIMITS_EXCEEDED`：资源上限超出
+- `VERSION_CONFLICT`：版本冲突或非单调升级
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
