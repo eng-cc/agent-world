@@ -52,6 +52,53 @@
 - **Effect / Receipt**：显式副作用与其回执；重放时只读取 receipt，不重新执行 I/O。
 - **Capability / Policy**：运行时授权与治理规则。
 
+### WASM 扩展接口（草案）
+
+> 目标：允许 Agent 自行设计“新事物”模块（Rust → WASM），由世界内核以事件/接口动态调用；模块只产生确定性计算与显式 Effect 意图。
+
+**ModuleManifest（控制面条目）**
+```rust
+struct ModuleManifest {
+    module_id: String,         // 内容地址或哈希
+    name: String,
+    version: String,           // 语义化版本
+    kind: ModuleKind,          // Reducer / Pure（后续可扩展）
+    wasm_hash: String,         // 模块工件哈希
+    interface_version: String, // 例如 "wasm-1"
+    exports: Vec<String>,      // 导出函数名
+    subscriptions: Vec<ModuleSubscription>,
+    required_caps: Vec<CapabilityRef>,
+    limits: ModuleLimits,      // 沙箱资源上限
+}
+```
+
+**ModuleKind**
+- `Reducer`：有状态的确定性 reducer（输入事件 → 新状态 + Effect 意图）
+- `Pure`：无状态纯函数组件（输入 → 输出）
+
+**ModuleSubscription**
+- `event_kinds`: Vec<String>（订阅的事件类型）
+- `action_kinds`: Vec<String>（可选，订阅的动作类型）
+- `filters`: 可选过滤条件（例如仅关注某类 owner/地点）
+
+**Reducer 调用签名（示意）**
+```rust
+fn reduce(event: WorldEvent, state: Bytes, ctx: ModuleContext) -> ModuleOutput
+```
+
+**Pure 调用签名（示意）**
+```rust
+fn call(input: Bytes, ctx: ModuleContext) -> Bytes
+```
+
+**ModuleContext / ModuleOutput（示意）**
+- `ModuleContext`：`{ time, origin, world_config, module_id, trace_id }`
+- `ModuleOutput`：`{ new_state, effects: Vec<EffectIntent>, emits: Vec<WorldEvent> }`
+
+**模块生命周期事件（占位）**
+- `RegisterModule / ActivateModule / DeactivateModule / UpgradeModule`
+- 以事件写入日志，支持审计与回放
+
 ### 关键数据结构（草案）
 - `WorldEvent`：`{ id, time, kind, payload, caused_by }`
 - `EffectIntent`：`{ intent_id, kind, params, cap_ref, origin }`
@@ -68,6 +115,13 @@
 - `SnapshotCatalog`：`{ records[], retention }`
 - `SnapshotRetentionPolicy`：`{ max_snapshots }`
 - `AuditFilter`：`{ kinds?, from_time?, to_time?, from_event_id?, to_event_id?, caused_by? }`
+
+### 模块治理与兼容性（草案）
+- **版本与兼容**：`interface_version` 由内核维护；模块声明兼容范围，若不兼容则拒绝加载。
+- **治理闭环**：模块变更走 `propose → shadow → approve → apply`，升级/回滚均形成审计事件。
+- **沙箱限制**：内存上限、指令燃料（gas）、调用频率、输出/事件大小上限。
+- **能力/政策**：模块不能直接 I/O，只能产出 `EffectIntent`，由 capability/policy 决定是否执行。
+- **确定性约束**：禁止读取真实时间/随机数；非确定性来源必须通过 receipt 写回事件流。
 
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 

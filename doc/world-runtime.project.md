@@ -35,6 +35,17 @@
 - [x] 冲突严重级别与 op 元数据
 - [x] 审计日志导出接口
 
+### 5. 自由沙盒与 WASM 模块接入（M5）
+- [ ] 定义 ModuleManifest/ModuleKind/ModuleSubscription/ModuleLimits 数据结构
+- [ ] 定义 reducer/pure module 的 ABI 签名与序列化约定
+- [ ] 模块注册/激活/升级事件与治理流程接入
+- [ ] 模块加载与缓存（按 wasm_hash）
+- [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
+- [ ] Capability/Policy 与模块调用的绑定校验
+- [ ] 事件订阅与路由（事件 → 模块）
+- [ ] 模块输出校验（effects/emits 限额与大小）
+- [ ] 单元测试/集成测试（确定性回放 + 权限拒绝）
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
@@ -42,4 +53,4 @@
 
 ## 状态
 - 当前阶段：M4（治理闭环 + patch + 回滚 + 审计/保留已具备最小闭环）
-- 下一步：评估是否需要更细粒度审计与 manifest 语义约束
+- 下一步：定义 WASM 模块接口与沙箱治理边界（M5 起步）
