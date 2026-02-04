@@ -1,5 +1,8 @@
 use std::collections::BTreeSet;
 
+use serde::Deserialize;
+use serde_json::Value as JsonValue;
+
 use super::World;
 use super::super::{
     Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleCallErrorCode,
@@ -133,6 +136,7 @@ impl World {
         sandbox: &mut dyn super::super::ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let event_kind = event_kind_label(&event.body);
+        let event_value = serde_json::to_value(event)?;
         let mut module_ids: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
@@ -157,7 +161,11 @@ impl World {
                         reason: format!("module record missing {key}"),
                     })?;
                 let manifest = record.manifest.clone();
-                let subscribed = module_subscribes_to_event(&manifest.subscriptions, event_kind);
+                let subscribed = module_subscribes_to_event(
+                    &manifest.subscriptions,
+                    event_kind,
+                    &event_value,
+                );
                 (subscribed, manifest)
             };
             if !subscribed {
@@ -206,6 +214,7 @@ impl World {
         sandbox: &mut dyn super::super::ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
+        let action_value = serde_json::to_value(envelope)?;
         let mut module_ids: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
@@ -231,7 +240,11 @@ impl World {
                         reason: format!("module record missing {key}"),
                     })?;
                 let manifest = record.manifest.clone();
-                let subscribed = module_subscribes_to_action(&manifest.subscriptions, action_kind);
+                let subscribed = module_subscribes_to_action(
+                    &manifest.subscriptions,
+                    action_kind,
+                    &action_value,
+                );
                 (subscribed, manifest)
             };
             if !subscribed {
@@ -802,21 +815,31 @@ fn action_kind_label(action: &Action) -> &'static str {
     }
 }
 
-fn module_subscribes_to_event(subscriptions: &[ModuleSubscription], event_kind: &str) -> bool {
+fn module_subscribes_to_event(
+    subscriptions: &[ModuleSubscription],
+    event_kind: &str,
+    event_value: &JsonValue,
+) -> bool {
     subscriptions.iter().any(|subscription| {
         subscription
             .event_kinds
             .iter()
             .any(|pattern| subscription_match(pattern, event_kind))
+            && subscription_filters_match(&subscription.filters, FilterKind::Event, event_value)
     })
 }
 
-fn module_subscribes_to_action(subscriptions: &[ModuleSubscription], action_kind: &str) -> bool {
+fn module_subscribes_to_action(
+    subscriptions: &[ModuleSubscription],
+    action_kind: &str,
+    action_value: &JsonValue,
+) -> bool {
     subscriptions.iter().any(|subscription| {
         subscription
             .action_kinds
             .iter()
             .any(|pattern| subscription_match(pattern, action_kind))
+            && subscription_filters_match(&subscription.filters, FilterKind::Action, action_value)
     })
 }
 
@@ -829,4 +852,54 @@ fn subscription_match(pattern: &str, value: &str) -> bool {
         return value.starts_with(prefix);
     }
     pattern == value
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionFilters {
+    #[serde(default)]
+    event: Vec<MatchRule>,
+    #[serde(default)]
+    action: Vec<MatchRule>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MatchRule {
+    path: String,
+    eq: JsonValue,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum FilterKind {
+    Event,
+    Action,
+}
+
+fn subscription_filters_match(
+    filters: &Option<JsonValue>,
+    kind: FilterKind,
+    value: &JsonValue,
+) -> bool {
+    let Some(filters_value) = filters else {
+        return true;
+    };
+    if filters_value.is_null() {
+        return true;
+    }
+    let parsed: SubscriptionFilters = match serde_json::from_value(filters_value.clone()) {
+        Ok(parsed) => parsed,
+        Err(_) => return false,
+    };
+    let rules = match kind {
+        FilterKind::Event => &parsed.event,
+        FilterKind::Action => &parsed.action,
+    };
+    if rules.is_empty() {
+        return true;
+    }
+    rules.iter().all(|rule| {
+        value
+            .pointer(&rule.path)
+            .map(|current| current == &rule.eq)
+            .unwrap_or(false)
+    })
 }
