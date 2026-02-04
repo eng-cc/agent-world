@@ -8,11 +8,13 @@
 //! - `agent`: Agent interface trait and decision types
 //! - `memory`: Agent memory system (short-term, long-term)
 //! - `runner`: AgentRunner, quota, rate limiting, metrics
+//! - `power`: Power system (M4 social system)
 
 mod agent;
 mod kernel;
 mod memory;
 mod persist;
+mod power;
 mod runner;
 mod types;
 mod world_model;
@@ -37,6 +39,9 @@ pub use types::{
     DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, SNAPSHOT_VERSION,
 };
 pub use world_model::{Agent, Asset, AssetKind, Location, WorldConfig, WorldModel};
+
+// Re-export power system types
+pub use power::{AgentPowerState, AgentPowerStatus, ConsumeReason, PowerConfig, PowerEvent};
 
 // Re-export event types from kernel
 pub use kernel::{RejectReason, WorldEvent, WorldEventKind};

@@ -5,6 +5,7 @@ use crate::models::RobotBodySpec;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use super::power::{AgentPowerStatus, PowerConfig};
 use super::types::{
     AgentId, AssetId, LocationId, ResourceKind, ResourceStock, CM_PER_KM,
     DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
@@ -22,6 +23,8 @@ pub struct Agent {
     pub body: RobotBodySpec,
     pub location_id: LocationId,
     pub resources: ResourceStock,
+    /// Power status for M4 power system.
+    pub power: AgentPowerStatus,
 }
 
 impl Agent {
@@ -32,7 +35,30 @@ impl Agent {
             body: RobotBodySpec::default(),
             location_id: location_id.into(),
             resources: ResourceStock::default(),
+            power: AgentPowerStatus::default(),
         }
+    }
+
+    /// Create a new agent with custom power configuration.
+    pub fn new_with_power(
+        id: impl Into<String>,
+        location_id: impl Into<String>,
+        pos: GeoPos,
+        power_config: &PowerConfig,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            pos,
+            body: RobotBodySpec::default(),
+            location_id: location_id.into(),
+            resources: ResourceStock::default(),
+            power: AgentPowerStatus::from_config(power_config),
+        }
+    }
+
+    /// Check if the agent is shut down due to power depletion.
+    pub fn is_shutdown(&self) -> bool {
+        self.power.is_shutdown()
     }
 }
 
@@ -88,6 +114,8 @@ pub struct WorldModel {
 pub struct WorldConfig {
     pub visibility_range_cm: i64,
     pub move_cost_per_km_electricity: i64,
+    /// Power system configuration.
+    pub power: PowerConfig,
 }
 
 impl Default for WorldConfig {
@@ -95,6 +123,7 @@ impl Default for WorldConfig {
         Self {
             visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
             move_cost_per_km_electricity: DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+            power: PowerConfig::default(),
         }
     }
 }

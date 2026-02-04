@@ -32,3 +32,8 @@ pub use simulator::{
     MemoryEntryKind, RateLimitPolicy, RateLimitState, RegisteredAgent, RunnerLogEntry,
     RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
 };
+
+// Power system (M4 social system)
+pub use simulator::{
+    AgentPowerState, AgentPowerStatus, ConsumeReason, PowerConfig, PowerEvent,
+};

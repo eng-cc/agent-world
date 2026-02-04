@@ -106,6 +106,7 @@ fn kernel_registers_and_moves_agent() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
@@ -281,6 +282,7 @@ fn kernel_config_overrides_defaults() {
     let config = WorldConfig {
         visibility_range_cm: CM_PER_KM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config.clone());
     kernel.submit_action(Action::RegisterLocation {
@@ -411,6 +413,7 @@ fn kernel_replay_from_snapshot() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
     kernel.submit_action(Action::RegisterLocation {
@@ -492,6 +495,7 @@ fn kernel_closed_loop_example() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
     let loc1_pos = pos(0.0, 0.0);
@@ -700,6 +704,7 @@ fn agent_runner_register_and_tick() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -756,6 +761,7 @@ fn agent_runner_round_robin() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -806,6 +812,7 @@ fn agent_runner_wait_ticks() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -838,6 +845,7 @@ fn agent_runner_run_multiple_ticks() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -997,6 +1005,7 @@ fn agent_runner_with_quota() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1041,6 +1050,7 @@ fn agent_runner_with_rate_limit() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1087,6 +1097,7 @@ fn agent_runner_per_agent_quota() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1144,6 +1155,7 @@ fn agent_runner_reset_rate_limits() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1194,6 +1206,7 @@ fn runner_metrics_basic() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1254,6 +1267,7 @@ fn runner_metrics_with_quota() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
@@ -1295,6 +1309,7 @@ fn runner_agent_stats() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
         move_cost_per_km_electricity: 0,
+        ..Default::default()
     };
     let mut kernel = WorldKernel::with_config(config);
 
