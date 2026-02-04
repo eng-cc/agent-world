@@ -282,6 +282,27 @@ struct ModuleRecord {
 - 更新 `module_registry.json` 与内存缓存索引。
 - 若任何校验失败，拒绝 apply 并记录 `ModuleValidationFailed`。
 
+**ModuleChangeSet（示意）**
+```rust
+struct ModuleChangeSet {
+    register: Vec<ModuleManifest>,
+    activate: Vec<ModuleActivation>,
+    deactivate: Vec<ModuleDeactivation>,
+    upgrade: Vec<ModuleUpgrade>,
+}
+
+struct ModuleActivation { module_id: String, version: String }
+struct ModuleDeactivation { module_id: String, reason: String }
+struct ModuleUpgrade { module_id: String, from_version: String, to_version: String, wasm_hash: String }
+```
+
+**Apply 事件序列（示意）**
+1. `RegisterModule`（若有 register）
+2. `UpgradeModule`（若有 upgrade）
+3. `ActivateModule`（若有 activate）
+4. `DeactivateModule`（若有 deactivate）
+> 顺序固定以保证回放确定性；同类事件按 `module_id` 字典序处理。
+
 > V1 约定：治理“补丁”采用**完整 manifest 替换**语义（shadow 仅计算候选 manifest 哈希）。
 
 ### 运行时接口（草案）
