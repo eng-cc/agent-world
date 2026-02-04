@@ -78,7 +78,8 @@
 - **快照**：保存世界内核的完整状态（时间、配置、世界模型、待处理队列、事件游标）。
 - **日志**：追加式事件列表（Journal），与快照配合恢复。
 - **存储布局**：目录内 `snapshot.json` + `journal.json`（JSON 格式）。
-- **恢复语义**：加载快照与日志，校验 `journal_len` 一致后恢复内核；回放与分叉在后续阶段完善。
+- **恢复语义**：加载快照与日志，校验 `journal_len` 一致后恢复内核。
+- **回放/分叉**：允许以快照为起点回放 `journal_len` 之后的事件，形成新的内核实例（最小一致性校验）。
 
 ### 运行时接口（草案）
 - **World Kernel**
@@ -87,6 +88,7 @@
   - `query_observation(agent_id)`：生成该 Agent 可见信息
   - `snapshot()` / `restore_from_snapshot(...)`：快照与恢复
   - `save_to_dir(path)` / `load_from_dir(path)`：落盘与冷启动恢复
+  - `replay_from_snapshot(snapshot, journal)`：从快照回放后续事件形成分叉
 - **Agent Runtime**
   - `register_agent(agent_spec)`：注册/加载 Agent
   - `tick(agent_id)`：为 Agent 提供 observation，获取 action（或行动计划），提交到世界

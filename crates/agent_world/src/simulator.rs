@@ -322,6 +322,45 @@ impl WorldKernel {
         })
     }
 
+    pub fn replay_from_snapshot(
+        snapshot: WorldSnapshot,
+        journal: WorldJournal,
+    ) -> Result<Self, PersistError> {
+        if journal.events.len() < snapshot.journal_len {
+            return Err(PersistError::SnapshotMismatch {
+                expected: snapshot.journal_len,
+                actual: journal.events.len(),
+            });
+        }
+        if !snapshot.pending_actions.is_empty() && journal.events.len() > snapshot.journal_len {
+            return Err(PersistError::ReplayConflict {
+                message: "cannot replay with pending actions in snapshot".to_string(),
+            });
+        }
+
+        let mut kernel = Self {
+            time: snapshot.time,
+            config: snapshot.config.sanitized(),
+            next_event_id: snapshot.next_event_id,
+            next_action_id: snapshot.next_action_id,
+            pending_actions: VecDeque::from(snapshot.pending_actions),
+            journal: journal.events.clone(),
+            model: snapshot.model,
+        };
+
+        for event in journal.events.iter().skip(snapshot.journal_len) {
+            kernel.apply_event(event)?;
+        }
+        let events_after_snapshot = journal.events.len() - snapshot.journal_len;
+        if events_after_snapshot > 0 {
+            kernel.next_action_id = kernel
+                .next_action_id
+                .saturating_add(events_after_snapshot as u64);
+        }
+
+        Ok(kernel)
+    }
+
     pub fn save_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), PersistError> {
         let dir = dir.as_ref();
         fs::create_dir_all(dir)?;
@@ -432,9 +471,13 @@ impl WorldKernel {
                         reason: RejectReason::LocationAlreadyExists { location_id },
                     };
                 }
-                let location = Location::new(location_id.clone(), name, pos);
+                let location = Location::new(location_id.clone(), name.clone(), pos);
                 self.model.locations.insert(location_id.clone(), location);
-                WorldEventKind::LocationRegistered { location_id, pos }
+                WorldEventKind::LocationRegistered {
+                    location_id,
+                    name,
+                    pos,
+                }
             }
             Action::RegisterAgent {
                 agent_id,
@@ -553,6 +596,132 @@ impl WorldKernel {
                 Err(reason) => WorldEventKind::ActionRejected { reason },
             },
         }
+    }
+
+    fn apply_event(&mut self, event: &WorldEvent) -> Result<(), PersistError> {
+        if event.id != self.next_event_id {
+            return Err(PersistError::ReplayConflict {
+                message: format!(
+                    "event id mismatch: expected {}, got {}",
+                    self.next_event_id, event.id
+                ),
+            });
+        }
+        if event.time < self.time {
+            return Err(PersistError::ReplayConflict {
+                message: format!(
+                    "event time regression: current {}, got {}",
+                    self.time, event.time
+                ),
+            });
+        }
+        self.time = event.time;
+        self.next_event_id = self.next_event_id.saturating_add(1);
+
+        match &event.kind {
+            WorldEventKind::LocationRegistered {
+                location_id,
+                name,
+                pos,
+            } => {
+                if self.model.locations.contains_key(location_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("location already exists: {location_id}"),
+                    });
+                }
+                self.model.locations.insert(
+                    location_id.clone(),
+                    Location::new(location_id.clone(), name.clone(), *pos),
+                );
+            }
+            WorldEventKind::AgentRegistered {
+                agent_id,
+                location_id,
+                pos,
+            } => {
+                if self.model.agents.contains_key(agent_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent already exists: {agent_id}"),
+                    });
+                }
+                if !self.model.locations.contains_key(location_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("location not found: {location_id}"),
+                    });
+                }
+                let mut agent = Agent::new(agent_id.clone(), location_id.clone(), *pos);
+                agent.pos = *pos;
+                self.model.agents.insert(agent_id.clone(), agent);
+            }
+            WorldEventKind::AgentMoved {
+                agent_id,
+                from,
+                to,
+                electricity_cost,
+                ..
+            } => {
+                let Some(location) = self.model.locations.get(to) else {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("location not found: {to}"),
+                    });
+                };
+                let Some(agent) = self.model.agents.get_mut(agent_id) else {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent not found: {agent_id}"),
+                    });
+                };
+                if &agent.location_id != from {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent {agent_id} not at expected location {from}"),
+                    });
+                }
+                if *electricity_cost > 0 {
+                    let available = agent.resources.get(ResourceKind::Electricity);
+                    if available < *electricity_cost {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "insufficient electricity for move: requested {electricity_cost}, available {available}"
+                            ),
+                        });
+                    }
+                    if let Err(err) = agent
+                        .resources
+                        .remove(ResourceKind::Electricity, *electricity_cost)
+                    {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!("failed to apply move cost: {err:?}"),
+                        });
+                    }
+                }
+                agent.location_id = to.clone();
+                agent.pos = location.pos;
+            }
+            WorldEventKind::ResourceTransferred {
+                from,
+                to,
+                kind,
+                amount,
+            } => {
+                if *amount <= 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: "transfer amount must be positive".to_string(),
+                    });
+                }
+                self.ensure_owner_exists(from).map_err(|reason| {
+                    PersistError::ReplayConflict {
+                        message: format!("invalid transfer source: {reason:?}"),
+                    }
+                })?;
+                self.ensure_owner_exists(to).map_err(|reason| PersistError::ReplayConflict {
+                    message: format!("invalid transfer target: {reason:?}"),
+                })?;
+                self.remove_from_owner_for_replay(from, *kind, *amount)?;
+                self.add_to_owner_for_replay(to, *kind, *amount)?;
+            }
+            WorldEventKind::ActionRejected { .. } => {}
+        }
+
+        Ok(())
     }
 
     fn validate_transfer(
@@ -773,6 +942,83 @@ impl WorldKernel {
             StockError::Insufficient { .. } => RejectReason::InvalidAmount { amount },
         })
     }
+
+    fn remove_from_owner_for_replay(
+        &mut self,
+        owner: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), PersistError> {
+        let stock = match owner {
+            ResourceOwner::Agent { agent_id } => self
+                .model
+                .agents
+                .get_mut(agent_id)
+                .map(|agent| &mut agent.resources)
+                .ok_or_else(|| PersistError::ReplayConflict {
+                    message: format!("agent not found: {agent_id}"),
+                })?,
+            ResourceOwner::Location { location_id } => self
+                .model
+                .locations
+                .get_mut(location_id)
+                .map(|location| &mut location.resources)
+                .ok_or_else(|| PersistError::ReplayConflict {
+                    message: format!("location not found: {location_id}"),
+                })?,
+        };
+
+        stock.remove(kind, amount).map_err(|err| match err {
+            StockError::NegativeAmount { amount } => PersistError::ReplayConflict {
+                message: format!("invalid transfer amount: {amount}"),
+            },
+            StockError::Insufficient {
+                requested,
+                available,
+                ..
+            } => PersistError::ReplayConflict {
+                message: format!(
+                    "insufficient resource {:?}: requested {requested}, available {available}",
+                    kind
+                ),
+            },
+        })
+    }
+
+    fn add_to_owner_for_replay(
+        &mut self,
+        owner: &ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    ) -> Result<(), PersistError> {
+        let stock = match owner {
+            ResourceOwner::Agent { agent_id } => self
+                .model
+                .agents
+                .get_mut(agent_id)
+                .map(|agent| &mut agent.resources)
+                .ok_or_else(|| PersistError::ReplayConflict {
+                    message: format!("agent not found: {agent_id}"),
+                })?,
+            ResourceOwner::Location { location_id } => self
+                .model
+                .locations
+                .get_mut(location_id)
+                .map(|location| &mut location.resources)
+                .ok_or_else(|| PersistError::ReplayConflict {
+                    message: format!("location not found: {location_id}"),
+                })?,
+        };
+
+        stock.add(kind, amount).map_err(|err| match err {
+            StockError::NegativeAmount { amount } => PersistError::ReplayConflict {
+                message: format!("invalid transfer amount: {amount}"),
+            },
+            StockError::Insufficient { .. } => PersistError::ReplayConflict {
+                message: format!("invalid transfer amount: {amount}"),
+            },
+        })
+    }
 }
 
 fn movement_cost(distance_cm: i64, per_km_cost: i64) -> i64 {
@@ -795,6 +1041,7 @@ pub struct WorldEvent {
 pub enum WorldEventKind {
     LocationRegistered {
         location_id: LocationId,
+        name: String,
         pos: GeoPos,
     },
     AgentRegistered {
@@ -904,6 +1151,7 @@ pub enum PersistError {
     Io(String),
     Serde(String),
     SnapshotMismatch { expected: usize, actual: usize },
+    ReplayConflict { message: String },
 }
 
 impl From<io::Error> for PersistError {
@@ -1273,6 +1521,49 @@ mod tests {
 
         let err = WorldKernel::from_snapshot(snapshot, journal).unwrap_err();
         assert!(matches!(err, PersistError::SnapshotMismatch { .. }));
+    }
+
+    #[test]
+    fn kernel_replay_from_snapshot() {
+        let mut kernel = WorldKernel::new();
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(1.0, 1.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+        kernel
+            .model
+            .agents
+            .get_mut("agent-1")
+            .unwrap()
+            .resources
+            .add(ResourceKind::Electricity, 1000)
+            .unwrap();
+
+        let snapshot = kernel.snapshot();
+
+        kernel.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        });
+        kernel.step().unwrap();
+
+        let journal = kernel.journal_snapshot();
+        let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).unwrap();
+
+        assert_eq!(replayed.model(), kernel.model());
+        assert_eq!(replayed.time(), kernel.time());
+        assert_eq!(replayed.journal().len(), kernel.journal().len());
     }
 
     #[test]

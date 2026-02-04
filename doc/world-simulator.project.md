@@ -22,7 +22,7 @@
 - [x] 定义最小存储格式（snapshot.json + journal.json）
 - [ ] 定义版本迁移策略
 - [x] 实现冷启动恢复、断点续跑
-- [ ] 支持回放与“从某个快照继续分叉”（可选）
+- [x] 支持回放与“从某个快照继续分叉”（可选）
 
 ### 3. Agent 运行时与 SDK
 - [ ] 定义 Agent 接口：`observe -> decide -> act`
