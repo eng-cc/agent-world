@@ -472,6 +472,43 @@ ShadowReport {
 - `modules/<wasm_hash>.wasm`：WASM 工件（只读、内容地址）
 - `modules/<wasm_hash>.meta.json`：模块元信息（manifest 快照）
 
+**module_registry.json（示意结构）**
+```
+{
+  "version": 1,
+  "updated_at": 123,
+  "records": [
+    {
+      "wasm_hash": "...",
+      "module_id": "m.weather",
+      "name": "Weather",
+      "version": "0.1.0",
+      "interface_version": "wasm-1",
+      "kind": "Reducer",
+      "registered_at": 120,
+      "registered_by": "agent:alpha",
+      "audit_ref": "event:1234"
+    }
+  ]
+}
+```
+
+**modules/<wasm_hash>.meta.json（示意结构）**
+```
+{
+  "module_id": "m.weather",
+  "name": "Weather",
+  "version": "0.1.0",
+  "interface_version": "wasm-1",
+  "kind": "Reducer",
+  "wasm_hash": "...",
+  "exports": ["reduce"],
+  "subscriptions": ["WorldEvent/WeatherTick"],
+  "required_caps": ["cap.weather.query"],
+  "limits": { "max_mem_bytes": 1048576, "max_gas": 100000, "max_call_rate": 1 }
+}
+```
+
 **ModuleRecord（索引条目）**
 ```rust
 struct ModuleRecord {
