@@ -395,6 +395,20 @@ next_request: { cursor: "120" }
 - `total_records`
 - `generated_at`
 
+**导出包装格式（草案）**
+```
+{
+  "meta": {
+    "export_id": "exp-001",
+    "start_event_id": 100,
+    "end_event_id": 200,
+    "total_records": 42,
+    "generated_at": 1700000000
+  },
+  "records": [ ...AuditRecord... ]
+}
+```
+
 ### 审计导出示例（草案）
 
 ```
