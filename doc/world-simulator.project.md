@@ -9,8 +9,8 @@
 - [x] 移除 Python 脚手架代码（统一以 Rust workspace 为准）
 
 ### 1. 世界内核（MVP）
-- [ ] 定义最小世界模型（Location/Agent/GeoPos/RobotBodySpec/Resource/Asset/Event：电力/硬件/数据为核心资源）
-- [ ] 定义空间坐标与距离（球形世界半径 10,000 km；长度最小单位 1 cm；球面距离/可见范围/移动成本）
+- [x] 定义最小世界模型（Location/Agent/GeoPos/RobotBodySpec/Resource/Asset/Event：电力/硬件/数据为核心资源）
+- [x] 定义空间坐标与距离（球形世界半径 10,000 km；长度最小单位 1 cm；球面距离/可见范围/移动成本）
 - [ ] 定义时间推进与事件队列
 - [ ] 定义 Action 校验与失败原因（可解释）
 - [ ] 实现最小闭环示例：两个 Agent 在两地点之间移动与交互
