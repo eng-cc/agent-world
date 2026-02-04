@@ -1,0 +1,346 @@
+use super::WorldKernel;
+use super::types::WorldEvent;
+use super::super::power::{AgentPowerState, ConsumeReason, PlantStatus, PowerEvent};
+use super::super::types::{AgentId, FacilityId, ResourceKind};
+
+impl WorldKernel {
+    /// Process power consumption for all agents (idle consumption).
+    /// Returns a list of power events generated.
+    pub fn process_power_tick(&mut self) -> Vec<WorldEvent> {
+        let mut events = Vec::new();
+        let idle_cost = self.config.power.idle_cost_per_tick;
+        let power_config = self.config.power.clone();
+
+        let agent_ids: Vec<AgentId> = self.model.agents.keys().cloned().collect();
+
+        for agent_id in agent_ids {
+            let (consumed, remaining, old_state, new_state) = {
+                let agent = match self.model.agents.get_mut(&agent_id) {
+                    Some(a) => a,
+                    None => continue,
+                };
+
+                if agent.power.is_shutdown() {
+                    continue;
+                }
+
+                let old_state = agent.power.state;
+                let consumed = agent.power.consume(idle_cost, &power_config);
+                let new_state = agent.power.state;
+                (consumed, agent.power.level, old_state, new_state)
+            };
+
+            if consumed > 0 {
+                let power_event = PowerEvent::PowerConsumed {
+                    agent_id: agent_id.clone(),
+                    amount: consumed,
+                    reason: ConsumeReason::Idle,
+                    remaining,
+                };
+                let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+
+            if old_state != new_state {
+                let power_event = PowerEvent::PowerStateChanged {
+                    agent_id: agent_id.clone(),
+                    from: old_state,
+                    to: new_state,
+                    trigger_level: remaining,
+                };
+                let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+        }
+
+        events
+    }
+
+    /// Process power generation for all power plants.
+    /// Returns a list of power events generated.
+    pub fn process_power_generation_tick(&mut self) -> Vec<WorldEvent> {
+        let mut events = Vec::new();
+        let plant_ids: Vec<FacilityId> = self.model.power_plants.keys().cloned().collect();
+
+        for plant_id in plant_ids {
+            let (output, location_id) = {
+                let plant = match self.model.power_plants.get_mut(&plant_id) {
+                    Some(plant) => plant,
+                    None => continue,
+                };
+                if plant.status != PlantStatus::Running {
+                    plant.current_output = 0;
+                    continue;
+                }
+                let output = plant.effective_output();
+                plant.current_output = output;
+                (output, plant.location_id.clone())
+            };
+
+            if output <= 0 {
+                continue;
+            }
+
+            if let Some(location) = self.model.locations.get_mut(&location_id) {
+                if location
+                    .resources
+                    .add(ResourceKind::Electricity, output)
+                    .is_err()
+                {
+                    continue;
+                }
+                let power_event = PowerEvent::PowerGenerated {
+                    plant_id: plant_id.clone(),
+                    location_id: location_id.clone(),
+                    amount: output,
+                };
+                let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+        }
+
+        events
+    }
+
+    /// Charge a power storage facility using electricity at its location.
+    /// Returns the power event if charging occurred.
+    pub fn charge_power_storage(
+        &mut self,
+        storage_id: &FacilityId,
+        requested_input: i64,
+    ) -> Option<WorldEvent> {
+        if requested_input <= 0 {
+            return None;
+        }
+        let location_id = self
+            .model
+            .power_storages
+            .get(storage_id)
+            .map(|storage| storage.location_id.clone())?;
+        let available = self
+            .model
+            .locations
+            .get(&location_id)
+            .map(|location| location.resources.get(ResourceKind::Electricity))
+            .unwrap_or(0);
+        if available <= 0 {
+            return None;
+        }
+        let (input, stored) = {
+            let storage = self.model.power_storages.get_mut(storage_id)?;
+            let remaining_capacity = storage.capacity - storage.current_level;
+            if remaining_capacity <= 0 {
+                return None;
+            }
+            if storage.charge_efficiency <= 0.0 {
+                return None;
+            }
+            let max_input_by_capacity =
+                (remaining_capacity as f64 / storage.charge_efficiency).floor() as i64;
+            let input = requested_input
+                .min(available)
+                .min(storage.max_charge_rate)
+                .min(max_input_by_capacity);
+            if input <= 0 {
+                return None;
+            }
+            let stored = (input as f64 * storage.charge_efficiency).floor() as i64;
+            if stored <= 0 {
+                return None;
+            }
+            storage.current_level = storage.current_level.saturating_add(stored);
+            (input, stored)
+        };
+
+        let location = self.model.locations.get_mut(&location_id)?;
+        if location
+            .resources
+            .remove(ResourceKind::Electricity, input)
+            .is_err()
+        {
+            return None;
+        }
+
+        let power_event = PowerEvent::PowerStored {
+            storage_id: storage_id.clone(),
+            location_id,
+            input,
+            stored,
+        };
+        Some(self.record_event(super::types::WorldEventKind::Power(power_event)))
+    }
+
+    /// Discharge a power storage facility, adding electricity to its location.
+    /// Returns the power event if discharging occurred.
+    pub fn discharge_power_storage(
+        &mut self,
+        storage_id: &FacilityId,
+        requested_output: i64,
+    ) -> Option<WorldEvent> {
+        if requested_output <= 0 {
+            return None;
+        }
+        let location_id = self
+            .model
+            .power_storages
+            .get(storage_id)
+            .map(|storage| storage.location_id.clone())?;
+        if !self.model.locations.contains_key(&location_id) {
+            return None;
+        }
+        let (output, drawn) = {
+            let storage = self.model.power_storages.get_mut(storage_id)?;
+            if storage.discharge_efficiency <= 0.0 {
+                return None;
+            }
+            let max_output_by_storage =
+                (storage.current_level as f64 * storage.discharge_efficiency).floor() as i64;
+            let output = requested_output
+                .min(storage.max_discharge_rate)
+                .min(max_output_by_storage);
+            if output <= 0 {
+                return None;
+            }
+            let drawn = (output as f64 / storage.discharge_efficiency).ceil() as i64;
+            let drawn = drawn.min(storage.current_level);
+            if drawn <= 0 {
+                return None;
+            }
+            storage.current_level = storage.current_level.saturating_sub(drawn);
+            (output, drawn)
+        };
+
+        let location = self.model.locations.get_mut(&location_id)?;
+        if location
+            .resources
+            .add(ResourceKind::Electricity, output)
+            .is_err()
+        {
+            return None;
+        }
+
+        let power_event = PowerEvent::PowerDischarged {
+            storage_id: storage_id.clone(),
+            location_id,
+            output,
+            drawn,
+        };
+        Some(self.record_event(super::types::WorldEventKind::Power(power_event)))
+    }
+
+    /// Consume power from an agent for a specific reason.
+    /// Returns the power event if power was consumed.
+    pub fn consume_agent_power(
+        &mut self,
+        agent_id: &AgentId,
+        amount: i64,
+        reason: ConsumeReason,
+    ) -> Option<WorldEvent> {
+        let power_config = self.config.power.clone();
+
+        let (consumed, remaining, old_state, new_state) = {
+            let agent = self.model.agents.get_mut(agent_id)?;
+
+            if agent.power.is_shutdown() {
+                return None;
+            }
+
+            let old_state = agent.power.state;
+            let consumed = agent.power.consume(amount, &power_config);
+            let new_state = agent.power.state;
+
+            if consumed == 0 {
+                return None;
+            }
+
+            (consumed, agent.power.level, old_state, new_state)
+        };
+
+        let power_event = PowerEvent::PowerConsumed {
+            agent_id: agent_id.clone(),
+            amount: consumed,
+            reason,
+            remaining,
+        };
+        let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+
+        if old_state != new_state {
+            let state_event = PowerEvent::PowerStateChanged {
+                agent_id: agent_id.clone(),
+                from: old_state,
+                to: new_state,
+                trigger_level: remaining,
+            };
+            self.record_event(super::types::WorldEventKind::Power(state_event));
+        }
+
+        Some(event)
+    }
+
+    /// Charge an agent's power.
+    /// Returns the power event if power was added.
+    pub fn charge_agent_power(
+        &mut self,
+        agent_id: &AgentId,
+        amount: i64,
+    ) -> Option<WorldEvent> {
+        let power_config = self.config.power.clone();
+
+        let (added, new_level, old_state, new_state) = {
+            let agent = self.model.agents.get_mut(agent_id)?;
+
+            let old_state = agent.power.state;
+            let added = agent.power.charge(amount, &power_config);
+            let new_state = agent.power.state;
+
+            if added == 0 {
+                return None;
+            }
+
+            (added, agent.power.level, old_state, new_state)
+        };
+
+        let power_event = PowerEvent::PowerCharged {
+            agent_id: agent_id.clone(),
+            amount: added,
+            new_level,
+        };
+        let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+
+        if old_state != new_state {
+            let state_event = PowerEvent::PowerStateChanged {
+                agent_id: agent_id.clone(),
+                from: old_state,
+                to: new_state,
+                trigger_level: new_level,
+            };
+            self.record_event(super::types::WorldEventKind::Power(state_event));
+        }
+
+        Some(event)
+    }
+
+    /// Get the power state of an agent.
+    pub fn agent_power_state(&self, agent_id: &AgentId) -> Option<AgentPowerState> {
+        self.model.agents.get(agent_id).map(|a| a.power.state)
+    }
+
+    /// Check if an agent is shut down.
+    pub fn is_agent_shutdown(&self, agent_id: &AgentId) -> bool {
+        self.model
+            .agents
+            .get(agent_id)
+            .map(|a| a.power.is_shutdown())
+            .unwrap_or(false)
+    }
+
+    /// Get all shutdown agents.
+    pub fn shutdown_agents(&self) -> Vec<AgentId> {
+        self.model
+            .agents
+            .iter()
+            .filter(|(_, a)| a.power.is_shutdown())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+}

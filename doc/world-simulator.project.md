@@ -43,6 +43,10 @@
 - [ ] 事件浏览器（筛选、回放、聚合统计）
 - [ ] 运行控制（暂停/加速/单步/回滚到快照）
 
+### 6. 维护
+- [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
+- [x] 对齐 simulator 单元测试与新 API（memory/runner/persist/power/observe）
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
