@@ -74,6 +74,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - 使用 **Canonical CBOR**（键排序、确定性编码）。
 - 禁止 NaN；浮点仅在明确字段允许时使用（默认使用整数与字节串）。
 - `Bytes` 一律使用 CBOR byte string。
+- 注：当前 WasmExecutor 测试路径暂以 JSON 编码 `ModuleOutput`，后续切换至 Canonical CBOR。
 
 **ModuleContext（CBOR Map）**
 ```

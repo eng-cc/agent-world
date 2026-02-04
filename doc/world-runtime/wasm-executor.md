@@ -44,6 +44,22 @@
 - **超时**：引擎 epoch 或外部 watchdog 触发超时。
 - **确定性**：禁用非确定性 host function（时间、随机、I/O）。
 
+### 实现要点（E2）
+- Wasmtime 引擎启用 fuel + epoch interruption 以支持超时/燃料限制。
+- 执行器在调用前预检查请求 limits（fuel/memory/output），并映射到 ModuleCallErrorCode。
+- 输出校验失败路径单元测试覆盖 OutputTooLarge / Timeout 场景。
+
+### 实现要点（E3）
+- 编译缓存以 `wasm_hash` 为键，LRU 策略，容量由 `max_cache_entries` 控制。
+- 缓存通过 `Arc<Mutex<...>>` 共享，允许多执行器克隆共享已编译模块。
+- 编译过程与缓存锁分离，避免长时间持锁。
+
+### 实现要点（E4）
+- Wasmtime 执行器使用 `memory`/`alloc`/`call` 导出进行最小调用（`call(i32, i32) -> (i32, i32)`）。
+- `ModuleCallRequest` 增加 `wasm_bytes`，由 `World::execute_module_call` 注入真实工件。
+- 输出采用 JSON 解码为 `ModuleOutput`（过渡实现，后续对齐 Canonical CBOR）。
+- 集成测试通过 `--features wasmtime` 验证真实 wasm 调用与回放事件一致性。
+
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。
 - **E2**：接入燃料/超时/内存限制，输出校验与错误码映射。

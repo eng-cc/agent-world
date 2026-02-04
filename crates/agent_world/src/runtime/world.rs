@@ -339,7 +339,7 @@ impl World {
         let trace_id = trace_id.into();
         let manifest = self.active_module_manifest(module_id)?.clone();
         let wasm_hash = manifest.wasm_hash.clone();
-        let _artifact = self.load_module(&wasm_hash)?;
+        let artifact = self.load_module(&wasm_hash)?;
 
         let request = ModuleCallRequest {
             module_id: module_id.to_string(),
@@ -347,6 +347,7 @@ impl World {
             trace_id: trace_id.clone(),
             input,
             limits: manifest.limits.clone(),
+            wasm_bytes: artifact.bytes,
         };
 
         let output = match sandbox.call(&request) {
