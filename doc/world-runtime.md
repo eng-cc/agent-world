@@ -346,6 +346,51 @@ ShadowReport {
 ]
 ```
 
+**升级失败示例（含 ShadowReport 警告与失败记录）**
+```
+[
+  {
+    "time": 200,
+    "kind": "GovernanceEvent",
+    "proposal_id": "p-002",
+    "payload": { "proposal_id": "p-002", "author": "agent:gamma", "base_manifest_hash": "h1" }
+  },
+  {
+    "time": 220,
+    "kind": "ShadowReport",
+    "proposal_id": "p-002",
+    "payload": {
+      "proposal_id": "p-002",
+      "status": "warning",
+      "checked_at": 220,
+      "errors": [],
+      "warnings": [
+        { "code": "LIMITS_HIGH", "module_id": "m.weather", "detail": "max_gas too high" }
+      ],
+      "modules": [ { "module_id": "m.weather", "result": "warning", "notes": [ "limits high" ] } ]
+    }
+  },
+  {
+    "time": 230,
+    "kind": "GovernanceEvent",
+    "proposal_id": "p-002",
+    "payload": { "proposal_id": "p-002", "approver": "agent:delta", "decision": "approve", "reason": "accept warning" }
+  },
+  {
+    "time": 240,
+    "kind": "ModuleValidationFailed",
+    "proposal_id": "p-002",
+    "module_id": "m.weather",
+    "payload": {
+      "module_id": "m.weather",
+      "proposal_id": "p-002",
+      "code": "ABI_INCOMPATIBLE",
+      "detail": "interface_version mismatch"
+    }
+  }
+]
+```
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
