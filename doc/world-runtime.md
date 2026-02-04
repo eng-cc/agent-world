@@ -824,6 +824,14 @@ struct Manifest {
 - `GovernanceEvent::Applied` 增加 `module_changes` 字段（可选）
 - 审计导出支持 `Module*Failed` 与 `ShadowReport` 记录
 
+### Manifest 版本与迁移策略（草案）
+
+- `manifest_version`：每份 manifest 显式携带版本号（如 `v1` / `v2`）。
+- **向后兼容**：新字段默认值由加载器填充（如 `module_changes = None`）。
+- **向前拒绝**：内核遇到高于自身支持的版本时拒绝加载并记录审计事件。
+- **迁移路径**：提供 `migrate_manifest(from, to)` 辅助函数；迁移需可确定性重放。
+- **Patch 约束**：`ManifestPatch` 必须基于同一 `base_manifest_hash`，跨版本 patch 直接拒绝。
+
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
 - **M1**：确定性 world kernel + 事件日志 + 最小快照
