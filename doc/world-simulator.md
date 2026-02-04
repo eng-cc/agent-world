@@ -135,6 +135,26 @@
   - `reset_rate_limit(agent_id)`：重置 Agent 的限速状态
 - **调度过滤**：在每个 tick 中自动跳过已耗尽配额或被限速的 Agent
 
+### M3 可观测性（已实现）
+- **RunnerMetrics**：运行时统计数据
+  - `total_ticks`：执行的 tick 总数
+  - `total_agents`：注册的 Agent 数量
+  - `agents_active`：活跃 Agent 数量（未耗尽配额、未被限速）
+  - `agents_quota_exhausted`：已耗尽配额的 Agent 数量
+  - `total_actions` / `total_decisions`：总动作/决策数
+  - `actions_per_tick` / `decisions_per_tick`：每 tick 平均动作/决策数
+- **AgentStats**：单个 Agent 的统计信息
+  - `action_count` / `decision_count`：动作/决策计数
+  - `is_quota_exhausted`：是否已耗尽配额
+  - `wait_until`：等待到期时间
+- **RunnerLogEntry / RunnerLogKind**：事件日志类型
+  - `AgentRegistered` / `AgentUnregistered`：Agent 注册/注销
+  - `AgentDecision`：Agent 决策
+  - `ActionExecuted`：动作执行结果
+  - `AgentSkipped`：Agent 被跳过（含原因）
+  - `QuotaExhausted` / `RateLimited`：配额/限速事件
+  - `MetricsSnapshot`：指标快照
+
 ## 里程碑
 - M0：对齐愿景与边界（本设计文档 + 项目管理文档）
 - M1：世界内核最小闭环（时间、地点、移动、基础事件、可恢复）

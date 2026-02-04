@@ -635,6 +635,178 @@ impl<B: AgentBehavior> AgentRunner<B> {
             agent.behavior.on_event(event);
         }
     }
+
+    /// Get the current metrics for the runner.
+    pub fn metrics(&self) -> RunnerMetrics {
+        let mut total_actions = 0u64;
+        let mut total_decisions = 0u64;
+        let mut agents_active = 0usize;
+        let mut agents_quota_exhausted = 0usize;
+
+        for agent in self.agents.values() {
+            total_actions += agent.action_count;
+            total_decisions += agent.decision_count;
+            // Check quota: use agent-specific quota or default quota
+            let quota = agent.quota.as_ref().or(self.default_quota.as_ref());
+            let is_exhausted = quota
+                .map(|q| q.is_exhausted(agent.action_count, agent.decision_count))
+                .unwrap_or(false);
+            if !is_exhausted {
+                agents_active += 1;
+            } else {
+                agents_quota_exhausted += 1;
+            }
+        }
+
+        RunnerMetrics {
+            total_ticks: self.total_ticks,
+            total_agents: self.agents.len(),
+            agents_active,
+            agents_quota_exhausted,
+            total_actions,
+            total_decisions,
+            actions_per_tick: if self.total_ticks > 0 {
+                total_actions as f64 / self.total_ticks as f64
+            } else {
+                0.0
+            },
+            decisions_per_tick: if self.total_ticks > 0 {
+                total_decisions as f64 / self.total_ticks as f64
+            } else {
+                0.0
+            },
+            success_rate: 0.0, // Will be computed in extended metrics
+        }
+    }
+
+    /// Get detailed metrics with timing information.
+    pub fn metrics_with_kernel(&self, kernel: &WorldKernel) -> RunnerMetrics {
+        let mut metrics = self.metrics();
+        let now = kernel.time();
+
+        // Compute agents that are rate-limited
+        let mut agents_rate_limited = 0usize;
+        for agent in self.agents.values() {
+            if agent.is_rate_limited(now, self.rate_limit_policy.as_ref()) {
+                agents_rate_limited += 1;
+            }
+        }
+
+        // Update active count to exclude rate-limited agents
+        metrics.agents_active = metrics.agents_active.saturating_sub(agents_rate_limited);
+        metrics
+    }
+
+    /// Get per-agent statistics.
+    pub fn agent_stats(&self) -> Vec<AgentStats> {
+        self.agents
+            .iter()
+            .map(|(id, agent)| AgentStats {
+                agent_id: id.clone(),
+                action_count: agent.action_count,
+                decision_count: agent.decision_count,
+                is_quota_exhausted: agent.is_quota_exhausted(),
+                wait_until: agent.wait_until,
+            })
+            .collect()
+    }
+}
+
+/// Metrics for the AgentRunner.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunnerMetrics {
+    /// Total number of ticks executed.
+    pub total_ticks: u64,
+    /// Total number of registered agents.
+    pub total_agents: usize,
+    /// Number of agents that are active (not quota-exhausted, not rate-limited).
+    pub agents_active: usize,
+    /// Number of agents that have exhausted their quota.
+    pub agents_quota_exhausted: usize,
+    /// Total actions taken across all agents.
+    pub total_actions: u64,
+    /// Total decisions made across all agents.
+    pub total_decisions: u64,
+    /// Average actions per tick.
+    pub actions_per_tick: f64,
+    /// Average decisions per tick.
+    pub decisions_per_tick: f64,
+    /// Success rate of actions (0.0 to 1.0).
+    pub success_rate: f64,
+}
+
+impl Default for RunnerMetrics {
+    fn default() -> Self {
+        Self {
+            total_ticks: 0,
+            total_agents: 0,
+            agents_active: 0,
+            agents_quota_exhausted: 0,
+            total_actions: 0,
+            total_decisions: 0,
+            actions_per_tick: 0.0,
+            decisions_per_tick: 0.0,
+            success_rate: 0.0,
+        }
+    }
+}
+
+/// Statistics for a single agent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AgentStats {
+    /// The agent's ID.
+    pub agent_id: String,
+    /// Total actions taken by this agent.
+    pub action_count: u64,
+    /// Total decisions made by this agent.
+    pub decision_count: u64,
+    /// Whether the agent has exhausted its quota.
+    pub is_quota_exhausted: bool,
+    /// Time until which the agent is waiting (if any).
+    pub wait_until: Option<WorldTime>,
+}
+
+/// A log entry for runner events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunnerLogEntry {
+    /// The tick number when this event occurred.
+    pub tick: u64,
+    /// The world time when this event occurred.
+    pub time: WorldTime,
+    /// The event kind.
+    pub kind: RunnerLogKind,
+}
+
+/// Kinds of runner log events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum RunnerLogKind {
+    /// An agent was registered.
+    AgentRegistered { agent_id: String },
+    /// An agent was unregistered.
+    AgentUnregistered { agent_id: String },
+    /// An agent made a decision.
+    AgentDecision {
+        agent_id: String,
+        decision: AgentDecision,
+    },
+    /// An action was executed.
+    ActionExecuted {
+        agent_id: String,
+        action: Action,
+        success: bool,
+    },
+    /// An agent was skipped.
+    AgentSkipped {
+        agent_id: String,
+        reason: SkippedReason,
+    },
+    /// An agent exhausted its quota.
+    QuotaExhausted { agent_id: String },
+    /// An agent was rate-limited.
+    RateLimited { agent_id: String },
+    /// Metrics snapshot.
+    MetricsSnapshot { metrics: RunnerMetrics },
 }
 
 /// Reason why an agent was skipped during scheduling.
@@ -3124,5 +3296,194 @@ mod tests {
         let result = runner.tick(&mut kernel);
         assert!(result.is_some());
         assert!(result.unwrap().has_action());
+    }
+
+    // ========================================================================
+    // Observability and Metrics Tests
+    // ========================================================================
+
+    #[test]
+    fn runner_metrics_basic() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-2".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        runner.register(PatrolAgent::new(
+            "agent-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+        runner.register(PatrolAgent::new(
+            "agent-2",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Initial metrics
+        let metrics = runner.metrics();
+        assert_eq!(metrics.total_ticks, 0);
+        assert_eq!(metrics.total_agents, 2);
+        assert_eq!(metrics.agents_active, 2);
+        assert_eq!(metrics.agents_quota_exhausted, 0);
+        assert_eq!(metrics.total_actions, 0);
+        assert_eq!(metrics.total_decisions, 0);
+
+        // Run some ticks
+        runner.run(&mut kernel, 4);
+
+        // Check metrics after running
+        let metrics = runner.metrics();
+        assert_eq!(metrics.total_ticks, 4);
+        assert_eq!(metrics.total_agents, 2);
+        assert!(metrics.total_actions > 0);
+        assert!(metrics.total_decisions > 0);
+        assert!(metrics.actions_per_tick > 0.0);
+        assert!(metrics.decisions_per_tick > 0.0);
+    }
+
+    #[test]
+    fn runner_metrics_with_quota() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        // Create runner with quota of 2 actions
+        let mut runner: AgentRunner<PatrolAgent> =
+            AgentRunner::with_quota(AgentQuota::max_actions(2));
+        runner.register(PatrolAgent::new(
+            "agent-1",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run until quota exhausted
+        runner.run(&mut kernel, 5);
+
+        let metrics = runner.metrics();
+        assert_eq!(metrics.agents_quota_exhausted, 1);
+        assert_eq!(metrics.agents_active, 0); // All agents quota-exhausted
+        assert_eq!(metrics.total_actions, 2); // Limited by quota
+    }
+
+    #[test]
+    fn runner_agent_stats() {
+        let config = WorldConfig {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+            move_cost_per_km_electricity: 0,
+        };
+        let mut kernel = WorldKernel::with_config(config);
+
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-1".to_string(),
+            name: "base".to_string(),
+            pos: pos(0.0, 0.0),
+        });
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: "loc-2".to_string(),
+            name: "outpost".to_string(),
+            pos: pos(0.01, 0.0),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-a".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.submit_action(Action::RegisterAgent {
+            agent_id: "agent-b".to_string(),
+            location_id: "loc-1".to_string(),
+        });
+        kernel.step_until_empty();
+
+        let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+        runner.register_with_quota(
+            PatrolAgent::new("agent-a", vec!["loc-1".to_string(), "loc-2".to_string()]),
+            AgentQuota::max_actions(1),
+        );
+        runner.register(PatrolAgent::new(
+            "agent-b",
+            vec!["loc-1".to_string(), "loc-2".to_string()],
+        ));
+
+        // Run a few ticks
+        runner.run(&mut kernel, 4);
+
+        // Check per-agent stats
+        let stats = runner.agent_stats();
+        assert_eq!(stats.len(), 2);
+
+        let agent_a_stats = stats.iter().find(|s| s.agent_id == "agent-a").unwrap();
+        assert_eq!(agent_a_stats.action_count, 1);
+        assert!(agent_a_stats.is_quota_exhausted);
+
+        let agent_b_stats = stats.iter().find(|s| s.agent_id == "agent-b").unwrap();
+        assert!(agent_b_stats.action_count >= 1);
+        assert!(!agent_b_stats.is_quota_exhausted);
+    }
+
+    #[test]
+    fn runner_log_entry_serialization() {
+        let entry = RunnerLogEntry {
+            tick: 10,
+            time: 100,
+            kind: RunnerLogKind::AgentRegistered {
+                agent_id: "test-agent".to_string(),
+            },
+        };
+
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("AgentRegistered"));
+        assert!(json.contains("test-agent"));
+
+        let parsed: RunnerLogEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.tick, 10);
+        assert_eq!(parsed.time, 100);
+    }
+
+    #[test]
+    fn runner_metrics_default() {
+        let metrics = RunnerMetrics::default();
+        assert_eq!(metrics.total_ticks, 0);
+        assert_eq!(metrics.total_agents, 0);
+        assert_eq!(metrics.agents_active, 0);
+        assert_eq!(metrics.total_actions, 0);
+        assert_eq!(metrics.actions_per_tick, 0.0);
+        assert_eq!(metrics.success_rate, 0.0);
     }
 }
