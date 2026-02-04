@@ -334,6 +334,9 @@ ShadowReport {
 }
 ```
 
+**审计过滤建议**
+- `AuditFilter.kinds` 应支持 `ManifestMigrated`，便于按迁移事件筛选导出。
+
 ### 审计导出示例（草案）
 
 ```
