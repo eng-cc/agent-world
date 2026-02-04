@@ -573,6 +573,23 @@ fn module_call_policy_denied_records_failure() {
 }
 
 #[test]
+fn wasm_executor_skeleton_reports_unavailable() {
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
+    let request = ModuleCallRequest {
+        module_id: "m.test".to_string(),
+        wasm_hash: "hash".to_string(),
+        trace_id: "trace-1".to_string(),
+        input: vec![],
+        limits: ModuleLimits::default(),
+    };
+
+    let err = sandbox.call(&request).unwrap_err();
+    assert_eq!(err.code, ModuleCallErrorCode::SandboxUnavailable);
+    assert_eq!(err.module_id, "m.test");
+    assert_eq!(err.trace_id, "trace-1");
+}
+
+#[test]
 fn step_with_modules_routes_domain_events() {
     let mut world = World::new();
     world.set_policy(PolicySet::allow_all());

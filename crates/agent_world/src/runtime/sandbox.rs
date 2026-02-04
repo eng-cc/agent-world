@@ -102,3 +102,52 @@ impl ModuleSandbox for FixedSandbox {
         self.result.clone()
     }
 }
+
+/// Configuration for a real WASM executor backend.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WasmExecutorConfig {
+    pub max_fuel: u64,
+    pub max_mem_bytes: u64,
+    pub max_output_bytes: u64,
+    pub max_call_ms: u64,
+    pub max_cache_entries: usize,
+}
+
+impl Default for WasmExecutorConfig {
+    fn default() -> Self {
+        Self {
+            max_fuel: 10_000_000,
+            max_mem_bytes: 64 * 1024 * 1024,
+            max_output_bytes: 4 * 1024 * 1024,
+            max_call_ms: 2_000,
+            max_cache_entries: 32,
+        }
+    }
+}
+
+/// Placeholder WASM executor implementation.
+#[derive(Debug, Clone)]
+pub struct WasmExecutor {
+    config: WasmExecutorConfig,
+}
+
+impl WasmExecutor {
+    pub fn new(config: WasmExecutorConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn config(&self) -> &WasmExecutorConfig {
+        &self.config
+    }
+}
+
+impl ModuleSandbox for WasmExecutor {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        Err(ModuleCallFailure {
+            module_id: request.module_id.clone(),
+            trace_id: request.trace_id.clone(),
+            code: ModuleCallErrorCode::SandboxUnavailable,
+            detail: "wasm executor backend not configured".to_string(),
+        })
+    }
+}
