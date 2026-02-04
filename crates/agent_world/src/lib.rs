@@ -27,7 +27,8 @@ pub use runtime::{
 
 // Agent interface (observe → decide → act)
 pub use simulator::{
-    AgentBehavior, AgentDecision, AgentQuota, AgentRunner, AgentStats, AgentTickResult,
-    ActionResult, RateLimitPolicy, RateLimitState, RegisteredAgent, RunnerLogEntry,
-    RunnerLogKind, RunnerMetrics, SkippedReason,
+    AgentBehavior, AgentDecision, AgentMemory, AgentQuota, AgentRunner, AgentStats,
+    AgentTickResult, ActionResult, LongTermMemory, LongTermMemoryEntry, MemoryEntry,
+    MemoryEntryKind, RateLimitPolicy, RateLimitState, RegisteredAgent, RunnerLogEntry,
+    RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
 };

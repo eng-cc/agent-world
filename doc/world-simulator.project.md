@@ -28,7 +28,7 @@
 - [x] 定义 Agent 接口：`observe -> decide -> act`（AgentBehavior trait + AgentRunner）
 - [x] 实现调度器：公平性、限速、配额（步数/事件/预算）
 - [x] 基础可观测性：事件日志、指标（RunnerMetrics/AgentStats/RunnerLogEntry）
-- [ ] Agent 记忆最小实现：短期上下文 + 长期摘要/索引（可选向量索引）
+- [x] Agent 记忆最小实现：ShortTermMemory + LongTermMemory + AgentMemory
 
 ### 4. 社会系统（电力/硬件/数据）
 - [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本）
@@ -49,5 +49,5 @@
 - （可选）LLM/推理服务接入方式与预算策略（本地/远程、缓存、重试）
 
 ## 状态
-- 当前阶段：M3（Agent 运行时与 SDK）
-- 下一步：实现 Agent 记忆最小实现
+- 当前阶段：M3（Agent 运行时与 SDK）**已完成**
+- 下一步：M4（社会系统 - 电力/硬件/数据）

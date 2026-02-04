@@ -155,6 +155,33 @@
   - `QuotaExhausted` / `RateLimited`：配额/限速事件
   - `MetricsSnapshot`：指标快照
 
+### M3 Agent 记忆系统（已实现）
+- **ShortTermMemory**：短期记忆缓冲区
+  - 固定容量的 FIFO 队列
+  - 支持按时间/重要性筛选
+  - `add(entry)`：添加记忆条目
+  - `recent(n)`：获取最近 N 条记忆
+  - `since(time)`：获取指定时间后的记忆
+  - `important(threshold)`：获取重要性超过阈值的记忆
+  - `summarize(max_entries)`：生成上下文摘要
+- **LongTermMemory**：长期记忆存储
+  - 支持标签和内容搜索
+  - 按重要性自动淘汰（容量限制时）
+  - `store(content, time)`：存储记忆
+  - `search_by_tag(tag)`：按标签搜索
+  - `search_by_content(query)`：按内容搜索（子串匹配）
+  - `top_by_importance(n)`：获取最重要的 N 条
+- **AgentMemory**：组合记忆系统
+  - `record_observation/decision/action_result/event/note`：便捷记录方法
+  - `consolidate(time, threshold)`：将短期重要记忆转存到长期
+  - `context_summary(max_recent)`：获取决策上下文摘要
+- **MemoryEntry / MemoryEntryKind**：记忆条目类型
+  - `Observation`：观察记录
+  - `Decision`：决策记录
+  - `ActionResult`：动作结果
+  - `Event`：外部事件
+  - `Note`：自定义笔记
+
 ## 里程碑
 - M0：对齐愿景与边界（本设计文档 + 项目管理文档）
 - M1：世界内核最小闭环（时间、地点、移动、基础事件、可恢复）
