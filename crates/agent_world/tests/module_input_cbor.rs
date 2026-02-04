@@ -190,3 +190,55 @@ fn module_route_encodes_action_input_as_cbor() {
     let decoded_action: ActionEnvelope = serde_cbor::from_slice(&action_bytes).unwrap();
     assert_eq!(decoded_action.id, envelope.id);
 }
+
+#[test]
+fn module_route_pure_input_omits_state() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-cbor-pure";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.cbor.pure".to_string(),
+        name: "CBOR Pure".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    apply_module_manifest(&mut world, module_manifest);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let event = world.journal().events.last().unwrap().clone();
+    let mut sandbox = InspectSandbox::new();
+    world.route_event_to_modules(&event, &mut sandbox).unwrap();
+
+    let request = sandbox.last_request.unwrap();
+    let decoded: ModuleCallInput = serde_cbor::from_slice(&request.input).unwrap();
+    assert!(decoded.state.is_none());
+}

@@ -118,6 +118,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 ```
 
 - 当 `new_state` 为非空时，运行时记录 `ModuleStateUpdated` 事件并更新模块状态。
+- Pure 模块不得返回 `new_state`，否则视为 InvalidOutput。
 
 **错误约定**
 - 模块返回非规范 CBOR、输出超限或字段缺失时，宿主记录 `ModuleCallFailed` 事件并拒绝输出。

@@ -79,6 +79,7 @@
 ### 实现要点（E10）
 - reducer 调用输入携带 `state`（空字节串代表无历史状态）。
 - 模块返回 `new_state` 时记录 `ModuleStateUpdated` 并更新状态，保证回放一致。
+- pure 模块返回 `new_state` 视为 InvalidOutput。
 
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。

@@ -1,7 +1,8 @@
 use agent_world::{
-    Action, GeoPos, Manifest, ModuleActivation, ModuleCallFailure, ModuleCallInput,
-    ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest, ModuleOutput,
-    ModuleSandbox, ModuleSubscription, PolicySet, ProposalDecision, World, WorldEventBody,
+    Action, GeoPos, Manifest, ModuleActivation, ModuleCallErrorCode, ModuleCallFailure,
+    ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleOutput, ModuleSandbox, ModuleSubscription, PolicySet, ProposalDecision, World,
+    WorldError, WorldEventBody, FixedSandbox,
 };
 use sha2::{Digest, Sha256};
 
@@ -139,4 +140,63 @@ fn reducer_state_updates_and_is_reused() {
         world.state().module_states.get("m.state"),
         Some(&b"state-1".to_vec())
     );
+}
+
+#[test]
+fn pure_module_new_state_is_rejected() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-state-pure";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.pure".to_string(),
+        name: "Pure".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    apply_module_manifest(&mut world, module_manifest);
+
+    let output = ModuleOutput {
+        new_state: Some(b"bad".to_vec()),
+        effects: Vec::new(),
+        emits: Vec::new(),
+        output_bytes: 0,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    let err = world
+        .execute_module_call("m.pure", "trace-1", Vec::new(), &mut sandbox)
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        WorldError::ModuleCallFailed {
+            code: ModuleCallErrorCode::InvalidOutput,
+            ..
+        }
+    ));
+
+    let has_state_event = world
+        .journal()
+        .events
+        .iter()
+        .any(|event| matches!(event.body, WorldEventBody::ModuleStateUpdated(_)));
+    assert!(!has_state_event);
 }

@@ -24,6 +24,7 @@
 - [x] E10 reducer 输入携带 state（空字节串默认）
 - [x] E10 new_state 触发 ModuleStateUpdated 并回放一致
 - [x] E10 补充模块状态输入/更新测试
+- [x] E10 pure 模块返回 new_state 视为 InvalidOutput
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
