@@ -362,6 +362,10 @@ ShadowReport {
 - 可用不透明字符串（如 base64 编码的 event_id + 校验和）以避免直接猜测事件编号。
 - 解析失败视为 `CURSOR_INVALID`，不泄露内部事件结构。
 
+**与 AuditFilter 的关系**
+- 当使用不透明 cursor 时，客户端不应假设可直接比较/递增 event_id。
+- 服务端负责将 cursor 解码为内部起点，再结合 `AuditFilter` 进行筛选与分页。
+
 **与快照保留/裁剪的关系**
 - 当旧事件被裁剪时，低于最早保留 event_id 的 cursor 视为失效。
 - 建议返回 `min_valid_cursor`，提示客户端从最新可用位置继续导出。
