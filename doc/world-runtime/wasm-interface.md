@@ -94,7 +94,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 {
   "ctx": ModuleContext,
   "event": Bytes,   // WorldEvent 的 canonical CBOR
-  "state": Bytes    // reducer 当前状态（canonical CBOR）
+  "state": Bytes    // reducer 当前状态（canonical CBOR，若无则为空字节串）
 }
 ```
 
@@ -104,8 +104,9 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 ```
 
 **ModuleCallInput（当前运行时）**
-- 当前 runtime 以 `ModuleCallInput { ctx, event? , action? }` 作为调用输入封装。
-- `event`/`action` 字段均为 canonical CBOR bytes（无 state 字段）。
+- 当前 runtime 以 `ModuleCallInput { ctx, event?, action?, state? }` 作为调用输入封装。
+- `event`/`action` 字段均为 canonical CBOR bytes。
+- reducer 调用会携带 `state`（空字节串代表无历史状态），pure 调用省略 `state`。
 
 **ModuleOutput（CBOR Map）**
 ```
@@ -115,6 +116,8 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
   "emits": [ Bytes ]    // WorldEvent 的 canonical CBOR 列表
 }
 ```
+
+- 当 `new_state` 为非空时，运行时记录 `ModuleStateUpdated` 事件并更新模块状态。
 
 **错误约定**
 - 模块返回非规范 CBOR、输出超限或字段缺失时，宿主记录 `ModuleCallFailed` 事件并拒绝输出。

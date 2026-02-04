@@ -122,6 +122,7 @@ fn module_route_encodes_event_input_as_cbor() {
     assert_eq!(decoded.ctx.origin.kind, "event");
     assert_eq!(decoded.ctx.origin.id, event.id.to_string());
     assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
+    assert_eq!(decoded.state, Some(Vec::new()));
     let event_bytes = decoded.event.expect("event bytes");
     let decoded_event: WorldEvent = serde_cbor::from_slice(&event_bytes).unwrap();
     assert_eq!(decoded_event.id, event.id);
@@ -184,6 +185,7 @@ fn module_route_encodes_action_input_as_cbor() {
     assert_eq!(decoded.ctx.origin.kind, "action");
     assert_eq!(decoded.ctx.origin.id, envelope.id.to_string());
     assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
+    assert_eq!(decoded.state, Some(Vec::new()));
     let action_bytes = decoded.action.expect("action bytes");
     let decoded_action: ActionEnvelope = serde_cbor::from_slice(&action_bytes).unwrap();
     assert_eq!(decoded_action.id, envelope.id);

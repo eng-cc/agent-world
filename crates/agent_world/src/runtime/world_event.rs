@@ -8,7 +8,7 @@ use super::events::{CausedBy, DomainEvent};
 use super::governance::GovernanceEvent;
 use super::manifest::ManifestUpdate;
 use super::modules::ModuleEvent;
-use super::sandbox::{ModuleCallFailure, ModuleEmitEvent};
+use super::sandbox::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
 use super::policy::PolicyDecisionRecord;
 use super::snapshot::{RollbackEvent, SnapshotMeta};
 use super::types::{WorldEventId, WorldTime};
@@ -33,6 +33,7 @@ impl WorldEvent {
             WorldEventBody::ModuleEvent(_) => AuditEventKind::ModuleEvent,
             WorldEventBody::ModuleCallFailed(_) => AuditEventKind::ModuleCallFailed,
             WorldEventBody::ModuleEmitted(_) => AuditEventKind::ModuleEmitted,
+            WorldEventBody::ModuleStateUpdated(_) => AuditEventKind::ModuleStateUpdated,
             WorldEventBody::SnapshotCreated(_) => AuditEventKind::SnapshotCreated,
             WorldEventBody::ManifestUpdated(_) => AuditEventKind::ManifestUpdated,
             WorldEventBody::RollbackApplied(_) => AuditEventKind::RollbackApplied,
@@ -52,6 +53,7 @@ pub enum WorldEventBody {
     ModuleEvent(ModuleEvent),
     ModuleCallFailed(ModuleCallFailure),
     ModuleEmitted(ModuleEmitEvent),
+    ModuleStateUpdated(ModuleStateUpdate),
     SnapshotCreated(SnapshotMeta),
     ManifestUpdated(ManifestUpdate),
     RollbackApplied(RollbackEvent),

@@ -18,6 +18,7 @@ pub enum AuditEventKind {
     ModuleEvent,
     ModuleCallFailed,
     ModuleEmitted,
+    ModuleStateUpdated,
     SnapshotCreated,
     ManifestUpdated,
     RollbackApplied,

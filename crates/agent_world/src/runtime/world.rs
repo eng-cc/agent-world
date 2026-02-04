@@ -14,12 +14,12 @@ use super::governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecisi
 use super::manifest::{apply_manifest_patch, Manifest, ManifestPatch, ManifestUpdate};
 use super::modules::{
     ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits,
-    ModuleManifest, ModuleRegistry, ModuleRecord, ModuleSubscription,
+    ModuleKind, ModuleManifest, ModuleRegistry, ModuleRecord, ModuleSubscription,
 };
 use super::module_store::ModuleStore;
 use super::sandbox::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest,
-    ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox,
+    ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox, ModuleStateUpdate,
 };
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
@@ -421,10 +421,21 @@ impl World {
                 limits: manifest.limits.clone(),
                 world_config_hash: Some(world_config_hash.clone()),
             };
+            let state = match manifest.kind {
+                ModuleKind::Reducer => Some(
+                    self.state
+                        .module_states
+                        .get(&module_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                ),
+                ModuleKind::Pure => None,
+            };
             let input = ModuleCallInput {
                 ctx,
                 event: Some(event_bytes.clone()),
                 action: None,
+                state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
             self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
@@ -484,10 +495,21 @@ impl World {
                 limits: manifest.limits.clone(),
                 world_config_hash: Some(world_config_hash.clone()),
             };
+            let state = match manifest.kind {
+                ModuleKind::Reducer => Some(
+                    self.state
+                        .module_states
+                        .get(&module_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                ),
+                ModuleKind::Pure => None,
+            };
             let input = ModuleCallInput {
                 ctx,
                 event: None,
                 action: Some(action_bytes.clone()),
+                state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
             self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
@@ -1105,6 +1127,11 @@ impl World {
             }
             WorldEventBody::ModuleCallFailed(_) => {}
             WorldEventBody::ModuleEmitted(_) => {}
+            WorldEventBody::ModuleStateUpdated(update) => {
+                self.state
+                    .module_states
+                    .insert(update.module_id.clone(), update.state.clone());
+            }
             WorldEventBody::SnapshotCreated(_) => {}
             WorldEventBody::ManifestUpdated(update) => {
                 self.manifest = update.manifest.clone();
@@ -1672,6 +1699,14 @@ impl World {
         manifest: &ModuleManifest,
         output: &ModuleOutput,
     ) -> Result<(), WorldError> {
+        if manifest.kind == ModuleKind::Pure && output.new_state.is_some() {
+            return self.module_call_failed(ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::InvalidOutput,
+                detail: "pure module returned new_state".to_string(),
+            });
+        }
         if output.effects.len() as u32 > manifest.limits.max_effects {
             return self.module_call_failed(ModuleCallFailure {
                 module_id: module_id.to_string(),
@@ -1748,6 +1783,15 @@ impl World {
             intents.push(intent);
         }
 
+        if let Some(state) = &output.new_state {
+            let update = ModuleStateUpdate {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                state: state.clone(),
+            };
+            self.append_event(WorldEventBody::ModuleStateUpdated(update), None)?;
+        }
+
         for intent in intents {
             self.append_event(WorldEventBody::EffectQueued(intent), None)?;
         }
@@ -1801,6 +1845,7 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
         WorldEventBody::ModuleEvent(_) => "module.event",
         WorldEventBody::ModuleCallFailed(_) => "module.call_failed",
         WorldEventBody::ModuleEmitted(_) => "module.emitted",
+        WorldEventBody::ModuleStateUpdated(_) => "module.state_updated",
         WorldEventBody::SnapshotCreated(_) => "snapshot.created",
         WorldEventBody::ManifestUpdated(_) => "manifest.updated",
         WorldEventBody::RollbackApplied(_) => "rollback.applied",

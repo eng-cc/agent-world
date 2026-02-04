@@ -14,6 +14,8 @@ use super::types::WorldTime;
 pub struct WorldState {
     pub time: WorldTime,
     pub agents: BTreeMap<String, AgentCell>,
+    #[serde(default)]
+    pub module_states: BTreeMap<String, Vec<u8>>,
 }
 
 impl Default for WorldState {
@@ -21,6 +23,7 @@ impl Default for WorldState {
         Self {
             time: 0,
             agents: BTreeMap::new(),
+            module_states: BTreeMap::new(),
         }
     }
 }

@@ -76,6 +76,10 @@
 - `ModuleContext.world_config_hash` 使用当前 manifest 的哈希（`current_manifest_hash`）。
 - 输入 envelope 测试校验 `world_config_hash` 一致性。
 
+### 实现要点（E10）
+- reducer 调用输入携带 `state`（空字节串代表无历史状态）。
+- 模块返回 `new_state` 时记录 `ModuleStateUpdated` 并更新状态，保证回放一致。
+
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。
 - **E2**：接入燃料/超时/内存限制，输出校验与错误码映射。

@@ -76,6 +76,8 @@ pub struct ModuleCallInput {
     pub event: Option<Vec<u8>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<Vec<u8>>,
 }
 
 /// Error codes for module call failures.
@@ -109,6 +111,14 @@ pub struct ModuleEmitEvent {
     pub trace_id: String,
     pub kind: String,
     pub payload: JsonValue,
+}
+
+/// Event emitted when a module updates its reducer state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleStateUpdate {
+    pub module_id: String,
+    pub trace_id: String,
+    pub state: Vec<u8>,
 }
 
 /// Module sandbox trait for execution backends.
