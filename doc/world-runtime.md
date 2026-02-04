@@ -305,7 +305,7 @@ ShadowReport {
 ```
 {
   "time": i64,
-  "kind": "GovernanceEvent|ShadowReport|ModuleLoadFailed|ModuleValidationFailed|ModuleCallFailed",
+  "kind": "GovernanceEvent|ShadowReport|ModuleLoadFailed|ModuleValidationFailed|ModuleCallFailed|ManifestMigrated",
   "proposal_id": "...",
   "module_id": "...",
   "trace_id": "...",
@@ -317,6 +317,22 @@ ShadowReport {
 - `proposal_id` 维度：追踪一次治理链路的全量记录。
 - `module_id` 维度：追踪模块生命周期与失败原因。
 - `trace_id` 维度：追踪运行时调用链路。
+- `manifest_hash` 维度：追踪迁移前后版本变更。
+
+**ManifestMigrated 审计记录示意**
+```
+{
+  "time": 300,
+  "kind": "ManifestMigrated",
+  "payload": {
+    "from_version": "v1",
+    "to_version": "v2",
+    "from_hash": "h1",
+    "to_hash": "h2",
+    "reason": "load_restore"
+  }
+}
+```
 
 ### 审计导出示例（草案）
 

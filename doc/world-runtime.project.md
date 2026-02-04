@@ -70,6 +70,7 @@
 - [x] 补充 Manifest 版本与迁移策略（向后兼容/向前拒绝/迁移函数）
 - [x] 补充加载/恢复时迁移流程与 base_manifest_hash 行为
 - [x] 补充迁移审计事件（ManifestMigrated）
+- [x] 补充 ManifestMigrated 的 AuditRecord 集成示例
 - [ ] 实现集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
