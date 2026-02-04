@@ -298,6 +298,54 @@ ShadowReport {
 - `module_id` 维度：追踪模块生命周期与失败原因。
 - `trace_id` 维度：追踪运行时调用链路。
 
+### 审计导出示例（草案）
+
+```
+[
+  {
+    "time": 100,
+    "kind": "GovernanceEvent",
+    "proposal_id": "p-001",
+    "payload": { "proposal_id": "p-001", "author": "agent:alpha", "base_manifest_hash": "h0" }
+  },
+  {
+    "time": 120,
+    "kind": "ShadowReport",
+    "proposal_id": "p-001",
+    "payload": {
+      "proposal_id": "p-001",
+      "status": "passed",
+      "checked_at": 120,
+      "errors": [],
+      "warnings": [],
+      "modules": [ { "module_id": "m.weather", "result": "ok", "notes": [] } ]
+    }
+  },
+  {
+    "time": 130,
+    "kind": "GovernanceEvent",
+    "proposal_id": "p-001",
+    "payload": { "proposal_id": "p-001", "approver": "agent:beta", "decision": "approve", "reason": "" }
+  },
+  {
+    "time": 140,
+    "kind": "GovernanceEvent",
+    "proposal_id": "p-001",
+    "payload": {
+      "proposal_id": "p-001",
+      "manifest_hash": "h1",
+      "module_changes": {
+        "register": [ { "module_id": "m.weather", "version": "0.1.0" } ],
+        "activate": [ { "module_id": "m.weather", "version": "0.1.0" } ],
+        "deactivate": [],
+        "upgrade": []
+      },
+      "module_events": [ "RegisterModule", "ActivateModule" ]
+    }
+  }
+]
+```
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
