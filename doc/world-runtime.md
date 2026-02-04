@@ -364,6 +364,19 @@ struct Manifest {
 }
 ```
 
+### ModuleChangeSet 生命周期（草案）
+
+**提案阶段**
+- `module_changes` 仅存在于提案的 manifest 中，用于描述预期模块变更。
+- Shadow 阶段完成校验后生成 `ShadowReport`（包含错误/警告/通过项）。
+
+**Apply 阶段**
+- apply 时按事件序列写入生命周期事件，并更新注册表索引。
+- apply 完成后，活动 manifest 中的 `module_changes` 应清空为 `null`（避免重复应用）。
+
+**回放阶段**
+- 注册表由事件流重建；`module_changes` 仅用于审计历史，不作为运行时指令。
+
 ### 多补丁冲突处理（草案）
 
 > 目标：在 merge/patch 叠加时，确保模块变更的确定性与可审计性。
