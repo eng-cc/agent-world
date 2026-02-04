@@ -55,6 +55,7 @@
 
 ### 详细设计分册
 - `doc/world-runtime/wasm-interface.md`：WASM 扩展接口、ABI/序列化、关键数据结构
+- `doc/world-runtime/wasm-executor.md`：WASM 执行器接入（真实运行时与资源限制）
 - `doc/world-runtime/governance-events.md`：模块事件、ShadowReport、失败事件与治理事件负载
 - `doc/world-runtime/audit-export.md`：审计导出记录、分页/分片、一致性与示例
 - `doc/world-runtime/module-lifecycle.md`：模块治理与兼容性、注册表、治理流程、ModuleChangeSet、冲突与迁移
