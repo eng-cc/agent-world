@@ -16,6 +16,8 @@ pub enum AuditEventKind {
     PolicyDecision,
     Governance,
     ModuleEvent,
+    ModuleCallFailed,
+    ModuleEmitted,
     SnapshotCreated,
     ManifestUpdated,
     RollbackApplied,

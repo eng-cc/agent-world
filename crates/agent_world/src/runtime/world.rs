@@ -16,6 +16,10 @@ use super::modules::{
     ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleLimits,
     ModuleManifest, ModuleRegistry, ModuleRecord,
 };
+use super::sandbox::{
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmitEvent, ModuleOutput,
+    ModuleSandbox,
+};
 use super::policy::{PolicyDecisionRecord, PolicySet};
 use super::signer::ReceiptSigner;
 use super::snapshot::{Journal, RollbackEvent, Snapshot, SnapshotCatalog, SnapshotRecord, SnapshotRetentionPolicy};
@@ -324,6 +328,46 @@ impl World {
         Ok(())
     }
 
+    pub fn execute_module_call(
+        &mut self,
+        module_id: &str,
+        trace_id: impl Into<String>,
+        input: Vec<u8>,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, WorldError> {
+        let trace_id = trace_id.into();
+        let manifest = self.active_module_manifest(module_id)?.clone();
+        let wasm_hash = manifest.wasm_hash.clone();
+        let _artifact = self.load_module(&wasm_hash)?;
+
+        let request = ModuleCallRequest {
+            module_id: module_id.to_string(),
+            wasm_hash,
+            trace_id: trace_id.clone(),
+            input,
+            limits: manifest.limits.clone(),
+        };
+
+        let output = match sandbox.call(&request) {
+            Ok(output) => output,
+            Err(failure) => {
+                self.append_event(
+                    WorldEventBody::ModuleCallFailed(failure.clone()),
+                    None,
+                )?;
+                return Err(WorldError::ModuleCallFailed {
+                    module_id: failure.module_id,
+                    trace_id: failure.trace_id,
+                    code: failure.code,
+                    detail: failure.detail,
+                });
+            }
+        };
+
+        self.process_module_output(module_id, &trace_id, &manifest, &output)?;
+        Ok(output)
+    }
+
     // -------------------------------------------------------------------------
     // Manifest and governance
     // -------------------------------------------------------------------------
@@ -524,6 +568,19 @@ impl World {
         cap_ref: impl Into<String>,
         origin: EffectOrigin,
     ) -> Result<String, WorldError> {
+        let intent = self.build_effect_intent(kind, params, cap_ref, origin)?;
+        let intent_id = intent.intent_id.clone();
+        self.append_event(WorldEventBody::EffectQueued(intent), None)?;
+        Ok(intent_id)
+    }
+
+    fn build_effect_intent(
+        &mut self,
+        kind: impl Into<String>,
+        params: JsonValue,
+        cap_ref: impl Into<String>,
+        origin: EffectOrigin,
+    ) -> Result<EffectIntent, WorldError> {
         let kind = kind.into();
         let cap_ref = cap_ref.into();
         let intent_id = format!("intent-{}", self.next_intent_id);
@@ -561,8 +618,7 @@ impl World {
             });
         }
 
-        self.append_event(WorldEventBody::EffectQueued(intent), None)?;
-        Ok(intent_id)
+        Ok(intent)
     }
 
     pub fn ingest_receipt(&mut self, mut receipt: EffectReceipt) -> Result<WorldEventId, WorldError> {
@@ -845,6 +901,8 @@ impl World {
             WorldEventBody::ModuleEvent(event) => {
                 self.apply_module_event(event, time)?;
             }
+            WorldEventBody::ModuleCallFailed(_) => {}
+            WorldEventBody::ModuleEmitted(_) => {}
             WorldEventBody::SnapshotCreated(_) => {}
             WorldEventBody::ManifestUpdated(update) => {
                 self.manifest = update.manifest.clone();
@@ -1224,6 +1282,135 @@ impl World {
             });
         }
         Ok(())
+    }
+
+    fn active_module_manifest(&self, module_id: &str) -> Result<&ModuleManifest, WorldError> {
+        let version = self
+            .module_registry
+            .active
+            .get(module_id)
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!("module not active {module_id}"),
+            })?;
+        let key = ModuleRegistry::record_key(module_id, version);
+        let record = self
+            .module_registry
+            .records
+            .get(&key)
+            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                reason: format!("module record missing {key}"),
+            })?;
+        Ok(&record.manifest)
+    }
+
+    fn process_module_output(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        manifest: &ModuleManifest,
+        output: &ModuleOutput,
+    ) -> Result<(), WorldError> {
+        if output.effects.len() as u32 > manifest.limits.max_effects {
+            return self.module_call_failed(ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::EffectLimitExceeded,
+                detail: "effects exceeded".to_string(),
+            });
+        }
+        if output.emits.len() as u32 > manifest.limits.max_emits {
+            return self.module_call_failed(ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::EmitLimitExceeded,
+                detail: "emits exceeded".to_string(),
+            });
+        }
+        if output.output_bytes > manifest.limits.max_output_bytes {
+            return self.module_call_failed(ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::OutputTooLarge,
+                detail: "output bytes exceeded".to_string(),
+            });
+        }
+
+        for effect in &output.effects {
+            if !manifest.required_caps.iter().any(|cap| cap == &effect.cap_ref) {
+                return self.module_call_failed(ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::CapsDenied,
+                    detail: format!("cap_ref not allowed {}", effect.cap_ref),
+                });
+            }
+        }
+
+        let mut intents = Vec::new();
+        for effect in &output.effects {
+            let intent = match self.build_effect_intent(
+                effect.kind.clone(),
+                effect.params.clone(),
+                effect.cap_ref.clone(),
+                EffectOrigin::Module {
+                    module_id: module_id.to_string(),
+                },
+            ) {
+                Ok(intent) => intent,
+                Err(err) => {
+                    let (code, detail) = match err {
+                        WorldError::CapabilityMissing { cap_ref } => {
+                            (ModuleCallErrorCode::CapsDenied, format!("cap missing {cap_ref}"))
+                        }
+                        WorldError::CapabilityExpired { cap_ref } => (
+                            ModuleCallErrorCode::CapsDenied,
+                            format!("cap expired {cap_ref}"),
+                        ),
+                        WorldError::CapabilityNotAllowed { cap_ref, kind } => (
+                            ModuleCallErrorCode::CapsDenied,
+                            format!("cap not allowed {cap_ref} {kind}"),
+                        ),
+                        WorldError::PolicyDenied { reason, .. } => {
+                            (ModuleCallErrorCode::PolicyDenied, reason)
+                        }
+                        other => (ModuleCallErrorCode::InvalidOutput, format!("{other:?}")),
+                    };
+                    return self.module_call_failed(ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code,
+                        detail,
+                    });
+                }
+            };
+            intents.push(intent);
+        }
+
+        for intent in intents {
+            self.append_event(WorldEventBody::EffectQueued(intent), None)?;
+        }
+
+        for emit in &output.emits {
+            let event = ModuleEmitEvent {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                kind: emit.kind.clone(),
+                payload: emit.payload.clone(),
+            };
+            self.append_event(WorldEventBody::ModuleEmitted(event), None)?;
+        }
+
+        Ok(())
+    }
+
+    fn module_call_failed(&mut self, failure: ModuleCallFailure) -> Result<(), WorldError> {
+        self.append_event(WorldEventBody::ModuleCallFailed(failure.clone()), None)?;
+        Err(WorldError::ModuleCallFailed {
+            module_id: failure.module_id,
+            trace_id: failure.trace_id,
+            code: failure.code,
+            detail: failure.detail,
+        })
     }
 
     fn apply_module_changes(

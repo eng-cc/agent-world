@@ -45,6 +45,7 @@ pub enum SignatureAlgorithm {
 pub enum EffectOrigin {
     Reducer { name: String },
     Plan { name: String },
+    Module { module_id: String },
     System,
 }
 
@@ -54,6 +55,7 @@ pub enum EffectOrigin {
 pub enum OriginKind {
     Reducer,
     Plan,
+    Module,
     System,
 }
 
@@ -62,6 +64,7 @@ impl OriginKind {
         match origin {
             EffectOrigin::Reducer { .. } => OriginKind::Reducer,
             EffectOrigin::Plan { .. } => OriginKind::Plan,
+            EffectOrigin::Module { .. } => OriginKind::Module,
             EffectOrigin::System => OriginKind::System,
         }
     }

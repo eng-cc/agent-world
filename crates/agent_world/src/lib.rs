@@ -28,6 +28,11 @@ pub use runtime::{
     apply_manifest_patch, diff_manifest, merge_manifest_patches, merge_manifest_patches_with_conflicts,
 };
 
+pub use runtime::{
+    FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit,
+    ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox,
+};
+
 // Agent interface (observe → decide → act)
 pub use simulator::{
     AgentBehavior, AgentDecision, AgentMemory, AgentQuota, AgentRunner, AgentStats,

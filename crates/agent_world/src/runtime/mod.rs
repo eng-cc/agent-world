@@ -17,6 +17,7 @@ mod governance;
 mod manifest;
 mod modules;
 mod policy;
+mod sandbox;
 mod signer;
 mod snapshot;
 mod state;
@@ -73,6 +74,12 @@ pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, Po
 
 // Signer
 pub use signer::ReceiptSigner;
+
+// Sandbox
+pub use sandbox::{
+    FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit,
+    ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox,
+};
 
 // Snapshot
 pub use snapshot::{

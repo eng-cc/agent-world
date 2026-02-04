@@ -382,6 +382,197 @@ fn module_output_limits_reject_excess() {
 }
 
 #[test]
+fn module_call_queues_effects_and_emits() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-weather";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 2,
+            max_emits: 2,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: vec![ModuleEffectIntent {
+            kind: "http.request".to_string(),
+            params: json!({"url": "https://example.com"}),
+            cap_ref: "cap.weather".to_string(),
+        }],
+        emits: vec![ModuleEmit {
+            kind: "WeatherTick".to_string(),
+            payload: json!({"ok": true}),
+        }],
+        output_bytes: 64,
+    };
+
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .execute_module_call("m.weather", "trace-1", vec![], &mut sandbox)
+        .unwrap();
+
+    assert_eq!(world.pending_effects_len(), 1);
+
+    let has_emit = world
+        .journal()
+        .events
+        .iter()
+        .any(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)));
+    assert!(has_emit);
+}
+
+#[test]
+fn module_call_policy_denied_records_failure() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    world.set_policy(PolicySet {
+        rules: vec![PolicyRule {
+            when: PolicyWhen {
+                effect_kind: Some("http.request".to_string()),
+                origin_kind: None,
+                cap_name: None,
+            },
+            decision: PolicyDecision::Deny {
+                reason: "blocked".to_string(),
+            },
+        }],
+    });
+
+    let wasm_bytes = b"module-weather-deny";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 2,
+            max_emits: 2,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: vec![ModuleEffectIntent {
+            kind: "http.request".to_string(),
+            params: json!({"url": "https://example.com"}),
+            cap_ref: "cap.weather".to_string(),
+        }],
+        emits: Vec::new(),
+        output_bytes: 64,
+    };
+
+    let mut sandbox = FixedSandbox::succeed(output);
+    let err = world
+        .execute_module_call("m.weather", "trace-2", vec![], &mut sandbox)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::ModuleCallFailed { .. }));
+    assert_eq!(world.pending_effects_len(), 0);
+
+    let failed = world
+        .journal()
+        .events
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::ModuleCallFailed(failure) => Some(failure),
+            _ => None,
+        })
+        .last()
+        .unwrap();
+    assert_eq!(failed.code, ModuleCallErrorCode::PolicyDenied);
+}
+
+#[test]
 fn manifest_diff_and_merge() {
     let base = Manifest {
         version: 1,

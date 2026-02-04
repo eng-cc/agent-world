@@ -14,6 +14,7 @@
 - **资源限额**：`max_mem_bytes`、`max_gas`、`max_call_rate`、`max_output_bytes`。
 - **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`。
 - **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
+- **执行入口**：`World::execute_module_call` 通过沙箱接口执行模块并返回 `ModuleOutput`。
 
 ## Capability/Policy 绑定（草案）
 
@@ -56,6 +57,7 @@
 - `World::load_module(wasm_hash)`：按哈希加载模块（命中缓存或从工件库读取）
 - `World::set_module_cache_max(max_cached_modules)`：调整模块缓存容量
 - `World::set_module_limits_max(limits)`：调整模块资源上限
+- `World::execute_module_call(module_id, trace_id, input, sandbox)`：执行模块调用并写入 ModuleCallFailed/ModuleEmitted
 - `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
 - `World::module_registry()`：读取模块索引
 

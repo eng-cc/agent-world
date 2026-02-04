@@ -2,6 +2,7 @@
 
 use std::io;
 
+use super::sandbox::ModuleCallErrorCode;
 use super::types::ProposalId;
 
 /// Errors that can occur in world operations.
@@ -20,6 +21,12 @@ pub enum WorldError {
     PatchInvalidPath { path: String },
     PatchNonObject { path: String },
     ModuleChangeInvalid { reason: String },
+    ModuleCallFailed {
+        module_id: String,
+        trace_id: String,
+        code: ModuleCallErrorCode,
+        detail: String,
+    },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),
