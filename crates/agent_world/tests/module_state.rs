@@ -140,6 +140,14 @@ fn reducer_state_updates_and_is_reused() {
         world.state().module_states.get("m.state"),
         Some(&b"state-1".to_vec())
     );
+
+    let snapshot = world.snapshot();
+    let journal = world.journal().clone();
+    let restored = World::from_snapshot(snapshot, journal).unwrap();
+    assert_eq!(
+        restored.state().module_states.get("m.state"),
+        Some(&b"state-1".to_vec())
+    );
 }
 
 #[test]

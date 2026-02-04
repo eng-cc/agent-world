@@ -25,6 +25,7 @@
 - [x] E10 new_state 触发 ModuleStateUpdated 并回放一致
 - [x] E10 补充模块状态输入/更新测试
 - [x] E10 pure 模块返回 new_state 视为 InvalidOutput
+- [x] E10 模块状态回放/快照一致性测试
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
