@@ -188,6 +188,24 @@ UpgradeModule {
 - `LIMITS_EXCEEDED`：资源上限超出
 - `VERSION_CONFLICT`：版本冲突或非单调升级
 
+### ShadowReport 事件与审计输出（草案）
+
+**GovernanceEvent::ShadowReport（示意）**
+```
+ShadowReport {
+  proposal_id,
+  manifest_hash,
+  report,         // ShadowReport 结构
+}
+```
+
+**审计导出字段（建议）**
+- `proposal_id`
+- `status`
+- `checked_at`
+- `errors[]` / `warnings[]`
+- `module_id` 维度摘要（ok/error/warning 计数）
+
 ### ABI 与序列化（草案）
 
 > 目标：模块与宿主之间的输入/输出采用**确定性**编码，保证回放与跨平台一致性。
