@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use super::persist::{PersistError, WorldJournal, WorldSnapshot};
+use super::power::{AgentPowerState, ConsumeReason, PowerEvent};
 use super::types::{
     Action, ActionEnvelope, ActionId, AgentId, LocationId, ResourceKind, ResourceOwner,
     StockError, WorldEventId, WorldTime, JOURNAL_VERSION, SNAPSHOT_VERSION,
@@ -83,6 +84,8 @@ pub enum WorldEventKind {
     ActionRejected {
         reason: RejectReason,
     },
+    // Power system events
+    Power(PowerEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -105,6 +108,9 @@ pub enum RejectReason {
     AgentsNotCoLocated {
         agent_id: AgentId,
         other_agent_id: AgentId,
+    },
+    AgentShutdown {
+        agent_id: AgentId,
     },
 }
 
@@ -336,6 +342,198 @@ impl WorldKernel {
         events
     }
 
+    // -------------------------------------------------------------------------
+    // Power System
+    // -------------------------------------------------------------------------
+
+    /// Process power consumption for all agents (idle consumption).
+    /// Returns a list of power events generated.
+    pub fn process_power_tick(&mut self) -> Vec<WorldEvent> {
+        let mut events = Vec::new();
+        let idle_cost = self.config.power.idle_cost_per_tick;
+        let power_config = self.config.power.clone();
+
+        // Collect agent IDs to avoid borrow issues
+        let agent_ids: Vec<AgentId> = self.model.agents.keys().cloned().collect();
+
+        for agent_id in agent_ids {
+            let (consumed, remaining, old_state, new_state) = {
+                let agent = match self.model.agents.get_mut(&agent_id) {
+                    Some(a) => a,
+                    None => continue,
+                };
+
+                // Skip already shutdown agents
+                if agent.power.is_shutdown() {
+                    continue;
+                }
+
+                let old_state = agent.power.state;
+                let consumed = agent.power.consume(idle_cost, &power_config);
+                let new_state = agent.power.state;
+                (consumed, agent.power.level, old_state, new_state)
+            };
+
+            // Record consumption event
+            if consumed > 0 {
+                let power_event = PowerEvent::PowerConsumed {
+                    agent_id: agent_id.clone(),
+                    amount: consumed,
+                    reason: ConsumeReason::Idle,
+                    remaining,
+                };
+                let event = self.record_event(WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+
+            // Check for state change
+            if old_state != new_state {
+                let power_event = PowerEvent::PowerStateChanged {
+                    agent_id: agent_id.clone(),
+                    from: old_state,
+                    to: new_state,
+                    trigger_level: remaining,
+                };
+                let event = self.record_event(WorldEventKind::Power(power_event));
+                events.push(event);
+            }
+        }
+
+        events
+    }
+
+    /// Consume power from an agent for a specific reason.
+    /// Returns the power event if power was consumed.
+    pub fn consume_agent_power(
+        &mut self,
+        agent_id: &AgentId,
+        amount: i64,
+        reason: ConsumeReason,
+    ) -> Option<WorldEvent> {
+        let power_config = self.config.power.clone();
+
+        let (consumed, remaining, old_state, new_state) = {
+            let agent = self.model.agents.get_mut(agent_id)?;
+
+            if agent.power.is_shutdown() {
+                return None;
+            }
+
+            let old_state = agent.power.state;
+            let consumed = agent.power.consume(amount, &power_config);
+            let new_state = agent.power.state;
+
+            if consumed == 0 {
+                return None;
+            }
+
+            (consumed, agent.power.level, old_state, new_state)
+        };
+
+        // Record consumption event
+        let power_event = PowerEvent::PowerConsumed {
+            agent_id: agent_id.clone(),
+            amount: consumed,
+            reason,
+            remaining,
+        };
+        let event = self.record_event(WorldEventKind::Power(power_event));
+
+        // Check for state change
+        if old_state != new_state {
+            let state_event = PowerEvent::PowerStateChanged {
+                agent_id: agent_id.clone(),
+                from: old_state,
+                to: new_state,
+                trigger_level: remaining,
+            };
+            self.record_event(WorldEventKind::Power(state_event));
+        }
+
+        Some(event)
+    }
+
+    /// Charge an agent's power.
+    /// Returns the power event if power was added.
+    pub fn charge_agent_power(
+        &mut self,
+        agent_id: &AgentId,
+        amount: i64,
+    ) -> Option<WorldEvent> {
+        let power_config = self.config.power.clone();
+
+        let (added, new_level, old_state, new_state) = {
+            let agent = self.model.agents.get_mut(agent_id)?;
+
+            let old_state = agent.power.state;
+            let added = agent.power.charge(amount, &power_config);
+            let new_state = agent.power.state;
+
+            if added == 0 {
+                return None;
+            }
+
+            (added, agent.power.level, old_state, new_state)
+        };
+
+        // Record charge event
+        let power_event = PowerEvent::PowerCharged {
+            agent_id: agent_id.clone(),
+            amount: added,
+            new_level,
+        };
+        let event = self.record_event(WorldEventKind::Power(power_event));
+
+        // Check for state change (e.g., recovering from shutdown)
+        if old_state != new_state {
+            let state_event = PowerEvent::PowerStateChanged {
+                agent_id: agent_id.clone(),
+                from: old_state,
+                to: new_state,
+                trigger_level: new_level,
+            };
+            self.record_event(WorldEventKind::Power(state_event));
+        }
+
+        Some(event)
+    }
+
+    /// Get the power state of an agent.
+    pub fn agent_power_state(&self, agent_id: &AgentId) -> Option<AgentPowerState> {
+        self.model.agents.get(agent_id).map(|a| a.power.state)
+    }
+
+    /// Check if an agent is shut down.
+    pub fn is_agent_shutdown(&self, agent_id: &AgentId) -> bool {
+        self.model
+            .agents
+            .get(agent_id)
+            .map(|a| a.power.is_shutdown())
+            .unwrap_or(false)
+    }
+
+    /// Get all shutdown agents.
+    pub fn shutdown_agents(&self) -> Vec<AgentId> {
+        self.model
+            .agents
+            .iter()
+            .filter(|(_, a)| a.power.is_shutdown())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    /// Helper to record an event and return it.
+    fn record_event(&mut self, kind: WorldEventKind) -> WorldEvent {
+        let event = WorldEvent {
+            id: self.next_event_id,
+            time: self.time,
+            kind,
+        };
+        self.next_event_id = self.next_event_id.saturating_add(1);
+        self.journal.push(event.clone());
+        event
+    }
+
     fn apply_action(&mut self, action: Action) -> WorldEventKind {
         match action {
             Action::RegisterLocation {
@@ -370,7 +568,13 @@ impl WorldKernel {
                         reason: RejectReason::LocationNotFound { location_id },
                     };
                 };
-                let agent = Agent::new(agent_id.clone(), location_id.clone(), location.pos);
+                // Use power config from world config
+                let agent = Agent::new_with_power(
+                    agent_id.clone(),
+                    location_id.clone(),
+                    location.pos,
+                    &self.config.power,
+                );
                 self.model.agents.insert(agent_id.clone(), agent);
                 WorldEventKind::AgentRegistered {
                     agent_id,
@@ -389,6 +593,12 @@ impl WorldKernel {
                         reason: RejectReason::AgentNotFound { agent_id },
                     };
                 };
+                // Reject if agent is shutdown
+                if agent.power.is_shutdown() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentShutdown { agent_id },
+                    };
+                }
                 if agent.location_id == to {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::AgentAlreadyAtLocation {
@@ -526,7 +736,12 @@ impl WorldKernel {
                         message: format!("location not found: {location_id}"),
                     });
                 }
-                let mut agent = Agent::new(agent_id.clone(), location_id.clone(), *pos);
+                let mut agent = Agent::new_with_power(
+                    agent_id.clone(),
+                    location_id.clone(),
+                    *pos,
+                    &self.config.power,
+                );
                 agent.pos = *pos;
                 self.model.agents.insert(agent_id.clone(), agent);
             }
@@ -596,6 +811,35 @@ impl WorldKernel {
                 self.add_to_owner_for_replay(to, *kind, *amount)?;
             }
             WorldEventKind::ActionRejected { .. } => {}
+            WorldEventKind::Power(power_event) => {
+                // Replay power events by applying their effects
+                match power_event {
+                    PowerEvent::PowerConsumed { agent_id, amount, .. } => {
+                        if let Some(agent) = self.model.agents.get_mut(agent_id) {
+                            let power_config = self.config.power.clone();
+                            agent.power.consume(*amount, &power_config);
+                        }
+                    }
+                    PowerEvent::PowerCharged { agent_id, amount, .. } => {
+                        if let Some(agent) = self.model.agents.get_mut(agent_id) {
+                            let power_config = self.config.power.clone();
+                            agent.power.charge(*amount, &power_config);
+                        }
+                    }
+                    PowerEvent::PowerStateChanged { .. } => {
+                        // State changes are derived, no action needed
+                    }
+                    PowerEvent::PowerTransferred { from_agent, to_agent, amount } => {
+                        let power_config = self.config.power.clone();
+                        if let Some(from) = self.model.agents.get_mut(from_agent) {
+                            from.power.consume(*amount, &power_config);
+                        }
+                        if let Some(to) = self.model.agents.get_mut(to_agent) {
+                            to.power.charge(*amount, &power_config);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())

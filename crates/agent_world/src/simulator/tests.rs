@@ -1632,3 +1632,239 @@ fn memory_entry_serialization() {
     assert_eq!(parsed.time, 10);
     assert_eq!(parsed.importance, 0.7);
 }
+
+// ============================================================================
+// Power System Tests (M4)
+// ============================================================================
+
+#[test]
+fn power_idle_consumption_depletes_agent() {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        power: PowerConfig {
+            idle_cost_per_tick: 10,
+            default_power_capacity: 100,
+            default_power_level: 35,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+
+    // Register location and agent
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "Base".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    // Check initial power state
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::Normal));
+
+    // Process power tick - should consume 10 power (35 -> 25)
+    let events = kernel.process_power_tick();
+    assert_eq!(events.len(), 1);
+    assert_eq!(kernel.model().agents.get("agent-1").unwrap().power.level, 25);
+
+    // Process again (25 -> 15, enters LowPower)
+    let events = kernel.process_power_tick();
+    assert_eq!(events.len(), 2); // Consumed + StateChanged
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::LowPower));
+
+    // Process again (15 -> 5, enters Critical)
+    let events = kernel.process_power_tick();
+    assert_eq!(events.len(), 2);
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::Critical));
+
+    // Process again (5 -> 0, enters Shutdown)
+    let events = kernel.process_power_tick();
+    assert!(events.len() >= 1);
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::Shutdown));
+    assert!(kernel.is_agent_shutdown(&"agent-1".to_string()));
+}
+
+#[test]
+fn power_shutdown_agent_cannot_move() {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        power: PowerConfig {
+            default_power_capacity: 100,
+            default_power_level: 0, // Start shutdown
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+
+    // Register locations and agent
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "Base".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "Remote".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    // Verify agent is shutdown
+    assert!(kernel.is_agent_shutdown(&"agent-1".to_string()));
+
+    // Try to move - should be rejected
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+    let events = kernel.step_until_empty();
+
+    assert_eq!(events.len(), 1);
+    match &events[0].kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(reason, RejectReason::AgentShutdown { .. }));
+        }
+        other => panic!("Expected ActionRejected, got {:?}", other),
+    }
+}
+
+#[test]
+fn power_charge_recovers_agent() {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        power: PowerConfig {
+            default_power_capacity: 100,
+            default_power_level: 0, // Start shutdown
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+
+    // Register location and agent
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "Base".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    // Verify agent is shutdown
+    assert!(kernel.is_agent_shutdown(&"agent-1".to_string()));
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::Shutdown));
+
+    // Charge the agent
+    let event = kernel.charge_agent_power(&"agent-1".to_string(), 50);
+    assert!(event.is_some());
+
+    // Verify agent is recovered
+    assert!(!kernel.is_agent_shutdown(&"agent-1".to_string()));
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::Normal));
+    assert_eq!(kernel.model().agents.get("agent-1").unwrap().power.level, 50);
+}
+
+#[test]
+fn power_consume_for_decision() {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        power: PowerConfig {
+            idle_cost_per_tick: 0,
+            decision_cost: 5,
+            default_power_capacity: 100,
+            default_power_level: 20,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+
+    // Register location and agent
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "Base".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    // Consume power for a decision
+    let event = kernel.consume_agent_power(
+        &"agent-1".to_string(),
+        5,
+        ConsumeReason::Decision,
+    );
+    assert!(event.is_some());
+    assert_eq!(kernel.model().agents.get("agent-1").unwrap().power.level, 15);
+
+    // Consume more
+    kernel.consume_agent_power(&"agent-1".to_string(), 5, ConsumeReason::Decision);
+    assert_eq!(kernel.model().agents.get("agent-1").unwrap().power.level, 10);
+
+    // State should still be LowPower (10%)
+    assert_eq!(kernel.agent_power_state(&"agent-1".to_string()), Some(AgentPowerState::LowPower));
+}
+
+#[test]
+fn shutdown_agents_list() {
+    let config = WorldConfig {
+        visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        move_cost_per_km_electricity: 0,
+        power: PowerConfig {
+            default_power_capacity: 100,
+            default_power_level: 0, // Start shutdown
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut kernel = WorldKernel::with_config(config);
+
+    // Register location and two agents
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "Base".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-2".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    // Both should be shutdown
+    let shutdown = kernel.shutdown_agents();
+    assert_eq!(shutdown.len(), 2);
+    assert!(shutdown.contains(&"agent-1".to_string()));
+    assert!(shutdown.contains(&"agent-2".to_string()));
+
+    // Charge one agent
+    kernel.charge_agent_power(&"agent-1".to_string(), 50);
+
+    // Now only one should be shutdown
+    let shutdown = kernel.shutdown_agents();
+    assert_eq!(shutdown.len(), 1);
+    assert!(shutdown.contains(&"agent-2".to_string()));
+}
