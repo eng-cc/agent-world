@@ -16,6 +16,7 @@
 - 可配置的执行器参数（燃料、超时、并发上限、缓存容量）。
 - 过渡期占位实现：未接入引擎时返回 `SandboxUnavailable`。
 - 基础依赖通过 Cargo feature `wasmtime` 引入。
+- 引擎骨架以 `Engine::default()` 初始化，后续再接入燃料/超时配置。
 
 ### Out of Scope（V1 不做）
 - 多线程并行执行与跨模块共享状态。

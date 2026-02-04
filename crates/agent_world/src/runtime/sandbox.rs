@@ -137,25 +137,47 @@ impl Default for WasmExecutorConfig {
 #[derive(Debug, Clone)]
 pub struct WasmExecutor {
     config: WasmExecutorConfig,
+    #[cfg(feature = "wasmtime")]
+    engine: wasmtime::Engine,
 }
 
 impl WasmExecutor {
     pub fn new(config: WasmExecutorConfig) -> Self {
-        Self { config }
+        #[cfg(feature = "wasmtime")]
+        {
+            let engine = wasmtime::Engine::default();
+            Self { config, engine }
+        }
+
+        #[cfg(not(feature = "wasmtime"))]
+        {
+            Self { config }
+        }
     }
 
     pub fn config(&self) -> &WasmExecutorConfig {
         &self.config
     }
+
+    #[cfg(feature = "wasmtime")]
+    pub fn engine(&self) -> &wasmtime::Engine {
+        &self.engine
+    }
 }
 
 impl ModuleSandbox for WasmExecutor {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let detail = if cfg!(feature = "wasmtime") {
+            "wasmtime backend not implemented"
+        } else {
+            "wasmtime feature not enabled"
+        };
+
         Err(ModuleCallFailure {
             module_id: request.module_id.clone(),
             trace_id: request.trace_id.clone(),
             code: ModuleCallErrorCode::SandboxUnavailable,
-            detail: "wasm executor backend not configured".to_string(),
+            detail: detail.to_string(),
         })
     }
 }
