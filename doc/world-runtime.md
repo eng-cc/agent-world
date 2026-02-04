@@ -465,7 +465,7 @@ ShadowReport {
 - `EffectReceipt`：`{ intent_id, status, payload, cost?, timestamps, hash }`
 - `CapabilityGrant`：`{ name, cap_type, params, expiry? }`
 - `PolicyRule`：`{ when, decision }`
-- `Manifest`：`{ reducers, modules, effects, caps, policies, routing, defaults }`
+- `Manifest`：`{ reducers, modules, module_changes?, effects, caps, policies, routing, defaults }`
 - `ManifestPatch`：`{ base_manifest_hash, ops[], new_version? }`，支持 set/remove（merge 要求基于同一 base hash）
 - `PatchMergeResult`：`{ patch, conflicts[] }`，冲突包含路径与涉及的 patch 索引
 - `PatchConflict`：`{ path, kind, patches[], ops[] }`（kind: same_path/prefix_overlap）
@@ -816,6 +816,13 @@ struct Manifest {
 - `World::register_module_artifact(wasm_hash, bytes)`：写入模块工件
 - `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
 - `World::module_registry()`：读取模块索引
+
+### 代码结构调整（草案）
+
+- `Manifest` 结构体新增 `module_changes: Option<ModuleChangeSet>`
+- `ManifestPatch` 允许 `"/module_changes"` set/remove
+- `GovernanceEvent::Applied` 增加 `module_changes` 字段（可选）
+- 审计导出支持 `Module*Failed` 与 `ShadowReport` 记录
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）

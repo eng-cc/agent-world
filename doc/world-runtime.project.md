@@ -66,6 +66,7 @@
 - [x] 补充 Shadow 注入建议（测试专用策略）
 - [x] 补充 ShadowPolicy 配置字段与 ShadowReport 关联
 - [x] 补充 ModuleChangeSet 应用算法伪代码
+- [x] 补充代码结构调整清单（Manifest/Applied/Audit）
 - [ ] 实现集成测试：治理闭环 + 模块生命周期事件
 - [ ] 模块加载与缓存（按 wasm_hash）
 - [ ] 沙箱执行器（资源限制：内存/gas/调用频率）
