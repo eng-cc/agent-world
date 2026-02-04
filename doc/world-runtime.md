@@ -562,6 +562,14 @@ ArtifactWrite(wasm_hash)
           -> 无 Register/Activate（不更新注册表）
 ```
 
+### 集成测试用例（草案）
+
+- **register_happy_path**：artifact 写入 → propose → shadow pass → approve → apply → 注册表更新
+- **shadow_fail_blocks_apply**：shadow fail → reject → 不产生模块事件
+- **apply_fail_records_validation**：apply 阶段校验失败 → ModuleValidationFailed → 注册表不更新
+- **upgrade_flow**：升级成功后版本更新、旧版本不可激活
+- **audit_export_contains_module_events**：审计导出包含 GovernanceEvent + Module*Failed/ShadowReport
+
 **审计与可回放**
 - 注册/激活/升级事件进入日志，`module_registry.json` 可由事件重建。
 - 任意运行时模块版本都可由 `wasm_hash` 唯一定位。
