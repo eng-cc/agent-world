@@ -669,6 +669,40 @@ struct ModuleUpgrade { module_id: String, from_version: String, to_version: Stri
 4. `DeactivateModule`（若有 deactivate）
 > 顺序固定以保证回放确定性；同类事件按 `module_id` 字典序处理。
 
+**ModuleChangeSet 应用算法（草案）**
+```
+fn apply_module_changes(changes: ModuleChangeSet) -> Result<()> {
+  validate_changes(changes)?;
+  shadow_check(changes)?;
+
+  // 1) register
+  for m in sort_by_module_id(changes.register) {
+    write_event(RegisterModule { ..m });
+    registry.insert(m);
+  }
+
+  // 2) upgrade
+  for u in sort_by_module_id(changes.upgrade) {
+    write_event(UpgradeModule { ..u });
+    registry.update(u);
+  }
+
+  // 3) activate
+  for a in sort_by_module_id(changes.activate) {
+    write_event(ActivateModule { ..a });
+    registry.activate(a);
+  }
+
+  // 4) deactivate
+  for d in sort_by_module_id(changes.deactivate) {
+    write_event(DeactivateModule { ..d });
+    registry.deactivate(d);
+  }
+
+  Ok(())
+}
+```
+
 **ModuleChangeSet 校验规则（示意）**
 - `module_id` 在 `register/activate/deactivate/upgrade` 内不得重复冲突。
 - `register` 与 `upgrade` 不能同时针对同一 `module_id`。
