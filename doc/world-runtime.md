@@ -347,6 +347,13 @@ ShadowReport {
 }
 ```
 
+### 审计导出分页/分片（草案）
+
+- **分页字段**：`limit`（最大记录数）、`cursor`（上一页末尾事件 id）。
+- **稳定顺序**：按 `event_id` 或 `time+event_id` 排序，保证翻页一致性。
+- **导出接口**：`save_audit_log(path, filter, limit?, cursor?) -> next_cursor?`
+- **chunk 导出**：支持按固定数量分片写出多个文件（如 `audit_0001.json`）。
+
 ### 审计导出示例（草案）
 
 ```
