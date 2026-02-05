@@ -315,6 +315,10 @@
 - M4：最小社会与经济（工作/生产/交易/关系/声誉；核心为**自由沙盒 + WASM 动态新事物**，Agent 创造的模块以 Rust 编写并编译为 WASM，通过事件/接口影响世界）
 - M5：可视化与调试工具（世界面板、事件浏览、回放、指标；详见 `doc/world-simulator/visualization.md`）
 
+## 分册索引
+- 世界初始化：`doc/world-simulator/world-initialization.md`
+- 可视化与调试：`doc/world-simulator/visualization.md`
+
 ## 风险
 - **真实性与可计算性冲突**：规则越真实成本越高；需要阶段性抽象（先“像”再“真”）。
 - **持久化膨胀**：事件日志增长快；需要快照、压缩、归档策略。

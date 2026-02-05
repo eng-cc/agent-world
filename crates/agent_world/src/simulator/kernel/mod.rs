@@ -40,6 +40,18 @@ impl WorldKernel {
         kernel
     }
 
+    pub fn with_model(config: WorldConfig, model: WorldModel) -> Self {
+        Self {
+            time: 0,
+            config: config.sanitized(),
+            next_event_id: 0,
+            next_action_id: 0,
+            pending_actions: VecDeque::new(),
+            journal: Vec::new(),
+            model,
+        }
+    }
+
     pub fn time(&self) -> WorldTime {
         self.time
     }

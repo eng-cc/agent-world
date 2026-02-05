@@ -12,6 +12,7 @@
 
 mod agent;
 mod dust;
+mod init;
 mod kernel;
 mod memory;
 mod persist;
@@ -26,6 +27,10 @@ mod tests;
 // Re-export all public types
 pub use agent::{ActionResult, AgentBehavior, AgentDecision};
 pub use dust::generate_fragments;
+pub use init::{
+    build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, OriginLocationConfig,
+    WorldInitConfig, WorldInitError, WorldInitReport,
+};
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
