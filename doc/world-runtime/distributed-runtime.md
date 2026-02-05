@@ -69,6 +69,11 @@
 - **DHT 引导**：可先从 DHT/index store 读取 head（CachedDht），再用 rr 拉取区块与分片。
 - **Provider 选择**：若 DHT 返回 provider 列表，优先向 provider peers 请求 blob。
 
+## 执行节点启动引导（草案）
+- **目标**：从 DHT/head 拉取快照与日志，重建可执行世界状态。
+- **流程**：`bootstrap_world_from_dht` → 校验 head/块/快照/日志 → `World::from_snapshot`。
+- **用途**：执行节点冷启动或重启时快速追上当前 head。
+
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。
 - **续约机制**：持有者在 TTL 内续约，否则视为失效。
