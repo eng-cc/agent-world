@@ -22,6 +22,21 @@ impl Default for ActionMempoolConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActionBatchRules {
+    pub max_actions: usize,
+    pub max_payload_bytes: usize,
+}
+
+impl Default for ActionBatchRules {
+    fn default() -> Self {
+        Self {
+            max_actions: 512,
+            max_payload_bytes: 512 * 1024,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct ActionMempool {
     config: ActionMempoolConfig,
@@ -93,17 +108,56 @@ impl ActionMempool {
         max_actions: usize,
         timestamp_ms: i64,
     ) -> Result<Option<ActionBatch>, WorldError> {
+        self.take_batch_with_rules(
+            world_id,
+            proposer_id,
+            ActionBatchRules {
+                max_actions,
+                max_payload_bytes: usize::MAX,
+            },
+            timestamp_ms,
+        )
+    }
+
+    pub fn take_batch_with_rules(
+        &mut self,
+        world_id: &str,
+        proposer_id: &str,
+        rules: ActionBatchRules,
+        timestamp_ms: i64,
+    ) -> Result<Option<ActionBatch>, WorldError> {
         if self.actions.is_empty() {
             return Ok(None);
         }
-        let limit = max_actions.min(self.actions.len());
-        let mut actions: Vec<ActionEnvelope> = self.actions.values().cloned().collect();
-        actions.sort_by(|left, right| {
+        let mut candidates: Vec<ActionEnvelope> = self.actions.values().cloned().collect();
+        candidates.sort_by(|left, right| {
             left.timestamp_ms
                 .cmp(&right.timestamp_ms)
                 .then_with(|| left.action_id.cmp(&right.action_id))
         });
-        actions.truncate(limit);
+
+        let mut actions = Vec::new();
+        let mut total_bytes = 0usize;
+
+        for action in candidates {
+            if actions.len() >= rules.max_actions {
+                break;
+            }
+            let size_bytes = action_size_bytes(&action)?;
+            if size_bytes > rules.max_payload_bytes {
+                self.remove_action(&action.action_id);
+                continue;
+            }
+            if total_bytes.saturating_add(size_bytes) > rules.max_payload_bytes {
+                break;
+            }
+            total_bytes = total_bytes.saturating_add(size_bytes);
+            actions.push(action);
+        }
+
+        if actions.is_empty() {
+            return Ok(None);
+        }
 
         for action in &actions {
             self.remove_action(&action.action_id);
@@ -135,6 +189,11 @@ fn batch_id_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldError
     ids.sort();
     let bytes = to_canonical_cbor(&ids)?;
     Ok(blake3_hex(&bytes))
+}
+
+fn action_size_bytes(action: &ActionEnvelope) -> Result<usize, WorldError> {
+    let bytes = to_canonical_cbor(action)?;
+    Ok(bytes.len())
 }
 
 #[cfg(test)]
@@ -205,5 +264,32 @@ mod tests {
         assert_eq!(batch.actions[0].action_id, "a1");
         assert_eq!(batch.actions[1].action_id, "a2");
         assert_eq!(pool.len(), 1);
+    }
+
+    #[test]
+    fn take_batch_respects_payload_limit() {
+        let mut pool = ActionMempool::new(ActionMempoolConfig::default());
+        let mut large = action("a1", "actor1", 1);
+        large.payload_cbor = vec![0u8; 2048];
+        let small = action("a2", "actor2", 2);
+
+        pool.add_action(large);
+        pool.add_action(small);
+
+        let batch = pool
+            .take_batch_with_rules(
+                "w1",
+                "seq",
+                ActionBatchRules {
+                    max_actions: 10,
+                    max_payload_bytes: 512,
+                },
+                10,
+            )
+            .expect("batch result")
+            .expect("batch");
+
+        assert_eq!(batch.actions.len(), 1);
+        assert_eq!(batch.actions[0].action_id, "a2");
     }
 }

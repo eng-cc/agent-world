@@ -53,6 +53,7 @@
 - **容量控制**：mempool 满时按到达顺序驱逐最旧动作。
 - **批次排序**：按 `timestamp_ms` 升序，`action_id` 作为稳定 tie-breaker。
 - **批次 ID**：对动作 ID 列表做 canonical CBOR 后取 `blake3`（V1）。
+- **批次上限**：限制 `max_actions` 与 `max_payload_bytes`，超限动作跳过/剔除。
 
 ## 数据分类与存放策略
 

@@ -95,7 +95,7 @@ pub use distributed_net::{
 };
 
 // Distributed mempool
-pub use distributed_mempool::{ActionMempool, ActionMempoolConfig};
+pub use distributed_mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
 
 // Distributed client
 pub use distributed_client::DistributedClient;
