@@ -12,6 +12,7 @@ mod agent_cell;
 mod audit;
 mod blob_store;
 pub mod distributed;
+mod distributed_net;
 mod effect;
 mod error;
 mod events;
@@ -79,6 +80,12 @@ pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
 // Module store
 pub use module_store::ModuleStore;
+
+// Distributed network adapter
+pub use distributed_net::{
+    DistributedNetwork, InMemoryNetwork, NetworkMessage, NetworkRequest, NetworkResponse,
+    NetworkSubscription,
+};
 
 // Segmenter
 pub use segmenter::{segment_journal, segment_snapshot, JournalSegmentRef, SegmentConfig};

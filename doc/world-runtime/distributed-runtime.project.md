@@ -24,22 +24,27 @@
 - [ ] 执行结果写入 storage（block/journal/snapshot）
 - [ ] 头指针更新与回放校验流程
 
-### 4. Sequencer 与批处理
+### 4. 网络适配器原型（P1）
+- [x] 定义 DistributedNetwork 抽象接口
+- [x] 提供 InMemoryNetwork 参考实现（测试用）
+- [ ] libp2p 实现（gossipsub + rr + dht）
+
+### 5. Sequencer 与批处理
 - [ ] action mempool 聚合与去重
 - [ ] 批次生成与排序规则
 - [ ] 租约式单写者切换与超时恢复
 
-### 5. 索引与发现
+### 6. 索引与发现
 - [ ] world head 发布到 DHT
 - [ ] 内容 provider 索引与查询
 - [ ] 轻量 index store 接口（可选）
 
-### 6. Gateway/Observer
+### 7. Gateway/Observer
 - [ ] 提交 action 的网关 API
 - [ ] 事件订阅与 head 追踪
 - [ ] 观察者回放验证工具
 
-### 7. 测试与验证
+### 8. 测试与验证
 - [ ] 本地多节点集成测试（3 节点：exec+storage+gateway）
 - [ ] 恢复测试（重启后继续同步 head）
 - [ ] 数据一致性测试（state_root 校验）
@@ -51,6 +56,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：D2.3（本地 pin/evict 策略完成）
-- 下一步：P1（libp2p 协议/存储适配器原型）
-- 最近更新：补充本地 CAS pin/evict 与 prune 策略（2026-02-05）
+- 当前阶段：P1.1（网络适配器抽象与 InMemory 实现）
+- 下一步：P1.2（libp2p 实现）
+- 最近更新：新增 DistributedNetwork 与 InMemoryNetwork（2026-02-05）

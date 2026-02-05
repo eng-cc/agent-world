@@ -33,6 +33,7 @@ pub enum WorldError {
     BlobNotFound { content_hash: String },
     BlobHashMismatch { expected: String, actual: String },
     BlobHashInvalid { content_hash: String },
+    NetworkProtocolUnavailable { protocol: String },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),

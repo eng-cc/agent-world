@@ -99,6 +99,11 @@
 - **block exchange（bitswap/graphsync）**：拉取 WASM/快照/日志分片。
 - **request/response**：点对点查询（`get_world_head`、`get_block`、`get_snapshot`）。
 
+### 网络适配器（草案）
+- **抽象接口**：`DistributedNetwork`（publish/subscribe/request/register_handler）。
+- **本地实现**：`InMemoryNetwork`（单进程测试用，支持消息投递与 rr handler）。
+- **错误语义**：无 handler 时返回 `NetworkProtocolUnavailable`。
+
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
