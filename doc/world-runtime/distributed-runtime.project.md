@@ -18,7 +18,10 @@
 - [x] 快照/日志分片与 manifest 生成
 - [x] 本地 pin/evict 策略（pins.json + prune_unpinned）
 - [x] provider 发布与索引（DHT provider）
-- [ ] 远端缓存策略（provider cache/republish）
+- [x] 远端缓存策略（provider cache/republish）
+  - [x] provider cache 与 TTL 规则
+  - [x] provider republish 机制
+  - [x] provider cache 测试
 
 ### 3. 执行节点协同
 - [x] 执行节点拉取 wasm/state/journal 的网络客户端（基于 DistributedNetwork）
@@ -60,6 +63,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.8.3 完成（数据一致性测试）
+- 当前阶段：P1 完成（远端缓存策略）
 - 下一步：P2.1（后续协议/实现迭代）
-- 最近更新：数据一致性测试（2026-02-05）
+- 最近更新：远端缓存策略（2026-02-05）

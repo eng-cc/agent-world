@@ -16,6 +16,7 @@ mod distributed_client;
 mod distributed_dht;
 mod distributed_index;
 mod distributed_index_store;
+mod distributed_provider_cache;
 mod distributed_gateway;
 mod distributed_observer;
 mod distributed_observer_replay;
@@ -114,6 +115,8 @@ pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
 pub use distributed_index::{publish_execution_providers, publish_world_head, query_providers, IndexPublishResult};
 // Distributed index store
 pub use distributed_index_store::{DistributedIndexStore, HeadIndexRecord, InMemoryIndexStore};
+// Provider cache
+pub use distributed_provider_cache::{ProviderCache, ProviderCacheConfig};
 // Distributed gateway
 pub use distributed_gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
 // Distributed observer

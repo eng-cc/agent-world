@@ -159,6 +159,12 @@
 - **抽象接口**：`DistributedIndexStore`（put_head/get_head/put_provider/get_providers）。
 - **本地实现**：`InMemoryIndexStore` 便于测试。
 
+### Provider 缓存与重发（草案）
+- **缓存策略**：查询 providers 时先读本地 cache，命中且未过期直接返回。
+- **缓存时间**：以 `last_seen_ms` 与 `provider_ttl_ms` 判断有效性，过期后回源 DHT。
+- **重发策略**：本地已缓存或已持有内容的节点可定期 `republish` 自身 provider 记录。
+- **触发方式**：定时任务或执行写入后批量触发，避免 DHT 记录过期。
+
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
