@@ -18,6 +18,8 @@ use super::distributed::{
 use super::distributed_dht::DistributedDht;
 use super::distributed_net::DistributedNetwork;
 use super::error::WorldError;
+use super::modules::ModuleManifest;
+use super::modules::ModuleArtifact;
 use super::util::to_canonical_cbor;
 
 #[derive(Clone)]
@@ -155,6 +157,32 @@ impl DistributedClient {
         Ok(response.artifact_ref)
     }
 
+    pub fn fetch_module_manifest_from_dht(
+        &self,
+        world_id: &str,
+        module_id: &str,
+        manifest_hash: &str,
+        dht: &impl DistributedDht,
+    ) -> Result<ModuleManifest, WorldError> {
+        let manifest_ref = self.get_module_manifest(module_id, manifest_hash)?;
+        let bytes = self.fetch_blob_from_dht(world_id, &manifest_ref.content_hash, dht)?;
+        Ok(serde_cbor::from_slice(&bytes)?)
+    }
+
+    pub fn fetch_module_artifact_from_dht(
+        &self,
+        world_id: &str,
+        wasm_hash: &str,
+        dht: &impl DistributedDht,
+    ) -> Result<ModuleArtifact, WorldError> {
+        let artifact_ref = self.get_module_artifact(wasm_hash)?;
+        let bytes = self.fetch_blob_from_dht(world_id, &artifact_ref.content_hash, dht)?;
+        Ok(ModuleArtifact {
+            wasm_hash: wasm_hash.to_string(),
+            bytes,
+        })
+    }
+
     fn request<T: Serialize, R: DeserializeOwned>(
         &self,
         protocol: &str,
@@ -196,16 +224,23 @@ mod tests {
     use super::super::distributed_net::{InMemoryNetwork, NetworkSubscription};
     use crate::runtime::distributed::DistributedErrorCode;
     use crate::runtime::InMemoryDht;
+    use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
     struct SpyNetwork {
         providers: Arc<Mutex<Vec<String>>>,
+        blobs: Arc<Mutex<HashMap<String, Vec<u8>>>>,
     }
 
     impl SpyNetwork {
         fn providers(&self) -> Vec<String> {
             self.providers.lock().expect("lock providers").clone()
+        }
+
+        fn set_blob(&self, content_hash: &str, bytes: Vec<u8>) {
+            let mut blobs = self.blobs.lock().expect("lock blobs");
+            blobs.insert(content_hash.to_string(), bytes);
         }
     }
 
@@ -226,19 +261,57 @@ mod tests {
 
         fn request_with_providers(
             &self,
-            _protocol: &str,
+            protocol: &str,
             payload: &[u8],
             providers: &[String],
         ) -> Result<Vec<u8>, WorldError> {
             let mut captured = self.providers.lock().expect("lock providers");
             *captured = providers.to_vec();
 
-            let request: FetchBlobRequest = serde_cbor::from_slice(payload)?;
-            let response = FetchBlobResponse {
-                blob: b"data".to_vec(),
-                content_hash: request.content_hash,
-            };
-            Ok(to_canonical_cbor(&response)?)
+            match protocol {
+                RR_FETCH_BLOB => {
+                    let request: FetchBlobRequest = serde_cbor::from_slice(payload)?;
+                    let blob = self
+                        .blobs
+                        .lock()
+                        .expect("lock blobs")
+                        .get(&request.content_hash)
+                        .cloned()
+                        .unwrap_or_else(|| b"data".to_vec());
+                    let response = FetchBlobResponse {
+                        blob,
+                        content_hash: request.content_hash,
+                    };
+                    Ok(to_canonical_cbor(&response)?)
+                }
+                RR_GET_MODULE_MANIFEST => {
+                    let request: GetModuleManifestRequest = serde_cbor::from_slice(payload)?;
+                    let response = GetModuleManifestResponse {
+                        manifest_ref: BlobRef {
+                            content_hash: request.manifest_hash,
+                            size_bytes: 0,
+                            codec: "raw".to_string(),
+                            links: Vec::new(),
+                        },
+                    };
+                    Ok(to_canonical_cbor(&response)?)
+                }
+                RR_GET_MODULE_ARTIFACT => {
+                    let request: GetModuleArtifactRequest = serde_cbor::from_slice(payload)?;
+                    let response = GetModuleArtifactResponse {
+                        artifact_ref: BlobRef {
+                            content_hash: request.wasm_hash,
+                            size_bytes: 0,
+                            codec: "raw".to_string(),
+                            links: Vec::new(),
+                        },
+                    };
+                    Ok(to_canonical_cbor(&response)?)
+                }
+                _ => Err(WorldError::NetworkProtocolUnavailable {
+                    protocol: protocol.to_string(),
+                }),
+            }
         }
 
         fn register_handler(
@@ -326,5 +399,58 @@ mod tests {
 
         let seen = spy.providers();
         assert_eq!(seen, vec!["peer-1".to_string()]);
+    }
+
+    #[test]
+    fn client_fetch_module_manifest_from_dht_uses_provider_list() {
+        let spy = Arc::new(SpyNetwork::default());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+        let client = DistributedClient::new(network);
+        let dht = InMemoryDht::new();
+        dht.publish_provider("w1", "manifest-hash", "peer-9")
+            .expect("publish provider");
+
+        let manifest = ModuleManifest {
+            module_id: "m.weather".to_string(),
+            name: "Weather".to_string(),
+            version: "0.1.0".to_string(),
+            kind: super::super::ModuleKind::Reducer,
+            role: super::super::ModuleRole::Rule,
+            wasm_hash: "wasm-hash".to_string(),
+            interface_version: "v1".to_string(),
+            exports: vec![],
+            subscriptions: vec![],
+            required_caps: vec![],
+            limits: super::super::ModuleLimits::default(),
+        };
+        let bytes = to_canonical_cbor(&manifest).expect("cbor");
+        spy.set_blob("manifest-hash", bytes);
+
+        let loaded = client
+            .fetch_module_manifest_from_dht("w1", "m.weather", "manifest-hash", &dht)
+            .expect("fetch manifest");
+        assert_eq!(loaded.module_id, "m.weather");
+
+        let seen = spy.providers();
+        assert_eq!(seen, vec!["peer-9".to_string()]);
+    }
+
+    #[test]
+    fn client_fetch_module_artifact_from_dht_uses_provider_list() {
+        let spy = Arc::new(SpyNetwork::default());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+        let client = DistributedClient::new(network);
+        let dht = InMemoryDht::new();
+        dht.publish_provider("w1", "wasm-hash", "peer-7")
+            .expect("publish provider");
+
+        let artifact = client
+            .fetch_module_artifact_from_dht("w1", "wasm-hash", &dht)
+            .expect("fetch artifact");
+        assert_eq!(artifact.wasm_hash, "wasm-hash");
+        assert_eq!(artifact.bytes, b"data".to_vec());
+
+        let seen = spy.providers();
+        assert_eq!(seen, vec!["peer-7".to_string()]);
     }
 }

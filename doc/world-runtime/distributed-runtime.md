@@ -174,6 +174,7 @@
 - **触发方式**：定时任务或执行写入后批量触发，避免 DHT 记录过期。
 - **执行接入**：执行结果落盘后，通过 `ProviderCache` 批量注册 block/manifest/segments/chunks。
 - **拉取封装**：执行/观察者拉取 blob 时，可通过 `DistributedClient::fetch_blob_from_dht` 统一走 provider-aware 路径。
+- **模块拉取**：模块 manifest/wasm 工件同样通过 DHT provider 列表拉取，避免固定单点。
 
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
