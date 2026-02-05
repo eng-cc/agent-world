@@ -80,8 +80,11 @@
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
 - **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。
 - **每个功能必须有 UI 测试**：世界面板、事件浏览、回放控制、指标展示、订阅筛选等都要有对应断言。
-- **前后端联合测试**：使用 headless 协议连通测试，验证 live server 与 viewer 客户端消息往返。
+- **前后端联合测试**：使用 headless 协议连通测试，验证 live server 与 viewer 客户端消息往返（独立 integration test）。
 - 重点覆盖：状态栏文本、事件列表刷新、回放控制触发后的 UI 变化。
+
+### 联合测试运行
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration`
 
 ### Headless UI 测试方法
 - **目标**：无需窗口/渲染即可验证 UI 行为与状态更新。
