@@ -47,6 +47,13 @@
 4. Execution Node 写入日志段、快照段与区块元数据到 Storage Node（内容寻址）。
 5. Index 节点更新世界 head 指针，观察节点可回放验证状态根。
 
+## Mempool 聚合与去重（草案）
+- **去重键**：以 `action_id` 为唯一键（V1）。
+- **来源限制**：同一 `actor_id` 的待处理动作数有上限（防刷/压制）。
+- **容量控制**：mempool 满时按到达顺序驱逐最旧动作。
+- **批次排序**：按 `timestamp_ms` 升序，`action_id` 作为稳定 tie-breaker。
+- **批次 ID**：对动作 ID 列表做 canonical CBOR 后取 `blake3`（V1）。
+
 ## 数据分类与存放策略
 
 ### 1. WASM 代码与模块元信息

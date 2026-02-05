@@ -15,6 +15,7 @@ pub mod distributed;
 mod distributed_client;
 mod distributed_dht;
 mod distributed_net;
+mod distributed_mempool;
 mod distributed_storage;
 mod distributed_validation;
 #[cfg(feature = "libp2p")]
@@ -92,6 +93,9 @@ pub use distributed_net::{
     DistributedNetwork, InMemoryNetwork, NetworkMessage, NetworkRequest, NetworkResponse,
     NetworkSubscription,
 };
+
+// Distributed mempool
+pub use distributed_mempool::{ActionMempool, ActionMempoolConfig};
 
 // Distributed client
 pub use distributed_client::DistributedClient;
