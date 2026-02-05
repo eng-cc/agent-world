@@ -41,6 +41,13 @@ pub struct NetworkSubscription {
 }
 
 impl NetworkSubscription {
+    pub(crate) fn new(
+        topic: String,
+        inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
+    ) -> Self {
+        Self { topic, inbox }
+    }
+
     pub fn topic(&self) -> &str {
         &self.topic
     }
@@ -88,10 +95,7 @@ impl DistributedNetwork for InMemoryNetwork {
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
         let mut inbox = self.inbox.lock().expect("lock inbox");
         inbox.entry(topic.to_string()).or_default();
-        Ok(NetworkSubscription {
-            topic: topic.to_string(),
-            inbox: Arc::clone(&self.inbox),
-        })
+        Ok(NetworkSubscription::new(topic.to_string(), Arc::clone(&self.inbox)))
     }
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
