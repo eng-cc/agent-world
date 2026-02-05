@@ -16,6 +16,8 @@
 - [x] UI 测试覆盖：回放控制（headless 断言）
 - [x] UI 测试覆盖：指标展示（headless 断言）
 - [x] UI 测试覆盖：订阅筛选（headless 断言）
+- [x] UI 测试覆盖：控制按钮（Play/Pause/Step/Seek）
+- [x] UI 测试覆盖：headless 状态输出
 - [x] 补充协议/回放单元测试
 - [x] viewer headless 模式（无显示环境运行）
 - [x] viewer offline 模式（headless 无网络权限运行）

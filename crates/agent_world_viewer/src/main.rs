@@ -755,4 +755,80 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn control_buttons_send_expected_requests() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_control_buttons);
+
+        let (tx, rx) = mpsc::channel::<ViewerRequest>();
+        app.world_mut().insert_resource(ViewerClient {
+            tx,
+            rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
+        });
+
+        for control in [
+            ViewerControl::Play,
+            ViewerControl::Pause,
+            ViewerControl::Step { count: 1 },
+            ViewerControl::Seek { tick: 0 },
+        ] {
+            app.world_mut().spawn((
+                Button,
+                Interaction::Pressed,
+                ControlButton { control: control.clone() },
+            ));
+        }
+
+        app.update();
+
+        let mut seen = Vec::new();
+        while let Ok(request) = rx.try_recv() {
+            seen.push(request);
+        }
+
+        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Play }));
+        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Pause }));
+        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Step { count: 1 } }));
+        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Seek { tick: 0 } }));
+    }
+
+    #[test]
+    fn headless_report_tracks_status_and_event_count() {
+        let mut app = App::new();
+        app.add_systems(Update, headless_report);
+        app.world_mut().insert_resource(HeadlessStatus::default());
+
+        app.world_mut().insert_resource(ViewerState {
+            status: ConnectionStatus::Connecting,
+            snapshot: None,
+            events: Vec::new(),
+            metrics: None,
+        });
+
+        app.update();
+
+        let status = app.world_mut().resource::<HeadlessStatus>();
+        assert_eq!(status.last_status, Some(ConnectionStatus::Connecting));
+        assert_eq!(status.last_events, 0);
+
+        app.world_mut().insert_resource(ViewerState {
+            status: ConnectionStatus::Connected,
+            snapshot: None,
+            events: vec![WorldEvent {
+                id: 1,
+                time: 1,
+                kind: agent_world::simulator::WorldEventKind::ActionRejected {
+                    reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
+                },
+            }],
+            metrics: None,
+        });
+
+        app.update();
+
+        let status = app.world_mut().resource::<HeadlessStatus>();
+        assert_eq!(status.last_status, Some(ConnectionStatus::Connected));
+        assert_eq!(status.last_events, 1);
+    }
 }
