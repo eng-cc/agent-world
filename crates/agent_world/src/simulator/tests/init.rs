@@ -179,6 +179,7 @@ fn scenario_templates_build_models() {
         WorldScenario::TwinRegionBootstrap,
         WorldScenario::TriadRegionBootstrap,
         WorldScenario::DustyBootstrap,
+        WorldScenario::DustyTwinRegionBootstrap,
     ];
 
     for scenario in scenarios {
@@ -248,6 +249,22 @@ fn dusty_bootstrap_seeds_dust_and_storage() {
 }
 
 #[test]
+fn dusty_twin_region_bootstrap_seeds_dust_and_regions() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::DustyTwinRegionBootstrap, &config);
+    let (model, report) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(report.dust_seed.is_some());
+    assert!(model.locations.contains_key("region-a"));
+    assert!(model.locations.contains_key("region-b"));
+    assert!(model.power_plants.contains_key("plant-a"));
+    assert!(model.power_plants.contains_key("plant-b"));
+    assert!(model.power_storages.contains_key("storage-a"));
+    assert!(model.agents.contains_key("agent-0"));
+    assert!(model.agents.contains_key("agent-1"));
+}
+
+#[test]
 fn scenario_aliases_parse() {
     let cases = [
         ("two-bases", WorldScenario::TwoBases),
@@ -256,6 +273,7 @@ fn scenario_aliases_parse() {
         ("twin-regions", WorldScenario::TwinRegionBootstrap),
         ("triad-regions", WorldScenario::TriadRegionBootstrap),
         ("dusty", WorldScenario::DustyBootstrap),
+        ("dusty-regions", WorldScenario::DustyTwinRegionBootstrap),
     ];
 
     for (input, expected) in cases {

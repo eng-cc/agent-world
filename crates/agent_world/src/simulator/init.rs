@@ -374,6 +374,94 @@ impl WorldInitConfig {
                 };
                 init.power_storages.push(storage);
             }
+            WorldScenario::DustyTwinRegionBootstrap => {
+                init.dust.enabled = true;
+                init.dust.seed_offset = 101;
+                init.origin.enabled = false;
+                init.agents.count = 2;
+                init.agents.location_id = Some("region-a".to_string());
+
+                let center = center_pos(&config.space);
+                let offset = (config.space.width_cm as f64 * 0.22).max(1.0);
+                let pos_a = offset_pos(&config.space, center, -offset, 0.0, 0.0);
+                let pos_b = offset_pos(&config.space, center, offset, 0.0, 0.0);
+
+                let mut region_a = LocationSeedConfig::default();
+                region_a.location_id = "region-a".to_string();
+                region_a.name = "Region A".to_string();
+                region_a.pos = Some(pos_a);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 180);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 40);
+                init.locations.push(region_a);
+
+                let mut region_b = LocationSeedConfig::default();
+                region_b.location_id = "region-b".to_string();
+                region_b.name = "Region B".to_string();
+                region_b.pos = Some(pos_b);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 140);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 30);
+                init.locations.push(region_b);
+
+                init.agents
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 20);
+
+                let plant_a = PowerPlantSeedConfig {
+                    facility_id: "plant-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity_per_tick: 10,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_a);
+
+                let plant_b = PowerPlantSeedConfig {
+                    facility_id: "plant-b".to_string(),
+                    location_id: "region-b".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-b".to_string(),
+                    },
+                    capacity_per_tick: 7,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_b);
+
+                let storage_a = PowerStorageSeedConfig {
+                    facility_id: "storage-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity: 70,
+                    current_level: 15,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 9,
+                    max_discharge_rate: 9,
+                };
+                init.power_storages.push(storage_a);
+            }
         }
         init
     }
@@ -389,6 +477,7 @@ pub enum WorldScenario {
     TwinRegionBootstrap,
     TriadRegionBootstrap,
     DustyBootstrap,
+    DustyTwinRegionBootstrap,
 }
 
 impl WorldScenario {
@@ -401,6 +490,7 @@ impl WorldScenario {
             WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
             WorldScenario::DustyBootstrap => "dusty_bootstrap",
+            WorldScenario::DustyTwinRegionBootstrap => "dusty_twin_region_bootstrap",
         }
     }
 
@@ -421,6 +511,10 @@ impl WorldScenario {
                 Some(WorldScenario::TriadRegionBootstrap)
             }
             "dusty_bootstrap" | "dusty-bootstrap" | "dusty" => Some(WorldScenario::DustyBootstrap),
+            "dusty_twin_region_bootstrap"
+            | "dusty-twin-region-bootstrap"
+            | "dusty-twin-regions"
+            | "dusty-regions" => Some(WorldScenario::DustyTwinRegionBootstrap),
             _ => None,
         }
     }
@@ -434,6 +528,7 @@ impl WorldScenario {
             "twin_region_bootstrap",
             "triad_region_bootstrap",
             "dusty_bootstrap",
+            "dusty_twin_region_bootstrap",
         ]
     }
 }

@@ -43,6 +43,7 @@
   - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
   - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
   - `dusty_bootstrap`：尘埃云开启 + 原点 + 1 Agent + 储能与基础资源
+  - `dusty_twin_region_bootstrap`：尘埃云开启 + 双区域 + 双 Agent + 基础电力/储能与资源
 
 ### 场景使用建议
 - `minimal`：用于测试核心流程或最小单 Agent 回归。
@@ -51,6 +52,7 @@
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
 - `dusty_bootstrap`：用于验证尘埃云/辐射采集与热管理路径。
+- `dusty_twin_region_bootstrap`：用于验证尘埃云下的多区域资源/设施差异与运输成本。
 
 ### 场景别名
 - `two_bases`：`two-bases`
@@ -59,6 +61,7 @@
 - `twin_region_bootstrap`：`twin-regions`
 - `triad_region_bootstrap`：`triad-regions`
 - `dusty_bootstrap`：`dusty`
+- `dusty_twin_region_bootstrap`：`dusty-regions`
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
