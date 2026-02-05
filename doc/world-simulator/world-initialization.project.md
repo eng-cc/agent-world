@@ -31,10 +31,12 @@
 - [x] I20 扩展场景模板（dusty_triad_region_bootstrap 三方尘埃云）
 - [x] I21 demo 增加 summary-only 开关
 - [x] I22 场景稳定性测试（关键字段校验）
+- [x] I23 文档补充尘埃云种子策略
+- [x] I24 增加 world_init_demo summary-only 冒烟测试
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I22（稳定性测试完成）
+- 当前阶段：I24（冒烟测试完成）
