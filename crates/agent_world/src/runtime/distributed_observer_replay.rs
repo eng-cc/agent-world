@@ -3,6 +3,7 @@
 use super::blob_store::{blake3_hex, BlobStore};
 use super::distributed::{SnapshotManifest, WorldHeadAnnounce};
 use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
 use super::distributed_validation::{validate_head_update, HeadValidationResult};
 use super::error::WorldError;
 use super::segmenter::JournalSegmentRef;
@@ -13,6 +14,21 @@ pub fn replay_validate_head(
     store: &impl BlobStore,
 ) -> Result<HeadValidationResult, WorldError> {
     let head = client.get_world_head(world_id)?;
+    replay_validate_with_head(&head, client, store)
+}
+
+#[allow(dead_code)]
+pub fn replay_validate_head_with_dht(
+    world_id: &str,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let head = dht
+        .get_world_head(world_id)?
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("world head not found for {world_id}"),
+        })?;
     replay_validate_with_head(&head, client, store)
 }
 
@@ -64,7 +80,7 @@ mod tests {
     use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
     use super::super::util::to_canonical_cbor;
-    use super::super::{Action, LocalCasStore, World};
+    use super::super::{Action, InMemoryDht, LocalCasStore, World};
     use std::fs;
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -151,6 +167,76 @@ mod tests {
         let client = DistributedClient::new(Arc::clone(&network));
         let result = replay_validate_head("w1", &client, &store).expect("replay");
         assert_eq!(result.block_hash, expected_block_hash);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn replay_validate_head_uses_dht_when_available() {
+        let dir = temp_dir("observer-replay-dht");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        let write = store_execution_result(
+            "w1",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write");
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> =
+            Arc::new(InMemoryNetwork::new());
+        let write_block = write.block.clone();
+        let write_snapshot_ref = write.snapshot_manifest_ref.content_hash.clone();
+        let write_journal_ref = write.journal_segments_ref.content_hash.clone();
+        let store_clone = store.clone();
+
+        network
+            .register_handler(RR_GET_BLOCK, Box::new(move |payload| {
+                let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
+                assert_eq!(request.world_id, "w1");
+                let response = GetBlockResponse {
+                    block: write_block.clone(),
+                    journal_ref: write_journal_ref.clone(),
+                    snapshot_ref: write_snapshot_ref.clone(),
+                };
+                Ok(to_canonical_cbor(&response).unwrap())
+            }))
+            .expect("register block");
+
+        network
+            .register_handler(RR_FETCH_BLOB, Box::new(move |payload| {
+                let request: FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
+                let bytes = store_clone.get(&request.content_hash).unwrap();
+                let response = FetchBlobResponse {
+                    blob: bytes,
+                    content_hash: request.content_hash,
+                };
+                Ok(to_canonical_cbor(&response).unwrap())
+            }))
+            .expect("register fetch blob");
+
+        let dht = InMemoryDht::new();
+        dht.put_world_head("w1", &write.head_announce)
+            .expect("put head");
+
+        let client = DistributedClient::new(Arc::clone(&network));
+        let result =
+            replay_validate_head_with_dht("w1", &dht, &client, &store).expect("replay");
+        assert_eq!(result.block_hash, write.head_announce.block_hash);
 
         let _ = fs::remove_dir_all(&dir);
     }

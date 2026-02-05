@@ -61,6 +61,10 @@
 - [x] TTL 与 provider 截断策略
 - [x] CachedDht 单元测试
 
+### 10. P2.2 观察者 DHT 引导
+- [x] 观察者回放支持 DHT head 引导
+- [x] DHT 引导单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -68,6 +72,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.1 完成（索引缓存封装）
-- 下一步：P2.2（后续协议/实现迭代）
-- 最近更新：索引缓存封装（2026-02-05）
+- 当前阶段：P2.2 完成（观察者 DHT 引导）
+- 下一步：P2.3（后续协议/实现迭代）
+- 最近更新：观察者 DHT 引导（2026-02-05）

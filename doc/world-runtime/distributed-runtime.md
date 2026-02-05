@@ -66,6 +66,7 @@
 ## 观察者回放验证（草案）
 - **拉取链路**：`get_world_head` → `get_block` → `fetch_blob(snapshot_ref/journal_ref)`。
 - **校验流程**：重算 roots 与 block_hash，复原 snapshot/journal 并回放校验。
+- **DHT 引导**：可先从 DHT/index store 读取 head（CachedDht），再用 rr 拉取区块与分片。
 
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。
