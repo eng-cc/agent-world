@@ -16,6 +16,7 @@ mod distributed_client;
 mod distributed_dht;
 mod distributed_net;
 mod distributed_storage;
+mod distributed_validation;
 #[cfg(feature = "libp2p")]
 mod libp2p_net;
 mod effect;
@@ -100,6 +101,7 @@ pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
 
 // Distributed storage helpers
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};
+pub use distributed_validation::{assemble_journal, assemble_snapshot, validate_head_update, HeadValidationResult};
 
 // Libp2p adapter
 #[cfg(feature = "libp2p")]

@@ -39,6 +39,7 @@ pub enum WorldError {
         message: String,
         retryable: bool,
     },
+    DistributedValidationFailed { reason: String },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),

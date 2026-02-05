@@ -150,6 +150,7 @@
 ## 一致性与验证
 - **单写者分片**：每个世界分片在同一时间仅允许一个 Sequencer 持有写入租约。
 - **可验证执行**：Execution Node 产出 `state_root`，观察节点可回放并校验。
+- **Head 更新校验**：收到新 head 后拉取 block/manifest/journal，重算 roots 与 block_hash，通过后才更新 head/DHT。
 - **异常处理**：若 state_root 不一致，拒绝该区块并回滚到上一个 head。
 
 ## 接口 / 数据（草案）

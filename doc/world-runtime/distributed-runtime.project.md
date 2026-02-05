@@ -23,7 +23,7 @@
 ### 3. 执行节点协同
 - [x] 执行节点拉取 wasm/state/journal 的网络客户端（基于 DistributedNetwork）
 - [x] 执行结果写入 storage（block/journal/snapshot）
-- [ ] 头指针更新与回放校验流程
+- [x] 头指针更新与回放校验流程
 
 ### 4. 网络适配器原型（P1）
 - [x] 定义 DistributedNetwork 抽象接口
@@ -60,6 +60,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.3.1 完成（执行结果写入 storage）
-- 下一步：P1.3.2（头指针更新与回放校验流程）
-- 最近更新：执行结果写入 storage（block/journal/snapshot）（2026-02-05）
+- 当前阶段：P1.3.2 完成（头指针更新与回放校验流程）
+- 下一步：P1.4.1（action mempool 聚合与去重）
+- 最近更新：Head 更新校验与回放验证工具（2026-02-05）
