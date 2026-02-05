@@ -2,9 +2,14 @@
 
 use std::sync::Arc;
 
+use super::blob_store::BlobStore;
 use super::distributed::{topic_event, topic_head, WorldHeadAnnounce};
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_head_follow::HeadFollower;
 use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
+use super::world::World;
 
 #[derive(Debug, Clone)]
 pub struct ObserverSubscription {
@@ -47,6 +52,29 @@ impl ObserverClient {
             heads.push(serde_cbor::from_slice(&bytes)?);
         }
         Ok(heads)
+    }
+
+    pub fn sync_heads(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        follower.sync_from_heads(&heads, client, store)
+    }
+
+    pub fn sync_heads_with_dht(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        follower.sync_from_heads_with_dht(&heads, dht, client, store)
     }
 }
 
