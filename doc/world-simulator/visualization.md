@@ -65,6 +65,17 @@
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+### 在线模式（最小实现）
+- 在线模式直接从 `WorldKernel` 推送事件，使用内置 demo script 生成可观测事件序列。
+- 默认单连接、tick 驱动，不保证多客户端一致性。
+- `Seek` 仅支持回到 tick=0（重置世界），其他 tick 会返回错误。
+
+#### 快速运行（在线模式）
+1) 启动 live server：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
+2) 启动 UI：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
 - **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。

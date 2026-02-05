@@ -44,6 +44,12 @@
 3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+## Viewer 快速运行（在线模式）
+1. 启动 live server：  
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
+2. 启动 UI：  
+   `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
 ## 路线图（摘要）
 - M1：世界内核最小闭环（时间、地点、事件、行动校验、可恢复）
 - M2：持久化与回放（快照/事件日志、可审计、可分叉）

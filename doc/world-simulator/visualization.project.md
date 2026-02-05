@@ -24,6 +24,9 @@
 - [x] headless 默认离线并支持强制联网开关（AGENT_WORLD_VIEWER_FORCE_ONLINE）
 - [x] 更新任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
+- [x] 在线模式：live viewer server（WorldKernel + demo script）
+- [x] 在线模式：CLI（world_viewer_live）与运行说明
+- [x] 在线模式：基础单元测试（script/step/reset）
 - [ ] 提交到 git
 
 ## 依赖
@@ -32,4 +35,4 @@
 - Bevy（viewer 客户端）
 
 ## 状态
-- 当前阶段：设计与任务拆解完成，进入实现
+- 当前阶段：在线模式实现完成（待提交）
