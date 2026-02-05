@@ -53,6 +53,7 @@ enum Command {
     Request {
         protocol: String,
         payload: Vec<u8>,
+        providers: Vec<String>,
         response: oneshot::Sender<Result<Vec<u8>, WorldError>>,
     },
     RegisterHandler {
@@ -158,7 +159,7 @@ impl Libp2pNetwork {
                                         }
                                     }
                                 }
-                                Some(Command::Request { protocol, payload, response }) => {
+                                Some(Command::Request { protocol, payload, providers, response }) => {
                                     if peers.is_empty() {
                                         if let Some(handler) = handlers.get(&protocol) {
                                             let reply = handler(&payload).map_err(|err| err);
@@ -168,7 +169,18 @@ impl Libp2pNetwork {
                                         }
                                         continue;
                                     }
-                                    let peer = peers[0];
+                                    let mut selected_peer = None;
+                                    if !providers.is_empty() {
+                                        for provider in providers {
+                                            if let Ok(peer_id) = provider.parse::<PeerId>() {
+                                                if peers.contains(&peer_id) {
+                                                    selected_peer = Some(peer_id);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    let peer = selected_peer.unwrap_or_else(|| peers[0]);
                                     let request = NetworkRequest { protocol: protocol.clone(), payload };
                                     let request_id = swarm.behaviour_mut().request_response.send_request(&peer, request);
                                     pending.insert(request_id, response);
@@ -393,11 +405,21 @@ impl DistributedNetwork for Libp2pNetwork {
     }
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
+        self.request_with_providers(protocol, payload, &[])
+    }
+
+    fn request_with_providers(
+        &self,
+        protocol: &str,
+        payload: &[u8],
+        providers: &[String],
+    ) -> Result<Vec<u8>, WorldError> {
         let (sender, receiver) = oneshot::channel();
         self.command_tx
             .unbounded_send(Command::Request {
                 protocol: protocol.to_string(),
                 payload: payload.to_vec(),
+                providers: providers.to_vec(),
                 response: sender,
             })
             .map_err(|_| WorldError::NetworkProtocolUnavailable {

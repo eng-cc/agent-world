@@ -27,6 +27,14 @@ pub trait DistributedNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError>;
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError>;
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError>;
+    fn request_with_providers(
+        &self,
+        protocol: &str,
+        payload: &[u8],
+        _providers: &[String],
+    ) -> Result<Vec<u8>, WorldError> {
+        self.request(protocol, payload)
+    }
     fn register_handler(
         &self,
         protocol: &str,

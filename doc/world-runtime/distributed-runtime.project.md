@@ -69,6 +69,11 @@
 - [x] 执行结果发布接入 ProviderCache
 - [x] ProviderCache 发布单元测试
 
+### 12. P2.4 Provider-aware 拉取
+- [x] DistributedNetwork 支持 provider 列表请求
+- [x] Observer 回放拉取使用 provider 列表
+- [x] provider-aware 客户端单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -76,6 +81,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.3 完成（ProviderCache 执行接入）
-- 下一步：P2.4（后续协议/实现迭代）
-- 最近更新：ProviderCache 执行接入（2026-02-05）
+- 当前阶段：P2.4 完成（Provider-aware 拉取）
+- 下一步：P2.5（后续协议/实现迭代）
+- 最近更新：Provider-aware 拉取（2026-02-05）

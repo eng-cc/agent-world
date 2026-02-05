@@ -74,6 +74,19 @@ impl DistributedClient {
         Ok(response.blob)
     }
 
+    pub fn fetch_blob_with_providers(
+        &self,
+        content_hash: &str,
+        providers: &[String],
+    ) -> Result<Vec<u8>, WorldError> {
+        let request = FetchBlobRequest {
+            content_hash: content_hash.to_string(),
+        };
+        let response: FetchBlobResponse =
+            self.request_with_providers(RR_FETCH_BLOB, &request, providers)?;
+        Ok(response.blob)
+    }
+
     pub fn get_journal_segment(&self, world_id: &str, from_event_id: u64) -> Result<BlobRef, WorldError> {
         let request = GetJournalSegmentRequest {
             world_id: world_id.to_string(),
@@ -130,6 +143,19 @@ impl DistributedClient {
         let response_bytes = self.network.request(protocol, &payload)?;
         decode_response(&response_bytes)
     }
+
+    fn request_with_providers<T: Serialize, R: DeserializeOwned>(
+        &self,
+        protocol: &str,
+        request: &T,
+        providers: &[String],
+    ) -> Result<R, WorldError> {
+        let payload = to_canonical_cbor(request)?;
+        let response_bytes = self
+            .network
+            .request_with_providers(protocol, &payload, providers)?;
+        decode_response(&response_bytes)
+    }
 }
 
 fn decode_response<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, WorldError> {
@@ -146,8 +172,61 @@ fn decode_response<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, WorldError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::distributed_net::InMemoryNetwork;
+    use super::super::distributed_net::{InMemoryNetwork, NetworkSubscription};
     use crate::runtime::distributed::DistributedErrorCode;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Default)]
+    struct SpyNetwork {
+        providers: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl SpyNetwork {
+        fn providers(&self) -> Vec<String> {
+            self.providers.lock().expect("lock providers").clone()
+        }
+    }
+
+    impl DistributedNetwork for SpyNetwork {
+        fn publish(&self, _topic: &str, _payload: &[u8]) -> Result<(), WorldError> {
+            Ok(())
+        }
+
+        fn subscribe(&self, _topic: &str) -> Result<NetworkSubscription, WorldError> {
+            Err(WorldError::NetworkProtocolUnavailable {
+                protocol: "spy".to_string(),
+            })
+        }
+
+        fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
+            self.request_with_providers(protocol, payload, &[])
+        }
+
+        fn request_with_providers(
+            &self,
+            _protocol: &str,
+            payload: &[u8],
+            providers: &[String],
+        ) -> Result<Vec<u8>, WorldError> {
+            let mut captured = self.providers.lock().expect("lock providers");
+            *captured = providers.to_vec();
+
+            let request: FetchBlobRequest = serde_cbor::from_slice(payload)?;
+            let response = FetchBlobResponse {
+                blob: b"data".to_vec(),
+                content_hash: request.content_hash,
+            };
+            Ok(to_canonical_cbor(&response)?)
+        }
+
+        fn register_handler(
+            &self,
+            _protocol: &str,
+            _handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
+        ) -> Result<(), WorldError> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn client_get_world_head_round_trip() {
@@ -192,5 +271,20 @@ mod tests {
         let client = DistributedClient::new(Arc::new(network));
         let err = client.fetch_blob("missing").expect_err("expect error");
         assert!(matches!(err, WorldError::NetworkRequestFailed { .. }));
+    }
+
+    #[test]
+    fn client_fetch_blob_with_providers_passes_list() {
+        let spy = Arc::new(SpyNetwork::default());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+        let client = DistributedClient::new(network);
+        let providers = vec!["p1".to_string(), "p2".to_string()];
+        let blob = client
+            .fetch_blob_with_providers("hash", &providers)
+            .expect("fetch");
+        assert_eq!(blob, b"data".to_vec());
+
+        let seen = spy.providers();
+        assert_eq!(seen, providers);
     }
 }

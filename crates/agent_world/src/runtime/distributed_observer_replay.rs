@@ -29,7 +29,7 @@ pub fn replay_validate_head_with_dht(
         .ok_or_else(|| WorldError::DistributedValidationFailed {
             reason: format!("world head not found for {world_id}"),
         })?;
-    replay_validate_with_head(&head, client, store)
+    replay_validate_with_head_and_dht(&head, dht, client, store)
 }
 
 pub fn replay_validate_with_head(
@@ -58,6 +58,67 @@ pub fn replay_validate_with_head(
     }
 
     validate_head_update(head, &block, &manifest, &segments, store)
+}
+
+pub fn replay_validate_with_head_and_dht(
+    head: &WorldHeadAnnounce,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let block_response = client.get_block_response(&head.world_id, head.height)?;
+    let block = block_response.block;
+
+    let manifest_bytes = fetch_blob_with_dht(
+        &head.world_id,
+        &block_response.snapshot_ref,
+        dht,
+        client,
+    )?;
+    verify_blob_hash(&block_response.snapshot_ref, &manifest_bytes)?;
+    let manifest: SnapshotManifest = serde_cbor::from_slice(&manifest_bytes)?;
+
+    let segments_bytes = fetch_blob_with_dht(
+        &head.world_id,
+        &block_response.journal_ref,
+        dht,
+        client,
+    )?;
+    verify_blob_hash(&block_response.journal_ref, &segments_bytes)?;
+    let segments: Vec<JournalSegmentRef> = serde_cbor::from_slice(&segments_bytes)?;
+
+    for chunk in &manifest.chunks {
+        let bytes =
+            fetch_blob_with_dht(&head.world_id, &chunk.content_hash, dht, client)?;
+        store.put(&chunk.content_hash, &bytes)?;
+    }
+    for segment in &segments {
+        let bytes =
+            fetch_blob_with_dht(&head.world_id, &segment.content_hash, dht, client)?;
+        store.put(&segment.content_hash, &bytes)?;
+    }
+
+    validate_head_update(head, &block, &manifest, &segments, store)
+}
+
+fn fetch_blob_with_dht(
+    world_id: &str,
+    content_hash: &str,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+) -> Result<Vec<u8>, WorldError> {
+    let providers = dht.get_providers(world_id, content_hash)?;
+    if providers.is_empty() {
+        return client.fetch_blob(content_hash);
+    }
+    let provider_ids: Vec<String> = providers
+        .into_iter()
+        .map(|record| record.provider_id)
+        .collect();
+    match client.fetch_blob_with_providers(content_hash, &provider_ids) {
+        Ok(bytes) => Ok(bytes),
+        Err(_) => client.fetch_blob(content_hash),
+    }
 }
 
 fn verify_blob_hash(expected: &str, bytes: &[u8]) -> Result<(), WorldError> {
