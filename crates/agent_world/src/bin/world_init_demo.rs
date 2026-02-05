@@ -46,4 +46,18 @@ fn main() {
             location_id, electricity, hardware, data
         );
     }
+
+    println!("agent_resources:");
+    let mut agent_ids: Vec<_> = model.agents.keys().collect();
+    agent_ids.sort();
+    for agent_id in agent_ids {
+        let agent = &model.agents[agent_id];
+        let electricity = agent.resources.get(ResourceKind::Electricity);
+        let hardware = agent.resources.get(ResourceKind::Hardware);
+        let data = agent.resources.get(ResourceKind::Data);
+        println!(
+            "- {}: electricity={} hardware={} data={}",
+            agent_id, electricity, hardware, data
+        );
+    }
 }
