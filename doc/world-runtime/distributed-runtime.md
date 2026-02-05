@@ -93,6 +93,18 @@
 - **索引信息**：快照使用 `SnapshotManifest` 记录 chunk 列表；日志分片记录 `from_event_id/to_event_id`。
 - **一致性**：`state_root` 采用快照 CBOR 的 `blake3` hash（V1 过渡方案）。
 
+## 执行结果写入 storage（草案）
+- **快照落盘**：执行节点完成 step 后生成 `Snapshot`，按分片策略写入 CAS。
+- **快照索引**：`SnapshotManifest` CBOR 存入 CAS，`snapshot_ref = hash(manifest)`。
+- **日志落盘**：`Journal` 按事件分段写入 CAS，形成 `JournalSegmentRef` 列表。
+- **日志索引**：分段列表 CBOR 存入 CAS，`journal_ref = hash(segments)`。
+- **区块元数据**：生成 `WorldBlock`（包含 action/event/receipts/state roots 与 refs），CBOR 存入 CAS。
+- **Root 规则（V1）**：
+  - `action_root = hash(ActionId 列表 CBOR)`
+  - `event_root = hash(事件列表 CBOR)`
+  - `receipts_root = hash(Receipt 列表 CBOR)`
+- **广播对象**：由区块派生 `BlockAnnounce` 与 `WorldHeadAnnounce` 用于 gossipsub。
+
 ## 网络层（libp2p）
 - **gossipsub**：动作广播、区块/事件头广播。
 - **Kademlia DHT**：内容提供者索引、世界 head 索引。

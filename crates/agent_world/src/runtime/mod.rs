@@ -15,6 +15,7 @@ pub mod distributed;
 mod distributed_client;
 mod distributed_dht;
 mod distributed_net;
+mod distributed_storage;
 #[cfg(feature = "libp2p")]
 mod libp2p_net;
 mod effect;
@@ -96,6 +97,9 @@ pub use distributed_client::DistributedClient;
 
 // Distributed DHT adapter
 pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
+
+// Distributed storage helpers
+pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};
 
 // Libp2p adapter
 #[cfg(feature = "libp2p")]
