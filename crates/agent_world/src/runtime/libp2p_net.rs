@@ -24,11 +24,23 @@ use super::distributed_net::{
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Libp2pNetworkConfig {
     pub keypair: Option<Keypair>,
     pub listen_addrs: Vec<Multiaddr>,
     pub bootstrap_peers: Vec<Multiaddr>,
+    pub republish_interval_ms: i64,
+}
+
+impl Default for Libp2pNetworkConfig {
+    fn default() -> Self {
+        Self {
+            keypair: None,
+            listen_addrs: Vec::new(),
+            bootstrap_peers: Vec::new(),
+            republish_interval_ms: 5 * 60 * 1000,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -77,6 +89,7 @@ enum Command {
         key: String,
         response: oneshot::Sender<Result<Option<WorldHeadAnnounce>, WorldError>>,
     },
+    RepublishProviders,
     Shutdown,
 }
 
@@ -114,6 +127,7 @@ impl Libp2pNetwork {
         let event_published = Arc::clone(&published);
         let config_clone = config.clone();
         let keypair_clone = keypair.clone();
+        let republish_tx = command_tx.clone();
 
         std::thread::spawn(move || {
             let mut swarm = build_swarm(&keypair_clone);
@@ -126,6 +140,8 @@ impl Libp2pNetwork {
             > = HashMap::new();
             let mut pending_dht: HashMap<kad::QueryId, PendingDhtQuery> = HashMap::new();
             let mut peers: Vec<PeerId> = Vec::new();
+            let mut provider_keys: HashMap<String, i64> = HashMap::new();
+            let republish_interval_ms = config_clone.republish_interval_ms;
 
             for addr in config_clone.listen_addrs {
                 if let Err(err) = swarm.listen_on(addr) {
@@ -137,6 +153,17 @@ impl Libp2pNetwork {
                 if let Err(err) = swarm.dial(addr) {
                     eprintln!("libp2p dial failed: {err}");
                 }
+            }
+
+            if republish_interval_ms > 0 {
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_millis(
+                        republish_interval_ms as u64,
+                    ));
+                    if republish_tx.unbounded_send(Command::RepublishProviders).is_err() {
+                        break;
+                    }
+                });
             }
 
             futures::executor::block_on(async move {
@@ -192,6 +219,7 @@ impl Libp2pNetwork {
                                     let dht_key = RecordKey::new(&key);
                                     match swarm.behaviour_mut().kademlia.start_providing(dht_key) {
                                         Ok(query_id) => {
+                                            provider_keys.insert(key, now_ms());
                                             pending_dht.insert(
                                                 query_id,
                                                 PendingDhtQuery::PublishProvider {
@@ -253,6 +281,27 @@ impl Libp2pNetwork {
                                             error: None,
                                         },
                                     );
+                                }
+                                Some(Command::RepublishProviders) => {
+                                    if republish_interval_ms > 0 {
+                                        let now = now_ms();
+                                        let keys: Vec<String> = provider_keys
+                                            .iter()
+                                            .filter_map(|(key, last_publish)| {
+                                                if should_republish(*last_publish, now, republish_interval_ms) {
+                                                    Some(key.clone())
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .collect();
+                                        for key in keys {
+                                            let dht_key = RecordKey::new(&key);
+                                            if swarm.behaviour_mut().kademlia.start_providing(dht_key).is_ok() {
+                                                provider_keys.insert(key, now);
+                                            }
+                                        }
+                                    }
                                 }
                                 Some(Command::Shutdown) | None => {
                                     break;
@@ -728,6 +777,13 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+fn should_republish(last_ms: i64, now_ms: i64, interval_ms: i64) -> bool {
+    if interval_ms <= 0 {
+        return false;
+    }
+    now_ms.saturating_sub(last_ms) >= interval_ms
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -801,5 +857,13 @@ mod tests {
             .expect("oneshot")
             .expect("get head");
         assert_eq!(loaded, Some(head));
+    }
+
+    #[test]
+    fn republish_interval_gate() {
+        assert!(!should_republish(100, 150, 100));
+        assert!(should_republish(100, 200, 100));
+        assert!(should_republish(100, 201, 100));
+        assert!(!should_republish(100, 200, 0));
     }
 }

@@ -84,6 +84,10 @@
 - [x] 模块 artifact 拉取走 DHT provider-aware 路径
 - [x] 模块拉取封装单元测试
 
+### 15. P2.7 libp2p provider 重发
+- [x] libp2p provider 重发配置与定时触发
+- [x] provider 重发间隔单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -91,6 +95,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.6 完成（模块拉取封装）
-- 下一步：P2.7（后续协议/实现迭代）
-- 最近更新：模块拉取封装（2026-02-05）
+- 当前阶段：P2.7 完成（libp2p provider 重发）
+- 下一步：P2.8（后续协议/实现迭代）
+- 最近更新：libp2p provider 重发（2026-02-05）
