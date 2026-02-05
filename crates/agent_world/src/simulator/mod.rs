@@ -30,7 +30,7 @@ pub use dust::generate_fragments;
 pub use init::{
     build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
     OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
-    WorldInitError, WorldInitReport,
+    WorldInitError, WorldInitReport, WorldScenario,
 };
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{

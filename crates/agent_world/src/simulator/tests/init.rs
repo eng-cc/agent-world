@@ -167,3 +167,19 @@ fn init_rejects_facility_with_missing_owner() {
     let err = build_world_model(&config, &init).expect_err("should fail");
     assert!(matches!(err, WorldInitError::FacilityOwnerNotFound { .. }));
 }
+
+#[test]
+fn scenario_templates_build_models() {
+    let config = WorldConfig::default();
+    let scenarios = [
+        WorldScenario::Minimal,
+        WorldScenario::TwoBases,
+        WorldScenario::PowerBootstrap,
+    ];
+
+    for scenario in scenarios {
+        let init = WorldInitConfig::from_scenario(scenario, &config);
+        let (model, _) = build_world_model(&config, &init).expect("scenario init");
+        assert!(!model.locations.is_empty());
+    }
+}

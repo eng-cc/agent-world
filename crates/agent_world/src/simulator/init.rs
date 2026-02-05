@@ -60,6 +60,106 @@ impl WorldInitConfig {
             .collect();
         self
     }
+
+    pub fn from_scenario(scenario: WorldScenario, config: &WorldConfig) -> Self {
+        let config = config.clone().sanitized();
+        let mut init = WorldInitConfig::default();
+        match scenario {
+            WorldScenario::Minimal => {
+                init.dust.enabled = false;
+                init.agents.count = 1;
+            }
+            WorldScenario::TwoBases => {
+                init.dust.enabled = false;
+                init.agents.count = 2;
+                init.agents.location_id = Some("base-a".to_string());
+
+                let center = center_pos(&config.space);
+                let offset = (config.space.width_cm as f64 * 0.2).max(1.0);
+                let pos_a = offset_pos(&config.space, center, -offset, 0.0, 0.0);
+                let pos_b = offset_pos(&config.space, center, offset, 0.0, 0.0);
+
+                let mut base_a = LocationSeedConfig::default();
+                base_a.location_id = "base-a".to_string();
+                base_a.name = "Base A".to_string();
+                base_a.pos = Some(pos_a);
+                init.locations.push(base_a);
+
+                let mut base_b = LocationSeedConfig::default();
+                base_b.location_id = "base-b".to_string();
+                base_b.name = "Base B".to_string();
+                base_b.pos = Some(pos_b);
+                init.locations.push(base_b);
+            }
+            WorldScenario::PowerBootstrap => {
+                init.dust.enabled = false;
+                init.agents.count = 1;
+
+                let plant = PowerPlantSeedConfig {
+                    facility_id: "plant-1".to_string(),
+                    location_id: "origin".to_string(),
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-0".to_string(),
+                    },
+                    capacity_per_tick: 10,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant);
+
+                let storage = PowerStorageSeedConfig {
+                    facility_id: "storage-1".to_string(),
+                    location_id: "origin".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "origin".to_string(),
+                    },
+                    capacity: 50,
+                    current_level: 10,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 10,
+                    max_discharge_rate: 10,
+                };
+                init.power_storages.push(storage);
+            }
+        }
+        init
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorldScenario {
+    Minimal,
+    TwoBases,
+    PowerBootstrap,
+}
+
+impl WorldScenario {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WorldScenario::Minimal => "minimal",
+            WorldScenario::TwoBases => "two_bases",
+            WorldScenario::PowerBootstrap => "power_bootstrap",
+        }
+    }
+
+    pub fn parse(input: &str) -> Option<Self> {
+        match input.trim().to_lowercase().as_str() {
+            "minimal" => Some(WorldScenario::Minimal),
+            "two_bases" | "two-bases" => Some(WorldScenario::TwoBases),
+            "power_bootstrap" | "power-bootstrap" | "bootstrap" => {
+                Some(WorldScenario::PowerBootstrap)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["minimal", "two_bases", "power_bootstrap"]
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -482,6 +582,33 @@ fn center_pos(space: &super::world_model::SpaceConfig) -> GeoPos {
         x_cm: space.width_cm as f64 / 2.0,
         y_cm: space.depth_cm as f64 / 2.0,
         z_cm: space.height_cm as f64 / 2.0,
+    }
+}
+
+fn offset_pos(
+    space: &super::world_model::SpaceConfig,
+    base: GeoPos,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+) -> GeoPos {
+    let max_x = space.width_cm as f64;
+    let max_y = space.depth_cm as f64;
+    let max_z = space.height_cm as f64;
+    GeoPos {
+        x_cm: clamp_f64(base.x_cm + dx, 0.0, max_x),
+        y_cm: clamp_f64(base.y_cm + dy, 0.0, max_y),
+        z_cm: clamp_f64(base.z_cm + dz, 0.0, max_z),
+    }
+}
+
+fn clamp_f64(value: f64, min: f64, max: f64) -> f64 {
+    if value < min {
+        min
+    } else if value > max {
+        max
+    } else {
+        value
     }
 }
 

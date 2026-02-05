@@ -35,6 +35,10 @@
   - `agents: AgentSpawnConfig`
   - `power_plants: Vec<PowerPlantSeedConfig>`
   - `power_storages: Vec<PowerStorageSeedConfig>`
+- `WorldScenario`
+  - `minimal`：原点 + 1 Agent，无尘埃云
+  - `two_bases`：原点 + 2 个基地地点 + 2 Agent，无尘埃云
+  - `power_bootstrap`：原点 + 1 Agent + 基础发电/储能设施
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
@@ -73,6 +77,10 @@
   - `journal` 为空（初始化视为“世界既成事实”）。
 - 生成过程使用 `WorldConfig` 的 `space/dust/power` 配置。
 - 生成顺序：origin → custom locations → dust fragments → agents → facilities（确保依赖对象已存在）。
+- 场景模板通过 `WorldInitConfig::from_scenario(scenario, config)` 生成初始化配置。
+
+### 示例工具
+- `world_init_demo`：命令行示例，按场景生成世界并输出统计摘要。
 
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。

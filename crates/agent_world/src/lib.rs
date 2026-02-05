@@ -47,7 +47,7 @@ pub use simulator::{
 pub use simulator::{
     build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
     OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
-    WorldInitError, WorldInitReport,
+    WorldInitError, WorldInitReport, WorldScenario,
 };
 
 // Power system (M4 social system)
