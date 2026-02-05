@@ -21,10 +21,11 @@
 - [x] I10 demo 输出地点资源摘要
 - [x] I11 扩展场景模板（triad_region_bootstrap 多区域）
 - [x] I12 demo 输出 Agent 资源摘要
+- [x] I13 扩展场景模板（dusty_bootstrap 启用尘埃云）
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I12（demo 输出增强完成）
+- 当前阶段：I13（尘埃云场景完成）

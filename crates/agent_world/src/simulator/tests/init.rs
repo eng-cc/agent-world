@@ -178,6 +178,7 @@ fn scenario_templates_build_models() {
         WorldScenario::ResourceBootstrap,
         WorldScenario::TwinRegionBootstrap,
         WorldScenario::TriadRegionBootstrap,
+        WorldScenario::DustyBootstrap,
     ];
 
     for scenario in scenarios {
@@ -232,4 +233,16 @@ fn triad_region_bootstrap_seeds_regions() {
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
     assert!(model.agents.contains_key("agent-2"));
+}
+
+#[test]
+fn dusty_bootstrap_seeds_dust_and_storage() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::DustyBootstrap, &config);
+    let (model, report) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(report.dust_seed.is_some());
+    assert!(model.locations.len() >= 1);
+    assert!(model.power_storages.contains_key("storage-1"));
+    assert!(model.agents.contains_key("agent-0"));
 }

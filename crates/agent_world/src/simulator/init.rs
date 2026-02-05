@@ -340,6 +340,40 @@ impl WorldInitConfig {
                 };
                 init.power_storages.push(storage_c);
             }
+            WorldScenario::DustyBootstrap => {
+                init.dust.enabled = true;
+                init.dust.seed_offset = 77;
+                init.agents.count = 1;
+
+                init.origin
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 50);
+                init.origin
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 10);
+
+                init.agents
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 15);
+
+                let storage = PowerStorageSeedConfig {
+                    facility_id: "storage-1".to_string(),
+                    location_id: "origin".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "origin".to_string(),
+                    },
+                    capacity: 40,
+                    current_level: 5,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 6,
+                    max_discharge_rate: 6,
+                };
+                init.power_storages.push(storage);
+            }
         }
         init
     }
@@ -354,6 +388,7 @@ pub enum WorldScenario {
     ResourceBootstrap,
     TwinRegionBootstrap,
     TriadRegionBootstrap,
+    DustyBootstrap,
 }
 
 impl WorldScenario {
@@ -365,6 +400,7 @@ impl WorldScenario {
             WorldScenario::ResourceBootstrap => "resource_bootstrap",
             WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
+            WorldScenario::DustyBootstrap => "dusty_bootstrap",
         }
     }
 
@@ -384,6 +420,7 @@ impl WorldScenario {
             "triad_region_bootstrap" | "triad-region-bootstrap" | "triad_regions" | "triad-regions" => {
                 Some(WorldScenario::TriadRegionBootstrap)
             }
+            "dusty_bootstrap" | "dusty-bootstrap" | "dusty" => Some(WorldScenario::DustyBootstrap),
             _ => None,
         }
     }
@@ -396,6 +433,7 @@ impl WorldScenario {
             "resource_bootstrap",
             "twin_region_bootstrap",
             "triad_region_bootstrap",
+            "dusty_bootstrap",
         ]
     }
 }
