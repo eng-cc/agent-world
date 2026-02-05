@@ -422,3 +422,96 @@ fn power_transfer_rejects_out_of_range() {
         other => panic!("unexpected event: {other:?}"),
     }
 }
+
+#[test]
+fn power_market_price_reflects_reserve() {
+    let mut config = WorldConfig::default();
+    config.power.base_price_per_pu = 10;
+    config.power.min_price_per_pu = 1;
+    config.power.max_price_per_pu = 100;
+    config.power.price_sensitivity_bps = 5000;
+    config.power.reserve_target_per_location = 100;
+    config.power.transfer_loss_per_km_bps = 0;
+    config.power.transfer_max_distance_km = 10_000;
+    let mut kernel = WorldKernel::with_config(config.clone());
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "market".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "buyer".to_string(),
+        pos: pos(0.0, 0.001),
+    });
+    kernel.submit_action(Action::RegisterPowerPlant {
+        facility_id: "plant-1".to_string(),
+        location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        capacity_per_tick: 100,
+        fuel_cost_per_pu: 0,
+        maintenance_cost: 0,
+        efficiency: 1.0,
+        degradation: 0.0,
+    });
+    kernel.submit_action(Action::RegisterPowerStorage {
+        facility_id: "storage-1".to_string(),
+        location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        capacity: 200,
+        current_level: 0,
+        charge_efficiency: 1.0,
+        discharge_efficiency: 1.0,
+        max_charge_rate: 200,
+        max_discharge_rate: 200,
+    });
+    kernel.step_until_empty();
+    kernel.process_power_generation_tick();
+
+    let expected_price = config.power.price_per_pu(100);
+    kernel.submit_action(Action::BuyPowerAtMarket {
+        buyer: ResourceOwner::Location {
+            location_id: "loc-2".to_string(),
+        },
+        seller: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        amount: 10,
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::Power(PowerEvent::PowerTransferred { price_per_pu, .. }) => {
+            assert_eq!(price_per_pu, expected_price);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    kernel.submit_action(Action::StorePower {
+        storage_id: "storage-1".to_string(),
+        amount: 80,
+    });
+    kernel.step().unwrap();
+
+    let expected_price = config.power.price_per_pu(10);
+    kernel.submit_action(Action::BuyPowerAtMarket {
+        buyer: ResourceOwner::Location {
+            location_id: "loc-2".to_string(),
+        },
+        seller: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        amount: 5,
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::Power(PowerEvent::PowerTransferred { price_per_pu, .. }) => {
+            assert_eq!(price_per_pu, expected_price);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}

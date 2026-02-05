@@ -146,6 +146,27 @@ impl WorldConfig {
         if self.power.transfer_max_distance_km < 0 {
             self.power.transfer_max_distance_km = 0;
         }
+        if self.power.base_price_per_pu < 0 {
+            self.power.base_price_per_pu = 0;
+        }
+        if self.power.min_price_per_pu < 0 {
+            self.power.min_price_per_pu = 0;
+        }
+        if self.power.max_price_per_pu < self.power.min_price_per_pu {
+            self.power.max_price_per_pu = self.power.min_price_per_pu;
+        }
+        if self.power.base_price_per_pu < self.power.min_price_per_pu {
+            self.power.base_price_per_pu = self.power.min_price_per_pu;
+        }
+        if self.power.base_price_per_pu > self.power.max_price_per_pu {
+            self.power.base_price_per_pu = self.power.max_price_per_pu;
+        }
+        if self.power.price_sensitivity_bps < 0 {
+            self.power.price_sensitivity_bps = 0;
+        }
+        if self.power.reserve_target_per_location < 0 {
+            self.power.reserve_target_per_location = 0;
+        }
         self
     }
 

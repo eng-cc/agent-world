@@ -167,11 +167,21 @@ pub enum Action {
         amount: i64,
         price_per_pu: i64,
     },
+    BuyPowerAtMarket {
+        buyer: ResourceOwner,
+        seller: ResourceOwner,
+        amount: i64,
+    },
     SellPower {
         seller: ResourceOwner,
         buyer: ResourceOwner,
         amount: i64,
         price_per_pu: i64,
+    },
+    SellPowerAtMarket {
+        seller: ResourceOwner,
+        buyer: ResourceOwner,
+        amount: i64,
     },
     TransferResource {
         from: ResourceOwner,
