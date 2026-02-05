@@ -38,12 +38,19 @@ impl DistributedClient {
     }
 
     pub fn get_block(&self, world_id: &str, height: u64) -> Result<WorldBlock, WorldError> {
+        Ok(self.get_block_response(world_id, height)?.block)
+    }
+
+    pub fn get_block_response(
+        &self,
+        world_id: &str,
+        height: u64,
+    ) -> Result<GetBlockResponse, WorldError> {
         let request = GetBlockRequest {
             world_id: world_id.to_string(),
             height,
         };
-        let response: GetBlockResponse = self.request(RR_GET_BLOCK, &request)?;
-        Ok(response.block)
+        self.request(RR_GET_BLOCK, &request)
     }
 
     pub fn get_snapshot_manifest(

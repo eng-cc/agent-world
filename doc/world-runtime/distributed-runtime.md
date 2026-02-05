@@ -63,6 +63,10 @@
 - **订阅事件**：订阅 `aw.<world_id>.event` 获取轻量事件流。
 - **订阅头指针**：订阅 `aw.<world_id>.head` 获取世界头更新。
 
+## 观察者回放验证（草案）
+- **拉取链路**：`get_world_head` → `get_block` → `fetch_blob(snapshot_ref/journal_ref)`。
+- **校验流程**：重算 roots 与 block_hash，复原 snapshot/journal 并回放校验。
+
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。
 - **续约机制**：持有者在 TTL 内续约，否则视为失效。

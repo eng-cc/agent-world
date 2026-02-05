@@ -18,6 +18,7 @@ mod distributed_index;
 mod distributed_index_store;
 mod distributed_gateway;
 mod distributed_observer;
+mod distributed_observer_replay;
 mod distributed_net;
 mod distributed_mempool;
 mod distributed_lease;
@@ -117,6 +118,8 @@ pub use distributed_index_store::{DistributedIndexStore, HeadIndexRecord, InMemo
 pub use distributed_gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
 // Distributed observer
 pub use distributed_observer::{ObserverClient, ObserverSubscription};
+// Distributed observer replay validation
+pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};
 
 // Distributed storage helpers
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};
