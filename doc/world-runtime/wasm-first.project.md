@@ -6,12 +6,12 @@
 - [x] 输出项目管理文档（本文件）
 
 ### 1. Kernel 不变量与规则边界
-- [ ] 定义 Kernel 不变量清单（位置/资源/基础物理）与守卫策略
-- [ ] 明确基础物理与规则模块的职责分界与示例
+- [x] 定义 Kernel 不变量清单（位置/资源/基础物理）与守卫策略
+- [x] 明确基础物理与规则模块的职责分界与示例
 
 ### 2. ModuleManifest/Subscription 扩展
 - [ ] 增加 `ModuleRole` 与订阅 `stage` 字段
-- [ ] 更新 wasm-interface/runtime-integration 文档与示例
+- [x] 更新 wasm-interface/runtime-integration 文档与示例
 
 ### 3. Rule Modules 路由与合并
 - [ ] 实现 pre_action/post_action 路由流程
@@ -38,6 +38,6 @@
 - `doc/world-runtime/runtime-integration.md`
 
 ## 状态
-- 当前阶段：W1（设计对齐完成，进入实现评估）
-- 下一步：W2（Manifest 扩展与路由阶段设计落地）
-- 最近更新：新增 WASM First 设计分册与项目管理文档（2026-02-05）
+- 当前阶段：W2（Manifest 扩展与路由阶段设计落地）
+- 下一步：W3（Rule Modules 路由与合并实现）
+- 最近更新：明确 Kernel 不变量与规则边界，更新 WASM 接口与运行时集成文档（2026-02-05）
