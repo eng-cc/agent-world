@@ -14,10 +14,11 @@
 - [x] I4 补充电力设施初始化测试
 - [x] I5 提供场景模板（WorldScenario）
 - [x] I5 提供示例工具（world_init_demo）
+- [x] I6 扩展场景模板（resource_bootstrap 初始库存）
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I5（场景模板完成）
+- 当前阶段：I6（场景模板扩展完成）

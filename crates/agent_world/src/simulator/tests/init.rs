@@ -175,6 +175,7 @@ fn scenario_templates_build_models() {
         WorldScenario::Minimal,
         WorldScenario::TwoBases,
         WorldScenario::PowerBootstrap,
+        WorldScenario::ResourceBootstrap,
     ];
 
     for scenario in scenarios {
@@ -182,4 +183,18 @@ fn scenario_templates_build_models() {
         let (model, _) = build_world_model(&config, &init).expect("scenario init");
         assert!(!model.locations.is_empty());
     }
+}
+
+#[test]
+fn resource_bootstrap_seeds_stock() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::ResourceBootstrap, &config);
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    let origin = model.locations.get("origin").expect("origin exists");
+    let agent = model.agents.get("agent-0").expect("agent exists");
+
+    assert_eq!(origin.resources.get(ResourceKind::Electricity), 100);
+    assert_eq!(origin.resources.get(ResourceKind::Hardware), 20);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 10);
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 25);
 }

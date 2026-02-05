@@ -124,6 +124,28 @@ impl WorldInitConfig {
                 };
                 init.power_storages.push(storage);
             }
+            WorldScenario::ResourceBootstrap => {
+                init.dust.enabled = false;
+                init.agents.count = 1;
+
+                init.origin
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 100);
+                init.origin
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 20);
+
+                init.agents
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Data, 10);
+                init.agents
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 25);
+            }
         }
         init
     }
@@ -135,6 +157,7 @@ pub enum WorldScenario {
     Minimal,
     TwoBases,
     PowerBootstrap,
+    ResourceBootstrap,
 }
 
 impl WorldScenario {
@@ -143,6 +166,7 @@ impl WorldScenario {
             WorldScenario::Minimal => "minimal",
             WorldScenario::TwoBases => "two_bases",
             WorldScenario::PowerBootstrap => "power_bootstrap",
+            WorldScenario::ResourceBootstrap => "resource_bootstrap",
         }
     }
 
@@ -153,12 +177,15 @@ impl WorldScenario {
             "power_bootstrap" | "power-bootstrap" | "bootstrap" => {
                 Some(WorldScenario::PowerBootstrap)
             }
+            "resource_bootstrap" | "resource-bootstrap" | "resources" => {
+                Some(WorldScenario::ResourceBootstrap)
+            }
             _ => None,
         }
     }
 
     pub fn variants() -> &'static [&'static str] {
-        &["minimal", "two_bases", "power_bootstrap"]
+        &["minimal", "two_bases", "power_bootstrap", "resource_bootstrap"]
     }
 }
 
