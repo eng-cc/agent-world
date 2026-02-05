@@ -18,6 +18,7 @@ mod manifest;
 mod modules;
 mod module_store;
 mod policy;
+mod rules;
 mod sandbox;
 mod signer;
 mod snapshot;
@@ -75,6 +76,9 @@ pub use module_store::ModuleStore;
 
 // Policy
 pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen};
+
+// Rules
+pub use rules::{merge_rule_decisions, ResourceDelta, RuleDecision, RuleDecisionMergeError, RuleVerdict};
 
 // Signer
 pub use signer::ReceiptSigner;

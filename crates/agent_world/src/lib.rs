@@ -21,13 +21,15 @@ pub use runtime::{
     OriginKind, PatchConflict, PatchMergeResult, PatchOpKind, PatchOpSummary, PatchPath,
     PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen, Proposal,
     ProposalDecision, ProposalId, ProposalStatus, ReceiptSignature, ReceiptSigner, RejectReason,
-    RollbackEvent, SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta, SnapshotRecord,
+    RollbackEvent, RuleDecision, RuleDecisionMergeError, RuleVerdict, ResourceDelta,
+    SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta, SnapshotRecord,
     SnapshotRetentionPolicy, World, WorldError, WorldEvent, WorldEventBody, WorldEventId,
     WorldState, WorldTime,
 };
 
 pub use runtime::{
     apply_manifest_patch, diff_manifest, merge_manifest_patches, merge_manifest_patches_with_conflicts,
+    merge_rule_decisions,
 };
 
 pub use runtime::{

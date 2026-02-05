@@ -15,7 +15,7 @@
 
 ### 3. Rule Modules 路由与合并
 - [x] 实现 pre_action/post_action 路由流程
-- [ ] 定义 RuleDecision 结构与冲突合并策略
+- [x] 定义 RuleDecision 结构与冲突合并策略
 - [ ] 接入资源扣费与 Action 覆盖逻辑
 
 ### 4. Body Modules 机体模块化
@@ -39,5 +39,5 @@
 
 ## 状态
 - 当前阶段：W3（Rule Modules 路由与合并实现）
-- 下一步：W3.2（RuleDecision 结构与冲突合并策略）
-- 最近更新：接入 pre_action/post_action 阶段路由（2026-02-05）
+- 下一步：W3.3（资源扣费与动作覆盖逻辑）
+- 最近更新：新增 RuleDecision 与冲突合并策略（2026-02-05）
