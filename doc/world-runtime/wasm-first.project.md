@@ -14,7 +14,7 @@
 - [x] 更新 wasm-interface/runtime-integration 文档与示例
 
 ### 3. Rule Modules 路由与合并
-- [ ] 实现 pre_action/post_action 路由流程
+- [x] 实现 pre_action/post_action 路由流程
 - [ ] 定义 RuleDecision 结构与冲突合并策略
 - [ ] 接入资源扣费与 Action 覆盖逻辑
 
@@ -39,5 +39,5 @@
 
 ## 状态
 - 当前阶段：W3（Rule Modules 路由与合并实现）
-- 下一步：W4（M1 规则迁移为 Rule Modules）
-- 最近更新：新增 ModuleRole 与订阅 stage 字段并完成数据结构对齐（2026-02-05）
+- 下一步：W3.2（RuleDecision 结构与冲突合并策略）
+- 最近更新：接入 pre_action/post_action 阶段路由（2026-02-05）

@@ -78,6 +78,7 @@
 - `World::set_module_limits_max(limits)`：调整模块资源上限
 - `World::execute_module_call(module_id, trace_id, input, sandbox)`：执行模块调用并写入 ModuleCallFailed/ModuleEmitted
 - `World::route_action_to_modules(envelope, sandbox)`：按订阅路由 action 并触发模块调用
+- `World::route_action_to_modules_with_stage(envelope, stage, sandbox)`：按订阅与阶段路由 action
 - `World::route_event_to_modules(event, sandbox)`：按订阅路由事件并触发模块调用
 - `World::propose_module_changes(changes)`：提交模块变更提案（治理闭环）
 - `World::module_registry()`：读取模块索引

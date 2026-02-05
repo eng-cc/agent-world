@@ -8,7 +8,8 @@ use super::super::{
     Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleCallErrorCode,
     ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext,
     ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleSubscription, WorldError, WorldEvent, WorldEventBody,
+    ModuleRegistry, ModuleSubscription, ModuleSubscriptionStage, WorldError, WorldEvent,
+    WorldEventBody,
 };
 use super::super::util::to_canonical_cbor;
 
@@ -213,6 +214,19 @@ impl World {
         envelope: &ActionEnvelope,
         sandbox: &mut dyn super::super::ModuleSandbox,
     ) -> Result<usize, WorldError> {
+        self.route_action_to_modules_with_stage(
+            envelope,
+            ModuleSubscriptionStage::PreAction,
+            sandbox,
+        )
+    }
+
+    pub fn route_action_to_modules_with_stage(
+        &mut self,
+        envelope: &ActionEnvelope,
+        stage: ModuleSubscriptionStage,
+        sandbox: &mut dyn super::super::ModuleSandbox,
+    ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
         let action_value = serde_json::to_value(envelope)?;
         let mut module_ids: Vec<String> =
@@ -242,6 +256,7 @@ impl World {
                 let manifest = record.manifest.clone();
                 let subscribed = module_subscribes_to_action(
                     &manifest.subscriptions,
+                    stage,
                     action_kind,
                     &action_value,
                 );
@@ -825,24 +840,27 @@ fn module_subscribes_to_event(
     event_value: &JsonValue,
 ) -> bool {
     subscriptions.iter().any(|subscription| {
-        subscription
-            .event_kinds
-            .iter()
-            .any(|pattern| subscription_match(pattern, event_kind))
+        subscription.stage == ModuleSubscriptionStage::PostEvent
+            && subscription
+                .event_kinds
+                .iter()
+                .any(|pattern| subscription_match(pattern, event_kind))
             && subscription_filters_match(&subscription.filters, FilterKind::Event, event_value)
     })
 }
 
 fn module_subscribes_to_action(
     subscriptions: &[ModuleSubscription],
+    stage: ModuleSubscriptionStage,
     action_kind: &str,
     action_value: &JsonValue,
 ) -> bool {
     subscriptions.iter().any(|subscription| {
-        subscription
-            .action_kinds
-            .iter()
-            .any(|pattern| subscription_match(pattern, action_kind))
+        subscription.stage == stage
+            && subscription
+                .action_kinds
+                .iter()
+                .any(|pattern| subscription_match(pattern, action_kind))
             && subscription_filters_match(&subscription.filters, FilterKind::Action, action_value)
     })
 }
