@@ -17,7 +17,8 @@
 - [x] 本地 CAS 参考实现（LocalCasStore）
 - [x] 快照/日志分片与 manifest 生成
 - [x] 本地 pin/evict 策略（pins.json + prune_unpinned）
-- [ ] provider 发布与缓存策略（DHT provider + 远端缓存）
+- [x] provider 发布与索引（DHT provider）
+- [ ] 远端缓存策略（provider cache/republish）
 
 ### 3. 执行节点协同
 - [x] 执行节点拉取 wasm/state/journal 的网络客户端（基于 DistributedNetwork）
@@ -30,7 +31,7 @@
 - [x] Libp2pNetwork 骨架（peer_id/keypair，占位实现）
 - [x] DHT 适配器抽象 + InMemoryDht 参考实现
 - [x] libp2p Swarm 事件循环（gossipsub + rr 基线）
-- [ ] libp2p 实现（gossipsub + rr + dht）
+- [x] libp2p 实现（gossipsub + rr + dht）
 
 ### 5. Sequencer 与批处理
 - [ ] action mempool 聚合与去重
@@ -38,8 +39,8 @@
 - [ ] 租约式单写者切换与超时恢复
 
 ### 6. 索引与发现
-- [ ] world head 发布到 DHT
-- [ ] 内容 provider 索引与查询
+- [x] world head 发布到 DHT（libp2p/kad 适配）
+- [x] 内容 provider 索引与查询（libp2p/kad 适配）
 - [ ] 轻量 index store 接口（可选）
 
 ### 7. Gateway/Observer
@@ -59,6 +60,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.2.1（libp2p gossipsub/rr 基线）
-- 下一步：P1.2.2（DHT/Kad 接入与 provider/head 发布）
-- 最近更新：补齐 libp2p Swarm 事件循环（2026-02-05）
+- 当前阶段：P1.2.2 完成（DHT/Kad 接入与 provider/head 发布）
+- 下一步：P1.3.1（执行结果写入 storage）
+- 最近更新：libp2p Kademlia DHT 与 provider/head 查询接入（2026-02-05）
