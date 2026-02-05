@@ -84,6 +84,28 @@
 - **block exchange（bitswap/graphsync）**：拉取 WASM/快照/日志分片。
 - **request/response**：点对点查询（`get_world_head`、`get_block`、`get_snapshot`）。
 
+### 协议命名约定（草案）
+- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
+- **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
+- **DHT Key**：`/aw/world/<world_id>/<key>`，例如 `head`、`providers/<content_hash>`。
+- **内容哈希**：V1 使用 `blake3` 十六进制字符串；后续可升级为 CIDv1（保留兼容层）。
+
+### Gossipsub Topics（草案）
+- `aw.<world_id>.action`：ActionEnvelope 广播（mempool 输入）。
+- `aw.<world_id>.block`：WorldBlock/BlockAnnounce 广播（高度与 hash）。
+- `aw.<world_id>.head`：WorldHeadAnnounce 广播（头指针更新）。
+- `aw.<world_id>.event`：EventAnnounce 广播（轻量事件摘要）。
+
+### Request/Response 协议（草案）
+- `/aw/rr/1.0.0/get_world_head`
+- `/aw/rr/1.0.0/get_block`
+- `/aw/rr/1.0.0/get_snapshot`
+- `/aw/rr/1.0.0/get_journal_segment`
+- `/aw/rr/1.0.0/get_receipt_segment`
+- `/aw/rr/1.0.0/fetch_blob`
+- `/aw/rr/1.0.0/get_module_manifest`
+- `/aw/rr/1.0.0/get_module_artifact`
+
 ## 一致性与验证
 - **单写者分片**：每个世界分片在同一时间仅允许一个 Sequencer 持有写入租约。
 - **可验证执行**：Execution Node 产出 `state_root`，观察节点可回放并校验。
@@ -109,6 +131,69 @@ WorldBlock {
 }
 ```
 
+### ActionEnvelope（动作封装）
+```
+ActionEnvelope {
+  world_id: String,
+  action_id: String,
+  actor_id: String,
+  action_kind: String,
+  payload_cbor: Bytes,
+  payload_hash: String,
+  nonce: u64,
+  timestamp_ms: i64,
+  signature: String
+}
+```
+
+### ActionBatch（排序批次）
+```
+ActionBatch {
+  world_id: String,
+  batch_id: String,
+  actions: Vec<ActionEnvelope>,
+  proposer_id: String,
+  timestamp_ms: i64,
+  signature: String
+}
+```
+
+### WorldHeadAnnounce（头指针广播）
+```
+WorldHeadAnnounce {
+  world_id: String,
+  height: u64,
+  block_hash: String,
+  state_root: String,
+  timestamp_ms: i64,
+  signature: String
+}
+```
+
+### BlockAnnounce（区块广播）
+```
+BlockAnnounce {
+  world_id: String,
+  height: u64,
+  block_hash: String,
+  prev_block_hash: String,
+  state_root: String,
+  event_root: String,
+  timestamp_ms: i64,
+  signature: String
+}
+```
+
+### BlobRef（内容寻址引用）
+```
+BlobRef {
+  content_hash: String,
+  size_bytes: u64,
+  codec: String,
+  links: Vec<String>
+}
+```
+
 ### SnapshotManifest（快照清单）
 ```
 SnapshotManifest {
@@ -119,6 +204,20 @@ SnapshotManifest {
 }
 ```
 
+### Request/Response（示意）
+```
+GetWorldHeadRequest { world_id: String }
+GetWorldHeadResponse { head: WorldHeadAnnounce }
+
+GetBlockRequest { world_id: String, height: u64 }
+GetBlockResponse { block: WorldBlock, journal_ref: String, snapshot_ref: String }
+
+FetchBlobRequest { content_hash: String }
+FetchBlobResponse { blob: Bytes, content_hash: String }
+
+ErrorResponse { code: String, message: String, retryable: bool }
+```
+
 ### 关键 RPC（示意）
 - `submit_action(world_id, action)`
 - `subscribe_events(world_id, from_height)`
@@ -126,6 +225,18 @@ SnapshotManifest {
 - `get_block(world_id, height)`
 - `get_snapshot(world_id, epoch)`
 - `fetch_blob(content_hash)`
+
+## 错误码与重试语义（草案）
+- `ERR_NOT_FOUND`：找不到资源或区块。
+- `ERR_BAD_REQUEST`：请求参数非法或字段缺失。
+- `ERR_INVALID_HASH`：content_hash 校验失败。
+- `ERR_STATE_MISMATCH`：state_root 不一致或高度冲突。
+- `ERR_UNSUPPORTED`：协议版本或方法不支持。
+- `ERR_UNAUTHORIZED`：签名或权限校验失败。
+- `ERR_BUSY`：节点繁忙，可重试。
+- `ERR_RATE_LIMITED`：限流拒绝，可退避重试。
+- `ERR_TIMEOUT`：超时失败，可重试。
+- `ERR_NOT_AVAILABLE`：服务暂不可用，可重试。
 
 ## 里程碑
 - **D1**：数据分类与存放策略确认（WASM/状态/日志/对象）。
