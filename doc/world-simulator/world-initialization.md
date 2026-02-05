@@ -69,6 +69,7 @@
 ### 尘埃云种子策略
 - 初始化使用 `seed + dust.seed_offset` 生成尘埃云碎片，确保与其他随机源解耦。
 - 各场景为尘埃云设置不同的 `seed_offset`，避免同一 seed 下的碎片分布完全一致。
+- 新增场景时应选择未使用过的 `seed_offset`，保持分布差异可追踪。
 - `WorldInitReport.dust_seed` 会记录实际使用的尘埃云种子，便于回放与比对。
 - `OriginLocationConfig`
   - `enabled: bool`
