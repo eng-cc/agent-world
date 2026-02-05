@@ -40,3 +40,17 @@ fn world_init_demo_runs_dusty_twin_summary() {
     assert!(stdout.contains("scenario: dusty_twin_region_bootstrap"));
     assert!(stdout.contains("dust_fragments:"));
 }
+
+#[test]
+fn world_init_demo_runs_dusty_triad_summary() {
+    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+    let output = Command::new(bin)
+        .args(["--summary-only", "dusty_triad_region_bootstrap"])
+        .output()
+        .expect("run world_init_demo");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("scenario: dusty_triad_region_bootstrap"));
+    assert!(stdout.contains("dust_fragments:"));
+}

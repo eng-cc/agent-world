@@ -35,10 +35,11 @@
 - [x] I24 增加 world_init_demo summary-only 冒烟测试
 - [x] I25 增加 dusty_bootstrap 冒烟测试
 - [x] I26 增加 dusty_twin_region_bootstrap 冒烟测试
+- [x] I27 增加 dusty_triad_region_bootstrap 冒烟测试
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I26（冒烟测试完成）
+- 当前阶段：I27（冒烟测试完成）
