@@ -22,6 +22,7 @@ mod module_store;
 mod policy;
 mod rules;
 mod sandbox;
+mod segmenter;
 mod signer;
 mod snapshot;
 mod state;
@@ -78,6 +79,9 @@ pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
 // Module store
 pub use module_store::ModuleStore;
+
+// Segmenter
+pub use segmenter::{segment_journal, segment_snapshot, JournalSegmentRef, SegmentConfig};
 
 // Policy
 pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen};

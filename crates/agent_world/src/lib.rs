@@ -23,7 +23,8 @@ pub use runtime::{
     PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen, Proposal,
     ProposalDecision, ProposalId, ProposalStatus, ReceiptSignature, ReceiptSigner, RejectReason,
     RollbackEvent, RuleDecision, RuleDecisionMergeError, RuleVerdict, ResourceDelta,
-    SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta, SnapshotRecord,
+    SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta, SnapshotRecord, SegmentConfig,
+    JournalSegmentRef,
     SnapshotRetentionPolicy, World, WorldError, WorldEvent, WorldEventBody, WorldEventId,
     WorldState, WorldTime,
 };
@@ -31,7 +32,7 @@ pub use runtime::{
 pub use runtime::{
     apply_manifest_patch, blake3_hex, diff_manifest, merge_manifest_patches,
     merge_manifest_patches_with_conflicts,
-    merge_rule_decisions,
+    merge_rule_decisions, segment_journal, segment_snapshot,
 };
 
 pub use runtime::{

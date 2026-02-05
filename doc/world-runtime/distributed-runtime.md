@@ -85,6 +85,13 @@
 - **本地 CAS 布局**：`<root>/blobs/<content_hash>.blob`（原子写入）。
 - **错误语义**：`not_found` / `hash_mismatch` / `hash_invalid`。
 
+## 快照/日志分片策略（草案）
+- **快照分片**：对 `Snapshot` 进行 canonical CBOR 编码后按字节切分。
+- **日志分片**：按事件数量切分（默认 256 条/段），每段 CBOR 编码后落盘。
+- **默认参数**：`snapshot_chunk_bytes=256KiB`，`journal_events_per_segment=256`。
+- **索引信息**：快照使用 `SnapshotManifest` 记录 chunk 列表；日志分片记录 `from_event_id/to_event_id`。
+- **一致性**：`state_root` 采用快照 CBOR 的 `blake3` hash（V1 过渡方案）。
+
 ## 网络层（libp2p）
 - **gossipsub**：动作广播、区块/事件头广播。
 - **Kademlia DHT**：内容提供者索引、世界 head 索引。
