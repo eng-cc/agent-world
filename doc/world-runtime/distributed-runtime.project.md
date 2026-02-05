@@ -65,6 +65,10 @@
 - [x] 观察者回放支持 DHT head 引导
 - [x] DHT 引导单元测试
 
+### 11. P2.3 ProviderCache 执行接入
+- [x] 执行结果发布接入 ProviderCache
+- [x] ProviderCache 发布单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -72,6 +76,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.2 完成（观察者 DHT 引导）
-- 下一步：P2.3（后续协议/实现迭代）
-- 最近更新：观察者 DHT 引导（2026-02-05）
+- 当前阶段：P2.3 完成（ProviderCache 执行接入）
+- 下一步：P2.4（后续协议/实现迭代）
+- 最近更新：ProviderCache 执行接入（2026-02-05）

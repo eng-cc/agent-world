@@ -115,7 +115,10 @@ pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
 // Cached DHT wrapper
 pub use distributed_dht_cache::{CachedDht, DhtCacheConfig};
 // Distributed index publishing
-pub use distributed_index::{publish_execution_providers, publish_world_head, query_providers, IndexPublishResult};
+pub use distributed_index::{
+    publish_execution_providers, publish_execution_providers_cached, publish_world_head,
+    query_providers, IndexPublishResult,
+};
 // Distributed index store
 pub use distributed_index_store::{DistributedIndexStore, HeadIndexRecord, InMemoryIndexStore};
 // Provider cache
