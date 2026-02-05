@@ -10,7 +10,7 @@
 - [x] UI：事件浏览器（列表/筛选）
 - [x] UI：回放控制（暂停/单步/跳转 tick）
 - [x] 基础指标展示（RunnerMetrics）
-- [x] UI 自动化测试（bevy_test_suite）
+- [x] UI 自动化测试（Bevy 自带 App/ECS）
 - [x] 补充协议/回放单元测试
 - [x] 更新任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`

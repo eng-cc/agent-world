@@ -486,12 +486,10 @@ fn events_summary(events: &[WorldEvent]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy_test_suite::{bevy_test, bevy_test_utils};
 
-    bevy_test_utils!();
-
-    #[bevy_test]
-    fn update_ui_sets_status_and_events(app: &mut TestApp) {
+    #[test]
+    fn update_ui_sets_status_and_events() {
+        let mut app = App::new();
         app.add_systems(Update, update_ui);
 
         app.world_mut().spawn((Text::new(""), StatusText));
