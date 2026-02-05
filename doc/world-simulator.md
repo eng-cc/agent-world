@@ -74,6 +74,36 @@
   - `max_harvest_per_tick`：每 tick 最大采集量（热/面积限制）。
   - `erosion_rate`：尘埃侵蚀系数（与速度/密度相关）。
 
+- **参数草案（更具体的默认值与范围）**
+  - `time_step_s`：默认 10s；范围 1s~60s。
+  - `power_unit_j`：1 电力单位≈1 kJ（默认），范围 0.1~10 kJ。
+  - `radiation_floor`：默认 1 单位/ tick；范围 0~10。
+  - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
+  - `max_harvest_per_tick`：默认 50；范围 1~500（受热/面积限制）。
+  - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
+  - `thermal_dissipation`：默认 5/tick；范围 1~50。
+  - `erosion_rate`：默认 1e-6（随速度/密度缩放）；范围 1e-7~1e-4。
+
+- **辐射采集规则细化（可落地规则）**
+  - 可采集量：`harvest = min(max_amount, max_harvest_per_tick, local_radiation)`
+  - 若启用衰减：`local_radiation = emission * exp(-radiation_decay_k * path_cm) + radiation_floor`
+  - 采集副作用：产生热量 `heat += harvest * heat_factor`（默认 `heat_factor=1`）。
+  - 超温处理：若 `heat > thermal_capacity`，则采集效率下降或动作被拒绝。
+
+- **热管理与硬件损耗（规则建议）**
+  - 每 tick 热量衰减：`heat = max(0, heat - thermal_dissipation)`
+  - 超温惩罚（任选其一）：  
+    - 降效：`harvest *= clamp(thermal_capacity / heat, 0.1..1.0)`  
+    - 损耗：`hardware -= (heat - thermal_capacity) * damage_factor`
+
+- **碎片分布生成器（建议草案）**
+  - 空间分块为体素（如 1km^3），每块生成碎片数 `n ~ Poisson(lambda * density)`
+  - 密度场：`density = base * (1 + cluster_noise) * layer(z)`  
+    - `cluster_noise`：多尺度噪声，形成团簇/空洞  
+    - `layer(z)`：中间层高、上下层低
+  - 尺寸分布：`radius_cm ~ PowerLaw(q)`，并裁剪在 `[r_min, r_max]`
+  - 材质分布：按权重抽样（Silicate/Metal/Ice/Carbon/Composite）
+
 - **待补细节清单**
   - 空间分布生成器（密度/团簇/空洞/障碍）
   - 局部辐射场采样与缓存策略（空间哈希/体素网格）
