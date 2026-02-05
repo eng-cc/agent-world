@@ -140,6 +140,12 @@ impl WorldConfig {
         if self.move_cost_per_km_electricity < 0 {
             self.move_cost_per_km_electricity = 0;
         }
+        if self.power.transfer_loss_per_km_bps < 0 {
+            self.power.transfer_loss_per_km_bps = 0;
+        }
+        if self.power.transfer_max_distance_km < 0 {
+            self.power.transfer_max_distance_km = 0;
+        }
         self
     }
 

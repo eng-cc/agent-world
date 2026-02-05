@@ -102,8 +102,12 @@ struct PowerStorage {
 struct PowerConfig {
     idle_cost_per_tick: i64,        // 空闲消耗，默认 1
     decision_cost: i64,             // 决策消耗，默认 1
-    maintenance_base_cost: i64,     // 维护基础消耗，默认 0
-    maintenance_degradation_factor: f64, // 老化额外消耗系数
+    default_power_capacity: i64,    // Agent 默认容量，默认 100
+    default_power_level: i64,       // Agent 初始电量，默认 100
+    low_power_threshold_pct: i64,   // 低电阈值百分比，默认 20
+    critical_threshold_pct: i64,    // 临界电阈值百分比，默认 5
+    transfer_loss_per_km_bps: i64,  // 传输损耗（每公里，bps，默认 10=0.1%）
+    transfer_max_distance_km: i64,  // 跨 Location 传输最大距离，默认 10_000
 }
 ```
 
@@ -111,8 +115,8 @@ struct PowerConfig {
 
 #### 传输规则
 - 同 Location 内传输：无损耗
-- 跨 Location 传输：需要传输设施或 Agent 搬运
-  - 传输损耗 = 距离(km) × 损耗系数（默认 0.1% per km）
+- 跨 Location 传输：仅 Location ↔ Location 允许，Agent 仍需共址交易
+  - 传输损耗 = 距离(km) × 损耗系数（默认 0.1% per km，按 bps 计算）
   - 长距离传输可能需要中继站
 
 ### 电力不足处理
@@ -139,22 +143,24 @@ enum AgentPowerState {
 enum PowerAction {
     // 购买电力（从设施或其他 Agent）
     BuyPower {
-        from: ResourceOwner,
+        buyer: ResourceOwner,
+        seller: ResourceOwner,
         amount: i64,
         price_per_pu: i64,
     },
     // 出售电力
     SellPower {
-        to: ResourceOwner,
+        seller: ResourceOwner,
+        buyer: ResourceOwner,
         amount: i64,
         price_per_pu: i64,
     },
-    // 从发电设施取电
+    // 从储能设施放电到所在 Location
     DrawPower {
-        plant_id: FacilityId,
+        storage_id: FacilityId,
         amount: i64,
     },
-    // 向储能设施存电
+    // 从所在 Location 向储能设施充电
     StorePower {
         storage_id: FacilityId,
         amount: i64,
@@ -182,11 +188,15 @@ impl WorldKernel {
 ### 新增事件类型
 ```rust
 enum PowerEvent {
-    PowerGenerated { plant_id, amount },
-    PowerConsumed { agent_id, amount, reason: ConsumeReason },
-    PowerTransferred { from, to, amount, loss },
-    PowerStateChanged { agent_id, from: AgentPowerState, to: AgentPowerState },
-    PlantStatusChanged { plant_id, from, to },
+    PowerPlantRegistered { plant: PowerPlant },
+    PowerStorageRegistered { storage: PowerStorage },
+    PowerGenerated { plant_id, location_id, amount },
+    PowerStored { storage_id, location_id, input, stored },
+    PowerDischarged { storage_id, location_id, output, drawn },
+    PowerConsumed { agent_id, amount, reason: ConsumeReason, remaining },
+    PowerStateChanged { agent_id, from: AgentPowerState, to: AgentPowerState, trigger_level },
+    PowerTransferred { from, to, amount, loss, price_per_pu },
+    PowerCharged { agent_id, amount, new_level },
 }
 
 enum ConsumeReason {

@@ -59,6 +59,7 @@ impl AgentPowerState {
 
 /// Configuration for the power system.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PowerConfig {
     /// Power consumed per tick when idle (default: 1).
     pub idle_cost_per_tick: i64,
@@ -72,6 +73,10 @@ pub struct PowerConfig {
     pub low_power_threshold_pct: i64,
     /// Critical power threshold as percentage (default: 5).
     pub critical_threshold_pct: i64,
+    /// Power transfer loss per km, in basis points (default: 10 = 0.1%).
+    pub transfer_loss_per_km_bps: i64,
+    /// Maximum cross-location transfer distance in km (default: 10_000).
+    pub transfer_max_distance_km: i64,
 }
 
 impl Default for PowerConfig {
@@ -83,6 +88,8 @@ impl Default for PowerConfig {
             default_power_level: 100,
             low_power_threshold_pct: 20,
             critical_threshold_pct: 5,
+            transfer_loss_per_km_bps: 10,
+            transfer_max_distance_km: 10_000,
         }
     }
 }
@@ -335,9 +342,11 @@ pub enum PowerEvent {
     },
     /// Power was transferred between owners.
     PowerTransferred {
-        from_agent: AgentId,
-        to_agent: AgentId,
+        from: ResourceOwner,
+        to: ResourceOwner,
         amount: i64,
+        loss: i64,
+        price_per_pu: i64,
     },
     /// Agent was charged (received power).
     PowerCharged {

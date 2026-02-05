@@ -149,9 +149,29 @@ pub enum Action {
         max_charge_rate: i64,
         max_discharge_rate: i64,
     },
+    DrawPower {
+        storage_id: FacilityId,
+        amount: i64,
+    },
+    StorePower {
+        storage_id: FacilityId,
+        amount: i64,
+    },
     MoveAgent {
         agent_id: AgentId,
         to: LocationId,
+    },
+    BuyPower {
+        buyer: ResourceOwner,
+        seller: ResourceOwner,
+        amount: i64,
+        price_per_pu: i64,
+    },
+    SellPower {
+        seller: ResourceOwner,
+        buyer: ResourceOwner,
+        amount: i64,
+        price_per_pu: i64,
     },
     TransferResource {
         from: ResourceOwner,

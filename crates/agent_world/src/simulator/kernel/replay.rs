@@ -328,14 +328,38 @@ impl WorldKernel {
                     }
                 }
                 PowerEvent::PowerStateChanged { .. } => {}
-                PowerEvent::PowerTransferred { from_agent, to_agent, amount } => {
-                    let power_config = self.config.power.clone();
-                    if let Some(from) = self.model.agents.get_mut(from_agent) {
-                        from.power.consume(*amount, &power_config);
+                PowerEvent::PowerTransferred {
+                    from,
+                    to,
+                    amount,
+                    loss,
+                    ..
+                } => {
+                    if *amount < 0 || *loss < 0 || *loss > *amount {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "invalid power transfer values: amount {amount}, loss {loss}"
+                            ),
+                        });
                     }
-                    if let Some(to) = self.model.agents.get_mut(to_agent) {
-                        to.power.charge(*amount, &power_config);
+                    self.ensure_owner_exists(from).map_err(|reason| {
+                        PersistError::ReplayConflict {
+                            message: format!("invalid power transfer source: {reason:?}"),
+                        }
+                    })?;
+                    self.ensure_owner_exists(to).map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid power transfer target: {reason:?}"),
+                    })?;
+                    self.remove_from_owner_for_replay(from, ResourceKind::Electricity, *amount)?;
+                    let delivered = amount.saturating_sub(*loss);
+                    if delivered <= 0 {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "power transfer delivered amount must be positive: {delivered}"
+                            ),
+                        });
                     }
+                    self.add_to_owner_for_replay(to, ResourceKind::Electricity, delivered)?;
                 }
             },
         }

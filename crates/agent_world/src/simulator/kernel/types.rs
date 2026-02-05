@@ -88,6 +88,7 @@ pub enum RejectReason {
     LocationAlreadyExists { location_id: LocationId },
     LocationNotFound { location_id: LocationId },
     FacilityAlreadyExists { facility_id: FacilityId },
+    FacilityNotFound { facility_id: FacilityId },
     AgentAlreadyAtLocation { agent_id: AgentId, location_id: LocationId },
     InvalidAmount { amount: i64 },
     InsufficientResource {
@@ -105,4 +106,6 @@ pub enum RejectReason {
     AgentShutdown {
         agent_id: AgentId,
     },
+    PowerTransferDistanceExceeded { distance_km: i64, max_distance_km: i64 },
+    PowerTransferLossExceedsAmount { amount: i64, loss: i64 },
 }
