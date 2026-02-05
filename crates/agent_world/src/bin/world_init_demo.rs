@@ -1,5 +1,5 @@
 use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
-use agent_world::simulator::WorldConfig;
+use agent_world::simulator::{ResourceKind, WorldConfig};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -32,4 +32,18 @@ fn main() {
     println!("agents: {}", report.agents);
     println!("power_plants: {}", model.power_plants.len());
     println!("power_storages: {}", model.power_storages.len());
+    println!("location_resources:");
+
+    let mut location_ids: Vec<_> = model.locations.keys().collect();
+    location_ids.sort();
+    for location_id in location_ids {
+        let location = &model.locations[location_id];
+        let electricity = location.resources.get(ResourceKind::Electricity);
+        let hardware = location.resources.get(ResourceKind::Hardware);
+        let data = location.resources.get(ResourceKind::Data);
+        println!(
+            "- {}: electricity={} hardware={} data={}",
+            location_id, electricity, hardware, data
+        );
+    }
 }

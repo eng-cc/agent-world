@@ -87,6 +87,7 @@
 ### 使用示例
 - 运行示例工具：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- minimal`
 - 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --help`
+- 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。
