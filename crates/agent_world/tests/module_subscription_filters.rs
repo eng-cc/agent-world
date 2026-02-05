@@ -265,3 +265,250 @@ fn module_subscription_invalid_filter_is_rejected() {
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
+
+#[test]
+fn module_subscription_any_matches() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-any";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.any".to_string(),
+        name: "FilterAny".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: Some(json!({
+                "event": {
+                    "any": [
+                        {"path": "/body/payload/data/agent_id", "eq": "agent-keep"}
+                    ]
+                }
+            })),
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+    apply_module_changes(&mut world, changes);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-keep".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-skip".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+
+    let output = agent_world::ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "Hit".to_string(),
+            payload: json!({"agent": "agent-keep"}),
+        }],
+        output_bytes: 64,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let emit_count = world
+        .journal()
+        .events
+        .iter()
+        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .count();
+    assert_eq!(emit_count, 1);
+}
+
+#[test]
+fn module_subscription_numeric_range_matches() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-range";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.range".to_string(),
+        name: "FilterRange".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: Vec::new(),
+            filters: Some(json!({
+                "event": {
+                    "all": [
+                        {"path": "/body/payload/data/pos/lat_deg", "gte": 0},
+                        {"path": "/body/payload/data/pos/lat_deg", "lt": 10}
+                    ]
+                }
+            })),
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+    apply_module_changes(&mut world, changes);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-in".to_string(),
+        pos: pos(5.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-out".to_string(),
+        pos: pos(-5.0, 0.0),
+    });
+
+    let output = agent_world::ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "Hit".to_string(),
+            payload: json!({"agent": "agent-in"}),
+        }],
+        output_bytes: 64,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let emit_count = world
+        .journal()
+        .events
+        .iter()
+        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .count();
+    assert_eq!(emit_count, 1);
+}
+
+#[test]
+fn module_subscription_regex_matches() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-regex";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.regex".to_string(),
+        name: "FilterRegex".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: vec!["action.register_agent".to_string()],
+            filters: Some(json!({
+                "action": {
+                    "all": [
+                        {"path": "/action/data/agent_id", "re": "^agent-[0-9]+$"}
+                    ]
+                }
+            })),
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+    apply_module_changes(&mut world, changes);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-123".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-x".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+
+    let output = agent_world::ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "ActionSeen".to_string(),
+            payload: json!({"agent": "agent-123"}),
+        }],
+        output_bytes: 64,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let emit_count = world
+        .journal()
+        .events
+        .iter()
+        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .count();
+    assert_eq!(emit_count, 1);
+}

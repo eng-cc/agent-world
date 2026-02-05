@@ -7,6 +7,9 @@
 - [x] 补充测试（事件过滤、动作过滤）
 - [x] 校验过滤器 schema（Shadow/Apply 拒绝非法 filters）
 - [x] 补充非法 filters 的拒绝测试
+- [x] 支持 OR（any/all）与数值比较（gt/gte/lt/lte）
+- [x] 支持正则匹配（re）
+- [x] 扩展测试覆盖（OR/数值/正则）
 - [x] 更新项目管理文档与任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
 - [x] 提交到 git

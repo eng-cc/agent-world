@@ -862,16 +862,45 @@ fn subscription_match(pattern: &str, value: &str) -> bool {
 #[serde(deny_unknown_fields)]
 struct SubscriptionFilters {
     #[serde(default)]
-    event: Vec<MatchRule>,
+    event: Option<RuleSet>,
     #[serde(default)]
-    action: Vec<MatchRule>,
+    action: Option<RuleSet>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RuleSet {
+    List(Vec<MatchRule>),
+    Group(RuleGroup),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RuleGroup {
+    #[serde(default)]
+    all: Vec<MatchRule>,
+    #[serde(default)]
+    any: Vec<MatchRule>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MatchRule {
     path: String,
-    eq: JsonValue,
+    #[serde(default)]
+    eq: Option<JsonValue>,
+    #[serde(default)]
+    ne: Option<JsonValue>,
+    #[serde(default)]
+    gt: Option<f64>,
+    #[serde(default)]
+    gte: Option<f64>,
+    #[serde(default)]
+    lt: Option<f64>,
+    #[serde(default)]
+    lte: Option<f64>,
+    #[serde(default)]
+    re: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -896,18 +925,13 @@ fn subscription_filters_match(
         Err(_) => return false,
     };
     let rules = match kind {
-        FilterKind::Event => &parsed.event,
-        FilterKind::Action => &parsed.action,
+        FilterKind::Event => parsed.event.as_ref(),
+        FilterKind::Action => parsed.action.as_ref(),
     };
-    if rules.is_empty() {
+    let Some(rules) = rules else {
         return true;
-    }
-    rules.iter().all(|rule| {
-        value
-            .pointer(&rule.path)
-            .map(|current| current == &rule.eq)
-            .unwrap_or(false)
-    })
+    };
+    ruleset_matches(rules, value)
 }
 
 fn validate_subscription_filters(
@@ -928,18 +952,137 @@ fn validate_subscription_filters(
                 ),
             }
         })?;
-    for rule in parsed.event.iter().chain(parsed.action.iter()) {
-        if rule.path.is_empty() {
-            continue;
+    for ruleset in parsed.event.iter().chain(parsed.action.iter()) {
+        validate_ruleset(ruleset, module_id)?;
+    }
+    Ok(())
+}
+
+fn ruleset_matches(ruleset: &RuleSet, value: &JsonValue) -> bool {
+    match ruleset {
+        RuleSet::List(rules) => rules.iter().all(|rule| match_rule(rule, value)),
+        RuleSet::Group(group) => {
+            let all_ok = group.all.iter().all(|rule| match_rule(rule, value));
+            if !all_ok {
+                return false;
+            }
+            if group.any.is_empty() {
+                return true;
+            }
+            group.any.iter().any(|rule| match_rule(rule, value))
         }
-        if !rule.path.starts_with('/') {
+    }
+}
+
+fn match_rule(rule: &MatchRule, value: &JsonValue) -> bool {
+    let Some(current) = value.pointer(&rule.path) else {
+        return false;
+    };
+    if let Some(expected) = &rule.eq {
+        return current == expected;
+    }
+    if let Some(expected) = &rule.ne {
+        return current != expected;
+    }
+    if let Some(pattern) = &rule.re {
+        let Some(text) = current.as_str() else {
+            return false;
+        };
+        return regex::Regex::new(pattern)
+            .map(|re| re.is_match(text))
+            .unwrap_or(false);
+    }
+    if let Some(threshold) = rule.gt {
+        return compare_number(current, |value| value > threshold);
+    }
+    if let Some(threshold) = rule.gte {
+        return compare_number(current, |value| value >= threshold);
+    }
+    if let Some(threshold) = rule.lt {
+        return compare_number(current, |value| value < threshold);
+    }
+    if let Some(threshold) = rule.lte {
+        return compare_number(current, |value| value <= threshold);
+    }
+    false
+}
+
+fn compare_number<F>(value: &JsonValue, predicate: F) -> bool
+where
+    F: Fn(f64) -> bool,
+{
+    value.as_f64().map(predicate).unwrap_or(false)
+}
+
+fn validate_ruleset(ruleset: &RuleSet, module_id: &str) -> Result<(), WorldError> {
+    match ruleset {
+        RuleSet::List(rules) => {
+            for rule in rules {
+                validate_rule(rule, module_id)?;
+            }
+        }
+        RuleSet::Group(group) => {
+            for rule in group.all.iter().chain(group.any.iter()) {
+                validate_rule(rule, module_id)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_rule(rule: &MatchRule, module_id: &str) -> Result<(), WorldError> {
+    if !rule.path.is_empty() && !rule.path.starts_with('/') {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "module {module_id} subscription filter path must start with '/': {}",
+                rule.path
+            ),
+        });
+    }
+
+    let mut operators = 0usize;
+    operators += usize::from(rule.eq.is_some());
+    operators += usize::from(rule.ne.is_some());
+    operators += usize::from(rule.gt.is_some());
+    operators += usize::from(rule.gte.is_some());
+    operators += usize::from(rule.lt.is_some());
+    operators += usize::from(rule.lte.is_some());
+    operators += usize::from(rule.re.is_some());
+    if operators != 1 {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "module {module_id} subscription filter must specify exactly one operator"
+            ),
+        });
+    }
+
+    for number in [
+        rule.gt,
+        rule.gte,
+        rule.lt,
+        rule.lte,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if !number.is_finite() {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!(
-                    "module {module_id} subscription filter path must start with '/': {}",
-                    rule.path
+                    "module {module_id} subscription filter numeric value must be finite"
                 ),
             });
         }
     }
+
+    if let Some(pattern) = &rule.re {
+        if regex::Regex::new(pattern).is_err() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module {module_id} subscription filter regex invalid"
+                ),
+            });
+        }
+    }
+
     Ok(())
 }
