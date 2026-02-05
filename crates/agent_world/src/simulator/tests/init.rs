@@ -177,6 +177,7 @@ fn scenario_templates_build_models() {
         WorldScenario::PowerBootstrap,
         WorldScenario::ResourceBootstrap,
         WorldScenario::TwinRegionBootstrap,
+        WorldScenario::TriadRegionBootstrap,
     ];
 
     for scenario in scenarios {
@@ -213,4 +214,22 @@ fn twin_region_bootstrap_seeds_regions() {
     assert!(model.power_storages.contains_key("storage-a"));
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
+}
+
+#[test]
+fn triad_region_bootstrap_seeds_regions() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::TriadRegionBootstrap, &config);
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(model.locations.contains_key("region-a"));
+    assert!(model.locations.contains_key("region-b"));
+    assert!(model.locations.contains_key("region-c"));
+    assert!(model.power_plants.contains_key("plant-a"));
+    assert!(model.power_plants.contains_key("plant-b"));
+    assert!(model.power_storages.contains_key("storage-a"));
+    assert!(model.power_storages.contains_key("storage-c"));
+    assert!(model.agents.contains_key("agent-0"));
+    assert!(model.agents.contains_key("agent-1"));
+    assert!(model.agents.contains_key("agent-2"));
 }

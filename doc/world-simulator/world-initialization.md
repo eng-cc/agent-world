@@ -41,6 +41,7 @@
   - `power_bootstrap`：原点 + 1 Agent + 基础发电/储能设施
   - `resource_bootstrap`：原点 + 1 Agent + 初始电力/硬件/数据库存
   - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
+  - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
