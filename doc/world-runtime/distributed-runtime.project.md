@@ -56,6 +56,11 @@
 - [x] 恢复测试（重启后继续同步 head）
 - [x] 数据一致性测试（state_root 校验）
 
+### 9. P2.1 索引缓存封装
+- [x] CachedDht 封装（provider/head 缓存）
+- [x] TTL 与 provider 截断策略
+- [x] CachedDht 单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -63,6 +68,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1 完成（远端缓存策略）
-- 下一步：P2.1（后续协议/实现迭代）
-- 最近更新：远端缓存策略（2026-02-05）
+- 当前阶段：P2.1 完成（索引缓存封装）
+- 下一步：P2.2（后续协议/实现迭代）
+- 最近更新：索引缓存封装（2026-02-05）

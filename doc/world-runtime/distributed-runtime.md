@@ -154,6 +154,12 @@
  - **Head 发布**：执行节点完成校验后调用 `put_world_head` 更新 DHT。
  - **Provider 索引**：storage 节点对 block/manifest/segments/chunks 发布 provider 记录。
 
+### DHT 缓存封装（草案）
+- **封装目标**：在 DHT 查询前优先读取本地 index store，降低查询成本。
+- **缓存内容**：provider 列表与 world head。
+- **TTL 策略**：`provider_ttl_ms` 与 `head_ttl_ms` 分别控制有效期；过期后回源 DHT。
+- **回写策略**：回源结果写入 index store 以便后续命中。
+
 ### 轻量 Index Store（草案）
 - **用途**：缓存 world head 与 provider 查询结果（可选）。
 - **抽象接口**：`DistributedIndexStore`（put_head/get_head/put_provider/get_providers）。

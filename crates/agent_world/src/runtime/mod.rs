@@ -14,6 +14,7 @@ mod blob_store;
 pub mod distributed;
 mod distributed_client;
 mod distributed_dht;
+mod distributed_dht_cache;
 mod distributed_index;
 mod distributed_index_store;
 mod distributed_provider_cache;
@@ -111,6 +112,8 @@ pub use distributed_client::DistributedClient;
 
 // Distributed DHT adapter
 pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
+// Cached DHT wrapper
+pub use distributed_dht_cache::{CachedDht, DhtCacheConfig};
 // Distributed index publishing
 pub use distributed_index::{publish_execution_providers, publish_world_head, query_providers, IndexPublishResult};
 // Distributed index store
