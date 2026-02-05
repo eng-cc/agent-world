@@ -84,6 +84,7 @@
 - **校验策略**：`put` 时必须校验 hash；不一致直接拒绝并报错。
 - **本地 CAS 布局**：`<root>/blobs/<content_hash>.blob`（原子写入）。
 - **错误语义**：`not_found` / `hash_mismatch` / `hash_invalid`。
+- **Pin/Evict**：本地 CAS 维护 `pins.json`；`prune_unpinned(max_bytes)` 仅驱逐未 pinned 且最旧的 blob。
 
 ## 快照/日志分片策略（草案）
 - **快照分片**：对 `Snapshot` 进行 canonical CBOR 编码后按字节切分。

@@ -16,7 +16,8 @@
 - [x] 抽象 BlobStore 接口（put/get/has）
 - [x] 本地 CAS 参考实现（LocalCasStore）
 - [x] 快照/日志分片与 manifest 生成
-- [ ] provider 发布与缓存策略（pin/evict）
+- [x] 本地 pin/evict 策略（pins.json + prune_unpinned）
+- [ ] provider 发布与缓存策略（DHT provider + 远端缓存）
 
 ### 3. 执行节点协同
 - [ ] 执行节点拉取 wasm/state/journal 的 libp2p 适配器
@@ -50,6 +51,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：D2.2（快照/日志分片完成）
+- 当前阶段：D2.3（本地 pin/evict 策略完成）
 - 下一步：P1（libp2p 协议/存储适配器原型）
-- 最近更新：补齐快照/日志分片与 manifest 生成工具（2026-02-05）
+- 最近更新：补充本地 CAS pin/evict 与 prune 策略（2026-02-05）
