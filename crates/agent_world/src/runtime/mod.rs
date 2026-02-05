@@ -12,6 +12,7 @@ mod agent_cell;
 mod audit;
 mod blob_store;
 pub mod distributed;
+mod distributed_client;
 mod distributed_net;
 mod effect;
 mod error;
@@ -86,6 +87,9 @@ pub use distributed_net::{
     DistributedNetwork, InMemoryNetwork, NetworkMessage, NetworkRequest, NetworkResponse,
     NetworkSubscription,
 };
+
+// Distributed client
+pub use distributed_client::DistributedClient;
 
 // Segmenter
 pub use segmenter::{segment_journal, segment_snapshot, JournalSegmentRef, SegmentConfig};

@@ -103,6 +103,7 @@
 - **抽象接口**：`DistributedNetwork`（publish/subscribe/request/register_handler）。
 - **本地实现**：`InMemoryNetwork`（单进程测试用，支持消息投递与 rr handler）。
 - **错误语义**：无 handler 时返回 `NetworkProtocolUnavailable`。
+- **客户端封装**：`DistributedClient` 负责封装 rr 请求/响应与 CBOR 编解码。
 
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。

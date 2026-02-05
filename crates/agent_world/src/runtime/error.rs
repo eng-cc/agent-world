@@ -34,6 +34,11 @@ pub enum WorldError {
     BlobHashMismatch { expected: String, actual: String },
     BlobHashInvalid { content_hash: String },
     NetworkProtocolUnavailable { protocol: String },
+    NetworkRequestFailed {
+        code: super::distributed::DistributedErrorCode,
+        message: String,
+        retryable: bool,
+    },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),

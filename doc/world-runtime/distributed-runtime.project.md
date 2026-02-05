@@ -20,7 +20,7 @@
 - [ ] provider 发布与缓存策略（DHT provider + 远端缓存）
 
 ### 3. 执行节点协同
-- [ ] 执行节点拉取 wasm/state/journal 的 libp2p 适配器
+- [x] 执行节点拉取 wasm/state/journal 的网络客户端（基于 DistributedNetwork）
 - [ ] 执行结果写入 storage（block/journal/snapshot）
 - [ ] 头指针更新与回放校验流程
 
@@ -56,6 +56,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.1（网络适配器抽象与 InMemory 实现）
+- 当前阶段：P1.1.1（执行节点拉取客户端原型）
 - 下一步：P1.2（libp2p 实现）
-- 最近更新：新增 DistributedNetwork 与 InMemoryNetwork（2026-02-05）
+- 最近更新：新增 DistributedClient（2026-02-05）
