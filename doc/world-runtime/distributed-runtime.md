@@ -139,6 +139,8 @@
 - **抽象接口**：`DistributedDht`（publish_provider/get_providers/put_world_head/get_world_head）。
 - **本地实现**：`InMemoryDht`（用于测试与最小闭环）。
 - **索引对象**：`ProviderRecord { provider_id, last_seen_ms }`。
+ - **Head 发布**：执行节点完成校验后调用 `put_world_head` 更新 DHT。
+ - **Provider 索引**：storage 节点对 block/manifest/segments/chunks 发布 provider 记录。
 
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
