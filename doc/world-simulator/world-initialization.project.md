@@ -16,10 +16,11 @@
 - [x] I5 提供示例工具（world_init_demo）
 - [x] I6 扩展场景模板（resource_bootstrap 初始库存）
 - [x] I7 README 补充示例工具说明（world_init_demo）
+- [x] I8 扩展场景模板（twin_region_bootstrap 多区域）
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I7（README 示例完成）
+- 当前阶段：I8（多区域场景完成）

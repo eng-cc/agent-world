@@ -146,6 +146,88 @@ impl WorldInitConfig {
                     .amounts
                     .insert(ResourceKind::Electricity, 25);
             }
+            WorldScenario::TwinRegionBootstrap => {
+                init.dust.enabled = false;
+                init.origin.enabled = false;
+                init.agents.count = 2;
+                init.agents.location_id = Some("region-a".to_string());
+
+                let center = center_pos(&config.space);
+                let offset = (config.space.width_cm as f64 * 0.25).max(1.0);
+                let pos_a = offset_pos(&config.space, center, -offset, 0.0, 0.0);
+                let pos_b = offset_pos(&config.space, center, offset, 0.0, 0.0);
+
+                let mut region_a = LocationSeedConfig::default();
+                region_a.location_id = "region-a".to_string();
+                region_a.name = "Region A".to_string();
+                region_a.pos = Some(pos_a);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 200);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 50);
+                init.locations.push(region_a);
+
+                let mut region_b = LocationSeedConfig::default();
+                region_b.location_id = "region-b".to_string();
+                region_b.name = "Region B".to_string();
+                region_b.pos = Some(pos_b);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 150);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 30);
+                init.locations.push(region_b);
+
+                let plant_a = PowerPlantSeedConfig {
+                    facility_id: "plant-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity_per_tick: 12,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_a);
+
+                let plant_b = PowerPlantSeedConfig {
+                    facility_id: "plant-b".to_string(),
+                    location_id: "region-b".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-b".to_string(),
+                    },
+                    capacity_per_tick: 8,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_b);
+
+                let storage_a = PowerStorageSeedConfig {
+                    facility_id: "storage-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity: 80,
+                    current_level: 20,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 10,
+                    max_discharge_rate: 10,
+                };
+                init.power_storages.push(storage_a);
+            }
         }
         init
     }
@@ -158,6 +240,7 @@ pub enum WorldScenario {
     TwoBases,
     PowerBootstrap,
     ResourceBootstrap,
+    TwinRegionBootstrap,
 }
 
 impl WorldScenario {
@@ -167,6 +250,7 @@ impl WorldScenario {
             WorldScenario::TwoBases => "two_bases",
             WorldScenario::PowerBootstrap => "power_bootstrap",
             WorldScenario::ResourceBootstrap => "resource_bootstrap",
+            WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
         }
     }
 
@@ -180,12 +264,21 @@ impl WorldScenario {
             "resource_bootstrap" | "resource-bootstrap" | "resources" => {
                 Some(WorldScenario::ResourceBootstrap)
             }
+            "twin_region_bootstrap" | "twin-region-bootstrap" | "twin_regions" | "twin-regions" => {
+                Some(WorldScenario::TwinRegionBootstrap)
+            }
             _ => None,
         }
     }
 
     pub fn variants() -> &'static [&'static str] {
-        &["minimal", "two_bases", "power_bootstrap", "resource_bootstrap"]
+        &[
+            "minimal",
+            "two_bases",
+            "power_bootstrap",
+            "resource_bootstrap",
+            "twin_region_bootstrap",
+        ]
     }
 }
 

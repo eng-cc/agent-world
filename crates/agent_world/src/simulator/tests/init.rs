@@ -176,6 +176,7 @@ fn scenario_templates_build_models() {
         WorldScenario::TwoBases,
         WorldScenario::PowerBootstrap,
         WorldScenario::ResourceBootstrap,
+        WorldScenario::TwinRegionBootstrap,
     ];
 
     for scenario in scenarios {
@@ -197,4 +198,19 @@ fn resource_bootstrap_seeds_stock() {
     assert_eq!(origin.resources.get(ResourceKind::Hardware), 20);
     assert_eq!(agent.resources.get(ResourceKind::Data), 10);
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 25);
+}
+
+#[test]
+fn twin_region_bootstrap_seeds_regions() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(model.locations.contains_key("region-a"));
+    assert!(model.locations.contains_key("region-b"));
+    assert!(model.power_plants.contains_key("plant-a"));
+    assert!(model.power_plants.contains_key("plant-b"));
+    assert!(model.power_storages.contains_key("storage-a"));
+    assert!(model.agents.contains_key("agent-0"));
+    assert!(model.agents.contains_key("agent-1"));
 }
