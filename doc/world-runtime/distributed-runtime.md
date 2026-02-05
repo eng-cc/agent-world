@@ -55,6 +55,10 @@
 - **批次 ID**：对动作 ID 列表做 canonical CBOR 后取 `blake3`（V1）。
 - **批次上限**：限制 `max_actions` 与 `max_payload_bytes`，超限动作跳过/剔除。
 
+## Gateway API（草案）
+- **提交动作**：网关将 `ActionEnvelope` 以 CBOR 编码发布到 `aw.<world_id>.action`。
+- **回执**：返回 `SubmitActionReceipt { action_id, accepted_at_ms }`。
+
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。
 - **续约机制**：持有者在 TTL 内续约，否则视为失效。

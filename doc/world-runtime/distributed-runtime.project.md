@@ -44,7 +44,7 @@
 - [x] 轻量 index store 接口（可选）
 
 ### 7. Gateway/Observer
-- [ ] 提交 action 的网关 API
+- [x] 提交 action 的网关 API
 - [ ] 事件订阅与 head 追踪
 - [ ] 观察者回放验证工具
 
@@ -60,6 +60,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.6.1 完成（轻量 index store 接口）
-- 下一步：P1.7.1（提交 action 的网关 API）
-- 最近更新：轻量 index store 接口实现（2026-02-05）
+- 当前阶段：P1.7.1 完成（提交 action 的网关 API）
+- 下一步：P1.7.2（事件订阅与 head 追踪）
+- 最近更新：提交 action 的网关 API（2026-02-05）
