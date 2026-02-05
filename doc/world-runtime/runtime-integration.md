@@ -41,6 +41,9 @@
   - `pre_action`：规则模块先行校验/计费/覆盖动作参数。
   - `post_action`：动作应用后派发衍生事件或效果。
 - **Event 路由**：`event.*` 订阅在事件追加后触发（`post_event`），用于捕获已落盘事件。
+- **阶段默认值**：`event_kinds` 默认 `post_event`；`action_kinds` 默认 `pre_action`；二者同时存在视为无效订阅。
+- **订阅校验**：`post_event` 不允许配置 `action_kinds`，`pre_action/post_action` 不允许配置 `event_kinds`。
+- **输入结构**：`pre_action` 仅传入 action；`post_action` 同时传入 action + 结果事件；`post_event` 仅传入 event。阶段信息通过 `ctx.stage` 传递。
 - **隔离性**：模块之间不共享状态，状态由 reducer 自身维护。
 - **事件 kind 命名**：`domain.agent_registered`、`domain.agent_moved`、`domain.action_rejected` 等；其它系统事件使用 `effect.*`/`module.*`/`snapshot.*`/`manifest.*` 前缀。
 

@@ -67,6 +67,25 @@ RuleDecision {
 - 多个 `modify` 必须产生一致修改，否则判为冲突并拒绝。
 - `cost` 汇总后由内核在资源账本上执行扣减。
 
+### 规则调用输入（草案）
+- `pre_action`：输入为 `ActionEnvelope`（原始动作），`ctx.origin.kind="action"`，`ctx.origin.stage="pre_action"`。
+- `post_action`：输入为 `ActionEnvelope` + `result_event`（动作落盘后的 DomainEvent/ActionRejected），`ctx.origin.stage="post_action"`。
+- `post_event`：输入为 `WorldEvent`（现有事件路由），`ctx.origin.kind="event"`。
+
+### 决策记录与审计（草案）
+- `RuleDecisionRecorded` 写入事件流，字段包含 `action_id/module_id/stage/verdict/cost/notes`。
+- 若发生覆盖动作，写入 `ActionOverridden { action_id, original_action, override_action }`（或在 RuleDecision 中嵌入原/新动作）。
+
+### 覆盖动作与失败语义（草案）
+- `modify` 必须提供 `override_action`；否则视为无效输出并拒绝。
+- 覆盖动作仍需通过内核不变量校验（边界/几何/守恒）。
+- 若覆盖动作不合法，则按 `ActionRejected` 处理，并记录 `RuleDecisionRecorded` 以便审计。
+
+### 资源成本语义（草案）
+- `ResourceDelta` 为资源类型 → 有符号变化量；单位与量纲由 `WorldConfig` 定义。
+- 仅在 `pre_action` 合并完成后对账本扣费；失败则拒绝动作（`RejectReason::InsufficientResources`）。
+- `deny` 的成本不执行，仅记录在决策与审计中。
+
 ## 额外设计 2：机体/零件模块化（Body Modules）
 
 ### 设计要点
@@ -87,6 +106,8 @@ BodyKernelView {
 ### 受控更新（草案）
 - `BodyAttributesUpdated { agent_id, view: BodyKernelView, reason }`
 - 内核对字段范围做守卫校验（上限/下限/变化率），避免模块滥用。
+- 校验失败时写入 `BodyAttributesRejected { agent_id, reason }` 并丢弃更新。
+- `BodyAttributesUpdated/Rejected` 纳入事件流与审计导出，保证回放一致性。
 
 ## 额外设计 3：最小内核 + 治理
 
@@ -124,6 +145,15 @@ ModuleSubscription {
   filters: Option<...>
 }
 ```
+
+### 订阅校验与默认值（草案）
+- 若 `stage=post_event`，只允许 `event_kinds` 非空；`action_kinds` 非空视为无效。
+- 若 `stage=pre_action/post_action`，只允许 `action_kinds` 非空；`event_kinds` 非空视为无效。
+- 未显式提供 `stage` 时：有 `event_kinds` 默认 `post_event`；有 `action_kinds` 默认 `pre_action`；两者同时存在视为无效。
+
+### Rule/Body 模块的效果边界（草案）
+- `pre_action` 阶段禁止产生外部 `EffectIntent`；仅允许产生决策与成本。
+- `post_action/post_event` 阶段允许产生 effect/emits，但需通过 capability/policy。
 
 ### Kernel 入口（草案）
 - `World::preflight_action_with_modules(action)`：执行 Rule Modules，生成 RuleDecision。

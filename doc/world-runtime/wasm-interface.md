@@ -67,7 +67,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 ```
 
 **ModuleContext / ModuleOutput（示意）**
-- `ModuleContext`：`{ time, origin, world_config, module_id, trace_id }`
+- `ModuleContext`：`{ time, origin, stage?, world_config, module_id, trace_id }`
 - `ModuleOutput`：`{ new_state, effects: Vec<EffectIntent>, emits: Vec<WorldEvent> }`
 
 **模块生命周期事件（占位）**
@@ -80,7 +80,8 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `ModuleCallFailed { module_id, trace_id, reason }`
 
 **规则决策事件（占位）**
-- `RuleDecision { action_id, verdict, override_action?, cost, notes }`
+- `RuleDecisionRecorded { action_id, module_id, stage, verdict, override_action?, cost, notes }`
+- `ActionOverridden { action_id, original_action, override_action }`
 
 ## ABI 与序列化（草案）
 
@@ -100,6 +101,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
   "trace_id": "...",
   "time": i64,
   "origin": { "kind": "event|action|system", "id": "..." },
+  "stage": "pre_action|post_action|post_event", // action/event 路由阶段（可选）
   "world_config_hash": "...", // 当前 manifest 哈希
   "limits": { "max_mem_bytes": u64, "max_gas": u64, "max_output_bytes": u64 }
 }
@@ -123,6 +125,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - 当前 runtime 以 `ModuleCallInput { ctx, event?, action?, state? }` 作为调用输入封装。
 - `event`/`action` 字段均为 canonical CBOR bytes。
 - reducer 调用会携带 `state`（空字节串代表无历史状态），pure 调用省略 `state`。
+- `pre_action` 阶段仅提供 `action`；`post_action` 阶段提供 `action` + `event`（动作落盘后的结果事件）；`post_event` 阶段仅提供 `event`。
 
 **ModuleOutput（CBOR Map）**
 ```
