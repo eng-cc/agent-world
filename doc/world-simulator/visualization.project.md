@@ -27,6 +27,7 @@
 - [x] 在线模式：live viewer server（WorldKernel + demo script）
 - [x] 在线模式：CLI（world_viewer_live）与运行说明
 - [x] 在线模式：基础单元测试（script/step/reset）
+- [x] 在线模式：前后端联合测试（headless 协议连通）
 - [ ] 提交到 git
 
 ## 依赖
