@@ -6,6 +6,7 @@
 - 为后续规模化（多 Agent、高并发交互、长期运行）打下可演化的运行时基座。
 - 允许 Agent 通过可治理的模块演化引入“新事物”（Rust → WASM），并保证审计/回放与能力边界。
 - 实际运行中 Agent 决策可由 LLM 驱动（OpenAI 兼容 API），LLM 调用视为外部效应并需记录输入/输出以保证回放一致性。
+- 除世界位置/资源账本/基础物理外，其余规则与能力均以 WASM 模块承载（WASM First）。
 
 ## 技术参考（AgentOS）
 - **AIR 风格控制面**：以结构化数据描述模块/计划/能力/政策；本项目以 manifest/patch 方式做简化对齐。
@@ -65,6 +66,7 @@
 - `doc/world-runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
 - `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
 - `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
+- `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）

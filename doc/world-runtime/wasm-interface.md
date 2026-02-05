@@ -13,6 +13,7 @@ struct ModuleManifest {
     name: String,
     version: String,           // 语义化版本
     kind: ModuleKind,          // Reducer / Pure（后续可扩展）
+    role: ModuleRole,          // Rule / Domain / Body / AgentInternal
     wasm_hash: String,         // 模块工件哈希
     interface_version: String, // 例如 "wasm-1"
     exports: Vec<String>,      // 导出函数名
@@ -26,6 +27,12 @@ struct ModuleManifest {
 - `Reducer`：有状态的确定性 reducer（输入事件 → 新状态 + Effect 意图）
 - `Pure`：无状态纯函数组件（输入 → 输出）
 
+**ModuleRole**
+- `Rule`：动作校验/成本评估等规则模块
+- `Domain`：经济、社会、治理等领域规则
+- `Body`：机体/零件/耐久等物理外层逻辑
+- `AgentInternal`：记忆/工具/规划等内部能力
+
 **Agent 内部模块（记忆/工具）**
 - 仍使用 `ModuleManifest`/`ModuleLimits` 与统一 ABI；由 Agent runtime 触发调用，不走 event/action 订阅路由。
 - 记忆模块通常使用 `Reducer`，以 `state` 作为受限持久存储；运行时对状态大小/条目数施加配额（实现可为专用存储或状态分片）。
@@ -34,6 +41,7 @@ struct ModuleManifest {
 **ModuleSubscription**
 - `event_kinds`: Vec<String>（订阅的事件类型）
 - `action_kinds`: Vec<String>（可选，订阅的动作类型）
+- `stage`: `"pre_action" | "post_action" | "post_event"`（动作/事件路由阶段）
 - `filters`: 可选过滤条件（例如仅关注某类 owner/地点）
 
 **ModuleLimits（示意字段）**
@@ -70,6 +78,9 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 - `ModuleLoadFailed { module_id, wasm_hash, reason }`
 - `ModuleValidationFailed { module_id, reason }`
 - `ModuleCallFailed { module_id, trace_id, reason }`
+
+**规则决策事件（占位）**
+- `RuleDecision { action_id, verdict, override_action?, cost, notes }`
 
 ## ABI 与序列化（草案）
 

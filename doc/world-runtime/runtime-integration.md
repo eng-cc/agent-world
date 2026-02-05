@@ -37,8 +37,10 @@
 
 - **订阅来源**：`ModuleManifest.subscriptions` 指定 event/action kinds。
 - **路由顺序**：按 `module_id` 字典序调用，保证确定性。
-- **Action 路由**：`action.*` 订阅在 action → event 转换前触发；用于捕获意图阶段。
-- **Event 路由**：`event.*` 订阅在事件追加后触发；用于捕获已落盘事件。
+- **Action 路由**：`action.*` 订阅支持 `pre_action/post_action` 阶段：
+  - `pre_action`：规则模块先行校验/计费/覆盖动作参数。
+  - `post_action`：动作应用后派发衍生事件或效果。
+- **Event 路由**：`event.*` 订阅在事件追加后触发（`post_event`），用于捕获已落盘事件。
 - **隔离性**：模块之间不共享状态，状态由 reducer 自身维护。
 - **事件 kind 命名**：`domain.agent_registered`、`domain.agent_moved`、`domain.action_rejected` 等；其它系统事件使用 `effect.*`/`module.*`/`snapshot.*`/`manifest.*` 前缀。
 
