@@ -19,3 +19,4 @@ wasmtime = { version = "18", optional = true }
 [features]
 default = []
 wasmtime = ["dep:wasmtime"]
+viewer_live_integration = []

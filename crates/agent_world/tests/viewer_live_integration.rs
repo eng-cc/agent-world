@@ -1,3 +1,5 @@
+#![cfg(feature = "viewer_live_integration")]
+
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;

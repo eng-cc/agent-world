@@ -27,8 +27,8 @@
 - [x] 在线模式：live viewer server（WorldKernel + demo script）
 - [x] 在线模式：CLI（world_viewer_live）与运行说明
 - [x] 在线模式：基础单元测试（script/step/reset）
-- [x] 在线模式：前后端联合测试（独立 integration test）
-- [x] CI：显式执行联测目标（viewer_live_integration）
+- [x] 在线模式：前后端联合测试（独立 integration test + feature gate）
+- [x] CI：显式执行联测目标（viewer_live_integration + feature）
 - [ ] 提交到 git
 
 ## 依赖
@@ -37,4 +37,4 @@
 - Bevy（viewer 客户端）
 
 ## 状态
-- 当前阶段：在线模式联测与 CI 目标完成
+- 当前阶段：联测 feature gate 完成
