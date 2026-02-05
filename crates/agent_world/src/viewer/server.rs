@@ -112,6 +112,13 @@ impl ViewerServer {
         Ok(())
     }
 
+    pub fn run_once(&self) -> Result<(), ViewerServerError> {
+        let listener = TcpListener::bind(&self.config.bind_addr)?;
+        let (stream, _) = listener.accept()?;
+        self.serve_stream(stream)?;
+        Ok(())
+    }
+
     fn serve_stream(&self, stream: TcpStream) -> Result<(), ViewerServerError> {
         stream.set_nodelay(true)?;
         let reader_stream = stream.try_clone()?;

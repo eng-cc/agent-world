@@ -29,6 +29,7 @@
 - [x] 在线模式：基础单元测试（script/step/reset）
 - [x] 在线模式：前后端联合测试（独立 integration test + feature gate）
 - [x] CI：显式执行联测目标（viewer_live_integration + feature）
+- [x] 离线回放：前后端联合测试（viewer_offline_integration）
 - [ ] 提交到 git
 
 ## 依赖

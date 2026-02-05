@@ -20,5 +20,7 @@ jobs:
       run: env -u RUSTC_WRAPPER cargo build --verbose
     - name: Run tests
       run: env -u RUSTC_WRAPPER cargo test --verbose
+    - name: Run wasmtime feature tests
+      run: env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime --verbose
     - name: Run viewer live integration test
       run: env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration --verbose

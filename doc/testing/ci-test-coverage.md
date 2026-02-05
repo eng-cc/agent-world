@@ -1,0 +1,42 @@
+# Agent World: 测试覆盖与 CI 扩展（设计文档）
+
+## 目标
+- 补齐关键链路测试覆盖：离线回放 viewer server 联测、wasmtime 特性测试。
+- 在 CI 中显式运行关键测试目标，确保特性分支可持续验证。
+- 保持测试稳定性：独立端到端联测不依赖 UI 与网络外部资源。
+
+## 范围
+
+### In Scope
+- Viewer 离线回放端到端联测（snapshot/journal -> server -> client）。
+- Viewer 在线联测维持现有 feature gate（viewer_live_integration）。
+- CI 增加 `--features wasmtime` 测试步骤。
+- CI 运行离线回放联测目标（viewer_offline_integration）。
+- 文档补充联测运行方式与 CI 覆盖说明。
+
+### Out of Scope
+- CI 的缓存优化与并行矩阵策略。
+- UI 真实渲染测试（使用 headless 协议联测即可）。
+
+## 接口 / 数据
+
+### 联测输入
+- `world_viewer_demo` 生成的 `snapshot.json` 与 `journal.json`。
+
+### 联测输出
+- 验证 `HelloAck` / `Snapshot` / `Event` 消息能被正常接收。
+
+### CI 任务
+- `env -u RUSTC_WRAPPER cargo test --verbose`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
+- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
+
+## 里程碑
+- **T1**：新增离线回放联测并保证稳定退出。
+- **T2**：CI 增加 wasmtime 特性测试步骤。
+- **T3**：文档更新与任务日志落地。
+
+## 风险
+- wasmtime 特性测试耗时与依赖体积增加。
+- socket 联测对端口竞争敏感，需要随机端口与超时保护。
