@@ -92,6 +92,7 @@
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
 - 示例输出包含估算的尘埃云碎片数量（dust_fragments）。
+- 示例输出包含每个地点的设施统计（power_plants/power_storages）。
 
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。

@@ -1,5 +1,6 @@
 use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
 use agent_world::simulator::{ResourceKind, WorldConfig};
+use std::collections::BTreeMap;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -46,6 +47,30 @@ fn main() {
         println!(
             "- {}: electricity={} hardware={} data={}",
             location_id, electricity, hardware, data
+        );
+    }
+
+    let mut facility_counts: BTreeMap<String, (usize, usize)> = BTreeMap::new();
+    for plant in model.power_plants.values() {
+        let entry = facility_counts
+            .entry(plant.location_id.clone())
+            .or_insert((0, 0));
+        entry.0 += 1;
+    }
+    for storage in model.power_storages.values() {
+        let entry = facility_counts
+            .entry(storage.location_id.clone())
+            .or_insert((0, 0));
+        entry.1 += 1;
+    }
+    println!("location_facilities:");
+    let mut facility_locations: Vec<_> = facility_counts.keys().collect();
+    facility_locations.sort();
+    for location_id in facility_locations {
+        let (plants, storages) = facility_counts[location_id];
+        println!(
+            "- {}: power_plants={} power_storages={}",
+            location_id, plants, storages
         );
     }
 
