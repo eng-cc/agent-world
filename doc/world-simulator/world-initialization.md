@@ -51,6 +51,14 @@
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
 - `dusty_bootstrap`：用于验证尘埃云/辐射采集与热管理路径。
+
+### 场景别名
+- `two_bases`：`two-bases`
+- `power_bootstrap`：`bootstrap`
+- `resource_bootstrap`：`resources`
+- `twin_region_bootstrap`：`twin-regions`
+- `triad_region_bootstrap`：`triad-regions`
+- `dusty_bootstrap`：`dusty`
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
