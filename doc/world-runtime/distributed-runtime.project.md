@@ -13,7 +13,8 @@
 - [x] 选择并固化 wire encoding（CBOR/二进制）
 
 ### 2. 内容寻址存储与分片
-- [ ] 抽象 BlobStore 接口（put/get/has）
+- [x] 抽象 BlobStore 接口（put/get/has）
+- [x] 本地 CAS 参考实现（LocalCasStore）
 - [ ] 快照/日志分片与 manifest 生成
 - [ ] provider 发布与缓存策略（pin/evict）
 
@@ -49,6 +50,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：D2（协议与消息在代码中固化）
+- 当前阶段：D2.1（BlobStore 接口与本地 CAS 完成）
 - 下一步：P1（libp2p 协议/存储适配器原型）
-- 最近更新：新增协议常量与 CBOR 消息结构（2026-02-05）
+- 最近更新：新增 BlobStore 与本地 CAS 参考实现（2026-02-05）

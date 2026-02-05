@@ -10,6 +10,7 @@
 
 mod agent_cell;
 mod audit;
+mod blob_store;
 pub mod distributed;
 mod effect;
 mod error;
@@ -71,6 +72,9 @@ pub use modules::{
     ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
     ModuleRecord, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade,
 };
+
+// Blob store
+pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
 // Module store
 pub use module_store::ModuleStore;

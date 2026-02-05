@@ -16,7 +16,8 @@ pub use runtime::{
     EffectOrigin, EffectReceipt, GovernanceEvent, IntentSeq, Journal, Manifest, ManifestPatch,
     ManifestPatchOp, ManifestUpdate, ModuleActivation, ModuleArtifact, ModuleCache,
     ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRegistry, ModuleRecord, ModuleRole, ModuleStore, ModuleSubscription,
+    ModuleManifest, ModuleRegistry, ModuleRecord, ModuleRole, ModuleStore, BlobStore, LocalCasStore,
+    ModuleSubscription,
     ModuleSubscriptionStage, ModuleUpgrade,
     OriginKind, PatchConflict, PatchMergeResult, PatchOpKind, PatchOpSummary, PatchPath,
     PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen, Proposal,
@@ -28,7 +29,8 @@ pub use runtime::{
 };
 
 pub use runtime::{
-    apply_manifest_patch, diff_manifest, merge_manifest_patches, merge_manifest_patches_with_conflicts,
+    apply_manifest_patch, blake3_hex, diff_manifest, merge_manifest_patches,
+    merge_manifest_patches_with_conflicts,
     merge_rule_decisions,
 };
 

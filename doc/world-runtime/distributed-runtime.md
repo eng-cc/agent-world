@@ -78,6 +78,13 @@
 - 存储节点**不执行计算**，只负责内容提供与校验。
 - 通过状态根与日志 hash 校验执行结果，确保可重放与可验证。
 
+## BlobStore 接口（草案）
+- **基础能力**：`put(content_hash, bytes)` / `get(content_hash)` / `has(content_hash)`。
+- **内容哈希**：V1 统一 `blake3(bytes)`，十六进制字符串作为内容键。
+- **校验策略**：`put` 时必须校验 hash；不一致直接拒绝并报错。
+- **本地 CAS 布局**：`<root>/blobs/<content_hash>.blob`（原子写入）。
+- **错误语义**：`not_found` / `hash_mismatch` / `hash_invalid`。
+
 ## 网络层（libp2p）
 - **gossipsub**：动作广播、区块/事件头广播。
 - **Kademlia DHT**：内容提供者索引、世界 head 索引。
