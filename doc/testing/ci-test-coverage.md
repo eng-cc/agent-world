@@ -31,6 +31,7 @@
 - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
 - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
 - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
+- CI 需安装系统依赖（Wayland/X11/ALSA/UDev）以编译 `agent_world_viewer`。
 
 ## 里程碑
 - **T1**：新增离线回放联测并保证稳定退出。

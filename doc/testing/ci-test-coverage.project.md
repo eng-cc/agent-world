@@ -5,6 +5,7 @@
 - [x] T1 补充 viewer server 单次运行入口（run_once）
 - [x] T2 CI 增加 wasmtime 特性测试步骤
 - [x] T3 文档更新（联测运行方式与 CI 覆盖说明）
+- [x] T4 CI 安装 viewer 系统依赖（Wayland/X11/ALSA/UDev）
 - [ ] 提交到 git
 
 ## 依赖
