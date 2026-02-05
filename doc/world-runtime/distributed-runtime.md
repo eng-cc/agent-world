@@ -173,6 +173,7 @@
 - **重发策略**：本地已缓存或已持有内容的节点可定期 `republish` 自身 provider 记录。
 - **触发方式**：定时任务或执行写入后批量触发，避免 DHT 记录过期。
 - **执行接入**：执行结果落盘后，通过 `ProviderCache` 批量注册 block/manifest/segments/chunks。
+- **拉取封装**：执行/观察者拉取 blob 时，可通过 `DistributedClient::fetch_blob_from_dht` 统一走 provider-aware 路径。
 
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。

@@ -15,6 +15,7 @@ use super::distributed::{
     RR_GET_JOURNAL_SEGMENT, RR_GET_MODULE_ARTIFACT, RR_GET_MODULE_MANIFEST, RR_GET_RECEIPT_SEGMENT,
     RR_GET_SNAPSHOT, RR_GET_WORLD_HEAD,
 };
+use super::distributed_dht::DistributedDht;
 use super::distributed_net::DistributedNetwork;
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
@@ -85,6 +86,26 @@ impl DistributedClient {
         let response: FetchBlobResponse =
             self.request_with_providers(RR_FETCH_BLOB, &request, providers)?;
         Ok(response.blob)
+    }
+
+    pub fn fetch_blob_from_dht(
+        &self,
+        world_id: &str,
+        content_hash: &str,
+        dht: &impl DistributedDht,
+    ) -> Result<Vec<u8>, WorldError> {
+        let providers = dht.get_providers(world_id, content_hash)?;
+        if providers.is_empty() {
+            return self.fetch_blob(content_hash);
+        }
+        let provider_ids: Vec<String> = providers
+            .into_iter()
+            .map(|record| record.provider_id)
+            .collect();
+        match self.fetch_blob_with_providers(content_hash, &provider_ids) {
+            Ok(bytes) => Ok(bytes),
+            Err(_) => self.fetch_blob(content_hash),
+        }
     }
 
     pub fn get_journal_segment(&self, world_id: &str, from_event_id: u64) -> Result<BlobRef, WorldError> {
@@ -174,6 +195,7 @@ mod tests {
     use super::*;
     use super::super::distributed_net::{InMemoryNetwork, NetworkSubscription};
     use crate::runtime::distributed::DistributedErrorCode;
+    use crate::runtime::InMemoryDht;
     use std::sync::{Arc, Mutex};
 
     #[derive(Default)]
@@ -286,5 +308,23 @@ mod tests {
 
         let seen = spy.providers();
         assert_eq!(seen, providers);
+    }
+
+    #[test]
+    fn client_fetch_blob_from_dht_uses_provider_list() {
+        let spy = Arc::new(SpyNetwork::default());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+        let client = DistributedClient::new(network);
+        let dht = InMemoryDht::new();
+        dht.publish_provider("w1", "hash", "peer-1")
+            .expect("publish provider");
+
+        let blob = client
+            .fetch_blob_from_dht("w1", "hash", &dht)
+            .expect("fetch");
+        assert_eq!(blob, b"data".to_vec());
+
+        let seen = spy.providers();
+        assert_eq!(seen, vec!["peer-1".to_string()]);
     }
 }

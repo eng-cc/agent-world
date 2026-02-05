@@ -74,6 +74,11 @@
 - [x] Observer 回放拉取使用 provider 列表
 - [x] provider-aware 客户端单元测试
 
+### 13. P2.5 Provider-aware 拉取封装
+- [x] DistributedClient 提供 DHT 拉取封装
+- [x] Observer 回放复用 DHT 拉取封装
+- [x] DHT 拉取封装单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -81,6 +86,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.4 完成（Provider-aware 拉取）
-- 下一步：P2.5（后续协议/实现迭代）
-- 最近更新：Provider-aware 拉取（2026-02-05）
+- 当前阶段：P2.5 完成（Provider-aware 拉取封装）
+- 下一步：P2.6（后续协议/实现迭代）
+- 最近更新：Provider-aware 拉取封装（2026-02-05）
