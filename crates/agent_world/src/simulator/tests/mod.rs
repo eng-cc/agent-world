@@ -14,6 +14,7 @@ fn pos(x: f64, y: f64) -> GeoPos {
 }
 
 mod basics;
+mod dust;
 mod kernel;
 mod memory;
 mod persist;

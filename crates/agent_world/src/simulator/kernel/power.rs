@@ -10,6 +10,7 @@ impl WorldKernel {
         let mut events = Vec::new();
         let idle_cost = self.config.power.idle_cost_per_tick;
         let power_config = self.config.power.clone();
+        let thermal_dissipation = self.config.physics.thermal_dissipation;
 
         let agent_ids: Vec<AgentId> = self.model.agents.keys().cloned().collect();
 
@@ -27,6 +28,10 @@ impl WorldKernel {
                 let old_state = agent.power.state;
                 let consumed = agent.power.consume(idle_cost, &power_config);
                 let new_state = agent.power.state;
+                if thermal_dissipation > 0 {
+                    agent.thermal.heat =
+                        (agent.thermal.heat - thermal_dissipation).max(0);
+                }
                 (consumed, agent.power.level, old_state, new_state)
             };
 

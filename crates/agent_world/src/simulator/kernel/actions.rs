@@ -309,47 +309,81 @@ impl WorldKernel {
                         reason: RejectReason::InvalidAmount { amount: max_amount },
                     };
                 }
-                let Some(agent) = self.model.agents.get(&agent_id) else {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::AgentNotFound { agent_id },
-                    };
+                let location_id = match self.model.agents.get(&agent_id) {
+                    Some(agent) => agent.location_id.clone(),
+                    None => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentNotFound { agent_id },
+                        };
+                    }
                 };
-                let location_id = agent.location_id.clone();
-                let Some(location) = self.model.locations.get(&location_id) else {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::LocationNotFound { location_id },
-                    };
+                let (emission, radius_cm) = match self.model.locations.get(&location_id) {
+                    Some(location) => (
+                        location.profile.radiation_emission_per_tick,
+                        location.profile.radius_cm,
+                    ),
+                    None => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::LocationNotFound { location_id },
+                        };
+                    }
                 };
-                let available = location.profile.radiation_emission_per_tick.max(0);
-                if available == 0 {
+                let physics = &self.config.physics;
+                let path_cm = radius_cm.max(0) as f64;
+                let decay = (-physics.radiation_decay_k * path_cm).exp();
+                let local_available = ((emission.max(0) as f64) * decay
+                    + (physics.radiation_floor.max(0) as f64))
+                    .floor() as i64;
+                if local_available <= 0 {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::RadiationUnavailable { location_id },
                     };
                 }
-                let harvested = max_amount.min(available);
+                let mut available_for_harvest = local_available;
+                if physics.max_harvest_per_tick > 0 {
+                    available_for_harvest =
+                        available_for_harvest.min(physics.max_harvest_per_tick);
+                }
+                let mut harvested = max_amount.min(available_for_harvest);
+                let Some(agent) = self.model.agents.get_mut(&agent_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentNotFound { agent_id },
+                    };
+                };
+                if physics.thermal_capacity > 0 && agent.thermal.heat > physics.thermal_capacity {
+                    let heat = agent.thermal.heat;
+                    let capacity = physics.thermal_capacity;
+                    let ratio = (capacity as f64 / heat as f64).clamp(0.1, 1.0);
+                    harvested = (harvested as f64 * ratio).floor() as i64;
+                    if harvested <= 0 {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::ThermalOverload { heat, capacity },
+                        };
+                    }
+                }
                 if harvested > 0 {
-                    if let Some(agent) = self.model.agents.get_mut(&agent_id) {
-                        if let Err(reason) =
-                            agent.resources.add(ResourceKind::Electricity, harvested)
-                        {
-                            return WorldEventKind::ActionRejected {
-                                reason: match reason {
-                                    StockError::NegativeAmount { amount } => {
-                                        RejectReason::InvalidAmount { amount }
-                                    }
-                                    StockError::Insufficient { .. } => {
-                                        RejectReason::InvalidAmount { amount: harvested }
-                                    }
-                                },
-                            };
-                        }
+                    if let Err(reason) = agent.resources.add(ResourceKind::Electricity, harvested) {
+                        return WorldEventKind::ActionRejected {
+                            reason: match reason {
+                                StockError::NegativeAmount { amount } => {
+                                    RejectReason::InvalidAmount { amount }
+                                }
+                                StockError::Insufficient { .. } => {
+                                    RejectReason::InvalidAmount { amount: harvested }
+                                }
+                            },
+                        };
+                    }
+                    if physics.heat_factor > 0 {
+                        agent.thermal.heat =
+                            agent.thermal.heat.saturating_add(harvested * physics.heat_factor);
                     }
                 }
                 WorldEventKind::RadiationHarvested {
                     agent_id,
                     location_id,
                     amount: harvested,
-                    available,
+                    available: local_available,
                 }
             }
             Action::BuyPower {

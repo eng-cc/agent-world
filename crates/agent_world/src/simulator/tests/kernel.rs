@@ -197,6 +197,80 @@ fn harvest_radiation_adds_electricity() {
 }
 
 #[test]
+fn harvest_radiation_respects_max_per_tick() {
+    let mut config = WorldConfig::default();
+    config.physics.max_harvest_per_tick = 5;
+    let mut kernel = WorldKernel::with_config(config);
+
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 50;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-rad".to_string(),
+        name: "rad".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-rad".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 20,
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::RadiationHarvested { amount, .. } => {
+            assert_eq!(amount, 5);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn harvest_radiation_applies_thermal_penalty() {
+    let mut config = WorldConfig::default();
+    config.physics.thermal_capacity = 5;
+    config.physics.heat_factor = 1;
+    config.physics.max_harvest_per_tick = 100;
+    let mut kernel = WorldKernel::with_config(config);
+
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 50;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-rad".to_string(),
+        name: "rad".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-rad".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10,
+    });
+    let _ = kernel.step().unwrap();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10,
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::RadiationHarvested { amount, .. } => {
+            assert!(amount < 10);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn kernel_rejects_move_to_same_location() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {

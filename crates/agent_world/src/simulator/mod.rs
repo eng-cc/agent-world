@@ -11,6 +11,7 @@
 //! - `power`: Power system (M4 social system)
 
 mod agent;
+mod dust;
 mod kernel;
 mod memory;
 mod persist;
@@ -24,6 +25,7 @@ mod tests;
 
 // Re-export all public types
 pub use agent::{ActionResult, AgentBehavior, AgentDecision};
+pub use dust::generate_fragments;
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
@@ -39,7 +41,10 @@ pub use types::{
     WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
     JOURNAL_VERSION, SNAPSHOT_VERSION,
 };
-pub use world_model::{Agent, Asset, AssetKind, Location, SpaceConfig, WorldConfig, WorldModel};
+pub use world_model::{
+    Agent, Asset, AssetKind, DustConfig, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
+    ThermalStatus, WorldConfig, WorldModel,
+};
 
 // Re-export power system types
 pub use power::{

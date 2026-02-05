@@ -117,6 +117,7 @@ pub enum RejectReason {
     },
     PositionOutOfBounds { pos: GeoPos },
     RadiationUnavailable { location_id: LocationId },
+    ThermalOverload { heat: i64, capacity: i64 },
     PowerTransferDistanceExceeded { distance_km: i64, max_distance_km: i64 },
     PowerTransferLossExceedsAmount { amount: i64, loss: i64 },
 }

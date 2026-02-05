@@ -105,7 +105,7 @@
   - 材质分布：按权重抽样（Silicate/Metal/Ice/Carbon/Composite）
 
 - **待补细节清单**
-  - 空间分布生成器（密度/团簇/空洞/障碍）
+  - 空间分布生成器（已实现最小体素+噪声+幂律，待补障碍/空洞）
   - 局部辐射场采样与缓存策略（空间哈希/体素网格）
   - 机体质量、受力上限、热容量的抽象参数
   - 辐射同位素与衰变（半衰期）对长期资源可持续性影响
@@ -153,6 +153,7 @@
   - `body`（默认：人形机器人，`height_cm = 100`）
   - `pos`（GeoPos）
   - `location_id`, `status`（在线/离线/休眠）
+  - `thermal`（热状态：`heat`）
 - `Location`
   - `id`, `type`, `connections`（图结构/道路）, `resources`（可采集/可交易）
   - `profile`（`material`, `radius_cm`, `radiation_emission_per_tick`）
@@ -163,6 +164,13 @@
   - `actor_id`, `type`, `args`, `requested_at`
 - `Event`
   - `event_id`, `time`, `type`, `payload`, `caused_by`（action_id/agent_id）
+- `WorldConfig`（物理相关）
+  - `space`（`width_cm/depth_cm/height_cm`）
+  - `physics`（`time_step_s`, `power_unit_j`, `radiation_floor`, `radiation_decay_k`,
+    `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
+    `erosion_rate`）
+  - `dust`（`base_density_per_km3`, `voxel_size_km`, `cluster_noise`, `layer_scale_height_km`,
+    `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`, `material_weights`）
 
 ### M1 行动规则（初版）
 - **时间推进**：每个 Action 处理会推进 1 tick；事件按队列顺序确定性处理。
@@ -174,10 +182,13 @@
   - Location 与 Location 之间的直接转移不允许（需由 Agent 搬运）。
 - **辐射采集**：
   - `HarvestRadiation` 允许 Agent 从所处 Location 的辐射强度中采集电力（抽象为电力资源的增加）。
+  - 采集上限受 `max_harvest_per_tick` 与热管理约束影响；采集会增加热量。
 - **配置参数（内核级）**：
   - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
   - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
   - `space`（尘埃云空间尺寸：`width_cm/depth_cm/height_cm`）
+  - `physics`（辐射/热/侵蚀参数）
+  - `dust`（碎片分布生成器参数）
 
 ### M2 持久化与回放（最小）
 - **快照**：保存世界内核的完整状态（时间、配置、世界模型、待处理队列、事件游标）。
