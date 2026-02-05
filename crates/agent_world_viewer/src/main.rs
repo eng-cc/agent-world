@@ -1,6 +1,7 @@
 use std::io::{BufRead, Write};
 use std::net::TcpStream;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Mutex;
 use std::thread;
 
 use agent_world::simulator::{RunnerMetrics, WorldEvent, WorldSnapshot};
@@ -24,7 +25,7 @@ fn main() {
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
                     title: "Agent World Viewer".to_string(),
-                    resolution: (1200.0, 800.0).into(),
+                    resolution: (1200, 800).into(),
                     ..default()
                 }),
                 ..default()
@@ -47,7 +48,7 @@ struct ViewerConfig {
 #[derive(Resource)]
 struct ViewerClient {
     tx: Sender<ViewerRequest>,
-    rx: Receiver<ViewerResponse>,
+    rx: Mutex<Receiver<ViewerResponse>>,
 }
 
 #[derive(Resource)]
@@ -99,7 +100,10 @@ fn resolve_addr() -> String {
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
     let (tx, rx) = spawn_viewer_client(config.addr.clone());
-    commands.insert_resource(ViewerClient { tx, rx });
+    commands.insert_resource(ViewerClient {
+        tx,
+        rx: Mutex::new(rx),
+    });
     commands.insert_resource(ViewerState::default());
 }
 
@@ -205,7 +209,7 @@ fn send_request(
     writer: &mut std::io::BufWriter<TcpStream>,
     request: &ViewerRequest,
 ) -> Result<(), String> {
-    serde_json::to_writer(writer, request).map_err(|err| err.to_string())?;
+    serde_json::to_writer(&mut *writer, request).map_err(|err| err.to_string())?;
     writer
         .write_all(b"\n")
         .map_err(|err| err.to_string())?;
@@ -216,20 +220,21 @@ fn send_request(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/DejaVuSans.ttf");
 
+    commands.spawn(Camera2d);
+
     commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::rgb(0.08, 0.09, 0.1).into(),
-            ..default()
-        })
+            BackgroundColor(Color::srgb(0.08, 0.09, 0.1)),
+        ))
         .with_children(|root| {
-            root.spawn(NodeBundle {
-                style: Style {
+            root.spawn((
+                Node {
                     width: Val::Percent(100.0),
                     height: Val::Px(56.0),
                     align_items: AlignItems::Center,
@@ -237,123 +242,109 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     padding: UiRect::horizontal(Val::Px(16.0)),
                     ..default()
                 },
-                background_color: Color::rgb(0.12, 0.12, 0.14).into(),
-                ..default()
-            })
+                BackgroundColor(Color::srgb(0.12, 0.12, 0.14)),
+            ))
             .with_children(|bar| {
-                spawn_control_button(bar, &font, "Play", ViewerControl::Play);
-                spawn_control_button(bar, &font, "Pause", ViewerControl::Pause);
-                spawn_control_button(bar, &font, "Step", ViewerControl::Step { count: 1 });
-                spawn_control_button(bar, &font, "Seek 0", ViewerControl::Seek { tick: 0 });
-                bar.spawn((
-                    TextBundle {
-                        text: Text::from_section(
-                            "Status: connecting",
-                            TextStyle {
-                                font: font.clone(),
-                                font_size: 16.0,
-                                color: Color::WHITE,
-                            },
-                        ),
-                        style: Style {
-                            margin: UiRect::left(Val::Px(24.0)),
+                for (label, control) in [
+                    ("Play", ViewerControl::Play),
+                    ("Pause", ViewerControl::Pause),
+                    ("Step", ViewerControl::Step { count: 1 }),
+                    ("Seek 0", ViewerControl::Seek { tick: 0 }),
+                ] {
+                    bar.spawn((
+                        Button,
+                        Node {
+                            padding: UiRect::horizontal(Val::Px(14.0)),
+                            height: Val::Px(32.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
                             ..default()
                         },
+                        BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
+                        ControlButton { control },
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new(label),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 15.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+                }
+
+                bar.spawn((
+                    Text::new("Status: connecting"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    Node {
+                        margin: UiRect::left(Val::Px(24.0)),
                         ..default()
                     },
                     StatusText,
                 ));
             });
 
-            root.spawn(NodeBundle {
-                style: Style {
+            root.spawn(Node {
                     width: Val::Percent(100.0),
                     height: Val::Percent(100.0),
                     flex_direction: FlexDirection::Row,
                     ..default()
-                },
-                ..default()
-            })
+                })
             .with_children(|content| {
                 content
-                    .spawn(NodeBundle {
-                        style: Style {
+                    .spawn((
+                        Node {
                             width: Val::Percent(35.0),
                             height: Val::Percent(100.0),
                             padding: UiRect::all(Val::Px(16.0)),
                             ..default()
                         },
-                        background_color: Color::rgb(0.1, 0.1, 0.12).into(),
-                        ..default()
-                    })
+                        BackgroundColor(Color::srgb(0.1, 0.1, 0.12)),
+                    ))
                     .with_children(|left| {
-                        left.spawn(TextBundle::from_section(
-                            "World: (no snapshot)",
-                            TextStyle {
+                        left.spawn((
+                            Text::new("World: (no snapshot)"),
+                            TextFont {
                                 font: font.clone(),
                                 font_size: 16.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
+                                ..default()
                             },
-                        ))
-                        .insert(SummaryText);
+                            TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                            SummaryText,
+                        ));
                     });
 
                 content
-                    .spawn(NodeBundle {
-                        style: Style {
+                    .spawn((
+                        Node {
                             width: Val::Percent(65.0),
                             height: Val::Percent(100.0),
                             padding: UiRect::all(Val::Px(16.0)),
                             ..default()
                         },
-                        background_color: Color::rgb(0.07, 0.07, 0.08).into(),
-                        ..default()
-                    })
+                        BackgroundColor(Color::srgb(0.07, 0.07, 0.08)),
+                    ))
                     .with_children(|right| {
-                        right
-                            .spawn(TextBundle::from_section(
-                                "Events:\n(no events)",
-                                TextStyle {
-                                    font: font.clone(),
-                                    font_size: 15.0,
-                                    color: Color::rgb(0.85, 0.85, 0.85),
-                                },
-                            ))
-                            .insert(EventsText);
+                        right.spawn((
+                            Text::new("Events:\n(no events)"),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 15.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.85, 0.85, 0.85)),
+                            EventsText,
+                        ));
                     });
             });
-        });
-}
-
-fn spawn_control_button(
-    parent: &mut ChildBuilder,
-    font: &Handle<Font>,
-    label: &str,
-    control: ViewerControl,
-) {
-    parent
-        .spawn((
-            ButtonBundle {
-                style: Style {
-                    padding: UiRect::horizontal(Val::Px(14.0)),
-                    height: Val::Px(32.0),
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                background_color: Color::rgb(0.2, 0.2, 0.24).into(),
-                ..default()
-            },
-            ControlButton { control },
-        ))
-        .with_children(|button| {
-            button.spawn(TextBundle::from_section(
-                label,
-                TextStyle {
-                    font: font.clone(),
-                    font_size: 15.0,
-                    color: Color::WHITE,
-                },
-            ));
         });
 }
 
@@ -362,8 +353,16 @@ fn poll_viewer_messages(
     config: Res<ViewerConfig>,
     client: Res<ViewerClient>,
 ) {
+    let receiver = match client.rx.lock() {
+        Ok(receiver) => receiver,
+        Err(_) => {
+            state.status = ConnectionStatus::Error("viewer receiver poisoned".to_string());
+            return;
+        }
+    };
+
     loop {
-        match client.rx.try_recv() {
+        match receiver.try_recv() {
             Ok(message) => {
                 match message {
                     ViewerResponse::HelloAck { .. } => {
@@ -408,16 +407,16 @@ fn update_ui(
         return;
     }
 
-    if let Ok(mut text) = status_query.get_single_mut() {
-        text.sections[0].value = format!("Status: {}", format_status(&state.status));
+    if let Ok(mut text) = status_query.single_mut() {
+        text.0 = format!("Status: {}", format_status(&state.status));
     }
 
-    if let Ok(mut text) = summary_query.get_single_mut() {
-        text.sections[0].value = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
+    if let Ok(mut text) = summary_query.single_mut() {
+        text.0 = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
     }
 
-    if let Ok(mut text) = events_query.get_single_mut() {
-        text.sections[0].value = events_summary(&state.events);
+    if let Ok(mut text) = events_query.single_mut() {
+        text.0 = events_summary(&state.events);
     }
 }
 
