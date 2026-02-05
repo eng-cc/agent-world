@@ -6,10 +6,11 @@ use agent_world::{
 };
 use sha2::{Digest, Sha256};
 
-fn pos(lat: f64, lon: f64) -> GeoPos {
+fn pos(x: f64, y: f64) -> GeoPos {
     GeoPos {
-        lat_deg: lat,
-        lon_deg: lon,
+        x_cm: x,
+        y_cm: y,
+        z_cm: 0.0,
     }
 }
 

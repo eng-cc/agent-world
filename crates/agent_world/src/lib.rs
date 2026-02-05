@@ -5,9 +5,9 @@ pub mod simulator;
 pub mod viewer;
 
 pub use geometry::{
-    great_circle_distance_cm, great_circle_distance_cm_with_radius, great_circle_distance_m,
-    great_circle_distance_m_with_radius, GeoPos, SPACE_UNIT_CM, WORLD_RADIUS_CM, WORLD_RADIUS_KM,
-    WORLD_RADIUS_M,
+    space_distance_cm, space_distance_m, GeoPos, SPACE_UNIT_CM, DEFAULT_CLOUD_DEPTH_CM,
+    DEFAULT_CLOUD_DEPTH_KM, DEFAULT_CLOUD_HEIGHT_CM, DEFAULT_CLOUD_HEIGHT_KM,
+    DEFAULT_CLOUD_WIDTH_CM, DEFAULT_CLOUD_WIDTH_KM,
 };
 pub use models::{AgentState, RobotBodySpec, DEFAULT_AGENT_HEIGHT_CM};
 pub use runtime::{

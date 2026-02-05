@@ -1,4 +1,4 @@
-use crate::geometry::great_circle_distance_cm;
+use crate::geometry::space_distance_cm;
 
 use super::types::{RejectReason, WorldEventKind};
 use super::WorldKernel;
@@ -13,18 +13,44 @@ impl WorldKernel {
                 location_id,
                 name,
                 pos,
+                profile,
             } => {
                 if self.model.locations.contains_key(&location_id) {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::LocationAlreadyExists { location_id },
                     };
                 }
-                let location = Location::new(location_id.clone(), name.clone(), pos);
+                if !self.config.space.contains(pos) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::PositionOutOfBounds { pos },
+                    };
+                }
+                if profile.radius_cm < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: profile.radius_cm,
+                        },
+                    };
+                }
+                if profile.radiation_emission_per_tick < 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: profile.radiation_emission_per_tick,
+                        },
+                    };
+                }
+                let location = Location::new_with_profile(
+                    location_id.clone(),
+                    name.clone(),
+                    pos,
+                    profile.clone(),
+                );
                 self.model.locations.insert(location_id.clone(), location);
                 WorldEventKind::LocationRegistered {
                     location_id,
                     name,
                     pos,
+                    profile,
                 }
             }
             Action::RegisterAgent {
@@ -220,7 +246,7 @@ impl WorldKernel {
                     };
                 }
                 let from = agent.location_id.clone();
-                let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
+                let distance_cm = space_distance_cm(agent.pos, location.pos);
                 let electricity_cost = movement_cost(
                     distance_cm,
                     self.config.move_cost_per_km_electricity,
@@ -272,6 +298,58 @@ impl WorldKernel {
                     to,
                     distance_cm,
                     electricity_cost,
+                }
+            }
+            Action::HarvestRadiation {
+                agent_id,
+                max_amount,
+            } => {
+                if max_amount <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: max_amount },
+                    };
+                }
+                let Some(agent) = self.model.agents.get(&agent_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::AgentNotFound { agent_id },
+                    };
+                };
+                let location_id = agent.location_id.clone();
+                let Some(location) = self.model.locations.get(&location_id) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                };
+                let available = location.profile.radiation_emission_per_tick.max(0);
+                if available == 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RadiationUnavailable { location_id },
+                    };
+                }
+                let harvested = max_amount.min(available);
+                if harvested > 0 {
+                    if let Some(agent) = self.model.agents.get_mut(&agent_id) {
+                        if let Err(reason) =
+                            agent.resources.add(ResourceKind::Electricity, harvested)
+                        {
+                            return WorldEventKind::ActionRejected {
+                                reason: match reason {
+                                    StockError::NegativeAmount { amount } => {
+                                        RejectReason::InvalidAmount { amount }
+                                    }
+                                    StockError::Insufficient { .. } => {
+                                        RejectReason::InvalidAmount { amount: harvested }
+                                    }
+                                },
+                            };
+                        }
+                    }
+                }
+                WorldEventKind::RadiationHarvested {
+                    agent_id,
+                    location_id,
+                    amount: harvested,
+                    available,
                 }
             }
             Action::BuyPower {
@@ -412,7 +490,7 @@ impl WorldKernel {
                 location_id: to_location_id.to_string(),
             }
         })?;
-        let distance_cm = great_circle_distance_cm(from.pos, to.pos);
+        let distance_cm = space_distance_cm(from.pos, to.pos);
         let distance_km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
         Ok(distance_km)
     }

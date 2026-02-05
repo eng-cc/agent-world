@@ -1,5 +1,5 @@
 use super::*;
-use crate::geometry::great_circle_distance_cm;
+use crate::geometry::space_distance_cm;
 
 #[test]
 fn power_idle_consumption_depletes_agent() {
@@ -8,6 +8,7 @@ fn power_idle_consumption_depletes_agent() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -26,11 +27,13 @@ fn power_shutdown_agent_cannot_move() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(0.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -68,6 +71,7 @@ fn power_charge_recovers_agent() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -97,6 +101,7 @@ fn power_consume_for_decision() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -119,6 +124,7 @@ fn shutdown_agents_list() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -147,6 +153,7 @@ fn power_generation_creates_electricity() {
         location_id: "loc-1".to_string(),
         name: "plant".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterPowerPlant {
         facility_id: "plant-1".to_string(),
@@ -173,6 +180,7 @@ fn power_storage_charge_and_discharge() {
         location_id: "loc-1".to_string(),
         name: "storage".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterPowerStorage {
         facility_id: "storage-1".to_string(),
@@ -203,6 +211,7 @@ fn power_store_and_draw_actions() {
         location_id: "loc-1".to_string(),
         name: "hub".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterPowerPlant {
         facility_id: "plant-1".to_string(),
@@ -279,16 +288,18 @@ fn power_buy_applies_transfer_loss() {
     let mut kernel = WorldKernel::with_config(config.clone());
 
     let loc1_pos = pos(0.0, 0.0);
-    let loc2_pos = pos(0.0, 0.001);
+    let loc2_pos = pos(0.0, CM_PER_KM as f64);
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-1".to_string(),
         name: "source".to_string(),
         pos: loc1_pos,
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "sink".to_string(),
         pos: loc2_pos,
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterPowerPlant {
         facility_id: "plant-1".to_string(),
@@ -305,7 +316,7 @@ fn power_buy_applies_transfer_loss() {
     kernel.step_until_empty();
     kernel.process_power_generation_tick();
 
-    let distance_cm = great_circle_distance_cm(loc1_pos, loc2_pos);
+    let distance_cm = space_distance_cm(loc1_pos, loc2_pos);
     let distance_km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
     let amount = 100;
     let expected_loss = (amount as i128)
@@ -380,11 +391,13 @@ fn power_transfer_rejects_out_of_range() {
         location_id: "loc-1".to_string(),
         name: "source".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "sink".to_string(),
-        pos: pos(0.0, 0.01),
+        pos: pos(0.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterPowerPlant {
         facility_id: "plant-1".to_string(),

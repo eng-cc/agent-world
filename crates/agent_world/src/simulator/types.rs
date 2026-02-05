@@ -22,8 +22,8 @@ pub type ActionId = u64;
 pub const CM_PER_KM: i64 = 100_000;
 pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 pub const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
-pub const SNAPSHOT_VERSION: u32 = 1;
-pub const JOURNAL_VERSION: u32 = 1;
+pub const SNAPSHOT_VERSION: u32 = 2;
+pub const JOURNAL_VERSION: u32 = 2;
 
 // ============================================================================
 // Resource Types
@@ -35,6 +35,37 @@ pub enum ResourceKind {
     Electricity,
     Hardware,
     Data,
+}
+
+// ============================================================================
+// Location Physical Profile
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialKind {
+    Silicate,
+    Metal,
+    Ice,
+    Carbon,
+    Composite,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LocationProfile {
+    pub material: MaterialKind,
+    pub radius_cm: i64,
+    pub radiation_emission_per_tick: i64,
+}
+
+impl Default for LocationProfile {
+    fn default() -> Self {
+        Self {
+            material: MaterialKind::Silicate,
+            radius_cm: 100,
+            radiation_emission_per_tick: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -123,6 +154,7 @@ pub enum Action {
         location_id: LocationId,
         name: String,
         pos: GeoPos,
+        profile: LocationProfile,
     },
     RegisterAgent {
         agent_id: AgentId,
@@ -160,6 +192,10 @@ pub enum Action {
     MoveAgent {
         agent_id: AgentId,
         to: LocationId,
+    },
+    HarvestRadiation {
+        agent_id: AgentId,
+        max_amount: i64,
     },
     BuyPower {
         buyer: ResourceOwner,

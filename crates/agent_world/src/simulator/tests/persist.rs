@@ -7,6 +7,7 @@ fn kernel_snapshot_roundtrip() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -28,6 +29,7 @@ fn kernel_persist_and_restore() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -55,6 +57,7 @@ fn restore_rejects_mismatched_journal_len() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.step_until_empty();
 
@@ -108,11 +111,13 @@ fn kernel_replay_from_snapshot() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(1.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),

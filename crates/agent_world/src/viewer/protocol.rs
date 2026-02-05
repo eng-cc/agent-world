@@ -32,6 +32,7 @@ pub enum ViewerEventKind {
     AgentRegistered,
     AgentMoved,
     ResourceTransferred,
+    RadiationHarvested,
     ActionRejected,
     Power,
 }
@@ -43,6 +44,7 @@ impl ViewerEventKind {
             (ViewerEventKind::AgentRegistered, WorldEventKind::AgentRegistered { .. }) => true,
             (ViewerEventKind::AgentMoved, WorldEventKind::AgentMoved { .. }) => true,
             (ViewerEventKind::ResourceTransferred, WorldEventKind::ResourceTransferred { .. }) => true,
+            (ViewerEventKind::RadiationHarvested, WorldEventKind::RadiationHarvested { .. }) => true,
             (ViewerEventKind::ActionRejected, WorldEventKind::ActionRejected { .. }) => true,
             (ViewerEventKind::Power, WorldEventKind::Power(_)) => true,
             _ => false,

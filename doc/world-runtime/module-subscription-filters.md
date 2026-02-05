@@ -48,8 +48,8 @@
 {
   "event": {
     "all": [
-      { "path": "/body/payload/data/pos/lat_deg", "gte": 0 },
-      { "path": "/body/payload/data/pos/lat_deg", "lt": 10 }
+      { "path": "/body/payload/data/pos/x_cm", "gte": 0 },
+      { "path": "/body/payload/data/pos/x_cm", "lt": 10 }
     ],
     "any": [
       { "path": "/body/payload/data/agent_id", "re": "^agent-" }

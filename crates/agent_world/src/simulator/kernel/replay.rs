@@ -31,6 +31,7 @@ impl WorldKernel {
                 location_id,
                 name,
                 pos,
+                profile,
             } => {
                 if self.model.locations.contains_key(location_id) {
                     return Err(PersistError::ReplayConflict {
@@ -39,7 +40,12 @@ impl WorldKernel {
                 }
                 self.model.locations.insert(
                     location_id.clone(),
-                    Location::new(location_id.clone(), name.clone(), *pos),
+                    Location::new_with_profile(
+                        location_id.clone(),
+                        name.clone(),
+                        *pos,
+                        profile.clone(),
+                    ),
                 );
             }
             WorldEventKind::AgentRegistered {
@@ -130,6 +136,23 @@ impl WorldKernel {
                 })?;
                 self.remove_from_owner_for_replay(from, *kind, *amount)?;
                 self.add_to_owner_for_replay(to, *kind, *amount)?;
+            }
+            WorldEventKind::RadiationHarvested {
+                agent_id,
+                amount,
+                ..
+            } => {
+                let Some(agent) = self.model.agents.get_mut(agent_id) else {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent not found: {agent_id}"),
+                    });
+                };
+                agent
+                    .resources
+                    .add(ResourceKind::Electricity, *amount)
+                    .map_err(|err| PersistError::ReplayConflict {
+                        message: format!("failed to apply radiation harvest: {err:?}"),
+                    })?;
             }
             WorldEventKind::ActionRejected { .. } => {}
             WorldEventKind::Power(power_event) => match power_event {

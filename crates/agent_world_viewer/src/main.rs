@@ -616,8 +616,9 @@ mod tests {
                 "loc-1",
                 "Alpha",
                 agent_world::geometry::GeoPos {
-                    lat_deg: 0.0,
-                    lon_deg: 0.0,
+                    x_cm: 0.0,
+                    y_cm: 0.0,
+                    z_cm: 0.0,
                 },
             ),
         );
@@ -627,8 +628,9 @@ mod tests {
                 "loc-2",
                 "Beta",
                 agent_world::geometry::GeoPos {
-                    lat_deg: 1.0,
-                    lon_deg: 1.0,
+                    x_cm: 1.0,
+                    y_cm: 1.0,
+                    z_cm: 0.0,
                 },
             ),
         );
@@ -637,10 +639,11 @@ mod tests {
             agent_world::simulator::Agent::new(
                 "agent-1",
                 "loc-1",
-                agent_world::geometry::GeoPos {
-                    lat_deg: 0.0,
-                    lon_deg: 0.0,
-                },
+            agent_world::geometry::GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
             ),
         );
 

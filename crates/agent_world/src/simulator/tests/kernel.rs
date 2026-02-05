@@ -1,4 +1,5 @@
 use super::*;
+use crate::geometry::{DEFAULT_CLOUD_WIDTH_CM, GeoPos};
 
 #[test]
 fn kernel_registers_and_moves_agent() {
@@ -7,11 +8,13 @@ fn kernel_registers_and_moves_agent() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(1.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel.step_until_empty();
 
@@ -27,11 +30,13 @@ fn kernel_registers_and_moves_agent() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel2.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(1.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel2.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -59,11 +64,13 @@ fn kernel_registers_and_moves_agent() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(1.0, 1.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -105,11 +112,13 @@ fn kernel_move_requires_energy() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(1.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -131,12 +140,70 @@ fn kernel_move_requires_energy() {
 }
 
 #[test]
+fn register_location_rejects_out_of_bounds() {
+    let mut kernel = WorldKernel::new();
+    let out_of_bounds = GeoPos {
+        x_cm: (DEFAULT_CLOUD_WIDTH_CM + 1) as f64,
+        y_cm: 0.0,
+        z_cm: 0.0,
+    };
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-oob".to_string(),
+        name: "void".to_string(),
+        pos: out_of_bounds,
+        profile: LocationProfile::default(),
+    });
+    let event = kernel.step().unwrap();
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::PositionOutOfBounds { .. }
+        }
+    ));
+}
+
+#[test]
+fn harvest_radiation_adds_electricity() {
+    let mut kernel = WorldKernel::new();
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 50;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-rad".to_string(),
+        name: "rad".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-rad".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 20,
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::RadiationHarvested { amount, available, .. } => {
+            assert_eq!(amount, 20);
+            assert_eq!(available, 50);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel.model().agents.get("agent-1").unwrap();
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 20);
+}
+
+#[test]
 fn kernel_rejects_move_to_same_location() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -164,11 +231,13 @@ fn kernel_observe_visibility_range() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "far".to_string(),
-        pos: pos(10.0, 10.0),
+        pos: pos(DEFAULT_VISIBILITY_RANGE_CM as f64 + 1.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -211,11 +280,13 @@ fn kernel_transfer_requires_colocation() {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
         pos: pos(10.0, 10.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -260,11 +331,13 @@ fn kernel_closed_loop_example() {
         location_id: "loc-1".to_string(),
         name: "plant".to_string(),
         pos: loc1_pos,
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "lab".to_string(),
         pos: loc2_pos,
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),

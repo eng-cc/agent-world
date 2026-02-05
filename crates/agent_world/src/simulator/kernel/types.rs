@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use super::super::power::PowerEvent;
 use super::super::types::{
-    AgentId, FacilityId, LocationId, ResourceKind, ResourceOwner, WorldEventId, WorldTime,
+    AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, WorldEventId,
+    WorldTime,
 };
 
 // ============================================================================
@@ -33,6 +34,7 @@ pub struct ObservedLocation {
     pub location_id: LocationId,
     pub name: String,
     pub pos: GeoPos,
+    pub profile: LocationProfile,
     pub distance_cm: i64,
 }
 
@@ -54,6 +56,7 @@ pub enum WorldEventKind {
         location_id: LocationId,
         name: String,
         pos: GeoPos,
+        profile: LocationProfile,
     },
     AgentRegistered {
         agent_id: AgentId,
@@ -72,6 +75,12 @@ pub enum WorldEventKind {
         to: ResourceOwner,
         kind: ResourceKind,
         amount: i64,
+    },
+    RadiationHarvested {
+        agent_id: AgentId,
+        location_id: LocationId,
+        amount: i64,
+        available: i64,
     },
     ActionRejected {
         reason: RejectReason,
@@ -106,6 +115,8 @@ pub enum RejectReason {
     AgentShutdown {
         agent_id: AgentId,
     },
+    PositionOutOfBounds { pos: GeoPos },
+    RadiationUnavailable { location_id: LocationId },
     PowerTransferDistanceExceeded { distance_km: i64, max_distance_km: i64 },
     PowerTransferLossExceedsAmount { amount: i64, loss: i64 },
 }

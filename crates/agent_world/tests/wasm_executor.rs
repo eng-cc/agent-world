@@ -21,8 +21,12 @@ const WASM_EXECUTOR_TEST_MODULE: &[u8] = &[
     0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x00,
 ];
 
-fn pos(lat: f64, lon: f64) -> GeoPos {
-    GeoPos { lat_deg: lat, lon_deg: lon }
+fn pos(x: f64, y: f64) -> GeoPos {
+    GeoPos {
+        x_cm: x,
+        y_cm: y,
+        z_cm: 0.0,
+    }
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

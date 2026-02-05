@@ -1,14 +1,16 @@
 //! World model entities: Agent, Location, Asset, WorldConfig, WorldModel.
 
-use crate::geometry::GeoPos;
+use crate::geometry::{
+    GeoPos, DEFAULT_CLOUD_DEPTH_CM, DEFAULT_CLOUD_HEIGHT_CM, DEFAULT_CLOUD_WIDTH_CM,
+};
 use crate::models::RobotBodySpec;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
-    AgentId, AssetId, FacilityId, LocationId, ResourceKind, ResourceStock, CM_PER_KM,
-    DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
+    AgentId, AssetId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceStock,
+    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
 };
 use super::ResourceOwner;
 
@@ -67,15 +69,26 @@ pub struct Location {
     pub id: LocationId,
     pub name: String,
     pub pos: GeoPos,
+    pub profile: LocationProfile,
     pub resources: ResourceStock,
 }
 
 impl Location {
     pub fn new(id: impl Into<String>, name: impl Into<String>, pos: GeoPos) -> Self {
+        Self::new_with_profile(id, name, pos, LocationProfile::default())
+    }
+
+    pub fn new_with_profile(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        pos: GeoPos,
+        profile: LocationProfile,
+    ) -> Self {
         Self {
             id: id.into(),
             name: name.into(),
             pos,
+            profile,
             resources: ResourceStock::default(),
         }
     }
@@ -115,9 +128,11 @@ pub struct WorldModel {
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WorldConfig {
     pub visibility_range_cm: i64,
     pub move_cost_per_km_electricity: i64,
+    pub space: SpaceConfig,
     /// Power system configuration.
     pub power: PowerConfig,
 }
@@ -127,6 +142,7 @@ impl Default for WorldConfig {
         Self {
             visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
             move_cost_per_km_electricity: DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+            space: SpaceConfig::default(),
             power: PowerConfig::default(),
         }
     }
@@ -140,6 +156,7 @@ impl WorldConfig {
         if self.move_cost_per_km_electricity < 0 {
             self.move_cost_per_km_electricity = 0;
         }
+        self.space = self.space.sanitized();
         if self.power.transfer_loss_per_km_bps < 0 {
             self.power.transfer_loss_per_km_bps = 0;
         }
@@ -151,6 +168,55 @@ impl WorldConfig {
 
     pub fn movement_cost(&self, distance_cm: i64) -> i64 {
         movement_cost(distance_cm, self.move_cost_per_km_electricity)
+    }
+}
+
+// ============================================================================
+// Space Configuration
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SpaceConfig {
+    pub width_cm: i64,
+    pub depth_cm: i64,
+    pub height_cm: i64,
+}
+
+impl Default for SpaceConfig {
+    fn default() -> Self {
+        Self {
+            width_cm: DEFAULT_CLOUD_WIDTH_CM,
+            depth_cm: DEFAULT_CLOUD_DEPTH_CM,
+            height_cm: DEFAULT_CLOUD_HEIGHT_CM,
+        }
+    }
+}
+
+impl SpaceConfig {
+    pub fn sanitized(mut self) -> Self {
+        if self.width_cm < 0 {
+            self.width_cm = 0;
+        }
+        if self.depth_cm < 0 {
+            self.depth_cm = 0;
+        }
+        if self.height_cm < 0 {
+            self.height_cm = 0;
+        }
+        self
+    }
+
+    pub fn contains(&self, pos: GeoPos) -> bool {
+        let max_x = self.width_cm as f64;
+        let max_y = self.depth_cm as f64;
+        let max_z = self.height_cm as f64;
+        pos.x_cm >= 0.0
+            && pos.x_cm <= max_x
+            && pos.y_cm >= 0.0
+            && pos.y_cm <= max_y
+            && pos.z_cm >= 0.0
+            && pos.z_cm <= max_z
     }
 }
 

@@ -101,11 +101,13 @@ fn setup_kernel_with_patrol_agent(agent_id: &str) -> WorldKernel {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "outpost".to_string(),
-        pos: pos(0.01, 0.0),
+        pos: pos(1.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: agent_id.to_string(),
@@ -122,6 +124,7 @@ fn setup_kernel_with_wait_agent(agent_id: &str) -> WorldKernel {
         location_id: "loc-1".to_string(),
         name: "base".to_string(),
         pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
     });
     kernel.submit_action(Action::RegisterAgent {
         agent_id: agent_id.to_string(),
@@ -241,7 +244,8 @@ fn agent_runner_round_robin() {
         kernel.submit_action(Action::RegisterLocation {
             location_id: format!("loc-{idx}"),
             name: format!("loc-{idx}"),
-            pos: pos(idx as f64 * 0.01, 0.0),
+            pos: pos(idx as f64, 0.0),
+            profile: LocationProfile::default(),
         });
         kernel.submit_action(Action::RegisterAgent {
             agent_id: format!("agent-{idx}"),

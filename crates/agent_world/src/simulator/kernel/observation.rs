@@ -1,4 +1,4 @@
-use crate::geometry::great_circle_distance_cm;
+use crate::geometry::space_distance_cm;
 
 use super::WorldKernel;
 use super::types::{Observation, ObservedAgent, ObservedLocation, RejectReason};
@@ -16,7 +16,7 @@ impl WorldKernel {
             if other_id == agent_id {
                 continue;
             }
-            let distance_cm = great_circle_distance_cm(agent.pos, other.pos);
+            let distance_cm = space_distance_cm(agent.pos, other.pos);
             if distance_cm <= visibility_range_cm {
                 visible_agents.push(ObservedAgent {
                     agent_id: other_id.clone(),
@@ -29,12 +29,13 @@ impl WorldKernel {
 
         let mut visible_locations = Vec::new();
         for (location_id, location) in &self.model.locations {
-            let distance_cm = great_circle_distance_cm(agent.pos, location.pos);
+            let distance_cm = space_distance_cm(agent.pos, location.pos);
             if distance_cm <= visibility_range_cm {
                 visible_locations.push(ObservedLocation {
                     location_id: location_id.clone(),
                     name: location.name.clone(),
                     pos: location.pos,
+                    profile: location.profile.clone(),
                     distance_cm,
                 });
             }

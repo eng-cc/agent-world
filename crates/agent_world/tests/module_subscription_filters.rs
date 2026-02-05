@@ -33,10 +33,11 @@ fn apply_module_changes(world: &mut World, changes: ModuleChangeSet) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
-fn pos(lat: f64, lon: f64) -> GeoPos {
+fn pos(x: f64, y: f64) -> GeoPos {
     GeoPos {
-        lat_deg: lat,
-        lon_deg: lon,
+        x_cm: x,
+        y_cm: y,
+        z_cm: 0.0,
     }
 }
 
@@ -374,8 +375,8 @@ fn module_subscription_numeric_range_matches() {
             filters: Some(json!({
                 "event": {
                     "all": [
-                        {"path": "/body/payload/data/pos/lat_deg", "gte": 0},
-                        {"path": "/body/payload/data/pos/lat_deg", "lt": 10}
+                        {"path": "/body/payload/data/pos/x_cm", "gte": 0},
+                        {"path": "/body/payload/data/pos/x_cm", "lt": 10}
                     ]
                 }
             })),
