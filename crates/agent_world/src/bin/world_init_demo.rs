@@ -25,6 +25,7 @@ fn main() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(scenario, &config);
     let (model, report) = build_world_model(&config, &init).expect("init should succeed");
+    let dust_fragments = model.locations.len().saturating_sub(report.locations);
 
     println!("scenario: {}", scenario.as_str());
     println!("seed: {}", report.seed);
@@ -32,6 +33,7 @@ fn main() {
     println!("agents: {}", report.agents);
     println!("power_plants: {}", model.power_plants.len());
     println!("power_storages: {}", model.power_storages.len());
+    println!("dust_fragments: {}", dust_fragments);
     println!("location_resources:");
 
     let mut location_ids: Vec<_> = model.locations.keys().collect();

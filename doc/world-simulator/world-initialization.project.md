@@ -23,10 +23,11 @@
 - [x] I12 demo 输出 Agent 资源摘要
 - [x] I13 扩展场景模板（dusty_bootstrap 启用尘埃云）
 - [x] I14 补充场景别名解析测试
+- [x] I15 demo 输出尘埃碎片数量
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I14（别名测试完成）
+- 当前阶段：I15（demo 输出增强完成）

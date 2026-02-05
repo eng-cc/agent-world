@@ -91,6 +91,7 @@
 - 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --help`
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
+- 示例输出包含估算的尘埃云碎片数量（dust_fragments）。
 
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。
