@@ -2,8 +2,8 @@
 
 use agent_world::{
     Action, GeoPos, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleSubscription, PolicyDecision, PolicySet, ProposalDecision, World,
-    WasmExecutor, WasmExecutorConfig, WorldEventBody,
+    ModuleManifest, ModuleSubscription, PolicySet, ProposalDecision, World, WasmExecutor,
+    WasmExecutorConfig, WorldEventBody,
 };
 use sha2::{Digest, Sha256};
 

@@ -237,7 +237,7 @@ impl WasmExecutor {
         &self.engine
     }
 
-    #[cfg(feature = "wasmtime")]
+    #[cfg(all(feature = "wasmtime", test))]
     pub(crate) fn compiled_cache_len(&self) -> usize {
         self.compiled_cache
             .lock()
@@ -576,6 +576,7 @@ impl CompiledModuleCache {
         }
     }
 
+    #[cfg(test)]
     fn len(&self) -> usize {
         self.cache.len()
     }
