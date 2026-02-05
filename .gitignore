@@ -22,3 +22,6 @@ target
 
 # Local demo outputs
 .data/
+
+# Local env config
+.env
