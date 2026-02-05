@@ -12,13 +12,20 @@
 ## 沙箱执行器与资源限制（草案）
 
 - **资源限额**：`max_mem_bytes`、`max_gas`、`max_call_rate`、`max_output_bytes`。
-- **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`。
+- **隔离**：模块不可直接访问 I/O，仅能产生 `EffectIntent`；沙盒不做语义/策略限制，仅负责隔离与计量。
 - **超限处理**：超限触发 `ModuleCallFailed`（code=TIMEOUT/OUTPUT_TOO_LARGE/EFFECT_LIMIT_EXCEEDED）。
 - **执行入口**：`World::execute_module_call` 通过沙箱接口执行模块并返回 `ModuleOutput`。
 - **最小执行 ABI**：导出 `memory`/`alloc`/`reduce|call`，`reduce/call(i32, i32) -> (i32, i32)` 返回输出指针与长度（入口取决于 ModuleKind，输出使用 Canonical CBOR 反序列化）。
 - **输入编码**：事件/动作输入使用 Canonical CBOR 编码，封装在 `ModuleCallInput { ctx, event|action }` 中，确保可回放与确定性。
 - **配置哈希**：`ModuleContext.world_config_hash` 采用当前 manifest 哈希，便于模块检测配置变更。
 - **模块状态**：reducer 调用会携带 `state`（空字节串代表无历史状态）；`new_state` 会触发 `ModuleStateUpdated` 事件并写回状态，确保回放一致；pure 模块返回 `new_state` 视为 InvalidOutput。
+
+## LLM 驱动与 Agent 内部模块（设计补充）
+
+- **LLM 驱动**：Agent 决策由 LLM 执行，推理服务采用 OpenAI 兼容 API（endpoint/model/auth/超时/重试/预算可配置）。
+- **确定性与回放**：LLM 调用视为外部效应；运行时需记录输入/输出或最终决策事件以保证回放一致性（回放时不再次调用 LLM）。
+- **Memory Module**：Agent 记忆策略封装为独立 WASM 模块 + 受限存储配额；由 Agent runtime 触发调用，负责写入 observation/event/action_result 并生成上下文摘要。
+- **可演化**：Memory module 与其它内部模块遵循同一治理/升级流程，可由 Agent 自主更新记忆策略。
 
 ## Capability/Policy 绑定（草案）
 

@@ -26,6 +26,11 @@ struct ModuleManifest {
 - `Reducer`：有状态的确定性 reducer（输入事件 → 新状态 + Effect 意图）
 - `Pure`：无状态纯函数组件（输入 → 输出）
 
+**Agent 内部模块（记忆/工具）**
+- 仍使用 `ModuleManifest`/`ModuleLimits` 与统一 ABI；由 Agent runtime 触发调用，不走 event/action 订阅路由。
+- 记忆模块通常使用 `Reducer`，以 `state` 作为受限持久存储；运行时对状态大小/条目数施加配额（实现可为专用存储或状态分片）。
+- 模块保持确定性计算，不直接调用外部 I/O；LLM/推理服务调用在模块外部完成。
+
 **ModuleSubscription**
 - `event_kinds`: Vec<String>（订阅的事件类型）
 - `action_kinds`: Vec<String>（可选，订阅的动作类型）

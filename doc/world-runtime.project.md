@@ -97,6 +97,7 @@
 - [x] Action 订阅与路由（action → 模块）
 - [x] 模块输出校验（effects/emits 限额与大小）
 - [x] 单元测试/集成测试（确定性回放 + 权限拒绝）
+- [x] 补充 LLM 驱动与 Agent 内部模块（memory module）设计说明
 
 ### 6. 维护
 - [x] 拆分 runtime world 模块文件以满足单文件行数上限
