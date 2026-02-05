@@ -31,7 +31,7 @@ pub use runtime::{
 pub use runtime::{
     FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit,
     ModuleEmitEvent, ModuleEffectIntent, ModuleOutput, ModuleSandbox, ModuleCallInput,
-    ModuleCallOrigin, ModuleContext,
+    ModuleCallOrigin, ModuleContext, WasmEngineKind, WasmExecutor, WasmExecutorConfig,
 };
 
 // Agent interface (observe → decide → act)

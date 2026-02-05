@@ -6,6 +6,7 @@ use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, VecDeque};
 #[cfg(feature = "wasmtime")]
 use std::sync::{Arc, Mutex};
+use std::fmt;
 
 use super::modules::ModuleLimits;
 
@@ -181,13 +182,21 @@ impl Default for WasmExecutorConfig {
 }
 
 /// Placeholder WASM executor implementation.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct WasmExecutor {
     config: WasmExecutorConfig,
     #[cfg(feature = "wasmtime")]
     engine: wasmtime::Engine,
     #[cfg(feature = "wasmtime")]
     compiled_cache: Arc<Mutex<CompiledModuleCache>>,
+}
+
+impl fmt::Debug for WasmExecutor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WasmExecutor")
+            .field("config", &self.config)
+            .finish()
+    }
 }
 
 impl WasmExecutor {
@@ -387,9 +396,10 @@ impl ModuleSandbox for WasmExecutor {
                 self.compile_module_cached(&request.wasm_hash, &request.wasm_bytes)?;
             let start = std::time::Instant::now();
             let mut store = wasmtime::Store::new(&self.engine, ());
+            store.set_epoch_deadline(u64::MAX);
             if request.limits.max_gas > 0 {
                 store
-                    .add_fuel(request.limits.max_gas)
+                    .set_fuel(request.limits.max_gas)
                     .map_err(|err| self.failure(request, ModuleCallErrorCode::Trap, err.to_string()))?;
             }
             let linker = wasmtime::Linker::new(&self.engine);
@@ -437,6 +447,33 @@ impl ModuleSandbox for WasmExecutor {
             let input_ptr = alloc
                 .call(&mut store, input_len)
                 .map_err(|err| self.map_wasmtime_error(request, err))?;
+            if input_ptr < 0 {
+                return Err(self.failure(
+                    request,
+                    ModuleCallErrorCode::InvalidOutput,
+                    "alloc returned negative pointer",
+                ));
+            }
+            if input_len > 0 {
+                const WASM_PAGE_SIZE: u64 = 65_536;
+                let current_pages = memory.size(&store) as u64;
+                let current_size = current_pages.saturating_mul(WASM_PAGE_SIZE);
+                let needed_size = (input_ptr as u64).saturating_add(input_len as u64);
+                if needed_size > current_size {
+                    let required_pages =
+                        (needed_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
+                    let delta = required_pages.saturating_sub(current_pages);
+                    if delta > 0 {
+                        memory.grow(&mut store, delta).map_err(|err| {
+                            self.failure(
+                                request,
+                                ModuleCallErrorCode::Trap,
+                                format!("memory grow failed: {err}"),
+                            )
+                        })?;
+                    }
+                }
+            }
             if input_len > 0 {
                 memory
                     .write(&mut store, input_ptr as usize, &request.input)
@@ -467,6 +504,22 @@ impl ModuleSandbox for WasmExecutor {
                     "output bytes exceeded",
                 ));
             }
+            if output_ptr < 0 {
+                return Err(self.failure(
+                    request,
+                    ModuleCallErrorCode::InvalidOutput,
+                    "output pointer negative",
+                ));
+            }
+            let memory_bytes = memory.data_size(&store) as u64;
+            let output_end = (output_ptr as u64).saturating_add(output_len as u64);
+            if output_end > memory_bytes {
+                return Err(self.failure(
+                    request,
+                    ModuleCallErrorCode::Trap,
+                    "output exceeds memory bounds",
+                ));
+            }
             let mut output_buf = vec![0u8; output_len];
             if output_len > 0 {
                 memory
@@ -492,18 +545,16 @@ impl ModuleSandbox for WasmExecutor {
             return Ok(output);
         }
 
-        let detail = if cfg!(feature = "wasmtime") {
-            "wasmtime backend not implemented"
-        } else {
-            "wasmtime feature not enabled"
-        };
-
-        Err(ModuleCallFailure {
-            module_id: request.module_id.clone(),
-            trace_id: request.trace_id.clone(),
-            code: ModuleCallErrorCode::SandboxUnavailable,
-            detail: detail.to_string(),
-        })
+        #[cfg(not(feature = "wasmtime"))]
+        {
+            let detail = "wasmtime feature not enabled";
+            return Err(ModuleCallFailure {
+                module_id: request.module_id.clone(),
+                trace_id: request.trace_id.clone(),
+                code: ModuleCallErrorCode::SandboxUnavailable,
+                detail: detail.to_string(),
+            });
+        }
     }
 }
 
