@@ -28,6 +28,7 @@
 - [x] 定义 DistributedNetwork 抽象接口
 - [x] 提供 InMemoryNetwork 参考实现（测试用）
 - [x] Libp2pNetwork 骨架（peer_id/keypair，占位实现）
+- [x] DHT 适配器抽象 + InMemoryDht 参考实现
 - [ ] libp2p 实现（gossipsub + rr + dht）
 
 ### 5. Sequencer 与批处理
@@ -57,6 +58,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.1.2（libp2p 骨架占位）
+- 当前阶段：P1.1.3（DHT 适配器原型）
 - 下一步：P1.2（libp2p 实现）
-- 最近更新：新增 Libp2pNetwork 骨架（2026-02-05）
+- 最近更新：新增 DistributedDht/InMemoryDht（2026-02-05）

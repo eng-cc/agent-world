@@ -20,7 +20,7 @@ pub use runtime::{
     ModuleSubscription,
     ModuleSubscriptionStage, ModuleUpgrade,
     DistributedNetwork, InMemoryNetwork, NetworkMessage, NetworkRequest, NetworkResponse,
-    NetworkSubscription, DistributedClient,
+    NetworkSubscription, DistributedClient, DistributedDht, InMemoryDht, ProviderRecord,
     OriginKind, PatchConflict, PatchMergeResult, PatchOpKind, PatchOpSummary, PatchPath,
     PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen, Proposal,
     ProposalDecision, ProposalId, ProposalStatus, ReceiptSignature, ReceiptSigner, RejectReason,

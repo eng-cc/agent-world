@@ -106,6 +106,11 @@
 - **客户端封装**：`DistributedClient` 负责封装 rr 请求/响应与 CBOR 编解码。
 - **libp2p 骨架**：`Libp2pNetwork`（feature=libp2p），先提供 peer_id/keypair 与接口占位。
 
+### DHT 适配器（草案）
+- **抽象接口**：`DistributedDht`（publish_provider/get_providers/put_world_head/get_world_head）。
+- **本地实现**：`InMemoryDht`（用于测试与最小闭环）。
+- **索引对象**：`ProviderRecord { provider_id, last_seen_ms }`。
+
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
