@@ -16,6 +16,7 @@ mod distributed_client;
 mod distributed_dht;
 mod distributed_net;
 mod distributed_mempool;
+mod distributed_lease;
 mod distributed_storage;
 mod distributed_validation;
 #[cfg(feature = "libp2p")]
@@ -96,6 +97,8 @@ pub use distributed_net::{
 
 // Distributed mempool
 pub use distributed_mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
+// Lease manager
+pub use distributed_lease::{LeaseDecision, LeaseManager, LeaseState};
 
 // Distributed client
 pub use distributed_client::DistributedClient;
