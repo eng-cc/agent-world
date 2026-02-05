@@ -25,10 +25,11 @@
 - [x] I14 补充场景别名解析测试
 - [x] I15 demo 输出尘埃碎片数量
 - [x] I16 demo 输出地点设施统计
+- [x] I17 文档补充场景使用建议
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I16（demo 输出增强完成）
+- 当前阶段：I17（文档完善）
