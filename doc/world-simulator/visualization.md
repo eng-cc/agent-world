@@ -11,6 +11,7 @@
   - 新增数据服务（网络桥接）：由 `agent_world` 提供一个 viewer server（可为 binary）。
   - 定义最小网络协议（JSON 行协议），支持：握手、快照、事件流、回放控制。
   - 事件浏览器支持按类型筛选（subscribe 时指定 event_kinds）。
+  - 支持 headless 模式（`AGENT_WORLD_VIEWER_HEADLESS=1`），用于无显示环境的连接/逻辑验证。
   - UI：世界状态面板（地点/Agent/资源摘要）、事件浏览器（列表/筛选）、回放控制（暂停/单步/跳转）。
 - **范围外**
   - 复杂 3D 渲染、地形/模型资产、声音系统。

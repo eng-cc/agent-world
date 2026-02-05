@@ -12,6 +12,7 @@
 - [x] 基础指标展示（RunnerMetrics）
 - [x] UI 自动化测试（Bevy 自带 App/ECS）
 - [x] 补充协议/回放单元测试
+- [x] viewer headless 模式（无显示环境运行）
 - [x] 更新任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
 - [ ] 提交到 git

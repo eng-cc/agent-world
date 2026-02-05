@@ -15,7 +15,16 @@ const DEFAULT_MAX_EVENTS: usize = 100;
 
 fn main() {
     let addr = resolve_addr();
+    let headless = std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok();
 
+    if headless {
+        run_headless(addr);
+    } else {
+        run_ui(addr);
+    }
+}
+
+fn run_ui(addr: String) {
     App::new()
         .insert_resource(ViewerConfig {
             addr,
@@ -36,6 +45,19 @@ fn main() {
             Update,
             (poll_viewer_messages, update_ui, handle_control_buttons),
         )
+        .run();
+}
+
+fn run_headless(addr: String) {
+    App::new()
+        .insert_resource(ViewerConfig {
+            addr,
+            max_events: DEFAULT_MAX_EVENTS,
+        })
+        .insert_resource(HeadlessStatus::default())
+        .add_plugins(MinimalPlugins)
+        .add_systems(Startup, setup_connection)
+        .add_systems(Update, (poll_viewer_messages, headless_report))
         .run();
 }
 
@@ -70,7 +92,7 @@ impl Default for ViewerState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ConnectionStatus {
     Connecting,
     Connected,
@@ -89,6 +111,12 @@ struct EventsText;
 #[derive(Component, Clone)]
 struct ControlButton {
     control: ViewerControl,
+}
+
+#[derive(Resource, Default)]
+struct HeadlessStatus {
+    last_status: Option<ConnectionStatus>,
+    last_events: usize,
 }
 
 fn resolve_addr() -> String {
@@ -432,6 +460,23 @@ fn handle_control_buttons(
                 mode: button.control.clone(),
             });
         }
+    }
+}
+
+fn headless_report(mut status: ResMut<HeadlessStatus>, state: Res<ViewerState>) {
+    if status
+        .last_status
+        .as_ref()
+        .map(|last| last != &state.status)
+        .unwrap_or(true)
+    {
+        println!("viewer status: {}", format_status(&state.status));
+        status.last_status = Some(state.status.clone());
+    }
+
+    if state.events.len() != status.last_events {
+        println!("viewer events: {}", state.events.len());
+        status.last_events = state.events.len();
     }
 }
 
