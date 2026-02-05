@@ -18,7 +18,7 @@
 - 技术上参考 **AgentOS**：确定性内核 + 控制面 IR（AIR）+ WASM 模块 + Effect/Receipt + Capability/Policy。
 - 工程实现采用 **Rust workspace**（Cargo 管理），核心库位于 `crates/agent_world/`。
 
-### 尘埃云物理细化（可后续再补）
+### 尘埃云物理细化（设计版）
 > 目标：在不引入连续物理模拟的前提下，尽量保持物理量纲与因果的正确性。
 
 - **空间边界与分层**
@@ -29,23 +29,26 @@
 - **碎片分布与材质**
   - 碎片尺寸可按幂律分布（常见天体碎屑场）：`N(r) ~ r^-q`（q≈2.5~3.5）。
   - 材质比例可配置（硅酸盐/金属/冰/碳基/复合），影响辐射衰减、热容量、磨损速率。
-  - 当前仅保留 `material/radius_cm/radiation_emission_per_tick`，其余作为后续扩展字段。
+  - `LocationProfile` 预留扩展字段（设计层）：`density`, `albedo`, `porosity`,
+    `temperature`, `radioisotope_ratio`, `hazard_level`，用于精细化热与磨损计算。
 
 - **辐射场与衰减**
   - 基本规律：辐射强度随距离平方衰减（`I ~ 1/r^2`）。
   - 介质吸收：`I = I0 * exp(-tau)`，`tau = k * density * r`（尘埃云光学厚度）。
-  - 计算简化：当前按 Location 的局部强度采集；后续可引入近邻采样或分块加速。
+  - 计算简化：采用“近邻 + 体素背景”两级模型：  
+    - **近邻**：采集位置附近若干 Location 的局部强度（近场贡献）。  
+    - **背景**：体素网格中汇总的辐射场（远场贡献，O(1) 查询）。
 
 - **能量采集与效率**
   - 采集量上限可由“收集面积/效率/热约束”决定：  
     `harvest <= I * area * efficiency * dt`，并受 `max_harvest_per_tick` 限制。
-  - 吸收辐射产生热量，需散热；过热可降低效率或造成硬件损耗（后续）。
+  - 吸收辐射产生热量，需散热；过热触发降效或硬件损耗（见“热管理与硬件损耗”）。
 
 - **运动与推进（物理一致性约束）**
   - 理论上辐射推进满足动量守恒：  
     光子推进 `p = E / c`（能量成本极高）；粒子推进效率取决于排气速度 `ve`。
   - 模型层可抽象为：`move_cost = f(distance, mass, thrust_efficiency)`，并设置 `max_accel`。
-  - 当前仍以“能量/距离成本”抽象，未来可将机体质量与推进效率纳入计算。
+  - 采用“能量/距离成本”抽象；若启用质量模型，则将机体质量与推进效率纳入计算。
 
 - **碰撞与侵蚀（可选）**
   - 尘埃微粒造成的侵蚀可映射为硬件耐久度缓慢下降（维护成本）。
@@ -67,12 +70,16 @@
   - 高辐射区域可引入“硬件损耗阈值”：超过阈值的采集会增加维护成本。
   - 可用“最大允许剂量率”作为规则：超出则禁止采集或强制降效。
 
-- **参数草案（占位，后续再补）**
-  - `time_step_s`：每 tick 的真实时间（默认 10s）。
-  - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
+- **参数定义（关键物理参数）**
+  - `time_step_s`：每 tick 的真实时间。
+  - `power_unit_j`：电力单位对应的能量（J）。
   - `radiation_floor`：背景辐射下限（避免 0 能量）。
+  - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
   - `max_harvest_per_tick`：每 tick 最大采集量（热/面积限制）。
-  - `erosion_rate`：尘埃侵蚀系数（与速度/密度相关）。
+  - `thermal_capacity`：热容量阈值（超过进入过热区）。
+  - `thermal_dissipation`：每 tick 热量散逸值。
+  - `heat_factor`：单位采集量带来的热增量。
+  - `erosion_rate`：尘埃侵蚀系数（与速度/密度缩放）。
 
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
@@ -104,11 +111,13 @@
   - 尺寸分布：`radius_cm ~ PowerLaw(q)`，并裁剪在 `[r_min, r_max]`
   - 材质分布：按权重抽样（Silicate/Metal/Ice/Carbon/Composite）
 
-- **待补细节清单**
-  - 空间分布生成器（已实现最小体素+噪声+幂律，待补障碍/空洞）
-  - 局部辐射场采样与缓存策略（空间哈希/体素网格）
-  - 机体质量、受力上限、热容量的抽象参数
-  - 辐射同位素与衰变（半衰期）对长期资源可持续性影响
+- **进一步设计方向（可直接落地的规则描述）**
+  - **障碍/空洞生成**：在体素层引入“屏蔽/空洞 mask”，使用低频噪声+阈值形成不可通行区。
+  - **辐射场缓存**：每体素维护 `radiation_background`，当碎片列表更新时重建；采集查询时取周围 3×3×3 体素均值。
+  - **机体参数**：在 `RobotBodySpec` 抽象 `mass_kg`, `thrust_limit`, `heat_capacity`,
+    `surface_area_cm2`，用于能耗/热管理/推进约束。
+  - **同位素衰变**：`emission(t) = emission0 * 2^(-t / half_life)`，以 tick 为时间基准；
+    可用 `half_life_ticks` 表示。
 
 ## 范围
 
@@ -127,7 +136,7 @@
 - 复杂连续物理（刚体、流体等）与高精度地理系统。
 - “全知叙事”式的强剧情主线（优先涌现而非编排）。
 - 大规模 3D 渲染与沉浸式客户端（先做可视化/观测面板即可）。
-- 完整的 WASM 编译链、模块市场与跨世界传播机制（仅保留接口/占位）。
+- 完整的 WASM 编译链、模块市场与跨世界传播机制（仅定义模块元数据与版本字段，不实现分发/市场）。
 
 ## 接口 / 数据
 
@@ -208,7 +217,7 @@
   - `query_observation(agent_id)`：生成该 Agent 可见信息
   - `snapshot()` / `restore_from_snapshot(...)`：快照与恢复
   - `save_to_dir(path)` / `load_from_dir(path)`：落盘与冷启动恢复
-  - `replay_from_snapshot(snapshot, journal)`：从快照回放后续事件形成分叉
+  - `replay_from_snapshot(snapshot, journal)`：从快照回放快照之后记录的事件形成分叉
 - **Agent Runtime**
   - `register_agent(agent_spec)`：注册/加载 Agent
   - `tick(agent_id)`：为 Agent 提供 observation，获取 action（或行动计划），提交到世界
