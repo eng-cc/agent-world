@@ -16,7 +16,7 @@ const DEFAULT_MAX_EVENTS: usize = 100;
 fn main() {
     let addr = resolve_addr();
     let headless = std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok();
-    let offline = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
+    let offline = resolve_offline(headless);
 
     if headless {
         run_headless(addr, offline);
@@ -132,6 +132,22 @@ fn resolve_addr() -> String {
         .ok()
         .or_else(|| std::env::args().nth(1))
         .unwrap_or_else(|| DEFAULT_ADDR.to_string())
+}
+
+fn resolve_offline(headless: bool) -> bool {
+    let offline_env = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
+    let force_online = std::env::var("AGENT_WORLD_VIEWER_FORCE_ONLINE").is_ok();
+    decide_offline(headless, offline_env, force_online)
+}
+
+fn decide_offline(headless: bool, offline_env: bool, force_online: bool) -> bool {
+    if force_online {
+        return false;
+    }
+    if offline_env {
+        return true;
+    }
+    headless
 }
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
@@ -833,5 +849,14 @@ mod tests {
         let status = app.world_mut().resource::<HeadlessStatus>();
         assert_eq!(status.last_status, Some(ConnectionStatus::Connected));
         assert_eq!(status.last_events, 1);
+    }
+
+    #[test]
+    fn decide_offline_defaults_headless_and_respects_overrides() {
+        assert!(decide_offline(true, false, false));
+        assert!(!decide_offline(false, false, false));
+        assert!(decide_offline(false, true, false));
+        assert!(!decide_offline(true, true, true));
+        assert!(!decide_offline(true, false, true));
     }
 }

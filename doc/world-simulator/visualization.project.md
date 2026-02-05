@@ -21,6 +21,7 @@
 - [x] 补充协议/回放单元测试
 - [x] viewer headless 模式（无显示环境运行）
 - [x] viewer offline 模式（headless 无网络权限运行）
+- [x] headless 默认离线并支持强制联网开关（AGENT_WORLD_VIEWER_FORCE_ONLINE）
 - [x] 更新任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
 - [ ] 提交到 git

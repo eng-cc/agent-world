@@ -11,8 +11,8 @@
   - 新增数据服务（网络桥接）：由 `agent_world` 提供一个 viewer server（可为 binary）。
   - 定义最小网络协议（JSON 行协议），支持：握手、快照、事件流、回放控制。
   - 事件浏览器支持按类型筛选（subscribe 时指定 event_kinds）。
-  - 支持 headless 模式（`AGENT_WORLD_VIEWER_HEADLESS=1`），用于无显示环境的连接/逻辑验证。
-  - headless 可离线运行（`AGENT_WORLD_VIEWER_OFFLINE=1`），用于无网络权限环境的功能验证。
+  - 支持 headless 模式（`AGENT_WORLD_VIEWER_HEADLESS=1`），默认离线以适配无网络权限环境，可用 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1` 强制联网。
+  - 显式离线模式（`AGENT_WORLD_VIEWER_OFFLINE=1`）用于无网络权限环境的功能验证。
   - UI：世界状态面板（地点/Agent/资源摘要）、事件浏览器（列表/筛选）、回放控制（暂停/单步/跳转）。
 - **范围外**
   - 复杂 3D 渲染、地形/模型资产、声音系统。
@@ -72,7 +72,7 @@
   3) 注入资源：`ViewerState`（包含 snapshot/events/metrics）。
   4) 执行 `app.update()`，用 Query 断言 `Text` 内容变化。
 - **要求**：新增 UI 功能必须同步新增 headless UI 测试，覆盖输入/状态变化与输出文本/结构。
-- **离线模式**：当环境禁止网络连接时，使用 `AGENT_WORLD_VIEWER_OFFLINE=1` 运行 headless 校验。
+- **离线模式**：headless 默认离线；如需联网，设置 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1`；也可显式设置 `AGENT_WORLD_VIEWER_OFFLINE=1` 强制离线。
 
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）
