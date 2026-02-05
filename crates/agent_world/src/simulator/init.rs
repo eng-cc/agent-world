@@ -462,6 +462,124 @@ impl WorldInitConfig {
                 };
                 init.power_storages.push(storage_a);
             }
+            WorldScenario::DustyTriadRegionBootstrap => {
+                init.dust.enabled = true;
+                init.dust.seed_offset = 131;
+                init.origin.enabled = false;
+                init.agents.count = 3;
+                init.agents.location_id = Some("region-a".to_string());
+
+                let center = center_pos(&config.space);
+                let offset = (config.space.width_cm as f64 * 0.2).max(1.0);
+                let pos_a = offset_pos(&config.space, center, -offset, 0.0, 0.0);
+                let pos_b = offset_pos(&config.space, center, offset, 0.0, 0.0);
+                let pos_c = offset_pos(&config.space, center, 0.0, offset, 0.0);
+
+                let mut region_a = LocationSeedConfig::default();
+                region_a.location_id = "region-a".to_string();
+                region_a.name = "Region A".to_string();
+                region_a.pos = Some(pos_a);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 220);
+                region_a
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 50);
+                init.locations.push(region_a);
+
+                let mut region_b = LocationSeedConfig::default();
+                region_b.location_id = "region-b".to_string();
+                region_b.name = "Region B".to_string();
+                region_b.pos = Some(pos_b);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 170);
+                region_b
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 35);
+                init.locations.push(region_b);
+
+                let mut region_c = LocationSeedConfig::default();
+                region_c.location_id = "region-c".to_string();
+                region_c.name = "Region C".to_string();
+                region_c.pos = Some(pos_c);
+                region_c
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 130);
+                region_c
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Hardware, 25);
+                init.locations.push(region_c);
+
+                init.agents
+                    .resources
+                    .amounts
+                    .insert(ResourceKind::Electricity, 20);
+
+                let plant_a = PowerPlantSeedConfig {
+                    facility_id: "plant-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity_per_tick: 12,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_a);
+
+                let plant_b = PowerPlantSeedConfig {
+                    facility_id: "plant-b".to_string(),
+                    location_id: "region-b".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-b".to_string(),
+                    },
+                    capacity_per_tick: 9,
+                    fuel_cost_per_pu: 1,
+                    maintenance_cost: 1,
+                    efficiency: 1.0,
+                    degradation: 0.0,
+                };
+                init.power_plants.push(plant_b);
+
+                let storage_a = PowerStorageSeedConfig {
+                    facility_id: "storage-a".to_string(),
+                    location_id: "region-a".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-a".to_string(),
+                    },
+                    capacity: 90,
+                    current_level: 20,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 10,
+                    max_discharge_rate: 10,
+                };
+                init.power_storages.push(storage_a);
+
+                let storage_c = PowerStorageSeedConfig {
+                    facility_id: "storage-c".to_string(),
+                    location_id: "region-c".to_string(),
+                    owner: ResourceOwner::Location {
+                        location_id: "region-c".to_string(),
+                    },
+                    capacity: 60,
+                    current_level: 12,
+                    charge_efficiency: 1.0,
+                    discharge_efficiency: 1.0,
+                    max_charge_rate: 8,
+                    max_discharge_rate: 8,
+                };
+                init.power_storages.push(storage_c);
+            }
         }
         init
     }
@@ -478,6 +596,7 @@ pub enum WorldScenario {
     TriadRegionBootstrap,
     DustyBootstrap,
     DustyTwinRegionBootstrap,
+    DustyTriadRegionBootstrap,
 }
 
 impl WorldScenario {
@@ -491,6 +610,7 @@ impl WorldScenario {
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
             WorldScenario::DustyBootstrap => "dusty_bootstrap",
             WorldScenario::DustyTwinRegionBootstrap => "dusty_twin_region_bootstrap",
+            WorldScenario::DustyTriadRegionBootstrap => "dusty_triad_region_bootstrap",
         }
     }
 
@@ -515,6 +635,10 @@ impl WorldScenario {
             | "dusty-twin-region-bootstrap"
             | "dusty-twin-regions"
             | "dusty-regions" => Some(WorldScenario::DustyTwinRegionBootstrap),
+            "dusty_triad_region_bootstrap"
+            | "dusty-triad-region-bootstrap"
+            | "dusty-triad-regions"
+            | "dusty-triad" => Some(WorldScenario::DustyTriadRegionBootstrap),
             _ => None,
         }
     }
@@ -529,6 +653,7 @@ impl WorldScenario {
             "triad_region_bootstrap",
             "dusty_bootstrap",
             "dusty_twin_region_bootstrap",
+            "dusty_triad_region_bootstrap",
         ]
     }
 }

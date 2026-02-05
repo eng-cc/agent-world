@@ -28,10 +28,11 @@
 - [x] I17 文档补充场景使用建议
 - [x] I18 文档补充场景别名说明
 - [x] I19 扩展场景模板（dusty_twin_region_bootstrap 多区域尘埃云）
+- [x] I20 扩展场景模板（dusty_triad_region_bootstrap 三方尘埃云）
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I19（多区域尘埃云场景完成）
+- 当前阶段：I20（多区域尘埃云场景扩展完成）
