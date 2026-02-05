@@ -283,20 +283,6 @@ impl WorldKernel {
                 Ok(power_event) => WorldEventKind::Power(power_event),
                 Err(reason) => WorldEventKind::ActionRejected { reason },
             },
-            Action::BuyPowerAtMarket {
-                buyer,
-                seller,
-                amount,
-            } => {
-                let price = match self.market_price_per_pu(&seller) {
-                    Ok(price) => price,
-                    Err(reason) => return WorldEventKind::ActionRejected { reason },
-                };
-                match self.transfer_power(&seller, &buyer, amount, price) {
-                    Ok(power_event) => WorldEventKind::Power(power_event),
-                    Err(reason) => WorldEventKind::ActionRejected { reason },
-                }
-            }
             Action::SellPower {
                 seller,
                 buyer,
@@ -306,20 +292,6 @@ impl WorldKernel {
                 Ok(power_event) => WorldEventKind::Power(power_event),
                 Err(reason) => WorldEventKind::ActionRejected { reason },
             },
-            Action::SellPowerAtMarket {
-                seller,
-                buyer,
-                amount,
-            } => {
-                let price = match self.market_price_per_pu(&seller) {
-                    Ok(price) => price,
-                    Err(reason) => return WorldEventKind::ActionRejected { reason },
-                };
-                match self.transfer_power(&seller, &buyer, amount, price) {
-                    Ok(power_event) => WorldEventKind::Power(power_event),
-                    Err(reason) => WorldEventKind::ActionRejected { reason },
-                }
-            }
             Action::TransferResource {
                 from,
                 to,
@@ -401,17 +373,6 @@ impl WorldKernel {
             loss,
             price_per_pu,
         })
-    }
-
-    fn market_price_per_pu(&self, seller: &ResourceOwner) -> Result<i64, RejectReason> {
-        let location_id = self.owner_location_id(seller)?;
-        let location = self.model.locations.get(&location_id).ok_or_else(|| {
-            RejectReason::LocationNotFound {
-                location_id: location_id.clone(),
-            }
-        })?;
-        let available = location.resources.get(ResourceKind::Electricity);
-        Ok(self.config.power.price_per_pu(available))
     }
 
     fn owner_location_id(&self, owner: &ResourceOwner) -> Result<String, RejectReason> {

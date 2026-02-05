@@ -108,11 +108,6 @@ struct PowerConfig {
     critical_threshold_pct: i64,    // 临界电阈值百分比，默认 5
     transfer_loss_per_km_bps: i64,  // 传输损耗（每公里，bps，默认 10=0.1%）
     transfer_max_distance_km: i64,  // 跨 Location 传输最大距离，默认 10_000
-    base_price_per_pu: i64,         // 市场基准电价，默认 10
-    min_price_per_pu: i64,          // 市场最低电价，默认 1
-    max_price_per_pu: i64,          // 市场最高电价，默认 1000
-    price_sensitivity_bps: i64,     // 价格敏感度（bps），默认 5000
-    reserve_target_per_location: i64, // 目标电力储备，默认 100
 }
 ```
 
@@ -153,24 +148,12 @@ enum PowerAction {
         amount: i64,
         price_per_pu: i64,
     },
-    // 按市场价购买电力（按卖方所在 Location 定价）
-    BuyPowerAtMarket {
-        buyer: ResourceOwner,
-        seller: ResourceOwner,
-        amount: i64,
-    },
     // 出售电力
     SellPower {
         seller: ResourceOwner,
         buyer: ResourceOwner,
         amount: i64,
         price_per_pu: i64,
-    },
-    // 按市场价出售电力（按卖方所在 Location 定价）
-    SellPowerAtMarket {
-        seller: ResourceOwner,
-        buyer: ResourceOwner,
-        amount: i64,
     },
     // 从储能设施放电到所在 Location
     DrawPower {
@@ -184,21 +167,6 @@ enum PowerAction {
     },
 }
 ```
-
-### 电价与市场机制（M4.4）
-
-#### 价格模型（最小实现）
-- 定价单位：`price_per_pu`
-- 定价维度：以 **Location 电力库存** 为信号，基于目标储备与敏感度计算价格
-- 公式：
-  - `scarcity_bps = ((target - stock) / target) * price_sensitivity_bps`
-  - `price = base_price_per_pu * (1 + scarcity_bps / 10_000)`
-  - `price` 最终被夹到 `[min_price_per_pu, max_price_per_pu]`
-
-#### 规则
-- 市场价由卖方所在 Location 的电力库存决定（Agent 交易仍按 Location 市场价）
-- 同 Location 交易不产生传输损耗
-- 跨 Location 传输仍受损耗与距离限制影响
 
 ## 接口设计
 
@@ -267,7 +235,7 @@ enum ConsumeReason {
 
 ### Phase 4：高级功能
 1. 设施老化与维护
-2. 电价波动（供需平衡，基于 Location 库存的市场价）
+2. 电价波动（供需平衡）
 3. 停电恢复流程
 
 ## 里程碑

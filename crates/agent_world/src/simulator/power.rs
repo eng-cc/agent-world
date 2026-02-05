@@ -77,16 +77,6 @@ pub struct PowerConfig {
     pub transfer_loss_per_km_bps: i64,
     /// Maximum cross-location transfer distance in km (default: 10_000).
     pub transfer_max_distance_km: i64,
-    /// Base market price per PU (default: 10).
-    pub base_price_per_pu: i64,
-    /// Minimum market price per PU (default: 1).
-    pub min_price_per_pu: i64,
-    /// Maximum market price per PU (default: 1000).
-    pub max_price_per_pu: i64,
-    /// Price sensitivity in basis points (default: 5000 = 50% swing at target delta).
-    pub price_sensitivity_bps: i64,
-    /// Target reserve per location for price calculation (default: 100).
-    pub reserve_target_per_location: i64,
 }
 
 impl Default for PowerConfig {
@@ -100,11 +90,6 @@ impl Default for PowerConfig {
             critical_threshold_pct: 5,
             transfer_loss_per_km_bps: 10,
             transfer_max_distance_km: 10_000,
-            base_price_per_pu: 10,
-            min_price_per_pu: 1,
-            max_price_per_pu: 1000,
-            price_sensitivity_bps: 5000,
-            reserve_target_per_location: 100,
         }
     }
 }
@@ -126,30 +111,6 @@ impl PowerConfig {
         } else {
             AgentPowerState::Normal
         }
-    }
-
-    /// Calculate market price per PU based on available stock at a location.
-    pub fn price_per_pu(&self, available_power: i64) -> i64 {
-        let base = self.base_price_per_pu.max(0);
-        let min_price = self.min_price_per_pu.max(0);
-        let max_price = self.max_price_per_pu.max(min_price);
-        if base == 0 {
-            return min_price.min(max_price);
-        }
-        let target = self.reserve_target_per_location.max(0);
-        let sensitivity = self.price_sensitivity_bps.max(0);
-        let scarcity_bps = if target > 0 && sensitivity > 0 {
-            let delta = (target as i128) - (available_power as i128);
-            let raw = delta.saturating_mul(sensitivity as i128) / (target as i128);
-            raw.clamp(-10_000, 10_000)
-        } else {
-            0
-        };
-        let price = (base as i128)
-            .saturating_mul(10_000 + scarcity_bps)
-            / 10_000;
-        let price = price as i64;
-        price.clamp(min_price, max_price)
     }
 }
 
