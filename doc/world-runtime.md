@@ -66,6 +66,7 @@
 - `doc/world-runtime/runtime-integration.md`：模块加载/沙箱/路由/输出校验与运行时接口
 - `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
 - `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
+- `doc/world-runtime/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
 - `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
 
 ## 里程碑
