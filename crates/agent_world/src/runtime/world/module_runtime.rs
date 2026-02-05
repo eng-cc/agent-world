@@ -99,6 +99,22 @@ impl World {
         Ok(loaded)
     }
 
+    pub(super) fn ensure_module_changes_with_fetch(
+        &mut self,
+        world_id: &str,
+        changes: &super::super::ModuleChangeSet,
+        client: &DistributedClient,
+        dht: &impl DistributedDht,
+    ) -> Result<(), WorldError> {
+        for module in &changes.register {
+            self.load_module_with_fetch(world_id, &module.wasm_hash, client, dht)?;
+        }
+        for upgrade in &changes.upgrade {
+            self.load_module_with_fetch(world_id, &upgrade.manifest.wasm_hash, client, dht)?;
+        }
+        Ok(())
+    }
+
     pub fn validate_module_output_limits(
         &self,
         module_id: &str,
