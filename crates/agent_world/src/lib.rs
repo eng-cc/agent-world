@@ -43,6 +43,12 @@ pub use simulator::{
     RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
 };
 
+// World initialization
+pub use simulator::{
+    build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
+    OriginLocationConfig, WorldInitConfig, WorldInitError, WorldInitReport,
+};
+
 // Power system (M4 social system)
 pub use simulator::{
     AgentPowerState, AgentPowerStatus, ConsumeReason, PowerConfig, PowerEvent,

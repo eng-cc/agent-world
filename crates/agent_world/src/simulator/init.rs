@@ -6,7 +6,7 @@ use crate::geometry::GeoPos;
 
 use super::dust::generate_fragments;
 use super::kernel::WorldKernel;
-use super::types::{AgentId, LocationId, LocationProfile};
+use super::types::{AgentId, LocationId, LocationProfile, ResourceKind, ResourceStock};
 use super::world_model::{Agent, Location, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,6 +14,7 @@ use super::world_model::{Agent, Location, WorldConfig, WorldModel};
 pub struct WorldInitConfig {
     pub seed: u64,
     pub origin: OriginLocationConfig,
+    pub locations: Vec<LocationSeedConfig>,
     pub dust: DustInitConfig,
     pub agents: AgentSpawnConfig,
 }
@@ -23,6 +24,7 @@ impl Default for WorldInitConfig {
         Self {
             seed: 0,
             origin: OriginLocationConfig::default(),
+            locations: Vec::new(),
             dust: DustInitConfig::default(),
             agents: AgentSpawnConfig::default(),
         }
@@ -32,6 +34,11 @@ impl Default for WorldInitConfig {
 impl WorldInitConfig {
     pub fn sanitized(mut self) -> Self {
         self.origin = self.origin.sanitized();
+        self.locations = self
+            .locations
+            .into_iter()
+            .map(|location| location.sanitized())
+            .collect();
         self.dust = self.dust.sanitized();
         self.agents = self.agents.sanitized();
         self
@@ -46,6 +53,7 @@ pub struct OriginLocationConfig {
     pub name: String,
     pub pos: Option<GeoPos>,
     pub profile: LocationProfile,
+    pub resources: ResourceStock,
 }
 
 impl Default for OriginLocationConfig {
@@ -56,6 +64,7 @@ impl Default for OriginLocationConfig {
             name: "Origin".to_string(),
             pos: None,
             profile: LocationProfile::default(),
+            resources: ResourceStock::default(),
         }
     }
 }
@@ -67,6 +76,37 @@ impl OriginLocationConfig {
         }
         if self.name.is_empty() {
             self.name = "Origin".to_string();
+        }
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LocationSeedConfig {
+    pub location_id: LocationId,
+    pub name: String,
+    pub pos: Option<GeoPos>,
+    pub profile: LocationProfile,
+    pub resources: ResourceStock,
+}
+
+impl Default for LocationSeedConfig {
+    fn default() -> Self {
+        Self {
+            location_id: String::new(),
+            name: String::new(),
+            pos: None,
+            profile: LocationProfile::default(),
+            resources: ResourceStock::default(),
+        }
+    }
+}
+
+impl LocationSeedConfig {
+    pub fn sanitized(mut self) -> Self {
+        if self.name.is_empty() {
+            self.name = self.location_id.clone();
         }
         self
     }
@@ -101,6 +141,7 @@ pub struct AgentSpawnConfig {
     pub id_prefix: String,
     pub start_index: u32,
     pub location_id: Option<LocationId>,
+    pub resources: ResourceStock,
 }
 
 impl Default for AgentSpawnConfig {
@@ -110,6 +151,7 @@ impl Default for AgentSpawnConfig {
             id_prefix: "agent-".to_string(),
             start_index: 0,
             location_id: None,
+            resources: ResourceStock::default(),
         }
     }
 }
@@ -134,10 +176,13 @@ pub struct WorldInitReport {
 #[derive(Debug, Clone, PartialEq)]
 pub enum WorldInitError {
     OriginOutOfBounds { pos: GeoPos },
+    LocationOutOfBounds { location_id: LocationId, pos: GeoPos },
+    InvalidLocationId { location_id: LocationId },
     LocationIdConflict { location_id: LocationId },
     AgentIdConflict { agent_id: AgentId },
     SpawnLocationMissing,
     SpawnLocationNotFound { location_id: LocationId },
+    InvalidResourceAmount { kind: ResourceKind, amount: i64 },
 }
 
 pub fn build_world_model(
@@ -156,12 +201,45 @@ pub fn build_world_model(
         if !config.space.contains(pos) {
             return Err(WorldInitError::OriginOutOfBounds { pos });
         }
-        let location = Location::new_with_profile(
+        ensure_valid_stock(&init.origin.resources)?;
+        let mut location = Location::new_with_profile(
             init.origin.location_id.clone(),
             init.origin.name.clone(),
             pos,
             init.origin.profile.clone(),
         );
+        location.resources = init.origin.resources.clone();
+        insert_location(&mut model, location)?;
+    }
+
+    for location_seed in &init.locations {
+        if location_seed.location_id.is_empty() {
+            return Err(WorldInitError::InvalidLocationId {
+                location_id: location_seed.location_id.clone(),
+            });
+        }
+        let pos = location_seed
+            .pos
+            .unwrap_or_else(|| center_pos(&config.space));
+        if !config.space.contains(pos) {
+            return Err(WorldInitError::LocationOutOfBounds {
+                location_id: location_seed.location_id.clone(),
+                pos,
+            });
+        }
+        ensure_valid_stock(&location_seed.resources)?;
+        let name = if location_seed.name.is_empty() {
+            location_seed.location_id.clone()
+        } else {
+            location_seed.name.clone()
+        };
+        let mut location = Location::new_with_profile(
+            location_seed.location_id.clone(),
+            name,
+            pos,
+            location_seed.profile.clone(),
+        );
+        location.resources = location_seed.resources.clone();
         insert_location(&mut model, location)?;
     }
 
@@ -177,6 +255,7 @@ pub fn build_world_model(
     };
 
     if init.agents.count > 0 {
+        ensure_valid_stock(&init.agents.resources)?;
         let spawn_location_id = match init.agents.location_id.clone() {
             Some(location_id) => location_id,
             None => {
@@ -199,12 +278,13 @@ pub fn build_world_model(
         for offset in 0..init.agents.count {
             let idx = init.agents.start_index as u64 + offset as u64;
             let agent_id = format!("{}{}", init.agents.id_prefix, idx);
-            let agent = Agent::new_with_power(
+            let mut agent = Agent::new_with_power(
                 agent_id.clone(),
                 spawn_location_id.clone(),
                 spawn_pos,
                 &config.power,
             );
+            agent.resources = init.agents.resources.clone();
             insert_agent(&mut model, agent)?;
         }
     }
@@ -252,5 +332,17 @@ fn insert_agent(model: &mut WorldModel, agent: Agent) -> Result<(), WorldInitErr
         });
     }
     model.agents.insert(agent.id.clone(), agent);
+    Ok(())
+}
+
+fn ensure_valid_stock(stock: &ResourceStock) -> Result<(), WorldInitError> {
+    for (kind, amount) in &stock.amounts {
+        if *amount < 0 {
+            return Err(WorldInitError::InvalidResourceAmount {
+                kind: *kind,
+                amount: *amount,
+            });
+        }
+    }
     Ok(())
 }

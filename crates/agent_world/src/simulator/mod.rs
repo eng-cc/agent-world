@@ -28,8 +28,8 @@ mod tests;
 pub use agent::{ActionResult, AgentBehavior, AgentDecision};
 pub use dust::generate_fragments;
 pub use init::{
-    build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, OriginLocationConfig,
-    WorldInitConfig, WorldInitError, WorldInitReport,
+    build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
+    OriginLocationConfig, WorldInitConfig, WorldInitError, WorldInitReport,
 };
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{

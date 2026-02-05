@@ -50,3 +50,54 @@ fn init_requires_spawn_location() {
     let err = build_world_model(&config, &init).expect_err("should fail");
     assert!(matches!(err, WorldInitError::SpawnLocationMissing));
 }
+
+#[test]
+fn init_seeds_locations_and_resources() {
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.origin.enabled = false;
+    init.dust.enabled = false;
+    init.agents.count = 1;
+    init.agents.location_id = Some("base".to_string());
+    init.agents
+        .resources
+        .add(ResourceKind::Data, 5)
+        .expect("seed agent resources");
+
+    let mut location_seed = LocationSeedConfig::default();
+    location_seed.location_id = "base".to_string();
+    location_seed.name = "Base".to_string();
+    location_seed.pos = Some(pos(10.0, 10.0));
+    location_seed
+        .resources
+        .add(ResourceKind::Hardware, 3)
+        .expect("seed location resources");
+    init.locations.push(location_seed);
+
+    let (model, _) = build_world_model(&config, &init).expect("init should succeed");
+    let base = model.locations.get("base").expect("base exists");
+    assert_eq!(base.resources.get(ResourceKind::Hardware), 3);
+    let agent = model.agents.get("agent-0").expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Data), 5);
+}
+
+#[test]
+fn init_rejects_negative_resources() {
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.dust.enabled = false;
+    init.agents.count = 0;
+    init.origin
+        .resources
+        .amounts
+        .insert(ResourceKind::Electricity, -5);
+
+    let err = build_world_model(&config, &init).expect_err("should fail");
+    assert!(matches!(
+        err,
+        WorldInitError::InvalidResourceAmount {
+            kind: ResourceKind::Electricity,
+            amount: -5
+        }
+    ));
+}
