@@ -42,6 +42,7 @@
 - [x] 实现调度器：公平性、限速、配额（步数/事件/预算）
 - [x] 基础可观测性：事件日志、指标（RunnerMetrics/AgentStats/RunnerLogEntry）
 - [x] Agent 记忆最小实现：ShortTermMemory + LongTermMemory + AgentMemory
+- [x] 补充 LLM 驱动与模块化记忆设计（OpenAI 兼容 API、memory module 为 WASM + 受限存储）
 
 ### 4. 社会系统（电力/硬件/数据）
 - [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本）
@@ -65,9 +66,9 @@
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
-- （可选）LLM/推理服务接入方式与预算策略（本地/远程、缓存、重试）
+- （可选）LLM/推理服务接入方式与预算策略（OpenAI 兼容 API、本地/远程、缓存、重试）
 
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：完成 world-simulator 设计文档细化项补全（2026-02-05）
+- 最近更新：补充 LLM 驱动与模块化记忆设计（2026-02-05）

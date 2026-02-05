@@ -15,6 +15,8 @@
 - 尘埃云中分布着不同材质、大小不一的碎片（Location/Fragment）；**多数碎片具有放射性**。
 - 硅基生命依赖放射性物质存活：通过吸收辐射产生电力，并在真空中利用辐射粒子的反作用力移动（在规则层抽象为“辐射采集 → 电力资源 → 移动消耗”）。
 - **自由沙盒**：Agent 可以把“新事物”封装为 Rust/WASM 模块动态接入世界，模块仅通过事件/接口与外部交互。
+- **LLM 驱动**：实际运行中 Agent 的决策由 LLM 驱动，推理服务采用 **OpenAI 兼容 API** 形式提供（支持配置 endpoint/model/鉴权/预算策略）。
+- **模块化 Agent**：Agent 的记忆/规划/工具等内部能力原则上由 WASM 模块定义，可由 Agent 自主迭代更新。
 - 技术上参考 **AgentOS**：确定性内核 + 控制面 IR（AIR）+ WASM 模块 + Effect/Receipt + Capability/Policy。
 - 工程实现采用 **Rust workspace**（Cargo 管理），核心库位于 `crates/agent_world/`。
 
@@ -149,8 +151,8 @@
 - **GeoPos**：尘埃云中的三维位置（`x_cm/y_cm/z_cm`），用于距离/可见性/移动等规则。
 - **LengthCm**：以 cm 为单位的长度/距离（整数或可量化到 1 cm 的数值）。
 - **LocationProfile**：碎片/地点的物理画像（材质、尺寸、辐射强度）。
-- **WASM Module**：由 Agent 创造并编译的沙箱模块，用于扩展规则/设施/机制。
-- **Sandbox**：模块受控执行环境，仅允许通过事件/接口产生外部影响。
+- **WASM Module**：由 Agent 创造并编译的沙箱模块，用于扩展规则/设施/机制，也用于 Agent 内部能力（记忆/工具/策略）。
+- **Sandbox**：提供隔离执行环境，不做内容/策略限制；资源预算与输出边界由运行时策略控制，外部影响仍需通过事件/接口产生。
 
 ### 数据模型（草案）
 > 具体字段与类型由实现语言/存储决定；此处用于约束边界。
@@ -158,7 +160,7 @@
 - `Agent`
   - `id`, `name`, `traits`（性格/偏好/风险偏好）, `needs`（电力/硬件健康/数据需求…）
   - `inventory`, `skills`, `relationships`, `reputation`
-  - `memory`（短期工作记忆 + 长期记忆索引/摘要）
+  - `memory`（短期工作记忆 + 长期记忆索引/摘要；可由 memory module 策略/版本控制）
   - `body`（默认：人形机器人，`height_cm = 100`）
   - `pos`（GeoPos）
   - `location_id`, `status`（在线/离线/休眠）
@@ -281,6 +283,7 @@
   - `MetricsSnapshot`：指标快照
 
 ### M3 Agent 记忆系统（已实现）
+> 现阶段为最小可用实现（Rust 内存结构）；实际运行设想的模块化记忆策略见下节。
 - **ShortTermMemory**：短期记忆缓冲区
   - 固定容量的 FIFO 队列
   - 支持按时间/重要性筛选
@@ -306,6 +309,17 @@
   - `ActionResult`：动作结果
   - `Event`：外部事件
   - `Note`：自定义笔记
+
+### M3+ LLM 驱动与模块化记忆（设计补充）
+> 描述实际运行设想，用于指导后续架构演进与实现拆分。
+
+- **LLM 驱动**：Agent 的 `decide` 在运行时由 LLM 执行；推理服务通过 OpenAI 兼容 API 提供，需配置 model/endpoint/auth、超时/重试与 token/成本预算。
+- **Memory Module（WASM + 受限存储）**：
+  - 记忆策略封装为独立 WASM 模块，与行为模块解耦。
+  - 模块拥有受限的持久存储配额（容量/条目数/索引大小），仅通过显式接口读写。
+  - 模块负责接收 observation/event/action_result、压缩摘要、检索上下文、迁移短期→长期。
+  - Agent 可替换/升级自己的 memory module（版本化、可回滚），以更新记忆策略。
+- **全模块 WASM 化**：除世界内核外，Agent 的感知/规划/记忆/工具等模块均可由 WASM 定义；沙盒仅提供隔离与计量，不施加语义限制，所有外部影响仍由规则/事件边界约束。
 
 ## 里程碑
 - M0：对齐愿景与边界（本设计文档 + 项目管理文档）
