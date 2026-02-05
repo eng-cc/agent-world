@@ -142,6 +142,11 @@
  - **Head 发布**：执行节点完成校验后调用 `put_world_head` 更新 DHT。
  - **Provider 索引**：storage 节点对 block/manifest/segments/chunks 发布 provider 记录。
 
+### 轻量 Index Store（草案）
+- **用途**：缓存 world head 与 provider 查询结果（可选）。
+- **抽象接口**：`DistributedIndexStore`（put_head/get_head/put_provider/get_providers）。
+- **本地实现**：`InMemoryIndexStore` 便于测试。
+
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。

@@ -15,6 +15,7 @@ pub mod distributed;
 mod distributed_client;
 mod distributed_dht;
 mod distributed_index;
+mod distributed_index_store;
 mod distributed_net;
 mod distributed_mempool;
 mod distributed_lease;
@@ -108,6 +109,8 @@ pub use distributed_client::DistributedClient;
 pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
 // Distributed index publishing
 pub use distributed_index::{publish_execution_providers, publish_world_head, query_providers, IndexPublishResult};
+// Distributed index store
+pub use distributed_index_store::{DistributedIndexStore, HeadIndexRecord, InMemoryIndexStore};
 
 // Distributed storage helpers
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};

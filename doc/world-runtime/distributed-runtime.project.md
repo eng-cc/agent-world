@@ -41,7 +41,7 @@
 ### 6. 索引与发现
 - [x] world head 发布到 DHT（libp2p/kad 适配）
 - [x] 内容 provider 索引与查询（libp2p/kad 适配）
-- [ ] 轻量 index store 接口（可选）
+- [x] 轻量 index store 接口（可选）
 
 ### 7. Gateway/Observer
 - [ ] 提交 action 的网关 API
@@ -60,6 +60,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P1.5.2 完成（world head/provider 索引发布）
-- 下一步：P1.6.1（轻量 index store 接口）
-- 最近更新：world head/provider 索引发布实现（2026-02-05）
+- 当前阶段：P1.6.1 完成（轻量 index store 接口）
+- 下一步：P1.7.1（提交 action 的网关 API）
+- 最近更新：轻量 index store 接口实现（2026-02-05）
