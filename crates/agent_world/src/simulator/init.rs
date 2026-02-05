@@ -6,7 +6,10 @@ use crate::geometry::GeoPos;
 
 use super::dust::generate_fragments;
 use super::kernel::WorldKernel;
-use super::types::{AgentId, LocationId, LocationProfile, ResourceKind, ResourceStock};
+use super::power::{PlantStatus, PowerPlant, PowerStorage};
+use super::types::{
+    AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, ResourceStock,
+};
 use super::world_model::{Agent, Location, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -17,6 +20,8 @@ pub struct WorldInitConfig {
     pub locations: Vec<LocationSeedConfig>,
     pub dust: DustInitConfig,
     pub agents: AgentSpawnConfig,
+    pub power_plants: Vec<PowerPlantSeedConfig>,
+    pub power_storages: Vec<PowerStorageSeedConfig>,
 }
 
 impl Default for WorldInitConfig {
@@ -27,6 +32,8 @@ impl Default for WorldInitConfig {
             locations: Vec::new(),
             dust: DustInitConfig::default(),
             agents: AgentSpawnConfig::default(),
+            power_plants: Vec::new(),
+            power_storages: Vec::new(),
         }
     }
 }
@@ -41,6 +48,16 @@ impl WorldInitConfig {
             .collect();
         self.dust = self.dust.sanitized();
         self.agents = self.agents.sanitized();
+        self.power_plants = self
+            .power_plants
+            .into_iter()
+            .map(|plant| plant.sanitized())
+            .collect();
+        self.power_storages = self
+            .power_storages
+            .into_iter()
+            .map(|storage| storage.sanitized())
+            .collect();
         self
     }
 }
@@ -166,6 +183,80 @@ impl AgentSpawnConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PowerPlantSeedConfig {
+    pub facility_id: FacilityId,
+    pub location_id: LocationId,
+    pub owner: ResourceOwner,
+    pub capacity_per_tick: i64,
+    pub fuel_cost_per_pu: i64,
+    pub maintenance_cost: i64,
+    pub efficiency: f64,
+    pub degradation: f64,
+}
+
+impl Default for PowerPlantSeedConfig {
+    fn default() -> Self {
+        Self {
+            facility_id: String::new(),
+            location_id: String::new(),
+            owner: ResourceOwner::Location {
+                location_id: String::new(),
+            },
+            capacity_per_tick: 0,
+            fuel_cost_per_pu: 0,
+            maintenance_cost: 0,
+            efficiency: 1.0,
+            degradation: 0.0,
+        }
+    }
+}
+
+impl PowerPlantSeedConfig {
+    pub fn sanitized(self) -> Self {
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PowerStorageSeedConfig {
+    pub facility_id: FacilityId,
+    pub location_id: LocationId,
+    pub owner: ResourceOwner,
+    pub capacity: i64,
+    pub current_level: i64,
+    pub charge_efficiency: f64,
+    pub discharge_efficiency: f64,
+    pub max_charge_rate: i64,
+    pub max_discharge_rate: i64,
+}
+
+impl Default for PowerStorageSeedConfig {
+    fn default() -> Self {
+        Self {
+            facility_id: String::new(),
+            location_id: String::new(),
+            owner: ResourceOwner::Location {
+                location_id: String::new(),
+            },
+            capacity: 0,
+            current_level: 0,
+            charge_efficiency: 1.0,
+            discharge_efficiency: 1.0,
+            max_charge_rate: 0,
+            max_discharge_rate: 0,
+        }
+    }
+}
+
+impl PowerStorageSeedConfig {
+    pub fn sanitized(self) -> Self {
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldInitReport {
     pub seed: u64,
     pub dust_seed: Option<u64>,
@@ -180,9 +271,16 @@ pub enum WorldInitError {
     InvalidLocationId { location_id: LocationId },
     LocationIdConflict { location_id: LocationId },
     AgentIdConflict { agent_id: AgentId },
+    InvalidFacilityId { facility_id: FacilityId },
+    FacilityIdConflict { facility_id: FacilityId },
+    FacilityLocationNotFound { location_id: LocationId },
+    FacilityOwnerNotFound { owner: ResourceOwner },
     SpawnLocationMissing,
     SpawnLocationNotFound { location_id: LocationId },
     InvalidResourceAmount { kind: ResourceKind, amount: i64 },
+    InvalidFacilityAmount { field: String, amount: i64 },
+    InvalidFacilityRatio { field: String, value: f64 },
+    InvalidFacilityLevel { current_level: i64, capacity: i64 },
 }
 
 pub fn build_world_model(
@@ -289,6 +387,78 @@ pub fn build_world_model(
         }
     }
 
+    for plant_seed in &init.power_plants {
+        if plant_seed.facility_id.is_empty() {
+            return Err(WorldInitError::InvalidFacilityId {
+                facility_id: plant_seed.facility_id.clone(),
+            });
+        }
+        if !model.locations.contains_key(&plant_seed.location_id) {
+            return Err(WorldInitError::FacilityLocationNotFound {
+                location_id: plant_seed.location_id.clone(),
+            });
+        }
+        ensure_owner_exists(&model, &plant_seed.owner)?;
+        ensure_non_negative_amount("capacity_per_tick", plant_seed.capacity_per_tick)?;
+        ensure_non_negative_amount("fuel_cost_per_pu", plant_seed.fuel_cost_per_pu)?;
+        ensure_non_negative_amount("maintenance_cost", plant_seed.maintenance_cost)?;
+        ensure_valid_ratio("efficiency", plant_seed.efficiency)?;
+        ensure_valid_ratio("degradation", plant_seed.degradation)?;
+
+        let plant = PowerPlant {
+            id: plant_seed.facility_id.clone(),
+            location_id: plant_seed.location_id.clone(),
+            owner: plant_seed.owner.clone(),
+            capacity_per_tick: plant_seed.capacity_per_tick,
+            current_output: 0,
+            fuel_cost_per_pu: plant_seed.fuel_cost_per_pu,
+            maintenance_cost: plant_seed.maintenance_cost,
+            status: PlantStatus::Running,
+            efficiency: plant_seed.efficiency,
+            degradation: plant_seed.degradation,
+        };
+        insert_power_plant(&mut model, plant)?;
+    }
+
+    for storage_seed in &init.power_storages {
+        if storage_seed.facility_id.is_empty() {
+            return Err(WorldInitError::InvalidFacilityId {
+                facility_id: storage_seed.facility_id.clone(),
+            });
+        }
+        if !model.locations.contains_key(&storage_seed.location_id) {
+            return Err(WorldInitError::FacilityLocationNotFound {
+                location_id: storage_seed.location_id.clone(),
+            });
+        }
+        ensure_owner_exists(&model, &storage_seed.owner)?;
+        ensure_non_negative_amount("capacity", storage_seed.capacity)?;
+        ensure_non_negative_amount("current_level", storage_seed.current_level)?;
+        ensure_non_negative_amount("max_charge_rate", storage_seed.max_charge_rate)?;
+        ensure_non_negative_amount("max_discharge_rate", storage_seed.max_discharge_rate)?;
+        ensure_valid_ratio("charge_efficiency", storage_seed.charge_efficiency)?;
+        ensure_valid_ratio("discharge_efficiency", storage_seed.discharge_efficiency)?;
+        if storage_seed.current_level > storage_seed.capacity {
+            return Err(WorldInitError::InvalidFacilityLevel {
+                current_level: storage_seed.current_level,
+                capacity: storage_seed.capacity,
+            });
+        }
+
+        let storage = PowerStorage {
+            id: storage_seed.facility_id.clone(),
+            location_id: storage_seed.location_id.clone(),
+            owner: storage_seed.owner.clone(),
+            capacity: storage_seed.capacity,
+            current_level: storage_seed.current_level,
+            charge_efficiency: storage_seed.charge_efficiency,
+            discharge_efficiency: storage_seed.discharge_efficiency,
+            max_charge_rate: storage_seed.max_charge_rate,
+            max_discharge_rate: storage_seed.max_discharge_rate,
+        };
+        insert_power_storage(&mut model, storage)?;
+    }
+
     let report = WorldInitReport {
         seed: init.seed,
         dust_seed,
@@ -344,5 +514,69 @@ fn ensure_valid_stock(stock: &ResourceStock) -> Result<(), WorldInitError> {
             });
         }
     }
+    Ok(())
+}
+
+fn ensure_owner_exists(model: &WorldModel, owner: &ResourceOwner) -> Result<(), WorldInitError> {
+    match owner {
+        ResourceOwner::Agent { agent_id } => {
+            if model.agents.contains_key(agent_id) {
+                Ok(())
+            } else {
+                Err(WorldInitError::FacilityOwnerNotFound { owner: owner.clone() })
+            }
+        }
+        ResourceOwner::Location { location_id } => {
+            if model.locations.contains_key(location_id) {
+                Ok(())
+            } else {
+                Err(WorldInitError::FacilityOwnerNotFound { owner: owner.clone() })
+            }
+        }
+    }
+}
+
+fn ensure_non_negative_amount(field: &str, amount: i64) -> Result<(), WorldInitError> {
+    if amount < 0 {
+        return Err(WorldInitError::InvalidFacilityAmount {
+            field: field.to_string(),
+            amount,
+        });
+    }
+    Ok(())
+}
+
+fn ensure_valid_ratio(field: &str, value: f64) -> Result<(), WorldInitError> {
+    if !value.is_finite() || value < 0.0 || value > 1.0 {
+        return Err(WorldInitError::InvalidFacilityRatio {
+            field: field.to_string(),
+            value,
+        });
+    }
+    Ok(())
+}
+
+fn insert_power_plant(model: &mut WorldModel, plant: PowerPlant) -> Result<(), WorldInitError> {
+    if model.power_plants.contains_key(&plant.id) || model.power_storages.contains_key(&plant.id) {
+        return Err(WorldInitError::FacilityIdConflict {
+            facility_id: plant.id,
+        });
+    }
+    model.power_plants.insert(plant.id.clone(), plant);
+    Ok(())
+}
+
+fn insert_power_storage(
+    model: &mut WorldModel,
+    storage: PowerStorage,
+) -> Result<(), WorldInitError> {
+    if model.power_plants.contains_key(&storage.id)
+        || model.power_storages.contains_key(&storage.id)
+    {
+        return Err(WorldInitError::FacilityIdConflict {
+            facility_id: storage.id,
+        });
+    }
+    model.power_storages.insert(storage.id.clone(), storage);
     Ok(())
 }

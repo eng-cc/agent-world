@@ -10,13 +10,14 @@
 ## 范围
 
 ### In Scope（V1）
-- `WorldInitConfig`：初始化参数（seed、原点地点、自定义地点、尘埃云生成、初始 Agent）。
+- `WorldInitConfig`：初始化参数（seed、原点地点、自定义地点、尘埃云生成、初始 Agent、初始电力设施）。
 - 原点地点创建：默认位于空间中心，可配置位置与画像与资源存量。
 - 自定义地点创建：显式指定地点列表，可配置位置/画像/初始资源。
 - 尘埃云碎片生成：复用 `generate_fragments`，并支持单独 seed 偏移。
 - 初始 Agent 生成：按数量与前缀批量创建，默认出生在原点地点，可配置初始资源。
+- 初始电力设施：支持发电设施/储能设施的预置与校验。
 - 初始化输出：生成 `WorldModel`，并提供 `WorldKernel` 便捷构造。
-- 基础校验：越界位置、ID 冲突、出生地点不存在、负资源等。
+- 基础校验：越界位置、ID 冲突、出生地点不存在、负资源、设施参数非法等。
 
 ### Out of Scope（V1 不做）
 - 初始设施/资产/合约/交易等复杂社会系统初始化。
@@ -32,6 +33,8 @@
   - `locations: Vec<LocationSeedConfig>`
   - `dust: DustInitConfig`
   - `agents: AgentSpawnConfig`
+  - `power_plants: Vec<PowerPlantSeedConfig>`
+  - `power_storages: Vec<PowerStorageSeedConfig>`
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
@@ -50,6 +53,15 @@
   - `start_index: u32`
   - `location_id: Option<LocationId>`（空则用 origin）
   - `resources: ResourceStock`
+- `PowerPlantSeedConfig`
+  - `facility_id/location_id/owner`
+  - `capacity_per_tick/fuel_cost_per_pu/maintenance_cost`
+  - `efficiency/degradation`
+- `PowerStorageSeedConfig`
+  - `facility_id/location_id/owner`
+  - `capacity/current_level`
+  - `charge_efficiency/discharge_efficiency`
+  - `max_charge_rate/max_discharge_rate`
 - `WorldInitReport`
   - 统计创建数量（locations/agents）与使用的 seed
 - `WorldInitError`
@@ -60,12 +72,13 @@
   - `WorldKernel.time = 0`
   - `journal` 为空（初始化视为“世界既成事实”）。
 - 生成过程使用 `WorldConfig` 的 `space/dust/power` 配置。
-- 生成顺序：origin → custom locations → dust fragments → agents（确保出生地点已存在）。
+- 生成顺序：origin → custom locations → dust fragments → agents → facilities（确保依赖对象已存在）。
 
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。
 - **I2**：接入 `WorldKernel` 便捷构造与基础校验；补充单元测试。
 - **I3**：扩展初始化模板（资源/多据点）与更多可配置项。
+- **I4**：扩展初始化模板（电力设施）与更多校验/测试。
 
 ## 风险
 - 默认尘埃云生成可能导致初始化耗时波动（需可配置关闭）。

@@ -101,3 +101,69 @@ fn init_rejects_negative_resources() {
         }
     ));
 }
+
+#[test]
+fn init_seeds_power_facilities() {
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.dust.enabled = false;
+    init.agents.count = 1;
+
+    let plant_seed = PowerPlantSeedConfig {
+        facility_id: "plant-1".to_string(),
+        location_id: "origin".to_string(),
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-0".to_string(),
+        },
+        capacity_per_tick: 5,
+        fuel_cost_per_pu: 1,
+        maintenance_cost: 1,
+        efficiency: 1.0,
+        degradation: 0.0,
+    };
+    init.power_plants.push(plant_seed);
+
+    let storage_seed = PowerStorageSeedConfig {
+        facility_id: "storage-1".to_string(),
+        location_id: "origin".to_string(),
+        owner: ResourceOwner::Location {
+            location_id: "origin".to_string(),
+        },
+        capacity: 10,
+        current_level: 3,
+        charge_efficiency: 1.0,
+        discharge_efficiency: 1.0,
+        max_charge_rate: 4,
+        max_discharge_rate: 4,
+    };
+    init.power_storages.push(storage_seed);
+
+    let (model, _) = build_world_model(&config, &init).expect("init should succeed");
+    assert!(model.power_plants.contains_key("plant-1"));
+    assert!(model.power_storages.contains_key("storage-1"));
+}
+
+#[test]
+fn init_rejects_facility_with_missing_owner() {
+    let config = WorldConfig::default();
+    let mut init = WorldInitConfig::default();
+    init.dust.enabled = false;
+    init.agents.count = 0;
+
+    let plant_seed = PowerPlantSeedConfig {
+        facility_id: "plant-1".to_string(),
+        location_id: "origin".to_string(),
+        owner: ResourceOwner::Agent {
+            agent_id: "missing-agent".to_string(),
+        },
+        capacity_per_tick: 5,
+        fuel_cost_per_pu: 1,
+        maintenance_cost: 1,
+        efficiency: 1.0,
+        degradation: 0.0,
+    };
+    init.power_plants.push(plant_seed);
+
+    let err = build_world_model(&config, &init).expect_err("should fail");
+    assert!(matches!(err, WorldInitError::FacilityOwnerNotFound { .. }));
+}
