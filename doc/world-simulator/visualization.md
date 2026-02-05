@@ -12,6 +12,7 @@
   - 定义最小网络协议（JSON 行协议），支持：握手、快照、事件流、回放控制。
   - 事件浏览器支持按类型筛选（subscribe 时指定 event_kinds）。
   - 支持 headless 模式（`AGENT_WORLD_VIEWER_HEADLESS=1`），用于无显示环境的连接/逻辑验证。
+  - headless 可离线运行（`AGENT_WORLD_VIEWER_OFFLINE=1`），用于无网络权限环境的功能验证。
   - UI：世界状态面板（地点/Agent/资源摘要）、事件浏览器（列表/筛选）、回放控制（暂停/单步/跳转）。
 - **范围外**
   - 复杂 3D 渲染、地形/模型资产、声音系统。
@@ -58,7 +59,20 @@
 
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
+- **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。
+- **每个功能必须有 UI 测试**：世界面板、事件浏览、回放控制、指标展示、订阅筛选等都要有对应断言。
 - 重点覆盖：状态栏文本、事件列表刷新、回放控制触发后的 UI 变化。
+
+### Headless UI 测试方法
+- **目标**：无需窗口/渲染即可验证 UI 行为与状态更新。
+- **方式**：在测试中构建 `App::new()`，添加目标系统（如 `update_ui`），注入必要资源与组件，然后调用 `app.update()` 断言 UI 状态。
+- **示例步骤**：
+  1) 生成 `App` 并添加系统：`app.add_systems(Update, update_ui)`。
+  2) 预置 UI 实体：`Text + 标记组件（StatusText/SummaryText/EventsText）`。
+  3) 注入资源：`ViewerState`（包含 snapshot/events/metrics）。
+  4) 执行 `app.update()`，用 Query 断言 `Text` 内容变化。
+- **要求**：新增 UI 功能必须同步新增 headless UI 测试，覆盖输入/状态变化与输出文本/结构。
+- **离线模式**：当环境禁止网络连接时，使用 `AGENT_WORLD_VIEWER_OFFLINE=1` 运行 headless 校验。
 
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）

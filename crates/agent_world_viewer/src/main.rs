@@ -16,15 +16,16 @@ const DEFAULT_MAX_EVENTS: usize = 100;
 fn main() {
     let addr = resolve_addr();
     let headless = std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok();
+    let offline = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
 
     if headless {
-        run_headless(addr);
+        run_headless(addr, offline);
     } else {
-        run_ui(addr);
+        run_ui(addr, offline);
     }
 }
 
-fn run_ui(addr: String) {
+fn run_ui(addr: String, offline: bool) {
     App::new()
         .insert_resource(ViewerConfig {
             addr,
@@ -40,7 +41,8 @@ fn run_ui(addr: String) {
                 ..default()
             }),
         )
-        .add_systems(Startup, (setup_connection, setup_ui))
+        .insert_resource(OfflineConfig { offline })
+        .add_systems(Startup, (setup_startup_state, setup_ui))
         .add_systems(
             Update,
             (poll_viewer_messages, update_ui, handle_control_buttons),
@@ -48,15 +50,16 @@ fn run_ui(addr: String) {
         .run();
 }
 
-fn run_headless(addr: String) {
+fn run_headless(addr: String, offline: bool) {
     App::new()
         .insert_resource(ViewerConfig {
             addr,
             max_events: DEFAULT_MAX_EVENTS,
         })
         .insert_resource(HeadlessStatus::default())
+        .insert_resource(OfflineConfig { offline })
         .add_plugins(MinimalPlugins)
-        .add_systems(Startup, setup_connection)
+        .add_systems(Startup, setup_startup_state)
         .add_systems(Update, (poll_viewer_messages, headless_report))
         .run();
 }
@@ -65,6 +68,11 @@ fn run_headless(addr: String) {
 struct ViewerConfig {
     addr: String,
     max_events: usize,
+}
+
+#[derive(Resource, Default)]
+struct OfflineConfig {
+    offline: bool,
 }
 
 #[derive(Resource)]
@@ -133,6 +141,21 @@ fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
         rx: Mutex::new(rx),
     });
     commands.insert_resource(ViewerState::default());
+}
+
+fn setup_startup_state(commands: Commands, config: Res<OfflineConfig>, viewer: Res<ViewerConfig>) {
+    if config.offline {
+        setup_offline_state(commands);
+    } else {
+        setup_connection(commands, viewer);
+    }
+}
+
+fn setup_offline_state(mut commands: Commands) {
+    commands.insert_resource(ViewerState {
+        status: ConnectionStatus::Error("offline mode".to_string()),
+        ..ViewerState::default()
+    });
 }
 
 fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
@@ -379,8 +402,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn poll_viewer_messages(
     mut state: ResMut<ViewerState>,
     config: Res<ViewerConfig>,
-    client: Res<ViewerClient>,
+    client: Option<Res<ViewerClient>>,
 ) {
+    let Some(client) = client else {
+        return;
+    };
     let receiver = match client.rx.lock() {
         Ok(receiver) => receiver,
         Err(_) => {
