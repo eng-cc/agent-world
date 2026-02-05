@@ -17,6 +17,12 @@ pub struct ObserverSubscription {
     pub head_sub: NetworkSubscription,
 }
 
+#[derive(Debug)]
+pub struct HeadSyncResult {
+    pub head: WorldHeadAnnounce,
+    pub world: World,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -65,6 +71,27 @@ impl ObserverClient {
         follower.sync_from_heads(&heads, client, store)
     }
 
+    pub fn sync_heads_with_result(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<HeadSyncResult>, WorldError> {
+        let world = self.sync_heads(subscription, follower, client, store)?;
+        match world {
+            Some(world) => {
+                let head = follower.current_head().cloned().ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    }
+                })?;
+                Ok(Some(HeadSyncResult { head, world }))
+            }
+            None => Ok(None),
+        }
+    }
+
     pub fn sync_heads_with_dht(
         &self,
         subscription: &ObserverSubscription,
@@ -75,6 +102,28 @@ impl ObserverClient {
     ) -> Result<Option<World>, WorldError> {
         let heads = self.drain_heads(subscription)?;
         follower.sync_from_heads_with_dht(&heads, dht, client, store)
+    }
+
+    pub fn sync_heads_with_dht_result(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<HeadSyncResult>, WorldError> {
+        let world = self.sync_heads_with_dht(subscription, follower, dht, client, store)?;
+        match world {
+            Some(world) => {
+                let head = follower.current_head().cloned().ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    }
+                })?;
+                Ok(Some(HeadSyncResult { head, world }))
+            }
+            None => Ok(None),
+        }
     }
 }
 

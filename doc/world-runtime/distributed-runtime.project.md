@@ -113,6 +113,10 @@
 - [x] ObserverClient 同步 helper（sync_heads/sync_heads_with_dht）
 - [x] Observer head 同步单元测试
 
+### 22. P3.5 Observer 同步结果回传
+- [x] ObserverClient 同步结果 helper（sync_heads_with_result/sync_heads_with_dht_result）
+- [x] Observer 同步结果单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -120,6 +124,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.4 完成（Observer head 同步）
-- 下一步：P3.5（后续协议/实现迭代）
-- 最近更新：Observer head 同步（2026-02-05）
+- 当前阶段：P3.5 完成（Observer 同步结果回传）
+- 下一步：P3.6（后续协议/实现迭代）
+- 最近更新：Observer 同步结果回传（2026-02-05）

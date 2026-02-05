@@ -92,11 +92,21 @@ fn observer_sync_heads_bootstraps_world() {
         .expect("publish head");
 
     let mut follower = HeadFollower::new("w1");
-    let synced = observer
-        .sync_heads(&subscription, &mut follower, &client, &store)
+    let result = observer
+        .sync_heads_with_result(&subscription, &mut follower, &client, &store)
         .expect("sync")
-        .expect("world");
-    assert_eq!(synced.state(), &snapshot.state);
+        .expect("result");
+    assert_eq!(result.head, write.head_announce);
+    assert_eq!(result.world.state(), &snapshot.state);
+
+    let payload = serde_cbor::to_vec(&write.head_announce).expect("head cbor");
+    network
+        .publish(&topic_head("w1"), &payload)
+        .expect("publish head duplicate");
+    let duplicate = observer
+        .sync_heads_with_result(&subscription, &mut follower, &client, &store)
+        .expect("sync duplicate");
+    assert!(duplicate.is_none());
 
     let _ = fs::remove_dir_all(&dir);
 }
