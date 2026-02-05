@@ -88,6 +88,10 @@
 - [x] libp2p provider 重发配置与定时触发
 - [x] provider 重发间隔单元测试
 
+### 16. P2.8 模块加载补全
+- [x] World 模块加载支持 DHT 拉取补全
+- [x] 模块加载补全单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -95,6 +99,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P2.7 完成（libp2p provider 重发）
-- 下一步：P2.8（后续协议/实现迭代）
-- 最近更新：libp2p provider 重发（2026-02-05）
+- 当前阶段：P2.8 完成（模块加载补全）
+- 下一步：P2.9（后续协议/实现迭代）
+- 最近更新：模块加载补全（2026-02-05）

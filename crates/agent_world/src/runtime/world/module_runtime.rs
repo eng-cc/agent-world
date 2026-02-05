@@ -9,7 +9,7 @@ use super::super::{
     ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext,
     ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRegistry, ModuleSubscription, ModuleSubscriptionStage, WorldError, WorldEvent,
-    WorldEventBody,
+    WorldEventBody, DistributedClient, DistributedDht,
 };
 use super::super::util::to_canonical_cbor;
 
@@ -61,6 +61,26 @@ impl World {
         };
         self.module_cache.insert(artifact.clone());
         Ok(artifact)
+    }
+
+    pub fn load_module_with_fetch(
+        &mut self,
+        world_id: &str,
+        wasm_hash: &str,
+        client: &DistributedClient,
+        dht: &impl DistributedDht,
+    ) -> Result<ModuleArtifact, WorldError> {
+        if let Some(artifact) = self.module_cache.get(wasm_hash) {
+            return Ok(artifact);
+        }
+
+        if !self.module_artifact_bytes.contains_key(wasm_hash) {
+            let artifact =
+                client.fetch_module_artifact_from_dht(world_id, wasm_hash, dht)?;
+            self.register_module_artifact(artifact.wasm_hash.clone(), &artifact.bytes)?;
+        }
+
+        self.load_module(wasm_hash)
     }
 
     pub fn validate_module_output_limits(
