@@ -29,6 +29,11 @@
 ## 工程结构
 - Rust workspace（Cargo），核心库：`crates/agent_world`
 
+## 示例工具
+- `world_init_demo`：输出世界初始化场景的摘要信息  
+  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
+  - 场景：`minimal` / `two_bases` / `power_bootstrap` / `resource_bootstrap`
+
 ## 路线图（摘要）
 - M1：世界内核最小闭环（时间、地点、事件、行动校验、可恢复）
 - M2：持久化与回放（快照/事件日志、可审计、可分叉）
