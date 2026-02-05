@@ -34,13 +34,13 @@
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
   - 场景：`minimal` / `two_bases` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `dusty_bootstrap` / `dusty_twin_region_bootstrap` / `dusty_triad_region_bootstrap`
 - `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
-  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out ./world_viewer_data`
+  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
 
 ## Viewer 快速运行（离线回放）
 1. 生成 demo 数据：  
-   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out ./world_viewer_data`
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
 2. 启动 viewer server：  
-   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- ./world_viewer_data 127.0.0.1:5010`
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
 3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 

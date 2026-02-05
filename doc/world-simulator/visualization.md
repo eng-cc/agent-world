@@ -59,9 +59,9 @@
 
 ### 快速运行（离线回放）
 1) 生成 demo 数据：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out ./world_viewer_data`
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
 2) 启动 viewer server：  
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- ./world_viewer_data 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 

@@ -24,7 +24,7 @@
 - `world_viewer_demo [scenario] [--out <dir>]`
 - Defaults:
   - `scenario = twin_region_bootstrap`
-  - `out = ./world_viewer_data`
+  - `out = .data/world_viewer_data`
 
 ### Output
 - `snapshot.json`: `WorldSnapshot` (time 0 + model after demo actions).

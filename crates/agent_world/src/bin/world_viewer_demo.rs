@@ -7,7 +7,7 @@ use agent_world::WorldScenario;
 fn main() {
     let mut args = env::args().skip(1);
     let mut scenario: Option<String> = None;
-    let mut out_dir = "./world_viewer_data".to_string();
+    let mut out_dir = ".data/world_viewer_data".to_string();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -77,7 +77,7 @@ fn main() {
 fn print_help() {
     println!("Usage: world_viewer_demo [scenario] [--out <dir>]");
     println!("Options:");
-    println!("  --out <dir>       Output directory (default: ./world_viewer_data)");
+    println!("  --out <dir>       Output directory (default: .data/world_viewer_data)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("Available scenarios: {}", WorldScenario::variants().join(", "));
 }
