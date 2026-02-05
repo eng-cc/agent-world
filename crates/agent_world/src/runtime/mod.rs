@@ -14,6 +14,8 @@ mod blob_store;
 pub mod distributed;
 mod distributed_client;
 mod distributed_net;
+#[cfg(feature = "libp2p")]
+mod libp2p_net;
 mod effect;
 mod error;
 mod events;
@@ -90,6 +92,10 @@ pub use distributed_net::{
 
 // Distributed client
 pub use distributed_client::DistributedClient;
+
+// Libp2p adapter
+#[cfg(feature = "libp2p")]
+pub use libp2p_net::{Libp2pNetwork, Libp2pNetworkConfig};
 
 // Segmenter
 pub use segmenter::{segment_journal, segment_snapshot, JournalSegmentRef, SegmentConfig};

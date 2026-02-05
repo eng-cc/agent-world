@@ -31,6 +31,9 @@ pub use runtime::{
     WorldState, WorldTime,
 };
 
+#[cfg(feature = "libp2p")]
+pub use runtime::{Libp2pNetwork, Libp2pNetworkConfig};
+
 pub use runtime::{
     apply_manifest_patch, blake3_hex, diff_manifest, merge_manifest_patches,
     merge_manifest_patches_with_conflicts,

@@ -16,8 +16,10 @@ serde_cbor = "0.11"
 regex = "1"
 blake3 = "1"
 wasmtime = { version = "18", optional = true }
+libp2p = { version = "0.53", optional = true, default-features = false, features = ["dns", "gossipsub", "kad", "noise", "request-response", "tcp", "yamux"] }
 
 [features]
 default = []
 wasmtime = ["dep:wasmtime"]
 viewer_live_integration = []
+libp2p = ["dep:libp2p"]
