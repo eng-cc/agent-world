@@ -19,6 +19,7 @@ mod distributed_index;
 mod distributed_index_store;
 mod distributed_provider_cache;
 mod distributed_bootstrap;
+mod distributed_head_follow;
 mod distributed_gateway;
 mod distributed_observer;
 mod distributed_observer_replay;
@@ -134,6 +135,8 @@ pub use distributed_observer_replay::{replay_validate_head, replay_validate_with
 pub use distributed_bootstrap::{
     bootstrap_world_from_dht, bootstrap_world_from_head, bootstrap_world_from_head_with_dht,
 };
+// Distributed head follower
+pub use distributed_head_follow::{HeadFollower, HeadUpdateDecision};
 
 // Distributed storage helpers
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};

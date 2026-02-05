@@ -74,6 +74,12 @@
 - **流程**：`bootstrap_world_from_dht` → 校验 head/块/快照/日志 → `World::from_snapshot`。
 - **用途**：执行节点冷启动或重启时快速追上当前 head。
 
+## Head 跟随与同步（草案）
+- **目标**：处理 head 广播的乱序/重复，选择最新 head 并同步本地世界。
+- **选择规则**：按 `height` 最大优先；同高按 `timestamp_ms` 最大优先；仍冲突时按 `block_hash` 字典序最大优先。
+- **冲突处理**：同一 `height` 出现不同 `block_hash` 视为冲突，拒绝并返回错误（需要外部治理或人工介入）。
+- **同步策略**：对选中的 head 走 bootstrap 校验流程，重建 `World` 并更新本地 head 视图。
+
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。
 - **续约机制**：持有者在 TTL 内续约，否则视为失效。

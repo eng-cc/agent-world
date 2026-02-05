@@ -104,6 +104,11 @@
 - [x] bootstrap_world_from_dht 启动引导
 - [x] 启动引导单元测试
 
+### 20. P3.3 Head 跟随与同步
+- [x] head 选择策略（height/timestamp/block_hash）
+- [x] HeadFollower 同步 helper（忽略重复/陈旧）
+- [x] HeadFollower 单元测试
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -111,6 +116,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.2 完成（执行节点启动引导）
-- 下一步：P3.3（后续协议/实现迭代）
-- 最近更新：执行节点启动引导（2026-02-05）
+- 当前阶段：P3.3 完成（Head 跟随与同步）
+- 下一步：P3.4（后续协议/实现迭代）
+- 最近更新：Head 跟随与同步（2026-02-05）
