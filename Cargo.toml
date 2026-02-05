@@ -1,4 +1,3 @@
 [workspace]
-members = ["crates/agent_world"]
+members = ["crates/agent_world", "crates/agent_world_viewer"]
 resolver = "2"
-

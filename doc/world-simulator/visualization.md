@@ -1,0 +1,68 @@
+# Agent World：M5 可视化与调试（Bevy）
+
+## 目标
+- 提供一个独立的可视化客户端（Bevy），通过网络连接世界数据源。
+- 支持最小调试闭环：世界状态面板、事件浏览、回放控制。
+- 以“可重放的可视化”为核心：先支持离线回放（snapshot/journal），再扩展在线实时流。
+
+## 范围
+- **范围内**
+  - 新增 Bevy 可视化 crate：`crates/agent_world_viewer`。
+  - 新增数据服务（网络桥接）：由 `agent_world` 提供一个 viewer server（可为 binary）。
+  - 定义最小网络协议（JSON 行协议），支持：握手、快照、事件流、回放控制。
+  - 事件浏览器支持按类型筛选（subscribe 时指定 event_kinds）。
+  - UI：世界状态面板（地点/Agent/资源摘要）、事件浏览器（列表/筛选）、回放控制（暂停/单步/跳转）。
+- **范围外**
+  - 复杂 3D 渲染、地形/模型资产、声音系统。
+  - 完整的在线多客户端协作与权限体系。
+  - 高性能海量事件可视化（先做最小可用）。
+
+## 接口 / 数据
+
+### 目录结构（拟）
+- `crates/agent_world_viewer/`：Bevy UI 客户端
+- `crates/agent_world/src/viewer/`：网络协议 + 数据服务（server）
+- `crates/agent_world/src/bin/world_viewer_server.rs`：启动数据服务（可选）
+
+### 协议形态
+- **传输层**：TCP（localhost 默认），单连接、JSON 行（NDJSON）
+- **约定**：客户端发 `ViewerRequest`，服务端回 `ViewerResponse` 或 `ViewerEvent`
+
+### 消息类型（草案）
+```json
+// 客户端 -> 服务端
+{ "type": "hello", "client": "viewer", "version": 1 }
+{ "type": "subscribe", "streams": ["snapshot", "events", "metrics"], "event_kinds": ["agent_moved", "power"] }
+{ "type": "request_snapshot" }
+{ "type": "control", "mode": "pause" }
+{ "type": "control", "mode": "step", "count": 1 }
+{ "type": "control", "mode": "seek", "tick": 120 }
+
+// 服务端 -> 客户端
+{ "type": "hello_ack", "server": "agent_world", "version": 1, "world_id": "w-1" }
+{ "type": "snapshot", "tick": 120, "world": { /* WorldSnapshot */ } }
+{ "type": "event", "tick": 121, "event": { /* WorldEvent */ } }
+{ "type": "metrics", "tick": 121, "metrics": { /* RunnerMetrics */ } }
+{ "type": "error", "message": "..." }
+```
+
+### 数据结构对齐
+- `WorldSnapshot`：复用现有 `simulator` 的快照结构（JSON 可序列化）。
+- `WorldEvent`：复用现有事件结构（含 tick/时间/类型）。
+- `RunnerMetrics`：复用可观测性指标结构。
+
+### 回放策略
+- **离线回放（M5 最小目标）**：服务端读取 `snapshot.json` + `journal.json`，按 tick 流式发送事件。
+- **在线模式（后续）**：服务端从 `WorldKernel` 事件队列中实时推送。
+
+## 里程碑
+- **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）
+- **M5.2** Bevy UI 骨架：连接、状态面板、事件列表
+- **M5.3** 回放控制：暂停/单步/跳转 tick
+- **M5.4** 指标与筛选：基础 metrics 展示、事件筛选
+
+## 风险
+- **依赖体积与构建时间**：Bevy 依赖较重，离线环境可能无法拉取依赖；需准备锁定版本与镜像策略。
+- **回放一致性**：事件顺序与 tick 对齐不一致会导致 UI 误导，需要严格定义回放语义。
+- **协议演进**：JSON 协议易变，需版本字段与兼容策略。
+- **性能**：大量事件会导致 UI 卡顿，需分页/采样/聚合策略。

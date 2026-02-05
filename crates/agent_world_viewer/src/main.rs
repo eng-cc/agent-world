@@ -1,0 +1,483 @@
+use std::io::{BufRead, Write};
+use std::net::TcpStream;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+
+use agent_world::simulator::{RunnerMetrics, WorldEvent, WorldSnapshot};
+use agent_world::viewer::{
+    ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+};
+use bevy::prelude::*;
+
+const DEFAULT_ADDR: &str = "127.0.0.1:5010";
+const DEFAULT_MAX_EVENTS: usize = 100;
+
+fn main() {
+    let addr = resolve_addr();
+
+    App::new()
+        .insert_resource(ViewerConfig {
+            addr,
+            max_events: DEFAULT_MAX_EVENTS,
+        })
+        .add_plugins(
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Agent World Viewer".to_string(),
+                    resolution: (1200.0, 800.0).into(),
+                    ..default()
+                }),
+                ..default()
+            }),
+        )
+        .add_systems(Startup, (setup_connection, setup_ui))
+        .add_systems(
+            Update,
+            (poll_viewer_messages, update_ui, handle_control_buttons),
+        )
+        .run();
+}
+
+#[derive(Resource)]
+struct ViewerConfig {
+    addr: String,
+    max_events: usize,
+}
+
+#[derive(Resource)]
+struct ViewerClient {
+    tx: Sender<ViewerRequest>,
+    rx: Receiver<ViewerResponse>,
+}
+
+#[derive(Resource)]
+struct ViewerState {
+    status: ConnectionStatus,
+    snapshot: Option<WorldSnapshot>,
+    events: Vec<WorldEvent>,
+    metrics: Option<RunnerMetrics>,
+}
+
+impl Default for ViewerState {
+    fn default() -> Self {
+        Self {
+            status: ConnectionStatus::Connecting,
+            snapshot: None,
+            events: Vec::new(),
+            metrics: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ConnectionStatus {
+    Connecting,
+    Connected,
+    Error(String),
+}
+
+#[derive(Component)]
+struct StatusText;
+
+#[derive(Component)]
+struct SummaryText;
+
+#[derive(Component)]
+struct EventsText;
+
+#[derive(Component, Clone)]
+struct ControlButton {
+    control: ViewerControl,
+}
+
+fn resolve_addr() -> String {
+    std::env::var("AGENT_WORLD_VIEWER_ADDR")
+        .ok()
+        .or_else(|| std::env::args().nth(1))
+        .unwrap_or_else(|| DEFAULT_ADDR.to_string())
+}
+
+fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
+    let (tx, rx) = spawn_viewer_client(config.addr.clone());
+    commands.insert_resource(ViewerClient { tx, rx });
+    commands.insert_resource(ViewerState::default());
+}
+
+fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
+    let (tx_out, rx_out) = mpsc::channel::<ViewerRequest>();
+    let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
+
+    thread::spawn(move || {
+        match TcpStream::connect(&addr) {
+            Ok(stream) => {
+                if let Err(err) = run_connection(stream, rx_out, tx_in.clone()) {
+                    let _ = tx_in.send(ViewerResponse::Error { message: err });
+                }
+            }
+            Err(err) => {
+                let _ = tx_in.send(ViewerResponse::Error {
+                    message: err.to_string(),
+                });
+            }
+        }
+    });
+
+    (tx_out, rx_in)
+}
+
+fn run_connection(
+    stream: TcpStream,
+    rx_out: Receiver<ViewerRequest>,
+    tx_in: Sender<ViewerResponse>,
+) -> Result<(), String> {
+    stream
+        .set_nodelay(true)
+        .map_err(|err| err.to_string())?;
+    let reader_stream = stream
+        .try_clone()
+        .map_err(|err| err.to_string())?;
+    let mut writer = std::io::BufWriter::new(stream);
+
+    send_request(
+        &mut writer,
+        &ViewerRequest::Hello {
+            client: "bevy_viewer".to_string(),
+            version: VIEWER_PROTOCOL_VERSION,
+        },
+    )?;
+    send_request(
+        &mut writer,
+        &ViewerRequest::Subscribe {
+            streams: vec![
+                ViewerStream::Snapshot,
+                ViewerStream::Events,
+                ViewerStream::Metrics,
+            ],
+            event_kinds: Vec::new(),
+        },
+    )?;
+    send_request(&mut writer, &ViewerRequest::RequestSnapshot)?;
+
+    let reader_tx = tx_in.clone();
+    thread::spawn(move || read_responses(reader_stream, reader_tx));
+
+    for request in rx_out {
+        send_request(&mut writer, &request)?;
+    }
+
+    Ok(())
+}
+
+fn read_responses(stream: TcpStream, tx_in: Sender<ViewerResponse>) {
+    let mut reader = std::io::BufReader::new(stream);
+    let mut line = String::new();
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                match serde_json::from_str::<ViewerResponse>(trimmed) {
+                    Ok(response) => {
+                        let _ = tx_in.send(response);
+                    }
+                    Err(err) => {
+                        let _ = tx_in.send(ViewerResponse::Error {
+                            message: format!("decode error: {err}"),
+                        });
+                    }
+                }
+            }
+            Err(err) => {
+                let _ = tx_in.send(ViewerResponse::Error {
+                    message: err.to_string(),
+                });
+                break;
+            }
+        }
+    }
+}
+
+fn send_request(
+    writer: &mut std::io::BufWriter<TcpStream>,
+    request: &ViewerRequest,
+) -> Result<(), String> {
+    serde_json::to_writer(writer, request).map_err(|err| err.to_string())?;
+    writer
+        .write_all(b"\n")
+        .map_err(|err| err.to_string())?;
+    writer.flush().map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/DejaVuSans.ttf");
+
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            background_color: Color::rgb(0.08, 0.09, 0.1).into(),
+            ..default()
+        })
+        .with_children(|root| {
+            root.spawn(NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(56.0),
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(12.0),
+                    padding: UiRect::horizontal(Val::Px(16.0)),
+                    ..default()
+                },
+                background_color: Color::rgb(0.12, 0.12, 0.14).into(),
+                ..default()
+            })
+            .with_children(|bar| {
+                spawn_control_button(bar, &font, "Play", ViewerControl::Play);
+                spawn_control_button(bar, &font, "Pause", ViewerControl::Pause);
+                spawn_control_button(bar, &font, "Step", ViewerControl::Step { count: 1 });
+                spawn_control_button(bar, &font, "Seek 0", ViewerControl::Seek { tick: 0 });
+                bar.spawn((
+                    TextBundle {
+                        text: Text::from_section(
+                            "Status: connecting",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 16.0,
+                                color: Color::WHITE,
+                            },
+                        ),
+                        style: Style {
+                            margin: UiRect::left(Val::Px(24.0)),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    StatusText,
+                ));
+            });
+
+            root.spawn(NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    flex_direction: FlexDirection::Row,
+                    ..default()
+                },
+                ..default()
+            })
+            .with_children(|content| {
+                content
+                    .spawn(NodeBundle {
+                        style: Style {
+                            width: Val::Percent(35.0),
+                            height: Val::Percent(100.0),
+                            padding: UiRect::all(Val::Px(16.0)),
+                            ..default()
+                        },
+                        background_color: Color::rgb(0.1, 0.1, 0.12).into(),
+                        ..default()
+                    })
+                    .with_children(|left| {
+                        left.spawn(TextBundle::from_section(
+                            "World: (no snapshot)",
+                            TextStyle {
+                                font: font.clone(),
+                                font_size: 16.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                            },
+                        ))
+                        .insert(SummaryText);
+                    });
+
+                content
+                    .spawn(NodeBundle {
+                        style: Style {
+                            width: Val::Percent(65.0),
+                            height: Val::Percent(100.0),
+                            padding: UiRect::all(Val::Px(16.0)),
+                            ..default()
+                        },
+                        background_color: Color::rgb(0.07, 0.07, 0.08).into(),
+                        ..default()
+                    })
+                    .with_children(|right| {
+                        right
+                            .spawn(TextBundle::from_section(
+                                "Events:\n(no events)",
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: 15.0,
+                                    color: Color::rgb(0.85, 0.85, 0.85),
+                                },
+                            ))
+                            .insert(EventsText);
+                    });
+            });
+        });
+}
+
+fn spawn_control_button(
+    parent: &mut ChildBuilder,
+    font: &Handle<Font>,
+    label: &str,
+    control: ViewerControl,
+) {
+    parent
+        .spawn((
+            ButtonBundle {
+                style: Style {
+                    padding: UiRect::horizontal(Val::Px(14.0)),
+                    height: Val::Px(32.0),
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                background_color: Color::rgb(0.2, 0.2, 0.24).into(),
+                ..default()
+            },
+            ControlButton { control },
+        ))
+        .with_children(|button| {
+            button.spawn(TextBundle::from_section(
+                label,
+                TextStyle {
+                    font: font.clone(),
+                    font_size: 15.0,
+                    color: Color::WHITE,
+                },
+            ));
+        });
+}
+
+fn poll_viewer_messages(
+    mut state: ResMut<ViewerState>,
+    config: Res<ViewerConfig>,
+    client: Res<ViewerClient>,
+) {
+    loop {
+        match client.rx.try_recv() {
+            Ok(message) => {
+                match message {
+                    ViewerResponse::HelloAck { .. } => {
+                        state.status = ConnectionStatus::Connected;
+                    }
+                    ViewerResponse::Snapshot { snapshot } => {
+                        state.snapshot = Some(snapshot);
+                    }
+                    ViewerResponse::Event { event } => {
+                        state.events.push(event);
+                        if state.events.len() > config.max_events {
+                            let overflow = state.events.len() - config.max_events;
+                            state.events.drain(0..overflow);
+                        }
+                    }
+                    ViewerResponse::Metrics { metrics, .. } => {
+                        state.metrics = Some(metrics);
+                    }
+                    ViewerResponse::Error { message } => {
+                        state.status = ConnectionStatus::Error(message);
+                    }
+                }
+            }
+            Err(mpsc::TryRecvError::Empty) => break,
+            Err(mpsc::TryRecvError::Disconnected) => {
+                if !matches!(state.status, ConnectionStatus::Error(_)) {
+                    state.status = ConnectionStatus::Error("disconnected".to_string());
+                }
+                break;
+            }
+        }
+    }
+}
+
+fn update_ui(
+    state: Res<ViewerState>,
+    mut status_query: Query<&mut Text, With<StatusText>>,
+    mut summary_query: Query<&mut Text, With<SummaryText>>,
+    mut events_query: Query<&mut Text, With<EventsText>>,
+) {
+    if !state.is_changed() {
+        return;
+    }
+
+    if let Ok(mut text) = status_query.get_single_mut() {
+        text.sections[0].value = format!("Status: {}", format_status(&state.status));
+    }
+
+    if let Ok(mut text) = summary_query.get_single_mut() {
+        text.sections[0].value = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
+    }
+
+    if let Ok(mut text) = events_query.get_single_mut() {
+        text.sections[0].value = events_summary(&state.events);
+    }
+}
+
+fn handle_control_buttons(
+    mut interactions: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
+    client: Res<ViewerClient>,
+) {
+    for (interaction, button) in &mut interactions {
+        if *interaction == Interaction::Pressed {
+            let _ = client.tx.send(ViewerRequest::Control {
+                mode: button.control.clone(),
+            });
+        }
+    }
+}
+
+fn format_status(status: &ConnectionStatus) -> String {
+    match status {
+        ConnectionStatus::Connecting => "connecting".to_string(),
+        ConnectionStatus::Connected => "connected".to_string(),
+        ConnectionStatus::Error(message) => format!("error: {message}"),
+    }
+}
+
+fn world_summary(snapshot: Option<&WorldSnapshot>, metrics: Option<&RunnerMetrics>) -> String {
+    let mut lines = Vec::new();
+    if let Some(snapshot) = snapshot {
+        let model = &snapshot.model;
+        lines.push(format!("Time: {}", snapshot.time));
+        lines.push(format!("Locations: {}", model.locations.len()));
+        lines.push(format!("Agents: {}", model.agents.len()));
+        lines.push(format!("Assets: {}", model.assets.len()));
+        lines.push(format!("Power Plants: {}", model.power_plants.len()));
+        lines.push(format!("Power Storages: {}", model.power_storages.len()));
+    } else {
+        lines.push("World: (no snapshot)".to_string());
+    }
+
+    if let Some(metrics) = metrics {
+        lines.push("".to_string());
+        lines.push(format!("Ticks: {}", metrics.total_ticks));
+        lines.push(format!("Actions: {}", metrics.total_actions));
+        lines.push(format!("Decisions: {}", metrics.total_decisions));
+    }
+
+    lines.join("\n")
+}
+
+fn events_summary(events: &[WorldEvent]) -> String {
+    if events.is_empty() {
+        return "Events:\n(no events)".to_string();
+    }
+
+    let mut lines = Vec::new();
+    lines.push("Events:".to_string());
+    for event in events.iter().rev().take(20).rev() {
+        lines.push(format!(
+            "#{} t{} {:?}",
+            event.id, event.time, event.kind
+        ));
+    }
+    lines.join("\n")
+}

@@ -2,6 +2,7 @@ pub mod geometry;
 pub mod models;
 pub mod runtime;
 pub mod simulator;
+pub mod viewer;
 
 pub use geometry::{
     great_circle_distance_cm, great_circle_distance_cm_with_radius, great_circle_distance_m,

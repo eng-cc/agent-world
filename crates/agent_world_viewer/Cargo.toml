@@ -1,0 +1,10 @@
+[package]
+name = "agent_world_viewer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+agent_world = { path = "../agent_world" }
+bevy = "0.18.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
