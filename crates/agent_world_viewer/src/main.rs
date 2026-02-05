@@ -399,23 +399,25 @@ fn poll_viewer_messages(
 
 fn update_ui(
     state: Res<ViewerState>,
-    mut status_query: Query<&mut Text, With<StatusText>>,
-    mut summary_query: Query<&mut Text, With<SummaryText>>,
-    mut events_query: Query<&mut Text, With<EventsText>>,
+    mut queries: ParamSet<(
+        Query<&mut Text, With<StatusText>>,
+        Query<&mut Text, With<SummaryText>>,
+        Query<&mut Text, With<EventsText>>,
+    )>,
 ) {
     if !state.is_changed() {
         return;
     }
 
-    if let Ok(mut text) = status_query.single_mut() {
+    if let Ok(mut text) = queries.p0().single_mut() {
         text.0 = format!("Status: {}", format_status(&state.status));
     }
 
-    if let Ok(mut text) = summary_query.single_mut() {
+    if let Ok(mut text) = queries.p1().single_mut() {
         text.0 = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
     }
 
-    if let Ok(mut text) = events_query.single_mut() {
+    if let Ok(mut text) = queries.p2().single_mut() {
         text.0 = events_summary(&state.events);
     }
 }
@@ -479,4 +481,53 @@ fn events_summary(events: &[WorldEvent]) -> String {
         ));
     }
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy_test_suite::{bevy_test, bevy_test_utils};
+
+    bevy_test_utils!();
+
+    #[bevy_test]
+    fn update_ui_sets_status_and_events(app: &mut TestApp) {
+        app.add_systems(Update, update_ui);
+
+        app.world_mut().spawn((Text::new(""), StatusText));
+        app.world_mut().spawn((Text::new(""), SummaryText));
+        app.world_mut().spawn((Text::new(""), EventsText));
+
+        let event = WorldEvent {
+            id: 1,
+            time: 7,
+            kind: agent_world::simulator::WorldEventKind::ActionRejected {
+                reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
+            },
+        };
+
+        let state = ViewerState {
+            status: ConnectionStatus::Error("oops".to_string()),
+            snapshot: None,
+            events: vec![event.clone()],
+            metrics: None,
+        };
+        app.world_mut().insert_resource(state);
+
+        app.update();
+
+        let world = app.world_mut();
+
+        let status_text = {
+            let mut query = world.query::<(&Text, &StatusText)>();
+            query.single(world).expect("status text").0.clone()
+        };
+        assert_eq!(status_text.0, "Status: error: oops");
+
+        let events_text = {
+            let mut query = world.query::<(&Text, &EventsText)>();
+            query.single(world).expect("events text").0.clone()
+        };
+        assert_eq!(events_text.0, events_summary(&[event]));
+    }
 }
