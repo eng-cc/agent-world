@@ -1,6 +1,8 @@
+mod demo;
 mod protocol;
 mod server;
 
+pub use demo::{generate_viewer_demo, ViewerDemoError, ViewerDemoSummary};
 pub use protocol::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };

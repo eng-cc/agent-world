@@ -57,6 +57,14 @@
 - **离线回放（M5 最小目标）**：服务端读取 `snapshot.json` + `journal.json`，按 tick 流式发送事件。
 - **在线模式（后续）**：服务端从 `WorldKernel` 事件队列中实时推送。
 
+### 快速运行（离线回放）
+1) 生成 demo 数据：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out ./world_viewer_data`
+2) 启动 viewer server：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- ./world_viewer_data 127.0.0.1:5010`
+3) 启动 UI：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
 - **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。
