@@ -3,6 +3,12 @@ use agent_world::simulator::WorldConfig;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if matches!(args.get(1).map(|s| s.as_str()), Some("--help") | Some("-h")) {
+        println!("Usage: world_init_demo [scenario]");
+        println!("Available scenarios: {}", WorldScenario::variants().join(", "));
+        return;
+    }
+
     let scenario = if let Some(name) = args.get(1) {
         match WorldScenario::parse(name) {
             Some(scenario) => scenario,

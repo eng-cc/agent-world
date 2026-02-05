@@ -84,6 +84,10 @@
 ### 示例工具
 - `world_init_demo`：命令行示例，按场景生成世界并输出统计摘要。
 
+### 使用示例
+- 运行示例工具：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- minimal`
+- 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --help`
+
 ## 里程碑
 - **I1**：定义初始化配置与报表结构，输出 `WorldModel`。
 - **I2**：接入 `WorldKernel` 便捷构造与基础校验；补充单元测试。
