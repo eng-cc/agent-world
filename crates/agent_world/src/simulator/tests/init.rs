@@ -246,3 +246,20 @@ fn dusty_bootstrap_seeds_dust_and_storage() {
     assert!(model.power_storages.contains_key("storage-1"));
     assert!(model.agents.contains_key("agent-0"));
 }
+
+#[test]
+fn scenario_aliases_parse() {
+    let cases = [
+        ("two-bases", WorldScenario::TwoBases),
+        ("bootstrap", WorldScenario::PowerBootstrap),
+        ("resources", WorldScenario::ResourceBootstrap),
+        ("twin-regions", WorldScenario::TwinRegionBootstrap),
+        ("triad-regions", WorldScenario::TriadRegionBootstrap),
+        ("dusty", WorldScenario::DustyBootstrap),
+    ];
+
+    for (input, expected) in cases {
+        let parsed = WorldScenario::parse(input).expect("parse scenario");
+        assert_eq!(parsed, expected);
+    }
+}
