@@ -1,7 +1,7 @@
 use agent_world::{
     Action, CapabilityGrant, FixedSandbox, Manifest, ModuleActivation, ModuleChangeSet, ModuleEmit,
-    ModuleKind, ModuleLimits, ModuleManifest, ModuleSubscription, PolicySet, ProposalDecision,
-    World, WorldError,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError,
 };
 use agent_world::GeoPos;
 use serde_json::json;
@@ -58,12 +58,14 @@ fn module_subscription_event_filters_by_agent_id() {
         name: "FilterEvent".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: Some(json!({
                 "event": [
                     {"path": "/body/payload/data/agent_id", "eq": "agent-keep"}
@@ -138,12 +140,14 @@ fn module_subscription_action_filters_by_agent_id() {
         name: "FilterAction".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
+            stage: ModuleSubscriptionStage::PreAction,
             filters: Some(json!({
                 "action": [
                     {"path": "/action/data/agent_id", "eq": "agent-keep"}
@@ -218,12 +222,14 @@ fn module_subscription_invalid_filter_is_rejected() {
         name: "FilterInvalid".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: Some(json!({
                 "event": [
                     {"path": "body/payload/data/agent_id", "eq": "agent-1"}
@@ -284,12 +290,14 @@ fn module_subscription_any_matches() {
         name: "FilterAny".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: Some(json!({
                 "event": {
                     "any": [
@@ -366,12 +374,14 @@ fn module_subscription_numeric_range_matches() {
         name: "FilterRange".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: Some(json!({
                 "event": {
                     "all": [
@@ -449,12 +459,14 @@ fn module_subscription_regex_matches() {
         name: "FilterRegex".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
+            stage: ModuleSubscriptionStage::PreAction,
             filters: Some(json!({
                 "action": {
                     "all": [

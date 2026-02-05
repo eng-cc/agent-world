@@ -1,8 +1,8 @@
 use agent_world::{
     Action, ActionEnvelope, GeoPos, Manifest, ModuleActivation, ModuleCallFailure,
     ModuleCallInput, ModuleCallRequest, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleOutput, ModuleSandbox, ModuleSubscription, ModuleChangeSet, PolicySet,
-    ProposalDecision, World, WorldEvent,
+    ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription, ModuleSubscriptionStage,
+    ModuleChangeSet, PolicySet, ProposalDecision, World, WorldEvent,
 };
 use sha2::{Digest, Sha256};
 
@@ -88,12 +88,14 @@ fn module_route_encodes_event_input_as_cbor() {
         name: "CBOR".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -148,12 +150,14 @@ fn module_route_encodes_action_input_as_cbor() {
         name: "CBOR Action".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
+            stage: ModuleSubscriptionStage::PreAction,
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -211,12 +215,14 @@ fn module_route_pure_input_omits_state() {
         name: "CBOR Pure".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: None,
         }],
         required_caps: Vec::new(),

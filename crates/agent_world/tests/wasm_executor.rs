@@ -2,8 +2,8 @@
 
 use agent_world::{
     Action, GeoPos, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleSubscription, PolicySet, ProposalDecision, World, WasmExecutor,
-    WasmExecutorConfig, WorldEventBody,
+    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
+    ProposalDecision, World, WasmExecutor, WasmExecutorConfig, WorldEventBody,
 };
 use sha2::{Digest, Sha256};
 
@@ -41,12 +41,14 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
         name: "Wasm".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: None,
         }],
         required_caps: Vec::new(),

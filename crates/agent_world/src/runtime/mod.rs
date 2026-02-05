@@ -67,7 +67,7 @@ pub use manifest::{
 pub use modules::{
     ModuleActivation, ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleDeactivation,
     ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
-    ModuleRecord, ModuleSubscription, ModuleUpgrade,
+    ModuleRecord, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade,
 };
 
 // Module store

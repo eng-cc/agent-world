@@ -1,8 +1,8 @@
 use agent_world::{
     Action, GeoPos, Manifest, ModuleActivation, ModuleCallErrorCode, ModuleCallFailure,
     ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleOutput, ModuleSandbox, ModuleSubscription, PolicySet, ProposalDecision, World,
-    WorldError, WorldEventBody, FixedSandbox,
+    ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
+    ProposalDecision, World, WorldError, WorldEventBody, FixedSandbox,
 };
 use sha2::{Digest, Sha256};
 
@@ -93,12 +93,14 @@ fn reducer_state_updates_and_is_reused() {
         name: "State".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
+            stage: ModuleSubscriptionStage::PostEvent,
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -167,6 +169,7 @@ fn pure_module_new_state_is_rejected() {
         name: "Pure".to_string(),
         version: "0.1.0".to_string(),
         kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
         exports: vec!["call".to_string()],

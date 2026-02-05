@@ -10,7 +10,7 @@
 - [x] 明确基础物理与规则模块的职责分界与示例
 
 ### 2. ModuleManifest/Subscription 扩展
-- [ ] 增加 `ModuleRole` 与订阅 `stage` 字段
+- [x] 增加 `ModuleRole` 与订阅 `stage` 字段
 - [x] 更新 wasm-interface/runtime-integration 文档与示例
 
 ### 3. Rule Modules 路由与合并
@@ -38,6 +38,6 @@
 - `doc/world-runtime/runtime-integration.md`
 
 ## 状态
-- 当前阶段：W2（Manifest 扩展与路由阶段设计落地）
-- 下一步：W3（Rule Modules 路由与合并实现）
-- 最近更新：明确 Kernel 不变量与规则边界，更新 WASM 接口与运行时集成文档（2026-02-05）
+- 当前阶段：W3（Rule Modules 路由与合并实现）
+- 下一步：W4（M1 规则迁移为 Rule Modules）
+- 最近更新：新增 ModuleRole 与订阅 stage 字段并完成数据结构对齐（2026-02-05）

@@ -23,6 +23,22 @@ impl ModuleKind {
     }
 }
 
+/// Roles for modules in the runtime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleRole {
+    Rule,
+    Domain,
+    Body,
+    AgentInternal,
+}
+
+impl Default for ModuleRole {
+    fn default() -> Self {
+        ModuleRole::Domain
+    }
+}
+
 /// Resource limits for module execution.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleLimits {
@@ -145,7 +161,24 @@ pub struct ModuleSubscription {
     #[serde(default)]
     pub action_kinds: Vec<String>,
     #[serde(default)]
+    pub stage: ModuleSubscriptionStage,
+    #[serde(default)]
     pub filters: Option<JsonValue>,
+}
+
+/// Routing stage for module subscriptions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleSubscriptionStage {
+    PreAction,
+    PostAction,
+    PostEvent,
+}
+
+impl Default for ModuleSubscriptionStage {
+    fn default() -> Self {
+        ModuleSubscriptionStage::PostEvent
+    }
 }
 
 /// Manifest entry describing a module.
@@ -155,6 +188,8 @@ pub struct ModuleManifest {
     pub name: String,
     pub version: String,
     pub kind: ModuleKind,
+    #[serde(default)]
+    pub role: ModuleRole,
     pub wasm_hash: String,
     pub interface_version: String,
     #[serde(default)]
