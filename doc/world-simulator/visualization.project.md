@@ -11,11 +11,11 @@
 - [x] UI：回放控制（暂停/单步/跳转 tick）
 - [x] 基础指标展示（RunnerMetrics）
 - [x] UI 自动化测试（Bevy 自带 App/ECS）
-- [ ] UI 测试覆盖：世界面板（headless 断言）
-- [ ] UI 测试覆盖：事件浏览（headless 断言）
-- [ ] UI 测试覆盖：回放控制（headless 断言）
-- [ ] UI 测试覆盖：指标展示（headless 断言）
-- [ ] UI 测试覆盖：订阅筛选（headless 断言）
+- [x] UI 测试覆盖：世界面板（headless 断言）
+- [x] UI 测试覆盖：事件浏览（headless 断言）
+- [x] UI 测试覆盖：回放控制（headless 断言）
+- [x] UI 测试覆盖：指标展示（headless 断言）
+- [x] UI 测试覆盖：订阅筛选（headless 断言）
 - [x] 补充协议/回放单元测试
 - [x] viewer headless 模式（无显示环境运行）
 - [x] viewer offline 模式（headless 无网络权限运行）

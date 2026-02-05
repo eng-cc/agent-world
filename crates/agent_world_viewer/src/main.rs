@@ -599,4 +599,160 @@ mod tests {
         };
         assert_eq!(events_text.0, events_summary(&[event]));
     }
+
+    #[test]
+    fn update_ui_populates_world_summary_and_metrics() {
+        let mut app = App::new();
+        app.add_systems(Update, update_ui);
+
+        app.world_mut().spawn((Text::new(""), SummaryText));
+        app.world_mut().spawn((Text::new(""), StatusText));
+        app.world_mut().spawn((Text::new(""), EventsText));
+
+        let mut model = agent_world::simulator::WorldModel::default();
+        model.locations.insert(
+            "loc-1".to_string(),
+            agent_world::simulator::Location::new(
+                "loc-1",
+                "Alpha",
+                agent_world::geometry::GeoPos {
+                    lat_deg: 0.0,
+                    lon_deg: 0.0,
+                },
+            ),
+        );
+        model.locations.insert(
+            "loc-2".to_string(),
+            agent_world::simulator::Location::new(
+                "loc-2",
+                "Beta",
+                agent_world::geometry::GeoPos {
+                    lat_deg: 1.0,
+                    lon_deg: 1.0,
+                },
+            ),
+        );
+        model.agents.insert(
+            "agent-1".to_string(),
+            agent_world::simulator::Agent::new(
+                "agent-1",
+                "loc-1",
+                agent_world::geometry::GeoPos {
+                    lat_deg: 0.0,
+                    lon_deg: 0.0,
+                },
+            ),
+        );
+
+        let snapshot = agent_world::simulator::WorldSnapshot {
+            version: agent_world::simulator::SNAPSHOT_VERSION,
+            time: 42,
+            config: agent_world::simulator::WorldConfig::default(),
+            model,
+            next_event_id: 1,
+            next_action_id: 1,
+            pending_actions: Vec::new(),
+            journal_len: 0,
+        };
+
+        let metrics = RunnerMetrics {
+            total_ticks: 42,
+            total_actions: 7,
+            total_decisions: 4,
+            ..RunnerMetrics::default()
+        };
+
+        let state = ViewerState {
+            status: ConnectionStatus::Connected,
+            snapshot: Some(snapshot),
+            events: Vec::new(),
+            metrics: Some(metrics),
+        };
+        app.world_mut().insert_resource(state);
+
+        app.update();
+
+        let world = app.world_mut();
+        let summary_text = {
+            let mut query = world.query::<(&Text, &SummaryText)>();
+            query.single(world).expect("summary text").0.clone()
+        };
+
+        assert!(summary_text.0.contains("Time: 42"));
+        assert!(summary_text.0.contains("Locations: 2"));
+        assert!(summary_text.0.contains("Agents: 1"));
+        assert!(summary_text.0.contains("Ticks: 42"));
+        assert!(summary_text.0.contains("Actions: 7"));
+        assert!(summary_text.0.contains("Decisions: 4"));
+    }
+
+    #[test]
+    fn update_ui_reflects_filtered_events() {
+        let mut app = App::new();
+        app.add_systems(Update, update_ui);
+
+        app.world_mut().spawn((Text::new(""), EventsText));
+        app.world_mut().spawn((Text::new(""), SummaryText));
+        app.world_mut().spawn((Text::new(""), StatusText));
+
+        let event = WorldEvent {
+            id: 9,
+            time: 5,
+            kind: agent_world::simulator::WorldEventKind::Power(
+                agent_world::simulator::PowerEvent::PowerConsumed {
+                    agent_id: "agent-1".to_string(),
+                    amount: 3,
+                    reason: agent_world::simulator::ConsumeReason::Decision,
+                    remaining: 7,
+                },
+            ),
+        };
+
+        let state = ViewerState {
+            status: ConnectionStatus::Connected,
+            snapshot: None,
+            events: vec![event.clone()],
+            metrics: None,
+        };
+        app.world_mut().insert_resource(state);
+
+        app.update();
+
+        let world = app.world_mut();
+        let events_text = {
+            let mut query = world.query::<(&Text, &EventsText)>();
+            query.single(world).expect("events text").0.clone()
+        };
+        assert!(events_text.0.contains("Power"));
+    }
+
+    #[test]
+    fn handle_control_buttons_sends_request() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_control_buttons);
+
+        let (tx, rx) = mpsc::channel::<ViewerRequest>();
+        app.world_mut().insert_resource(ViewerClient {
+            tx,
+            rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
+        });
+
+        app.world_mut().spawn((
+            Button,
+            Interaction::Pressed,
+            ControlButton {
+                control: ViewerControl::Step { count: 2 },
+            },
+        ));
+
+        app.update();
+
+        let request = rx.try_recv().expect("request sent");
+        assert_eq!(
+            request,
+            ViewerRequest::Control {
+                mode: ViewerControl::Step { count: 2 }
+            }
+        );
+    }
 }
