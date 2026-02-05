@@ -37,10 +37,12 @@
 - [x] I26 增加 dusty_twin_region_bootstrap 冒烟测试
 - [x] I27 增加 dusty_triad_region_bootstrap 冒烟测试
 - [x] I28 文档补充 seed_offset 使用约束
+- [x] I29 增加 triad_region_bootstrap 冒烟测试
+- [x] I30 文档补充场景 ID 稳定性说明
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I28（文档完善）
+- 当前阶段：I30（稳定性说明完成）

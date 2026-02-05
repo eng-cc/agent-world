@@ -71,6 +71,10 @@
 - 各场景为尘埃云设置不同的 `seed_offset`，避免同一 seed 下的碎片分布完全一致。
 - 新增场景时应选择未使用过的 `seed_offset`，保持分布差异可追踪。
 - `WorldInitReport.dust_seed` 会记录实际使用的尘埃云种子，便于回放与比对。
+
+### 场景 ID 稳定性
+- 现有场景 ID 视为稳定接口，不应随意改名或删除。
+- 新增场景应保持命名风格一致，并补充别名与稳定性测试。
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
