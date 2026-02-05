@@ -302,3 +302,122 @@ fn scenario_aliases_parse() {
         assert_eq!(parsed, expected);
     }
 }
+
+#[test]
+fn scenarios_are_stable() {
+    struct ScenarioExpectation<'a> {
+        scenario: WorldScenario,
+        expected_agents: usize,
+        expect_origin: bool,
+        required_locations: &'a [&'a str],
+        required_plants: &'a [&'a str],
+        required_storages: &'a [&'a str],
+        expect_dust: bool,
+    }
+
+    let expectations = [
+        ScenarioExpectation {
+            scenario: WorldScenario::Minimal,
+            expected_agents: 1,
+            expect_origin: true,
+            required_locations: &["origin"],
+            required_plants: &[],
+            required_storages: &[],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::TwoBases,
+            expected_agents: 2,
+            expect_origin: true,
+            required_locations: &["origin", "base-a", "base-b"],
+            required_plants: &[],
+            required_storages: &[],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::PowerBootstrap,
+            expected_agents: 1,
+            expect_origin: true,
+            required_locations: &["origin"],
+            required_plants: &["plant-1"],
+            required_storages: &["storage-1"],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::ResourceBootstrap,
+            expected_agents: 1,
+            expect_origin: true,
+            required_locations: &["origin"],
+            required_plants: &[],
+            required_storages: &[],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::TwinRegionBootstrap,
+            expected_agents: 2,
+            expect_origin: false,
+            required_locations: &["region-a", "region-b"],
+            required_plants: &["plant-a", "plant-b"],
+            required_storages: &["storage-a"],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::TriadRegionBootstrap,
+            expected_agents: 3,
+            expect_origin: false,
+            required_locations: &["region-a", "region-b", "region-c"],
+            required_plants: &["plant-a", "plant-b"],
+            required_storages: &["storage-a", "storage-c"],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::DustyBootstrap,
+            expected_agents: 1,
+            expect_origin: true,
+            required_locations: &["origin"],
+            required_plants: &[],
+            required_storages: &["storage-1"],
+            expect_dust: true,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::DustyTwinRegionBootstrap,
+            expected_agents: 2,
+            expect_origin: false,
+            required_locations: &["region-a", "region-b"],
+            required_plants: &["plant-a", "plant-b"],
+            required_storages: &["storage-a"],
+            expect_dust: true,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::DustyTriadRegionBootstrap,
+            expected_agents: 3,
+            expect_origin: false,
+            required_locations: &["region-a", "region-b", "region-c"],
+            required_plants: &["plant-a", "plant-b"],
+            required_storages: &["storage-a", "storage-c"],
+            expect_dust: true,
+        },
+    ];
+
+    let config = WorldConfig::default();
+    for expectation in expectations {
+        let init = WorldInitConfig::from_scenario(expectation.scenario, &config);
+        let (model, report) = build_world_model(&config, &init).expect("scenario init");
+
+        assert_eq!(report.agents, expectation.expected_agents);
+        assert_eq!(model.agents.len(), expectation.expected_agents);
+        assert_eq!(model.locations.contains_key("origin"), expectation.expect_origin);
+
+        for location_id in expectation.required_locations {
+            assert!(model.locations.contains_key(*location_id));
+        }
+        for plant_id in expectation.required_plants {
+            assert!(model.power_plants.contains_key(*plant_id));
+        }
+        for storage_id in expectation.required_storages {
+            assert!(model.power_storages.contains_key(*storage_id));
+        }
+
+        assert_eq!(report.dust_seed.is_some(), expectation.expect_dust);
+    }
+}
