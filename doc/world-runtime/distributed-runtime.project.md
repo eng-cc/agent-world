@@ -7,10 +7,10 @@
 - [x] 与 runtime 分册术语对齐（事件/快照/模块存储）
 
 ### 1. 协议与数据结构冻结
-- [ ] 冻结 gossipsub topic 与 rr 协议命名
-- [ ] 固化消息封装（ActionEnvelope/WorldHead/BlockAnnounce）
-- [ ] 定义错误码与重试语义映射
-- [ ] 选择并固化 wire encoding（CBOR/二进制）
+- [x] 冻结 gossipsub topic 与 rr 协议命名
+- [x] 固化消息封装（ActionEnvelope/WorldHead/BlockAnnounce）
+- [x] 定义错误码与重试语义映射
+- [x] 选择并固化 wire encoding（CBOR/二进制）
 
 ### 2. 内容寻址存储与分片
 - [ ] 抽象 BlobStore 接口（put/get/has）
@@ -49,6 +49,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：D1（协议与消息草案完成）
+- 当前阶段：D2（协议与消息在代码中固化）
 - 下一步：P1（libp2p 协议/存储适配器原型）
-- 最近更新：补充分布式协议命名/消息结构/错误码草案（2026-02-05）
+- 最近更新：新增协议常量与 CBOR 消息结构（2026-02-05）

@@ -10,6 +10,7 @@
 
 mod agent_cell;
 mod audit;
+pub mod distributed;
 mod effect;
 mod error;
 mod events;
