@@ -177,6 +177,7 @@
 - **模块拉取**：模块 manifest/wasm 工件同样通过 DHT provider 列表拉取，避免固定单点。
 - **libp2p 重发**：libp2p 侧可按 `republish_interval_ms` 定期 `start_providing`，维持 provider 记录活性。
 - **执行加载**：执行节点加载模块时若缺少工件，可调用 `World::load_module_with_fetch` 触发 DHT 拉取并注册。
+- **预热加载**：执行节点启动时可调用 `World::prefetch_active_modules_with_fetch` 预热活跃模块工件。
 
 ### 协议命名约定（草案）
 - **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。

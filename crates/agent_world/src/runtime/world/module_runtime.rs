@@ -83,6 +83,22 @@ impl World {
         self.load_module(wasm_hash)
     }
 
+    pub fn prefetch_active_modules_with_fetch(
+        &mut self,
+        world_id: &str,
+        client: &DistributedClient,
+        dht: &impl DistributedDht,
+    ) -> Result<usize, WorldError> {
+        let active_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
+        let mut loaded = 0usize;
+        for module_id in active_ids {
+            let manifest = self.active_module_manifest(&module_id)?.clone();
+            self.load_module_with_fetch(world_id, &manifest.wasm_hash, client, dht)?;
+            loaded = loaded.saturating_add(1);
+        }
+        Ok(loaded)
+    }
+
     pub fn validate_module_output_limits(
         &self,
         module_id: &str,
