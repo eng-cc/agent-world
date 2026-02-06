@@ -118,11 +118,17 @@ BodyKernelView {
 ### 受控更新（草案）
 - `BodyAttributesUpdated { agent_id, view: BodyKernelView, reason }`
 - 内核对字段范围做守卫校验（上限/下限/变化率），避免模块滥用。
+- 当前守卫策略（runtime）：
+  - `mass_kg`：1..=1_000_000_000
+  - `radius_cm`：1..=1_000_000
+  - `thrust_limit`：0..=10_000_000_000
+  - `cross_section_cm2`：1..=4 * radius_cm^2
+  - 变化率：单次更新每个字段变化不超过 10x（prev=0 时跳过变化率校验）
 - 校验失败时写入 `BodyAttributesRejected { agent_id, reason }` 并丢弃更新。
 - `BodyAttributesUpdated/Rejected` 纳入事件流与审计导出，保证回放一致性。
 
 ### 现状（实现注记）
-- runtime 已定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件类型，并提供记录接口；守卫校验仍待实现。
+- runtime 已实现 `BodyKernelView` 守卫校验与 `BodyAttributesUpdated/Rejected` 事件记录接口。
 
 ## 额外设计 3：最小内核 + 治理
 
