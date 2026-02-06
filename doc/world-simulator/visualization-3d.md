@@ -34,6 +34,12 @@
 - **Agent**：动态标记（高亮球/小锥），可根据状态变色（如能量不足）。
 - **索引表**：维护 `HashMap<String, Entity>`（Agent/Location id → Bevy Entity）。
 
+### 交互与控制
+- **旋转**：鼠标左键拖拽，绕世界中心旋转。
+- **平移**：鼠标右键拖拽，平移相机焦点。
+- **缩放**：滚轮缩放，限制最小/最大半径。
+- **拾取**：左键点击选中最近的 Agent/Location，并在 UI 显示选中信息。
+
 ### 事件映射（最小闭环）
 - `LocationRegistered` → 若未存在则生成 Location 实体。
 - `AgentRegistered` → 生成 Agent 实体并附加位置。

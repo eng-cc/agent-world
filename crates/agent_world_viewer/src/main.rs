@@ -13,12 +13,21 @@ use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use bevy::prelude::*;
+use bevy::ecs::message::MessageReader;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
+use bevy::window::PrimaryWindow;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
 const DEFAULT_CM_TO_UNIT: f32 = 0.00001;
 const DEFAULT_AGENT_RADIUS: f32 = 0.35;
 const DEFAULT_LOCATION_SIZE: f32 = 1.2;
+const ORBIT_ROTATE_SENSITIVITY: f32 = 0.005;
+const ORBIT_PAN_SENSITIVITY: f32 = 0.002;
+const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
+const ORBIT_MIN_RADIUS: f32 = 4.0;
+const ORBIT_MAX_RADIUS: f32 = 300.0;
+const PICK_MAX_DISTANCE: f32 = 1.0;
 
 fn main() {
     let addr = resolve_addr();
@@ -40,6 +49,7 @@ fn run_ui(addr: String, offline: bool) {
         })
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
+        .insert_resource(ViewerSelection::default())
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -58,8 +68,13 @@ fn run_ui(addr: String, offline: bool) {
                 poll_viewer_messages,
                 update_ui,
                 update_3d_scene,
+                orbit_camera_controls,
                 handle_control_buttons,
             ),
+        )
+        .add_systems(
+            PostUpdate,
+            pick_3d_selection.after(TransformSystems::Propagate),
         )
         .run();
 }
@@ -149,8 +164,91 @@ struct Viewer3dAssets {
     location_material: Handle<StandardMaterial>,
 }
 
+#[derive(Resource, Default)]
+struct ViewerSelection {
+    current: Option<SelectionInfo>,
+}
+
+#[derive(Clone)]
+struct SelectionInfo {
+    entity: Entity,
+    kind: SelectionKind,
+    id: String,
+    name: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SelectionKind {
+    Agent,
+    Location,
+}
+
+impl ViewerSelection {
+    fn clear(&mut self) {
+        self.current = None;
+    }
+
+    fn label(&self) -> String {
+        match &self.current {
+            Some(info) => match info.kind {
+                SelectionKind::Agent => format!("Selection: agent {}", info.id),
+                SelectionKind::Location => match &info.name {
+                    Some(name) => format!("Selection: location {} ({})", info.id, name),
+                    None => format!("Selection: location {}", info.id),
+                },
+            },
+            None => "Selection: (none)".to_string(),
+        }
+    }
+}
+
 #[derive(Component)]
 struct Viewer3dCamera;
+
+#[derive(Component)]
+struct OrbitCamera {
+    focus: Vec3,
+    radius: f32,
+    yaw: f32,
+    pitch: f32,
+}
+
+impl OrbitCamera {
+    fn from_transform(transform: &Transform, focus: Vec3) -> Self {
+        let offset = transform.translation - focus;
+        let radius = offset.length().max(0.1);
+        let yaw = offset.x.atan2(offset.z);
+        let pitch = offset.y.atan2((offset.x * offset.x + offset.z * offset.z).sqrt());
+        Self {
+            focus,
+            radius,
+            yaw,
+            pitch,
+        }
+    }
+
+    fn apply_to_transform(&self, transform: &mut Transform) {
+        let rotation = Quat::from_axis_angle(Vec3::Y, self.yaw)
+            * Quat::from_axis_angle(Vec3::X, self.pitch);
+        let offset = rotation * Vec3::new(0.0, 0.0, self.radius);
+        transform.translation = self.focus + offset;
+        transform.look_at(self.focus, Vec3::Y);
+    }
+}
+
+#[derive(Component)]
+struct AgentMarker {
+    id: String,
+}
+
+#[derive(Component)]
+struct LocationMarker {
+    id: String,
+    name: String,
+}
+
+#[derive(Component, Copy, Clone)]
+struct BaseScale(Vec3);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ConnectionStatus {
@@ -167,6 +265,9 @@ struct SummaryText;
 
 #[derive(Component)]
 struct EventsText;
+
+#[derive(Component)]
+struct SelectionText;
 
 #[derive(Component, Clone)]
 struct ControlButton {
@@ -365,11 +466,10 @@ fn setup_3d_scene(
         location_material,
     });
 
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(Vec3::ZERO, Vec3::Y),
-        Viewer3dCamera,
-    ));
+    let focus = Vec3::ZERO;
+    let transform = Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(focus, Vec3::Y);
+    let orbit = OrbitCamera::from_transform(&transform, focus);
+    commands.spawn((Camera3d::default(), transform, Viewer3dCamera, orbit));
 
     commands.spawn((
         PointLight {
@@ -453,6 +553,21 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ..default()
                     },
                     StatusText,
+                ));
+
+                bar.spawn((
+                    Text::new("Selection: (none)"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                    Node {
+                        margin: UiRect::left(Val::Px(16.0)),
+                        ..default()
+                    },
+                    SelectionText,
                 ));
             });
 
@@ -569,6 +684,7 @@ fn update_3d_scene(
     config: Res<Viewer3dConfig>,
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
+    mut selection: ResMut<ViewerSelection>,
     state: Res<ViewerState>,
 ) {
     let Some(snapshot) = state.snapshot.as_ref() else {
@@ -581,6 +697,7 @@ fn update_3d_scene(
         rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, snapshot);
         scene.last_snapshot_time = Some(snapshot_time);
         scene.last_event_id = None;
+        selection.clear();
     }
 
     apply_events_to_scene(
@@ -595,13 +712,15 @@ fn update_3d_scene(
 
 fn update_ui(
     state: Res<ViewerState>,
+    selection: Res<ViewerSelection>,
     mut queries: ParamSet<(
         Query<&mut Text, With<StatusText>>,
         Query<&mut Text, With<SummaryText>>,
         Query<&mut Text, With<EventsText>>,
+        Query<&mut Text, With<SelectionText>>,
     )>,
 ) {
-    if !state.is_changed() {
+    if !state.is_changed() && !selection.is_changed() {
         return;
     }
 
@@ -615,6 +734,149 @@ fn update_ui(
 
     if let Ok(mut text) = queries.p2().single_mut() {
         text.0 = events_summary(&state.events);
+    }
+
+    if let Ok(mut text) = queries.p3().single_mut() {
+        text.0 = selection.label();
+    }
+}
+
+fn orbit_camera_controls(
+    mut mouse_motion: MessageReader<MouseMotion>,
+    mut mouse_wheel: MessageReader<MouseWheel>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    mut query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
+) {
+    let mut delta = Vec2::ZERO;
+    for event in mouse_motion.read() {
+        delta += event.delta;
+    }
+
+    let mut scroll = 0.0;
+    for event in mouse_wheel.read() {
+        scroll += event.y;
+    }
+
+    if delta == Vec2::ZERO && scroll == 0.0 {
+        return;
+    }
+
+    let Ok((mut orbit, mut transform)) = query.single_mut() else {
+        return;
+    };
+
+    let mut changed = false;
+
+    if buttons.pressed(MouseButton::Left) && delta != Vec2::ZERO {
+        orbit.yaw -= delta.x * ORBIT_ROTATE_SENSITIVITY;
+        orbit.pitch = (orbit.pitch - delta.y * ORBIT_ROTATE_SENSITIVITY).clamp(-1.54, 1.54);
+        changed = true;
+    } else if buttons.pressed(MouseButton::Right) && delta != Vec2::ZERO {
+        let rotation =
+            Quat::from_axis_angle(Vec3::Y, orbit.yaw) * Quat::from_axis_angle(Vec3::X, orbit.pitch);
+        let right = rotation * Vec3::X;
+        let up = rotation * Vec3::Y;
+        let pan_scale = orbit.radius * ORBIT_PAN_SENSITIVITY;
+        orbit.focus += (-delta.x * pan_scale) * right + (delta.y * pan_scale) * up;
+        changed = true;
+    }
+
+    if scroll != 0.0 {
+        orbit.radius =
+            (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY)).clamp(
+                ORBIT_MIN_RADIUS,
+                ORBIT_MAX_RADIUS,
+            );
+        changed = true;
+    }
+
+    if changed {
+        orbit.apply_to_transform(&mut transform);
+    }
+}
+
+fn pick_3d_selection(
+    buttons: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
+    agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
+    locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
+    mut selection: ResMut<ViewerSelection>,
+    mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
+) {
+    if !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    let mut best: Option<(Entity, SelectionKind, String, Option<String>, f32)> = None;
+
+    for (entity, transform, marker) in agents.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::Agent,
+                    marker.id.clone(),
+                    None,
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in locations.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::Location,
+                    marker.id.clone(),
+                    Some(marker.name.clone()),
+                    distance,
+                ));
+            }
+        }
+    }
+
+    if let Some((entity, kind, id, name, _)) = best {
+        if let Some(current) = selection.current.take() {
+            reset_entity_scale(&mut transforms, current.entity);
+        }
+        selection.current = Some(SelectionInfo {
+            entity,
+            kind,
+            id,
+            name,
+        });
+        apply_entity_highlight(&mut transforms, entity);
+    } else if selection.current.is_some() {
+        if let Some(current) = selection.current.take() {
+            reset_entity_scale(&mut transforms, current.entity);
+        }
     }
 }
 
@@ -819,9 +1081,13 @@ fn spawn_location_entity(
 
     let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
     if let Some(entity) = scene.location_entities.get(location_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
+        commands.entity(*entity).insert((
+            Transform::from_translation(translation),
+            LocationMarker {
+                id: location_id.to_string(),
+                name: name.to_string(),
+            },
+        ));
         return;
     }
 
@@ -831,6 +1097,11 @@ fn spawn_location_entity(
             MeshMaterial3d(assets.location_material.clone()),
             Transform::from_translation(translation),
             Name::new(format!("location:{location_id}:{name}")),
+            LocationMarker {
+                id: location_id.to_string(),
+                name: name.to_string(),
+            },
+            BaseScale(Vec3::ONE),
         ))
         .id();
     scene.location_entities.insert(location_id.to_string(), entity);
@@ -863,6 +1134,10 @@ fn spawn_agent_entity(
             MeshMaterial3d(assets.agent_material.clone()),
             Transform::from_translation(translation),
             Name::new(format!("agent:{agent_id}")),
+            AgentMarker {
+                id: agent_id.to_string(),
+            },
+            BaseScale(Vec3::ONE),
         ))
         .id();
     scene.agent_entities.insert(agent_id.to_string(), entity);
@@ -885,6 +1160,37 @@ fn geo_to_vec3(pos: GeoPos, origin: GeoPos, cm_to_unit: f32) -> Vec3 {
     )
 }
 
+fn ray_point_distance(ray: Ray3d, point: Vec3) -> Option<f32> {
+    let direction = ray.direction.as_vec3();
+    let to_point = point - ray.origin;
+    let t = direction.dot(to_point);
+    if t < 0.0 {
+        return None;
+    }
+    let closest = ray.origin + direction * t;
+    Some(closest.distance(point))
+}
+
+fn apply_entity_highlight(
+    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
+    entity: Entity,
+) {
+    if let Ok((mut transform, base)) = transforms.get_mut(entity) {
+        let base_scale = base.map(|scale| scale.0).unwrap_or(Vec3::ONE);
+        transform.scale = base_scale * 1.6;
+    }
+}
+
+fn reset_entity_scale(
+    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
+    entity: Entity,
+) {
+    if let Ok((mut transform, base)) = transforms.get_mut(entity) {
+        let base_scale = base.map(|scale| scale.0).unwrap_or(Vec3::ONE);
+        transform.scale = base_scale;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -897,6 +1203,8 @@ mod tests {
         app.world_mut().spawn((Text::new(""), StatusText));
         app.world_mut().spawn((Text::new(""), SummaryText));
         app.world_mut().spawn((Text::new(""), EventsText));
+        app.world_mut().spawn((Text::new(""), SelectionText));
+        app.world_mut().insert_resource(ViewerSelection::default());
 
         let event = WorldEvent {
             id: 1,
@@ -939,6 +1247,8 @@ mod tests {
         app.world_mut().spawn((Text::new(""), SummaryText));
         app.world_mut().spawn((Text::new(""), StatusText));
         app.world_mut().spawn((Text::new(""), EventsText));
+        app.world_mut().spawn((Text::new(""), SelectionText));
+        app.world_mut().insert_resource(ViewerSelection::default());
 
         let mut model = agent_world::simulator::WorldModel::default();
         model.locations.insert(
@@ -1028,6 +1338,8 @@ mod tests {
         app.world_mut().spawn((Text::new(""), EventsText));
         app.world_mut().spawn((Text::new(""), SummaryText));
         app.world_mut().spawn((Text::new(""), StatusText));
+        app.world_mut().spawn((Text::new(""), SelectionText));
+        app.world_mut().insert_resource(ViewerSelection::default());
 
         let event = WorldEvent {
             id: 9,
@@ -1196,5 +1508,17 @@ mod tests {
         assert!((vec.x - 0.1).abs() < 1e-6);
         assert!((vec.y - 0.3).abs() < 1e-6);
         assert!((vec.z - 0.2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ray_point_distance_returns_expected_distance() {
+        let ray = Ray3d {
+            origin: Vec3::ZERO,
+            direction: Dir3::new(Vec3::X).expect("direction"),
+        };
+        let point = Vec3::new(2.0, 1.0, 0.0);
+        let distance = ray_point_distance(ray, point).expect("distance");
+        assert!((distance - 1.0).abs() < 1e-6);
+        assert!(ray_point_distance(ray, Vec3::new(-1.0, 0.0, 0.0)).is_none());
     }
 }
