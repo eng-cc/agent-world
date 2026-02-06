@@ -11,7 +11,8 @@
   - 复用现有 viewer 协议，使用 `WorldSnapshot` + `WorldEvent` 驱动 3D 视图。
   - 将 `GeoPos` 映射为 3D 坐标（可配置比例尺），显示 Location/Agent 标记。
   - 支持最小事件更新：LocationRegistered / AgentRegistered / AgentMoved。
-  - 3D 视图与 UI 面板共存（UI 继续显示世界状态与事件列表）。
+- 3D 视图与 UI 面板共存（UI 继续显示世界状态与事件列表）。
+  - UI 面板固定在右侧，3D 视图使用剩余区域（通过相机 viewport 切分）。
   - 简单相机控制（旋转 / 平移 / 缩放）与基础拾取（点击选中 Agent/Location）。
 - **范围外**
   - 复杂模型资产、材质/贴图、地形与光照系统。

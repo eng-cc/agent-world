@@ -13,6 +13,7 @@ use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use bevy::prelude::*;
+use bevy::camera::Viewport;
 use bevy::ecs::message::MessageReader;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
@@ -33,6 +34,7 @@ const LABEL_FONT_SIZE: f32 = 18.0;
 const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
+const UI_PANEL_WIDTH: f32 = 380.0;
 
 fn main() {
     let addr = resolve_addr();
@@ -74,6 +76,7 @@ fn run_ui(addr: String, offline: bool) {
                 update_ui,
                 update_3d_scene,
                 orbit_camera_controls,
+                update_3d_viewport,
                 handle_control_buttons,
             ),
         )
@@ -500,69 +503,78 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn((
             Node {
-                width: Val::Percent(100.0),
+                width: Val::Px(UI_PANEL_WIDTH),
                 height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                right: Val::Px(0.0),
+                top: Val::Px(0.0),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.0)),
+            BackgroundColor(Color::srgb(0.1, 0.11, 0.13)),
         ))
         .with_children(|root| {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(56.0),
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(12.0),
-                    padding: UiRect::horizontal(Val::Px(16.0)),
+                    height: Val::Px(92.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    padding: UiRect::all(Val::Px(12.0)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.12, 0.12, 0.14, 0.85)),
+                BackgroundColor(Color::srgb(0.12, 0.12, 0.14)),
             ))
             .with_children(|bar| {
-                for (label, control) in [
-                    ("Play", ViewerControl::Play),
-                    ("Pause", ViewerControl::Pause),
-                    ("Step", ViewerControl::Step { count: 1 }),
-                    ("Seek 0", ViewerControl::Seek { tick: 0 }),
-                ] {
-                    bar.spawn((
-                        Button,
-                        Node {
-                            padding: UiRect::horizontal(Val::Px(14.0)),
-                            height: Val::Px(32.0),
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
-                        ControlButton { control },
-                    ))
-                    .with_children(|button| {
-                        button.spawn((
-                            Text::new(label),
-                            TextFont {
-                                font: font.clone(),
-                                font_size: 15.0,
+                bar.spawn(Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(32.0),
+                    column_gap: Val::Px(8.0),
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|controls| {
+                    for (label, control) in [
+                        ("Play", ViewerControl::Play),
+                        ("Pause", ViewerControl::Pause),
+                        ("Step", ViewerControl::Step { count: 1 }),
+                        ("Seek 0", ViewerControl::Seek { tick: 0 }),
+                    ] {
+                        controls.spawn((
+                            Button,
+                            Node {
+                                padding: UiRect::horizontal(Val::Px(10.0)),
+                                height: Val::Px(28.0),
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
                                 ..default()
                             },
-                            TextColor(Color::WHITE),
-                        ));
-                    });
-                }
+                            BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
+                            ControlButton { control },
+                        ))
+                        .with_children(|button| {
+                            button.spawn((
+                                Text::new(label),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+                    }
+                });
 
                 bar.spawn((
                     Text::new("Status: connecting"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 16.0,
+                        font_size: 15.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
-                    Node {
-                        margin: UiRect::left(Val::Px(24.0)),
-                        ..default()
-                    },
                     StatusText,
                 ));
 
@@ -570,37 +582,33 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     Text::new("Selection: (none)"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 14.0,
+                        font_size: 13.0,
                         ..default()
                     },
                     TextColor(Color::srgb(0.9, 0.9, 0.9)),
-                    Node {
-                        margin: UiRect::left(Val::Px(16.0)),
-                        ..default()
-                    },
                     SelectionText,
                 ));
             });
 
             root.spawn(Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Row,
-                    ..default()
-                })
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            })
             .with_children(|content| {
                 content
                     .spawn((
                         Node {
-                            width: Val::Percent(35.0),
-                            height: Val::Percent(100.0),
-                            padding: UiRect::all(Val::Px(16.0)),
+                            width: Val::Percent(100.0),
+                            flex_grow: 1.0,
+                            padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.1, 0.1, 0.12, 0.8)),
+                        BackgroundColor(Color::srgb(0.11, 0.11, 0.13)),
                     ))
-                    .with_children(|left| {
-                        left.spawn((
+                    .with_children(|summary| {
+                        summary.spawn((
                             Text::new("World: (no snapshot)"),
                             TextFont {
                                 font: font.clone(),
@@ -615,19 +623,19 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 content
                     .spawn((
                         Node {
-                            width: Val::Percent(65.0),
-                            height: Val::Percent(100.0),
-                            padding: UiRect::all(Val::Px(16.0)),
+                            width: Val::Percent(100.0),
+                            flex_grow: 1.4,
+                            padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.07, 0.07, 0.08, 0.75)),
+                        BackgroundColor(Color::srgb(0.08, 0.08, 0.1)),
                     ))
-                    .with_children(|right| {
-                        right.spawn((
+                    .with_children(|events| {
+                        events.spawn((
                             Text::new("Events:\n(no events)"),
                             TextFont {
                                 font: font.clone(),
-                                font_size: 15.0,
+                                font_size: 14.0,
                                 ..default()
                             },
                             TextColor(Color::srgb(0.85, 0.85, 0.85)),
@@ -761,6 +769,29 @@ fn update_ui(
     }
 }
 
+fn update_3d_viewport(
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut cameras: Query<&mut Camera, With<Viewer3dCamera>>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Ok(mut camera) = cameras.single_mut() else {
+        return;
+    };
+
+    let panel_width_physical = (UI_PANEL_WIDTH * window.scale_factor()).round() as u32;
+    let window_width = window.physical_width();
+    let window_height = window.physical_height().max(1);
+    let render_width = window_width.saturating_sub(panel_width_physical).max(1);
+
+    camera.viewport = Some(Viewport {
+        physical_position: UVec2::ZERO,
+        physical_size: UVec2::new(render_width, window_height),
+        depth: 0.0..1.0,
+    });
+}
+
 fn orbit_camera_controls(
     mut mouse_motion: MessageReader<MouseMotion>,
     mut mouse_wheel: MessageReader<MouseWheel>,
@@ -835,6 +866,9 @@ fn pick_3d_selection(
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
+    if cursor_position.x > (window.width() - UI_PANEL_WIDTH) {
+        return;
+    }
 
     let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
