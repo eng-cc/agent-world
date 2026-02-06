@@ -866,6 +866,8 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::AgentMoved { .. } => "domain.agent_moved",
             DomainEvent::ActionRejected { .. } => "domain.action_rejected",
             DomainEvent::Observation { .. } => "domain.observation",
+            DomainEvent::BodyAttributesUpdated { .. } => "domain.body_attributes_updated",
+            DomainEvent::BodyAttributesRejected { .. } => "domain.body_attributes_rejected",
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",

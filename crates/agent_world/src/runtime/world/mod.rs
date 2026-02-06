@@ -2,6 +2,7 @@
 
 mod actions;
 mod audit;
+mod body;
 mod effects;
 mod event_processing;
 mod governance;

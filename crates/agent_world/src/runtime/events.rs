@@ -1,6 +1,7 @@
 //! Action and domain event types.
 
 use crate::geometry::GeoPos;
+use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -60,6 +61,12 @@ pub enum DomainEvent {
     AgentMoved { agent_id: String, from: GeoPos, to: GeoPos },
     ActionRejected { action_id: ActionId, reason: RejectReason },
     Observation { observation: Observation },
+    BodyAttributesUpdated {
+        agent_id: String,
+        view: BodyKernelView,
+        reason: String,
+    },
+    BodyAttributesRejected { agent_id: String, reason: String },
     ResourceTransferred {
         from_agent_id: String,
         to_agent_id: String,
@@ -74,6 +81,8 @@ impl DomainEvent {
             DomainEvent::AgentRegistered { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::AgentMoved { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::Observation { observation } => Some(observation.agent_id.as_str()),
+            DomainEvent::BodyAttributesUpdated { agent_id, .. } => Some(agent_id.as_str()),
+            DomainEvent::BodyAttributesRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => {
                 Some(from_agent_id.as_str())

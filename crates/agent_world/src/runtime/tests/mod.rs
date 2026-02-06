@@ -10,6 +10,7 @@ pub(super) fn pos(x: f64, y: f64) -> crate::geometry::GeoPos {
 
 mod audit;
 mod basic;
+mod body;
 mod effects;
 mod governance;
 mod modules;

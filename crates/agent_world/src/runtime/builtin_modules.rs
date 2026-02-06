@@ -575,6 +575,8 @@ fn update_position_state(state: &mut PositionState, event: WorldEvent) -> bool {
             }
             super::events::DomainEvent::ActionRejected { .. } => {}
             super::events::DomainEvent::Observation { .. } => {}
+            super::events::DomainEvent::BodyAttributesUpdated { .. } => {}
+            super::events::DomainEvent::BodyAttributesRejected { .. } => {}
             super::events::DomainEvent::ResourceTransferred { .. } => {}
         }
     }

@@ -48,6 +48,24 @@ impl WorldState {
             }
             DomainEvent::ActionRejected { .. } => {}
             DomainEvent::Observation { .. } => {}
+            DomainEvent::BodyAttributesUpdated { agent_id, view, .. } => {
+                let cell = self.agents.get_mut(agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    }
+                })?;
+                cell.state.body_view = view.clone();
+                cell.last_active = now;
+            }
+            DomainEvent::BodyAttributesRejected { agent_id, .. } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    });
+                }
+            }
             DomainEvent::ResourceTransferred {
                 from_agent_id,
                 to_agent_id,

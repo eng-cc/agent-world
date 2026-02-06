@@ -5,6 +5,25 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_AGENT_HEIGHT_CM: i64 = 100;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BodyKernelView {
+    pub mass_kg: u64,
+    pub radius_cm: u64,
+    pub thrust_limit: u64,
+    pub cross_section_cm2: u64,
+}
+
+impl Default for BodyKernelView {
+    fn default() -> Self {
+        Self {
+            mass_kg: 0,
+            radius_cm: 0,
+            thrust_limit: 0,
+            cross_section_cm2: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobotBodySpec {
     pub kind: String,
     pub height_cm: i64,
@@ -32,6 +51,8 @@ pub struct AgentState {
     pub body: RobotBodySpec,
     #[serde(default)]
     pub resources: ResourceStock,
+    #[serde(default)]
+    pub body_view: BodyKernelView,
 }
 
 impl AgentState {
@@ -41,6 +62,7 @@ impl AgentState {
             pos,
             body: RobotBodySpec::default(),
             resources: ResourceStock::default(),
+            body_view: BodyKernelView::default(),
         }
     }
 }

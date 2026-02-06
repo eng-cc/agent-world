@@ -22,7 +22,7 @@
 - [x] 接入资源扣费与 Action 覆盖逻辑
 
 ### 4. Body Modules 机体模块化
-- [ ] 定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件
+- [x] 定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件
 - [ ] 内核守卫校验（范围/变化率/上限）
 - [ ] 机体/零件动作与资源消耗通过 Body Module 表达
 
@@ -45,4 +45,4 @@
 ## 状态
 - 当前阶段：W4（迁移 M1 规则到 Rule Modules）
 - 下一步：W4.4（移除旧规则并保持内核仅执行几何与资源守恒）
-- 最近更新：交互/资源转移规则迁移为 Rule Module（2026-02-06）
+- 最近更新：定义 BodyKernelView 与 BodyAttributesUpdated/Rejected 事件（2026-02-06）

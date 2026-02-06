@@ -121,6 +121,9 @@ BodyKernelView {
 - 校验失败时写入 `BodyAttributesRejected { agent_id, reason }` 并丢弃更新。
 - `BodyAttributesUpdated/Rejected` 纳入事件流与审计导出，保证回放一致性。
 
+### 现状（实现注记）
+- runtime 已定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件类型，并提供记录接口；守卫校验仍待实现。
+
 ## 额外设计 3：最小内核 + 治理
 
 ### 模块角色（草案）

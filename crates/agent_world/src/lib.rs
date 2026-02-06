@@ -9,7 +9,7 @@ pub use geometry::{
     DEFAULT_CLOUD_DEPTH_KM, DEFAULT_CLOUD_HEIGHT_CM, DEFAULT_CLOUD_HEIGHT_KM,
     DEFAULT_CLOUD_WIDTH_CM, DEFAULT_CLOUD_WIDTH_KM,
 };
-pub use models::{AgentState, RobotBodySpec, DEFAULT_AGENT_HEIGHT_CM};
+pub use models::{AgentState, BodyKernelView, RobotBodySpec, DEFAULT_AGENT_HEIGHT_CM};
 pub use runtime::{
     Action, ActionEnvelope, ActionId, AgentCell, AgentSchedule, CausedBy, CapabilityGrant,
     AuditCausedBy, AuditEventKind, AuditFilter, ConflictKind, DomainEvent, EffectIntent,
