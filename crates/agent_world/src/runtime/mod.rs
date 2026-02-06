@@ -155,7 +155,10 @@ pub use segmenter::{segment_journal, segment_snapshot, JournalSegmentRef, Segmen
 pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, PolicyWhen};
 
 // Rules
-pub use rules::{merge_rule_decisions, ResourceDelta, RuleDecision, RuleDecisionMergeError, RuleVerdict};
+pub use rules::{
+    merge_rule_decisions, ActionOverrideRecord, ResourceDelta, RuleDecision, RuleDecisionMergeError,
+    RuleDecisionRecord, RuleVerdict,
+};
 
 // Signer
 pub use signer::ReceiptSigner;

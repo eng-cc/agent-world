@@ -9,6 +9,7 @@ use super::governance::GovernanceEvent;
 use super::manifest::ManifestUpdate;
 use super::modules::ModuleEvent;
 use super::sandbox::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
+use super::rules::{ActionOverrideRecord, RuleDecisionRecord};
 use super::policy::PolicyDecisionRecord;
 use super::snapshot::{RollbackEvent, SnapshotMeta};
 use super::types::{WorldEventId, WorldTime};
@@ -29,6 +30,8 @@ impl WorldEvent {
             WorldEventBody::EffectQueued(_) => AuditEventKind::EffectQueued,
             WorldEventBody::ReceiptAppended(_) => AuditEventKind::ReceiptAppended,
             WorldEventBody::PolicyDecisionRecorded(_) => AuditEventKind::PolicyDecision,
+            WorldEventBody::RuleDecisionRecorded(_) => AuditEventKind::RuleDecision,
+            WorldEventBody::ActionOverridden(_) => AuditEventKind::ActionOverridden,
             WorldEventBody::Governance(_) => AuditEventKind::Governance,
             WorldEventBody::ModuleEvent(_) => AuditEventKind::ModuleEvent,
             WorldEventBody::ModuleCallFailed(_) => AuditEventKind::ModuleCallFailed,
@@ -49,6 +52,8 @@ pub enum WorldEventBody {
     EffectQueued(EffectIntent),
     ReceiptAppended(EffectReceipt),
     PolicyDecisionRecorded(PolicyDecisionRecord),
+    RuleDecisionRecorded(RuleDecisionRecord),
+    ActionOverridden(ActionOverrideRecord),
     Governance(GovernanceEvent),
     ModuleEvent(ModuleEvent),
     ModuleCallFailed(ModuleCallFailure),

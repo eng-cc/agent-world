@@ -8,6 +8,7 @@ mod governance;
 mod module_runtime;
 mod persistence;
 mod policy;
+mod rules;
 mod scheduling;
 mod snapshot;
 mod step;

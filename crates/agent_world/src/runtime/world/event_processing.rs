@@ -100,6 +100,8 @@ impl World {
                 }
             }
             WorldEventBody::PolicyDecisionRecorded(_) => {}
+            WorldEventBody::RuleDecisionRecorded(_) => {}
+            WorldEventBody::ActionOverridden(_) => {}
             WorldEventBody::Governance(event) => {
                 self.apply_governance_event(event)?;
             }

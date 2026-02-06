@@ -1146,6 +1146,67 @@ fn audit_filter_by_kind_and_cause() {
 }
 
 #[test]
+fn audit_filter_rule_decision_events() {
+    let mut world = World::new();
+    let action_id = 42;
+    let original_action = Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    };
+    let override_action = Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(1.0, 1.0),
+    };
+    let mut cost = ResourceDelta::default();
+    cost.entries.insert("power".to_string(), -3);
+
+    world
+        .record_rule_decision(
+            RuleDecisionRecord {
+                action_id,
+                module_id: "rule.module".to_string(),
+                stage: ModuleSubscriptionStage::PreAction,
+                verdict: RuleVerdict::Modify,
+                override_action: Some(override_action.clone()),
+                cost,
+                notes: vec!["override".to_string()],
+            },
+            Some(CausedBy::Action(action_id)),
+        )
+        .unwrap();
+    world
+        .record_action_override(
+            ActionOverrideRecord {
+                action_id,
+                original_action,
+                override_action,
+            },
+            Some(CausedBy::Action(action_id)),
+        )
+        .unwrap();
+
+    let rule_events = world.audit_events(&AuditFilter {
+        kinds: Some(vec![AuditEventKind::RuleDecision]),
+        ..AuditFilter::default()
+    });
+    assert_eq!(rule_events.len(), 1);
+    assert!(matches!(
+        rule_events[0].body,
+        WorldEventBody::RuleDecisionRecorded(_)
+    ));
+
+    let override_events = world.audit_events(&AuditFilter {
+        kinds: Some(vec![AuditEventKind::ActionOverridden]),
+        ..AuditFilter::default()
+    });
+    assert_eq!(override_events.len(), 1);
+    assert!(matches!(
+        override_events[0].body,
+        WorldEventBody::ActionOverridden(_)
+    ));
+}
+
+#[test]
 fn audit_log_export_writes_file() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use super::events::Action;
+use super::modules::ModuleSubscriptionStage;
 use super::types::ActionId;
 
 /// Resource changes produced by rule evaluation.
@@ -41,6 +42,29 @@ pub struct RuleDecision {
     pub cost: ResourceDelta,
     #[serde(default)]
     pub notes: Vec<String>,
+}
+
+/// Audit record of a rule decision for a specific module call.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RuleDecisionRecord {
+    pub action_id: ActionId,
+    pub module_id: String,
+    pub stage: ModuleSubscriptionStage,
+    pub verdict: RuleVerdict,
+    #[serde(default)]
+    pub override_action: Option<Action>,
+    #[serde(default)]
+    pub cost: ResourceDelta,
+    #[serde(default)]
+    pub notes: Vec<String>,
+}
+
+/// Audit record emitted when a rule module overrides an action.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActionOverrideRecord {
+    pub action_id: ActionId,
+    pub original_action: Action,
+    pub override_action: Action,
 }
 
 /// Errors that can occur when merging rule decisions.

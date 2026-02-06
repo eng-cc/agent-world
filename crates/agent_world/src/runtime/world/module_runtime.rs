@@ -868,6 +868,8 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
         WorldEventBody::PolicyDecisionRecorded(_) => "policy.decision_recorded",
+        WorldEventBody::RuleDecisionRecorded(_) => "rule.decision_recorded",
+        WorldEventBody::ActionOverridden(_) => "rule.action_overridden",
         WorldEventBody::Governance(_) => "governance",
         WorldEventBody::ModuleEvent(_) => "module.event",
         WorldEventBody::ModuleCallFailed(_) => "module.call_failed",

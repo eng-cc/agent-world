@@ -14,6 +14,8 @@ pub enum AuditEventKind {
     EffectQueued,
     ReceiptAppended,
     PolicyDecision,
+    RuleDecision,
+    ActionOverridden,
     Governance,
     ModuleEvent,
     ModuleCallFailed,
