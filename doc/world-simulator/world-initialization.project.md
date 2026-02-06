@@ -39,10 +39,11 @@
 - [x] I28 文档补充 seed_offset 使用约束
 - [x] I29 增加 triad_region_bootstrap 冒烟测试
 - [x] I30 文档补充场景 ID 稳定性说明
+- [x] I31 增加 triad_p2p_bootstrap 场景（多节点单 Agent）与出生地点列表支持
 
 ## 依赖
 - `generate_fragments`（尘埃云生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I30（稳定性说明完成）
+- 当前阶段：I31（P2P 场景与出生地点列表完成）

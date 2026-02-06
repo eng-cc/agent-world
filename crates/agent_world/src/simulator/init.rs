@@ -7,6 +7,7 @@ use crate::geometry::GeoPos;
 use super::dust::generate_fragments;
 use super::kernel::WorldKernel;
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
+use super::scenario::WorldScenario;
 use super::types::{
     AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, ResourceStock,
 };
@@ -340,6 +341,40 @@ impl WorldInitConfig {
                 };
                 init.power_storages.push(storage_c);
             }
+            WorldScenario::TriadP2pBootstrap => {
+                init.dust.enabled = false;
+                init.origin.enabled = false;
+                init.agents.count = 3;
+                init.agents.spawn_locations = vec![
+                    "node-a".to_string(),
+                    "node-b".to_string(),
+                    "node-c".to_string(),
+                ];
+
+                let center = center_pos(&config.space);
+                let offset = (config.space.width_cm as f64 * 0.18).max(1.0);
+                let pos_a = offset_pos(&config.space, center, -offset, 0.0, 0.0);
+                let pos_b = offset_pos(&config.space, center, offset, 0.0, 0.0);
+                let pos_c = offset_pos(&config.space, center, 0.0, offset, 0.0);
+
+                let mut node_a = LocationSeedConfig::default();
+                node_a.location_id = "node-a".to_string();
+                node_a.name = "Node A".to_string();
+                node_a.pos = Some(pos_a);
+                init.locations.push(node_a);
+
+                let mut node_b = LocationSeedConfig::default();
+                node_b.location_id = "node-b".to_string();
+                node_b.name = "Node B".to_string();
+                node_b.pos = Some(pos_b);
+                init.locations.push(node_b);
+
+                let mut node_c = LocationSeedConfig::default();
+                node_c.location_id = "node-c".to_string();
+                node_c.name = "Node C".to_string();
+                node_c.pos = Some(pos_c);
+                init.locations.push(node_c);
+            }
             WorldScenario::DustyBootstrap => {
                 init.dust.enabled = true;
                 init.dust.seed_offset = 77;
@@ -585,79 +620,6 @@ impl WorldInitConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum WorldScenario {
-    Minimal,
-    TwoBases,
-    PowerBootstrap,
-    ResourceBootstrap,
-    TwinRegionBootstrap,
-    TriadRegionBootstrap,
-    DustyBootstrap,
-    DustyTwinRegionBootstrap,
-    DustyTriadRegionBootstrap,
-}
-
-impl WorldScenario {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            WorldScenario::Minimal => "minimal",
-            WorldScenario::TwoBases => "two_bases",
-            WorldScenario::PowerBootstrap => "power_bootstrap",
-            WorldScenario::ResourceBootstrap => "resource_bootstrap",
-            WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
-            WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
-            WorldScenario::DustyBootstrap => "dusty_bootstrap",
-            WorldScenario::DustyTwinRegionBootstrap => "dusty_twin_region_bootstrap",
-            WorldScenario::DustyTriadRegionBootstrap => "dusty_triad_region_bootstrap",
-        }
-    }
-
-    pub fn parse(input: &str) -> Option<Self> {
-        match input.trim().to_lowercase().as_str() {
-            "minimal" => Some(WorldScenario::Minimal),
-            "two_bases" | "two-bases" => Some(WorldScenario::TwoBases),
-            "power_bootstrap" | "power-bootstrap" | "bootstrap" => {
-                Some(WorldScenario::PowerBootstrap)
-            }
-            "resource_bootstrap" | "resource-bootstrap" | "resources" => {
-                Some(WorldScenario::ResourceBootstrap)
-            }
-            "twin_region_bootstrap" | "twin-region-bootstrap" | "twin_regions" | "twin-regions" => {
-                Some(WorldScenario::TwinRegionBootstrap)
-            }
-            "triad_region_bootstrap" | "triad-region-bootstrap" | "triad_regions" | "triad-regions" => {
-                Some(WorldScenario::TriadRegionBootstrap)
-            }
-            "dusty_bootstrap" | "dusty-bootstrap" | "dusty" => Some(WorldScenario::DustyBootstrap),
-            "dusty_twin_region_bootstrap"
-            | "dusty-twin-region-bootstrap"
-            | "dusty-twin-regions"
-            | "dusty-regions" => Some(WorldScenario::DustyTwinRegionBootstrap),
-            "dusty_triad_region_bootstrap"
-            | "dusty-triad-region-bootstrap"
-            | "dusty-triad-regions"
-            | "dusty-triad" => Some(WorldScenario::DustyTriadRegionBootstrap),
-            _ => None,
-        }
-    }
-
-    pub fn variants() -> &'static [&'static str] {
-        &[
-            "minimal",
-            "two_bases",
-            "power_bootstrap",
-            "resource_bootstrap",
-            "twin_region_bootstrap",
-            "triad_region_bootstrap",
-            "dusty_bootstrap",
-            "dusty_twin_region_bootstrap",
-            "dusty_triad_region_bootstrap",
-        ]
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OriginLocationConfig {
@@ -754,6 +716,7 @@ pub struct AgentSpawnConfig {
     pub id_prefix: String,
     pub start_index: u32,
     pub location_id: Option<LocationId>,
+    pub spawn_locations: Vec<LocationId>,
     pub resources: ResourceStock,
 }
 
@@ -764,6 +727,7 @@ impl Default for AgentSpawnConfig {
             id_prefix: "agent-".to_string(),
             start_index: 0,
             location_id: None,
+            spawn_locations: Vec::new(),
             resources: ResourceStock::default(),
         }
     }
@@ -948,8 +912,9 @@ pub fn build_world_model(
         None
     };
 
-    if init.agents.count > 0 {
-        ensure_valid_stock(&init.agents.resources)?;
+    let spawn_locations = if !init.agents.spawn_locations.is_empty() {
+        init.agents.spawn_locations.clone()
+    } else if init.agents.count > 0 {
         let spawn_location_id = match init.agents.location_id.clone() {
             Some(location_id) => location_id,
             None => {
@@ -960,21 +925,28 @@ pub fn build_world_model(
                 }
             }
         };
-        let (spawn_location_id, spawn_pos) = match model.locations.get(&spawn_location_id) {
-            Some(location) => (location.id.clone(), location.pos),
-            None => {
-                return Err(WorldInitError::SpawnLocationNotFound {
-                    location_id: spawn_location_id,
-                })
-            }
-        };
+        vec![spawn_location_id; init.agents.count]
+    } else {
+        Vec::new()
+    };
 
-        for offset in 0..init.agents.count {
+    if !spawn_locations.is_empty() {
+        ensure_valid_stock(&init.agents.resources)?;
+        for (offset, location_id) in spawn_locations.iter().enumerate() {
+            let (spawn_location_id, spawn_pos) = match model.locations.get(location_id) {
+                Some(location) => (location.id.clone(), location.pos),
+                None => {
+                    return Err(WorldInitError::SpawnLocationNotFound {
+                        location_id: location_id.clone(),
+                    })
+                }
+            };
+
             let idx = init.agents.start_index as u64 + offset as u64;
             let agent_id = format!("{}{}", init.agents.id_prefix, idx);
             let mut agent = Agent::new_with_power(
                 agent_id.clone(),
-                spawn_location_id.clone(),
+                spawn_location_id,
                 spawn_pos,
                 &config.power,
             );

@@ -18,6 +18,7 @@ mod memory;
 mod persist;
 mod power;
 mod runner;
+mod scenario;
 mod types;
 mod world_model;
 
@@ -30,8 +31,9 @@ pub use dust::generate_fragments;
 pub use init::{
     build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
     OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
-    WorldInitError, WorldInitReport, WorldScenario,
+    WorldInitError, WorldInitReport,
 };
+pub use scenario::WorldScenario;
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,

@@ -178,6 +178,7 @@ fn scenario_templates_build_models() {
         WorldScenario::ResourceBootstrap,
         WorldScenario::TwinRegionBootstrap,
         WorldScenario::TriadRegionBootstrap,
+        WorldScenario::TriadP2pBootstrap,
         WorldScenario::DustyBootstrap,
         WorldScenario::DustyTwinRegionBootstrap,
         WorldScenario::DustyTriadRegionBootstrap,
@@ -238,6 +239,25 @@ fn triad_region_bootstrap_seeds_regions() {
 }
 
 #[test]
+fn triad_p2p_bootstrap_seeds_nodes_and_agents() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::TriadP2pBootstrap, &config);
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(model.locations.contains_key("node-a"));
+    assert!(model.locations.contains_key("node-b"));
+    assert!(model.locations.contains_key("node-c"));
+
+    let agent_a = model.agents.get("agent-0").expect("agent-0 exists");
+    let agent_b = model.agents.get("agent-1").expect("agent-1 exists");
+    let agent_c = model.agents.get("agent-2").expect("agent-2 exists");
+
+    assert_eq!(agent_a.location_id, "node-a");
+    assert_eq!(agent_b.location_id, "node-b");
+    assert_eq!(agent_c.location_id, "node-c");
+}
+
+#[test]
 fn dusty_bootstrap_seeds_dust_and_storage() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::DustyBootstrap, &config);
@@ -292,6 +312,7 @@ fn scenario_aliases_parse() {
         ("resources", WorldScenario::ResourceBootstrap),
         ("twin-regions", WorldScenario::TwinRegionBootstrap),
         ("triad-regions", WorldScenario::TriadRegionBootstrap),
+        ("p2p-triad", WorldScenario::TriadP2pBootstrap),
         ("dusty", WorldScenario::DustyBootstrap),
         ("dusty-regions", WorldScenario::DustyTwinRegionBootstrap),
         ("dusty-triad", WorldScenario::DustyTriadRegionBootstrap),
@@ -368,6 +389,15 @@ fn scenarios_are_stable() {
             required_locations: &["region-a", "region-b", "region-c"],
             required_plants: &["plant-a", "plant-b"],
             required_storages: &["storage-a", "storage-c"],
+            expect_dust: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::TriadP2pBootstrap,
+            expected_agents: 3,
+            expect_origin: false,
+            required_locations: &["node-a", "node-b", "node-c"],
+            required_plants: &[],
+            required_storages: &[],
             expect_dust: false,
         },
         ScenarioExpectation {

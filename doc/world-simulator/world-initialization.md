@@ -14,7 +14,7 @@
 - 原点地点创建：默认位于空间中心，可配置位置与画像与资源存量。
 - 自定义地点创建：显式指定地点列表，可配置位置/画像/初始资源。
 - 尘埃云碎片生成：复用 `generate_fragments`，并支持单独 seed 偏移。
-- 初始 Agent 生成：按数量与前缀批量创建，默认出生在原点地点，可配置初始资源。
+- 初始 Agent 生成：按数量与前缀批量创建，默认出生在原点地点，可配置初始资源与指定出生地点列表。
 - 初始电力设施：支持发电设施/储能设施的预置与校验。
 - 初始化输出：生成 `WorldModel`，并提供 `WorldKernel` 便捷构造。
 - 基础校验：越界位置、ID 冲突、出生地点不存在、负资源、设施参数非法等。
@@ -42,6 +42,7 @@
   - `resource_bootstrap`：原点 + 1 Agent + 初始电力/硬件/数据库存
   - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
   - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
+  - `triad_p2p_bootstrap`：三 P2P 节点 + 每节点 1 Agent（Agent 出生在对应节点）
   - `dusty_bootstrap`：尘埃云开启 + 原点 + 1 Agent + 储能与基础资源
   - `dusty_twin_region_bootstrap`：尘埃云开启 + 双区域 + 双 Agent + 基础电力/储能与资源
   - `dusty_triad_region_bootstrap`：尘埃云开启 + 三区域 + 三 Agent + 基础电力/储能与资源
@@ -52,6 +53,7 @@
 - `power_bootstrap`：用于验证电力设施与充放电路径。
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
+- `triad_p2p_bootstrap`：用于验证 P2P 多节点拓扑与节点内 Agent 初始分布。
 - `dusty_bootstrap`：用于验证尘埃云/辐射采集与热管理路径。
 - `dusty_twin_region_bootstrap`：用于验证尘埃云下的多区域资源/设施差异与运输成本。
 - `dusty_triad_region_bootstrap`：用于验证尘埃云下的三方资源/设施差异与协作/竞争。
@@ -62,6 +64,7 @@
 - `resource_bootstrap`：`resources`
 - `twin_region_bootstrap`：`twin-regions`
 - `triad_region_bootstrap`：`triad-regions`
+- `triad_p2p_bootstrap`：`triad-p2p` / `p2p-triad`
 - `dusty_bootstrap`：`dusty`
 - `dusty_twin_region_bootstrap`：`dusty-regions`
 - `dusty_triad_region_bootstrap`：`dusty-triad`
@@ -92,6 +95,7 @@
   - `id_prefix: String`
   - `start_index: u32`
   - `location_id: Option<LocationId>`（空则用 origin）
+  - `spawn_locations: Vec<LocationId>`（非空时按列表生成 Agent，覆盖 `count/location_id`）
   - `resources: ResourceStock`
 - `PowerPlantSeedConfig`
   - `facility_id/location_id/owner`
