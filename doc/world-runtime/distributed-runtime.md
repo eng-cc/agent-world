@@ -82,6 +82,7 @@
 - **Observer 接入**：`ObserverClient::sync_heads`/`sync_heads_with_dht` 使用 `HeadFollower` 从订阅队列中选 head 并触发 bootstrap。
 - **结果回传**：`ObserverClient::sync_heads_with_result` 可返回已应用的 head 与重建后的 `World`，便于日志/度量。
 - **同步报告**：`ObserverClient::sync_heads_report` 返回已消费 head 数量与是否应用，用于运行状态观测。
+- **循环跟随**：`ObserverClient::follow_heads`/`follow_heads_with_dht` 在最多 N 轮 drain 中持续同步，汇总消耗数量与最后应用 head。
 
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。

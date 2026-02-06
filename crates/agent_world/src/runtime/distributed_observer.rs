@@ -29,6 +29,13 @@ pub struct HeadSyncReport {
     pub applied: Option<HeadSyncResult>,
 }
 
+#[derive(Debug)]
+pub struct HeadFollowReport {
+    pub rounds: usize,
+    pub drained: usize,
+    pub applied: Option<HeadSyncResult>,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -179,6 +186,66 @@ impl ObserverClient {
             }
             None => Ok(None),
         }
+    }
+
+    pub fn follow_heads(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        let mut rounds = 0;
+        let mut drained = 0;
+        let mut applied: Option<HeadSyncResult> = None;
+        for _ in 0..max_rounds {
+            let report = self.sync_heads_report(subscription, follower, client, store)?;
+            rounds += 1;
+            drained += report.drained;
+            if report.applied.is_some() {
+                applied = report.applied;
+            }
+            if report.drained == 0 {
+                break;
+            }
+        }
+        Ok(HeadFollowReport {
+            rounds,
+            drained,
+            applied,
+        })
+    }
+
+    pub fn follow_heads_with_dht(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        let mut rounds = 0;
+        let mut drained = 0;
+        let mut applied: Option<HeadSyncResult> = None;
+        for _ in 0..max_rounds {
+            let report =
+                self.sync_heads_with_dht_report(subscription, follower, dht, client, store)?;
+            rounds += 1;
+            drained += report.drained;
+            if report.applied.is_some() {
+                applied = report.applied;
+            }
+            if report.drained == 0 {
+                break;
+            }
+        }
+        Ok(HeadFollowReport {
+            rounds,
+            drained,
+            applied,
+        })
     }
 }
 
