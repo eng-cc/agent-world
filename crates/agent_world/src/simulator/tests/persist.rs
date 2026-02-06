@@ -23,6 +23,48 @@ fn kernel_snapshot_roundtrip() {
 }
 
 #[test]
+fn kernel_snapshot_roundtrip_keeps_fragment_profile() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 31;
+    init.agents.count = 0;
+
+    let (kernel, _) = initialize_kernel(config, init).expect("kernel init");
+    let snapshot = kernel.snapshot();
+    let journal = kernel.journal_snapshot();
+    let restored = WorldKernel::from_snapshot(snapshot, journal).expect("restore from snapshot");
+
+    let before = kernel
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("profile before");
+    let after = restored
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("profile after");
+
+    assert_eq!(after, before);
+}
+
+#[test]
 fn kernel_persist_and_restore() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {

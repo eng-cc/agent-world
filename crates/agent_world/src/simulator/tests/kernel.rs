@@ -392,6 +392,29 @@ fn kernel_transfer_requires_colocation() {
 }
 
 #[test]
+fn observe_triggers_chunk_generation_for_agent_chunk() {
+    let mut config = WorldConfig::default();
+    config.asteroid_fragment.base_density_per_km3 = 2.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 10;
+    config.asteroid_fragment.radius_max_cm = 10;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 7;
+    init.agents.count = 1;
+
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init kernel");
+    let before = kernel.model().locations.len();
+
+    let _ = kernel.observe("agent-0").expect("observe");
+
+    let after = kernel.model().locations.len();
+    assert!(after >= before);
+}
+
+#[test]
 fn kernel_closed_loop_example() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,

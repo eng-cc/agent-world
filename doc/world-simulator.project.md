@@ -65,6 +65,16 @@
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
 - [x] 对齐 simulator 单元测试与新 API（memory/runner/persist/power/observe）
 
+### 7. 分块世界生成（探索驱动）
+- [x] 输出分块世界生成与碎片元素池设计文档（`doc/world-simulator/chunked-fragment-generation.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/chunked-fragment-generation.project.md`）
+- [x] 实现 20km×20km×10km chunk 基础能力（坐标映射/边界/seed）
+- [x] 明确碎片块状几何与物理量（长方体/体积/密度/质量/1cm 最小单位）
+- [x] 明确化合物主导组成与元素统计映射口径
+- [x] 接入未探索不生成的 chunk 索引与触发逻辑（observe/move/transfer/harvest 触发）
+- [x] 接入碎片块状物理画像与化合物组成生成（体积/密度/质量 + compounds/elements）
+- [ ] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
@@ -73,4 +83,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：场景文件支持碎片最小间距覆盖（2026-02-06）
+- 最近更新：接入碎片块状物理画像与化合物组成生成（2026-02-06）

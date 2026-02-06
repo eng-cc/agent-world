@@ -116,6 +116,7 @@ pub enum RejectReason {
         agent_id: AgentId,
     },
     PositionOutOfBounds { pos: GeoPos },
+    ChunkGenerationFailed { x: i32, y: i32, z: i32 },
     RadiationUnavailable { location_id: LocationId },
     ThermalOverload { heat: i64, capacity: i64 },
     PowerTransferDistanceExceeded { distance_km: i64, max_distance_km: i64 },

@@ -222,6 +222,19 @@ impl WorldKernel {
                 }
             }
             Action::MoveAgent { agent_id, to } => {
+                let to_pos = match self.model.locations.get(&to) {
+                    Some(location) => location.pos,
+                    None => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::LocationNotFound { location_id: to },
+                        };
+                    }
+                };
+                if let Err(reason) = self.ensure_chunk_generated_at(to_pos) {
+                    return WorldEventKind::ActionRejected {
+                        reason,
+                    };
+                }
                 let Some(location) = self.model.locations.get(&to) else {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::LocationNotFound { location_id: to },
@@ -317,6 +330,17 @@ impl WorldKernel {
                         };
                     }
                 };
+                let location_pos = match self.model.locations.get(&location_id) {
+                    Some(location) => location.pos,
+                    None => {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::LocationNotFound { location_id },
+                        };
+                    }
+                };
+                if let Err(reason) = self.ensure_chunk_generated_at(location_pos) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
                 let (emission, radius_cm) = match self.model.locations.get(&location_id) {
                     Some(location) => (
                         location.profile.radiation_emission_per_tick,
@@ -409,7 +433,11 @@ impl WorldKernel {
                 to,
                 kind,
                 amount,
-            } => match self.validate_transfer(&from, &to, kind, amount) {
+            } => {
+                if let Err(reason) = self.ensure_owner_chunks_generated(&from, &to) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                match self.validate_transfer(&from, &to, kind, amount) {
                 Ok(()) => {
                     if let Err(reason) = self.apply_transfer(&from, &to, kind, amount) {
                         WorldEventKind::ActionRejected { reason }
@@ -423,7 +451,8 @@ impl WorldKernel {
                     }
                 }
                 Err(reason) => WorldEventKind::ActionRejected { reason },
-            },
+                }
+            }
         }
     }
 
@@ -444,6 +473,7 @@ impl WorldKernel {
         }
         self.ensure_owner_exists(from)?;
         self.ensure_owner_exists(to)?;
+        self.ensure_owner_chunks_generated(from, to)?;
 
         let from_location = self.owner_location_id(from)?;
         let to_location = self.owner_location_id(to)?;
@@ -681,6 +711,41 @@ impl WorldKernel {
             }
         }
         Ok(())
+    }
+
+    fn ensure_owner_chunks_generated(
+        &mut self,
+        from: &ResourceOwner,
+        to: &ResourceOwner,
+    ) -> Result<(), RejectReason> {
+        if let Some(pos) = self.owner_pos(from)? {
+            self.ensure_chunk_generated_at(pos)?;
+        }
+        if let Some(pos) = self.owner_pos(to)? {
+            self.ensure_chunk_generated_at(pos)?;
+        }
+        Ok(())
+    }
+
+    fn owner_pos(&self, owner: &ResourceOwner) -> Result<Option<crate::geometry::GeoPos>, RejectReason> {
+        match owner {
+            ResourceOwner::Agent { agent_id } => self
+                .model
+                .agents
+                .get(agent_id)
+                .map(|agent| Some(agent.pos))
+                .ok_or_else(|| RejectReason::AgentNotFound {
+                    agent_id: agent_id.clone(),
+                }),
+            ResourceOwner::Location { location_id } => self
+                .model
+                .locations
+                .get(location_id)
+                .map(|location| Some(location.pos))
+                .ok_or_else(|| RejectReason::LocationNotFound {
+                    location_id: location_id.clone(),
+                }),
+        }
     }
 
     fn owner_stock(&self, owner: &ResourceOwner) -> Option<&super::super::types::ResourceStock> {

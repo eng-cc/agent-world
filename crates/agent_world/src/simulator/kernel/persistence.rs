@@ -13,6 +13,7 @@ impl WorldKernel {
             time: self.time,
             config: self.config.clone(),
             model: self.model.clone(),
+            chunk_runtime: self.chunk_runtime.clone(),
             next_event_id: self.next_event_id,
             next_action_id: self.next_action_id,
             pending_actions: self.pending_actions.iter().cloned().collect(),
@@ -47,6 +48,7 @@ impl WorldKernel {
             pending_actions: VecDeque::from(snapshot.pending_actions),
             journal: journal.events,
             model: snapshot.model,
+            chunk_runtime: snapshot.chunk_runtime,
         })
     }
 
@@ -76,6 +78,7 @@ impl WorldKernel {
             pending_actions: VecDeque::from(snapshot.pending_actions),
             journal: journal.events.clone(),
             model: snapshot.model,
+            chunk_runtime: snapshot.chunk_runtime,
         };
 
         for event in journal.events.iter().skip(snapshot.journal_len) {

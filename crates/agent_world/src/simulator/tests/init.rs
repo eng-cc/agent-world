@@ -19,6 +19,10 @@ fn init_defaults_create_origin_and_agents() {
     assert_eq!(origin.pos.z_cm, center_z);
     assert_eq!(report.locations, 1);
     assert_eq!(report.agents, 2);
+    assert_eq!(model.chunks.len(), 25);
+    assert!(model.chunks.values().all(|state| {
+        matches!(state, ChunkState::Unexplored | ChunkState::Generated | ChunkState::Exhausted)
+    }));
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
 }
@@ -240,6 +244,47 @@ fn scenario_asteroid_fragment_min_spacing_overrides_world_config() {
             let min_dist = (a.profile.radius_cm + b.profile.radius_cm + spacing_cm) as f64;
             assert!((dx * dx + dy * dy + dz * dz) >= (min_dist * min_dist));
         }
+    }
+}
+
+#[test]
+fn chunk_generated_fragments_include_fragment_profile() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 19;
+    init.agents.count = 0;
+
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    let fragments: Vec<_> = model
+        .locations
+        .values()
+        .filter(|loc| loc.id.starts_with("frag-"))
+        .collect();
+
+    assert!(!fragments.is_empty());
+    for fragment in fragments {
+        let profile = fragment
+            .fragment_profile
+            .as_ref()
+            .expect("generated fragment profile");
+        assert!(!profile.blocks.blocks.is_empty());
+        assert_eq!(profile.total_volume_cm3, profile.blocks.total_volume_cm3());
+        assert_eq!(profile.total_mass_g, profile.blocks.total_mass_g());
+        assert!(profile.bulk_density_kg_per_m3 > 0);
+        assert!(profile.compounds.total_ppm() > 0);
+        assert!(profile.elements.total_ppm() > 0);
     }
 }
 
@@ -502,4 +547,57 @@ fn scenarios_are_stable() {
 
         assert_eq!(report.asteroid_fragment_seed.is_some(), expectation.expect_asteroid_fragment);
     }
+}
+
+#[test]
+fn world_model_chunk_states_roundtrip_json_keys() {
+    let mut model = WorldModel::default();
+    model.chunks.insert(ChunkCoord { x: 0, y: 0, z: 0 }, ChunkState::Unexplored);
+    model.chunks.insert(ChunkCoord { x: 1, y: 2, z: 0 }, ChunkState::Generated);
+
+    let json = serde_json::to_string(&model).expect("serialize world model");
+    assert!(json.contains("\"0:0:0\""));
+    assert!(json.contains("\"1:2:0\""));
+
+    let decoded: WorldModel = serde_json::from_str(&json).expect("deserialize world model");
+    assert_eq!(decoded.chunks, model.chunks);
+}
+
+#[test]
+fn world_model_roundtrip_preserves_fragment_profile() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 23;
+    init.agents.count = 0;
+
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    let frag_before = model
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment profile before serialization");
+
+    let json = serde_json::to_string(&model).expect("serialize world model");
+    let restored: WorldModel = serde_json::from_str(&json).expect("deserialize world model");
+    let frag_after = restored
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment profile after serialization");
+
+    assert_eq!(frag_after, frag_before);
 }

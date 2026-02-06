@@ -51,6 +51,58 @@ pub enum MaterialKind {
     Composite,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FragmentElementKind {
+    Oxygen,
+    Silicon,
+    Magnesium,
+    Aluminum,
+    Calcium,
+    Iron,
+    Nickel,
+    Cobalt,
+    Titanium,
+    Chromium,
+    Hydrogen,
+    Carbon,
+    Nitrogen,
+    Sulfur,
+    Copper,
+    Zinc,
+    Lithium,
+    Neodymium,
+    Uranium,
+    Thorium,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ElementComposition {
+    pub ppm: BTreeMap<FragmentElementKind, u32>,
+}
+
+impl ElementComposition {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn get(&self, kind: FragmentElementKind) -> u32 {
+        *self.ppm.get(&kind).unwrap_or(&0)
+    }
+
+    pub fn set(&mut self, kind: FragmentElementKind, value: u32) {
+        if value == 0 {
+            self.ppm.remove(&kind);
+        } else {
+            self.ppm.insert(kind, value);
+        }
+    }
+
+    pub fn total_ppm(&self) -> u64 {
+        self.ppm.values().map(|value| *value as u64).sum()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocationProfile {
     pub material: MaterialKind,

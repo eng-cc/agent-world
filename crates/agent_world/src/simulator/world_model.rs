@@ -4,10 +4,12 @@ use crate::geometry::{
     GeoPos, DEFAULT_CLOUD_DEPTH_CM, DEFAULT_CLOUD_HEIGHT_CM, DEFAULT_CLOUD_WIDTH_CM,
 };
 use crate::models::RobotBodySpec;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 
+use super::fragment_physics::FragmentPhysicalProfile;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
+use super::chunking::ChunkCoord;
 use super::types::{
     AgentId, AssetId, FacilityId, LocationId, LocationProfile, MaterialKind, ResourceKind,
     ResourceStock, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
@@ -76,6 +78,8 @@ pub struct Location {
     pub pos: GeoPos,
     pub profile: LocationProfile,
     pub resources: ResourceStock,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fragment_profile: Option<FragmentPhysicalProfile>,
 }
 
 impl Location {
@@ -95,6 +99,7 @@ impl Location {
             pos,
             profile,
             resources: ResourceStock::default(),
+            fragment_profile: None,
         }
     }
 }
@@ -126,6 +131,77 @@ pub struct WorldModel {
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]
     pub power_storages: BTreeMap<FacilityId, PowerStorage>,
+    #[serde(
+        default,
+        serialize_with = "serialize_chunk_states",
+        deserialize_with = "deserialize_chunk_states"
+    )]
+    pub chunks: BTreeMap<ChunkCoord, ChunkState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ChunkState {
+    #[default]
+    Unexplored,
+    Generated,
+    Exhausted,
+}
+
+fn serialize_chunk_states<S>(
+    chunks: &BTreeMap<ChunkCoord, ChunkState>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let encoded: BTreeMap<String, ChunkState> = chunks
+        .iter()
+        .map(|(coord, state)| (encode_chunk_coord(*coord), *state))
+        .collect();
+    encoded.serialize(serializer)
+}
+
+fn deserialize_chunk_states<'de, D>(
+    deserializer: D,
+) -> Result<BTreeMap<ChunkCoord, ChunkState>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let encoded = BTreeMap::<String, ChunkState>::deserialize(deserializer)?;
+    let mut decoded = BTreeMap::new();
+    for (key, state) in encoded {
+        let coord = decode_chunk_coord(&key).map_err(serde::de::Error::custom)?;
+        decoded.insert(coord, state);
+    }
+    Ok(decoded)
+}
+
+fn encode_chunk_coord(coord: ChunkCoord) -> String {
+    format!("{}:{}:{}", coord.x, coord.y, coord.z)
+}
+
+fn decode_chunk_coord(encoded: &str) -> Result<ChunkCoord, String> {
+    let mut parts = encoded.split(':');
+    let x = parts
+        .next()
+        .ok_or_else(|| format!("invalid chunk coord key: {encoded}"))?
+        .parse::<i32>()
+        .map_err(|_| format!("invalid chunk coord x: {encoded}"))?;
+    let y = parts
+        .next()
+        .ok_or_else(|| format!("invalid chunk coord key: {encoded}"))?
+        .parse::<i32>()
+        .map_err(|_| format!("invalid chunk coord y: {encoded}"))?;
+    let z = parts
+        .next()
+        .ok_or_else(|| format!("invalid chunk coord key: {encoded}"))?
+        .parse::<i32>()
+        .map_err(|_| format!("invalid chunk coord z: {encoded}"))?;
+    if parts.next().is_some() {
+        return Err(format!("invalid chunk coord key: {encoded}"));
+    }
+    Ok(ChunkCoord { x, y, z })
 }
 
 // ============================================================================

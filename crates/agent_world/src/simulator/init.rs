@@ -5,13 +5,15 @@ use serde::{Deserialize, Serialize};
 use crate::geometry::GeoPos;
 
 use super::asteroid_fragment::generate_fragments;
-use super::kernel::WorldKernel;
+use super::chunking::{chunk_coord_of, chunk_coords};
+use super::fragment_physics::synthesize_fragment_profile;
+use super::kernel::{ChunkRuntimeConfig, WorldKernel};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
 use super::types::{
     AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, ResourceStock,
 };
-use super::world_model::{Agent, Location, WorldConfig, WorldModel};
+use super::world_model::{Agent, ChunkState, Location, SpaceConfig, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -304,6 +306,7 @@ pub fn build_world_model(
     let config = config.clone().sanitized();
     let init = init.clone().sanitized();
     let mut model = WorldModel::default();
+    initialize_chunk_index(&mut model, &config);
 
     if init.origin.enabled {
         let pos = init
@@ -356,19 +359,21 @@ pub fn build_world_model(
     }
 
     let asteroid_fragment_seed = if init.asteroid_fragment.enabled {
-        let seed = init.seed.wrapping_add(init.asteroid_fragment.seed_offset);
-        let mut asteroid_fragment_config = config.asteroid_fragment.clone();
-        if let Some(spacing) = init.asteroid_fragment.min_fragment_spacing_cm {
-            asteroid_fragment_config.min_fragment_spacing_cm = spacing;
-        }
-        let fragments = generate_fragments(seed, &config.space, &asteroid_fragment_config);
-        for frag in fragments {
-            insert_location(&mut model, frag)?;
-        }
-        Some(seed)
+        Some(init.seed.wrapping_add(init.asteroid_fragment.seed_offset))
     } else {
         None
     };
+
+    if init.asteroid_fragment.enabled {
+        let seed_positions = gather_seed_positions(&model);
+        ensure_chunk_generated_at_positions(
+            &mut model,
+            &config,
+            &init,
+            seed_positions,
+            asteroid_fragment_seed,
+        )?;
+    }
 
     let spawn_locations = if !init.agents.spawn_locations.is_empty() {
         init.agents.spawn_locations.clone()
@@ -488,11 +493,125 @@ pub fn build_world_model(
     let report = WorldInitReport {
         seed: init.seed,
         asteroid_fragment_seed,
-        locations: model.locations.len(),
+        locations: model
+            .locations
+            .values()
+            .filter(|location| !location.id.starts_with("frag-"))
+            .count(),
         agents: model.agents.len(),
     };
 
     Ok((model, report))
+}
+
+pub fn ensure_chunk_generated_at_positions(
+    model: &mut WorldModel,
+    config: &WorldConfig,
+    init: &WorldInitConfig,
+    positions: Vec<GeoPos>,
+    asteroid_fragment_seed: Option<u64>,
+) -> Result<(), WorldInitError> {
+    for pos in positions {
+        let Some(coord) = chunk_coord_of(pos, &config.space) else {
+            continue;
+        };
+        if model
+            .chunks
+            .get(&coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted))
+        {
+            continue;
+        }
+        generate_chunk_fragments(model, config, init, coord, asteroid_fragment_seed)?;
+    }
+    Ok(())
+}
+
+pub fn generate_chunk_fragments(
+    model: &mut WorldModel,
+    config: &WorldConfig,
+    init: &WorldInitConfig,
+    coord: super::chunking::ChunkCoord,
+    asteroid_fragment_seed: Option<u64>,
+) -> Result<(), WorldInitError> {
+    if !init.asteroid_fragment.enabled {
+        model.chunks.insert(coord, ChunkState::Generated);
+        return Ok(());
+    }
+
+    if !model.chunks.contains_key(&coord) {
+        return Ok(());
+    }
+    if model
+        .chunks
+        .get(&coord)
+        .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted))
+    {
+        return Ok(());
+    }
+
+    let Some(bounds) = super::chunking::chunk_bounds(coord, &config.space) else {
+        return Ok(());
+    };
+
+    let base_seed = asteroid_fragment_seed
+        .unwrap_or_else(|| init.seed.wrapping_add(init.asteroid_fragment.seed_offset));
+    let seed = super::chunking::chunk_seed(base_seed, coord);
+
+    let mut asteroid_fragment_config = config.asteroid_fragment.clone();
+    if let Some(spacing) = init.asteroid_fragment.min_fragment_spacing_cm {
+        asteroid_fragment_config.min_fragment_spacing_cm = spacing;
+    }
+
+    let local_space = chunk_local_space(bounds);
+    if local_space.width_cm <= 0 || local_space.depth_cm <= 0 || local_space.height_cm <= 0 {
+        model.chunks.insert(coord, ChunkState::Generated);
+        return Ok(());
+    }
+
+    let fragments = generate_fragments(seed, &local_space, &asteroid_fragment_config);
+    for (idx, mut frag) in fragments.into_iter().enumerate() {
+        frag.id = format!("frag-{}-{}-{}-{}", coord.x, coord.y, coord.z, idx);
+        frag.name = frag.id.clone();
+        let profile_seed = seed
+            .wrapping_add((idx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        frag.fragment_profile = Some(synthesize_fragment_profile(
+            profile_seed,
+            frag.profile.radius_cm,
+            frag.profile.material,
+        ));
+        frag.pos.x_cm += bounds.min.x_cm;
+        frag.pos.y_cm += bounds.min.y_cm;
+        frag.pos.z_cm += bounds.min.z_cm;
+
+        if model.locations.contains_key(&frag.id) {
+            continue;
+        }
+        insert_location(model, frag)?;
+    }
+
+    model.chunks.insert(coord, ChunkState::Generated);
+    Ok(())
+}
+
+fn chunk_local_space(bounds: super::chunking::ChunkBounds) -> SpaceConfig {
+    SpaceConfig {
+        width_cm: (bounds.max.x_cm - bounds.min.x_cm).floor() as i64,
+        depth_cm: (bounds.max.y_cm - bounds.min.y_cm).floor() as i64,
+        height_cm: (bounds.max.z_cm - bounds.min.z_cm).floor() as i64,
+    }
+}
+
+fn initialize_chunk_index(model: &mut WorldModel, config: &WorldConfig) {
+    for coord in chunk_coords(&config.space) {
+        model.chunks.insert(coord, ChunkState::Unexplored);
+    }
+}
+
+fn gather_seed_positions(model: &WorldModel) -> Vec<GeoPos> {
+    let mut positions: Vec<GeoPos> = model.locations.values().map(|location| location.pos).collect();
+    positions.extend(model.agents.values().map(|agent| agent.pos));
+    positions
 }
 
 pub fn initialize_kernel(
@@ -500,7 +619,16 @@ pub fn initialize_kernel(
     init: WorldInitConfig,
 ) -> Result<(WorldKernel, WorldInitReport), WorldInitError> {
     let (model, report) = build_world_model(&config, &init)?;
-    Ok((WorldKernel::with_model(config, model), report))
+    let chunk_runtime = ChunkRuntimeConfig {
+        world_seed: init.seed,
+        asteroid_fragment_enabled: init.asteroid_fragment.enabled,
+        asteroid_fragment_seed_offset: init.asteroid_fragment.seed_offset,
+        min_fragment_spacing_cm: init.asteroid_fragment.min_fragment_spacing_cm,
+    };
+    Ok((
+        WorldKernel::with_model_and_chunk_runtime(config, model, chunk_runtime),
+        report,
+    ))
 }
 
 fn center_pos(space: &super::world_model::SpaceConfig) -> GeoPos {

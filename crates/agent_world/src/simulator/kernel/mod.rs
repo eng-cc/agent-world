@@ -14,6 +14,33 @@ use std::collections::VecDeque;
 use super::types::{ActionEnvelope, ActionId, WorldEventId, WorldTime};
 use super::world_model::{WorldConfig, WorldModel};
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ChunkRuntimeConfig {
+    pub world_seed: u64,
+    pub asteroid_fragment_enabled: bool,
+    pub asteroid_fragment_seed_offset: u64,
+    pub min_fragment_spacing_cm: Option<i64>,
+}
+
+impl Default for ChunkRuntimeConfig {
+    fn default() -> Self {
+        Self {
+            world_seed: 0,
+            asteroid_fragment_enabled: false,
+            asteroid_fragment_seed_offset: 1,
+            min_fragment_spacing_cm: None,
+        }
+    }
+}
+
+impl ChunkRuntimeConfig {
+    pub fn asteroid_fragment_seed(&self) -> u64 {
+        self.world_seed
+            .wrapping_add(self.asteroid_fragment_seed_offset)
+    }
+}
+
 pub use types::{
     Observation, ObservedAgent, ObservedLocation, RejectReason, WorldEvent, WorldEventKind,
 };
@@ -27,6 +54,8 @@ pub struct WorldKernel {
     pending_actions: VecDeque<ActionEnvelope>,
     journal: Vec<WorldEvent>,
     model: WorldModel,
+    #[serde(default)]
+    chunk_runtime: ChunkRuntimeConfig,
 }
 
 impl WorldKernel {
@@ -49,6 +78,24 @@ impl WorldKernel {
             pending_actions: VecDeque::new(),
             journal: Vec::new(),
             model,
+            chunk_runtime: ChunkRuntimeConfig::default(),
+        }
+    }
+
+    pub fn with_model_and_chunk_runtime(
+        config: WorldConfig,
+        model: WorldModel,
+        chunk_runtime: ChunkRuntimeConfig,
+    ) -> Self {
+        Self {
+            time: 0,
+            config: config.sanitized(),
+            next_event_id: 0,
+            next_action_id: 0,
+            pending_actions: VecDeque::new(),
+            journal: Vec::new(),
+            model,
+            chunk_runtime,
         }
     }
 

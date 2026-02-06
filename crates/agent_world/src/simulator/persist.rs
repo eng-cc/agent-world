@@ -7,6 +7,7 @@ use std::io;
 use std::path::Path;
 
 use super::kernel::WorldEvent;
+use super::kernel::ChunkRuntimeConfig;
 use super::types::{ActionEnvelope, ActionId, WorldEventId, WorldTime, JOURNAL_VERSION, SNAPSHOT_VERSION};
 use super::world_model::{WorldConfig, WorldModel};
 
@@ -29,6 +30,8 @@ pub struct WorldSnapshot {
     pub time: WorldTime,
     pub config: WorldConfig,
     pub model: WorldModel,
+    #[serde(default)]
+    pub chunk_runtime: ChunkRuntimeConfig,
     pub next_event_id: WorldEventId,
     pub next_action_id: ActionId,
     pub pending_actions: Vec<ActionEnvelope>,

@@ -50,16 +50,28 @@ pub use runtime::{
 // Agent interface (observe → decide → act)
 pub use simulator::{
     AgentBehavior, AgentDecision, AgentMemory, AgentQuota, AgentRunner, AgentStats,
-    AgentTickResult, ActionResult, LongTermMemory, LongTermMemoryEntry, MemoryEntry,
+    AgentTickResult, ActionResult, ChunkRuntimeConfig, LongTermMemory, LongTermMemoryEntry, MemoryEntry,
     MemoryEntryKind, RateLimitPolicy, RateLimitState, RegisteredAgent, RunnerLogEntry,
     RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
 };
 
 // World initialization
 pub use simulator::{
-    build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig,
+    build_world_model, chunk_bounds, chunk_coord_of, chunk_grid_dims, chunk_seed,
+    initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig, ChunkBounds, ChunkCoord,
+    ChunkState,
+    CompoundComposition, CuboidSizeCm,
+    FragmentBlock, FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, GridPosCm,
     LocationSeedConfig, OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig,
-    WorldInitConfig, WorldInitError, WorldInitReport, WorldScenario,
+    WorldInitConfig, WorldInitError, WorldInitReport, WorldScenario, CHUNK_SIZE_X_CM,
+    CM3_PER_M3,
+    MIN_BLOCK_EDGE_CM,
+    CHUNK_SIZE_Y_CM, CHUNK_SIZE_Z_CM,
+};
+
+pub use simulator::{
+    infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_profile,
+    ElementComposition, FragmentElementKind,
 };
 
 // Power system (M4 social system)

@@ -1389,6 +1389,7 @@ mod tests {
             time: 42,
             config: agent_world::simulator::WorldConfig::default(),
             model,
+            chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
             next_event_id: 1,
             next_action_id: 1,
             pending_actions: Vec::new(),
