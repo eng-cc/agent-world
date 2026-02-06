@@ -1,7 +1,7 @@
 {
   "id": "resource_bootstrap",
   "name": "Resource Bootstrap",
-  "dust": { "enabled": false },
+  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": {
     "count": 1,
     "resources": { "amounts": { "data": 10, "electricity": 25 } }

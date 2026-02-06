@@ -1,7 +1,7 @@
 {
   "id": "twin_region_bootstrap",
   "name": "Twin Region Bootstrap",
-  "dust": { "enabled": false },
+  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
   "agents": { "count": 2, "location_id": "region-a" },
   "locations": [

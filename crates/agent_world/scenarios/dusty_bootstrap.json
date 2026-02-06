@@ -1,7 +1,7 @@
 {
   "id": "dusty_bootstrap",
   "name": "Dusty Bootstrap",
-  "dust": { "enabled": true, "seed_offset": 77 },
+  "dust": { "enabled": true, "seed_offset": 77, "min_fragment_spacing_cm": 50000 },
   "agents": {
     "count": 1,
     "resources": { "amounts": { "electricity": 15 } }

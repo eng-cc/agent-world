@@ -1,5 +1,5 @@
 {
   "id": "minimal",
   "name": "Minimal",
-  "dust": { "enabled": false }
+  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 }
 }
