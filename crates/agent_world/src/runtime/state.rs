@@ -1,6 +1,7 @@
 //! World state management.
 
 use crate::models::AgentState;
+use crate::simulator::ResourceKind;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -15,6 +16,8 @@ pub struct WorldState {
     pub time: WorldTime,
     pub agents: BTreeMap<String, AgentCell>,
     #[serde(default)]
+    pub resources: BTreeMap<ResourceKind, i64>,
+    #[serde(default)]
     pub module_states: BTreeMap<String, Vec<u8>>,
 }
 
@@ -23,6 +26,7 @@ impl Default for WorldState {
         Self {
             time: 0,
             agents: BTreeMap::new(),
+            resources: BTreeMap::new(),
             module_states: BTreeMap::new(),
         }
     }

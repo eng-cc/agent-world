@@ -82,6 +82,7 @@ fn call(input: Bytes, ctx: ModuleContext) -> Bytes
 **规则决策事件（占位）**
 - `RuleDecisionRecorded { action_id, module_id, stage, verdict, override_action?, cost, notes }`
 - `ActionOverridden { action_id, original_action, override_action }`
+- Rule 模块通过 `ModuleOutput.emits` 输出 `kind="rule.decision"`，`payload` 为 `RuleDecision` 的 JSON 序列化。
 
 ## ABI 与序列化（草案）
 

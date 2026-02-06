@@ -19,7 +19,7 @@
 - [x] 定义 RuleDecisionRecorded/ActionOverridden 事件与审计导出
 - [x] 订阅 stage 与 event/action kinds 组合校验与默认值策略
 - [x] 明确 ResourceDelta 资源类型/单位与余额不足语义
-- [ ] 接入资源扣费与 Action 覆盖逻辑
+- [x] 接入资源扣费与 Action 覆盖逻辑
 
 ### 4. Body Modules 机体模块化
 - [ ] 定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件
@@ -42,5 +42,5 @@
 
 ## 状态
 - 当前阶段：W3（Rule Modules 路由与合并实现）
-- 下一步：接入资源扣费与 Action 覆盖逻辑
-- 最近更新：明确 ResourceDelta 资源类型/单位与余额不足语义（2026-02-06）
+- 下一步：W4（迁移 M1 规则到 Rule Modules）
+- 最近更新：接入资源扣费与 Action 覆盖逻辑（2026-02-06）

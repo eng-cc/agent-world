@@ -48,6 +48,7 @@ pub enum RejectReason {
     AgentAlreadyExists { agent_id: String },
     AgentNotFound { agent_id: String },
     InsufficientResources { deficits: BTreeMap<ResourceKind, i64> },
+    RuleDenied { notes: Vec<String> },
 }
 
 /// The cause of an event, for audit purposes.
