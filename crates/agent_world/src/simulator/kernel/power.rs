@@ -1,7 +1,7 @@
-use super::WorldKernel;
-use super::types::{RejectReason, WorldEvent, WorldEventKind};
 use super::super::power::{AgentPowerState, ConsumeReason, PlantStatus, PowerEvent};
 use super::super::types::{AgentId, FacilityId, ResourceKind, ResourceOwner, StockError};
+use super::types::{RejectReason, WorldEvent, WorldEventKind};
+use super::WorldKernel;
 
 impl WorldKernel {
     /// Process power consumption for all agents (idle consumption).
@@ -29,8 +29,7 @@ impl WorldKernel {
                 let consumed = agent.power.consume(idle_cost, &power_config);
                 let new_state = agent.power.state;
                 if thermal_dissipation > 0 {
-                    agent.thermal.heat =
-                        (agent.thermal.heat - thermal_dissipation).max(0);
+                    agent.thermal.heat = (agent.thermal.heat - thermal_dissipation).max(0);
                 }
                 (consumed, agent.power.level, old_state, new_state)
             };
@@ -168,11 +167,13 @@ impl WorldKernel {
             });
         }
         let (input, stored) = {
-            let storage = self.model.power_storages.get_mut(storage_id).ok_or_else(|| {
-                RejectReason::FacilityNotFound {
+            let storage = self
+                .model
+                .power_storages
+                .get_mut(storage_id)
+                .ok_or_else(|| RejectReason::FacilityNotFound {
                     facility_id: storage_id.clone(),
-                }
-            })?;
+                })?;
             let remaining_capacity = storage.capacity - storage.current_level;
             if remaining_capacity <= 0 {
                 return Err(RejectReason::InvalidAmount {
@@ -256,16 +257,16 @@ impl WorldKernel {
                 facility_id: storage_id.clone(),
             })?;
         if !self.model.locations.contains_key(&location_id) {
-            return Err(RejectReason::LocationNotFound {
-                location_id,
-            });
+            return Err(RejectReason::LocationNotFound { location_id });
         }
         let (output, drawn) = {
-            let storage = self.model.power_storages.get_mut(storage_id).ok_or_else(|| {
-                RejectReason::FacilityNotFound {
+            let storage = self
+                .model
+                .power_storages
+                .get_mut(storage_id)
+                .ok_or_else(|| RejectReason::FacilityNotFound {
                     facility_id: storage_id.clone(),
-                }
-            })?;
+                })?;
             if storage.discharge_efficiency <= 0.0 {
                 return Err(RejectReason::InvalidAmount {
                     amount: requested_output,
@@ -302,9 +303,7 @@ impl WorldKernel {
             .add(ResourceKind::Electricity, output)
             .map_err(|err| match err {
                 StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
-                StockError::Insufficient { .. } => RejectReason::InvalidAmount {
-                    amount: output,
-                },
+                StockError::Insufficient { .. } => RejectReason::InvalidAmount { amount: output },
             })?;
 
         Ok(PowerEvent::PowerDischarged {
@@ -366,11 +365,7 @@ impl WorldKernel {
 
     /// Charge an agent's power.
     /// Returns the power event if power was added.
-    pub fn charge_agent_power(
-        &mut self,
-        agent_id: &AgentId,
-        amount: i64,
-    ) -> Option<WorldEvent> {
+    pub fn charge_agent_power(&mut self, agent_id: &AgentId, amount: i64) -> Option<WorldEvent> {
         let power_config = self.config.power.clone();
 
         let (added, new_level, old_state, new_state) = {

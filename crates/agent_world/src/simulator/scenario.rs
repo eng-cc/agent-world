@@ -39,8 +39,12 @@ impl WorldScenario {
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
             WorldScenario::TriadP2pBootstrap => "triad_p2p_bootstrap",
             WorldScenario::AsteroidFragmentBootstrap => "asteroid_fragment_bootstrap",
-            WorldScenario::AsteroidFragmentTwinRegionBootstrap => "asteroid_fragment_twin_region_bootstrap",
-            WorldScenario::AsteroidFragmentTriadRegionBootstrap => "asteroid_fragment_triad_region_bootstrap",
+            WorldScenario::AsteroidFragmentTwinRegionBootstrap => {
+                "asteroid_fragment_twin_region_bootstrap"
+            }
+            WorldScenario::AsteroidFragmentTriadRegionBootstrap => {
+                "asteroid_fragment_triad_region_bootstrap"
+            }
         }
     }
 
@@ -57,9 +61,10 @@ impl WorldScenario {
             "twin_region_bootstrap" | "twin-region-bootstrap" | "twin_regions" | "twin-regions" => {
                 Some(WorldScenario::TwinRegionBootstrap)
             }
-            "triad_region_bootstrap" | "triad-region-bootstrap" | "triad_regions" | "triad-regions" => {
-                Some(WorldScenario::TriadRegionBootstrap)
-            }
+            "triad_region_bootstrap"
+            | "triad-region-bootstrap"
+            | "triad_regions"
+            | "triad-regions" => Some(WorldScenario::TriadRegionBootstrap),
             "triad_p2p_bootstrap"
             | "triad-p2p-bootstrap"
             | "triad-p2p"
@@ -102,12 +107,8 @@ impl WorldScenario {
 
     pub fn load_spec(&self) -> WorldScenarioSpec {
         let spec = scenario_spec_json(*self);
-        let parsed: WorldScenarioSpec = serde_json::from_str(spec).unwrap_or_else(|err| {
-            panic!(
-                "failed to parse scenario spec {}: {err}",
-                self.as_str()
-            )
-        });
+        let parsed: WorldScenarioSpec = serde_json::from_str(spec)
+            .unwrap_or_else(|err| panic!("failed to parse scenario spec {}: {err}", self.as_str()));
         if parsed.id != self.as_str() {
             panic!(
                 "scenario id mismatch: expected {}, got {}",
@@ -124,7 +125,9 @@ impl WorldScenario {
         spec.into_init_config(&config)
     }
 
-    pub fn load_spec_from_path(path: impl AsRef<Path>) -> Result<WorldScenarioSpec, ScenarioSpecError> {
+    pub fn load_spec_from_path(
+        path: impl AsRef<Path>,
+    ) -> Result<WorldScenarioSpec, ScenarioSpecError> {
         WorldScenarioSpec::load_from_path(path)
     }
 
@@ -140,8 +143,14 @@ impl WorldScenario {
 
 #[derive(Debug)]
 pub enum ScenarioSpecError {
-    Io { path: PathBuf, source: std::io::Error },
-    Parse { path: PathBuf, source: serde_json::Error },
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    Parse {
+        path: PathBuf,
+        source: serde_json::Error,
+    },
 }
 
 impl fmt::Display for ScenarioSpecError {

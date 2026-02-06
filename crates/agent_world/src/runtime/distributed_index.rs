@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use super::distributed::{WorldHeadAnnounce};
+use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::{DistributedDht, ProviderRecord};
 use super::distributed_provider_cache::ProviderCache;
 use super::distributed_storage::ExecutionWriteResult;
@@ -84,9 +84,12 @@ fn collect_execution_hashes(result: &ExecutionWriteResult) -> HashSet<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::{Action, InMemoryDht, InMemoryIndexStore, LocalCasStore, ProviderCache, ProviderCacheConfig, World};
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
+    use super::super::{
+        Action, InMemoryDht, InMemoryIndexStore, LocalCasStore, ProviderCache, ProviderCacheConfig,
+        World,
+    };
+    use super::*;
     use std::collections::HashSet;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -142,8 +145,8 @@ mod tests {
         .expect("write");
 
         let dht = InMemoryDht::new();
-        let result = publish_execution_providers(&dht, "w1", "store-1", &write)
-            .expect("publish providers");
+        let result =
+            publish_execution_providers(&dht, "w1", "store-1", &write).expect("publish providers");
         assert!(result.published > 0);
 
         let mut expected = HashSet::new();
@@ -201,8 +204,8 @@ mod tests {
             ProviderCacheConfig::default(),
         );
 
-        let result = publish_execution_providers_cached(&cache, "w1", &write)
-            .expect("publish providers");
+        let result =
+            publish_execution_providers_cached(&cache, "w1", &write).expect("publish providers");
         assert!(result.published > 0);
 
         let mut expected = HashSet::new();

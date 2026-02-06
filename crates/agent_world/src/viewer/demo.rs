@@ -168,7 +168,9 @@ mod tests {
         let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
 
         let actions = plan_demo_actions(&kernel);
-        assert!(actions.iter().any(|action| matches!(action, Action::MoveAgent { .. })));
+        assert!(actions
+            .iter()
+            .any(|action| matches!(action, Action::MoveAgent { .. })));
 
         for action in actions {
             kernel.submit_action(action);
@@ -176,11 +178,7 @@ mod tests {
         let events = kernel.step_until_empty();
         assert!(!events.is_empty());
 
-        let agent = kernel
-            .model()
-            .agents
-            .get("agent-0")
-            .expect("agent exists");
+        let agent = kernel.model().agents.get("agent-0").expect("agent exists");
         assert_eq!(agent.location_id, "region-b");
     }
 

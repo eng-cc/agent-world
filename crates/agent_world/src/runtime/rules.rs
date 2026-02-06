@@ -23,10 +23,7 @@ impl ResourceDelta {
         }
     }
 
-    pub fn deficits(
-        &self,
-        balances: &BTreeMap<ResourceKind, i64>,
-    ) -> BTreeMap<ResourceKind, i64> {
+    pub fn deficits(&self, balances: &BTreeMap<ResourceKind, i64>) -> BTreeMap<ResourceKind, i64> {
         let mut deficits = BTreeMap::new();
         for (kind, delta) in &self.entries {
             if *delta >= 0 {
@@ -311,7 +308,10 @@ mod tests {
         ];
 
         let err = merge_rule_decisions(9, decisions).unwrap_err();
-        assert_eq!(err, RuleDecisionMergeError::ConflictingOverride { action_id: 9 });
+        assert_eq!(
+            err,
+            RuleDecisionMergeError::ConflictingOverride { action_id: 9 }
+        );
     }
 
     #[test]
@@ -325,7 +325,10 @@ mod tests {
         }];
 
         let err = merge_rule_decisions(11, decisions).unwrap_err();
-        assert_eq!(err, RuleDecisionMergeError::MissingOverride { action_id: 11 });
+        assert_eq!(
+            err,
+            RuleDecisionMergeError::MissingOverride { action_id: 11 }
+        );
     }
 
     #[test]

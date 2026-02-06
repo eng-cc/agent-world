@@ -7,14 +7,19 @@ pub const VIEWER_PROTOCOL_VERSION: u32 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ViewerRequest {
-    Hello { client: String, version: u32 },
+    Hello {
+        client: String,
+        version: u32,
+    },
     Subscribe {
         streams: Vec<ViewerStream>,
         #[serde(default)]
         event_kinds: Vec<ViewerEventKind>,
     },
     RequestSnapshot,
-    Control { mode: ViewerControl },
+    Control {
+        mode: ViewerControl,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -40,11 +45,17 @@ pub enum ViewerEventKind {
 impl ViewerEventKind {
     pub fn matches(&self, kind: &WorldEventKind) -> bool {
         match (self, kind) {
-            (ViewerEventKind::LocationRegistered, WorldEventKind::LocationRegistered { .. }) => true,
+            (ViewerEventKind::LocationRegistered, WorldEventKind::LocationRegistered { .. }) => {
+                true
+            }
             (ViewerEventKind::AgentRegistered, WorldEventKind::AgentRegistered { .. }) => true,
             (ViewerEventKind::AgentMoved, WorldEventKind::AgentMoved { .. }) => true,
-            (ViewerEventKind::ResourceTransferred, WorldEventKind::ResourceTransferred { .. }) => true,
-            (ViewerEventKind::RadiationHarvested, WorldEventKind::RadiationHarvested { .. }) => true,
+            (ViewerEventKind::ResourceTransferred, WorldEventKind::ResourceTransferred { .. }) => {
+                true
+            }
+            (ViewerEventKind::RadiationHarvested, WorldEventKind::RadiationHarvested { .. }) => {
+                true
+            }
             (ViewerEventKind::ActionRejected, WorldEventKind::ActionRejected { .. }) => true,
             (ViewerEventKind::Power, WorldEventKind::Power(_)) => true,
             _ => false,

@@ -1,9 +1,7 @@
 use crate::geometry::space_distance_cm;
 
 use super::super::chunking::ChunkCoord;
-use super::super::init::{
-    generate_chunk_fragments, AsteroidFragmentInitConfig, WorldInitConfig,
-};
+use super::super::init::{generate_chunk_fragments, AsteroidFragmentInitConfig, WorldInitConfig};
 use super::super::ChunkState;
 use super::types::{
     ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, RejectReason,
@@ -86,10 +84,7 @@ impl WorldKernel {
 
         if !self.chunk_runtime.asteroid_fragment_enabled {
             self.model.chunks.insert(coord, ChunkState::Generated);
-            self.model
-                .chunk_resource_budgets
-                .entry(coord)
-                .or_default();
+            self.model.chunk_resource_budgets.entry(coord).or_default();
             return Ok(());
         }
 

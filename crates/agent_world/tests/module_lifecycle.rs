@@ -55,9 +55,7 @@ fn governance_module_happy_path_updates_registry() {
     };
 
     let manifest = manifest_with_changes(changes);
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -68,11 +66,7 @@ fn governance_module_happy_path_updates_registry() {
     let record = world.module_registry().records.get(&key).unwrap();
     assert_eq!(record.manifest, module_manifest);
     assert_eq!(
-        world
-            .module_registry()
-            .active
-            .get("m.lifecycle")
-            .cloned(),
+        world.module_registry().active.get("m.lifecycle").cloned(),
         Some("0.1.0".to_string())
     );
 
@@ -113,9 +107,7 @@ fn shadow_failure_blocks_apply() {
     };
 
     let manifest = manifest_with_changes(changes);
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 
@@ -174,9 +166,7 @@ fn module_routing_emits_event() {
     };
 
     let manifest = manifest_with_changes(changes);
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -260,9 +250,7 @@ fn replay_preserves_module_events() {
     };
 
     let manifest = manifest_with_changes(changes);
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)

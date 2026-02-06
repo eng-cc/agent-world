@@ -135,9 +135,11 @@ fn apply_patch_set(
     let mut current = root;
     for (idx, segment) in path.iter().enumerate() {
         let is_last = idx + 1 == path.len();
-        let map = current.as_object_mut().ok_or_else(|| WorldError::PatchNonObject {
-            path: path[..idx].join("."),
-        })?;
+        let map = current
+            .as_object_mut()
+            .ok_or_else(|| WorldError::PatchNonObject {
+                path: path[..idx].join("."),
+            })?;
         if is_last {
             map.insert(segment.clone(), value);
             return Ok(());
@@ -159,9 +161,11 @@ fn apply_patch_remove(root: &mut JsonValue, path: &PatchPath) -> Result<(), Worl
     let mut current = root;
     for (idx, segment) in path.iter().enumerate() {
         let is_last = idx + 1 == path.len();
-        let map = current.as_object_mut().ok_or_else(|| WorldError::PatchNonObject {
-            path: path[..idx].join("."),
-        })?;
+        let map = current
+            .as_object_mut()
+            .ok_or_else(|| WorldError::PatchNonObject {
+                path: path[..idx].join("."),
+            })?;
         if is_last {
             if map.remove(segment).is_none() {
                 return Err(WorldError::PatchInvalidPath {
@@ -170,9 +174,11 @@ fn apply_patch_remove(root: &mut JsonValue, path: &PatchPath) -> Result<(), Worl
             }
             return Ok(());
         }
-        current = map.get_mut(segment).ok_or_else(|| WorldError::PatchInvalidPath {
-            path: path[..=idx].join("."),
-        })?;
+        current = map
+            .get_mut(segment)
+            .ok_or_else(|| WorldError::PatchInvalidPath {
+                path: path[..=idx].join("."),
+            })?;
     }
     Ok(())
 }
@@ -236,11 +242,7 @@ fn diff_json(
 
     match (base, target) {
         (JsonValue::Object(base_map), JsonValue::Object(target_map)) => {
-            let mut keys: Vec<String> = base_map
-                .keys()
-                .chain(target_map.keys())
-                .cloned()
-                .collect();
+            let mut keys: Vec<String> = base_map.keys().chain(target_map.keys()).cloned().collect();
             keys.sort();
             keys.dedup();
 

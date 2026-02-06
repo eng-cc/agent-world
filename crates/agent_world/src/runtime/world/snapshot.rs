@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use super::World;
-use super::super::{Snapshot, SnapshotRecord, SnapshotRetentionPolicy, WorldError};
 use super::super::util::{hash_json, write_json_to_path};
+use super::super::{Snapshot, SnapshotRecord, SnapshotRetentionPolicy, WorldError};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------

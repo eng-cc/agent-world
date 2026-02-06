@@ -36,10 +36,20 @@ pub struct ObservedAgent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum Action {
-    RegisterAgent { agent_id: String, pos: GeoPos },
-    MoveAgent { agent_id: String, to: GeoPos },
-    QueryObservation { agent_id: String },
-    EmitObservation { observation: Observation },
+    RegisterAgent {
+        agent_id: String,
+        pos: GeoPos,
+    },
+    MoveAgent {
+        agent_id: String,
+        to: GeoPos,
+    },
+    QueryObservation {
+        agent_id: String,
+    },
+    EmitObservation {
+        observation: Observation,
+    },
     BodyAction {
         agent_id: String,
         kind: String,
@@ -68,16 +78,31 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum DomainEvent {
-    AgentRegistered { agent_id: String, pos: GeoPos },
-    AgentMoved { agent_id: String, from: GeoPos, to: GeoPos },
-    ActionRejected { action_id: ActionId, reason: RejectReason },
-    Observation { observation: Observation },
+    AgentRegistered {
+        agent_id: String,
+        pos: GeoPos,
+    },
+    AgentMoved {
+        agent_id: String,
+        from: GeoPos,
+        to: GeoPos,
+    },
+    ActionRejected {
+        action_id: ActionId,
+        reason: RejectReason,
+    },
+    Observation {
+        observation: Observation,
+    },
     BodyAttributesUpdated {
         agent_id: String,
         view: BodyKernelView,
         reason: String,
     },
-    BodyAttributesRejected { agent_id: String, reason: String },
+    BodyAttributesRejected {
+        agent_id: String,
+        reason: String,
+    },
     ResourceTransferred {
         from_agent_id: String,
         to_agent_id: String,
@@ -95,9 +120,7 @@ impl DomainEvent {
             DomainEvent::BodyAttributesUpdated { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::BodyAttributesRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
-            DomainEvent::ResourceTransferred { from_agent_id, .. } => {
-                Some(from_agent_id.as_str())
-            }
+            DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
         }
     }
 }
@@ -106,21 +129,31 @@ impl DomainEvent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum RejectReason {
-    AgentAlreadyExists { agent_id: String },
-    AgentNotFound { agent_id: String },
+    AgentAlreadyExists {
+        agent_id: String,
+    },
+    AgentNotFound {
+        agent_id: String,
+    },
     AgentsNotCoLocated {
         agent_id: String,
         other_agent_id: String,
     },
-    InvalidAmount { amount: i64 },
+    InvalidAmount {
+        amount: i64,
+    },
     InsufficientResource {
         agent_id: String,
         kind: ResourceKind,
         requested: i64,
         available: i64,
     },
-    InsufficientResources { deficits: BTreeMap<ResourceKind, i64> },
-    RuleDenied { notes: Vec<String> },
+    InsufficientResources {
+        deficits: BTreeMap<ResourceKind, i64>,
+    },
+    RuleDenied {
+        notes: Vec<String>,
+    },
 }
 
 /// The cause of an event, for audit purposes.

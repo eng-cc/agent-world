@@ -30,8 +30,14 @@ fn chunk_bounds_clip_at_space_edge() {
     };
 
     let bounds = chunk_bounds(ChunkCoord { x: 4, y: 3, z: 1 }, &space).unwrap();
-    assert_eq!(bounds.min, GeoPos::new(8_000_000.0, 6_000_000.0, 1_000_000.0));
-    assert_eq!(bounds.max, GeoPos::new(9_000_000.0, 7_500_000.0, 1_500_000.0));
+    assert_eq!(
+        bounds.min,
+        GeoPos::new(8_000_000.0, 6_000_000.0, 1_000_000.0)
+    );
+    assert_eq!(
+        bounds.max,
+        GeoPos::new(9_000_000.0, 7_500_000.0, 1_500_000.0)
+    );
 }
 
 #[test]

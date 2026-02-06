@@ -1,9 +1,9 @@
+use agent_world::GeoPos;
 use agent_world::{
     Action, CapabilityGrant, FixedSandbox, Manifest, ModuleActivation, ModuleChangeSet, ModuleEmit,
     ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription,
     ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError,
 };
-use agent_world::GeoPos;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
@@ -23,9 +23,7 @@ fn apply_module_changes(world: &mut World, changes: ModuleChangeSet) {
         version: 2,
         content: serde_json::Value::Object(content),
     };
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -265,9 +263,7 @@ fn module_subscription_invalid_filter_is_rejected() {
         version: 2,
         content: serde_json::Value::Object(content),
     };
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
 
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
@@ -329,9 +325,7 @@ fn module_subscription_rejects_mixed_kinds_without_stage() {
         version: 2,
         content: serde_json::Value::Object(content),
     };
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
 
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
@@ -393,9 +387,7 @@ fn module_subscription_rejects_action_kinds_in_post_event_stage() {
         version: 2,
         content: serde_json::Value::Object(content),
     };
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
 
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));

@@ -1,5 +1,5 @@
-use super::World;
 use super::super::AgentSchedule;
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------

@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 
 #[test]
 fn register_and_move_agent() {
@@ -53,7 +53,10 @@ fn rejects_invalid_actions() {
 
     let event = world.journal().events.last().unwrap();
     match &event.body {
-        WorldEventBody::Domain(DomainEvent::ActionRejected { action_id: id, reason }) => {
+        WorldEventBody::Domain(DomainEvent::ActionRejected {
+            action_id: id,
+            reason,
+        }) => {
             assert_eq!(*id, action_id);
             assert!(matches!(reason, RejectReason::AgentNotFound { .. }));
         }

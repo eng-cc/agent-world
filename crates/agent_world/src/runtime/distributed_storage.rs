@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use super::blob_store::{blake3_hex, BlobStore};
 use super::distributed::{
-    BlockAnnounce, BlobRef, SnapshotManifest, WorldBlock, WorldHeadAnnounce, WIRE_ENCODING_CBOR,
+    BlobRef, BlockAnnounce, SnapshotManifest, WorldBlock, WorldHeadAnnounce, WIRE_ENCODING_CBOR,
 };
 use super::error::WorldError;
 use super::events::CausedBy;
@@ -53,13 +53,8 @@ pub fn store_execution_result(
     store: &impl BlobStore,
     config: ExecutionWriteConfig,
 ) -> Result<ExecutionWriteResult, WorldError> {
-    let snapshot_manifest = segment_snapshot(
-        snapshot,
-        world_id,
-        snapshot_epoch,
-        store,
-        config.segment,
-    )?;
+    let snapshot_manifest =
+        segment_snapshot(snapshot, world_id, snapshot_epoch, store, config.segment)?;
     let snapshot_manifest_bytes = to_canonical_cbor(&snapshot_manifest)?;
     let snapshot_manifest_hash = store.put_bytes(&snapshot_manifest_bytes)?;
     let snapshot_manifest_ref = BlobRef {
@@ -112,7 +107,10 @@ pub fn store_execution_result(
         content_hash: block_hash.clone(),
         size_bytes: block_bytes.len() as u64,
         codec: config.codec.clone(),
-        links: vec![snapshot_manifest_hash.clone(), journal_segments_hash.clone()],
+        links: vec![
+            snapshot_manifest_hash.clone(),
+            journal_segments_hash.clone(),
+        ],
     };
 
     let block_announce = BlockAnnounce {
@@ -183,8 +181,8 @@ fn hash_cbor<T: Serialize>(value: &T) -> Result<String, WorldError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{Action, LocalCasStore, World};
+    use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 

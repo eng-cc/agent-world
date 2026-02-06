@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 #[cfg(feature = "wasmtime")]
 use std::collections::{BTreeMap, VecDeque};
+use std::fmt;
 #[cfg(feature = "wasmtime")]
 use std::sync::{Arc, Mutex};
-use std::fmt;
 
 use super::modules::ModuleLimits;
 
@@ -213,8 +213,9 @@ impl WasmExecutor {
             engine_config.debug_info(false);
             let engine = wasmtime::Engine::new(&engine_config)
                 .expect("failed to initialize wasmtime engine");
-            let compiled_cache =
-                Arc::new(Mutex::new(CompiledModuleCache::new(config.max_cache_entries)));
+            let compiled_cache = Arc::new(Mutex::new(CompiledModuleCache::new(
+                config.max_cache_entries,
+            )));
             Self {
                 config,
                 engine,
@@ -251,10 +252,7 @@ impl WasmExecutor {
         wasm_hash: &str,
         wasm_bytes: &[u8],
     ) -> Result<Arc<wasmtime::Module>, ModuleCallFailure> {
-        let mut cache = self
-            .compiled_cache
-            .lock()
-            .expect("compiled cache poisoned");
+        let mut cache = self.compiled_cache.lock().expect("compiled cache poisoned");
         if let Some(module) = cache.get(wasm_hash) {
             return Ok(module);
         }
@@ -276,10 +274,7 @@ impl WasmExecutor {
             )
         })?;
         let module = Arc::new(module);
-        let mut cache = self
-            .compiled_cache
-            .lock()
-            .expect("compiled cache poisoned");
+        let mut cache = self.compiled_cache.lock().expect("compiled cache poisoned");
         cache.insert(wasm_hash.to_string(), module.clone());
         Ok(module)
     }
@@ -385,36 +380,29 @@ impl ModuleSandbox for WasmExecutor {
             }
 
             if request.wasm_bytes.is_empty() {
-                return Err(self.failure(
-                    request,
-                    ModuleCallErrorCode::Trap,
-                    "missing wasm bytes",
-                ));
+                return Err(self.failure(request, ModuleCallErrorCode::Trap, "missing wasm bytes"));
             }
 
-            let module =
-                self.compile_module_cached(&request.wasm_hash, &request.wasm_bytes)?;
+            let module = self.compile_module_cached(&request.wasm_hash, &request.wasm_bytes)?;
             let start = std::time::Instant::now();
             let mut store = wasmtime::Store::new(&self.engine, ());
             store.set_epoch_deadline(u64::MAX);
             if request.limits.max_gas > 0 {
-                store
-                    .set_fuel(request.limits.max_gas)
-                    .map_err(|err| self.failure(request, ModuleCallErrorCode::Trap, err.to_string()))?;
+                store.set_fuel(request.limits.max_gas).map_err(|err| {
+                    self.failure(request, ModuleCallErrorCode::Trap, err.to_string())
+                })?;
             }
             let linker = wasmtime::Linker::new(&self.engine);
             let instance = linker
                 .instantiate(&mut store, &module)
                 .map_err(|err| self.map_wasmtime_error(request, err))?;
-            let memory = instance
-                .get_memory(&mut store, "memory")
-                .ok_or_else(|| {
-                    self.failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        "missing memory export",
-                    )
-                })?;
+            let memory = instance.get_memory(&mut store, "memory").ok_or_else(|| {
+                self.failure(
+                    request,
+                    ModuleCallErrorCode::InvalidOutput,
+                    "missing memory export",
+                )
+            })?;
             let alloc = instance
                 .get_typed_func::<i32, i32>(&mut store, "alloc")
                 .map_err(|err| {
@@ -425,10 +413,7 @@ impl ModuleSandbox for WasmExecutor {
                     )
                 })?;
             let call = instance
-                .get_typed_func::<(i32, i32), (i32, i32)>(
-                    &mut store,
-                    request.entrypoint.as_str(),
-                )
+                .get_typed_func::<(i32, i32), (i32, i32)>(&mut store, request.entrypoint.as_str())
                 .map_err(|err| {
                     self.failure(
                         request,
@@ -460,8 +445,7 @@ impl ModuleSandbox for WasmExecutor {
                 let current_size = current_pages.saturating_mul(WASM_PAGE_SIZE);
                 let needed_size = (input_ptr as u64).saturating_add(input_len as u64);
                 if needed_size > current_size {
-                    let required_pages =
-                        (needed_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
+                    let required_pages = (needed_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
                     let delta = required_pages.saturating_sub(current_pages);
                     if delta > 0 {
                         memory.grow(&mut store, delta).map_err(|err| {
@@ -477,7 +461,9 @@ impl ModuleSandbox for WasmExecutor {
             if input_len > 0 {
                 memory
                     .write(&mut store, input_ptr as usize, &request.input)
-                    .map_err(|err| self.failure(request, ModuleCallErrorCode::Trap, err.to_string()))?;
+                    .map_err(|err| {
+                        self.failure(request, ModuleCallErrorCode::Trap, err.to_string())
+                    })?;
             }
             let (output_ptr, output_len) = call
                 .call(&mut store, (input_ptr, input_len))
@@ -491,11 +477,7 @@ impl ModuleSandbox for WasmExecutor {
                 ));
             }
             let output_len = usize::try_from(output_len).map_err(|_| {
-                self.failure(
-                    request,
-                    ModuleCallErrorCode::Trap,
-                    "negative output length",
-                )
+                self.failure(request, ModuleCallErrorCode::Trap, "negative output length")
             })?;
             if output_len as u64 > request.limits.max_output_bytes {
                 return Err(self.failure(
@@ -524,7 +506,9 @@ impl ModuleSandbox for WasmExecutor {
             if output_len > 0 {
                 memory
                     .read(&mut store, output_ptr as usize, &mut output_buf)
-                    .map_err(|err| self.failure(request, ModuleCallErrorCode::Trap, err.to_string()))?;
+                    .map_err(|err| {
+                        self.failure(request, ModuleCallErrorCode::Trap, err.to_string())
+                    })?;
             }
             if start.elapsed().as_millis() as u64 > self.config.max_call_ms {
                 return Err(self.failure(
@@ -687,14 +671,10 @@ mod tests {
         let wasm_a = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         let wasm_b = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
 
-        executor
-            .compile_module_cached("hash-a", &wasm_a)
-            .unwrap();
+        executor.compile_module_cached("hash-a", &wasm_a).unwrap();
         assert_eq!(executor.compiled_cache_len(), 1);
 
-        executor
-            .compile_module_cached("hash-b", &wasm_b)
-            .unwrap();
+        executor.compile_module_cached("hash-b", &wasm_b).unwrap();
         assert_eq!(executor.compiled_cache_len(), 1);
     }
 }

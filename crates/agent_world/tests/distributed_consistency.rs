@@ -4,9 +4,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::distributed as dist;
 use agent_world::runtime::{
-    ActionBatchRules, ActionGateway, ActionMempool, ActionMempoolConfig, DistributedClient,
-    DistributedNetwork, InMemoryNetwork, NetworkGateway, replay_validate_head, store_execution_result,
-    ExecutionWriteConfig,
+    replay_validate_head, store_execution_result, ActionBatchRules, ActionGateway, ActionMempool,
+    ActionMempoolConfig, DistributedClient, DistributedNetwork, ExecutionWriteConfig,
+    InMemoryNetwork, NetworkGateway,
 };
 use agent_world::{Action, BlobStore, LocalCasStore, World};
 
@@ -43,7 +43,9 @@ fn consistency_check_detects_corrupt_chunk() {
     };
     gateway.submit_action(envelope).expect("submit action");
 
-    let subscription = network.subscribe(&dist::topic_action("w1")).expect("subscribe");
+    let subscription = network
+        .subscribe(&dist::topic_action("w1"))
+        .expect("subscribe");
     let messages = subscription.drain();
     let decoded: dist::ActionEnvelope =
         serde_cbor::from_slice(&messages[0]).expect("decode envelope");
@@ -86,9 +88,7 @@ fn consistency_check_detects_corrupt_chunk() {
 
     // Corrupt a snapshot chunk by overwriting the blob contents.
     let corrupt_hash = write.snapshot_manifest.chunks[0].content_hash.clone();
-    let blob_path = store
-        .blobs_dir()
-        .join(format!("{corrupt_hash}.blob"));
+    let blob_path = store.blobs_dir().join(format!("{corrupt_hash}.blob"));
     std::fs::write(&blob_path, b"corrupt").expect("overwrite chunk");
 
     let head_clone = write.head_announce.clone();
@@ -98,35 +98,44 @@ fn consistency_check_detects_corrupt_chunk() {
     let store_clone = store.clone();
 
     network
-        .register_handler(dist::RR_GET_WORLD_HEAD, Box::new(move |_payload| {
-            let response = dist::GetWorldHeadResponse {
-                head: head_clone.clone(),
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            dist::RR_GET_WORLD_HEAD,
+            Box::new(move |_payload| {
+                let response = dist::GetWorldHeadResponse {
+                    head: head_clone.clone(),
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register head");
 
     network
-        .register_handler(dist::RR_GET_BLOCK, Box::new(move |_payload| {
-            let response = dist::GetBlockResponse {
-                block: block_clone.clone(),
-                journal_ref: journal_ref.clone(),
-                snapshot_ref: snap_ref.clone(),
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            dist::RR_GET_BLOCK,
+            Box::new(move |_payload| {
+                let response = dist::GetBlockResponse {
+                    block: block_clone.clone(),
+                    journal_ref: journal_ref.clone(),
+                    snapshot_ref: snap_ref.clone(),
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register block");
 
     network
-        .register_handler(dist::RR_FETCH_BLOB, Box::new(move |payload| {
-            let request: dist::FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
-            let bytes = store_clone.get(&request.content_hash).unwrap();
-            let response = dist::FetchBlobResponse {
-                blob: bytes,
-                content_hash: request.content_hash,
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            dist::RR_FETCH_BLOB,
+            Box::new(move |payload| {
+                let request: dist::FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
+                let bytes = store_clone.get(&request.content_hash).unwrap();
+                let response = dist::FetchBlobResponse {
+                    blob: bytes,
+                    content_hash: request.content_hash,
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register fetch");
 
     let client = DistributedClient::new(Arc::clone(&network));

@@ -9,10 +9,13 @@
 - [x] 运行测试 `./scripts/pre-commit.sh`
 - [x] 提交到 git
 - [x] 对齐 CI 测试清单（改为调用 `scripts/ci-tests.sh`）
+- [x] 提交前新增代码格式化时机（`cargo fmt --all`）
+- [x] CI 增加格式化检查（`cargo fmt --all -- --check`）
 
 ## 依赖
+- `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
 - `cargo test`（agent_world viewer 联测）
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：对齐 CI 测试清单（2026-02-06）
+- 最近更新：提交前格式化 + CI 格式化检查（2026-02-06）

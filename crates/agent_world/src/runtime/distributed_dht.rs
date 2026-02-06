@@ -28,8 +28,7 @@ pub trait DistributedDht {
         content_hash: &str,
     ) -> Result<Vec<ProviderRecord>, WorldError>;
 
-    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce)
-        -> Result<(), WorldError>;
+    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError>;
 
     fn get_world_head(&self, world_id: &str) -> Result<Option<WorldHeadAnnounce>, WorldError>;
 }
@@ -79,11 +78,7 @@ impl DistributedDht for InMemoryDht {
             .unwrap_or_default())
     }
 
-    fn put_world_head(
-        &self,
-        world_id: &str,
-        head: &WorldHeadAnnounce,
-    ) -> Result<(), WorldError> {
+    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError> {
         let mut heads = self.heads.lock().expect("lock heads");
         heads.insert(world_id.to_string(), head.clone());
         Ok(())
@@ -114,9 +109,7 @@ mod tests {
         dht.publish_provider("w1", "hash", "peer-2")
             .expect("publish provider");
 
-        let providers = dht
-            .get_providers("w1", "hash")
-            .expect("get providers");
+        let providers = dht.get_providers("w1", "hash").expect("get providers");
         assert_eq!(providers.len(), 2);
     }
 

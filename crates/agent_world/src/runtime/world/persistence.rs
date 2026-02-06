@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
+use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
-use std::collections::VecDeque;
 
-use super::World;
-use super::super::{Journal, ModuleCache, ModuleStore, RollbackEvent, Snapshot, WorldError};
 use super::super::util::hash_json;
+use super::super::{Journal, ModuleCache, ModuleStore, RollbackEvent, Snapshot, WorldError};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -58,12 +58,11 @@ impl World {
         for record in self.module_registry.records.values() {
             store.write_meta(&record.manifest)?;
             let wasm_hash = &record.manifest.wasm_hash;
-            let bytes = self
-                .module_artifact_bytes
-                .get(wasm_hash)
-                .ok_or_else(|| WorldError::ModuleStoreArtifactMissing {
+            let bytes = self.module_artifact_bytes.get(wasm_hash).ok_or_else(|| {
+                WorldError::ModuleStoreArtifactMissing {
                     wasm_hash: wasm_hash.clone(),
-                })?;
+                }
+            })?;
             store.write_artifact(wasm_hash, bytes)?;
         }
         Ok(())
@@ -85,10 +84,7 @@ impl World {
         Ok(world)
     }
 
-    pub fn load_module_store_from_dir(
-        &mut self,
-        dir: impl AsRef<Path>,
-    ) -> Result<(), WorldError> {
+    pub fn load_module_store_from_dir(&mut self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
         let store = ModuleStore::new(dir);
         let registry = store.load_registry()?;
         self.module_registry = registry;

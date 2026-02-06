@@ -49,12 +49,7 @@ impl LeaseManager {
             .unwrap_or(false)
     }
 
-    pub fn try_acquire(
-        &mut self,
-        holder_id: &str,
-        now_ms: i64,
-        ttl_ms: i64,
-    ) -> LeaseDecision {
+    pub fn try_acquire(&mut self, holder_id: &str, now_ms: i64, ttl_ms: i64) -> LeaseDecision {
         if ttl_ms <= 0 {
             return LeaseDecision {
                 granted: false,
@@ -92,12 +87,7 @@ impl LeaseManager {
         }
     }
 
-    pub fn renew(
-        &mut self,
-        lease_id: &str,
-        now_ms: i64,
-        ttl_ms: i64,
-    ) -> LeaseDecision {
+    pub fn renew(&mut self, lease_id: &str, now_ms: i64, ttl_ms: i64) -> LeaseDecision {
         let Some(lease) = &mut self.lease else {
             return LeaseDecision {
                 granted: false,

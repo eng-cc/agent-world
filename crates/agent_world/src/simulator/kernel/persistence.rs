@@ -2,11 +2,9 @@ use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
 
-use super::WorldKernel;
 use super::super::persist::{PersistError, WorldJournal, WorldSnapshot};
-use super::super::types::{
-    CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, SNAPSHOT_VERSION,
-};
+use super::super::types::{CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, SNAPSHOT_VERSION};
+use super::WorldKernel;
 
 impl WorldKernel {
     pub fn snapshot(&self) -> WorldSnapshot {

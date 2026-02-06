@@ -1,5 +1,5 @@
-use super::World;
 use super::super::{Action, ActionEnvelope, ActionId};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -9,8 +9,10 @@ impl World {
     pub fn submit_action(&mut self, action: Action) -> ActionId {
         let action_id = self.next_action_id;
         self.next_action_id += 1;
-        self.pending_actions
-            .push_back(ActionEnvelope { id: action_id, action });
+        self.pending_actions.push_back(ActionEnvelope {
+            id: action_id,
+            action,
+        });
         action_id
     }
 

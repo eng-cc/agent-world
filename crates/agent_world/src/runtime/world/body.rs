@@ -1,5 +1,5 @@
-use super::World;
 use super::super::{CausedBy, DomainEvent, WorldError, WorldEventBody, WorldEventId};
+use super::World;
 use crate::models::BodyKernelView;
 
 const BODY_MASS_KG_MIN: u64 = 1;

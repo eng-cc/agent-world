@@ -49,10 +49,7 @@ pub struct NetworkSubscription {
 }
 
 impl NetworkSubscription {
-    pub(crate) fn new(
-        topic: String,
-        inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
-    ) -> Self {
+    pub(crate) fn new(topic: String, inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>) -> Self {
         Self { topic, inbox }
     }
 
@@ -96,14 +93,20 @@ impl DistributedNetwork for InMemoryNetwork {
             published.push(message.clone());
         }
         let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox.entry(topic.to_string()).or_default().push(message.payload);
+        inbox
+            .entry(topic.to_string())
+            .or_default()
+            .push(message.payload);
         Ok(())
     }
 
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
         let mut inbox = self.inbox.lock().expect("lock inbox");
         inbox.entry(topic.to_string()).or_default();
-        Ok(NetworkSubscription::new(topic.to_string(), Arc::clone(&self.inbox)))
+        Ok(NetworkSubscription::new(
+            topic.to_string(),
+            Arc::clone(&self.inbox),
+        ))
     }
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
@@ -150,11 +153,14 @@ mod tests {
     fn in_memory_request_invokes_handler() {
         let network = InMemoryNetwork::new();
         network
-            .register_handler("/aw/rr/1.0.0/get_world_head", Box::new(|payload| {
-                let mut out = payload.to_vec();
-                out.extend_from_slice(b"-ok");
-                Ok(out)
-            }))
+            .register_handler(
+                "/aw/rr/1.0.0/get_world_head",
+                Box::new(|payload| {
+                    let mut out = payload.to_vec();
+                    out.extend_from_slice(b"-ok");
+                    Ok(out)
+                }),
+            )
             .expect("register handler");
 
         let response = network

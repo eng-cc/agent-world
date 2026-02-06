@@ -51,7 +51,10 @@ impl ObserverClient {
         let head_topic = topic_head(world_id);
         let event_sub = self.network.subscribe(&event_topic)?;
         let head_sub = self.network.subscribe(&head_topic)?;
-        Ok(ObserverSubscription { event_sub, head_sub })
+        Ok(ObserverSubscription {
+            event_sub,
+            head_sub,
+        })
     }
 
     pub fn drain_events(
@@ -251,14 +254,13 @@ impl ObserverClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::distributed_net::InMemoryNetwork;
     use super::super::util::to_canonical_cbor;
+    use super::*;
 
     #[test]
     fn observer_subscribes_and_drains_head_updates() {
-        let network: Arc<dyn DistributedNetwork + Send + Sync> =
-            Arc::new(InMemoryNetwork::new());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
         let observer = ObserverClient::new(Arc::clone(&network));
         let subscription = observer.subscribe("w1").expect("subscribe");
 

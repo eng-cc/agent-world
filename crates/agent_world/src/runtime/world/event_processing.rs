@@ -1,9 +1,9 @@
-use super::World;
-use super::body::validate_body_kernel_view;
 use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason, WorldError, WorldEvent,
     WorldEventBody, WorldEventId, WorldTime,
 };
+use super::body::validate_body_kernel_view;
+use super::World;
 use crate::geometry::space_distance_cm;
 
 impl World {
@@ -72,11 +72,11 @@ impl World {
                     }))
                 }
             }
-            Action::EmitObservation { observation } => Ok(WorldEventBody::Domain(
-                DomainEvent::Observation {
+            Action::EmitObservation { observation } => {
+                Ok(WorldEventBody::Domain(DomainEvent::Observation {
                     observation: observation.clone(),
-                },
-            )),
+                }))
+            }
             Action::BodyAction { agent_id, .. } => {
                 if self.state.agents.contains_key(agent_id) {
                     Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -108,10 +108,12 @@ impl World {
                     }));
                 };
                 if let Err(reason) = validate_body_kernel_view(&cell.state.body_view, view) {
-                    return Ok(WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
-                        agent_id: agent_id.clone(),
-                        reason,
-                    }));
+                    return Ok(WorldEventBody::Domain(
+                        DomainEvent::BodyAttributesRejected {
+                            agent_id: agent_id.clone(),
+                            reason,
+                        },
+                    ));
                 }
                 Ok(WorldEventBody::Domain(DomainEvent::BodyAttributesUpdated {
                     agent_id: agent_id.clone(),
@@ -224,7 +226,11 @@ impl World {
         Ok(event_id)
     }
 
-    fn apply_event_body(&mut self, body: &WorldEventBody, time: WorldTime) -> Result<(), WorldError> {
+    fn apply_event_body(
+        &mut self,
+        body: &WorldEventBody,
+        time: WorldTime,
+    ) -> Result<(), WorldError> {
         match body {
             WorldEventBody::Domain(event) => {
                 self.state.apply_domain_event(event, time)?;

@@ -136,11 +136,7 @@ impl DistributedDht for CachedDht {
         Ok(self.trim_providers(providers))
     }
 
-    fn put_world_head(
-        &self,
-        world_id: &str,
-        head: &WorldHeadAnnounce,
-    ) -> Result<(), WorldError> {
+    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError> {
         self.inner.put_world_head(world_id, head)?;
         self.cache_head(head)
     }
@@ -167,8 +163,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{HeadIndexRecord, InMemoryDht, ProviderRecord};
+    use super::*;
     use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
 
@@ -179,12 +175,7 @@ mod tests {
     }
 
     impl TestIndexStore {
-        fn insert_provider(
-            &self,
-            world_id: &str,
-            content_hash: &str,
-            record: ProviderRecord,
-        ) {
+        fn insert_provider(&self, world_id: &str, content_hash: &str, record: ProviderRecord) {
             let mut providers = self.providers.lock().expect("lock providers");
             providers
                 .entry((world_id.to_string(), content_hash.to_string()))
@@ -335,9 +326,7 @@ mod tests {
             timestamp_ms: 2,
             signature: "sig".to_string(),
         };
-        inner
-            .put_world_head("w1", &fresh_head)
-            .expect("put head");
+        inner.put_world_head("w1", &fresh_head).expect("put head");
 
         let cache = CachedDht::new(
             inner,
@@ -376,9 +365,7 @@ mod tests {
             timestamp_ms: 3,
             signature: "sig".to_string(),
         };
-        inner
-            .put_world_head("w1", &fresh_head)
-            .expect("put head");
+        inner.put_world_head("w1", &fresh_head).expect("put head");
 
         let cache = CachedDht::new(
             inner,

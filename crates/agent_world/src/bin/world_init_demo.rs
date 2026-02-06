@@ -1,6 +1,6 @@
 use agent_world::simulator::WorldScenarioSpec;
-use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
 use agent_world::simulator::{ResourceKind, WorldConfig};
+use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -11,7 +11,10 @@ fn main() {
         println!("Options:");
         println!("  --summary-only  Only print counts (omit per-location/agent details)");
         println!("  --scenario-file Load scenario spec from JSON file");
-        println!("Available scenarios: {}", WorldScenario::variants().join(", "));
+        println!(
+            "Available scenarios: {}",
+            WorldScenario::variants().join(", ")
+        );
         return;
     }
 
@@ -61,15 +64,24 @@ fn main() {
                 Some(scenario) => scenario,
                 None => {
                     eprintln!("Unknown scenario: {name}");
-                    eprintln!("Available scenarios: {}", WorldScenario::variants().join(", "));
+                    eprintln!(
+                        "Available scenarios: {}",
+                        WorldScenario::variants().join(", ")
+                    );
                     std::process::exit(1);
                 }
             };
-            (scenario.as_str().to_string(), WorldInitConfig::from_scenario(scenario, &config))
+            (
+                scenario.as_str().to_string(),
+                WorldInitConfig::from_scenario(scenario, &config),
+            )
         }
         (None, None) => {
             let scenario = WorldScenario::Minimal;
-            (scenario.as_str().to_string(), WorldInitConfig::from_scenario(scenario, &config))
+            (
+                scenario.as_str().to_string(),
+                WorldInitConfig::from_scenario(scenario, &config),
+            )
         }
     };
     let (model, report) = build_world_model(&config, &init).expect("init should succeed");
@@ -81,7 +93,10 @@ fn main() {
     println!("agents: {}", report.agents);
     println!("power_plants: {}", model.power_plants.len());
     println!("power_storages: {}", model.power_storages.len());
-    println!("asteroid_fragment_fragments: {}", asteroid_fragment_fragments);
+    println!(
+        "asteroid_fragment_fragments: {}",
+        asteroid_fragment_fragments
+    );
     if !summary_only {
         println!("location_resources:");
 

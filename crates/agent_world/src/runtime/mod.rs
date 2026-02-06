@@ -13,31 +13,31 @@ mod audit;
 mod blob_store;
 mod builtin_modules;
 pub mod distributed;
+mod distributed_bootstrap;
 mod distributed_client;
 mod distributed_dht;
 mod distributed_dht_cache;
+mod distributed_gateway;
+mod distributed_head_follow;
 mod distributed_index;
 mod distributed_index_store;
-mod distributed_provider_cache;
-mod distributed_bootstrap;
-mod distributed_head_follow;
-mod distributed_gateway;
+mod distributed_lease;
+mod distributed_mempool;
+mod distributed_net;
 mod distributed_observer;
 mod distributed_observer_replay;
-mod distributed_net;
-mod distributed_mempool;
-mod distributed_lease;
+mod distributed_provider_cache;
 mod distributed_storage;
 mod distributed_validation;
-#[cfg(feature = "libp2p")]
-mod libp2p_net;
 mod effect;
 mod error;
 mod events;
 mod governance;
+#[cfg(feature = "libp2p")]
+mod libp2p_net;
 mod manifest;
-mod modules;
 mod module_store;
+mod modules;
 mod policy;
 mod rules;
 mod sandbox;
@@ -89,8 +89,8 @@ pub use manifest::{
 // Modules
 pub use modules::{
     ModuleActivation, ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleDeactivation,
-    ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
-    ModuleRecord, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade,
+    ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRecord,
+    ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade,
 };
 
 // Blob store
@@ -149,8 +149,10 @@ pub use distributed_bootstrap::{
 pub use distributed_head_follow::{HeadFollower, HeadUpdateDecision};
 
 // Distributed storage helpers
-pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult, store_execution_result};
-pub use distributed_validation::{assemble_journal, assemble_snapshot, validate_head_update, HeadValidationResult};
+pub use distributed_storage::{store_execution_result, ExecutionWriteConfig, ExecutionWriteResult};
+pub use distributed_validation::{
+    assemble_journal, assemble_snapshot, validate_head_update, HeadValidationResult,
+};
 
 // Libp2p adapter
 #[cfg(feature = "libp2p")]
@@ -174,8 +176,9 @@ pub use signer::ReceiptSigner;
 // Sandbox
 pub use sandbox::{
     FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin,
-    ModuleCallRequest, ModuleContext, ModuleEmit, ModuleEmitEvent, ModuleEffectIntent,
-    ModuleOutput, ModuleSandbox, ModuleStateUpdate, WasmEngineKind, WasmExecutor, WasmExecutorConfig,
+    ModuleCallRequest, ModuleContext, ModuleEffectIntent, ModuleEmit, ModuleEmitEvent,
+    ModuleOutput, ModuleSandbox, ModuleStateUpdate, WasmEngineKind, WasmExecutor,
+    WasmExecutorConfig,
 };
 
 // Snapshot

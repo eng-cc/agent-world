@@ -99,8 +99,7 @@ impl CapabilityGrant {
         self.effect_kinds.iter().any(|allowed| {
             allowed == "*"
                 || allowed == kind
-                || (allowed.ends_with(".*")
-                    && kind.starts_with(&allowed[..allowed.len() - 1]))
+                || (allowed.ends_with(".*") && kind.starts_with(&allowed[..allowed.len() - 1]))
         })
     }
 

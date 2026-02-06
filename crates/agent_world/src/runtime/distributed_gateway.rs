@@ -61,8 +61,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::distributed_net::InMemoryNetwork;
+    use super::*;
 
     fn sample_action() -> ActionEnvelope {
         ActionEnvelope {
@@ -80,13 +80,9 @@ mod tests {
 
     #[test]
     fn gateway_publishes_action() {
-        let network: Arc<dyn DistributedNetwork + Send + Sync> =
-            Arc::new(InMemoryNetwork::new());
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
         let subscription = network.subscribe("aw.w1.action").expect("subscribe");
-        let gateway = NetworkGateway::new_with_clock(
-            Arc::clone(&network),
-            Arc::new(|| 1234),
-        );
+        let gateway = NetworkGateway::new_with_clock(Arc::clone(&network), Arc::new(|| 1234));
 
         let receipt = gateway.submit_action(sample_action()).expect("submit");
         assert_eq!(receipt.action_id, "a1");

@@ -332,9 +332,7 @@ mod tests {
         let dir = temp_dir("blob-store-missing");
         let store = LocalCasStore::new(&dir);
 
-        let err = store
-            .get("missing")
-            .expect_err("expected missing blob");
+        let err = store.get("missing").expect_err("expected missing blob");
         assert!(matches!(err, WorldError::BlobNotFound { .. }));
 
         let _ = fs::remove_dir_all(&dir);

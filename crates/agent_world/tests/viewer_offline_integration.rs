@@ -5,14 +5,17 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use agent_world::viewer::{generate_viewer_demo, ViewerRequest, ViewerResponse, ViewerServer, ViewerServerConfig, ViewerStream, ViewerControl, VIEWER_PROTOCOL_VERSION};
+use agent_world::viewer::{
+    generate_viewer_demo, ViewerControl, ViewerRequest, ViewerResponse, ViewerServer,
+    ViewerServerConfig, ViewerStream, VIEWER_PROTOCOL_VERSION,
+};
 use agent_world::WorldScenario;
 
 #[test]
 fn offline_server_accepts_client_and_emits_snapshot_and_event() {
     let temp_dir = make_temp_dir("viewer-offline");
-    let _summary = generate_viewer_demo(&temp_dir, WorldScenario::TwinRegionBootstrap)
-        .expect("demo data");
+    let _summary =
+        generate_viewer_demo(&temp_dir, WorldScenario::TwinRegionBootstrap).expect("demo data");
 
     let port = find_free_port();
     let addr = format!("127.0.0.1:{port}");

@@ -18,8 +18,7 @@ pub fn generate_fragments(
     let voxels_y = ((space.depth_cm + voxel_cm - 1) / voxel_cm).max(1);
     let voxels_z = ((space.height_cm + voxel_cm - 1) / voxel_cm).max(1);
 
-    let voxel_volume_km3 =
-        (config.voxel_size_km as f64).powi(3).max(1e-6);
+    let voxel_volume_km3 = (config.voxel_size_km as f64).powi(3).max(1e-6);
     let total_weights = config.material_weights.total().max(1);
 
     let mut locations = Vec::new();
@@ -166,10 +165,7 @@ impl Lcg {
     }
 
     fn next_u64(&mut self) -> u64 {
-        self.state = self
-            .state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1);
+        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1);
         self.state
     }
 

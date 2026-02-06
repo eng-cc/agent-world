@@ -2,13 +2,13 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 use crate::geometry::{space_distance_cm, GeoPos};
 use crate::models::BodyKernelView;
 use crate::simulator::{
-    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, ResourceKind,
+    ResourceKind, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
 };
 
 use super::events::{Action, ActionEnvelope, Observation, ObservedAgent};
@@ -55,8 +55,7 @@ impl BuiltinModuleSandbox {
         module_id: impl Into<String>,
         module: impl BuiltinModule + 'static,
     ) -> Self {
-        self.builtins
-            .insert(module_id.into(), Box::new(module));
+        self.builtins.insert(module_id.into(), Box::new(module));
         self
     }
 }
@@ -157,11 +156,13 @@ impl M1MoveRuleModule {
                 effects: Vec::new(),
                 emits: vec![ModuleEmit {
                     kind: "rule.decision".to_string(),
-                    payload: serde_json::to_value(decision).map_err(|err| failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        format!("rule decision encode failed: {err}"),
-                    ))?,
+                    payload: serde_json::to_value(decision).map_err(|err| {
+                        failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            format!("rule decision encode failed: {err}"),
+                        )
+                    })?,
                 }],
                 output_bytes: 0,
             },
@@ -283,11 +284,13 @@ impl M1VisibilityRuleModule {
                     effects: Vec::new(),
                     emits: vec![ModuleEmit {
                         kind: "rule.decision".to_string(),
-                        payload: serde_json::to_value(decision).map_err(|err| failure(
-                            request,
-                            ModuleCallErrorCode::InvalidOutput,
-                            format!("rule decision encode failed: {err}"),
-                        ))?,
+                        payload: serde_json::to_value(decision).map_err(|err| {
+                            failure(
+                                request,
+                                ModuleCallErrorCode::InvalidOutput,
+                                format!("rule decision encode failed: {err}"),
+                            )
+                        })?,
                     }],
                     output_bytes: 0,
                 },
@@ -326,11 +329,13 @@ impl M1VisibilityRuleModule {
                 effects: Vec::new(),
                 emits: vec![ModuleEmit {
                     kind: "rule.decision".to_string(),
-                    payload: serde_json::to_value(decision).map_err(|err| failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        format!("rule decision encode failed: {err}"),
-                    ))?,
+                    payload: serde_json::to_value(decision).map_err(|err| {
+                        failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            format!("rule decision encode failed: {err}"),
+                        )
+                    })?,
                 }],
                 output_bytes: 0,
             },
@@ -474,11 +479,13 @@ impl M1TransferRuleModule {
                 effects: Vec::new(),
                 emits: vec![ModuleEmit {
                     kind: "rule.decision".to_string(),
-                    payload: serde_json::to_value(decision).map_err(|err| failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        format!("rule decision encode failed: {err}"),
-                    ))?,
+                    payload: serde_json::to_value(decision).map_err(|err| {
+                        failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            format!("rule decision encode failed: {err}"),
+                        )
+                    })?,
                 }],
                 output_bytes: 0,
             },
@@ -598,11 +605,13 @@ impl M1BodyModule {
                         effects: Vec::new(),
                         emits: vec![ModuleEmit {
                             kind: "rule.decision".to_string(),
-                            payload: serde_json::to_value(decision).map_err(|err| failure(
-                                request,
-                                ModuleCallErrorCode::InvalidOutput,
-                                format!("rule decision encode failed: {err}"),
-                            ))?,
+                            payload: serde_json::to_value(decision).map_err(|err| {
+                                failure(
+                                    request,
+                                    ModuleCallErrorCode::InvalidOutput,
+                                    format!("rule decision encode failed: {err}"),
+                                )
+                            })?,
                         }],
                         output_bytes: 0,
                     },
@@ -631,11 +640,13 @@ impl M1BodyModule {
                 effects: Vec::new(),
                 emits: vec![ModuleEmit {
                     kind: "rule.decision".to_string(),
-                    payload: serde_json::to_value(decision).map_err(|err| failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        format!("rule decision encode failed: {err}"),
-                    ))?,
+                    payload: serde_json::to_value(decision).map_err(|err| {
+                        failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            format!("rule decision encode failed: {err}"),
+                        )
+                    })?,
                 }],
                 output_bytes: 0,
             },
@@ -717,11 +728,13 @@ fn decode_input<T: DeserializeOwned>(
     request: &ModuleCallRequest,
     bytes: &[u8],
 ) -> Result<T, ModuleCallFailure> {
-    serde_cbor::from_slice(bytes).map_err(|err| failure(
-        request,
-        ModuleCallErrorCode::InvalidOutput,
-        format!("input CBOR decode failed: {err}"),
-    ))
+    serde_cbor::from_slice(bytes).map_err(|err| {
+        failure(
+            request,
+            ModuleCallErrorCode::InvalidOutput,
+            format!("input CBOR decode failed: {err}"),
+        )
+    })
 }
 
 fn finalize_output(

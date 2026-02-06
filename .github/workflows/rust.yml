@@ -31,6 +31,8 @@ jobs:
           libxinerama-dev \
           libasound2-dev \
           libudev-dev
+    - name: Format check
+      run: env -u RUSTC_WRAPPER cargo fmt --all -- --check
     - name: Build
       run: env -u RUSTC_WRAPPER cargo build --verbose
     - name: Run CI test suite

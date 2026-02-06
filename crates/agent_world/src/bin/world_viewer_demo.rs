@@ -46,7 +46,10 @@ fn main() {
             Some(scenario) => scenario,
             None => {
                 eprintln!("Unknown scenario: {name}");
-                eprintln!("Available scenarios: {}", WorldScenario::variants().join(", "));
+                eprintln!(
+                    "Available scenarios: {}",
+                    WorldScenario::variants().join(", ")
+                );
                 process::exit(1);
             }
         },
@@ -79,5 +82,8 @@ fn print_help() {
     println!("Options:");
     println!("  --out <dir>       Output directory (default: .data/world_viewer_data)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
-    println!("Available scenarios: {}", WorldScenario::variants().join(", "));
+    println!(
+        "Available scenarios: {}",
+        WorldScenario::variants().join(", ")
+    );
 }

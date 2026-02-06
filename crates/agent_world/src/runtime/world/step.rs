@@ -1,8 +1,8 @@
-use super::World;
 use super::super::{
     ActionEnvelope, CausedBy, ModuleSandbox, ModuleSubscriptionStage, RejectReason, RuleVerdict,
     WorldError, WorldEventBody,
 };
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -18,10 +18,7 @@ impl World {
         Ok(())
     }
 
-    pub fn step_with_modules(
-        &mut self,
-        sandbox: &mut dyn ModuleSandbox,
-    ) -> Result<(), WorldError> {
+    pub fn step_with_modules(&mut self, sandbox: &mut dyn ModuleSandbox) -> Result<(), WorldError> {
         self.state.time = self.state.time.saturating_add(1);
         while let Some(envelope) = self.pending_actions.pop_front() {
             let decision = self.evaluate_rule_decisions(&envelope, sandbox)?;

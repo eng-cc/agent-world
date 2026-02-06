@@ -1,12 +1,13 @@
-use super::WorldKernel;
-use super::types::WorldEvent;
 use super::super::types::{Action, ActionEnvelope, ActionId};
+use super::types::WorldEvent;
+use super::WorldKernel;
 
 impl WorldKernel {
     pub fn submit_action(&mut self, action: Action) -> ActionId {
         let id = self.next_action_id;
         self.next_action_id = self.next_action_id.saturating_add(1);
-        self.pending_actions.push_back(ActionEnvelope { id, action });
+        self.pending_actions
+            .push_back(ActionEnvelope { id, action });
         id
     }
 

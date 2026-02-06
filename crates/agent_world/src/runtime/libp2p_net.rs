@@ -160,7 +160,10 @@ impl Libp2pNetwork {
                     std::thread::sleep(std::time::Duration::from_millis(
                         republish_interval_ms as u64,
                     ));
-                    if republish_tx.unbounded_send(Command::RepublishProviders).is_err() {
+                    if republish_tx
+                        .unbounded_send(Command::RepublishProviders)
+                        .is_err()
+                    {
                         break;
                     }
                 });
@@ -474,8 +477,10 @@ impl DistributedNetwork for Libp2pNetwork {
             .map_err(|_| WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
             })?;
-        futures::executor::block_on(receiver).map_err(|_| WorldError::NetworkProtocolUnavailable {
-            protocol: "libp2p".to_string(),
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
         })?
     }
 
@@ -505,12 +510,17 @@ impl DistributedDht for Libp2pNetwork {
         let key = dht_provider_key(world_id, content_hash);
         let (sender, receiver) = oneshot::channel();
         self.command_tx
-            .unbounded_send(Command::PublishProvider { key, response: sender })
+            .unbounded_send(Command::PublishProvider {
+                key,
+                response: sender,
+            })
             .map_err(|_| WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
             })?;
-        futures::executor::block_on(receiver).map_err(|_| WorldError::NetworkProtocolUnavailable {
-            protocol: "libp2p".to_string(),
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
         })?
     }
 
@@ -522,20 +532,21 @@ impl DistributedDht for Libp2pNetwork {
         let key = dht_provider_key(world_id, content_hash);
         let (sender, receiver) = oneshot::channel();
         self.command_tx
-            .unbounded_send(Command::GetProviders { key, response: sender })
+            .unbounded_send(Command::GetProviders {
+                key,
+                response: sender,
+            })
             .map_err(|_| WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
             })?;
-        futures::executor::block_on(receiver).map_err(|_| WorldError::NetworkProtocolUnavailable {
-            protocol: "libp2p".to_string(),
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
         })?
     }
 
-    fn put_world_head(
-        &self,
-        world_id: &str,
-        head: &WorldHeadAnnounce,
-    ) -> Result<(), WorldError> {
+    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError> {
         let key = dht_world_head_key(world_id);
         let payload = to_canonical_cbor(head)?;
         let (sender, receiver) = oneshot::channel();
@@ -548,8 +559,10 @@ impl DistributedDht for Libp2pNetwork {
             .map_err(|_| WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
             })?;
-        futures::executor::block_on(receiver).map_err(|_| WorldError::NetworkProtocolUnavailable {
-            protocol: "libp2p".to_string(),
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
         })?
     }
 
@@ -557,12 +570,17 @@ impl DistributedDht for Libp2pNetwork {
         let key = dht_world_head_key(world_id);
         let (sender, receiver) = oneshot::channel();
         self.command_tx
-            .unbounded_send(Command::GetWorldHead { key, response: sender })
+            .unbounded_send(Command::GetWorldHead {
+                key,
+                response: sender,
+            })
             .map_err(|_| WorldError::NetworkProtocolUnavailable {
                 protocol: "libp2p".to_string(),
             })?;
-        futures::executor::block_on(receiver).map_err(|_| WorldError::NetworkProtocolUnavailable {
-            protocol: "libp2p".to_string(),
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
         })?
     }
 }
@@ -608,11 +626,12 @@ fn build_swarm(keypair: &Keypair) -> Swarm<Behaviour> {
     )
     .expect("gossipsub config");
 
-    let protocols = vec![(StreamProtocol::new(RR_PROTOCOL_PREFIX), ProtocolSupport::Full)];
-    let request_response = request_response::cbor::Behaviour::new(
-        protocols,
-        request_response::Config::default(),
-    );
+    let protocols = vec![(
+        StreamProtocol::new(RR_PROTOCOL_PREFIX),
+        ProtocolSupport::Full,
+    )];
+    let request_response =
+        request_response::cbor::Behaviour::new(protocols, request_response::Config::default());
 
     let store = MemoryStore::new(peer_id);
     let kademlia = kad::Behaviour::new(peer_id, store);
@@ -644,11 +663,11 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                     kad::QueryResult::StartProviding(Ok(_))
                     | kad::QueryResult::RepublishProvider(Ok(_)) => Ok(()),
                     kad::QueryResult::StartProviding(Err(err))
-                    | kad::QueryResult::RepublishProvider(Err(err)) => Err(
-                        WorldError::NetworkProtocolUnavailable {
+                    | kad::QueryResult::RepublishProvider(Err(err)) => {
+                        Err(WorldError::NetworkProtocolUnavailable {
                             protocol: format!("kad start_providing failed: {err}"),
-                        },
-                    ),
+                        })
+                    }
                     _ => Ok(()),
                 };
                 if let Some(response) = response.take() {
@@ -662,11 +681,11 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                     kad::QueryResult::PutRecord(Ok(_))
                     | kad::QueryResult::RepublishRecord(Ok(_)) => Ok(()),
                     kad::QueryResult::PutRecord(Err(err))
-                    | kad::QueryResult::RepublishRecord(Err(err)) => Err(
-                        WorldError::NetworkProtocolUnavailable {
+                    | kad::QueryResult::RepublishRecord(Err(err)) => {
+                        Err(WorldError::NetworkProtocolUnavailable {
                             protocol: format!("kad put_record failed: {err}"),
-                        },
-                    ),
+                        })
+                    }
                     _ => Ok(()),
                 };
                 if let Some(response) = response.take() {
@@ -732,7 +751,10 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                 kad::QueryResult::GetRecord(Err(kad::GetRecordError::NotFound { .. })) => {
                     *error = None;
                 }
-                kad::QueryResult::GetRecord(Err(kad::GetRecordError::QuorumFailed { records, .. })) => {
+                kad::QueryResult::GetRecord(Err(kad::GetRecordError::QuorumFailed {
+                    records,
+                    ..
+                })) => {
                     if let Some(record) = records.first() {
                         if let Ok(decoded) = decode_world_head(&record.record.value) {
                             *head = Some(decoded);
@@ -841,10 +863,7 @@ mod tests {
             publisher: None,
             expires: None,
         };
-        let peer_record = kad::PeerRecord {
-            peer: None,
-            record,
-        };
+        let peer_record = kad::PeerRecord { peer: None, record };
         let (sender, receiver) = oneshot::channel();
         let mut pending = PendingDhtQuery::GetWorldHead {
             response: Some(sender),

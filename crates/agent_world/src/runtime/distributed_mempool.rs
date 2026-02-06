@@ -79,10 +79,7 @@ impl ActionMempool {
 
         self.evict_if_needed();
 
-        let actor_actions = self
-            .per_actor
-            .entry(action.actor_id.clone())
-            .or_default();
+        let actor_actions = self.per_actor.entry(action.actor_id.clone()).or_default();
         actor_actions.push(action.action_id.clone());
         self.arrival.push_back(action.action_id.clone());
         self.actions.insert(action.action_id.clone(), action);
@@ -185,7 +182,10 @@ impl ActionMempool {
 }
 
 fn batch_id_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldError> {
-    let mut ids: Vec<String> = actions.iter().map(|action| action.action_id.clone()).collect();
+    let mut ids: Vec<String> = actions
+        .iter()
+        .map(|action| action.action_id.clone())
+        .collect();
     ids.sort();
     let bytes = to_canonical_cbor(&ids)?;
     Ok(blake3_hex(&bytes))

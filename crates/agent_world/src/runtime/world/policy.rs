@@ -1,5 +1,5 @@
-use super::World;
 use super::super::{CapabilityGrant, PolicySet, ReceiptSigner};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------

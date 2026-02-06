@@ -135,8 +135,7 @@ impl ProviderCache {
                 provider_id: self.provider_id.clone(),
                 last_seen_ms: now_ms,
             };
-            self.store
-                .put_provider(&world_id, &content_hash, record)?;
+            self.store.put_provider(&world_id, &content_hash, record)?;
             let mut local = self.local_content.lock().expect("lock local content");
             local.insert((world_id, content_hash), now_ms);
             republished = republished.saturating_add(1);
@@ -197,8 +196,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{InMemoryDht, InMemoryIndexStore};
+    use super::*;
 
     fn cache_with_config(config: ProviderCacheConfig) -> ProviderCache {
         ProviderCache::new(

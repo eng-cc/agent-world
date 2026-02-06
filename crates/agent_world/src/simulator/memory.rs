@@ -154,7 +154,9 @@ impl ShortTermMemory {
 
     /// Get entries with importance above a threshold.
     pub fn important(&self, threshold: f64) -> impl Iterator<Item = &MemoryEntry> {
-        self.entries.iter().filter(move |e| e.importance >= threshold)
+        self.entries
+            .iter()
+            .filter(move |e| e.importance >= threshold)
     }
 
     /// Get the number of entries in memory.

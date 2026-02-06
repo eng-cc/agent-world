@@ -33,7 +33,11 @@ impl Default for WorldState {
 }
 
 impl WorldState {
-    pub fn apply_domain_event(&mut self, event: &DomainEvent, now: WorldTime) -> Result<(), WorldError> {
+    pub fn apply_domain_event(
+        &mut self,
+        event: &DomainEvent,
+        now: WorldTime,
+    ) -> Result<(), WorldError> {
         match event {
             DomainEvent::AgentRegistered { agent_id, pos } => {
                 let state = AgentState::new(agent_id, *pos);
@@ -49,11 +53,12 @@ impl WorldState {
             DomainEvent::ActionRejected { .. } => {}
             DomainEvent::Observation { .. } => {}
             DomainEvent::BodyAttributesUpdated { agent_id, view, .. } => {
-                let cell = self.agents.get_mut(agent_id).ok_or_else(|| {
-                    WorldError::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    }
-                })?;
+                let cell =
+                    self.agents
+                        .get_mut(agent_id)
+                        .ok_or_else(|| WorldError::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
                 cell.state.body_view = view.clone();
                 cell.last_active = now;
             }
@@ -91,18 +96,16 @@ impl WorldState {
                         }
                     })?;
 
-                    from.state
-                        .resources
-                        .remove(*kind, *amount)
-                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                    from.state.resources.remove(*kind, *amount).map_err(|err| {
+                        WorldError::ResourceBalanceInvalid {
                             reason: format!("transfer remove failed: {err:?}"),
-                        })?;
-                    to.state
-                        .resources
-                        .add(*kind, *amount)
-                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        }
+                    })?;
+                    to.state.resources.add(*kind, *amount).map_err(|err| {
+                        WorldError::ResourceBalanceInvalid {
                             reason: format!("transfer add failed: {err:?}"),
-                        })?;
+                        }
+                    })?;
                     from.last_active = now;
                     to.last_active = now;
 

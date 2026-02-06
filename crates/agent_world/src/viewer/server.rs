@@ -214,9 +214,12 @@ impl<'a> ViewerSession<'a> {
             }
             ViewerRequest::RequestSnapshot => {
                 if self.subscribed.is_empty() || self.subscribed.contains(&ViewerStream::Snapshot) {
-                    send_response(writer, &ViewerResponse::Snapshot {
-                        snapshot: snapshot.clone(),
-                    })?;
+                    send_response(
+                        writer,
+                        &ViewerResponse::Snapshot {
+                            snapshot: snapshot.clone(),
+                        },
+                    )?;
                 }
                 if self.subscribed.contains(&ViewerStream::Metrics) {
                     self.metrics = metrics_from_snapshot(snapshot);

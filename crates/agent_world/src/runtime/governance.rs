@@ -22,10 +22,19 @@ pub struct Proposal {
 #[serde(tag = "status", content = "data")]
 pub enum ProposalStatus {
     Proposed,
-    Shadowed { manifest_hash: String },
-    Approved { manifest_hash: String, approver: String },
-    Rejected { reason: String },
-    Applied { manifest_hash: String },
+    Shadowed {
+        manifest_hash: String,
+    },
+    Approved {
+        manifest_hash: String,
+        approver: String,
+    },
+    Rejected {
+        reason: String,
+    },
+    Applied {
+        manifest_hash: String,
+    },
 }
 
 impl ProposalStatus {

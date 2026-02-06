@@ -3,15 +3,15 @@ use std::collections::BTreeSet;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
-use super::World;
-use super::super::{
-    Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleCallErrorCode,
-    ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext,
-    ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleSubscription, ModuleSubscriptionStage, WorldError, WorldEvent,
-    WorldEventBody, DistributedClient, DistributedDht,
-};
 use super::super::util::to_canonical_cbor;
+use super::super::{
+    Action, ActionEnvelope, DistributedClient, DistributedDht, DomainEvent, EffectOrigin,
+    ModuleArtifact, ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin,
+    ModuleCallRequest, ModuleContext, ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleSubscription, ModuleSubscriptionStage,
+    WorldError, WorldEvent, WorldEventBody,
+};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -31,8 +31,7 @@ impl World {
             });
         }
         self.module_artifacts.insert(wasm_hash);
-        self.module_artifact_bytes
-            .insert(computed, bytes.to_vec());
+        self.module_artifact_bytes.insert(computed, bytes.to_vec());
         Ok(())
     }
 
@@ -75,8 +74,7 @@ impl World {
         }
 
         if !self.module_artifact_bytes.contains_key(wasm_hash) {
-            let artifact =
-                client.fetch_module_artifact_from_dht(world_id, wasm_hash, dht)?;
+            let artifact = client.fetch_module_artifact_from_dht(world_id, wasm_hash, dht)?;
             self.register_module_artifact(artifact.wasm_hash.clone(), &artifact.bytes)?;
         }
 
@@ -166,10 +164,7 @@ impl World {
         let output = match sandbox.call(&request) {
             Ok(output) => output,
             Err(failure) => {
-                self.append_event(
-                    WorldEventBody::ModuleCallFailed(failure.clone()),
-                    None,
-                )?;
+                self.append_event(WorldEventBody::ModuleCallFailed(failure.clone()), None)?;
                 return Err(WorldError::ModuleCallFailed {
                     module_id: failure.module_id,
                     trace_id: failure.trace_id,
@@ -190,35 +185,27 @@ impl World {
     ) -> Result<usize, WorldError> {
         let event_kind = event_kind_label(&event.body);
         let event_value = serde_json::to_value(event)?;
-        let mut module_ids: Vec<String> =
-            self.module_registry.active.keys().cloned().collect();
+        let mut module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
         let event_bytes = to_canonical_cbor(event)?;
         let world_config_hash = self.current_manifest_hash()?;
         let mut invoked = 0;
         for module_id in module_ids {
             let (subscribed, manifest) = {
-                let version = self
-                    .module_registry
-                    .active
-                    .get(&module_id)
-                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                let version = self.module_registry.active.get(&module_id).ok_or_else(|| {
+                    WorldError::ModuleChangeInvalid {
                         reason: format!("module not active {module_id}"),
-                    })?;
+                    }
+                })?;
                 let key = ModuleRegistry::record_key(&module_id, version);
-                let record = self
-                    .module_registry
-                    .records
-                    .get(&key)
-                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                let record = self.module_registry.records.get(&key).ok_or_else(|| {
+                    WorldError::ModuleChangeInvalid {
                         reason: format!("module record missing {key}"),
-                    })?;
+                    }
+                })?;
                 let manifest = record.manifest.clone();
-                let subscribed = module_subscribes_to_event(
-                    &manifest.subscriptions,
-                    event_kind,
-                    &event_value,
-                );
+                let subscribed =
+                    module_subscribes_to_event(&manifest.subscriptions, event_kind, &event_value);
                 (subscribed, manifest)
             };
             if !subscribed {
@@ -281,8 +268,7 @@ impl World {
     ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
         let action_value = serde_json::to_value(envelope)?;
-        let mut module_ids: Vec<String> =
-            self.module_registry.active.keys().cloned().collect();
+        let mut module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
         module_ids.sort();
         let action_bytes = to_canonical_cbor(envelope)?;
         let world_config_hash = self.current_manifest_hash()?;
@@ -290,21 +276,17 @@ impl World {
 
         for module_id in module_ids {
             let (subscribed, manifest) = {
-                let version = self
-                    .module_registry
-                    .active
-                    .get(&module_id)
-                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                let version = self.module_registry.active.get(&module_id).ok_or_else(|| {
+                    WorldError::ModuleChangeInvalid {
                         reason: format!("module not active {module_id}"),
-                    })?;
+                    }
+                })?;
                 let key = ModuleRegistry::record_key(&module_id, version);
-                let record = self
-                    .module_registry
-                    .records
-                    .get(&key)
-                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                let record = self.module_registry.records.get(&key).ok_or_else(|| {
+                    WorldError::ModuleChangeInvalid {
                         reason: format!("module record missing {key}"),
-                    })?;
+                    }
+                })?;
                 let manifest = record.manifest.clone();
                 let subscribed = module_subscribes_to_action(
                     &manifest.subscriptions,
@@ -396,10 +378,7 @@ impl World {
             }
             if upgrade.manifest.module_id != upgrade.module_id {
                 return Err(WorldError::ModuleChangeInvalid {
-                    reason: format!(
-                        "upgrade manifest module_id mismatch {}",
-                        upgrade.module_id
-                    ),
+                    reason: format!("upgrade manifest module_id mismatch {}", upgrade.module_id),
                 });
             }
         }
@@ -407,7 +386,9 @@ impl World {
         let mut planned_records = BTreeSet::new();
         for module in &changes.register {
             let key = ModuleRegistry::record_key(&module.module_id, &module.version);
-            if self.module_registry.records.contains_key(&key) || !planned_records.insert(key.clone()) {
+            if self.module_registry.records.contains_key(&key)
+                || !planned_records.insert(key.clone())
+            {
                 return Err(WorldError::ModuleChangeInvalid {
                     reason: format!("module version already registered {key}"),
                 });
@@ -443,8 +424,8 @@ impl World {
 
         for activation in &changes.activate {
             let key = ModuleRegistry::record_key(&activation.module_id, &activation.version);
-            let exists = self.module_registry.records.contains_key(&key)
-                || planned_records.contains(&key);
+            let exists =
+                self.module_registry.records.contains_key(&key) || planned_records.contains(&key);
             if !exists {
                 return Err(WorldError::ModuleChangeInvalid {
                     reason: format!("activate target missing {key}"),
@@ -463,10 +444,7 @@ impl World {
                 .contains_key(&deactivation.module_id);
             if !has_active && !will_activate.contains(&deactivation.module_id) {
                 return Err(WorldError::ModuleChangeInvalid {
-                    reason: format!(
-                        "deactivate target not active {}",
-                        deactivation.module_id
-                    ),
+                    reason: format!("deactivate target not active {}", deactivation.module_id),
                 });
             }
         }
@@ -541,11 +519,12 @@ impl World {
         self.validate_module_limits(&module.module_id, &module.limits)?;
 
         for cap in &module.required_caps {
-            let grant = self.capabilities.get(cap).ok_or_else(|| {
-                WorldError::ModuleChangeInvalid {
-                    reason: format!("module cap missing {cap}"),
-                }
-            })?;
+            let grant =
+                self.capabilities
+                    .get(cap)
+                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                        reason: format!("module cap missing {cap}"),
+                    })?;
             if grant.is_expired(self.state.time) {
                 return Err(WorldError::ModuleChangeInvalid {
                     reason: format!("module cap expired {cap}"),
@@ -596,21 +575,17 @@ impl World {
     }
 
     fn active_module_manifest(&self, module_id: &str) -> Result<&ModuleManifest, WorldError> {
-        let version = self
-            .module_registry
-            .active
-            .get(module_id)
-            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+        let version = self.module_registry.active.get(module_id).ok_or_else(|| {
+            WorldError::ModuleChangeInvalid {
                 reason: format!("module not active {module_id}"),
-            })?;
+            }
+        })?;
         let key = ModuleRegistry::record_key(module_id, version);
-        let record = self
-            .module_registry
-            .records
-            .get(&key)
-            .ok_or_else(|| WorldError::ModuleChangeInvalid {
+        let record = self.module_registry.records.get(&key).ok_or_else(|| {
+            WorldError::ModuleChangeInvalid {
                 reason: format!("module record missing {key}"),
-            })?;
+            }
+        })?;
         Ok(&record.manifest)
     }
 
@@ -697,7 +672,10 @@ impl World {
         time: super::super::WorldTime,
     ) -> Result<(), WorldError> {
         match &event.kind {
-            ModuleEventKind::RegisterModule { module, registered_by } => {
+            ModuleEventKind::RegisterModule {
+                module,
+                registered_by,
+            } => {
                 let key = ModuleRegistry::record_key(&module.module_id, &module.version);
                 self.module_registry.records.insert(
                     key,
@@ -729,7 +707,9 @@ impl World {
                 );
                 self.module_artifacts.insert(manifest.wasm_hash.clone());
             }
-            ModuleEventKind::ActivateModule { module_id, version, .. } => {
+            ModuleEventKind::ActivateModule {
+                module_id, version, ..
+            } => {
                 self.module_registry
                     .active
                     .insert(module_id.clone(), version.clone());
@@ -782,7 +762,11 @@ impl World {
         }
 
         for effect in &output.effects {
-            if !manifest.required_caps.iter().any(|cap| cap == &effect.cap_ref) {
+            if !manifest
+                .required_caps
+                .iter()
+                .any(|cap| cap == &effect.cap_ref)
+            {
                 return self.module_call_failed(ModuleCallFailure {
                     module_id: module_id.to_string(),
                     trace_id: trace_id.to_string(),
@@ -805,9 +789,10 @@ impl World {
                 Ok(intent) => intent,
                 Err(err) => {
                     let (code, detail) = match err {
-                        WorldError::CapabilityMissing { cap_ref } => {
-                            (ModuleCallErrorCode::CapsDenied, format!("cap missing {cap_ref}"))
-                        }
+                        WorldError::CapabilityMissing { cap_ref } => (
+                            ModuleCallErrorCode::CapsDenied,
+                            format!("cap missing {cap_ref}"),
+                        ),
                         WorldError::CapabilityExpired { cap_ref } => (
                             ModuleCallErrorCode::CapsDenied,
                             format!("cap expired {cap_ref}"),
@@ -1089,9 +1074,7 @@ fn validate_subscription_filters(
     let parsed: SubscriptionFilters =
         serde_json::from_value(filters_value.clone()).map_err(|err| {
             WorldError::ModuleChangeInvalid {
-                reason: format!(
-                    "module {module_id} subscription filters invalid: {err}"
-                ),
+                reason: format!("module {module_id} subscription filters invalid: {err}"),
             }
         })?;
     for ruleset in parsed.event.iter().chain(parsed.action.iter()) {
@@ -1198,15 +1181,7 @@ fn validate_rule(rule: &MatchRule, module_id: &str) -> Result<(), WorldError> {
         });
     }
 
-    for number in [
-        rule.gt,
-        rule.gte,
-        rule.lt,
-        rule.lte,
-    ]
-    .into_iter()
-    .flatten()
-    {
+    for number in [rule.gt, rule.gte, rule.lt, rule.lte].into_iter().flatten() {
         if !number.is_finite() {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!(
@@ -1219,9 +1194,7 @@ fn validate_rule(rule: &MatchRule, module_id: &str) -> Result<(), WorldError> {
     if let Some(pattern) = &rule.re {
         if regex::Regex::new(pattern).is_err() {
             return Err(WorldError::ModuleChangeInvalid {
-                reason: format!(
-                    "module {module_id} subscription filter regex invalid"
-                ),
+                reason: format!("module {module_id} subscription filter regex invalid"),
             });
         }
     }

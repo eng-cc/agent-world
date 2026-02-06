@@ -206,10 +206,7 @@ fn action_result_helpers() {
 fn agent_runner_register_and_tick() {
     let mut kernel = setup_kernel_with_patrol_agent("patrol-1");
     let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
-    let patrol_agent = PatrolAgent::new(
-        "patrol-1",
-        vec!["loc-1".to_string(), "loc-2".to_string()],
-    );
+    let patrol_agent = PatrolAgent::new("patrol-1", vec!["loc-1".to_string(), "loc-2".to_string()]);
     runner.register(patrol_agent);
 
     assert_eq!(runner.agent_count(), 1);
@@ -256,10 +253,7 @@ fn agent_runner_round_robin() {
 
     let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
     for idx in 0..3 {
-        let agent = PatrolAgent::new(
-            format!("agent-{idx}"),
-            vec![format!("loc-{idx}")],
-        );
+        let agent = PatrolAgent::new(format!("agent-{idx}"), vec![format!("loc-{idx}")]);
         runner.register(agent);
     }
 
@@ -291,10 +285,7 @@ fn agent_runner_wait_ticks_sets_wait_until() {
 fn agent_runner_run_multiple_ticks() {
     let mut kernel = setup_kernel_with_patrol_agent("patrol-1");
     let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
-    let patrol_agent = PatrolAgent::new(
-        "patrol-1",
-        vec!["loc-1".to_string(), "loc-2".to_string()],
-    );
+    let patrol_agent = PatrolAgent::new("patrol-1", vec!["loc-1".to_string(), "loc-2".to_string()]);
     runner.register(patrol_agent);
 
     for _ in 0..3 {
@@ -412,7 +403,10 @@ fn rate_limit_state_reset() {
 fn agent_runner_per_agent_quota() {
     let mut kernel = setup_kernel_with_wait_agent("agent-1");
     let mut runner: AgentRunner<WaitingAgent> = AgentRunner::new();
-    runner.register_with_quota(WaitingAgent::new("agent-1", 0), AgentQuota::max_decisions(1));
+    runner.register_with_quota(
+        WaitingAgent::new("agent-1", 0),
+        AgentQuota::max_decisions(1),
+    );
 
     let tick1 = runner.tick(&mut kernel).unwrap();
     assert!(matches!(tick1.decision, AgentDecision::Wait));

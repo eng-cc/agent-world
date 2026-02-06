@@ -12,11 +12,11 @@ use agent_world::simulator::{
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
-use bevy::prelude::*;
 use bevy::camera::Viewport;
-use bevy::ecs::message::MessageReader;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
+use bevy::ecs::message::MessageReader;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
+use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
@@ -57,16 +57,14 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
-        .add_plugins(
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Agent World Viewer".to_string(),
-                    resolution: (1200, 800).into(),
-                    ..default()
-                }),
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Agent World Viewer".to_string(),
+                resolution: (1200, 800).into(),
                 ..default()
             }),
-        )
+            ..default()
+        }))
         .insert_resource(OfflineConfig { offline })
         .add_systems(Startup, (setup_startup_state, setup_3d_scene, setup_ui))
         .add_systems(
@@ -229,7 +227,9 @@ impl OrbitCamera {
         let offset = transform.translation - focus;
         let radius = offset.length().max(0.1);
         let yaw = offset.x.atan2(offset.z);
-        let pitch = offset.y.atan2((offset.x * offset.x + offset.z * offset.z).sqrt());
+        let pitch = offset
+            .y
+            .atan2((offset.x * offset.x + offset.z * offset.z).sqrt());
         Self {
             focus,
             radius,
@@ -239,8 +239,8 @@ impl OrbitCamera {
     }
 
     fn apply_to_transform(&self, transform: &mut Transform) {
-        let rotation = Quat::from_axis_angle(Vec3::Y, self.yaw)
-            * Quat::from_axis_angle(Vec3::X, self.pitch);
+        let rotation =
+            Quat::from_axis_angle(Vec3::Y, self.yaw) * Quat::from_axis_angle(Vec3::X, self.pitch);
         let offset = rotation * Vec3::new(0.0, 0.0, self.radius);
         transform.translation = self.focus + offset;
         transform.look_at(self.focus, Vec3::Y);
@@ -342,18 +342,16 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
     let (tx_out, rx_out) = mpsc::channel::<ViewerRequest>();
     let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
 
-    thread::spawn(move || {
-        match TcpStream::connect(&addr) {
-            Ok(stream) => {
-                if let Err(err) = run_connection(stream, rx_out, tx_in.clone()) {
-                    let _ = tx_in.send(ViewerResponse::Error { message: err });
-                }
+    thread::spawn(move || match TcpStream::connect(&addr) {
+        Ok(stream) => {
+            if let Err(err) = run_connection(stream, rx_out, tx_in.clone()) {
+                let _ = tx_in.send(ViewerResponse::Error { message: err });
             }
-            Err(err) => {
-                let _ = tx_in.send(ViewerResponse::Error {
-                    message: err.to_string(),
-                });
-            }
+        }
+        Err(err) => {
+            let _ = tx_in.send(ViewerResponse::Error {
+                message: err.to_string(),
+            });
         }
     });
 
@@ -365,12 +363,8 @@ fn run_connection(
     rx_out: Receiver<ViewerRequest>,
     tx_in: Sender<ViewerResponse>,
 ) -> Result<(), String> {
-    stream
-        .set_nodelay(true)
-        .map_err(|err| err.to_string())?;
-    let reader_stream = stream
-        .try_clone()
-        .map_err(|err| err.to_string())?;
+    stream.set_nodelay(true).map_err(|err| err.to_string())?;
+    let reader_stream = stream.try_clone().map_err(|err| err.to_string())?;
     let mut writer = std::io::BufWriter::new(stream);
 
     send_request(
@@ -441,9 +435,7 @@ fn send_request(
     request: &ViewerRequest,
 ) -> Result<(), String> {
     serde_json::to_writer(&mut *writer, request).map_err(|err| err.to_string())?;
-    writer
-        .write_all(b"\n")
-        .map_err(|err| err.to_string())?;
+    writer.write_all(b"\n").map_err(|err| err.to_string())?;
     writer.flush().map_err(|err| err.to_string())?;
     Ok(())
 }
@@ -541,29 +533,30 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ("Step", ViewerControl::Step { count: 1 }),
                         ("Seek 0", ViewerControl::Seek { tick: 0 }),
                     ] {
-                        controls.spawn((
-                            Button,
-                            Node {
-                                padding: UiRect::horizontal(Val::Px(10.0)),
-                                height: Val::Px(28.0),
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::Center,
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
-                            ControlButton { control },
-                        ))
-                        .with_children(|button| {
-                            button.spawn((
-                                Text::new(label),
-                                TextFont {
-                                    font: font.clone(),
-                                    font_size: 14.0,
+                        controls
+                            .spawn((
+                                Button,
+                                Node {
+                                    padding: UiRect::horizontal(Val::Px(10.0)),
+                                    height: Val::Px(28.0),
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
                                     ..default()
                                 },
-                                TextColor(Color::WHITE),
-                            ));
-                        });
+                                BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
+                                ControlButton { control },
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new(label),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 14.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
                     }
                 });
 
@@ -664,29 +657,27 @@ fn poll_viewer_messages(
 
     loop {
         match receiver.try_recv() {
-            Ok(message) => {
-                match message {
-                    ViewerResponse::HelloAck { .. } => {
-                        state.status = ConnectionStatus::Connected;
-                    }
-                    ViewerResponse::Snapshot { snapshot } => {
-                        state.snapshot = Some(snapshot);
-                    }
-                    ViewerResponse::Event { event } => {
-                        state.events.push(event);
-                        if state.events.len() > config.max_events {
-                            let overflow = state.events.len() - config.max_events;
-                            state.events.drain(0..overflow);
-                        }
-                    }
-                    ViewerResponse::Metrics { metrics, .. } => {
-                        state.metrics = Some(metrics);
-                    }
-                    ViewerResponse::Error { message } => {
-                        state.status = ConnectionStatus::Error(message);
+            Ok(message) => match message {
+                ViewerResponse::HelloAck { .. } => {
+                    state.status = ConnectionStatus::Connected;
+                }
+                ViewerResponse::Snapshot { snapshot } => {
+                    state.snapshot = Some(snapshot);
+                }
+                ViewerResponse::Event { event } => {
+                    state.events.push(event);
+                    if state.events.len() > config.max_events {
+                        let overflow = state.events.len() - config.max_events;
+                        state.events.drain(0..overflow);
                     }
                 }
-            }
+                ViewerResponse::Metrics { metrics, .. } => {
+                    state.metrics = Some(metrics);
+                }
+                ViewerResponse::Error { message } => {
+                    state.status = ConnectionStatus::Error(message);
+                }
+            },
             Err(mpsc::TryRecvError::Empty) => break,
             Err(mpsc::TryRecvError::Disconnected) => {
                 if !matches!(state.status, ConnectionStatus::Error(_)) {
@@ -833,11 +824,8 @@ fn orbit_camera_controls(
     }
 
     if scroll != 0.0 {
-        orbit.radius =
-            (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY)).clamp(
-                ORBIT_MIN_RADIUS,
-                ORBIT_MAX_RADIUS,
-            );
+        orbit.radius = (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY))
+            .clamp(ORBIT_MIN_RADIUS, ORBIT_MAX_RADIUS);
         changed = true;
     }
 
@@ -1007,10 +995,7 @@ fn events_summary(events: &[WorldEvent]) -> String {
     let mut lines = Vec::new();
     lines.push("Events:".to_string());
     for event in events.iter().rev().take(20).rev() {
-        lines.push(format!(
-            "#{} t{} {:?}",
-            event.id, event.time, event.kind
-        ));
+        lines.push(format!("#{} t{} {:?}", event.id, event.time, event.kind));
     }
     lines.join("\n")
 }
@@ -1170,7 +1155,9 @@ fn spawn_location_entity(
             format!("label:location:{location_id}"),
         );
     });
-    scene.location_entities.insert(location_id.to_string(), entity);
+    scene
+        .location_entities
+        .insert(location_id.to_string(), entity);
 }
 
 fn spawn_agent_entity(
@@ -1376,17 +1363,18 @@ mod tests {
             agent_world::simulator::Agent::new(
                 "agent-1",
                 "loc-1",
-            agent_world::geometry::GeoPos {
-                x_cm: 0.0,
-                y_cm: 0.0,
-                z_cm: 0.0,
-            },
+                agent_world::geometry::GeoPos {
+                    x_cm: 0.0,
+                    y_cm: 0.0,
+                    z_cm: 0.0,
+                },
             ),
         );
 
         let snapshot = agent_world::simulator::WorldSnapshot {
             version: agent_world::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+            chunk_generation_schema_version:
+                agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 42,
             config: agent_world::simulator::WorldConfig::default(),
             model,
@@ -1520,7 +1508,9 @@ mod tests {
             app.world_mut().spawn((
                 Button,
                 Interaction::Pressed,
-                ControlButton { control: control.clone() },
+                ControlButton {
+                    control: control.clone(),
+                },
             ));
         }
 
@@ -1531,10 +1521,18 @@ mod tests {
             seen.push(request);
         }
 
-        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Play }));
-        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Pause }));
-        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Step { count: 1 } }));
-        assert!(seen.contains(&ViewerRequest::Control { mode: ViewerControl::Seek { tick: 0 } }));
+        assert!(seen.contains(&ViewerRequest::Control {
+            mode: ViewerControl::Play
+        }));
+        assert!(seen.contains(&ViewerRequest::Control {
+            mode: ViewerControl::Pause
+        }));
+        assert!(seen.contains(&ViewerRequest::Control {
+            mode: ViewerControl::Step { count: 1 }
+        }));
+        assert!(seen.contains(&ViewerRequest::Control {
+            mode: ViewerControl::Seek { tick: 0 }
+        }));
     }
 
     #[test]

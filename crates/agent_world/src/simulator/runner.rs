@@ -67,7 +67,8 @@ impl AgentQuota {
 
     /// Returns remaining decisions, or None if unlimited.
     pub fn remaining_decisions(&self, decision_count: u64) -> Option<u64> {
-        self.max_decisions.map(|max| max.saturating_sub(decision_count))
+        self.max_decisions
+            .map(|max| max.saturating_sub(decision_count))
     }
 }
 
@@ -316,7 +317,8 @@ impl<B: AgentBehavior> AgentRunner<B> {
     /// Register an agent with a specific quota.
     pub fn register_with_quota(&mut self, behavior: B, quota: AgentQuota) {
         let agent_id = behavior.agent_id().to_string();
-        self.agents.insert(agent_id, RegisteredAgent::with_quota(behavior, quota));
+        self.agents
+            .insert(agent_id, RegisteredAgent::with_quota(behavior, quota));
     }
 
     /// Unregister an agent from the runner.
@@ -426,14 +428,12 @@ impl<B: AgentBehavior> AgentRunner<B> {
         let decision = agent.behavior.decide(&observation);
 
         match decision {
-            AgentDecision::Wait => {
-                Some(AgentTickResult {
-                    agent_id,
-                    decision: AgentDecision::Wait,
-                    action_result: None,
-                    skipped_reason: None,
-                })
-            }
+            AgentDecision::Wait => Some(AgentTickResult {
+                agent_id,
+                decision: AgentDecision::Wait,
+                action_result: None,
+                skipped_reason: None,
+            }),
             AgentDecision::WaitTicks(ticks) => {
                 agent.wait_until = Some(now.saturating_add(ticks));
                 Some(AgentTickResult {
@@ -526,7 +526,11 @@ impl<B: AgentBehavior> AgentRunner<B> {
     }
 
     /// Run the agent loop until all pending actions are processed.
-    pub fn run_until_idle(&mut self, kernel: &mut WorldKernel, max_ticks: u64) -> Vec<AgentTickResult> {
+    pub fn run_until_idle(
+        &mut self,
+        kernel: &mut WorldKernel,
+        max_ticks: u64,
+    ) -> Vec<AgentTickResult> {
         let mut results = Vec::new();
         let mut consecutive_waits = 0;
         let max_consecutive_waits = self.agents.len().max(1);
@@ -769,7 +773,10 @@ impl AgentTickResult {
 
     /// Returns true if the action succeeded (or no action was taken).
     pub fn is_success(&self) -> bool {
-        self.action_result.as_ref().map(|r| r.success).unwrap_or(true)
+        self.action_result
+            .as_ref()
+            .map(|r| r.success)
+            .unwrap_or(true)
     }
 
     /// Returns true if the agent was skipped.

@@ -1,8 +1,8 @@
 use agent_world::{
-    Action, GeoPos, Manifest, ModuleActivation, ModuleCallErrorCode, ModuleCallFailure,
-    ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
-    ProposalDecision, World, WorldError, WorldEventBody, FixedSandbox,
+    Action, FixedSandbox, GeoPos, Manifest, ModuleActivation, ModuleCallErrorCode,
+    ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription,
+    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError, WorldEventBody,
 };
 use sha2::{Digest, Sha256};
 
@@ -67,9 +67,7 @@ fn apply_module_manifest(world: &mut World, module_manifest: ModuleManifest) {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)

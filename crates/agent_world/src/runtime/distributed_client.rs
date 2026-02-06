@@ -6,20 +6,19 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use super::distributed::{
-    BlobRef, ErrorResponse, FetchBlobRequest, FetchBlobResponse,
-    GetBlockRequest, GetBlockResponse, GetJournalSegmentRequest, GetJournalSegmentResponse,
-    GetModuleArtifactRequest, GetModuleArtifactResponse, GetModuleManifestRequest,
-    GetModuleManifestResponse, GetReceiptSegmentRequest, GetReceiptSegmentResponse,
-    GetSnapshotRequest, GetSnapshotResponse, GetWorldHeadRequest, GetWorldHeadResponse,
-    SnapshotManifest, WorldBlock, WorldHeadAnnounce, RR_FETCH_BLOB, RR_GET_BLOCK,
-    RR_GET_JOURNAL_SEGMENT, RR_GET_MODULE_ARTIFACT, RR_GET_MODULE_MANIFEST, RR_GET_RECEIPT_SEGMENT,
-    RR_GET_SNAPSHOT, RR_GET_WORLD_HEAD,
+    BlobRef, ErrorResponse, FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse,
+    GetJournalSegmentRequest, GetJournalSegmentResponse, GetModuleArtifactRequest,
+    GetModuleArtifactResponse, GetModuleManifestRequest, GetModuleManifestResponse,
+    GetReceiptSegmentRequest, GetReceiptSegmentResponse, GetSnapshotRequest, GetSnapshotResponse,
+    GetWorldHeadRequest, GetWorldHeadResponse, SnapshotManifest, WorldBlock, WorldHeadAnnounce,
+    RR_FETCH_BLOB, RR_GET_BLOCK, RR_GET_JOURNAL_SEGMENT, RR_GET_MODULE_ARTIFACT,
+    RR_GET_MODULE_MANIFEST, RR_GET_RECEIPT_SEGMENT, RR_GET_SNAPSHOT, RR_GET_WORLD_HEAD,
 };
 use super::distributed_dht::DistributedDht;
 use super::distributed_net::DistributedNetwork;
 use super::error::WorldError;
-use super::modules::ModuleManifest;
 use super::modules::ModuleArtifact;
+use super::modules::ModuleManifest;
 use super::util::to_canonical_cbor;
 
 #[derive(Clone)]
@@ -110,13 +109,16 @@ impl DistributedClient {
         }
     }
 
-    pub fn get_journal_segment(&self, world_id: &str, from_event_id: u64) -> Result<BlobRef, WorldError> {
+    pub fn get_journal_segment(
+        &self,
+        world_id: &str,
+        from_event_id: u64,
+    ) -> Result<BlobRef, WorldError> {
         let request = GetJournalSegmentRequest {
             world_id: world_id.to_string(),
             from_event_id,
         };
-        let response: GetJournalSegmentResponse =
-            self.request(RR_GET_JOURNAL_SEGMENT, &request)?;
+        let response: GetJournalSegmentResponse = self.request(RR_GET_JOURNAL_SEGMENT, &request)?;
         Ok(response.segment)
     }
 
@@ -129,8 +131,7 @@ impl DistributedClient {
             world_id: world_id.to_string(),
             from_event_id,
         };
-        let response: GetReceiptSegmentResponse =
-            self.request(RR_GET_RECEIPT_SEGMENT, &request)?;
+        let response: GetReceiptSegmentResponse = self.request(RR_GET_RECEIPT_SEGMENT, &request)?;
         Ok(response.segment)
     }
 
@@ -143,8 +144,7 @@ impl DistributedClient {
             module_id: module_id.to_string(),
             manifest_hash: manifest_hash.to_string(),
         };
-        let response: GetModuleManifestResponse =
-            self.request(RR_GET_MODULE_MANIFEST, &request)?;
+        let response: GetModuleManifestResponse = self.request(RR_GET_MODULE_MANIFEST, &request)?;
         Ok(response.manifest_ref)
     }
 
@@ -152,8 +152,7 @@ impl DistributedClient {
         let request = GetModuleArtifactRequest {
             wasm_hash: wasm_hash.to_string(),
         };
-        let response: GetModuleArtifactResponse =
-            self.request(RR_GET_MODULE_ARTIFACT, &request)?;
+        let response: GetModuleArtifactResponse = self.request(RR_GET_MODULE_ARTIFACT, &request)?;
         Ok(response.artifact_ref)
     }
 
@@ -220,8 +219,8 @@ fn decode_response<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, WorldError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::distributed_net::{InMemoryNetwork, NetworkSubscription};
+    use super::*;
     use crate::runtime::distributed::DistributedErrorCode;
     use crate::runtime::InMemoryDht;
     use std::collections::HashMap;
@@ -327,21 +326,24 @@ mod tests {
     fn client_get_world_head_round_trip() {
         let network = InMemoryNetwork::new();
         network
-            .register_handler(RR_GET_WORLD_HEAD, Box::new(|payload| {
-                let request: GetWorldHeadRequest = serde_cbor::from_slice(payload).unwrap();
-                assert_eq!(request.world_id, "w1");
-                let response = GetWorldHeadResponse {
-                    head: WorldHeadAnnounce {
-                        world_id: "w1".to_string(),
-                        height: 7,
-                        block_hash: "b1".to_string(),
-                        state_root: "s1".to_string(),
-                        timestamp_ms: 123,
-                        signature: "sig".to_string(),
-                    },
-                };
-                Ok(to_canonical_cbor(&response).unwrap())
-            }))
+            .register_handler(
+                RR_GET_WORLD_HEAD,
+                Box::new(|payload| {
+                    let request: GetWorldHeadRequest = serde_cbor::from_slice(payload).unwrap();
+                    assert_eq!(request.world_id, "w1");
+                    let response = GetWorldHeadResponse {
+                        head: WorldHeadAnnounce {
+                            world_id: "w1".to_string(),
+                            height: 7,
+                            block_hash: "b1".to_string(),
+                            state_root: "s1".to_string(),
+                            timestamp_ms: 123,
+                            signature: "sig".to_string(),
+                        },
+                    };
+                    Ok(to_canonical_cbor(&response).unwrap())
+                }),
+            )
             .expect("register handler");
 
         let client = DistributedClient::new(Arc::new(network));
@@ -353,14 +355,17 @@ mod tests {
     fn client_maps_error_response() {
         let network = InMemoryNetwork::new();
         network
-            .register_handler(RR_FETCH_BLOB, Box::new(|_payload| {
-                let response = ErrorResponse {
-                    code: DistributedErrorCode::ErrNotFound,
-                    message: "missing".to_string(),
-                    retryable: false,
-                };
-                Ok(to_canonical_cbor(&response).unwrap())
-            }))
+            .register_handler(
+                RR_FETCH_BLOB,
+                Box::new(|_payload| {
+                    let response = ErrorResponse {
+                        code: DistributedErrorCode::ErrNotFound,
+                        message: "missing".to_string(),
+                        retryable: false,
+                    };
+                    Ok(to_canonical_cbor(&response).unwrap())
+                }),
+            )
             .expect("register handler");
 
         let client = DistributedClient::new(Arc::new(network));

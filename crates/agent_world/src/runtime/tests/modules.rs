@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 use serde_json::json;
 
 #[test]
@@ -56,9 +56,7 @@ fn apply_module_changes_registers_and_activates() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -135,9 +133,7 @@ fn shadow_rejects_missing_module_artifact() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
@@ -150,8 +146,12 @@ fn module_cache_loads_and_evicts() {
     let hash_a = util::sha256_hex(wasm_a);
     let hash_b = util::sha256_hex(wasm_b);
 
-    world.register_module_artifact(hash_a.clone(), wasm_a).unwrap();
-    world.register_module_artifact(hash_b.clone(), wasm_b).unwrap();
+    world
+        .register_module_artifact(hash_a.clone(), wasm_a)
+        .unwrap();
+    world
+        .register_module_artifact(hash_b.clone(), wasm_b)
+        .unwrap();
     world.set_module_cache_max(1);
 
     let artifact_a = world.load_module(&hash_a).unwrap();
@@ -243,9 +243,7 @@ fn module_call_queues_effects_and_emits() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -344,9 +342,7 @@ fn module_call_policy_denied_records_failure() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -460,9 +456,7 @@ fn step_with_modules_routes_domain_events() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -550,9 +544,7 @@ fn step_with_modules_routes_actions() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -708,9 +700,7 @@ fn module_calls_use_entrypoint_for_kind() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)

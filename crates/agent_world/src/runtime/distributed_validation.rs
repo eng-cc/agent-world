@@ -29,12 +29,18 @@ pub fn validate_head_update(
 ) -> Result<HeadValidationResult, WorldError> {
     if head.world_id != block.world_id {
         return Err(WorldError::DistributedValidationFailed {
-            reason: format!("world_id mismatch: head={}, block={}", head.world_id, block.world_id),
+            reason: format!(
+                "world_id mismatch: head={}, block={}",
+                head.world_id, block.world_id
+            ),
         });
     }
     if head.height != block.height {
         return Err(WorldError::DistributedValidationFailed {
-            reason: format!("height mismatch: head={}, block={}", head.height, block.height),
+            reason: format!(
+                "height mismatch: head={}, block={}",
+                head.height, block.height
+            ),
         });
     }
     if head.state_root != block.state_root {
@@ -245,9 +251,9 @@ fn hash_cbor<T: Serialize>(value: &T) -> Result<String, WorldError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::{Action, LocalCasStore};
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
+    use super::super::{Action, LocalCasStore};
+    use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 

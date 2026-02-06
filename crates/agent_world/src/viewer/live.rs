@@ -598,11 +598,7 @@ mod tests {
             kernel.submit_action(action);
             kernel.step_until_empty();
 
-            let agent = kernel
-                .model()
-                .agents
-                .get("agent-0")
-                .expect("agent exists");
+            let agent = kernel.model().agents.get("agent-0").expect("agent exists");
             if agent.location_id == "region-b" {
                 moved = true;
                 break;
@@ -627,5 +623,4 @@ mod tests {
         world.reset().expect("reset ok");
         assert_eq!(world.kernel.time(), 0);
     }
-
 }

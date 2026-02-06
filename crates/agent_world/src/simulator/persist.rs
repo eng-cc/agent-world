@@ -155,8 +155,13 @@ impl Default for WorldJournal {
 pub enum PersistError {
     Io(String),
     Serde(String),
-    SnapshotMismatch { expected: usize, actual: usize },
-    ReplayConflict { message: String },
+    SnapshotMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    ReplayConflict {
+        message: String,
+    },
     UnsupportedVersion {
         kind: String,
         version: u32,

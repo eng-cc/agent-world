@@ -1,10 +1,10 @@
 use serde_json::Value as JsonValue;
 
-use super::World;
 use super::super::{
     CausedBy, EffectIntent, EffectOrigin, EffectReceipt, PolicyDecisionRecord, WorldError,
     WorldEventBody, WorldEventId,
 };
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -51,10 +51,12 @@ impl World {
             origin,
         };
 
-        let grant = self
-            .capabilities
-            .get(&cap_ref)
-            .ok_or_else(|| WorldError::CapabilityMissing { cap_ref: cap_ref.clone() })?;
+        let grant =
+            self.capabilities
+                .get(&cap_ref)
+                .ok_or_else(|| WorldError::CapabilityMissing {
+                    cap_ref: cap_ref.clone(),
+                })?;
 
         if grant.is_expired(self.state.time) {
             return Err(WorldError::CapabilityExpired { cap_ref });
@@ -71,14 +73,19 @@ impl World {
         if !decision.is_allowed() {
             return Err(WorldError::PolicyDenied {
                 intent_id,
-                reason: decision.reason().unwrap_or_else(|| "policy_deny".to_string()),
+                reason: decision
+                    .reason()
+                    .unwrap_or_else(|| "policy_deny".to_string()),
             });
         }
 
         Ok(intent)
     }
 
-    pub fn ingest_receipt(&mut self, mut receipt: EffectReceipt) -> Result<WorldEventId, WorldError> {
+    pub fn ingest_receipt(
+        &mut self,
+        mut receipt: EffectReceipt,
+    ) -> Result<WorldEventId, WorldError> {
         let known = self.inflight_effects.contains_key(&receipt.intent_id)
             || self
                 .pending_effects

@@ -1,10 +1,10 @@
-use super::World;
 use super::super::{
     merge_rule_decisions, ActionEnvelope, ActionOverrideRecord, CausedBy, ModuleCallErrorCode,
     ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox, ModuleSubscriptionStage,
-    ResourceDelta, RuleDecision, RuleDecisionRecord, RuleDecisionMergeError, RuleVerdict,
+    ResourceDelta, RuleDecision, RuleDecisionMergeError, RuleDecisionRecord, RuleVerdict,
     WorldError, WorldEventBody, WorldEventId,
 };
+use super::World;
 
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -77,9 +77,11 @@ impl World {
 
         let mut decisions = Vec::new();
         for output in capture.outputs {
-            if let Some(decision) =
-                self.extract_rule_decision(&output, envelope.id, ModuleSubscriptionStage::PreAction)?
-            {
+            if let Some(decision) = self.extract_rule_decision(
+                &output,
+                envelope.id,
+                ModuleSubscriptionStage::PreAction,
+            )? {
                 let record = RuleDecisionRecord {
                     action_id: envelope.id,
                     module_id: output.module_id.clone(),
@@ -126,8 +128,10 @@ impl World {
             let parsed: RuleDecision = match serde_json::from_value(emit.payload.clone()) {
                 Ok(parsed) => parsed,
                 Err(err) => {
-                    return self
-                        .module_output_invalid(output, format!("rule decision decode failed: {err}"))
+                    return self.module_output_invalid(
+                        output,
+                        format!("rule decision decode failed: {err}"),
+                    )
                 }
             };
             if parsed.action_id != action_id {

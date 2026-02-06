@@ -1,8 +1,8 @@
-use super::World;
 use super::super::ResourceDelta;
+use super::super::WorldError;
+use super::World;
 use crate::simulator::ResourceKind;
 use crate::simulator::StockError;
-use super::super::WorldError;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -34,9 +34,13 @@ impl World {
         agent_id: &str,
         kind: ResourceKind,
     ) -> Result<i64, WorldError> {
-        let cell = self.state.agents.get(agent_id).ok_or_else(|| WorldError::AgentNotFound {
-            agent_id: agent_id.to_string(),
-        })?;
+        let cell = self
+            .state
+            .agents
+            .get(agent_id)
+            .ok_or_else(|| WorldError::AgentNotFound {
+                agent_id: agent_id.to_string(),
+            })?;
         Ok(cell.state.resources.get(kind))
     }
 
@@ -46,9 +50,13 @@ impl World {
         kind: ResourceKind,
         amount: i64,
     ) -> Result<(), WorldError> {
-        let cell = self.state.agents.get_mut(agent_id).ok_or_else(|| WorldError::AgentNotFound {
-            agent_id: agent_id.to_string(),
-        })?;
+        let cell =
+            self.state
+                .agents
+                .get_mut(agent_id)
+                .ok_or_else(|| WorldError::AgentNotFound {
+                    agent_id: agent_id.to_string(),
+                })?;
         cell.state
             .resources
             .set(kind, amount)
@@ -63,16 +71,19 @@ impl World {
         kind: ResourceKind,
         delta: i64,
     ) -> Result<i64, WorldError> {
-        let cell = self.state.agents.get_mut(agent_id).ok_or_else(|| WorldError::AgentNotFound {
-            agent_id: agent_id.to_string(),
-        })?;
-        if delta >= 0 {
-            cell.state
-                .resources
-                .add(kind, delta)
-                .map_err(|err| WorldError::ResourceBalanceInvalid {
-                    reason: format!("add resource failed: {err:?}"),
+        let cell =
+            self.state
+                .agents
+                .get_mut(agent_id)
+                .ok_or_else(|| WorldError::AgentNotFound {
+                    agent_id: agent_id.to_string(),
                 })?;
+        if delta >= 0 {
+            cell.state.resources.add(kind, delta).map_err(|err| {
+                WorldError::ResourceBalanceInvalid {
+                    reason: format!("add resource failed: {err:?}"),
+                }
+            })?;
         } else {
             let amount = delta.saturating_abs();
             cell.state

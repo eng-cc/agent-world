@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 use crate::simulator::ResourceKind;
 use serde_json::json;
 use std::fs;
@@ -39,10 +39,7 @@ fn audit_filter_by_kind_and_cause() {
     };
     let events = world.audit_events(&filter);
     assert_eq!(events.len(), 1);
-    assert!(matches!(
-        events[0].caused_by,
-        Some(CausedBy::Effect { .. })
-    ));
+    assert!(matches!(events[0].caused_by, Some(CausedBy::Effect { .. })));
 }
 
 #[test]
@@ -142,9 +139,7 @@ fn audit_filter_governance_events() {
         content: json!({ "name": "audit" }),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)

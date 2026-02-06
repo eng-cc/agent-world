@@ -1,10 +1,10 @@
-use super::World;
-use super::super::{
-    apply_manifest_patch, GovernanceEvent, Manifest, ManifestPatch, ManifestUpdate, Proposal,
-    ProposalDecision, ProposalId, ProposalStatus, WorldError, WorldEventBody, DistributedClient,
-    DistributedDht,
-};
 use super::super::util::hash_json;
+use super::super::{
+    apply_manifest_patch, DistributedClient, DistributedDht, GovernanceEvent, Manifest,
+    ManifestPatch, ManifestUpdate, Proposal, ProposalDecision, ProposalId, ProposalStatus,
+    WorldError, WorldEventBody,
+};
+use super::World;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -288,12 +288,12 @@ impl World {
                 proposal_id,
                 manifest_hash,
             } => {
-                let proposal = self
-                    .proposals
-                    .get_mut(proposal_id)
-                    .ok_or(WorldError::ProposalNotFound {
-                        proposal_id: *proposal_id,
-                    })?;
+                let proposal =
+                    self.proposals
+                        .get_mut(proposal_id)
+                        .ok_or(WorldError::ProposalNotFound {
+                            proposal_id: *proposal_id,
+                        })?;
                 proposal.status = ProposalStatus::Shadowed {
                     manifest_hash: manifest_hash.clone(),
                 };
@@ -303,12 +303,12 @@ impl World {
                 approver,
                 decision,
             } => {
-                let proposal = self
-                    .proposals
-                    .get_mut(proposal_id)
-                    .ok_or(WorldError::ProposalNotFound {
-                        proposal_id: *proposal_id,
-                    })?;
+                let proposal =
+                    self.proposals
+                        .get_mut(proposal_id)
+                        .ok_or(WorldError::ProposalNotFound {
+                            proposal_id: *proposal_id,
+                        })?;
                 match decision {
                     ProposalDecision::Approve => {
                         let ProposalStatus::Shadowed { manifest_hash } = &proposal.status else {
@@ -334,12 +334,12 @@ impl World {
                 proposal_id,
                 manifest_hash,
             } => {
-                let proposal = self
-                    .proposals
-                    .get_mut(proposal_id)
-                    .ok_or(WorldError::ProposalNotFound {
-                        proposal_id: *proposal_id,
-                    })?;
+                let proposal =
+                    self.proposals
+                        .get_mut(proposal_id)
+                        .ok_or(WorldError::ProposalNotFound {
+                            proposal_id: *proposal_id,
+                        })?;
                 let ProposalStatus::Approved {
                     manifest_hash: approved_hash,
                     ..

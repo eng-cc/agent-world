@@ -14,6 +14,7 @@ run() {
   "$@"
 }
 
+run env -u RUSTC_WRAPPER cargo fmt --all -- --check
 run env -u RUSTC_WRAPPER cargo test "${verbose_flags[@]}"
 run env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime "${verbose_flags[@]}"
 run env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration "${verbose_flags[@]}"

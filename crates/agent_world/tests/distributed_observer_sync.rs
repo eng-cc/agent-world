@@ -58,32 +58,38 @@ fn observer_sync_heads_bootstraps_world() {
     let store_clone = store.clone();
 
     network
-        .register_handler(RR_GET_BLOCK, Box::new(move |payload| {
-            let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
-            if request.height != 1 {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!("unknown block height {}", request.height),
-                });
-            }
-            let response = GetBlockResponse {
-                block: block.clone(),
-                journal_ref: journal_ref.clone(),
-                snapshot_ref: snapshot_ref.clone(),
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            RR_GET_BLOCK,
+            Box::new(move |payload| {
+                let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
+                if request.height != 1 {
+                    return Err(WorldError::DistributedValidationFailed {
+                        reason: format!("unknown block height {}", request.height),
+                    });
+                }
+                let response = GetBlockResponse {
+                    block: block.clone(),
+                    journal_ref: journal_ref.clone(),
+                    snapshot_ref: snapshot_ref.clone(),
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register block");
 
     network
-        .register_handler(RR_FETCH_BLOB, Box::new(move |payload| {
-            let request: FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
-            let bytes = store_clone.get(&request.content_hash).unwrap();
-            let response = FetchBlobResponse {
-                blob: bytes,
-                content_hash: request.content_hash,
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            RR_FETCH_BLOB,
+            Box::new(move |payload| {
+                let request: FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
+                let bytes = store_clone.get(&request.content_hash).unwrap();
+                let response = FetchBlobResponse {
+                    blob: bytes,
+                    content_hash: request.content_hash,
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register blob");
 
     let payload = serde_cbor::to_vec(&write.head_announce).expect("head cbor");
@@ -181,39 +187,45 @@ fn observer_follow_heads_reports_last_applied() {
     let store_clone = store.clone();
 
     network
-        .register_handler(RR_GET_BLOCK, Box::new(move |payload| {
-            let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
-            let response = match request.height {
-                1 => GetBlockResponse {
-                    block: block1.clone(),
-                    journal_ref: journal1_ref.clone(),
-                    snapshot_ref: snapshot1_ref.clone(),
-                },
-                2 => GetBlockResponse {
-                    block: block2.clone(),
-                    journal_ref: journal2_ref.clone(),
-                    snapshot_ref: snapshot2_ref.clone(),
-                },
-                _ => {
-                    return Err(WorldError::DistributedValidationFailed {
-                        reason: format!("unknown block height {}", request.height),
-                    })
-                }
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            RR_GET_BLOCK,
+            Box::new(move |payload| {
+                let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
+                let response = match request.height {
+                    1 => GetBlockResponse {
+                        block: block1.clone(),
+                        journal_ref: journal1_ref.clone(),
+                        snapshot_ref: snapshot1_ref.clone(),
+                    },
+                    2 => GetBlockResponse {
+                        block: block2.clone(),
+                        journal_ref: journal2_ref.clone(),
+                        snapshot_ref: snapshot2_ref.clone(),
+                    },
+                    _ => {
+                        return Err(WorldError::DistributedValidationFailed {
+                            reason: format!("unknown block height {}", request.height),
+                        })
+                    }
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register block");
 
     network
-        .register_handler(RR_FETCH_BLOB, Box::new(move |payload| {
-            let request: FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
-            let bytes = store_clone.get(&request.content_hash).unwrap();
-            let response = FetchBlobResponse {
-                blob: bytes,
-                content_hash: request.content_hash,
-            };
-            Ok(serde_cbor::to_vec(&response).unwrap())
-        }))
+        .register_handler(
+            RR_FETCH_BLOB,
+            Box::new(move |payload| {
+                let request: FetchBlobRequest = serde_cbor::from_slice(payload).unwrap();
+                let bytes = store_clone.get(&request.content_hash).unwrap();
+                let response = FetchBlobResponse {
+                    blob: bytes,
+                    content_hash: request.content_hash,
+                };
+                Ok(serde_cbor::to_vec(&response).unwrap())
+            }),
+        )
         .expect("register blob");
 
     let payload1 = serde_cbor::to_vec(&write1.head_announce).expect("head1 cbor");

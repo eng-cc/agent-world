@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use std::collections::BTreeMap;
@@ -67,9 +67,7 @@ fn install_m1_move_rule(world: &mut World) {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -140,9 +138,7 @@ fn install_m1_visibility_rule(world: &mut World) {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -213,9 +209,7 @@ fn install_m1_transfer_rule(world: &mut World) {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -236,14 +230,15 @@ impl MapSandbox {
 
 impl ModuleSandbox for MapSandbox {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
-        self.outputs.get(&request.module_id).cloned().ok_or_else(|| {
-            ModuleCallFailure {
+        self.outputs
+            .get(&request.module_id)
+            .cloned()
+            .ok_or_else(|| ModuleCallFailure {
                 module_id: request.module_id.clone(),
                 trace_id: request.trace_id.clone(),
                 code: ModuleCallErrorCode::SandboxUnavailable,
                 detail: "module output missing".to_string(),
-            }
-        })
+            })
     }
 }
 
@@ -305,9 +300,7 @@ fn install_rule_modules(world: &mut World, action_kind: &str, module_ids: &[&str
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -399,9 +392,7 @@ fn rule_decision_override_and_cost_apply() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -505,9 +496,7 @@ fn rule_decision_rejects_on_insufficient_resources() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -618,8 +607,10 @@ fn m1_visibility_rule_emits_observation() {
     let mut world = World::new();
     install_m1_visibility_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_VISIBILITY_RULE_MODULE_ID, M1VisibilityRuleModule::default());
+    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
+        M1_VISIBILITY_RULE_MODULE_ID,
+        M1VisibilityRuleModule::default(),
+    );
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -652,8 +643,10 @@ fn m1_visibility_rule_denies_when_missing_agent() {
     let mut world = World::new();
     install_m1_visibility_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_VISIBILITY_RULE_MODULE_ID, M1VisibilityRuleModule::default());
+    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
+        M1_VISIBILITY_RULE_MODULE_ID,
+        M1VisibilityRuleModule::default(),
+    );
 
     world.submit_action(Action::QueryObservation {
         agent_id: "agent-1".to_string(),
@@ -997,7 +990,9 @@ fn rule_conflicting_overrides_rejects_action() {
     match &last.body {
         WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
             RejectReason::RuleDenied { notes } => {
-                assert!(notes.iter().any(|note| note.contains("conflicting override")));
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("conflicting override")));
             }
             other => panic!("unexpected reject reason: {other:?}"),
         },

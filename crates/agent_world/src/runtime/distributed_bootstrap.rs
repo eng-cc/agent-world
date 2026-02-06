@@ -35,10 +35,10 @@ pub fn bootstrap_world_from_dht(
     client: &DistributedClient,
     store: &impl BlobStore,
 ) -> Result<World, WorldError> {
-    let head = dht
-        .get_world_head(world_id)?
-        .ok_or_else(|| WorldError::DistributedValidationFailed {
-            reason: format!("world head not found for {world_id}"),
-        })?;
+    let head =
+        dht.get_world_head(world_id)?
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!("world head not found for {world_id}"),
+            })?;
     bootstrap_world_from_head_with_dht(&head, dht, client, store)
 }

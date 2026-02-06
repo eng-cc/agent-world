@@ -36,9 +36,7 @@ fn governance_patch_updates_manifest() {
         new_version: Some(3),
     };
 
-    let proposal_id = world
-        .propose_manifest_patch(patch, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_patch(patch, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -46,7 +44,10 @@ fn governance_patch_updates_manifest() {
     world.apply_proposal(proposal_id).unwrap();
 
     assert_eq!(world.manifest().version, 3);
-    assert_eq!(world.manifest().content, json!({ "settings": { "mode": "fast" } }));
+    assert_eq!(
+        world.manifest().content,
+        json!({ "settings": { "mode": "fast" } })
+    );
 }
 
 #[test]

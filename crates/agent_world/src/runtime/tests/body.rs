@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 
@@ -55,9 +55,7 @@ fn install_m1_body_module(world: &mut World) {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -246,10 +244,8 @@ fn body_action_updates_view_and_costs_resources() {
         payload: serde_json::to_value(view.clone()).unwrap(),
     });
 
-    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
-        M1_BODY_MODULE_ID,
-        M1BodyModule::default(),
-    );
+    let mut sandbox =
+        BuiltinModuleSandbox::new().register_builtin(M1_BODY_MODULE_ID, M1BodyModule::default());
     world.step_with_modules(&mut sandbox).unwrap();
 
     let agent = world.state().agents.get("agent-1").unwrap();
@@ -285,20 +281,16 @@ fn body_action_rejects_when_insufficient_resources() {
         payload: serde_json::to_value(view).unwrap(),
     });
 
-    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
-        M1_BODY_MODULE_ID,
-        M1BodyModule::default(),
-    );
+    let mut sandbox =
+        BuiltinModuleSandbox::new().register_builtin(M1_BODY_MODULE_ID, M1BodyModule::default());
     world.step_with_modules(&mut sandbox).unwrap();
 
     let last = world.journal().events.last().unwrap();
     match &last.body {
-        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
-            match reason {
-                RejectReason::InsufficientResources { .. } => {}
-                other => panic!("unexpected reject reason: {other:?}"),
-            }
-        }
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::InsufficientResources { .. } => {}
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
         other => panic!("unexpected event: {other:?}"),
     }
 }

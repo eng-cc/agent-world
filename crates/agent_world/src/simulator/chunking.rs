@@ -58,7 +58,8 @@ pub fn chunk_coord_of(pos: GeoPos, space: &SpaceConfig) -> Option<ChunkCoord> {
 
 pub fn chunk_bounds(coord: ChunkCoord, space: &SpaceConfig) -> Option<ChunkBounds> {
     let (gx, gy, gz) = chunk_grid_dims(space);
-    if coord.x < 0 || coord.x >= gx || coord.y < 0 || coord.y >= gy || coord.z < 0 || coord.z >= gz {
+    if coord.x < 0 || coord.x >= gx || coord.y < 0 || coord.y >= gy || coord.z < 0 || coord.z >= gz
+    {
         return None;
     }
 

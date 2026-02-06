@@ -103,7 +103,9 @@ fn world_module_store_roundtrip() {
     world.set_policy(PolicySet::allow_all());
     let wasm_bytes = b"world-store-bytes";
     let hash = wasm_hash(wasm_bytes);
-    world.register_module_artifact(hash.clone(), wasm_bytes).unwrap();
+    world
+        .register_module_artifact(hash.clone(), wasm_bytes)
+        .unwrap();
 
     let module_manifest = ModuleManifest {
         module_id: "m.world".to_string(),
@@ -138,9 +140,7 @@ fn world_module_store_roundtrip() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
@@ -172,7 +172,9 @@ fn world_save_to_dir_with_modules_roundtrip() {
     world.set_policy(PolicySet::allow_all());
     let wasm_bytes = b"world-store-full";
     let hash = wasm_hash(wasm_bytes);
-    world.register_module_artifact(hash.clone(), wasm_bytes).unwrap();
+    world
+        .register_module_artifact(hash.clone(), wasm_bytes)
+        .unwrap();
 
     let module_manifest = ModuleManifest {
         module_id: "m.full".to_string(),
@@ -207,9 +209,7 @@ fn world_save_to_dir_with_modules_roundtrip() {
         content: serde_json::Value::Object(content),
     };
 
-    let proposal_id = world
-        .propose_manifest_update(manifest, "alice")
-        .unwrap();
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     world.shadow_proposal(proposal_id).unwrap();
     world
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)

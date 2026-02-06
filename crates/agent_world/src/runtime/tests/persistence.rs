@@ -1,5 +1,5 @@
-use super::pos;
 use super::super::*;
+use super::pos;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -41,7 +41,10 @@ fn rollback_to_snapshot_resets_state() {
         to: pos(9.0, 9.0),
     });
     world.step().unwrap();
-    assert_eq!(world.state().agents.get("agent-1").unwrap().state.pos, pos(9.0, 9.0));
+    assert_eq!(
+        world.state().agents.get("agent-1").unwrap().state.pos,
+        pos(9.0, 9.0)
+    );
 
     let journal = world.journal().clone();
     world

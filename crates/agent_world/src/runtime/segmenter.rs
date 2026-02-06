@@ -93,8 +93,8 @@ pub fn segment_journal(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{Action, LocalCasStore, World};
+    use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
