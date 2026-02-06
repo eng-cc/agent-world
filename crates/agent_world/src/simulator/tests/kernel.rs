@@ -463,6 +463,100 @@ fn observe_records_chunk_generated_event_with_observe_cause() {
 }
 
 #[test]
+fn action_chunk_generation_consumes_boundary_reservations() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 0;
+    config.space = SpaceConfig {
+        width_cm: 4_000_000,
+        depth_cm: 2_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 0.005;
+    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 1_000;
+    config.asteroid_fragment.radius_max_cm = 1_000;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 1337;
+    init.origin.enabled = false;
+    init.agents.count = 0;
+    init.asteroid_fragment.min_fragment_spacing_cm = Some(2_000_000);
+    init.asteroid_fragment.bootstrap_chunks = vec![ChunkCoord { x: 0, y: 0, z: 0 }];
+
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init kernel");
+    let right_coord = ChunkCoord { x: 1, y: 0, z: 0 };
+    assert!(
+        kernel
+            .model()
+            .chunk_boundary_reservations
+            .get(&right_coord)
+            .is_some_and(|entries| !entries.is_empty())
+    );
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-left".to_string(),
+        name: "left".to_string(),
+        pos: GeoPos {
+            x_cm: 100_000.0,
+            y_cm: 1_000_000.0,
+            z_cm: 500_000.0,
+        },
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("register left location");
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-right".to_string(),
+        name: "right".to_string(),
+        pos: GeoPos {
+            x_cm: 3_000_000.0,
+            y_cm: 1_000_000.0,
+            z_cm: 500_000.0,
+        },
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("register right location");
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-0".to_string(),
+        location_id: "loc-left".to_string(),
+    });
+    kernel.step().expect("register agent");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-0".to_string(),
+        to: "loc-right".to_string(),
+    });
+    let event = kernel.step().expect("move action");
+    assert!(matches!(event.kind, WorldEventKind::AgentMoved { .. }));
+
+    assert!(
+        kernel
+            .model()
+            .chunks
+            .get(&right_coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted))
+    );
+    assert!(!kernel
+        .model()
+        .chunk_boundary_reservations
+        .contains_key(&right_coord));
+    assert!(kernel.journal().iter().any(|entry| {
+        matches!(
+            entry.kind,
+            WorldEventKind::ChunkGenerated {
+                cause: ChunkGenerationCause::Action,
+                coord,
+                ..
+            } if coord == right_coord
+        )
+    }));
+}
+
+
+#[test]
 fn kernel_closed_loop_example() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,

@@ -179,11 +179,13 @@
 - 能量约束：精炼与制造必须消耗 `electricity`。
 - 账本约束：所有映射结果都落到 `ResourceDelta`，写入事件日志。
 
-### 跨 chunk 边界一致性规则
-- 归属规则：碎片按中心点归属 chunk；block 允许跨边界时，跨界部分记录为 `boundary_span`。
-- 最小间距校验顺序：先校验本 chunk，再校验已生成邻接 chunk（26 邻域）。
-- 邻块未生成时，记录 `BoundaryReservation`（边界保留信息）；邻块未来生成时必须消费该保留信息再放置碎片。
-- 冲突解法：同距离冲突按 `(chunk_coord, fragment_id)` 字典序保留前者，确保确定性。
+### 跨 chunk 边界一致性规则（CG7 落地）
+- 归属规则：碎片按中心点归属 chunk；候选碎片生成时先做“本 chunk 内 spacing”，再做“邻接 chunk（26 邻域）校验”。
+- 邻块校验：当前 chunk 生成时，读取已生成邻块碎片并执行 `radius_a + radius_b + spacing` 距离约束。
+- 边界保留：新增 `WorldModel.chunk_boundary_reservations: BTreeMap<ChunkCoord, Vec<BoundaryReservation>>`。
+- 保留写入：若邻块处于 `Unexplored` 且候选碎片到邻块包围盒距离 `<= radius + spacing`，写入 `BoundaryReservation`。
+- 保留消费：邻块未来生成时先消费（remove）该 chunk 的 reservations，再据此过滤候选碎片。
+- 确定性策略：冲突默认“已存在碎片优先（先生成者优先）”，保证同 seed + 同触发序列结果可复现。
 
 ### 性能预算与降级策略
 - `max_fragments_per_chunk`：单 chunk 碎片上限（默认建议 4_000）。
@@ -224,6 +226,7 @@
 - **CG4**：实现资源预算一次性写入与开采扣减守恒。
 - **CG5**：场景接入起始 chunk 预生成 + 固定 20km×20km×10km 分块配置。
 - **CG6**：实现持久化与回放契约（ChunkGenerated 事件/快照字段/版本迁移）。
+- **CG7**：实现跨 chunk 边界一致性（邻块校验 + BoundaryReservation 保留/消费）。
 
 ## 风险
 - chunk 边界附近的最小间距约束需要考虑相邻 chunk，避免穿边重叠。

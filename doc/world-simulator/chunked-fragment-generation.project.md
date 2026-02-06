@@ -15,7 +15,11 @@
 - [x] CG6.3 回放接入 ChunkGenerated 事件并执行摘要一致性校验
 - [x] CG6.4 补充持久化/回放/迁移单元测试
 - [x] CG6.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
-- [ ] CG7 实现跨 chunk 边界一致性（邻块校验/边界保留）
+- [x] CG7.1 新增 BoundaryReservation 数据模型与快照序列化
+- [x] CG7.2 生成时接入邻接 chunk 校验（26 邻域）
+- [x] CG7.3 实现未探索邻块的边界保留写入与后续消费
+- [x] CG7.4 补充跨 chunk 间距与 reservation 回归测试
+- [x] CG7.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 - [ ] CG8 实现经济资源映射最小闭环（RefineCompound -> hardware/electricity 约束）
 - [ ] CG9 增加性能预算与降级策略（fragments/blocks 上限）
 - [ ] CG10 补充回放一致性与性能回归测试
@@ -29,5 +33,5 @@
 - `crates/agent_world/src/simulator/world_model.rs`
 
 ## 状态
-- 当前阶段：CG6（实现完成）
-- 下一阶段：CG7（跨 chunk 边界一致性）
+- 当前阶段：CG7（实现完成）
+- 下一阶段：CG8（经济资源映射最小闭环）

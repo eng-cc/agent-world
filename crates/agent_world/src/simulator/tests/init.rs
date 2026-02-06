@@ -610,6 +610,22 @@ fn world_model_chunk_states_roundtrip_json_keys() {
     model
         .chunk_resource_budgets
         .insert(ChunkCoord { x: 1, y: 2, z: 0 }, chunk_budget);
+    model
+        .chunk_boundary_reservations
+        .insert(
+            ChunkCoord { x: 0, y: 1, z: 0 },
+            vec![BoundaryReservation {
+                source_chunk: ChunkCoord { x: 0, y: 0, z: 0 },
+                source_fragment_id: "frag-0-0-0-0".to_string(),
+                source_pos: GeoPos {
+                    x_cm: 10.0,
+                    y_cm: 20.0,
+                    z_cm: 30.0,
+                },
+                source_radius_cm: 100,
+                min_spacing_cm: 500,
+            }],
+        );
 
     let json = serde_json::to_string(&model).expect("serialize world model");
     assert!(json.contains("\"0:0:0\""));
@@ -618,6 +634,105 @@ fn world_model_chunk_states_roundtrip_json_keys() {
     let decoded: WorldModel = serde_json::from_str(&json).expect("deserialize world model");
     assert_eq!(decoded.chunks, model.chunks);
     assert_eq!(decoded.chunk_resource_budgets, model.chunk_resource_budgets);
+    assert_eq!(
+        decoded.chunk_boundary_reservations,
+        model.chunk_boundary_reservations
+    );
+}
+
+#[test]
+fn boundary_reservations_are_created_for_unexplored_neighbor_chunks() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 4_000_000,
+        depth_cm: 2_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 0.005;
+    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 1_000;
+    config.asteroid_fragment.radius_max_cm = 1_000;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 1337;
+    init.origin.enabled = false;
+    init.agents.count = 0;
+    init.asteroid_fragment.min_fragment_spacing_cm = Some(2_000_000);
+    init.asteroid_fragment.bootstrap_chunks = vec![ChunkCoord { x: 0, y: 0, z: 0 }];
+
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    assert!(
+        model
+            .chunks
+            .get(&ChunkCoord { x: 1, y: 0, z: 0 })
+            .is_some_and(|state| matches!(state, ChunkState::Unexplored))
+    );
+    assert!(
+        model
+            .chunk_boundary_reservations
+            .get(&ChunkCoord { x: 1, y: 0, z: 0 })
+            .is_some_and(|entries| !entries.is_empty())
+    );
+}
+
+#[test]
+fn cross_chunk_generation_respects_spacing_with_neighbor_checks() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 4_000_000,
+        depth_cm: 2_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 0.003;
+    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 1_000;
+    config.asteroid_fragment.radius_max_cm = 1_000;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 2026;
+    init.origin.enabled = false;
+    init.agents.count = 0;
+    init.asteroid_fragment.min_fragment_spacing_cm = Some(500_000);
+    init.asteroid_fragment.bootstrap_chunks = vec![
+        ChunkCoord { x: 0, y: 0, z: 0 },
+        ChunkCoord { x: 1, y: 0, z: 0 },
+    ];
+
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    let left: Vec<_> = model
+        .locations
+        .values()
+        .filter(|loc| chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 0, y: 0, z: 0 }))
+        .filter(|loc| loc.id.starts_with("frag-"))
+        .collect();
+    let right: Vec<_> = model
+        .locations
+        .values()
+        .filter(|loc| chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 1, y: 0, z: 0 }))
+        .filter(|loc| loc.id.starts_with("frag-"))
+        .collect();
+
+    assert!(!left.is_empty());
+    assert!(!right.is_empty());
+
+    let spacing_cm = init
+        .asteroid_fragment
+        .min_fragment_spacing_cm
+        .expect("spacing configured") as f64;
+
+    for a in &left {
+        for b in &right {
+            let dx = a.pos.x_cm - b.pos.x_cm;
+            let dy = a.pos.y_cm - b.pos.y_cm;
+            let dz = a.pos.z_cm - b.pos.z_cm;
+            let min_dist = (a.profile.radius_cm + b.profile.radius_cm) as f64 + spacing_cm;
+            assert!((dx * dx + dy * dy + dz * dz) >= (min_dist * min_dist));
+        }
+    }
 }
 
 #[test]

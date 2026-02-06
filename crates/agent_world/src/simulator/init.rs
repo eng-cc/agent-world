@@ -14,7 +14,9 @@ use super::types::{
     AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
     ResourceOwner, ResourceStock,
 };
-use super::world_model::{Agent, ChunkState, Location, SpaceConfig, WorldConfig, WorldModel};
+use super::world_model::{
+    Agent, BoundaryReservation, ChunkState, Location, SpaceConfig, WorldConfig, WorldModel,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -656,6 +658,7 @@ pub fn generate_chunk_fragments(
     if let Some(spacing) = init.asteroid_fragment.min_fragment_spacing_cm {
         asteroid_fragment_config.min_fragment_spacing_cm = spacing;
     }
+    let spacing_cm = asteroid_fragment_config.min_fragment_spacing_cm.max(0);
 
     let local_space = chunk_local_space(bounds);
     if local_space.width_cm <= 0 || local_space.depth_cm <= 0 || local_space.height_cm <= 0 {
@@ -666,8 +669,15 @@ pub fn generate_chunk_fragments(
         return Ok(summarize_chunk_generation(model, config, coord, seed));
     }
 
+    let incoming_boundary_reservations = model
+        .chunk_boundary_reservations
+        .remove(&coord)
+        .unwrap_or_default();
+    let neighbor_fragments = gather_neighbor_fragments(model, &config.space, coord);
+
     let fragments = generate_fragments(seed, &local_space, &asteroid_fragment_config);
     let mut chunk_budget = ChunkResourceBudget::default();
+    let mut accepted_fragments = Vec::<AcceptedFragment>::new();
 
     for (idx, mut frag) in fragments.into_iter().enumerate() {
         frag.id = format!("frag-{}-{}-{}-{}", coord.x, coord.y, coord.z, idx);
@@ -677,6 +687,24 @@ pub fn generate_chunk_fragments(
         frag.pos.z_cm += bounds.min.z_cm;
 
         if model.locations.contains_key(&frag.id) {
+            continue;
+        }
+
+        let fragment_radius_cm = frag.profile.radius_cm.max(0);
+        if conflicts_with_neighbor_fragments(
+            frag.pos,
+            fragment_radius_cm,
+            spacing_cm,
+            &neighbor_fragments,
+        ) {
+            continue;
+        }
+        if conflicts_with_boundary_reservations(
+            frag.pos,
+            fragment_radius_cm,
+            spacing_cm,
+            &incoming_boundary_reservations,
+        ) {
             continue;
         }
 
@@ -692,12 +720,206 @@ pub fn generate_chunk_fragments(
         frag.fragment_profile = Some(fragment_profile);
         frag.fragment_budget = Some(fragment_budget);
 
+        accepted_fragments.push(AcceptedFragment {
+            fragment_id: frag.id.clone(),
+            pos: frag.pos,
+            radius_cm: fragment_radius_cm,
+        });
         insert_location(model, frag)?;
     }
 
     model.chunks.insert(coord, ChunkState::Generated);
     model.chunk_resource_budgets.insert(coord, chunk_budget);
+
+    for fragment in accepted_fragments {
+        append_boundary_reservations_for_fragment(
+            model,
+            config,
+            coord,
+            fragment,
+            spacing_cm,
+        );
+    }
+
     Ok(summarize_chunk_generation(model, config, coord, seed))
+}
+
+#[derive(Debug, Clone)]
+struct NeighborFragment {
+    fragment_id: LocationId,
+    source_chunk: ChunkCoord,
+    pos: GeoPos,
+    radius_cm: i64,
+}
+
+#[derive(Debug, Clone)]
+struct AcceptedFragment {
+    fragment_id: LocationId,
+    pos: GeoPos,
+    radius_cm: i64,
+}
+
+fn gather_neighbor_fragments(
+    model: &WorldModel,
+    space: &SpaceConfig,
+    coord: ChunkCoord,
+) -> Vec<NeighborFragment> {
+    let neighbors = neighboring_chunk_coords(coord);
+    model
+        .locations
+        .values()
+        .filter(|location| location.id.starts_with("frag-"))
+        .filter_map(|location| {
+            let source_chunk = chunk_coord_of(location.pos, space)?;
+            if !neighbors.contains(&source_chunk) {
+                return None;
+            }
+            Some(NeighborFragment {
+                fragment_id: location.id.clone(),
+                source_chunk,
+                pos: location.pos,
+                radius_cm: location.profile.radius_cm.max(0),
+            })
+        })
+        .collect()
+}
+
+fn neighboring_chunk_coords(coord: ChunkCoord) -> Vec<ChunkCoord> {
+    let mut out = Vec::new();
+    for dx in -1..=1 {
+        for dy in -1..=1 {
+            for dz in -1..=1 {
+                if dx == 0 && dy == 0 && dz == 0 {
+                    continue;
+                }
+                out.push(ChunkCoord {
+                    x: coord.x + dx,
+                    y: coord.y + dy,
+                    z: coord.z + dz,
+                });
+            }
+        }
+    }
+    out
+}
+
+fn conflicts_with_neighbor_fragments(
+    pos: GeoPos,
+    radius_cm: i64,
+    spacing_cm: i64,
+    neighbors: &[NeighborFragment],
+) -> bool {
+    neighbors.iter().any(|neighbor| {
+        let _tie_break_hint = (&neighbor.source_chunk, &neighbor.fragment_id);
+        spacing_conflict(
+            pos,
+            radius_cm,
+            neighbor.pos,
+            neighbor.radius_cm,
+            spacing_cm,
+        )
+    })
+}
+
+fn conflicts_with_boundary_reservations(
+    pos: GeoPos,
+    radius_cm: i64,
+    spacing_cm: i64,
+    reservations: &[BoundaryReservation],
+) -> bool {
+    reservations.iter().any(|reservation| {
+        let required_spacing = spacing_cm.max(reservation.min_spacing_cm.max(0));
+        spacing_conflict(
+            pos,
+            radius_cm,
+            reservation.source_pos,
+            reservation.source_radius_cm.max(0),
+            required_spacing,
+        )
+    })
+}
+
+fn spacing_conflict(
+    a_pos: GeoPos,
+    a_radius_cm: i64,
+    b_pos: GeoPos,
+    b_radius_cm: i64,
+    spacing_cm: i64,
+) -> bool {
+    let dx = a_pos.x_cm - b_pos.x_cm;
+    let dy = a_pos.y_cm - b_pos.y_cm;
+    let dz = a_pos.z_cm - b_pos.z_cm;
+    let min_dist = (a_radius_cm.max(0) + b_radius_cm.max(0) + spacing_cm.max(0)) as f64;
+    (dx * dx + dy * dy + dz * dz) < (min_dist * min_dist)
+}
+
+fn append_boundary_reservations_for_fragment(
+    model: &mut WorldModel,
+    config: &WorldConfig,
+    source_chunk: ChunkCoord,
+    fragment: AcceptedFragment,
+    spacing_cm: i64,
+) {
+    let influence_distance_cm = (fragment.radius_cm.max(0) + spacing_cm.max(0)) as f64;
+
+    for neighbor in neighboring_chunk_coords(source_chunk) {
+        let Some(state) = model.chunks.get(&neighbor) else {
+            continue;
+        };
+        if !matches!(state, ChunkState::Unexplored) {
+            continue;
+        }
+        let Some(neighbor_bounds) = super::chunking::chunk_bounds(neighbor, &config.space) else {
+            continue;
+        };
+        if point_to_chunk_distance_cm(fragment.pos, neighbor_bounds) > influence_distance_cm {
+            continue;
+        }
+
+        let reservation = BoundaryReservation {
+            source_chunk,
+            source_fragment_id: fragment.fragment_id.clone(),
+            source_pos: fragment.pos,
+            source_radius_cm: fragment.radius_cm,
+            min_spacing_cm: spacing_cm.max(0),
+        };
+        let entry = model
+            .chunk_boundary_reservations
+            .entry(neighbor)
+            .or_default();
+        entry.push(reservation);
+        entry.sort_by(|left, right| {
+            (left.source_chunk, left.source_fragment_id.as_str()).cmp(&(
+                right.source_chunk,
+                right.source_fragment_id.as_str(),
+            ))
+        });
+    }
+}
+
+fn point_to_chunk_distance_cm(pos: GeoPos, bounds: super::chunking::ChunkBounds) -> f64 {
+    let dx = if pos.x_cm < bounds.min.x_cm {
+        bounds.min.x_cm - pos.x_cm
+    } else if pos.x_cm > bounds.max.x_cm {
+        pos.x_cm - bounds.max.x_cm
+    } else {
+        0.0
+    };
+    let dy = if pos.y_cm < bounds.min.y_cm {
+        bounds.min.y_cm - pos.y_cm
+    } else if pos.y_cm > bounds.max.y_cm {
+        pos.y_cm - bounds.max.y_cm
+    } else {
+        0.0
+    };
+    let dz = if pos.z_cm < bounds.min.z_cm {
+        bounds.min.z_cm - pos.z_cm
+    } else if pos.z_cm > bounds.max.z_cm {
+        pos.z_cm - bounds.max.z_cm
+    } else {
+        0.0
+    };
+    (dx * dx + dy * dy + dz * dz).sqrt()
 }
 
 fn chunk_local_space(bounds: super::chunking::ChunkBounds) -> SpaceConfig {

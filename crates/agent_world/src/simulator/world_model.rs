@@ -147,6 +147,12 @@ pub struct WorldModel {
         deserialize_with = "deserialize_chunk_resource_budgets"
     )]
     pub chunk_resource_budgets: BTreeMap<ChunkCoord, ChunkResourceBudget>,
+    #[serde(
+        default,
+        serialize_with = "serialize_chunk_boundary_reservations",
+        deserialize_with = "deserialize_chunk_boundary_reservations"
+    )]
+    pub chunk_boundary_reservations: BTreeMap<ChunkCoord, Vec<BoundaryReservation>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -156,6 +162,15 @@ pub enum ChunkState {
     Unexplored,
     Generated,
     Exhausted,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BoundaryReservation {
+    pub source_chunk: ChunkCoord,
+    pub source_fragment_id: LocationId,
+    pub source_pos: GeoPos,
+    pub source_radius_cm: i64,
+    pub min_spacing_cm: i64,
 }
 
 fn serialize_chunk_states<S>(
@@ -212,6 +227,35 @@ where
     for (key, budget) in encoded {
         let coord = decode_chunk_coord(&key).map_err(serde::de::Error::custom)?;
         decoded.insert(coord, budget);
+    }
+    Ok(decoded)
+}
+
+fn serialize_chunk_boundary_reservations<S>(
+    reservations: &BTreeMap<ChunkCoord, Vec<BoundaryReservation>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let encoded: BTreeMap<String, Vec<BoundaryReservation>> = reservations
+        .iter()
+        .map(|(coord, entries)| (encode_chunk_coord(*coord), entries.clone()))
+        .collect();
+    encoded.serialize(serializer)
+}
+
+fn deserialize_chunk_boundary_reservations<'de, D>(
+    deserializer: D,
+) -> Result<BTreeMap<ChunkCoord, Vec<BoundaryReservation>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let encoded = BTreeMap::<String, Vec<BoundaryReservation>>::deserialize(deserializer)?;
+    let mut decoded = BTreeMap::new();
+    for (key, entries) in encoded {
+        let coord = decode_chunk_coord(&key).map_err(serde::de::Error::custom)?;
+        decoded.insert(coord, entries);
     }
     Ok(decoded)
 }

@@ -64,7 +64,8 @@ pub use types::{
     CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
 pub use world_model::{
-    Agent, Asset, AssetKind, AsteroidFragmentConfig, ChunkState, FragmentResourceError, Location, MaterialWeights,
+    Agent, Asset, AssetKind, AsteroidFragmentConfig, BoundaryReservation, ChunkState,
+    FragmentResourceError, Location, MaterialWeights,
     PhysicsConfig, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };
 
