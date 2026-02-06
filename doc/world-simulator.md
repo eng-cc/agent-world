@@ -180,7 +180,8 @@
     `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
     `erosion_rate`）
   - `dust`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
-    `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`, `material_weights`）
+    `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`,
+    `min_fragment_spacing_cm`, `material_weights`）
 
 ### M1 行动规则（初版）
 - **规则实现**：以下规则由 Rule Modules 以 WASM 实现，内核仅保留位置/资源/基础物理不变量校验。

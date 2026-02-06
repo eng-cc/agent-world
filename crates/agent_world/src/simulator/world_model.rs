@@ -282,6 +282,7 @@ pub struct DustConfig {
     pub size_powerlaw_q: f64,
     pub radius_min_cm: i64,
     pub radius_max_cm: i64,
+    pub min_fragment_spacing_cm: i64,
     pub material_weights: MaterialWeights,
 }
 
@@ -295,6 +296,7 @@ impl Default for DustConfig {
             size_powerlaw_q: 3.0,
             radius_min_cm: 10,
             radius_max_cm: 10_000,
+            min_fragment_spacing_cm: 50_000,
             material_weights: MaterialWeights::default(),
         }
     }
@@ -322,6 +324,9 @@ impl DustConfig {
         }
         if self.radius_max_cm < self.radius_min_cm {
             self.radius_max_cm = self.radius_min_cm;
+        }
+        if self.min_fragment_spacing_cm < 0 {
+            self.min_fragment_spacing_cm = 0;
         }
         self.material_weights = self.material_weights.sanitized();
         self
