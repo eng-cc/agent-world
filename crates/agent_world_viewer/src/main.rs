@@ -139,6 +139,7 @@ struct Viewer3dConfig {
     cm_to_unit: f32,
     show_agents: bool,
     show_locations: bool,
+    highlight_selected: bool,
 }
 
 impl Default for Viewer3dConfig {
@@ -147,6 +148,7 @@ impl Default for Viewer3dConfig {
             cm_to_unit: DEFAULT_CM_TO_UNIT,
             show_agents: true,
             show_locations: true,
+            highlight_selected: true,
         }
     }
 }
@@ -719,8 +721,12 @@ fn update_3d_scene(
         &state.events,
     );
 
-    if let Some(current) = selection.current.as_ref() {
-        apply_entity_highlight(&mut transforms, current.entity);
+    if config.highlight_selected {
+        if let Some(current) = selection.current.as_ref() {
+            apply_entity_highlight(&mut transforms, current.entity);
+        }
+    } else if let Some(current) = selection.current.as_ref() {
+        reset_entity_scale(&mut transforms, current.entity);
     }
 }
 
@@ -815,6 +821,7 @@ fn pick_3d_selection(
     camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
     agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
     locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
+    config: Res<Viewer3dConfig>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
 ) {
@@ -886,7 +893,9 @@ fn pick_3d_selection(
             id,
             name,
         });
-        apply_entity_highlight(&mut transforms, entity);
+        if config.highlight_selected {
+            apply_entity_highlight(&mut transforms, entity);
+        }
     } else if selection.current.is_some() {
         if let Some(current) = selection.current.take() {
             reset_entity_scale(&mut transforms, current.entity);

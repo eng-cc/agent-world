@@ -27,6 +27,8 @@
 
 ### 3D 映射
 - **坐标映射**：`GeoPos { x_cm, y_cm, z_cm }` → `Vec3`，使用 `cm_to_unit` 缩放。
+- **原点对齐**：以 `WorldConfig.space` 的中心为原点（x=width/2, y=depth/2, z=height/2）。
+- **轴约定**：Bevy 使用 Y 轴向上，因此映射为 `Vec3(x, z, y)`（z 映射为高度，y 映射为前后）。
 - **世界边界**：基于 `WorldConfig.space` 绘制边界或参考网格（可选）。
 
 ### 3D 实体
@@ -49,7 +51,7 @@
 - `Viewer3dConfig`：
   - `cm_to_unit`：空间尺度（默认 `0.00001`，1km → 1u）。
   - `show_locations` / `show_agents`：显示开关。
-  - `highlight_selected`：选中高亮。
+  - `highlight_selected`：选中高亮（默认启用）。
 
 ## 里程碑
 - **M6.1** 3D 场景骨架与坐标映射（相机 + 基础 Mesh）。

@@ -6,6 +6,7 @@
 - [x] 相机控制：旋转 / 平移 / 缩放
 - [x] 基础拾取：点击选中 Agent/Location 并在 UI 显示
 - [x] 3D 标签：Location 名称与 Agent ID 标签渲染
+- [x] 对齐 3D 坐标映射说明与高亮配置
 
 ## 依赖
 - Viewer 协议与 live/offline server（`crates/agent_world/src/viewer`）
@@ -15,4 +16,4 @@
 
 ## 状态
 - 当前阶段：最小闭环与交互完成，待补齐更丰富渲染
-- 最近更新：完成 3D 标签渲染（2026-02-06）
+- 最近更新：补充坐标映射说明并对齐高亮配置（2026-02-06）
