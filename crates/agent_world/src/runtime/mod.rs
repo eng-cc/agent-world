@@ -11,6 +11,7 @@
 mod agent_cell;
 mod audit;
 mod blob_store;
+mod builtin_modules;
 pub mod distributed;
 mod distributed_client;
 mod distributed_dht;
@@ -94,6 +95,11 @@ pub use modules::{
 
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
+
+// Built-in modules (native sandbox helpers)
+pub use builtin_modules::{
+    BuiltinModule, BuiltinModuleSandbox, M1MoveRuleModule, M1_MOVE_RULE_MODULE_ID,
+};
 
 // Module store
 pub use module_store::ModuleStore;

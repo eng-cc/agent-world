@@ -88,6 +88,11 @@ RuleDecision {
 - 仅在 `pre_action` 合并完成后对账本扣费；失败则拒绝动作（`RejectReason::InsufficientResources`）。
 - `deny` 的成本不执行，仅记录在决策与审计中。
 
+### M1 规则模块落地（实现注记）
+- 移动规则由内置规则模块 `m1.rule.move` 先行实现（Reducer），订阅 `domain.agent_registered/domain.agent_moved` 维护位置状态。
+- `pre_action` 对 `action.move_agent` 计算距离成本并拒绝同位移动，输出 `rule.decision`。
+- 后续将替换为真实 WASM 工件，并保持相同订阅与输出协议。
+
 ## 额外设计 2：机体/零件模块化（Body Modules）
 
 ### 设计要点

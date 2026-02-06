@@ -27,8 +27,10 @@
 - [ ] 机体/零件动作与资源消耗通过 Body Module 表达
 
 ### 5. M1 规则迁移
-- [ ] 将移动/可见性/交互等规则迁移为 Rule Modules
-- [ ] 保持内核仅执行几何与资源守恒
+- [x] 5.1 移动规则迁移为 Rule Module（成本/同位拒绝，内置模块先行）
+- [ ] 5.2 可见性规则迁移为 Rule Module
+- [ ] 5.3 交互/资源转移规则迁移为 Rule Module
+- [ ] 5.4 保持内核仅执行几何与资源守恒（移除旧规则）
 
 ### 6. 测试与回放
 - [ ] Rule 模块冲突/拒绝/覆盖的确定性测试
@@ -41,6 +43,6 @@
 - `doc/world-runtime/runtime-integration.md`
 
 ## 状态
-- 当前阶段：W3（Rule Modules 路由与合并实现）
-- 下一步：W4（迁移 M1 规则到 Rule Modules）
-- 最近更新：接入资源扣费与 Action 覆盖逻辑（2026-02-06）
+- 当前阶段：W4（迁移 M1 规则到 Rule Modules）
+- 下一步：W4.2（可见性规则迁移为 Rule Module）
+- 最近更新：移动规则迁移为 Rule Module（2026-02-06）
