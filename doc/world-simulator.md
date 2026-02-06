@@ -8,35 +8,35 @@
 
 ## 关键设定
 - Agent **不是人类**，而是一种“硅基文明”：不需要吃饭/睡觉，但需要持续的**硬件**、**电力**与**数据**供给（以及由此衍生的算力、存储、带宽等约束）。
-- 世界存在**物理空间**的概念：一个可配置的**星际尘埃云**，默认尺寸 **100 km × 100 km × 10 km**（长×宽×高），为三维盒状空间。
+- 世界存在**物理空间**的概念：一个可配置的**破碎小行星带**，默认尺寸 **100 km × 100 km × 10 km**（长×宽×高），为三维盒状空间。
 - 不追求物理写实：只在抽象层表达空间约束（位置、距离、连通性、移动成本），不模拟精细连续物理与复杂动力学。
 - 为方便模拟，空间长度的最小单位为 **1 cm**：世界中所有“长度/距离/尺寸”类数值都应以 cm 为离散粒度（必要时在输出层再换算 m/km）。
 - 每个 Agent 的初始形态为**身高约 1 m 的人形机器人**（作为默认机体规格，可被升级/改造扩展）。
-- 尘埃云中分布着不同材质、大小不一的碎片（Location/Fragment）；**多数碎片具有放射性**。
-- 硅基生命依赖放射性物质存活：通过吸收辐射产生电力，并在真空中利用辐射粒子的反作用力移动（在规则层抽象为“辐射采集 → 电力资源 → 移动消耗”）。
+- 破碎小行星带由直径 **500 m–10 km** 的小行星碎片构成；**多数碎片富含放射性**。
+- 硅基生命依赖放射性物质供能：通过吸收辐射产生电力；每个 Agent 出厂自带“辐射能→电能”转换模块（规则层抽象为“辐射采集 → 电力资源”）。
 - **自由沙盒**：Agent 可以把“新事物”封装为 Rust/WASM 模块动态接入世界，模块仅通过事件/接口与外部交互。
 - **LLM 驱动**：实际运行中 Agent 的决策由 LLM 驱动，推理服务采用 **OpenAI 兼容 API** 形式提供（支持配置 endpoint/model/鉴权/预算策略）。
 - **模块化 Agent**：除位置/资源/基础物理外，Agent 的记忆/规划/工具等内部能力原则上由 WASM 模块定义，可由 Agent 自主迭代更新。
 - 技术上参考 **AgentOS**：确定性内核 + 控制面 IR（AIR）+ WASM 模块 + Effect/Receipt + Capability/Policy。
 - 工程实现采用 **Rust workspace**（Cargo 管理），核心库位于 `crates/agent_world/`。
 
-### 尘埃云物理细化（设计版）
+### 破碎小行星带物理细化（设计版）
 > 目标：在不引入连续物理模拟的前提下，尽量保持物理量纲与因果的正确性。
 
 - **空间边界与分层**
   - 世界为三维盒状空间（`width/depth/height`，默认 100km×100km×10km）。
   - 越界默认拒绝（当前实现），可选边界条件：反射、环绕或“失联”状态。
-  - 可选尘埃盘分层：中间层密度高、上下层稀薄（简化为 `density(z)` 曲线）。
+  - 可选碎片带分层：中间层密度高、上下层稀薄（简化为 `density(z)` 曲线）。
 
 - **碎片分布与材质**
-  - 碎片尺寸可按幂律分布（常见天体碎屑场）：`N(r) ~ r^-q`（q≈2.5~3.5）。
+  - 碎片尺寸可按幂律分布（常见天体碎屑场）：`N(r) ~ r^-q`（q≈2.5~3.5），直径范围 **500 m–10 km**（对应半径 250 m–5 km，配置项仍用 `radius_cm`）。
   - 材质比例可配置（硅酸盐/金属/冰/碳基/复合），影响辐射衰减、热容量、磨损速率。
   - `LocationProfile` 预留扩展字段（设计层）：`density`, `albedo`, `porosity`,
     `temperature`, `radioisotope_ratio`, `hazard_level`，用于精细化热与磨损计算。
 
 - **辐射场与衰减**
   - 基本规律：辐射强度随距离平方衰减（`I ~ 1/r^2`）。
-  - 介质吸收：`I = I0 * exp(-tau)`，`tau = k * density * r`（尘埃云光学厚度）。
+  - 介质吸收：`I = I0 * exp(-tau)`，`tau = k * density * r`（碎片带介质吸收）。
   - 计算简化：采用“近邻 + 体素背景”两级模型：  
     - **近邻**：采集位置附近若干 Location 的局部强度（近场贡献）。  
     - **背景**：体素网格中汇总的辐射场（远场贡献，O(1) 查询）。
@@ -46,14 +46,13 @@
     `harvest <= I * area * efficiency * dt`，并受 `max_harvest_per_tick` 限制。
   - 吸收辐射产生热量，需散热；过热触发降效或硬件损耗（见“热管理与硬件损耗”）。
 
-- **运动与推进（物理一致性约束）**
-  - 理论上辐射推进满足动量守恒：  
-    光子推进 `p = E / c`（能量成本极高）；粒子推进效率取决于排气速度 `ve`。
+- **运动与推进（抽象）**
   - 模型层可抽象为：`move_cost = f(distance, mass, thrust_efficiency)`，并设置 `max_accel`。
-  - 采用“能量/距离成本”抽象；若启用质量模型，则将机体质量与推进效率纳入计算。
+  - 采用“能量/距离成本”抽象；推进方式不细化，统一以电力消耗与上限约束处理。
+  - 若启用质量模型，则将机体质量与推进效率纳入计算。
 
 - **碰撞与侵蚀（可选）**
-  - 尘埃微粒造成的侵蚀可映射为硬件耐久度缓慢下降（维护成本）。
+  - 碎屑与微尘造成的侵蚀可映射为硬件耐久度缓慢下降（维护成本）。
   - 高速移动或高密度区域可提高磨损率（风险/成本选择）。
 
 - **时间尺度与量纲约定（可选）**
@@ -66,7 +65,6 @@
     `E_move ≈ k * distance`，用于替代复杂动力学。
   - 若引入质量 `m` 与最大加速度 `a_max`，可用  
     `v_max ≈ sqrt(2 * a_max * distance)` 作上限校验。
-  - 对辐射推进，可使用“效率折扣”吸收高能耗现实：`eff_thrust << 1`。
 
 - **辐射采集的安全阈值（可选）**
   - 高辐射区域可引入“硬件损耗阈值”：超过阈值的采集会增加维护成本。
@@ -81,7 +79,7 @@
   - `thermal_capacity`：热容量阈值（超过进入过热区）。
   - `thermal_dissipation`：每 tick 热量散逸值。
   - `heat_factor`：单位采集量带来的热增量。
-  - `erosion_rate`：尘埃侵蚀系数（与速度/密度缩放）。
+  - `erosion_rate`：碎屑侵蚀系数（与速度/密度缩放）。
 
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
@@ -110,7 +108,7 @@
   - 密度场：`density = base * (1 + cluster_noise) * layer(z)`  
     - `cluster_noise`：多尺度噪声，形成团簇/空洞  
     - `layer(z)`：中间层高、上下层低
-  - 尺寸分布：`radius_cm ~ PowerLaw(q)`，并裁剪在 `[r_min, r_max]`
+  - 尺寸分布：`radius_cm ~ PowerLaw(q)`，并裁剪在 `[r_min, r_max]`（对应直径 **500 m–10 km**）。
   - 材质分布：按权重抽样（Silicate/Metal/Ice/Carbon/Composite）
 
 - **进一步设计方向（可直接落地的规则描述）**
@@ -148,7 +146,7 @@
 - **Event**：世界状态变化的事实记录（可回放、可审计）。
 - **Rule**：对 Action 的校验与约束（权限、资源、冷却、失败原因）。
 - **Observation**：对某个 Agent 的视角输出（有范围/权限/不确定性）。
-- **GeoPos**：尘埃云中的三维位置（`x_cm/y_cm/z_cm`），用于距离/可见性/移动等规则。
+- **GeoPos**：小行星带中的三维位置（`x_cm/y_cm/z_cm`），用于距离/可见性/移动等规则。
 - **LengthCm**：以 cm 为单位的长度/距离（整数或可量化到 1 cm 的数值）。
 - **LocationProfile**：碎片/地点的物理画像（材质、尺寸、辐射强度）。
 - **WASM Module**：由 Agent 创造并编译的沙箱模块，用于扩展规则/设施/机制，也用于 Agent 内部能力（记忆/工具/策略）。
@@ -176,12 +174,12 @@
 - `Event`
   - `event_id`, `time`, `type`, `payload`, `caused_by`（action_id/agent_id）
 - `WorldConfig`（物理相关）
-  - `space`（`width_cm/depth_cm/height_cm`）
+  - `space`（`width_cm/depth_cm/height_cm`，破碎小行星带空间尺寸）
   - `physics`（`time_step_s`, `power_unit_j`, `radiation_floor`, `radiation_decay_k`,
     `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
     `erosion_rate`）
-  - `dust`（`base_density_per_km3`, `voxel_size_km`, `cluster_noise`, `layer_scale_height_km`,
-    `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`, `material_weights`）
+  - `dust`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
+    `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`, `material_weights`）
 
 ### M1 行动规则（初版）
 - **规则实现**：以下规则由 Rule Modules 以 WASM 实现，内核仅保留位置/资源/基础物理不变量校验。
@@ -198,7 +196,7 @@
 - **配置参数（内核级）**：
   - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
   - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
-  - `space`（尘埃云空间尺寸：`width_cm/depth_cm/height_cm`）
+  - `space`（小行星带空间尺寸：`width_cm/depth_cm/height_cm`）
   - `physics`（辐射/热/侵蚀参数）
   - `dust`（碎片分布生成器参数）
 

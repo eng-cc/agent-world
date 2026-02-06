@@ -21,17 +21,17 @@
 - [x] I10 demo 输出地点资源摘要
 - [x] I11 扩展场景模板（triad_region_bootstrap 多区域）
 - [x] I12 demo 输出 Agent 资源摘要
-- [x] I13 扩展场景模板（dusty_bootstrap 启用尘埃云）
+- [x] I13 扩展场景模板（dusty_bootstrap 启用小行星带碎片）
 - [x] I14 补充场景别名解析测试
-- [x] I15 demo 输出尘埃碎片数量
+- [x] I15 demo 输出小行星带碎片数量
 - [x] I16 demo 输出地点设施统计
 - [x] I17 文档补充场景使用建议
 - [x] I18 文档补充场景别名说明
-- [x] I19 扩展场景模板（dusty_twin_region_bootstrap 多区域尘埃云）
-- [x] I20 扩展场景模板（dusty_triad_region_bootstrap 三方尘埃云）
+- [x] I19 扩展场景模板（dusty_twin_region_bootstrap 多区域小行星带碎片）
+- [x] I20 扩展场景模板（dusty_triad_region_bootstrap 三方小行星带碎片）
 - [x] I21 demo 增加 summary-only 开关
 - [x] I22 场景稳定性测试（关键字段校验）
-- [x] I23 文档补充尘埃云种子策略
+- [x] I23 文档补充小行星带碎片种子策略
 - [x] I24 增加 world_init_demo summary-only 冒烟测试
 - [x] I25 增加 dusty_bootstrap 冒烟测试
 - [x] I26 增加 dusty_twin_region_bootstrap 冒烟测试
@@ -40,10 +40,11 @@
 - [x] I29 增加 triad_region_bootstrap 冒烟测试
 - [x] I30 文档补充场景 ID 稳定性说明
 - [x] I31 增加 triad_p2p_bootstrap 场景（多节点单 Agent）与出生地点列表支持
+- [x] I32 文档更新：世界观调整为破碎小行星带
 
 ## 依赖
-- `generate_fragments`（尘埃云生成器）
+- `generate_fragments`（小行星带碎片生成器）
 - `WorldKernel` / `WorldModel` 基础结构
 
 ## 状态
-- 当前阶段：I31（P2P 场景与出生地点列表完成）
+- 当前阶段：I32（世界观调整完成）

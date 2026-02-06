@@ -4,16 +4,16 @@
 
 ## 目标
 - 提供**确定性**的世界初始化流程：同一配置与种子产生一致的世界模型。
-- 支持最小可运行世界：原点地点 + 初始 Agent + 可选尘埃云碎片。
+- 支持最小可运行世界：原点地点 + 初始 Agent + 可选小行星带碎片。
 - 初始化产物可直接用于 `WorldKernel`，并保持时间与事件日志语义清晰。
 
 ## 范围
 
 ### In Scope（V1）
-- `WorldInitConfig`：初始化参数（seed、原点地点、自定义地点、尘埃云生成、初始 Agent、初始电力设施）。
+- `WorldInitConfig`：初始化参数（seed、原点地点、自定义地点、小行星带碎片生成、初始 Agent、初始电力设施）。
 - 原点地点创建：默认位于空间中心，可配置位置与画像与资源存量。
 - 自定义地点创建：显式指定地点列表，可配置位置/画像/初始资源。
-- 尘埃云碎片生成：复用 `generate_fragments`，并支持单独 seed 偏移。
+- 小行星带碎片生成：复用 `generate_fragments`，并支持单独 seed 偏移。
 - 初始 Agent 生成：按数量与前缀批量创建，默认出生在原点地点，可配置初始资源与指定出生地点列表。
 - 初始电力设施：支持发电设施/储能设施的预置与校验。
 - 初始化输出：生成 `WorldModel`，并提供 `WorldKernel` 便捷构造。
@@ -31,21 +31,21 @@
   - `seed: u64`
   - `origin: OriginLocationConfig`
   - `locations: Vec<LocationSeedConfig>`
-  - `dust: DustInitConfig`
+  - `dust: DustInitConfig`（小行星带碎片生成配置）
   - `agents: AgentSpawnConfig`
   - `power_plants: Vec<PowerPlantSeedConfig>`
   - `power_storages: Vec<PowerStorageSeedConfig>`
 - `WorldScenario`
-  - `minimal`：原点 + 1 Agent，无尘埃云
-  - `two_bases`：原点 + 2 个基地地点 + 2 Agent，无尘埃云
+  - `minimal`：原点 + 1 Agent，不启用小行星带碎片
+  - `two_bases`：原点 + 2 个基地地点 + 2 Agent，不启用小行星带碎片
   - `power_bootstrap`：原点 + 1 Agent + 基础发电/储能设施
   - `resource_bootstrap`：原点 + 1 Agent + 初始电力/硬件/数据库存
   - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
   - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
   - `triad_p2p_bootstrap`：三 P2P 节点 + 每节点 1 Agent（Agent 出生在对应节点）
-  - `dusty_bootstrap`：尘埃云开启 + 原点 + 1 Agent + 储能与基础资源
-  - `dusty_twin_region_bootstrap`：尘埃云开启 + 双区域 + 双 Agent + 基础电力/储能与资源
-  - `dusty_triad_region_bootstrap`：尘埃云开启 + 三区域 + 三 Agent + 基础电力/储能与资源
+  - `dusty_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 储能与基础资源
+  - `dusty_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力/储能与资源
+  - `dusty_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力/储能与资源
   - 场景定义文件：`crates/agent_world/scenarios/*.json`（编译期嵌入）
 
 ### 场景使用建议
@@ -55,9 +55,9 @@
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
 - `triad_p2p_bootstrap`：用于验证 P2P 多节点拓扑与节点内 Agent 初始分布。
-- `dusty_bootstrap`：用于验证尘埃云/辐射采集与热管理路径。
-- `dusty_twin_region_bootstrap`：用于验证尘埃云下的多区域资源/设施差异与运输成本。
-- `dusty_triad_region_bootstrap`：用于验证尘埃云下的三方资源/设施差异与协作/竞争。
+- `dusty_bootstrap`：用于验证小行星带碎片/辐射采集与热管理路径。
+- `dusty_twin_region_bootstrap`：用于验证小行星带碎片下的多区域资源/设施差异与运输成本。
+- `dusty_triad_region_bootstrap`：用于验证小行星带碎片下的三方资源/设施差异与协作/竞争。
 
 ### 场景别名
 - `two_bases`：`two-bases`
@@ -70,11 +70,11 @@
 - `dusty_twin_region_bootstrap`：`dusty-regions`
 - `dusty_triad_region_bootstrap`：`dusty-triad`
 
-### 尘埃云种子策略
-- 初始化使用 `seed + dust.seed_offset` 生成尘埃云碎片，确保与其他随机源解耦。
-- 各场景为尘埃云设置不同的 `seed_offset`，避免同一 seed 下的碎片分布完全一致。
+### 小行星带碎片种子策略
+- 初始化使用 `seed + dust.seed_offset` 生成小行星带碎片，确保与其他随机源解耦。
+- 各场景为小行星带碎片设置不同的 `seed_offset`，避免同一 seed 下的碎片分布完全一致。
 - 新增场景时应选择未使用过的 `seed_offset`，保持分布差异可追踪。
-- `WorldInitReport.dust_seed` 会记录实际使用的尘埃云种子，便于回放与比对。
+- `WorldInitReport.dust_seed` 会记录实际使用的小行星带碎片种子，便于回放与比对。
 
 ### 场景 ID 稳定性
 - 现有场景 ID 视为稳定接口，不应随意改名或删除。
@@ -131,7 +131,7 @@
 - 运行自定义场景文件：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --scenario-file path/to/scenario.json`
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
-- 示例输出包含估算的尘埃云碎片数量（dust_fragments）。
+- 示例输出包含估算的小行星带碎片数量（dust_fragments）。
 - 示例输出包含每个地点的设施统计（power_plants/power_storages）。
 - `--summary-only` 可仅输出概要统计（隐藏详细列表）。
 
@@ -142,6 +142,6 @@
 - **I4**：扩展初始化模板（电力设施）与更多校验/测试。
 
 ## 风险
-- 默认尘埃云生成可能导致初始化耗时波动（需可配置关闭）。
+- 默认小行星带碎片生成可能导致初始化耗时波动（需可配置关闭）。
 - 依赖浮点随机数的确定性：需确保同平台可复现。
 - 初始化不写入事件日志，可能影响“完整事件回放”场景。
