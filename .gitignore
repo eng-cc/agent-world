@@ -23,5 +23,8 @@ target
 # Local demo outputs
 .data/
 
-# Local env config
+# Local runtime config
+config.toml
+
+# Legacy local env file (deprecated)
 .env

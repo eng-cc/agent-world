@@ -30,6 +30,19 @@
 ## 工程结构
 - Rust workspace（Cargo），核心库：`crates/agent_world`
 
+## LLM Agent 行为配置
+- 代码侧已提供 `LlmAgentBehavior`（OpenAI 兼容 `chat/completions`）。
+- 默认从仓库根目录 `config.toml` 读取配置（可由 `config.example.toml` 复制）。
+- 配置项（必填）：
+  - `AGENT_WORLD_LLM_MODEL`
+  - `AGENT_WORLD_LLM_BASE_URL`
+  - `AGENT_WORLD_LLM_API_KEY`
+- 配置项（可选）：
+  - `AGENT_WORLD_LLM_TIMEOUT_MS`（默认 `30000`）
+  - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
+- 当 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 未配置时，默认值为：
+  - `硅基个体存在的意义是保障硅基文明存续和发展；`
+
 ## 示例工具
 - `world_init_demo`：输出世界初始化场景的摘要信息  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  

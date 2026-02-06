@@ -81,6 +81,14 @@
 - [x] 接入分块生成性能预算与确定性降级（CG9：fragments/blocks 三档上限）
 - [x] 补充分块生成回放一致性与性能回归测试（CG10）
 
+### 8. LLM Agent 行为落地
+- [x] 输出 LLM Agent 落地设计文档（`doc/world-simulator/llm-agent-behavior.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/llm-agent-behavior.project.md`）
+- [x] 新增 `LlmAgentBehavior`（OpenAI 兼容 chat/completions）
+- [x] 新增 `config.toml` 配置读取与 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 默认值
+- [x] 新增 LLM 决策解析与失败降级（`Wait`）
+- [x] 补充单元测试并通过 `cargo test -p agent_world`
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）

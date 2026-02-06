@@ -16,6 +16,7 @@ mod chunking;
 mod fragment_physics;
 mod init;
 mod kernel;
+mod llm_agent;
 mod memory;
 mod persist;
 mod power;
@@ -47,6 +48,11 @@ pub use init::{
 };
 pub use kernel::ChunkRuntimeConfig;
 pub use kernel::{Observation, ObservedAgent, ObservedLocation, WorldKernel};
+pub use llm_agent::{
+    LlmAgentBehavior, LlmAgentBuildError, LlmAgentConfig, LlmClientError,
+    OpenAiChatCompletionClient, DEFAULT_CONFIG_FILE_NAME, DEFAULT_LLM_SYSTEM_PROMPT,
+    ENV_LLM_API_KEY, ENV_LLM_BASE_URL, ENV_LLM_MODEL, ENV_LLM_SYSTEM_PROMPT, ENV_LLM_TIMEOUT_MS,
+};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
 };
