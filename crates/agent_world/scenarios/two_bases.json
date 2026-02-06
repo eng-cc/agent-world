@@ -1,0 +1,18 @@
+{
+  "id": "two_bases",
+  "name": "Two Bases",
+  "dust": { "enabled": false },
+  "agents": { "count": 2, "location_id": "base-a" },
+  "locations": [
+    {
+      "location_id": "base-a",
+      "name": "Base A",
+      "pos": { "type": "center_offset", "dx_pct": -0.2 }
+    },
+    {
+      "location_id": "base-b",
+      "name": "Base B",
+      "pos": { "type": "center_offset", "dx_pct": 0.2 }
+    }
+  ]
+}

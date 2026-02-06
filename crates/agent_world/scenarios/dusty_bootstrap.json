@@ -1,0 +1,25 @@
+{
+  "id": "dusty_bootstrap",
+  "name": "Dusty Bootstrap",
+  "dust": { "enabled": true, "seed_offset": 77 },
+  "agents": {
+    "count": 1,
+    "resources": { "amounts": { "electricity": 15 } }
+  },
+  "origin": {
+    "resources": { "amounts": { "electricity": 50, "hardware": 10 } }
+  },
+  "power_storages": [
+    {
+      "facility_id": "storage-1",
+      "location_id": "origin",
+      "owner": { "type": "Location", "data": { "location_id": "origin" } },
+      "capacity": 40,
+      "current_level": 5,
+      "charge_efficiency": 1.0,
+      "discharge_efficiency": 1.0,
+      "max_charge_rate": 6,
+      "max_discharge_rate": 6
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "id": "dusty_twin_region_bootstrap",
+  "name": "Dusty Twin Region Bootstrap",
+  "dust": { "enabled": true, "seed_offset": 101 },
+  "origin": { "enabled": false },
+  "agents": {
+    "count": 2,
+    "location_id": "region-a",
+    "resources": { "amounts": { "electricity": 20 } }
+  },
+  "locations": [
+    {
+      "location_id": "region-a",
+      "name": "Region A",
+      "pos": { "type": "center_offset", "dx_pct": -0.22 },
+      "resources": { "amounts": { "electricity": 180, "hardware": 40 } }
+    },
+    {
+      "location_id": "region-b",
+      "name": "Region B",
+      "pos": { "type": "center_offset", "dx_pct": 0.22 },
+      "resources": { "amounts": { "electricity": 140, "hardware": 30 } }
+    }
+  ],
+  "power_plants": [
+    {
+      "facility_id": "plant-a",
+      "location_id": "region-a",
+      "owner": { "type": "Location", "data": { "location_id": "region-a" } },
+      "capacity_per_tick": 10,
+      "fuel_cost_per_pu": 1,
+      "maintenance_cost": 1,
+      "efficiency": 1.0,
+      "degradation": 0.0
+    },
+    {
+      "facility_id": "plant-b",
+      "location_id": "region-b",
+      "owner": { "type": "Location", "data": { "location_id": "region-b" } },
+      "capacity_per_tick": 7,
+      "fuel_cost_per_pu": 1,
+      "maintenance_cost": 1,
+      "efficiency": 1.0,
+      "degradation": 0.0
+    }
+  ],
+  "power_storages": [
+    {
+      "facility_id": "storage-a",
+      "location_id": "region-a",
+      "owner": { "type": "Location", "data": { "location_id": "region-a" } },
+      "capacity": 70,
+      "current_level": 15,
+      "charge_efficiency": 1.0,
+      "discharge_efficiency": 1.0,
+      "max_charge_rate": 9,
+      "max_discharge_rate": 9
+    }
+  ]
+}

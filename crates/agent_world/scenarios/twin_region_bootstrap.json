@@ -1,0 +1,56 @@
+{
+  "id": "twin_region_bootstrap",
+  "name": "Twin Region Bootstrap",
+  "dust": { "enabled": false },
+  "origin": { "enabled": false },
+  "agents": { "count": 2, "location_id": "region-a" },
+  "locations": [
+    {
+      "location_id": "region-a",
+      "name": "Region A",
+      "pos": { "type": "center_offset", "dx_pct": -0.25 },
+      "resources": { "amounts": { "electricity": 200, "hardware": 50 } }
+    },
+    {
+      "location_id": "region-b",
+      "name": "Region B",
+      "pos": { "type": "center_offset", "dx_pct": 0.25 },
+      "resources": { "amounts": { "electricity": 150, "hardware": 30 } }
+    }
+  ],
+  "power_plants": [
+    {
+      "facility_id": "plant-a",
+      "location_id": "region-a",
+      "owner": { "type": "Location", "data": { "location_id": "region-a" } },
+      "capacity_per_tick": 12,
+      "fuel_cost_per_pu": 1,
+      "maintenance_cost": 1,
+      "efficiency": 1.0,
+      "degradation": 0.0
+    },
+    {
+      "facility_id": "plant-b",
+      "location_id": "region-b",
+      "owner": { "type": "Location", "data": { "location_id": "region-b" } },
+      "capacity_per_tick": 8,
+      "fuel_cost_per_pu": 1,
+      "maintenance_cost": 1,
+      "efficiency": 1.0,
+      "degradation": 0.0
+    }
+  ],
+  "power_storages": [
+    {
+      "facility_id": "storage-a",
+      "location_id": "region-a",
+      "owner": { "type": "Location", "data": { "location_id": "region-a" } },
+      "capacity": 80,
+      "current_level": 20,
+      "charge_efficiency": 1.0,
+      "discharge_efficiency": 1.0,
+      "max_charge_rate": 10,
+      "max_discharge_rate": 10
+    }
+  ]
+}

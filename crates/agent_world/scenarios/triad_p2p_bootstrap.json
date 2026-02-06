@@ -1,0 +1,27 @@
+{
+  "id": "triad_p2p_bootstrap",
+  "name": "Triad P2P Bootstrap",
+  "dust": { "enabled": false },
+  "origin": { "enabled": false },
+  "agents": {
+    "count": 3,
+    "spawn_locations": ["node-a", "node-b", "node-c"]
+  },
+  "locations": [
+    {
+      "location_id": "node-a",
+      "name": "Node A",
+      "pos": { "type": "center_offset", "dx_pct": -0.18 }
+    },
+    {
+      "location_id": "node-b",
+      "name": "Node B",
+      "pos": { "type": "center_offset", "dx_pct": 0.18 }
+    },
+    {
+      "location_id": "node-c",
+      "name": "Node C",
+      "pos": { "type": "center_offset", "dx_pct": 0.0, "dy_pct": 0.18 }
+    }
+  ]
+}

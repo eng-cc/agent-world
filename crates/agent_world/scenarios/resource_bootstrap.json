@@ -1,0 +1,12 @@
+{
+  "id": "resource_bootstrap",
+  "name": "Resource Bootstrap",
+  "dust": { "enabled": false },
+  "agents": {
+    "count": 1,
+    "resources": { "amounts": { "data": 10, "electricity": 25 } }
+  },
+  "origin": {
+    "resources": { "amounts": { "electricity": 100, "hardware": 20 } }
+  }
+}

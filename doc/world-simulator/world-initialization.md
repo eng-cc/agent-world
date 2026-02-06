@@ -46,6 +46,7 @@
   - `dusty_bootstrap`：尘埃云开启 + 原点 + 1 Agent + 储能与基础资源
   - `dusty_twin_region_bootstrap`：尘埃云开启 + 双区域 + 双 Agent + 基础电力/储能与资源
   - `dusty_triad_region_bootstrap`：尘埃云开启 + 三区域 + 三 Agent + 基础电力/储能与资源
+  - 场景定义文件：`crates/agent_world/scenarios/*.json`（编译期嵌入）
 
 ### 场景使用建议
 - `minimal`：用于测试核心流程或最小单 Agent 回归。
@@ -78,6 +79,7 @@
 ### 场景 ID 稳定性
 - 现有场景 ID 视为稳定接口，不应随意改名或删除。
 - 新增场景应保持命名风格一致，并补充别名与稳定性测试。
+ - 场景文件名需与场景 ID 一致（`{id}.json`）。
 - `OriginLocationConfig`
   - `enabled: bool`
   - `location_id/name/profile`
@@ -118,6 +120,7 @@
 - 生成过程使用 `WorldConfig` 的 `space/dust/power` 配置。
 - 生成顺序：origin → custom locations → dust fragments → agents → facilities（确保依赖对象已存在）。
 - 场景模板通过 `WorldInitConfig::from_scenario(scenario, config)` 生成初始化配置。
+- 场景文件由 `WorldScenario` 加载并转换为 `WorldInitConfig`。
 
 ### 示例工具
 - `world_init_demo`：命令行示例，按场景生成世界并输出统计摘要。
