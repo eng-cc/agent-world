@@ -41,7 +41,7 @@
 
 ### 配置项（Viewer 侧）
 - `Viewer3dConfig`：
-  - `cm_to_unit`：空间尺度（默认 `0.0001`，1m → 0.01u）。
+  - `cm_to_unit`：空间尺度（默认 `0.00001`，1km → 1u）。
   - `show_locations` / `show_agents`：显示开关。
   - `highlight_selected`：选中高亮。
 

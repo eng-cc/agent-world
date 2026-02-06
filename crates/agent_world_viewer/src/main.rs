@@ -1,10 +1,14 @@
+use std::collections::HashMap;
 use std::io::{BufRead, Write};
 use std::net::TcpStream;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Mutex;
 use std::thread;
 
-use agent_world::simulator::{RunnerMetrics, WorldEvent, WorldSnapshot};
+use agent_world::geometry::GeoPos;
+use agent_world::simulator::{
+    RunnerMetrics, SpaceConfig, WorldEvent, WorldEventKind, WorldSnapshot,
+};
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
@@ -12,6 +16,9 @@ use bevy::prelude::*;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
+const DEFAULT_CM_TO_UNIT: f32 = 0.00001;
+const DEFAULT_AGENT_RADIUS: f32 = 0.35;
+const DEFAULT_LOCATION_SIZE: f32 = 1.2;
 
 fn main() {
     let addr = resolve_addr();
@@ -31,6 +38,8 @@ fn run_ui(addr: String, offline: bool) {
             addr,
             max_events: DEFAULT_MAX_EVENTS,
         })
+        .insert_resource(Viewer3dConfig::default())
+        .insert_resource(Viewer3dScene::default())
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -42,10 +51,15 @@ fn run_ui(addr: String, offline: bool) {
             }),
         )
         .insert_resource(OfflineConfig { offline })
-        .add_systems(Startup, (setup_startup_state, setup_ui))
+        .add_systems(Startup, (setup_startup_state, setup_3d_scene, setup_ui))
         .add_systems(
             Update,
-            (poll_viewer_messages, update_ui, handle_control_buttons),
+            (
+                poll_viewer_messages,
+                update_ui,
+                update_3d_scene,
+                handle_control_buttons,
+            ),
         )
         .run();
 }
@@ -99,6 +113,44 @@ impl Default for ViewerState {
         }
     }
 }
+
+#[derive(Resource)]
+struct Viewer3dConfig {
+    cm_to_unit: f32,
+    show_agents: bool,
+    show_locations: bool,
+}
+
+impl Default for Viewer3dConfig {
+    fn default() -> Self {
+        Self {
+            cm_to_unit: DEFAULT_CM_TO_UNIT,
+            show_agents: true,
+            show_locations: true,
+        }
+    }
+}
+
+#[derive(Resource, Default)]
+struct Viewer3dScene {
+    origin: Option<GeoPos>,
+    last_snapshot_time: Option<u64>,
+    last_event_id: Option<u64>,
+    agent_entities: HashMap<String, Entity>,
+    location_entities: HashMap<String, Entity>,
+    location_positions: HashMap<String, GeoPos>,
+}
+
+#[derive(Resource)]
+struct Viewer3dAssets {
+    agent_mesh: Handle<Mesh>,
+    agent_material: Handle<StandardMaterial>,
+    location_mesh: Handle<Mesh>,
+    location_material: Handle<StandardMaterial>,
+}
+
+#[derive(Component)]
+struct Viewer3dCamera;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ConnectionStatus {
@@ -284,10 +336,55 @@ fn send_request(
     Ok(())
 }
 
+fn setup_3d_scene(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
+    let location_mesh = meshes.add(Cuboid::new(
+        DEFAULT_LOCATION_SIZE,
+        DEFAULT_LOCATION_SIZE * 0.2,
+        DEFAULT_LOCATION_SIZE,
+    ));
+    let agent_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.2, 0.7, 1.0),
+        perceptual_roughness: 0.6,
+        ..default()
+    });
+    let location_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.35, 0.35, 0.4),
+        perceptual_roughness: 0.8,
+        ..default()
+    });
+
+    commands.insert_resource(Viewer3dAssets {
+        agent_mesh,
+        agent_material,
+        location_mesh,
+        location_material,
+    });
+
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Viewer3dCamera,
+    ));
+
+    commands.spawn((
+        PointLight {
+            intensity: 6000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(20.0, 30.0, 20.0),
+    ));
+}
+
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/DejaVuSans.ttf");
 
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, IsDefaultUiCamera));
 
     commands
         .spawn((
@@ -297,7 +394,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.08, 0.09, 0.1)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.0)),
         ))
         .with_children(|root| {
             root.spawn((
@@ -309,7 +406,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     padding: UiRect::horizontal(Val::Px(16.0)),
                     ..default()
                 },
-                BackgroundColor(Color::srgb(0.12, 0.12, 0.14)),
+                BackgroundColor(Color::srgba(0.12, 0.12, 0.14, 0.85)),
             ))
             .with_children(|bar| {
                 for (label, control) in [
@@ -374,7 +471,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             padding: UiRect::all(Val::Px(16.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.1, 0.1, 0.12)),
+                        BackgroundColor(Color::srgba(0.1, 0.1, 0.12, 0.8)),
                     ))
                     .with_children(|left| {
                         left.spawn((
@@ -397,7 +494,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             padding: UiRect::all(Val::Px(16.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.07, 0.07, 0.08)),
+                        BackgroundColor(Color::srgba(0.07, 0.07, 0.08, 0.75)),
                     ))
                     .with_children(|right| {
                         right.spawn((
@@ -465,6 +562,35 @@ fn poll_viewer_messages(
             }
         }
     }
+}
+
+fn update_3d_scene(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+    state: Res<ViewerState>,
+) {
+    let Some(snapshot) = state.snapshot.as_ref() else {
+        return;
+    };
+
+    let snapshot_time = snapshot.time;
+    let snapshot_changed = scene.last_snapshot_time != Some(snapshot_time);
+    if snapshot_changed {
+        rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, snapshot);
+        scene.last_snapshot_time = Some(snapshot_time);
+        scene.last_event_id = None;
+    }
+
+    apply_events_to_scene(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        snapshot_time,
+        &state.events,
+    );
 }
 
 fn update_ui(
@@ -568,6 +694,195 @@ fn events_summary(events: &[WorldEvent]) -> String {
         ));
     }
     lines.join("\n")
+}
+
+fn rebuild_scene_from_snapshot(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    snapshot: &WorldSnapshot,
+) {
+    for entity in scene
+        .agent_entities
+        .values()
+        .chain(scene.location_entities.values())
+    {
+        commands.entity(*entity).despawn();
+    }
+
+    scene.agent_entities.clear();
+    scene.location_entities.clear();
+    scene.location_positions.clear();
+
+    let origin = space_origin(&snapshot.config.space);
+    scene.origin = Some(origin);
+
+    for (location_id, location) in snapshot.model.locations.iter() {
+        spawn_location_entity(
+            commands,
+            config,
+            assets,
+            scene,
+            origin,
+            location_id,
+            &location.name,
+            location.pos,
+        );
+    }
+
+    for (agent_id, agent) in snapshot.model.agents.iter() {
+        spawn_agent_entity(commands, config, assets, scene, origin, agent_id, agent.pos);
+    }
+}
+
+fn apply_events_to_scene(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    snapshot_time: u64,
+    events: &[WorldEvent],
+) {
+    let Some(origin) = scene.origin else {
+        return;
+    };
+
+    let mut last_event_id = scene.last_event_id;
+    let mut processed = false;
+
+    for event in events {
+        if event.time <= snapshot_time {
+            continue;
+        }
+        if let Some(last_id) = last_event_id {
+            if event.id <= last_id {
+                continue;
+            }
+        }
+
+        match &event.kind {
+            WorldEventKind::LocationRegistered {
+                location_id,
+                name,
+                pos,
+                ..
+            } => {
+                spawn_location_entity(
+                    commands,
+                    config,
+                    assets,
+                    scene,
+                    origin,
+                    location_id,
+                    name,
+                    *pos,
+                );
+            }
+            WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
+                spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+            }
+            WorldEventKind::AgentMoved { agent_id, to, .. } => {
+                if let Some(pos) = scene.location_positions.get(to) {
+                    spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+                }
+            }
+            _ => {}
+        }
+
+        last_event_id = Some(event.id);
+        processed = true;
+    }
+
+    if processed {
+        scene.last_event_id = last_event_id;
+    }
+}
+
+fn spawn_location_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    location_id: &str,
+    name: &str,
+    pos: GeoPos,
+) {
+    scene
+        .location_positions
+        .insert(location_id.to_string(), pos);
+
+    if !config.show_locations {
+        return;
+    }
+
+    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
+    if let Some(entity) = scene.location_entities.get(location_id) {
+        commands
+            .entity(*entity)
+            .insert(Transform::from_translation(translation));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.location_mesh.clone()),
+            MeshMaterial3d(assets.location_material.clone()),
+            Transform::from_translation(translation),
+            Name::new(format!("location:{location_id}:{name}")),
+        ))
+        .id();
+    scene.location_entities.insert(location_id.to_string(), entity);
+}
+
+fn spawn_agent_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    agent_id: &str,
+    pos: GeoPos,
+) {
+    if !config.show_agents {
+        return;
+    }
+
+    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
+    if let Some(entity) = scene.agent_entities.get(agent_id) {
+        commands
+            .entity(*entity)
+            .insert(Transform::from_translation(translation));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.agent_mesh.clone()),
+            MeshMaterial3d(assets.agent_material.clone()),
+            Transform::from_translation(translation),
+            Name::new(format!("agent:{agent_id}")),
+        ))
+        .id();
+    scene.agent_entities.insert(agent_id.to_string(), entity);
+}
+
+fn space_origin(space: &SpaceConfig) -> GeoPos {
+    GeoPos {
+        x_cm: space.width_cm as f64 / 2.0,
+        y_cm: space.depth_cm as f64 / 2.0,
+        z_cm: space.height_cm as f64 / 2.0,
+    }
+}
+
+fn geo_to_vec3(pos: GeoPos, origin: GeoPos, cm_to_unit: f32) -> Vec3 {
+    let scale = cm_to_unit as f64;
+    Vec3::new(
+        ((pos.x_cm - origin.x_cm) * scale) as f32,
+        ((pos.z_cm - origin.z_cm) * scale) as f32,
+        ((pos.y_cm - origin.y_cm) * scale) as f32,
+    )
 }
 
 #[cfg(test)]
@@ -858,5 +1173,28 @@ mod tests {
         assert!(decide_offline(false, true, false));
         assert!(!decide_offline(true, true, true));
         assert!(!decide_offline(true, false, true));
+    }
+
+    #[test]
+    fn space_origin_is_center_of_bounds() {
+        let space = SpaceConfig {
+            width_cm: 100,
+            depth_cm: 200,
+            height_cm: 300,
+        };
+        let origin = space_origin(&space);
+        assert_eq!(origin.x_cm, 50.0);
+        assert_eq!(origin.y_cm, 100.0);
+        assert_eq!(origin.z_cm, 150.0);
+    }
+
+    #[test]
+    fn geo_to_vec3_scales_and_swaps_axes() {
+        let origin = GeoPos::new(100.0, 200.0, 300.0);
+        let pos = GeoPos::new(110.0, 220.0, 330.0);
+        let vec = geo_to_vec3(pos, origin, 0.01);
+        assert!((vec.x - 0.1).abs() < 1e-6);
+        assert!((vec.y - 0.3).abs() < 1e-6);
+        assert!((vec.z - 0.2).abs() < 1e-6);
     }
 }
