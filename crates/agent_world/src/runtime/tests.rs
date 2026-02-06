@@ -1,6 +1,7 @@
 //! Tests for the runtime module.
 
 use super::*;
+use crate::simulator::ResourceKind;
 use serde_json::json;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -1158,7 +1159,7 @@ fn audit_filter_rule_decision_events() {
         pos: pos(1.0, 1.0),
     };
     let mut cost = ResourceDelta::default();
-    cost.entries.insert("power".to_string(), -3);
+    cost.entries.insert(ResourceKind::Electricity, -3);
 
     world
         .record_rule_decision(

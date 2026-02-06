@@ -82,7 +82,9 @@ RuleDecision {
 - 若覆盖动作不合法，则按 `ActionRejected` 处理，并记录 `RuleDecisionRecorded` 以便审计。
 
 ### 资源成本语义（草案）
-- `ResourceDelta` 为资源类型 → 有符号变化量；单位与量纲由 `WorldConfig` 定义。
+- `ResourceDelta` 以 `ResourceKind` 为键（`electricity/hardware/data`），值为有符号变化量。
+- 负值代表成本/扣费，正值代表奖励/补贴；单位与量纲由 `WorldConfig` 定义。
+- 若任一资源在扣费后余额 < 0，则拒绝动作，并记录缺口（缺口量为正数）。
 - 仅在 `pre_action` 合并完成后对账本扣费；失败则拒绝动作（`RejectReason::InsufficientResources`）。
 - `deny` 的成本不执行，仅记录在决策与审计中。
 

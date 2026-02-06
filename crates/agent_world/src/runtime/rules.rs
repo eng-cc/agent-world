@@ -4,6 +4,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::simulator::ResourceKind;
+
 use super::events::Action;
 use super::modules::ModuleSubscriptionStage;
 use super::types::ActionId;
@@ -11,15 +13,50 @@ use super::types::ActionId;
 /// Resource changes produced by rule evaluation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ResourceDelta {
-    pub entries: BTreeMap<String, i64>,
+    pub entries: BTreeMap<ResourceKind, i64>,
 }
 
 impl ResourceDelta {
     pub fn add_assign(&mut self, other: &ResourceDelta) {
         for (key, value) in &other.entries {
-            *self.entries.entry(key.clone()).or_insert(0) += value;
+            *self.entries.entry(*key).or_insert(0) += value;
         }
     }
+
+    pub fn deficits(
+        &self,
+        balances: &BTreeMap<ResourceKind, i64>,
+    ) -> BTreeMap<ResourceKind, i64> {
+        let mut deficits = BTreeMap::new();
+        for (kind, delta) in &self.entries {
+            if *delta >= 0 {
+                continue;
+            }
+            let available = balances.get(kind).copied().unwrap_or(0);
+            let remaining = available + delta;
+            if remaining < 0 {
+                deficits.insert(*kind, -remaining);
+            }
+        }
+        deficits
+    }
+
+    pub fn ensure_affordable(
+        &self,
+        balances: &BTreeMap<ResourceKind, i64>,
+    ) -> Result<(), ResourceBalanceError> {
+        let deficits = self.deficits(balances);
+        if deficits.is_empty() {
+            Ok(())
+        } else {
+            Err(ResourceBalanceError { deficits })
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceBalanceError {
+    pub deficits: BTreeMap<ResourceKind, i64>,
 }
 
 /// Verdicts that rule modules can produce.
@@ -135,6 +172,7 @@ where
 mod tests {
     use super::*;
     use crate::geometry::GeoPos;
+    use crate::simulator::ResourceKind;
 
     fn action() -> Action {
         Action::RegisterAgent {
@@ -150,7 +188,7 @@ mod tests {
     #[test]
     fn merge_allows_and_costs() {
         let mut cost = ResourceDelta::default();
-        cost.entries.insert("power".to_string(), -2);
+        cost.entries.insert(ResourceKind::Electricity, -2);
         let decisions = vec![
             RuleDecision {
                 action_id: 1,
@@ -170,9 +208,52 @@ mod tests {
 
         let merged = merge_rule_decisions(1, decisions).unwrap();
         assert_eq!(merged.verdict, RuleVerdict::Allow);
-        assert_eq!(merged.cost.entries.get("power"), Some(&-2));
+        assert_eq!(
+            merged.cost.entries.get(&ResourceKind::Electricity),
+            Some(&-2)
+        );
         assert_eq!(merged.override_action, None);
         assert_eq!(merged.notes.len(), 2);
+    }
+
+    #[test]
+    fn resource_delta_deficits_report_shortfall() {
+        let mut balances = BTreeMap::new();
+        balances.insert(ResourceKind::Electricity, 3);
+        balances.insert(ResourceKind::Hardware, 5);
+
+        let mut delta = ResourceDelta::default();
+        delta.entries.insert(ResourceKind::Electricity, -5);
+        delta.entries.insert(ResourceKind::Hardware, -2);
+        delta.entries.insert(ResourceKind::Data, 4);
+
+        let deficits = delta.deficits(&balances);
+        assert_eq!(deficits.get(&ResourceKind::Electricity), Some(&2));
+        assert_eq!(deficits.get(&ResourceKind::Hardware), None);
+        assert_eq!(deficits.get(&ResourceKind::Data), None);
+    }
+
+    #[test]
+    fn resource_delta_affordable_ok() {
+        let mut balances = BTreeMap::new();
+        balances.insert(ResourceKind::Electricity, 10);
+
+        let mut delta = ResourceDelta::default();
+        delta.entries.insert(ResourceKind::Electricity, -7);
+
+        assert!(delta.ensure_affordable(&balances).is_ok());
+    }
+
+    #[test]
+    fn resource_delta_affordable_returns_error() {
+        let mut balances = BTreeMap::new();
+        balances.insert(ResourceKind::Electricity, 1);
+
+        let mut delta = ResourceDelta::default();
+        delta.entries.insert(ResourceKind::Electricity, -4);
+
+        let err = delta.ensure_affordable(&balances).unwrap_err();
+        assert_eq!(err.deficits.get(&ResourceKind::Electricity), Some(&3));
     }
 
     #[test]

@@ -1,7 +1,9 @@
 //! Action and domain event types.
 
 use crate::geometry::GeoPos;
+use crate::simulator::ResourceKind;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use super::types::ActionId;
 
@@ -45,6 +47,7 @@ impl DomainEvent {
 pub enum RejectReason {
     AgentAlreadyExists { agent_id: String },
     AgentNotFound { agent_id: String },
+    InsufficientResources { deficits: BTreeMap<ResourceKind, i64> },
 }
 
 /// The cause of an event, for audit purposes.

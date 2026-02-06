@@ -156,8 +156,8 @@ pub use policy::{PolicyDecision, PolicyDecisionRecord, PolicyRule, PolicySet, Po
 
 // Rules
 pub use rules::{
-    merge_rule_decisions, ActionOverrideRecord, ResourceDelta, RuleDecision, RuleDecisionMergeError,
-    RuleDecisionRecord, RuleVerdict,
+    merge_rule_decisions, ActionOverrideRecord, ResourceBalanceError, ResourceDelta, RuleDecision,
+    RuleDecisionMergeError, RuleDecisionRecord, RuleVerdict,
 };
 
 // Signer
