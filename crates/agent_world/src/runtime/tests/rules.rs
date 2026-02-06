@@ -2,6 +2,7 @@ use super::pos;
 use super::super::*;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
+use std::collections::BTreeMap;
 
 fn install_m1_move_rule(world: &mut World) {
     let wasm_bytes = b"m1-move-rule";
@@ -220,6 +221,125 @@ fn install_m1_transfer_rule(world: &mut World) {
         .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
         .unwrap();
     world.apply_proposal(proposal_id).unwrap();
+}
+
+#[derive(Debug, Clone)]
+struct MapSandbox {
+    outputs: BTreeMap<String, ModuleOutput>,
+}
+
+impl MapSandbox {
+    fn new(outputs: BTreeMap<String, ModuleOutput>) -> Self {
+        Self { outputs }
+    }
+}
+
+impl ModuleSandbox for MapSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        self.outputs.get(&request.module_id).cloned().ok_or_else(|| {
+            ModuleCallFailure {
+                module_id: request.module_id.clone(),
+                trace_id: request.trace_id.clone(),
+                code: ModuleCallErrorCode::SandboxUnavailable,
+                detail: "module output missing".to_string(),
+            }
+        })
+    }
+}
+
+fn install_rule_modules(world: &mut World, action_kind: &str, module_ids: &[&str]) {
+    let mut manifests = Vec::new();
+    for module_id in module_ids {
+        let wasm_bytes = format!("rule-{module_id}").into_bytes();
+        let wasm_hash = util::sha256_hex(&wasm_bytes);
+        world
+            .register_module_artifact(wasm_hash.clone(), &wasm_bytes)
+            .unwrap();
+
+        manifests.push(ModuleManifest {
+            module_id: (*module_id).to_string(),
+            name: format!("Rule-{module_id}"),
+            version: "0.1.0".to_string(),
+            kind: ModuleKind::Pure,
+            role: ModuleRole::Rule,
+            wasm_hash,
+            interface_version: "wasm-1".to_string(),
+            exports: vec!["call".to_string()],
+            subscriptions: vec![ModuleSubscription {
+                event_kinds: Vec::new(),
+                action_kinds: vec![action_kind.to_string()],
+                stage: Some(ModuleSubscriptionStage::PreAction),
+                filters: None,
+            }],
+            required_caps: Vec::new(),
+            limits: ModuleLimits {
+                max_mem_bytes: 1024,
+                max_gas: 10_000,
+                max_call_rate: 10,
+                max_output_bytes: 2048,
+                max_effects: 0,
+                max_emits: 1,
+            },
+        });
+    }
+
+    let changes = ModuleChangeSet {
+        register: manifests.clone(),
+        activate: manifests
+            .iter()
+            .map(|manifest| ModuleActivation {
+                module_id: manifest.module_id.clone(),
+                version: manifest.version.clone(),
+            })
+            .collect(),
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+}
+
+fn rule_decision_with_notes(
+    action_id: u64,
+    verdict: RuleVerdict,
+    override_action: Option<Action>,
+    notes: &[&str],
+) -> RuleDecision {
+    RuleDecision {
+        action_id,
+        verdict,
+        override_action,
+        cost: ResourceDelta::default(),
+        notes: notes.iter().map(|note| note.to_string()).collect(),
+    }
+}
+
+fn rule_decision_output(decision: RuleDecision) -> ModuleOutput {
+    ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "rule.decision".to_string(),
+            payload: serde_json::to_value(decision).unwrap(),
+        }],
+        output_bytes: 256,
+    }
 }
 
 #[test]
@@ -770,4 +890,219 @@ fn body_action_requires_body_module() {
         }
         other => panic!("unexpected event: {other:?}"),
     }
+}
+
+#[test]
+fn rule_module_order_is_deterministic() {
+    let mut world = World::new();
+    install_rule_modules(&mut world, "action.move_agent", &["b.rule", "a.rule"]);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let action_id = world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(1.0, 0.0),
+    });
+
+    let mut outputs = BTreeMap::new();
+    outputs.insert(
+        "a.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Allow,
+            None,
+            &["a"],
+        )),
+    );
+    outputs.insert(
+        "b.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Allow,
+            None,
+            &["b"],
+        )),
+    );
+    let mut sandbox = MapSandbox::new(outputs);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let records: Vec<_> = world
+        .journal()
+        .events
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::RuleDecisionRecorded(record) if record.action_id == action_id => {
+                Some(record)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0].module_id, "a.rule");
+    assert_eq!(records[1].module_id, "b.rule");
+}
+
+#[test]
+fn rule_conflicting_overrides_rejects_action() {
+    let mut world = World::new();
+    install_rule_modules(&mut world, "action.move_agent", &["a.rule", "b.rule"]);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let action_id = world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(1.0, 0.0),
+    });
+
+    let override_a = Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(2.0, 0.0),
+    };
+    let override_b = Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(3.0, 0.0),
+    };
+
+    let mut outputs = BTreeMap::new();
+    outputs.insert(
+        "a.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Modify,
+            Some(override_a),
+            &["a"],
+        )),
+    );
+    outputs.insert(
+        "b.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Modify,
+            Some(override_b),
+            &["b"],
+        )),
+    );
+    let mut sandbox = MapSandbox::new(outputs);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("conflicting override")));
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn rule_deny_overrides_modify() {
+    let mut world = World::new();
+    install_rule_modules(&mut world, "action.move_agent", &["a.rule", "b.rule"]);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let action_id = world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(1.0, 0.0),
+    });
+
+    let override_action = Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(2.0, 0.0),
+    };
+
+    let mut outputs = BTreeMap::new();
+    outputs.insert(
+        "a.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Modify,
+            Some(override_action),
+            &["modify"],
+        )),
+    );
+    outputs.insert(
+        "b.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Deny,
+            None,
+            &["deny"],
+        )),
+    );
+    let mut sandbox = MapSandbox::new(outputs);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes.iter().any(|note| note.contains("deny")));
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn rule_same_override_is_applied() {
+    let mut world = World::new();
+    install_rule_modules(&mut world, "action.move_agent", &["a.rule", "b.rule"]);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let action_id = world.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(1.0, 0.0),
+    });
+
+    let override_action = Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: pos(4.0, 0.0),
+    };
+
+    let mut outputs = BTreeMap::new();
+    outputs.insert(
+        "a.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Modify,
+            Some(override_action.clone()),
+            &["a"],
+        )),
+    );
+    outputs.insert(
+        "b.rule".to_string(),
+        rule_decision_output(rule_decision_with_notes(
+            action_id,
+            RuleVerdict::Modify,
+            Some(override_action),
+            &["b"],
+        )),
+    );
+    let mut sandbox = MapSandbox::new(outputs);
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let agent = world.state().agents.get("agent-1").unwrap();
+    assert_eq!(agent.state.pos, pos(4.0, 0.0));
 }
