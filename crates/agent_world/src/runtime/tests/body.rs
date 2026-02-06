@@ -302,3 +302,58 @@ fn body_action_rejects_when_insufficient_resources() {
         other => panic!("unexpected event: {other:?}"),
     }
 }
+
+#[test]
+fn body_update_replay_is_consistent() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let initial = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4000,
+    };
+    world.submit_action(Action::EmitBodyAttributes {
+        agent_id: "agent-1".to_string(),
+        view: initial.clone(),
+        reason: "init".to_string(),
+    });
+    world.step().unwrap();
+
+    let snapshot = world.snapshot();
+
+    let invalid = BodyKernelView {
+        mass_kg: 0,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4000,
+    };
+    world.submit_action(Action::EmitBodyAttributes {
+        agent_id: "agent-1".to_string(),
+        view: invalid,
+        reason: "invalid".to_string(),
+    });
+    world.step().unwrap();
+
+    let updated = BodyKernelView {
+        mass_kg: 150,
+        radius_cm: 80,
+        thrust_limit: 220,
+        cross_section_cm2: 4000,
+    };
+    world.submit_action(Action::EmitBodyAttributes {
+        agent_id: "agent-1".to_string(),
+        view: updated,
+        reason: "upgrade".to_string(),
+    });
+    world.step().unwrap();
+
+    let journal = world.journal().clone();
+    let restored = World::from_snapshot(snapshot, journal).unwrap();
+    assert_eq!(restored.state(), world.state());
+}
