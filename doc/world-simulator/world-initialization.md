@@ -128,6 +128,7 @@
 ### 使用示例
 - 运行示例工具：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- minimal`
 - 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --help`
+- 运行自定义场景文件：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --scenario-file path/to/scenario.json`
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
 - 示例输出包含估算的尘埃云碎片数量（dust_fragments）。

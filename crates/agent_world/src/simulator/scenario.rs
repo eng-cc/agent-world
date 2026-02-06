@@ -1,6 +1,8 @@
 //! World scenario templates (stable IDs) backed by scenario files.
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::path::{Path, PathBuf};
 
 use crate::geometry::GeoPos;
 
@@ -114,7 +116,41 @@ impl WorldScenario {
         let spec = self.load_spec();
         spec.into_init_config(&config)
     }
+
+    pub fn load_spec_from_path(path: impl AsRef<Path>) -> Result<WorldScenarioSpec, ScenarioSpecError> {
+        WorldScenarioSpec::load_from_path(path)
+    }
+
+    pub fn build_init_from_path(
+        path: impl AsRef<Path>,
+        config: &WorldConfig,
+    ) -> Result<WorldInitConfig, ScenarioSpecError> {
+        let config = config.clone().sanitized();
+        let spec = WorldScenarioSpec::load_from_path(path)?;
+        Ok(spec.into_init_config(&config))
+    }
 }
+
+#[derive(Debug)]
+pub enum ScenarioSpecError {
+    Io { path: PathBuf, source: std::io::Error },
+    Parse { path: PathBuf, source: serde_json::Error },
+}
+
+impl fmt::Display for ScenarioSpecError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScenarioSpecError::Io { path, source } => {
+                write!(f, "failed to read {}: {source}", path.display())
+            }
+            ScenarioSpecError::Parse { path, source } => {
+                write!(f, "failed to parse {}: {source}", path.display())
+            }
+        }
+    }
+}
+
+impl std::error::Error for ScenarioSpecError {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -161,6 +197,18 @@ impl WorldScenarioSpec {
             power_plants: self.power_plants,
             power_storages: self.power_storages,
         }
+    }
+
+    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, ScenarioSpecError> {
+        let path = path.as_ref();
+        let contents = std::fs::read_to_string(path).map_err(|err| ScenarioSpecError::Io {
+            path: path.to_path_buf(),
+            source: err,
+        })?;
+        serde_json::from_str(&contents).map_err(|err| ScenarioSpecError::Parse {
+            path: path.to_path_buf(),
+            source: err,
+        })
     }
 }
 

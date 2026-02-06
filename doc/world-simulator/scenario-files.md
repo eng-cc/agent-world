@@ -15,6 +15,7 @@
 - 位置表达 `ScenarioPos`：`center` / `center_offset` / `absolute`。
 - 场景文件覆盖所有现有场景：minimal/two_bases/.../dusty_triad_region_bootstrap。
 - 单元测试验证场景文件可加载与稳定性。
+- `world_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
 
 ### Out of Scope
 - 运行时从任意路径加载自定义场景文件（仅内置文件）。
@@ -45,6 +46,7 @@
 ### 加载策略
 - 场景文件通过 `include_str!` 嵌入编译产物，避免运行时 I/O。
 - `WorldInitConfig::from_scenario` 读取场景文件并生成初始化配置。
+- `world_init_demo --scenario-file` 走运行时加载路径，便于调试自定义场景文件。
 
 ## 里程碑
 - **F1**：输出场景文件设计与项目管理文档。

@@ -1,6 +1,8 @@
+use agent_world::simulator::WorldScenarioSpec;
 use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
 use agent_world::simulator::{ResourceKind, WorldConfig};
 use std::collections::BTreeMap;
+use std::path::Path;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -8,39 +10,72 @@ fn main() {
         println!("Usage: world_init_demo [scenario]");
         println!("Options:");
         println!("  --summary-only  Only print counts (omit per-location/agent details)");
+        println!("  --scenario-file Load scenario spec from JSON file");
         println!("Available scenarios: {}", WorldScenario::variants().join(", "));
         return;
     }
 
     let mut summary_only = false;
     let mut scenario_arg: Option<&str> = None;
-    for arg in args.iter().skip(1) {
+    let mut scenario_file: Option<&str> = None;
+    let mut arg_iter = args.iter().skip(1);
+    while let Some(arg) = arg_iter.next() {
         if arg == "--summary-only" {
             summary_only = true;
+        } else if arg == "--scenario-file" {
+            scenario_file = match arg_iter.next() {
+                Some(path) => Some(path.as_str()),
+                None => {
+                    eprintln!("--scenario-file requires a path");
+                    std::process::exit(1);
+                }
+            };
         } else if scenario_arg.is_none() {
             scenario_arg = Some(arg);
         }
     }
 
-    let scenario = if let Some(name) = scenario_arg {
-        match WorldScenario::parse(name) {
-            Some(scenario) => scenario,
-            None => {
-                eprintln!("Unknown scenario: {name}");
-                eprintln!("Available scenarios: {}", WorldScenario::variants().join(", "));
-                std::process::exit(1);
-            }
-        }
-    } else {
-        WorldScenario::Minimal
-    };
-
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(scenario, &config);
+    let (scenario_label, init) = match (scenario_file, scenario_arg) {
+        (Some(_), Some(_)) => {
+            eprintln!("--scenario-file cannot be combined with a scenario name");
+            std::process::exit(1);
+        }
+        (Some(path), None) => {
+            let spec = match WorldScenarioSpec::load_from_path(Path::new(path)) {
+                Ok(spec) => spec,
+                Err(err) => {
+                    eprintln!("Failed to load scenario file: {err}");
+                    std::process::exit(1);
+                }
+            };
+            let label = if spec.id.is_empty() {
+                "custom".to_string()
+            } else {
+                spec.id.clone()
+            };
+            (label, spec.into_init_config(&config))
+        }
+        (None, Some(name)) => {
+            let scenario = match WorldScenario::parse(name) {
+                Some(scenario) => scenario,
+                None => {
+                    eprintln!("Unknown scenario: {name}");
+                    eprintln!("Available scenarios: {}", WorldScenario::variants().join(", "));
+                    std::process::exit(1);
+                }
+            };
+            (scenario.as_str().to_string(), WorldInitConfig::from_scenario(scenario, &config))
+        }
+        (None, None) => {
+            let scenario = WorldScenario::Minimal;
+            (scenario.as_str().to_string(), WorldInitConfig::from_scenario(scenario, &config))
+        }
+    };
     let (model, report) = build_world_model(&config, &init).expect("init should succeed");
     let dust_fragments = model.locations.len().saturating_sub(report.locations);
 
-    println!("scenario: {}", scenario.as_str());
+    println!("scenario: {}", scenario_label);
     println!("seed: {}", report.seed);
     println!("locations: {}", report.locations);
     println!("agents: {}", report.agents);

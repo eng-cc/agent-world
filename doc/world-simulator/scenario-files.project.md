@@ -4,6 +4,7 @@
 - [x] F1 输出设计文档与项目管理文档
 - [x] F2 迁移所有内置场景到 JSON 文件并接入加载逻辑
 - [x] F3 更新测试、示例与文档说明
+- [x] F4 world_init_demo 支持加载场景文件
 
 ## 依赖
 - `WorldScenario` / `WorldInitConfig`

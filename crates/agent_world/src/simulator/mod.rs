@@ -33,7 +33,7 @@ pub use init::{
     OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
     WorldInitError, WorldInitReport,
 };
-pub use scenario::WorldScenario;
+pub use scenario::{ScenarioSpecError, WorldScenario, WorldScenarioSpec};
 pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
