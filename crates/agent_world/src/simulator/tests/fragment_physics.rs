@@ -117,3 +117,14 @@ fn synthesized_fragment_profile_is_deterministic() {
 
     assert_eq!(a, b);
 }
+
+#[test]
+fn synthesized_fragment_budget_initializes_total_and_remaining() {
+    let profile = synthesize_fragment_profile(321, 200, MaterialKind::Metal);
+    let budget = synthesize_fragment_budget(&profile);
+
+    assert!(!budget.total_by_element_g.is_empty());
+    assert_eq!(budget.total_by_element_g, budget.remaining_by_element_g);
+    let total_g: i64 = budget.total_by_element_g.values().copied().sum();
+    assert!(total_g > 0);
+}

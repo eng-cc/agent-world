@@ -37,7 +37,7 @@ pub use chunking::{
 pub use fragment_physics::{
     infer_element_ppm, mass_grams_from_volume_density, CompoundComposition, CuboidSizeCm,
     FragmentBlock, FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, GridPosCm,
-    synthesize_fragment_profile, CM3_PER_M3, MIN_BLOCK_EDGE_CM,
+    synthesize_fragment_budget, synthesize_fragment_profile, CM3_PER_M3, MIN_BLOCK_EDGE_CM,
 };
 pub use init::{
     build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig,
@@ -56,14 +56,15 @@ pub use runner::{
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, SkippedReason,
 };
 pub use types::{
-    Action, ActionEnvelope, ActionId, AgentId, AssetId, ElementComposition, FacilityId,
-    FragmentElementKind, LocationId, ResourceKind, LocationProfile, MaterialKind, ResourceOwner,
+    Action, ActionEnvelope, ActionId, AgentId, AssetId, ChunkResourceBudget,
+    DEFAULT_ELEMENT_RECOVERABILITY_PPM, ElementBudgetError, ElementComposition, FacilityId,
+    FragmentElementKind, FragmentResourceBudget, LocationId, ResourceKind, LocationProfile, MaterialKind, ResourceOwner,
     ResourceStock, StockError, WorldEventId,
     WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
-    JOURNAL_VERSION, SNAPSHOT_VERSION,
+    JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
 pub use world_model::{
-    Agent, Asset, AssetKind, AsteroidFragmentConfig, ChunkState, Location, MaterialWeights,
+    Agent, Asset, AssetKind, AsteroidFragmentConfig, ChunkState, FragmentResourceError, Location, MaterialWeights,
     PhysicsConfig, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };
 

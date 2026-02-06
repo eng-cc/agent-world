@@ -11,8 +11,8 @@ mod types;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-use super::types::{ActionEnvelope, ActionId, WorldEventId, WorldTime};
-use super::world_model::{WorldConfig, WorldModel};
+use super::types::{ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime};
+use super::world_model::{FragmentResourceError, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -113,6 +113,16 @@ impl WorldKernel {
 
     pub fn model(&self) -> &WorldModel {
         &self.model
+    }
+
+    pub fn consume_fragment_resource(
+        &mut self,
+        location_id: &str,
+        kind: FragmentElementKind,
+        amount_g: i64,
+    ) -> Result<i64, FragmentResourceError> {
+        self.model
+            .consume_fragment_resource(location_id, &self.config.space, kind, amount_g)
     }
 
     pub fn journal(&self) -> &[WorldEvent] {

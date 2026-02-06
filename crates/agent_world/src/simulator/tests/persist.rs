@@ -46,22 +46,41 @@ fn kernel_snapshot_roundtrip_keeps_fragment_profile() {
     let journal = kernel.journal_snapshot();
     let restored = WorldKernel::from_snapshot(snapshot, journal).expect("restore from snapshot");
 
-    let before = kernel
+    let fragment_before = kernel
         .model()
         .locations
         .values()
         .find(|loc| loc.id.starts_with("frag-"))
-        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment before");
+    let profile_before = fragment_before
+        .fragment_profile
+        .clone()
         .expect("profile before");
-    let after = restored
+    let budget_before = fragment_before
+        .fragment_budget
+        .clone()
+        .expect("budget before");
+    let fragment_after = restored
         .model()
         .locations
         .values()
         .find(|loc| loc.id.starts_with("frag-"))
-        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment after");
+    let profile_after = fragment_after
+        .fragment_profile
+        .clone()
         .expect("profile after");
+    let budget_after = fragment_after
+        .fragment_budget
+        .clone()
+        .expect("budget after");
 
-    assert_eq!(after, before);
+    assert_eq!(profile_after, profile_before);
+    assert_eq!(budget_after, budget_before);
+    assert_eq!(
+        restored.model().chunk_resource_budgets,
+        kernel.model().chunk_resource_budgets
+    );
 }
 
 #[test]

@@ -59,18 +59,18 @@ pub use simulator::{
 pub use simulator::{
     build_world_model, chunk_bounds, chunk_coord_of, chunk_grid_dims, chunk_seed,
     initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig, ChunkBounds, ChunkCoord,
-    ChunkState,
-    CompoundComposition, CuboidSizeCm,
-    FragmentBlock, FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, GridPosCm,
+    ChunkState, ChunkResourceBudget,
+    CompoundComposition, CuboidSizeCm, DEFAULT_ELEMENT_RECOVERABILITY_PPM, ElementBudgetError,
+    FragmentBlock, FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, FragmentResourceBudget, GridPosCm,
     LocationSeedConfig, OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig,
-    WorldInitConfig, WorldInitError, WorldInitReport, WorldScenario, CHUNK_SIZE_X_CM,
+    WorldInitConfig, WorldInitError, WorldInitReport, WorldScenario, FragmentResourceError, CHUNK_SIZE_X_CM,
     CM3_PER_M3,
     MIN_BLOCK_EDGE_CM,
     CHUNK_SIZE_Y_CM, CHUNK_SIZE_Z_CM,
 };
 
 pub use simulator::{
-    infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_profile,
+    infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_budget, synthesize_fragment_profile,
     ElementComposition, FragmentElementKind,
 };
 

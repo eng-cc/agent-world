@@ -111,12 +111,22 @@
 5. 计算 `element_total = mass * composition * recoverability`；
 6. 生成时写入 `total` 与 `remaining = total`，后续仅做扣减。
 
+实现口径（CG4）：
+- 账本单位统一为克（g）。
+- 默认恢复率 `DEFAULT_ELEMENT_RECOVERABILITY_PPM = 850_000`（85%）。
+- `element_total_g = fragment_mass_g * element_ppm / 1_000_000 * recoverability_ppm / 1_000_000`。
+- `ChunkResourceBudget` 等于该 chunk 所有碎片预算逐元素累加。
+- 开采扣减时必须同时更新 `fragment_budget.remaining` 与 `chunk_budget.remaining`。
+- 守恒约束：任一元素始终满足 `0 <= remaining <= total`。
+
 ### 关键接口（建议）
 - `fn chunk_coord_of(pos: GeoPos) -> ChunkCoord`
 - `fn ensure_chunk_generated(coord: ChunkCoord, kernel: &mut WorldKernel)`
 - `fn generate_chunk(seed: u64, coord: ChunkCoord, config: &WorldConfig) -> ChunkSnapshot`
 - `fn chunk_seed(world_seed: u64, coord: ChunkCoord) -> u64`
 - `fn infer_element_ppm(compounds: &CompoundComposition) -> ElementComposition`
+- `fn synthesize_fragment_budget(profile: &FragmentPhysicalProfile) -> FragmentResourceBudget`
+- `fn consume_fragment_resource(location_id: &str, element: FragmentElementKind, amount_g: i64)`
 
 ### 运行时触发契约（与 observe/act 集成）
 - `observe` 触发：当 Agent 进行观测时，先对“自身所在坐标 chunk”执行 `ensure_chunk_generated`，再构建 observation。

@@ -9,10 +9,11 @@ use std::collections::BTreeMap;
 
 use super::fragment_physics::FragmentPhysicalProfile;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
-use super::chunking::ChunkCoord;
+use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::types::{
-    AgentId, AssetId, FacilityId, LocationId, LocationProfile, MaterialKind, ResourceKind,
-    ResourceStock, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
+    AgentId, AssetId, ChunkResourceBudget, ElementBudgetError, FacilityId, FragmentElementKind,
+    FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, ResourceKind, ResourceStock,
+    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
 };
 use super::ResourceOwner;
 
@@ -80,6 +81,8 @@ pub struct Location {
     pub resources: ResourceStock,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fragment_profile: Option<FragmentPhysicalProfile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fragment_budget: Option<FragmentResourceBudget>,
 }
 
 impl Location {
@@ -100,6 +103,7 @@ impl Location {
             profile,
             resources: ResourceStock::default(),
             fragment_profile: None,
+            fragment_budget: None,
         }
     }
 }
@@ -137,6 +141,12 @@ pub struct WorldModel {
         deserialize_with = "deserialize_chunk_states"
     )]
     pub chunks: BTreeMap<ChunkCoord, ChunkState>,
+    #[serde(
+        default,
+        serialize_with = "serialize_chunk_resource_budgets",
+        deserialize_with = "deserialize_chunk_resource_budgets"
+    )]
+    pub chunk_resource_budgets: BTreeMap<ChunkCoord, ChunkResourceBudget>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -177,6 +187,35 @@ where
     Ok(decoded)
 }
 
+fn serialize_chunk_resource_budgets<S>(
+    budgets: &BTreeMap<ChunkCoord, ChunkResourceBudget>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let encoded: BTreeMap<String, ChunkResourceBudget> = budgets
+        .iter()
+        .map(|(coord, budget)| (encode_chunk_coord(*coord), budget.clone()))
+        .collect();
+    encoded.serialize(serializer)
+}
+
+fn deserialize_chunk_resource_budgets<'de, D>(
+    deserializer: D,
+) -> Result<BTreeMap<ChunkCoord, ChunkResourceBudget>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let encoded = BTreeMap::<String, ChunkResourceBudget>::deserialize(deserializer)?;
+    let mut decoded = BTreeMap::new();
+    for (key, budget) in encoded {
+        let coord = decode_chunk_coord(&key).map_err(serde::de::Error::custom)?;
+        decoded.insert(coord, budget);
+    }
+    Ok(decoded)
+}
+
 fn encode_chunk_coord(coord: ChunkCoord) -> String {
     format!("{}:{}:{}", coord.x, coord.y, coord.z)
 }
@@ -202,6 +241,107 @@ fn decode_chunk_coord(encoded: &str) -> Result<ChunkCoord, String> {
         return Err(format!("invalid chunk coord key: {encoded}"));
     }
     Ok(ChunkCoord { x, y, z })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FragmentResourceError {
+    LocationNotFound { location_id: LocationId },
+    FragmentBudgetMissing { location_id: LocationId },
+    ChunkCoordUnavailable { location_id: LocationId },
+    ChunkBudgetMissing { coord: ChunkCoord },
+    Budget(ElementBudgetError),
+}
+
+impl WorldModel {
+    pub fn consume_fragment_resource(
+        &mut self,
+        location_id: &str,
+        space: &SpaceConfig,
+        kind: FragmentElementKind,
+        amount_g: i64,
+    ) -> Result<i64, FragmentResourceError> {
+        if amount_g <= 0 {
+            return Err(FragmentResourceError::Budget(ElementBudgetError::InvalidAmount {
+                amount_g,
+            }));
+        }
+
+        let location_id_owned = location_id.to_string();
+        let (location_pos, location_remaining) = {
+            let location = self
+                .locations
+                .get(location_id)
+                .ok_or_else(|| FragmentResourceError::LocationNotFound {
+                    location_id: location_id_owned.clone(),
+                })?;
+            let budget = location
+                .fragment_budget
+                .as_ref()
+                .ok_or_else(|| FragmentResourceError::FragmentBudgetMissing {
+                    location_id: location_id_owned.clone(),
+                })?;
+            (location.pos, budget.get_remaining(kind))
+        };
+
+        if location_remaining < amount_g {
+            return Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient {
+                kind,
+                requested_g: amount_g,
+                remaining_g: location_remaining,
+            }));
+        }
+
+        let coord = chunk_coord_of(location_pos, space).ok_or_else(|| {
+            FragmentResourceError::ChunkCoordUnavailable {
+                location_id: location_id_owned.clone(),
+            }
+        })?;
+
+        let chunk_remaining = self
+            .chunk_resource_budgets
+            .get(&coord)
+            .ok_or(FragmentResourceError::ChunkBudgetMissing { coord })?
+            .get_remaining(kind);
+        if chunk_remaining < amount_g {
+            return Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient {
+                kind,
+                requested_g: amount_g,
+                remaining_g: chunk_remaining,
+            }));
+        }
+
+        {
+            let location = self
+                .locations
+                .get_mut(location_id)
+                .ok_or_else(|| FragmentResourceError::LocationNotFound {
+                    location_id: location_id_owned.clone(),
+                })?;
+            let fragment_budget = location
+                .fragment_budget
+                .as_mut()
+                .ok_or_else(|| FragmentResourceError::FragmentBudgetMissing {
+                    location_id: location_id_owned.clone(),
+                })?;
+            fragment_budget
+                .consume(kind, amount_g)
+                .map_err(FragmentResourceError::Budget)?;
+        }
+
+        let chunk_budget = self
+            .chunk_resource_budgets
+            .get_mut(&coord)
+            .ok_or(FragmentResourceError::ChunkBudgetMissing { coord })?;
+        chunk_budget
+            .consume(kind, amount_g)
+            .map_err(FragmentResourceError::Budget)?;
+
+        if chunk_budget.is_exhausted() {
+            self.chunks.insert(coord, ChunkState::Exhausted);
+        }
+
+        Ok(amount_g)
+    }
 }
 
 // ============================================================================

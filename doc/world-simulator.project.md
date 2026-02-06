@@ -73,7 +73,7 @@
 - [x] 明确化合物主导组成与元素统计映射口径
 - [x] 接入未探索不生成的 chunk 索引与触发逻辑（observe/move/transfer/harvest 触发）
 - [x] 接入碎片块状物理画像与化合物组成生成（体积/密度/质量 + compounds/elements）
-- [ ] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
+- [x] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
@@ -83,4 +83,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：接入碎片块状物理画像与化合物组成生成（2026-02-06）
+- 最近更新：接入碎片资源预算 total/remaining 与扣减守恒（2026-02-06）

@@ -6,12 +6,13 @@ use crate::geometry::GeoPos;
 
 use super::asteroid_fragment::generate_fragments;
 use super::chunking::{chunk_coord_of, chunk_coords};
-use super::fragment_physics::synthesize_fragment_profile;
+use super::fragment_physics::{synthesize_fragment_budget, synthesize_fragment_profile};
 use super::kernel::{ChunkRuntimeConfig, WorldKernel};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
 use super::types::{
-    AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, ResourceStock,
+    AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
+    ResourceOwner, ResourceStock,
 };
 use super::world_model::{Agent, ChunkState, Location, SpaceConfig, WorldConfig, WorldModel};
 
@@ -536,6 +537,9 @@ pub fn generate_chunk_fragments(
 ) -> Result<(), WorldInitError> {
     if !init.asteroid_fragment.enabled {
         model.chunks.insert(coord, ChunkState::Generated);
+        model
+            .chunk_resource_budgets
+            .insert(coord, ChunkResourceBudget::default());
         return Ok(());
     }
 
@@ -566,20 +570,18 @@ pub fn generate_chunk_fragments(
     let local_space = chunk_local_space(bounds);
     if local_space.width_cm <= 0 || local_space.depth_cm <= 0 || local_space.height_cm <= 0 {
         model.chunks.insert(coord, ChunkState::Generated);
+        model
+            .chunk_resource_budgets
+            .insert(coord, ChunkResourceBudget::default());
         return Ok(());
     }
 
     let fragments = generate_fragments(seed, &local_space, &asteroid_fragment_config);
+    let mut chunk_budget = ChunkResourceBudget::default();
+
     for (idx, mut frag) in fragments.into_iter().enumerate() {
         frag.id = format!("frag-{}-{}-{}-{}", coord.x, coord.y, coord.z, idx);
         frag.name = frag.id.clone();
-        let profile_seed = seed
-            .wrapping_add((idx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        frag.fragment_profile = Some(synthesize_fragment_profile(
-            profile_seed,
-            frag.profile.radius_cm,
-            frag.profile.material,
-        ));
         frag.pos.x_cm += bounds.min.x_cm;
         frag.pos.y_cm += bounds.min.y_cm;
         frag.pos.z_cm += bounds.min.z_cm;
@@ -587,10 +589,24 @@ pub fn generate_chunk_fragments(
         if model.locations.contains_key(&frag.id) {
             continue;
         }
+
+        let profile_seed = seed
+            .wrapping_add((idx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let fragment_profile = synthesize_fragment_profile(
+            profile_seed,
+            frag.profile.radius_cm,
+            frag.profile.material,
+        );
+        let fragment_budget = synthesize_fragment_budget(&fragment_profile);
+        chunk_budget.accumulate_fragment(&fragment_budget);
+        frag.fragment_profile = Some(fragment_profile);
+        frag.fragment_budget = Some(fragment_budget);
+
         insert_location(model, frag)?;
     }
 
     model.chunks.insert(coord, ChunkState::Generated);
+    model.chunk_resource_budgets.insert(coord, chunk_budget);
     Ok(())
 }
 

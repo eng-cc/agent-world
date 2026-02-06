@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use super::types::{ElementComposition, FragmentElementKind, MaterialKind};
+use super::types::{
+    ElementComposition, FragmentElementKind, FragmentResourceBudget, MaterialKind,
+    DEFAULT_ELEMENT_RECOVERABILITY_PPM,
+};
 
 pub const MIN_BLOCK_EDGE_CM: i64 = 1;
 pub const CM3_PER_M3: i64 = 1_000_000;
@@ -229,6 +232,14 @@ pub fn synthesize_fragment_profile(
         total_mass_g,
         bulk_density_kg_per_m3,
     }
+}
+
+pub fn synthesize_fragment_budget(profile: &FragmentPhysicalProfile) -> FragmentResourceBudget {
+    FragmentResourceBudget::from_mass_and_elements(
+        profile.total_mass_g,
+        &profile.elements,
+        DEFAULT_ELEMENT_RECOVERABILITY_PPM,
+    )
 }
 
 pub fn infer_element_ppm(compounds: &CompoundComposition) -> ElementComposition {

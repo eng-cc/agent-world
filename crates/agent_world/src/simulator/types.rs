@@ -24,6 +24,8 @@ pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 pub const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
 pub const SNAPSHOT_VERSION: u32 = 2;
 pub const JOURNAL_VERSION: u32 = 2;
+pub const PPM_BASE: i64 = 1_000_000;
+pub const DEFAULT_ELEMENT_RECOVERABILITY_PPM: i64 = 850_000;
 
 // ============================================================================
 // Resource Types
@@ -101,6 +103,156 @@ impl ElementComposition {
     pub fn total_ppm(&self) -> u64 {
         self.ppm.values().map(|value| *value as u64).sum()
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct FragmentResourceBudget {
+    pub total_by_element_g: BTreeMap<FragmentElementKind, i64>,
+    pub remaining_by_element_g: BTreeMap<FragmentElementKind, i64>,
+}
+
+impl FragmentResourceBudget {
+    pub fn get_total(&self, kind: FragmentElementKind) -> i64 {
+        *self.total_by_element_g.get(&kind).unwrap_or(&0)
+    }
+
+    pub fn get_remaining(&self, kind: FragmentElementKind) -> i64 {
+        *self.remaining_by_element_g.get(&kind).unwrap_or(&0)
+    }
+
+    pub fn from_mass_and_elements(
+        mass_g: i64,
+        elements: &ElementComposition,
+        recoverability_ppm: i64,
+    ) -> Self {
+        if mass_g <= 0 {
+            return Self::default();
+        }
+        let recoverability_ppm = recoverability_ppm.clamp(0, PPM_BASE);
+        let mut out = Self::default();
+
+        for (element, ppm) in &elements.ppm {
+            if *ppm == 0 {
+                continue;
+            }
+            let total = mass_g
+                .saturating_mul(*ppm as i64)
+                .saturating_mul(recoverability_ppm)
+                .saturating_div(PPM_BASE)
+                .saturating_div(PPM_BASE);
+            if total > 0 {
+                out.total_by_element_g.insert(*element, total);
+                out.remaining_by_element_g.insert(*element, total);
+            }
+        }
+
+        out
+    }
+
+    pub fn consume(
+        &mut self,
+        kind: FragmentElementKind,
+        amount_g: i64,
+    ) -> Result<i64, ElementBudgetError> {
+        if amount_g <= 0 {
+            return Err(ElementBudgetError::InvalidAmount { amount_g });
+        }
+
+        let available = self.get_remaining(kind);
+        if available < amount_g {
+            return Err(ElementBudgetError::Insufficient {
+                kind,
+                requested_g: amount_g,
+                remaining_g: available,
+            });
+        }
+
+        let next = available - amount_g;
+        if next == 0 {
+            self.remaining_by_element_g.remove(&kind);
+        } else {
+            self.remaining_by_element_g.insert(kind, next);
+        }
+        Ok(amount_g)
+    }
+
+    pub fn is_exhausted(&self) -> bool {
+        self.remaining_by_element_g.values().all(|value| *value <= 0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ChunkResourceBudget {
+    pub total_by_element_g: BTreeMap<FragmentElementKind, i64>,
+    pub remaining_by_element_g: BTreeMap<FragmentElementKind, i64>,
+}
+
+impl ChunkResourceBudget {
+    pub fn get_total(&self, kind: FragmentElementKind) -> i64 {
+        *self.total_by_element_g.get(&kind).unwrap_or(&0)
+    }
+
+    pub fn get_remaining(&self, kind: FragmentElementKind) -> i64 {
+        *self.remaining_by_element_g.get(&kind).unwrap_or(&0)
+    }
+
+    pub fn accumulate_fragment(&mut self, fragment: &FragmentResourceBudget) {
+        for (element, total) in &fragment.total_by_element_g {
+            if *total <= 0 {
+                continue;
+            }
+            let entry = self.total_by_element_g.entry(*element).or_insert(0);
+            *entry = entry.saturating_add(*total);
+        }
+        for (element, remaining) in &fragment.remaining_by_element_g {
+            if *remaining <= 0 {
+                continue;
+            }
+            let entry = self.remaining_by_element_g.entry(*element).or_insert(0);
+            *entry = entry.saturating_add(*remaining);
+        }
+    }
+
+    pub fn consume(
+        &mut self,
+        kind: FragmentElementKind,
+        amount_g: i64,
+    ) -> Result<i64, ElementBudgetError> {
+        if amount_g <= 0 {
+            return Err(ElementBudgetError::InvalidAmount { amount_g });
+        }
+
+        let available = self.get_remaining(kind);
+        if available < amount_g {
+            return Err(ElementBudgetError::Insufficient {
+                kind,
+                requested_g: amount_g,
+                remaining_g: available,
+            });
+        }
+
+        let next = available - amount_g;
+        if next == 0 {
+            self.remaining_by_element_g.remove(&kind);
+        } else {
+            self.remaining_by_element_g.insert(kind, next);
+        }
+        Ok(amount_g)
+    }
+
+    pub fn is_exhausted(&self) -> bool {
+        self.remaining_by_element_g.values().all(|value| *value <= 0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ElementBudgetError {
+    InvalidAmount { amount_g: i64 },
+    Insufficient {
+        kind: FragmentElementKind,
+        requested_g: i64,
+        remaining_g: i64,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

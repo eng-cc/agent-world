@@ -455,3 +455,72 @@ fn kernel_closed_loop_example() {
     let agent = kernel.model().agents.get("agent-1").unwrap();
     assert_eq!(agent.location_id, "loc-2");
 }
+
+#[test]
+fn kernel_consume_fragment_resource_keeps_chunk_budget_in_sync() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 77;
+    init.agents.count = 0;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let fragment = kernel
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .cloned()
+        .expect("fragment exists");
+    let coord = chunk_coord_of(fragment.pos, &config.space).expect("fragment chunk coord");
+    let element = fragment
+        .fragment_budget
+        .as_ref()
+        .and_then(|budget| budget.remaining_by_element_g.keys().next().copied())
+        .expect("fragment element");
+
+    let before_fragment = fragment
+        .fragment_budget
+        .as_ref()
+        .expect("fragment budget")
+        .get_remaining(element);
+    let before_chunk = kernel
+        .model()
+        .chunk_resource_budgets
+        .get(&coord)
+        .expect("chunk budget")
+        .get_remaining(element);
+    let amount = before_fragment.min(30).max(1);
+
+    kernel
+        .consume_fragment_resource(&fragment.id, element, amount)
+        .expect("consume by kernel api");
+
+    let after_fragment = kernel
+        .model()
+        .locations
+        .get(&fragment.id)
+        .and_then(|loc| loc.fragment_budget.as_ref())
+        .expect("fragment budget after")
+        .get_remaining(element);
+    let after_chunk = kernel
+        .model()
+        .chunk_resource_budgets
+        .get(&coord)
+        .expect("chunk budget after")
+        .get_remaining(element);
+
+    assert_eq!(after_fragment, before_fragment - amount);
+    assert_eq!(after_chunk, before_chunk - amount);
+}

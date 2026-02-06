@@ -274,18 +274,41 @@ fn chunk_generated_fragments_include_fragment_profile() {
         .collect();
 
     assert!(!fragments.is_empty());
+    assert_eq!(model.chunk_resource_budgets.len(), 1);
+
+    let mut expected_total_by_element = std::collections::BTreeMap::new();
     for fragment in fragments {
         let profile = fragment
             .fragment_profile
             .as_ref()
             .expect("generated fragment profile");
+        let budget = fragment
+            .fragment_budget
+            .as_ref()
+            .expect("generated fragment budget");
+
         assert!(!profile.blocks.blocks.is_empty());
         assert_eq!(profile.total_volume_cm3, profile.blocks.total_volume_cm3());
         assert_eq!(profile.total_mass_g, profile.blocks.total_mass_g());
         assert!(profile.bulk_density_kg_per_m3 > 0);
         assert!(profile.compounds.total_ppm() > 0);
         assert!(profile.elements.total_ppm() > 0);
+
+        assert!(!budget.total_by_element_g.is_empty());
+        assert_eq!(budget.total_by_element_g, budget.remaining_by_element_g);
+        for (kind, amount) in &budget.total_by_element_g {
+            let entry = expected_total_by_element.entry(*kind).or_insert(0i64);
+            *entry = entry.saturating_add(*amount);
+        }
     }
+
+    let chunk_budget = model
+        .chunk_resource_budgets
+        .values()
+        .next()
+        .expect("chunk budget exists");
+    assert_eq!(chunk_budget.total_by_element_g, expected_total_by_element);
+    assert_eq!(chunk_budget.total_by_element_g, chunk_budget.remaining_by_element_g);
 }
 
 #[test]
@@ -555,12 +578,22 @@ fn world_model_chunk_states_roundtrip_json_keys() {
     model.chunks.insert(ChunkCoord { x: 0, y: 0, z: 0 }, ChunkState::Unexplored);
     model.chunks.insert(ChunkCoord { x: 1, y: 2, z: 0 }, ChunkState::Generated);
 
+    let mut chunk_budget = ChunkResourceBudget::default();
+    chunk_budget.total_by_element_g.insert(FragmentElementKind::Iron, 1200);
+    chunk_budget
+        .remaining_by_element_g
+        .insert(FragmentElementKind::Iron, 1200);
+    model
+        .chunk_resource_budgets
+        .insert(ChunkCoord { x: 1, y: 2, z: 0 }, chunk_budget);
+
     let json = serde_json::to_string(&model).expect("serialize world model");
     assert!(json.contains("\"0:0:0\""));
     assert!(json.contains("\"1:2:0\""));
 
     let decoded: WorldModel = serde_json::from_str(&json).expect("deserialize world model");
     assert_eq!(decoded.chunks, model.chunks);
+    assert_eq!(decoded.chunk_resource_budgets, model.chunk_resource_budgets);
 }
 
 #[test]
@@ -583,21 +616,120 @@ fn world_model_roundtrip_preserves_fragment_profile() {
     init.agents.count = 0;
 
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
-    let frag_before = model
+    let fragment_before = model
         .locations
         .values()
         .find(|loc| loc.id.starts_with("frag-"))
-        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment before serialization");
+    let frag_before = fragment_before
+        .fragment_profile
+        .clone()
         .expect("fragment profile before serialization");
+    let budget_before = fragment_before
+        .fragment_budget
+        .clone()
+        .expect("fragment budget before serialization");
+    let chunk_budget_before = model.chunk_resource_budgets.clone();
 
     let json = serde_json::to_string(&model).expect("serialize world model");
     let restored: WorldModel = serde_json::from_str(&json).expect("deserialize world model");
-    let frag_after = restored
+    let fragment_after = restored
         .locations
         .values()
         .find(|loc| loc.id.starts_with("frag-"))
-        .and_then(|loc| loc.fragment_profile.clone())
+        .expect("fragment after serialization");
+    let frag_after = fragment_after
+        .fragment_profile
+        .clone()
         .expect("fragment profile after serialization");
+    let budget_after = fragment_after
+        .fragment_budget
+        .clone()
+        .expect("fragment budget after serialization");
 
     assert_eq!(frag_after, frag_before);
+    assert_eq!(budget_after, budget_before);
+    assert_eq!(restored.chunk_resource_budgets, chunk_budget_before);
+}
+
+#[test]
+fn consume_fragment_resource_keeps_fragment_and_chunk_conservation() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 27;
+    init.agents.count = 0;
+
+    let (mut model, _) = build_world_model(&config, &init).expect("scenario init");
+    let fragment = model
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .cloned()
+        .expect("fragment exists");
+    let coord = chunk_coord_of(fragment.pos, &config.space).expect("fragment chunk coord");
+    let element = fragment
+        .fragment_budget
+        .as_ref()
+        .and_then(|budget| budget.remaining_by_element_g.keys().next().copied())
+        .expect("fragment has element budget");
+
+    let fragment_remaining_before = fragment
+        .fragment_budget
+        .as_ref()
+        .expect("fragment budget")
+        .get_remaining(element);
+    let chunk_remaining_before = model
+        .chunk_resource_budgets
+        .get(&coord)
+        .expect("chunk budget")
+        .get_remaining(element);
+    let consume_amount = fragment_remaining_before.min(50).max(1);
+
+    model
+        .consume_fragment_resource(&fragment.id, &config.space, element, consume_amount)
+        .expect("consume fragment resource");
+
+    let fragment_remaining_after = model
+        .locations
+        .get(&fragment.id)
+        .and_then(|loc| loc.fragment_budget.as_ref())
+        .expect("fragment budget after")
+        .get_remaining(element);
+    let chunk_remaining_after = model
+        .chunk_resource_budgets
+        .get(&coord)
+        .expect("chunk budget after")
+        .get_remaining(element);
+
+    assert_eq!(
+        fragment_remaining_after,
+        fragment_remaining_before - consume_amount
+    );
+    assert_eq!(
+        chunk_remaining_after,
+        chunk_remaining_before - consume_amount
+    );
+
+    let overdraw = model.consume_fragment_resource(
+        &fragment.id,
+        &config.space,
+        element,
+        fragment_remaining_after + 1,
+    );
+    assert!(matches!(
+        overdraw,
+        Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient { .. }))
+    ));
 }
