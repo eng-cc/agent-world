@@ -30,7 +30,8 @@
 - [x] 在线模式：前后端联合测试（独立 integration test + feature gate）
 - [x] CI：显式执行联测目标（viewer_live_integration + feature）
 - [x] 离线回放：前后端联合测试（viewer_offline_integration）
-- [ ] 提交到 git
+- [x] 修复 live viewer 断连导致联测失败（忽略连接重置）
+- [x] 提交到 git
 
 ## 依赖
 - `WorldSnapshot` / `WorldEvent` / `RunnerMetrics`（`crates/agent_world`）
@@ -38,4 +39,5 @@
 - Bevy（viewer 客户端）
 
 ## 状态
-- 当前阶段：联测 feature gate 完成
+- 当前阶段：联测稳定性修复完成
+- 最近更新：修复 live viewer 断连处理（2026-02-06）

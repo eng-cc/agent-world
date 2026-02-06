@@ -52,19 +52,29 @@ impl ViewerLiveServerConfig {
 
 #[derive(Debug)]
 pub enum ViewerLiveServerError {
-    Io(String),
+    Io(io::Error),
+    Serde(String),
     Init(WorldInitError),
 }
 
 impl From<io::Error> for ViewerLiveServerError {
     fn from(err: io::Error) -> Self {
-        ViewerLiveServerError::Io(err.to_string())
+        ViewerLiveServerError::Io(err)
     }
 }
 
 impl From<WorldInitError> for ViewerLiveServerError {
     fn from(err: WorldInitError) -> Self {
         ViewerLiveServerError::Init(err)
+    }
+}
+
+impl ViewerLiveServerError {
+    fn is_disconnect(&self) -> bool {
+        match self {
+            ViewerLiveServerError::Io(err) => is_disconnect_error(err),
+            _ => false,
+        }
     }
 }
 
@@ -112,13 +122,23 @@ impl ViewerLiveServer {
         loop {
             match rx.recv_timeout(self.config.tick_interval) {
                 Ok(command) => {
-                    if !session.handle_request(
+                    match session.handle_request(
                         command,
                         &mut writer,
                         &mut self.world,
                         &self.config.world_id,
-                    )? {
-                        break;
+                    ) {
+                        Ok(continue_running) => {
+                            if !continue_running {
+                                break;
+                            }
+                        }
+                        Err(err) => {
+                            if err.is_disconnect() {
+                                break;
+                            }
+                            return Err(err);
+                        }
                     }
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -130,14 +150,33 @@ impl ViewerLiveServer {
                     if session.event_allowed(&event)
                         && session.subscribed.contains(&ViewerStream::Events)
                     {
-                        send_response(&mut writer, &ViewerResponse::Event { event })?;
+                        if let Err(err) =
+                            send_response(&mut writer, &ViewerResponse::Event { event })
+                        {
+                            if err.is_disconnect() {
+                                break;
+                            }
+                            return Err(err);
+                        }
                     }
                     if session.subscribed.contains(&ViewerStream::Snapshot) {
                         let snapshot = self.world.snapshot();
-                        send_response(&mut writer, &ViewerResponse::Snapshot { snapshot })?;
+                        if let Err(err) =
+                            send_response(&mut writer, &ViewerResponse::Snapshot { snapshot })
+                        {
+                            if err.is_disconnect() {
+                                break;
+                            }
+                            return Err(err);
+                        }
                     }
                     session.update_metrics_from_kernel(self.world.kernel());
-                    session.emit_metrics(&mut writer)?;
+                    if let Err(err) = session.emit_metrics(&mut writer) {
+                        if err.is_disconnect() {
+                            break;
+                        }
+                        return Err(err);
+                    }
                     last_tick = Instant::now();
                 }
             }
@@ -524,12 +563,22 @@ fn send_response(
     writer: &mut BufWriter<TcpStream>,
     response: &ViewerResponse,
 ) -> Result<(), ViewerLiveServerError> {
-    serde_json::to_writer(&mut *writer, response).map_err(|err| {
-        ViewerLiveServerError::Io(err.to_string())
-    })?;
+    let payload = serde_json::to_string(response)
+        .map_err(|err| ViewerLiveServerError::Serde(err.to_string()))?;
+    writer.write_all(payload.as_bytes())?;
     writer.write_all(b"\n")?;
     writer.flush()?;
     Ok(())
+}
+
+fn is_disconnect_error(err: &io::Error) -> bool {
+    matches!(
+        err.kind(),
+        io::ErrorKind::BrokenPipe
+            | io::ErrorKind::ConnectionReset
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::NotConnected
+    )
 }
 
 #[cfg(test)]
