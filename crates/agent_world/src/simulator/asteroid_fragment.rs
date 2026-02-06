@@ -1,16 +1,16 @@
-//! Dust cloud fragment generation utilities.
+//! Asteroid fragment belt generation utilities.
 
 use crate::geometry::GeoPos;
 
 use super::types::{LocationProfile, MaterialKind};
-use super::world_model::{DustConfig, Location, SpaceConfig};
+use super::world_model::{AsteroidFragmentConfig, Location, SpaceConfig};
 
 const MAX_PLACEMENT_ATTEMPTS: usize = 8;
 
 pub fn generate_fragments(
     seed: u64,
     space: &SpaceConfig,
-    config: &DustConfig,
+    config: &AsteroidFragmentConfig,
 ) -> Vec<Location> {
     let mut rng = Lcg::new(seed);
     let voxel_cm = (config.voxel_size_km as i64).max(1) * 100_000;

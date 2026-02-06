@@ -1,7 +1,7 @@
 # Agent World Simulator：世界初始化（项目管理文档）
 
 ## 任务拆解
-- [x] I1 定义初始化配置结构（WorldInitConfig/Origin/Dust/Agent）
+- [x] I1 定义初始化配置结构（WorldInitConfig/Origin/AsteroidFragment/Agent）
 - [x] I1 实现世界初始化输出（WorldModel + Report）
 - [x] I2 提供 WorldKernel 便捷构造接口并接入校验
 - [x] I2 补充初始化单元测试（默认流程/确定性/错误分支）
@@ -21,21 +21,21 @@
 - [x] I10 demo 输出地点资源摘要
 - [x] I11 扩展场景模板（triad_region_bootstrap 多区域）
 - [x] I12 demo 输出 Agent 资源摘要
-- [x] I13 扩展场景模板（dusty_bootstrap 启用小行星带碎片）
+- [x] I13 扩展场景模板（asteroid_fragment_bootstrap 启用小行星带碎片）
 - [x] I14 补充场景别名解析测试
 - [x] I15 demo 输出小行星带碎片数量
 - [x] I16 demo 输出地点设施统计
 - [x] I17 文档补充场景使用建议
 - [x] I18 文档补充场景别名说明
-- [x] I19 扩展场景模板（dusty_twin_region_bootstrap 多区域小行星带碎片）
-- [x] I20 扩展场景模板（dusty_triad_region_bootstrap 三方小行星带碎片）
+- [x] I19 扩展场景模板（asteroid_fragment_twin_region_bootstrap 多区域小行星带碎片）
+- [x] I20 扩展场景模板（asteroid_fragment_triad_region_bootstrap 三方小行星带碎片）
 - [x] I21 demo 增加 summary-only 开关
 - [x] I22 场景稳定性测试（关键字段校验）
 - [x] I23 文档补充小行星带碎片种子策略
 - [x] I24 增加 world_init_demo summary-only 冒烟测试
-- [x] I25 增加 dusty_bootstrap 冒烟测试
-- [x] I26 增加 dusty_twin_region_bootstrap 冒烟测试
-- [x] I27 增加 dusty_triad_region_bootstrap 冒烟测试
+- [x] I25 增加 asteroid_fragment_bootstrap 冒烟测试
+- [x] I26 增加 asteroid_fragment_twin_region_bootstrap 冒烟测试
+- [x] I27 增加 asteroid_fragment_triad_region_bootstrap 冒烟测试
 - [x] I28 文档补充 seed_offset 使用约束
 - [x] I29 增加 triad_region_bootstrap 冒烟测试
 - [x] I30 文档补充场景 ID 稳定性说明

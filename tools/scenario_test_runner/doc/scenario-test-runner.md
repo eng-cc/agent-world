@@ -11,7 +11,7 @@
 - 独立工具：`tools/scenario_test_runner`（独立 Cargo 项目）。
 - 场景文件格式（YAML/JSON）：可选 `scenario` 或 `init`，可选 `WorldConfig`，含基础断言。
 - CLI：按单文件或目录批量执行，输出可读的通过/失败摘要。
-- 内置断言：agents/locations 数量、必含 IDs、尘埃云是否启用、agent->location 位置匹配。
+- 内置断言：agents/locations 数量、必含 IDs、小行星碎片带是否启用、agent->location 位置匹配。
 
 ### Out of Scope
 - 接入 CI 或 pre-commit。
@@ -32,7 +32,7 @@ expect:
   locations: 3
   require_locations: ["node-a", "node-b", "node-c"]
   require_agents: ["agent-0", "agent-1", "agent-2"]
-  expect_dust: false
+  expect_asteroid_fragment: false
   agent_locations:
     agent-0: "node-a"
     agent-1: "node-b"

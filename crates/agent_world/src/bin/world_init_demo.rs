@@ -73,7 +73,7 @@ fn main() {
         }
     };
     let (model, report) = build_world_model(&config, &init).expect("init should succeed");
-    let dust_fragments = model.locations.len().saturating_sub(report.locations);
+    let asteroid_fragment_fragments = model.locations.len().saturating_sub(report.locations);
 
     println!("scenario: {}", scenario_label);
     println!("seed: {}", report.seed);
@@ -81,7 +81,7 @@ fn main() {
     println!("agents: {}", report.agents);
     println!("power_plants: {}", model.power_plants.len());
     println!("power_storages: {}", model.power_storages.len());
-    println!("dust_fragments: {}", dust_fragments);
+    println!("asteroid_fragment_fragments: {}", asteroid_fragment_fragments);
     if !summary_only {
         println!("location_resources:");
 

@@ -13,7 +13,7 @@
 - `crates/agent_world/scenarios/*.json` 作为默认场景文件集合。
 - `WorldScenario` 从场景文件加载配置（include_str 嵌入编译产物）。
 - 位置表达 `ScenarioPos`：`center` / `center_offset` / `absolute`。
-- 场景文件覆盖所有现有场景：minimal/two_bases/.../dusty_triad_region_bootstrap。
+- 场景文件覆盖所有现有场景：minimal/two_bases/.../asteroid_fragment_triad_region_bootstrap。
 - 单元测试验证场景文件可加载与稳定性。
 - `world_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
 
@@ -29,7 +29,7 @@
 {
   "id": "two_bases",
   "name": "Two Bases",
-  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": { "count": 2, "location_id": "base-a" },
   "locations": [
     { "location_id": "base-a", "name": "Base A", "pos": { "type": "center_offset", "dx_pct": -0.2 } },
@@ -38,7 +38,7 @@
 }
 ```
 
-`dust.min_fragment_spacing_cm` 为可选字段，用于覆盖小行星碎片最小间距（cm）；未设置则沿用 `WorldConfig.dust`。
+`asteroid_fragment.min_fragment_spacing_cm` 为可选字段，用于覆盖小行星碎片最小间距（cm）；未设置则沿用 `WorldConfig.asteroid_fragment`。
 
 ### 位置表达
 - `center`：空间中心点。

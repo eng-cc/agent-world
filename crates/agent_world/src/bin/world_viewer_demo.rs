@@ -63,8 +63,8 @@ fn main() {
 
     println!("scenario: {}", scenario.as_str());
     println!("seed: {}", summary.init.seed);
-    if let Some(dust_seed) = summary.init.dust_seed {
-        println!("dust_seed: {dust_seed}");
+    if let Some(asteroid_fragment_seed) = summary.init.asteroid_fragment_seed {
+        println!("asteroid_fragment_seed: {asteroid_fragment_seed}");
     }
     println!("locations: {}", summary.init.locations);
     println!("agents: {}", summary.init.agents);

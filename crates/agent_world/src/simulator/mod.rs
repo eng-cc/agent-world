@@ -11,7 +11,7 @@
 //! - `power`: Power system (M4 social system)
 
 mod agent;
-mod dust;
+mod asteroid_fragment;
 mod init;
 mod kernel;
 mod memory;
@@ -27,9 +27,9 @@ mod tests;
 
 // Re-export all public types
 pub use agent::{ActionResult, AgentBehavior, AgentDecision};
-pub use dust::generate_fragments;
+pub use asteroid_fragment::generate_fragments;
 pub use init::{
-    build_world_model, initialize_kernel, AgentSpawnConfig, DustInitConfig, LocationSeedConfig,
+    build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig,
     OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
     WorldInitError, WorldInitReport,
 };
@@ -50,7 +50,7 @@ pub use types::{
     JOURNAL_VERSION, SNAPSHOT_VERSION,
 };
 pub use world_model::{
-    Agent, Asset, AssetKind, DustConfig, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
+    Agent, Asset, AssetKind, AsteroidFragmentConfig, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
     ThermalStatus, WorldConfig, WorldModel,
 };
 

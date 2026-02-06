@@ -10,7 +10,7 @@
 ## 范围
 
 ### In Scope
-- `DustConfig` 增加最小间距字段（cm 计量）。
+- `AsteroidFragmentConfig` 增加最小间距字段（cm 计量）。
 - `generate_fragments` 在生成碎片时应用最小间距约束。
 - 补充最小间距单元测试与文档同步。
 
@@ -21,14 +21,14 @@
 
 ## 接口 / 数据
 
-### DustConfig
+### AsteroidFragmentConfig
 - `min_fragment_spacing_cm: i64`
   - **含义**：碎片之间的最小表面间距（cm）。
   - **默认值**：`50_000`（500 m）。
   - **约束**：若值 `<= 0`，则视为不启用最小间距限制。
 
 ### 场景覆盖
-- 场景文件可通过 `dust.min_fragment_spacing_cm` 覆盖默认间距；未设置则沿用 `WorldConfig.dust`。
+- 场景文件可通过 `asteroid_fragment.min_fragment_spacing_cm` 覆盖默认间距；未设置则沿用 `WorldConfig.asteroid_fragment`。
 
 ### 最小间距判定
 - 对候选碎片与已放置碎片做距离校验。

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::geometry::GeoPos;
 
-use super::dust::generate_fragments;
+use super::asteroid_fragment::generate_fragments;
 use super::kernel::WorldKernel;
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
@@ -19,7 +19,7 @@ pub struct WorldInitConfig {
     pub seed: u64,
     pub origin: OriginLocationConfig,
     pub locations: Vec<LocationSeedConfig>,
-    pub dust: DustInitConfig,
+    pub asteroid_fragment: AsteroidFragmentInitConfig,
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
     pub power_storages: Vec<PowerStorageSeedConfig>,
@@ -31,7 +31,7 @@ impl Default for WorldInitConfig {
             seed: 0,
             origin: OriginLocationConfig::default(),
             locations: Vec::new(),
-            dust: DustInitConfig::default(),
+            asteroid_fragment: AsteroidFragmentInitConfig::default(),
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
             power_storages: Vec::new(),
@@ -47,7 +47,7 @@ impl WorldInitConfig {
             .into_iter()
             .map(|location| location.sanitized())
             .collect();
-        self.dust = self.dust.sanitized();
+        self.asteroid_fragment = self.asteroid_fragment.sanitized();
         self.agents = self.agents.sanitized();
         self.power_plants = self
             .power_plants
@@ -136,13 +136,13 @@ impl LocationSeedConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct DustInitConfig {
+pub struct AsteroidFragmentInitConfig {
     pub enabled: bool,
     pub seed_offset: u64,
     pub min_fragment_spacing_cm: Option<i64>,
 }
 
-impl Default for DustInitConfig {
+impl Default for AsteroidFragmentInitConfig {
     fn default() -> Self {
         Self {
             enabled: true,
@@ -152,7 +152,7 @@ impl Default for DustInitConfig {
     }
 }
 
-impl DustInitConfig {
+impl AsteroidFragmentInitConfig {
     pub fn sanitized(mut self) -> Self {
         if let Some(spacing) = self.min_fragment_spacing_cm {
             if spacing < 0 {
@@ -273,7 +273,7 @@ impl PowerStorageSeedConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldInitReport {
     pub seed: u64,
-    pub dust_seed: Option<u64>,
+    pub asteroid_fragment_seed: Option<u64>,
     pub locations: usize,
     pub agents: usize,
 }
@@ -355,13 +355,13 @@ pub fn build_world_model(
         insert_location(&mut model, location)?;
     }
 
-    let dust_seed = if init.dust.enabled {
-        let seed = init.seed.wrapping_add(init.dust.seed_offset);
-        let mut dust_config = config.dust.clone();
-        if let Some(spacing) = init.dust.min_fragment_spacing_cm {
-            dust_config.min_fragment_spacing_cm = spacing;
+    let asteroid_fragment_seed = if init.asteroid_fragment.enabled {
+        let seed = init.seed.wrapping_add(init.asteroid_fragment.seed_offset);
+        let mut asteroid_fragment_config = config.asteroid_fragment.clone();
+        if let Some(spacing) = init.asteroid_fragment.min_fragment_spacing_cm {
+            asteroid_fragment_config.min_fragment_spacing_cm = spacing;
         }
-        let fragments = generate_fragments(seed, &config.space, &dust_config);
+        let fragments = generate_fragments(seed, &config.space, &asteroid_fragment_config);
         for frag in fragments {
             insert_location(&mut model, frag)?;
         }
@@ -487,7 +487,7 @@ pub fn build_world_model(
 
     let report = WorldInitReport {
         seed: init.seed,
-        dust_seed,
+        asteroid_fragment_seed,
         locations: model.locations.len(),
         agents: model.agents.len(),
     };

@@ -142,8 +142,8 @@ pub struct WorldConfig {
     pub power: PowerConfig,
     /// Physics configuration (radiation/thermal/erosion).
     pub physics: PhysicsConfig,
-    /// Dust cloud generation configuration.
-    pub dust: DustConfig,
+    /// Asteroid fragment belt generation configuration.
+    pub asteroid_fragment: AsteroidFragmentConfig,
 }
 
 impl Default for WorldConfig {
@@ -154,7 +154,7 @@ impl Default for WorldConfig {
             space: SpaceConfig::default(),
             power: PowerConfig::default(),
             physics: PhysicsConfig::default(),
-            dust: DustConfig::default(),
+            asteroid_fragment: AsteroidFragmentConfig::default(),
         }
     }
 }
@@ -175,7 +175,7 @@ impl WorldConfig {
             self.power.transfer_max_distance_km = 0;
         }
         self.physics = self.physics.sanitized();
-        self.dust = self.dust.sanitized();
+        self.asteroid_fragment = self.asteroid_fragment.sanitized();
         self
     }
 
@@ -269,12 +269,12 @@ pub struct ThermalStatus {
 }
 
 // ============================================================================
-// Dust Cloud Generator Configuration
+// Asteroid Fragment Generator Configuration
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct DustConfig {
+pub struct AsteroidFragmentConfig {
     pub base_density_per_km3: f64,
     pub voxel_size_km: i64,
     pub cluster_noise: f64,
@@ -286,7 +286,7 @@ pub struct DustConfig {
     pub material_weights: MaterialWeights,
 }
 
-impl Default for DustConfig {
+impl Default for AsteroidFragmentConfig {
     fn default() -> Self {
         Self {
             base_density_per_km3: 0.001,
@@ -302,7 +302,7 @@ impl Default for DustConfig {
     }
 }
 
-impl DustConfig {
+impl AsteroidFragmentConfig {
     pub fn sanitized(mut self) -> Self {
         if self.base_density_per_km3 < 0.0 {
             self.base_density_per_km3 = 0.0;

@@ -26,7 +26,7 @@
 - `DustInitConfig` -> `AsteroidFragmentInitConfig`
 - `WorldConfig.dust` -> `WorldConfig.asteroid_fragment`
 - `WorldInitConfig.dust` -> `WorldInitConfig.asteroid_fragment`
-- `dust_seed` / `dust_fragments` -> `asteroid_fragment_seed` / `asteroid_fragments`
+- `dust_seed` / `dust_fragments` -> `asteroid_fragment_seed` / `asteroid_fragment_fragments`
 
 ### 场景字段
 - JSON 字段：`"dust"` -> `"asteroid_fragment"`

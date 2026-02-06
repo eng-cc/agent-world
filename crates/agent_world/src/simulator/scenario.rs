@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::geometry::GeoPos;
 
 use super::init::{
-    AgentSpawnConfig, DustInitConfig, LocationSeedConfig, OriginLocationConfig,
+    AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig, OriginLocationConfig,
     PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
 };
 use super::types::{LocationId, LocationProfile, ResourceStock};
@@ -23,9 +23,9 @@ pub enum WorldScenario {
     TwinRegionBootstrap,
     TriadRegionBootstrap,
     TriadP2pBootstrap,
-    DustyBootstrap,
-    DustyTwinRegionBootstrap,
-    DustyTriadRegionBootstrap,
+    AsteroidFragmentBootstrap,
+    AsteroidFragmentTwinRegionBootstrap,
+    AsteroidFragmentTriadRegionBootstrap,
 }
 
 impl WorldScenario {
@@ -38,9 +38,9 @@ impl WorldScenario {
             WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
             WorldScenario::TriadP2pBootstrap => "triad_p2p_bootstrap",
-            WorldScenario::DustyBootstrap => "dusty_bootstrap",
-            WorldScenario::DustyTwinRegionBootstrap => "dusty_twin_region_bootstrap",
-            WorldScenario::DustyTriadRegionBootstrap => "dusty_triad_region_bootstrap",
+            WorldScenario::AsteroidFragmentBootstrap => "asteroid_fragment_bootstrap",
+            WorldScenario::AsteroidFragmentTwinRegionBootstrap => "asteroid_fragment_twin_region_bootstrap",
+            WorldScenario::AsteroidFragmentTriadRegionBootstrap => "asteroid_fragment_triad_region_bootstrap",
         }
     }
 
@@ -65,15 +65,22 @@ impl WorldScenario {
             | "triad-p2p"
             | "p2p-triad"
             | "p2p-triad-bootstrap" => Some(WorldScenario::TriadP2pBootstrap),
-            "dusty_bootstrap" | "dusty-bootstrap" | "dusty" => Some(WorldScenario::DustyBootstrap),
-            "dusty_twin_region_bootstrap"
-            | "dusty-twin-region-bootstrap"
-            | "dusty-twin-regions"
-            | "dusty-regions" => Some(WorldScenario::DustyTwinRegionBootstrap),
-            "dusty_triad_region_bootstrap"
-            | "dusty-triad-region-bootstrap"
-            | "dusty-triad-regions"
-            | "dusty-triad" => Some(WorldScenario::DustyTriadRegionBootstrap),
+            "asteroid_fragment_bootstrap"
+            | "asteroid-fragment-bootstrap"
+            | "asteroid_fragment"
+            | "asteroid-fragment" => Some(WorldScenario::AsteroidFragmentBootstrap),
+            "asteroid_fragment_twin_region_bootstrap"
+            | "asteroid-fragment-twin-region-bootstrap"
+            | "asteroid-fragment-twin-regions"
+            | "asteroid-fragment-regions" => {
+                Some(WorldScenario::AsteroidFragmentTwinRegionBootstrap)
+            }
+            "asteroid_fragment_triad_region_bootstrap"
+            | "asteroid-fragment-triad-region-bootstrap"
+            | "asteroid-fragment-triad-regions"
+            | "asteroid-fragment-triad" => {
+                Some(WorldScenario::AsteroidFragmentTriadRegionBootstrap)
+            }
             _ => None,
         }
     }
@@ -87,9 +94,9 @@ impl WorldScenario {
             "twin_region_bootstrap",
             "triad_region_bootstrap",
             "triad_p2p_bootstrap",
-            "dusty_bootstrap",
-            "dusty_twin_region_bootstrap",
-            "dusty_triad_region_bootstrap",
+            "asteroid_fragment_bootstrap",
+            "asteroid_fragment_twin_region_bootstrap",
+            "asteroid_fragment_triad_region_bootstrap",
         ]
     }
 
@@ -160,7 +167,7 @@ pub struct WorldScenarioSpec {
     pub seed: u64,
     pub origin: ScenarioOriginConfig,
     pub locations: Vec<ScenarioLocationSeedConfig>,
-    pub dust: DustInitConfig,
+    pub asteroid_fragment: AsteroidFragmentInitConfig,
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
     pub power_storages: Vec<PowerStorageSeedConfig>,
@@ -174,7 +181,7 @@ impl Default for WorldScenarioSpec {
             seed: 0,
             origin: ScenarioOriginConfig::default(),
             locations: Vec::new(),
-            dust: DustInitConfig::default(),
+            asteroid_fragment: AsteroidFragmentInitConfig::default(),
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
             power_storages: Vec::new(),
@@ -192,7 +199,7 @@ impl WorldScenarioSpec {
                 .into_iter()
                 .map(|location| location.into_location(&config.space))
                 .collect(),
-            dust: self.dust,
+            asteroid_fragment: self.asteroid_fragment,
             agents: self.agents,
             power_plants: self.power_plants,
             power_storages: self.power_storages,
@@ -372,17 +379,17 @@ fn scenario_spec_json(scenario: WorldScenario) -> &'static str {
             env!("CARGO_MANIFEST_DIR"),
             "/scenarios/triad_p2p_bootstrap.json"
         )),
-        WorldScenario::DustyBootstrap => include_str!(concat!(
+        WorldScenario::AsteroidFragmentBootstrap => include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/scenarios/dusty_bootstrap.json"
+            "/scenarios/asteroid_fragment_bootstrap.json"
         )),
-        WorldScenario::DustyTwinRegionBootstrap => include_str!(concat!(
+        WorldScenario::AsteroidFragmentTwinRegionBootstrap => include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/scenarios/dusty_twin_region_bootstrap.json"
+            "/scenarios/asteroid_fragment_twin_region_bootstrap.json"
         )),
-        WorldScenario::DustyTriadRegionBootstrap => include_str!(concat!(
+        WorldScenario::AsteroidFragmentTriadRegionBootstrap => include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/scenarios/dusty_triad_region_bootstrap.json"
+            "/scenarios/asteroid_fragment_triad_region_bootstrap.json"
         )),
     }
 }
@@ -401,9 +408,9 @@ mod tests {
             WorldScenario::TwinRegionBootstrap,
             WorldScenario::TriadRegionBootstrap,
             WorldScenario::TriadP2pBootstrap,
-            WorldScenario::DustyBootstrap,
-            WorldScenario::DustyTwinRegionBootstrap,
-            WorldScenario::DustyTriadRegionBootstrap,
+            WorldScenario::AsteroidFragmentBootstrap,
+            WorldScenario::AsteroidFragmentTwinRegionBootstrap,
+            WorldScenario::AsteroidFragmentTriadRegionBootstrap,
         ];
 
         for scenario in scenarios {

@@ -1,7 +1,7 @@
 {
   "id": "two_bases",
   "name": "Two Bases",
-  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": { "count": 2, "location_id": "base-a" },
   "locations": [
     {

@@ -1,7 +1,7 @@
 {
   "id": "triad_p2p_bootstrap",
   "name": "Triad P2P Bootstrap",
-  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
   "agents": {
     "count": 3,

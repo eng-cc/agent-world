@@ -1,7 +1,7 @@
 {
   "id": "triad_region_bootstrap",
   "name": "Triad Region Bootstrap",
-  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
   "agents": { "count": 3, "location_id": "region-a" },
   "locations": [

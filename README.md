@@ -33,7 +33,7 @@
 ## 示例工具
 - `world_init_demo`：输出世界初始化场景的摘要信息  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
-  - 场景：`minimal` / `two_bases` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `dusty_bootstrap` / `dusty_twin_region_bootstrap` / `dusty_triad_region_bootstrap`
+  - 场景：`minimal` / `two_bases` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
 - `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
 

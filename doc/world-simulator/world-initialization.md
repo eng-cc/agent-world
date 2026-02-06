@@ -31,7 +31,7 @@
   - `seed: u64`
   - `origin: OriginLocationConfig`
   - `locations: Vec<LocationSeedConfig>`
-  - `dust: DustInitConfig`（小行星带碎片生成配置）
+  - `asteroid_fragment: AsteroidFragmentInitConfig`（小行星带碎片生成配置）
   - `agents: AgentSpawnConfig`
   - `power_plants: Vec<PowerPlantSeedConfig>`
   - `power_storages: Vec<PowerStorageSeedConfig>`
@@ -43,9 +43,9 @@
   - `twin_region_bootstrap`：双区域 + 双 Agent + 基础发电/储能与资源库存
   - `triad_region_bootstrap`：三区域 + 三 Agent + 分层电力/储能与资源库存
   - `triad_p2p_bootstrap`：三 P2P 节点 + 每节点 1 Agent（Agent 出生在对应节点）
-  - `dusty_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 储能与基础资源
-  - `dusty_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力/储能与资源
-  - `dusty_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力/储能与资源
+  - `asteroid_fragment_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 储能与基础资源
+  - `asteroid_fragment_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力/储能与资源
+  - `asteroid_fragment_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力/储能与资源
   - 场景定义文件：`crates/agent_world/scenarios/*.json`（编译期嵌入）
 
 ### 场景使用建议
@@ -55,9 +55,9 @@
 - `resource_bootstrap`：用于验证资源库存与交易/消耗逻辑。
 - `twin_region_bootstrap` / `triad_region_bootstrap`：用于验证多区域资源/设施差异与运输成本。
 - `triad_p2p_bootstrap`：用于验证 P2P 多节点拓扑与节点内 Agent 初始分布。
-- `dusty_bootstrap`：用于验证小行星带碎片/辐射采集与热管理路径。
-- `dusty_twin_region_bootstrap`：用于验证小行星带碎片下的多区域资源/设施差异与运输成本。
-- `dusty_triad_region_bootstrap`：用于验证小行星带碎片下的三方资源/设施差异与协作/竞争。
+- `asteroid_fragment_bootstrap`：用于验证小行星带碎片/辐射采集与热管理路径。
+- `asteroid_fragment_twin_region_bootstrap`：用于验证小行星带碎片下的多区域资源/设施差异与运输成本。
+- `asteroid_fragment_triad_region_bootstrap`：用于验证小行星带碎片下的三方资源/设施差异与协作/竞争。
 
 ### 场景别名
 - `two_bases`：`two-bases`
@@ -66,15 +66,15 @@
 - `twin_region_bootstrap`：`twin-regions`
 - `triad_region_bootstrap`：`triad-regions`
 - `triad_p2p_bootstrap`：`triad-p2p` / `p2p-triad`
-- `dusty_bootstrap`：`dusty`
-- `dusty_twin_region_bootstrap`：`dusty-regions`
-- `dusty_triad_region_bootstrap`：`dusty-triad`
+- `asteroid_fragment_bootstrap`：`asteroid_fragment`
+- `asteroid_fragment_twin_region_bootstrap`：`asteroid-fragment-regions`
+- `asteroid_fragment_triad_region_bootstrap`：`asteroid-fragment-triad`
 
 ### 小行星带碎片种子策略
-- 初始化使用 `seed + dust.seed_offset` 生成小行星带碎片，确保与其他随机源解耦。
+- 初始化使用 `seed + asteroid_fragment.seed_offset` 生成小行星带碎片，确保与其他随机源解耦。
 - 各场景为小行星带碎片设置不同的 `seed_offset`，避免同一 seed 下的碎片分布完全一致。
 - 新增场景时应选择未使用过的 `seed_offset`，保持分布差异可追踪。
-- `WorldInitReport.dust_seed` 会记录实际使用的小行星带碎片种子，便于回放与比对。
+- `WorldInitReport.asteroid_fragment_seed` 会记录实际使用的小行星带碎片种子，便于回放与比对。
 
 ### 场景 ID 稳定性
 - 现有场景 ID 视为稳定接口，不应随意改名或删除。
@@ -89,7 +89,7 @@
   - `location_id/name/profile`
   - `pos: Option<GeoPos>`（空则取空间中心）
   - `resources: ResourceStock`
-- `DustInitConfig`
+- `AsteroidFragmentInitConfig`
   - `enabled: bool`
   - `seed_offset: u64`
   - `min_fragment_spacing_cm: Option<i64>`（可选，覆盖小行星碎片最小间距）
@@ -118,8 +118,8 @@
 - 初始化在**时间 0** 完成：
   - `WorldKernel.time = 0`
   - `journal` 为空（初始化视为“世界既成事实”）。
-- 生成过程使用 `WorldConfig` 的 `space/dust/power` 配置。
-- 生成顺序：origin → custom locations → dust fragments → agents → facilities（确保依赖对象已存在）。
+- 生成过程使用 `WorldConfig` 的 `space/asteroid_fragment/power` 配置。
+- 生成顺序：origin → custom locations → asteroid fragments → agents → facilities（确保依赖对象已存在）。
 - 场景模板通过 `WorldInitConfig::from_scenario(scenario, config)` 生成初始化配置。
 - 场景文件由 `WorldScenario` 加载并转换为 `WorldInitConfig`。
 
@@ -132,7 +132,7 @@
 - 运行自定义场景文件：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --scenario-file path/to/scenario.json`
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
-- 示例输出包含估算的小行星带碎片数量（dust_fragments）。
+- 示例输出包含估算的小行星带碎片数量（asteroid_fragment_fragments）。
 - 示例输出包含每个地点的设施统计（power_plants/power_storages）。
 - `--summary-only` 可仅输出概要统计（隐藏详细列表）。
 

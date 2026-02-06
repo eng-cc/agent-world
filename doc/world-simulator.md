@@ -179,7 +179,7 @@
   - `physics`（`time_step_s`, `power_unit_j`, `radiation_floor`, `radiation_decay_k`,
     `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
     `erosion_rate`）
-  - `dust`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
+  - `asteroid_fragment`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
     `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`,
     `min_fragment_spacing_cm`, `material_weights`）
 
@@ -200,7 +200,7 @@
   - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
   - `space`（小行星带空间尺寸：`width_cm/depth_cm/height_cm`）
   - `physics`（辐射/热/侵蚀参数）
-  - `dust`（碎片分布生成器参数）
+  - `asteroid_fragment`（碎片分布生成器参数）
 
 ### M2 持久化与回放（最小）
 - **快照**：保存世界内核的完整状态（时间、配置、世界模型、待处理队列、事件游标）。

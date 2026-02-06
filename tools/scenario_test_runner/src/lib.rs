@@ -65,7 +65,7 @@ pub struct Expectations {
     #[serde(default)]
     pub require_power_storages: Vec<String>,
     #[serde(default)]
-    pub expect_dust: Option<bool>,
+    pub expect_asteroid_fragment: Option<bool>,
     #[serde(default)]
     pub agent_locations: BTreeMap<String, String>,
 }
@@ -233,10 +233,10 @@ fn evaluate_expectations(
         }
     }
 
-    if let Some(expect_dust) = expect.expect_dust {
-        let actual = report.dust_seed.is_some();
-        if actual != expect_dust {
-            failures.push(format!("dust enabled mismatch: expected {expect_dust}, got {actual}"));
+    if let Some(expect_asteroid_fragment) = expect.expect_asteroid_fragment {
+        let actual = report.asteroid_fragment_seed.is_some();
+        if actual != expect_asteroid_fragment {
+            failures.push(format!("asteroid fragment enabled mismatch: expected {expect_asteroid_fragment}, got {actual}"));
         }
     }
 
@@ -277,7 +277,7 @@ mod tests {
                 require_agents: vec!["agent-0".to_string()],
                 require_power_plants: Vec::new(),
                 require_power_storages: Vec::new(),
-                expect_dust: Some(false),
+                expect_asteroid_fragment: Some(false),
                 agent_locations: BTreeMap::new(),
             },
         };
@@ -305,7 +305,7 @@ mod tests {
                 require_agents: Vec::new(),
                 require_power_plants: Vec::new(),
                 require_power_storages: Vec::new(),
-                expect_dust: None,
+                expect_asteroid_fragment: None,
                 agent_locations,
             },
         };

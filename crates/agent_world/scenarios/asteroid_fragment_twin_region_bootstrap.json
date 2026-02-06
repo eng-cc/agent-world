@@ -1,7 +1,7 @@
 {
-  "id": "dusty_twin_region_bootstrap",
-  "name": "Dusty Twin Region Bootstrap",
-  "dust": { "enabled": true, "seed_offset": 101, "min_fragment_spacing_cm": 50000 },
+  "id": "asteroid_fragment_twin_region_bootstrap",
+  "name": "Asteroid Fragment Twin Region Bootstrap",
+  "asteroid_fragment": { "enabled": true, "seed_offset": 101, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
   "agents": {
     "count": 2,

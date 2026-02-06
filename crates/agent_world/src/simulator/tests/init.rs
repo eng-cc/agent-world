@@ -4,7 +4,7 @@ use super::*;
 fn init_defaults_create_origin_and_agents() {
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
-    init.dust.enabled = false;
+    init.asteroid_fragment.enabled = false;
     init.agents.count = 2;
 
     let (model, report) = build_world_model(&config, &init).expect("init should succeed");
@@ -26,7 +26,7 @@ fn init_defaults_create_origin_and_agents() {
 #[test]
 fn init_is_deterministic_with_seed() {
     let mut config = WorldConfig::default();
-    config.dust.base_density_per_km3 = 0.5;
+    config.asteroid_fragment.base_density_per_km3 = 0.5;
 
     let mut init = WorldInitConfig::default();
     init.seed = 42;
@@ -56,7 +56,7 @@ fn init_seeds_locations_and_resources() {
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
     init.origin.enabled = false;
-    init.dust.enabled = false;
+    init.asteroid_fragment.enabled = false;
     init.agents.count = 1;
     init.agents.location_id = Some("base".to_string());
     init.agents
@@ -85,7 +85,7 @@ fn init_seeds_locations_and_resources() {
 fn init_rejects_negative_resources() {
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
-    init.dust.enabled = false;
+    init.asteroid_fragment.enabled = false;
     init.agents.count = 0;
     init.origin
         .resources
@@ -106,7 +106,7 @@ fn init_rejects_negative_resources() {
 fn init_seeds_power_facilities() {
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
-    init.dust.enabled = false;
+    init.asteroid_fragment.enabled = false;
     init.agents.count = 1;
 
     let plant_seed = PowerPlantSeedConfig {
@@ -147,7 +147,7 @@ fn init_seeds_power_facilities() {
 fn init_rejects_facility_with_missing_owner() {
     let config = WorldConfig::default();
     let mut init = WorldInitConfig::default();
-    init.dust.enabled = false;
+    init.asteroid_fragment.enabled = false;
     init.agents.count = 0;
 
     let plant_seed = PowerPlantSeedConfig {
@@ -179,9 +179,9 @@ fn scenario_templates_build_models() {
         WorldScenario::TwinRegionBootstrap,
         WorldScenario::TriadRegionBootstrap,
         WorldScenario::TriadP2pBootstrap,
-        WorldScenario::DustyBootstrap,
-        WorldScenario::DustyTwinRegionBootstrap,
-        WorldScenario::DustyTriadRegionBootstrap,
+        WorldScenario::AsteroidFragmentBootstrap,
+        WorldScenario::AsteroidFragmentTwinRegionBootstrap,
+        WorldScenario::AsteroidFragmentTriadRegionBootstrap,
     ];
 
     for scenario in scenarios {
@@ -192,12 +192,12 @@ fn scenario_templates_build_models() {
 }
 
 #[test]
-fn scenario_dust_min_spacing_overrides_world_config() {
+fn scenario_asteroid_fragment_min_spacing_overrides_world_config() {
     let spec_json = r#"{
         "id": "spacing_override",
         "name": "Spacing Override",
         "seed": 7,
-        "dust": { "enabled": true, "seed_offset": 0, "min_fragment_spacing_cm": 50000 },
+        "asteroid_fragment": { "enabled": true, "seed_offset": 0, "min_fragment_spacing_cm": 50000 },
         "agents": { "count": 0 },
         "locations": []
     }"#;
@@ -209,13 +209,13 @@ fn scenario_dust_min_spacing_overrides_world_config() {
         depth_cm: 200_000,
         height_cm: 200_000,
     };
-    config.dust.base_density_per_km3 = 5.0;
-    config.dust.voxel_size_km = 1;
-    config.dust.cluster_noise = 0.0;
-    config.dust.layer_scale_height_km = 0.0;
-    config.dust.radius_min_cm = 10;
-    config.dust.radius_max_cm = 10;
-    config.dust.min_fragment_spacing_cm = 0;
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 10;
+    config.asteroid_fragment.radius_max_cm = 10;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
 
     let init = spec.into_init_config(&config);
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
@@ -227,7 +227,7 @@ fn scenario_dust_min_spacing_overrides_world_config() {
     assert!(fragments.len() > 1);
 
     let spacing_cm = init
-        .dust
+        .asteroid_fragment
         .min_fragment_spacing_cm
         .expect("spacing override");
     for i in 0..fragments.len() {
@@ -310,24 +310,24 @@ fn triad_p2p_bootstrap_seeds_nodes_and_agents() {
 }
 
 #[test]
-fn dusty_bootstrap_seeds_dust_and_storage() {
+fn asteroid_fragment_bootstrap_seeds_fragments_and_storage() {
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::DustyBootstrap, &config);
+    let init = WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentBootstrap, &config);
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(report.dust_seed.is_some());
+    assert!(report.asteroid_fragment_seed.is_some());
     assert!(model.locations.len() >= 1);
     assert!(model.power_storages.contains_key("storage-1"));
     assert!(model.agents.contains_key("agent-0"));
 }
 
 #[test]
-fn dusty_twin_region_bootstrap_seeds_dust_and_regions() {
+fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::DustyTwinRegionBootstrap, &config);
+    let init = WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentTwinRegionBootstrap, &config);
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(report.dust_seed.is_some());
+    assert!(report.asteroid_fragment_seed.is_some());
     assert!(model.locations.contains_key("region-a"));
     assert!(model.locations.contains_key("region-b"));
     assert!(model.power_plants.contains_key("plant-a"));
@@ -338,12 +338,12 @@ fn dusty_twin_region_bootstrap_seeds_dust_and_regions() {
 }
 
 #[test]
-fn dusty_triad_region_bootstrap_seeds_dust_and_regions() {
+fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::DustyTriadRegionBootstrap, &config);
+    let init = WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentTriadRegionBootstrap, &config);
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(report.dust_seed.is_some());
+    assert!(report.asteroid_fragment_seed.is_some());
     assert!(model.locations.contains_key("region-a"));
     assert!(model.locations.contains_key("region-b"));
     assert!(model.locations.contains_key("region-c"));
@@ -365,9 +365,9 @@ fn scenario_aliases_parse() {
         ("twin-regions", WorldScenario::TwinRegionBootstrap),
         ("triad-regions", WorldScenario::TriadRegionBootstrap),
         ("p2p-triad", WorldScenario::TriadP2pBootstrap),
-        ("dusty", WorldScenario::DustyBootstrap),
-        ("dusty-regions", WorldScenario::DustyTwinRegionBootstrap),
-        ("dusty-triad", WorldScenario::DustyTriadRegionBootstrap),
+        ("asteroid_fragment", WorldScenario::AsteroidFragmentBootstrap),
+        ("asteroid-fragment-regions", WorldScenario::AsteroidFragmentTwinRegionBootstrap),
+        ("asteroid-fragment-triad", WorldScenario::AsteroidFragmentTriadRegionBootstrap),
     ];
 
     for (input, expected) in cases {
@@ -385,7 +385,7 @@ fn scenarios_are_stable() {
         required_locations: &'a [&'a str],
         required_plants: &'a [&'a str],
         required_storages: &'a [&'a str],
-        expect_dust: bool,
+        expect_asteroid_fragment: bool,
     }
 
     let expectations = [
@@ -396,7 +396,7 @@ fn scenarios_are_stable() {
             required_locations: &["origin"],
             required_plants: &[],
             required_storages: &[],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::TwoBases,
@@ -405,7 +405,7 @@ fn scenarios_are_stable() {
             required_locations: &["origin", "base-a", "base-b"],
             required_plants: &[],
             required_storages: &[],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::PowerBootstrap,
@@ -414,7 +414,7 @@ fn scenarios_are_stable() {
             required_locations: &["origin"],
             required_plants: &["plant-1"],
             required_storages: &["storage-1"],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::ResourceBootstrap,
@@ -423,7 +423,7 @@ fn scenarios_are_stable() {
             required_locations: &["origin"],
             required_plants: &[],
             required_storages: &[],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::TwinRegionBootstrap,
@@ -432,7 +432,7 @@ fn scenarios_are_stable() {
             required_locations: &["region-a", "region-b"],
             required_plants: &["plant-a", "plant-b"],
             required_storages: &["storage-a"],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::TriadRegionBootstrap,
@@ -441,7 +441,7 @@ fn scenarios_are_stable() {
             required_locations: &["region-a", "region-b", "region-c"],
             required_plants: &["plant-a", "plant-b"],
             required_storages: &["storage-a", "storage-c"],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
             scenario: WorldScenario::TriadP2pBootstrap,
@@ -450,34 +450,34 @@ fn scenarios_are_stable() {
             required_locations: &["node-a", "node-b", "node-c"],
             required_plants: &[],
             required_storages: &[],
-            expect_dust: false,
+            expect_asteroid_fragment: false,
         },
         ScenarioExpectation {
-            scenario: WorldScenario::DustyBootstrap,
+            scenario: WorldScenario::AsteroidFragmentBootstrap,
             expected_agents: 1,
             expect_origin: true,
             required_locations: &["origin"],
             required_plants: &[],
             required_storages: &["storage-1"],
-            expect_dust: true,
+            expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
-            scenario: WorldScenario::DustyTwinRegionBootstrap,
+            scenario: WorldScenario::AsteroidFragmentTwinRegionBootstrap,
             expected_agents: 2,
             expect_origin: false,
             required_locations: &["region-a", "region-b"],
             required_plants: &["plant-a", "plant-b"],
             required_storages: &["storage-a"],
-            expect_dust: true,
+            expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
-            scenario: WorldScenario::DustyTriadRegionBootstrap,
+            scenario: WorldScenario::AsteroidFragmentTriadRegionBootstrap,
             expected_agents: 3,
             expect_origin: false,
             required_locations: &["region-a", "region-b", "region-c"],
             required_plants: &["plant-a", "plant-b"],
             required_storages: &["storage-a", "storage-c"],
-            expect_dust: true,
+            expect_asteroid_fragment: true,
         },
     ];
 
@@ -500,6 +500,6 @@ fn scenarios_are_stable() {
             assert!(model.power_storages.contains_key(*storage_id));
         }
 
-        assert_eq!(report.dust_seed.is_some(), expectation.expect_dust);
+        assert_eq!(report.asteroid_fragment_seed.is_some(), expectation.expect_asteroid_fragment);
     }
 }
