@@ -15,6 +15,19 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
 
+## Git Hook
+- 已在本仓库安装 `pre-commit` hook：提交前会自动执行 `scripts/pre-commit.sh`。
+- 如需重装，可在仓库根目录创建 `.git/hooks/pre-commit` 并调用脚本：
+```
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+./scripts/pre-commit.sh
+```
+
 ## 里程碑
 - **M1**：新增本地提交前联测脚本并纳入文档说明。
 
