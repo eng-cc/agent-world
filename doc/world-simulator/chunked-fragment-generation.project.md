@@ -25,7 +25,10 @@
 - [x] CG8.3 在 kernel action/replay 中接入 RefineCompound 执行与回放
 - [x] CG8.4 补充精炼闭环测试（成功/电力不足拒绝/回放一致）
 - [x] CG8.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
-- [ ] CG9 增加性能预算与降级策略（fragments/blocks 上限）
+- [x] CG9.1 扩展 AsteroidFragmentConfig 预算字段（fragments/blocks 上限）
+- [x] CG9.2 在 chunk 生成流程接入三档预算与确定性降级
+- [x] CG9.3 补充预算回归测试（fragment/block 上限）
+- [x] CG9.4 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 - [ ] CG10 补充回放一致性与性能回归测试
 
 ## 依赖
@@ -37,5 +40,5 @@
 - `crates/agent_world/src/simulator/world_model.rs`
 
 ## 状态
-- 当前阶段：CG8（实现完成）
-- 下一阶段：CG9（性能预算与降级策略）
+- 当前阶段：CG9（实现完成）
+- 下一阶段：CG10（回放一致性与性能回归测试）

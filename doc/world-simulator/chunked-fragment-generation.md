@@ -194,15 +194,18 @@
 - 保留消费：邻块未来生成时先消费（remove）该 chunk 的 reservations，再据此过滤候选碎片。
 - 确定性策略：冲突默认“已存在碎片优先（先生成者优先）”，保证同 seed + 同触发序列结果可复现。
 
-### 性能预算与降级策略
-- `max_fragments_per_chunk`：单 chunk 碎片上限（默认建议 4_000）。
-- `max_blocks_per_fragment`：单碎片 block 上限（默认建议 64）。
-- `max_blocks_per_chunk`：单 chunk block 总量上限（默认建议 120_000）。
-- 超限降级顺序：
-  1. 合并相邻同成分 block；
-  2. 下降 block 细分层级；
-  3. 截断低价值碎片（保留高质量/高价值碎片）。
-- 生成耗时预算：单 chunk 生成超时后中断并输出 `ChunkGenerationSkipped`（reason=`budget_exceeded`）。
+### 性能预算与降级策略（CG9 落地）
+新增三档硬预算（`AsteroidFragmentConfig`）：
+- `max_fragments_per_chunk`：单 chunk 最多接纳碎片数（默认 `4_000`）。
+- `max_blocks_per_fragment`：单碎片最多保留 block 数（默认 `64`）。
+- `max_blocks_per_chunk`：单 chunk 最多保留 block 总量（默认 `120_000`）。
+
+确定性降级顺序（同 seed 同触发序列可复现）：
+1. 先应用 `max_fragments_per_chunk`（超过上限后停止接纳新碎片）。
+2. 再应用 `max_blocks_per_fragment`（超限时按生成顺序截断 block，并重算体积/质量/成分）。
+3. 最后应用 `max_blocks_per_chunk`（根据 chunk 剩余 block 预算截断当前碎片，预算耗尽后停止接纳后续碎片）。
+
+说明：`ChunkGenerationSkipped(reason=budget_exceeded)` 事件暂不在 CG9 引入，后续在更高阶性能治理阶段落地。
 
 ### 验收标准（DoD）
 - 同一 `world_seed + chunk_coord` 在不同运行中生成结果一致（碎片数量/资源账本一致）。
@@ -235,6 +238,7 @@
 - **CG6**：实现持久化与回放契约（ChunkGenerated 事件/快照字段/版本迁移）。
 - **CG7**：实现跨 chunk 边界一致性（邻块校验 + BoundaryReservation 保留/消费）。
 - **CG8**：实现经济资源映射最小闭环（`RefineCompound -> electricity/hardware`）。
+- **CG9**：实现分块生成性能预算与确定性降级（fragments/blocks 三档上限）。
 
 ## 风险
 - chunk 边界附近的最小间距约束需要考虑相邻 chunk，避免穿边重叠。

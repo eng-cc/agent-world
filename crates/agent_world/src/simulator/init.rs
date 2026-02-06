@@ -6,7 +6,9 @@ use crate::geometry::GeoPos;
 
 use super::asteroid_fragment::generate_fragments;
 use super::chunking::{chunk_coord_of, chunk_coords, ChunkCoord};
-use super::fragment_physics::{synthesize_fragment_budget, synthesize_fragment_profile};
+use super::fragment_physics::{
+    synthesize_fragment_budget, synthesize_fragment_profile, truncate_fragment_profile_blocks,
+};
 use super::kernel::{ChunkGenerationCause, ChunkRuntimeConfig, WorldEventKind, WorldKernel};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
@@ -289,21 +291,54 @@ pub struct WorldInitReport {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum WorldInitError {
-    OriginOutOfBounds { pos: GeoPos },
-    LocationOutOfBounds { location_id: LocationId, pos: GeoPos },
-    InvalidLocationId { location_id: LocationId },
-    LocationIdConflict { location_id: LocationId },
-    AgentIdConflict { agent_id: AgentId },
-    InvalidFacilityId { facility_id: FacilityId },
-    FacilityIdConflict { facility_id: FacilityId },
-    FacilityLocationNotFound { location_id: LocationId },
-    FacilityOwnerNotFound { owner: ResourceOwner },
+    OriginOutOfBounds {
+        pos: GeoPos,
+    },
+    LocationOutOfBounds {
+        location_id: LocationId,
+        pos: GeoPos,
+    },
+    InvalidLocationId {
+        location_id: LocationId,
+    },
+    LocationIdConflict {
+        location_id: LocationId,
+    },
+    AgentIdConflict {
+        agent_id: AgentId,
+    },
+    InvalidFacilityId {
+        facility_id: FacilityId,
+    },
+    FacilityIdConflict {
+        facility_id: FacilityId,
+    },
+    FacilityLocationNotFound {
+        location_id: LocationId,
+    },
+    FacilityOwnerNotFound {
+        owner: ResourceOwner,
+    },
     SpawnLocationMissing,
-    SpawnLocationNotFound { location_id: LocationId },
-    InvalidResourceAmount { kind: ResourceKind, amount: i64 },
-    InvalidFacilityAmount { field: String, amount: i64 },
-    InvalidFacilityRatio { field: String, value: f64 },
-    InvalidFacilityLevel { current_level: i64, capacity: i64 },
+    SpawnLocationNotFound {
+        location_id: LocationId,
+    },
+    InvalidResourceAmount {
+        kind: ResourceKind,
+        amount: i64,
+    },
+    InvalidFacilityAmount {
+        field: String,
+        amount: i64,
+    },
+    InvalidFacilityRatio {
+        field: String,
+        value: f64,
+    },
+    InvalidFacilityLevel {
+        current_level: i64,
+        capacity: i64,
+    },
 }
 
 pub fn build_world_model(
@@ -316,10 +351,7 @@ pub fn build_world_model(
     initialize_chunk_index(&mut model, &config);
 
     if init.origin.enabled {
-        let pos = init
-            .origin
-            .pos
-            .unwrap_or_else(|| center_pos(&config.space));
+        let pos = init.origin.pos.unwrap_or_else(|| center_pos(&config.space));
         if !config.space.contains(pos) {
             return Err(WorldInitError::OriginOutOfBounds { pos });
         }
@@ -659,6 +691,9 @@ pub fn generate_chunk_fragments(
         asteroid_fragment_config.min_fragment_spacing_cm = spacing;
     }
     let spacing_cm = asteroid_fragment_config.min_fragment_spacing_cm.max(0);
+    let max_fragments_per_chunk = asteroid_fragment_config.max_fragments_per_chunk.max(0) as usize;
+    let max_blocks_per_fragment = asteroid_fragment_config.max_blocks_per_fragment.max(0) as usize;
+    let max_blocks_per_chunk = asteroid_fragment_config.max_blocks_per_chunk.max(0) as usize;
 
     let local_space = chunk_local_space(bounds);
     if local_space.width_cm <= 0 || local_space.depth_cm <= 0 || local_space.height_cm <= 0 {
@@ -678,8 +713,13 @@ pub fn generate_chunk_fragments(
     let fragments = generate_fragments(seed, &local_space, &asteroid_fragment_config);
     let mut chunk_budget = ChunkResourceBudget::default();
     let mut accepted_fragments = Vec::<AcceptedFragment>::new();
+    let mut accepted_fragment_count = 0usize;
+    let mut accepted_block_count = 0usize;
 
     for (idx, mut frag) in fragments.into_iter().enumerate() {
+        if accepted_fragment_count >= max_fragments_per_chunk {
+            break;
+        }
         frag.id = format!("frag-{}-{}-{}-{}", coord.x, coord.y, coord.z, idx);
         frag.name = frag.id.clone();
         frag.pos.x_cm += bounds.min.x_cm;
@@ -708,17 +748,34 @@ pub fn generate_chunk_fragments(
             continue;
         }
 
-        let profile_seed = seed
-            .wrapping_add((idx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        let fragment_profile = synthesize_fragment_profile(
+        let profile_seed = seed.wrapping_add((idx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let mut fragment_profile = synthesize_fragment_profile(
             profile_seed,
             frag.profile.radius_cm,
             frag.profile.material,
         );
+
+        let remaining_chunk_blocks = max_blocks_per_chunk.saturating_sub(accepted_block_count);
+        if remaining_chunk_blocks == 0 {
+            break;
+        }
+        let block_limit_for_fragment = max_blocks_per_fragment.min(remaining_chunk_blocks);
+        if block_limit_for_fragment == 0 {
+            break;
+        }
+        truncate_fragment_profile_blocks(&mut fragment_profile, block_limit_for_fragment);
+        let kept_blocks = fragment_profile.blocks.blocks.len();
+        if kept_blocks == 0 {
+            continue;
+        }
+
         let fragment_budget = synthesize_fragment_budget(&fragment_profile);
         chunk_budget.accumulate_fragment(&fragment_budget);
         frag.fragment_profile = Some(fragment_profile);
         frag.fragment_budget = Some(fragment_budget);
+
+        accepted_fragment_count = accepted_fragment_count.saturating_add(1);
+        accepted_block_count = accepted_block_count.saturating_add(kept_blocks);
 
         accepted_fragments.push(AcceptedFragment {
             fragment_id: frag.id.clone(),
@@ -732,13 +789,7 @@ pub fn generate_chunk_fragments(
     model.chunk_resource_budgets.insert(coord, chunk_budget);
 
     for fragment in accepted_fragments {
-        append_boundary_reservations_for_fragment(
-            model,
-            config,
-            coord,
-            fragment,
-            spacing_cm,
-        );
+        append_boundary_reservations_for_fragment(model, config, coord, fragment, spacing_cm);
     }
 
     Ok(summarize_chunk_generation(model, config, coord, seed))
@@ -811,13 +862,7 @@ fn conflicts_with_neighbor_fragments(
 ) -> bool {
     neighbors.iter().any(|neighbor| {
         let _tie_break_hint = (&neighbor.source_chunk, &neighbor.fragment_id);
-        spacing_conflict(
-            pos,
-            radius_cm,
-            neighbor.pos,
-            neighbor.radius_cm,
-            spacing_cm,
-        )
+        spacing_conflict(pos, radius_cm, neighbor.pos, neighbor.radius_cm, spacing_cm)
     })
 }
 
@@ -889,10 +934,8 @@ fn append_boundary_reservations_for_fragment(
             .or_default();
         entry.push(reservation);
         entry.sort_by(|left, right| {
-            (left.source_chunk, left.source_fragment_id.as_str()).cmp(&(
-                right.source_chunk,
-                right.source_fragment_id.as_str(),
-            ))
+            (left.source_chunk, left.source_fragment_id.as_str())
+                .cmp(&(right.source_chunk, right.source_fragment_id.as_str()))
         });
     }
 }
@@ -937,7 +980,11 @@ fn initialize_chunk_index(model: &mut WorldModel, config: &WorldConfig) {
 }
 
 fn gather_seed_positions(model: &WorldModel) -> Vec<GeoPos> {
-    let mut positions: Vec<GeoPos> = model.locations.values().map(|location| location.pos).collect();
+    let mut positions: Vec<GeoPos> = model
+        .locations
+        .values()
+        .map(|location| location.pos)
+        .collect();
     positions.extend(model.agents.values().map(|agent| agent.pos));
     positions
 }
@@ -1007,9 +1054,7 @@ fn insert_location(model: &mut WorldModel, location: Location) -> Result<(), Wor
 
 fn insert_agent(model: &mut WorldModel, agent: Agent) -> Result<(), WorldInitError> {
     if model.agents.contains_key(&agent.id) {
-        return Err(WorldInitError::AgentIdConflict {
-            agent_id: agent.id,
-        });
+        return Err(WorldInitError::AgentIdConflict { agent_id: agent.id });
     }
     model.agents.insert(agent.id.clone(), agent);
     Ok(())
@@ -1033,14 +1078,18 @@ fn ensure_owner_exists(model: &WorldModel, owner: &ResourceOwner) -> Result<(), 
             if model.agents.contains_key(agent_id) {
                 Ok(())
             } else {
-                Err(WorldInitError::FacilityOwnerNotFound { owner: owner.clone() })
+                Err(WorldInitError::FacilityOwnerNotFound {
+                    owner: owner.clone(),
+                })
             }
         }
         ResourceOwner::Location { location_id } => {
             if model.locations.contains_key(location_id) {
                 Ok(())
             } else {
-                Err(WorldInitError::FacilityOwnerNotFound { owner: owner.clone() })
+                Err(WorldInitError::FacilityOwnerNotFound {
+                    owner: owner.clone(),
+                })
             }
         }
     }

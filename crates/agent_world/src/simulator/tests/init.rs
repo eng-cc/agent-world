@@ -21,7 +21,10 @@ fn init_defaults_create_origin_and_agents() {
     assert_eq!(report.agents, 2);
     assert_eq!(model.chunks.len(), 25);
     assert!(model.chunks.values().all(|state| {
-        matches!(state, ChunkState::Unexplored | ChunkState::Generated | ChunkState::Exhausted)
+        matches!(
+            state,
+            ChunkState::Unexplored | ChunkState::Generated | ChunkState::Exhausted
+        )
     }));
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
@@ -217,6 +220,7 @@ fn scenario_asteroid_fragment_min_spacing_overrides_world_config() {
     config.asteroid_fragment.voxel_size_km = 1;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 10;
     config.asteroid_fragment.radius_max_cm = 10;
     config.asteroid_fragment.min_fragment_spacing_cm = 0;
@@ -259,6 +263,7 @@ fn chunk_generated_fragments_include_fragment_profile() {
     config.asteroid_fragment.voxel_size_km = 1;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 120;
     config.asteroid_fragment.radius_max_cm = 120;
 
@@ -308,7 +313,10 @@ fn chunk_generated_fragments_include_fragment_profile() {
         .next()
         .expect("chunk budget exists");
     assert_eq!(chunk_budget.total_by_element_g, expected_total_by_element);
-    assert_eq!(chunk_budget.total_by_element_g, chunk_budget.remaining_by_element_g);
+    assert_eq!(
+        chunk_budget.total_by_element_g,
+        chunk_budget.remaining_by_element_g
+    );
 }
 
 #[test]
@@ -400,7 +408,8 @@ fn asteroid_fragment_bootstrap_seeds_fragments_and_storage() {
 #[test]
 fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentTwinRegionBootstrap, &config);
+    let init =
+        WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentTwinRegionBootstrap, &config);
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
     assert!(report.asteroid_fragment_seed.is_some());
@@ -424,7 +433,10 @@ fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
 #[test]
 fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     let config = WorldConfig::default();
-    let init = WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentTriadRegionBootstrap, &config);
+    let init = WorldInitConfig::from_scenario(
+        WorldScenario::AsteroidFragmentTriadRegionBootstrap,
+        &config,
+    );
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
     assert!(report.asteroid_fragment_seed.is_some());
@@ -457,9 +469,18 @@ fn scenario_aliases_parse() {
         ("twin-regions", WorldScenario::TwinRegionBootstrap),
         ("triad-regions", WorldScenario::TriadRegionBootstrap),
         ("p2p-triad", WorldScenario::TriadP2pBootstrap),
-        ("asteroid_fragment", WorldScenario::AsteroidFragmentBootstrap),
-        ("asteroid-fragment-regions", WorldScenario::AsteroidFragmentTwinRegionBootstrap),
-        ("asteroid-fragment-triad", WorldScenario::AsteroidFragmentTriadRegionBootstrap),
+        (
+            "asteroid_fragment",
+            WorldScenario::AsteroidFragmentBootstrap,
+        ),
+        (
+            "asteroid-fragment-regions",
+            WorldScenario::AsteroidFragmentTwinRegionBootstrap,
+        ),
+        (
+            "asteroid-fragment-triad",
+            WorldScenario::AsteroidFragmentTriadRegionBootstrap,
+        ),
     ];
 
     for (input, expected) in cases {
@@ -580,7 +601,10 @@ fn scenarios_are_stable() {
 
         assert_eq!(report.agents, expectation.expected_agents);
         assert_eq!(model.agents.len(), expectation.expected_agents);
-        assert_eq!(model.locations.contains_key("origin"), expectation.expect_origin);
+        assert_eq!(
+            model.locations.contains_key("origin"),
+            expectation.expect_origin
+        );
 
         for location_id in expectation.required_locations {
             assert!(model.locations.contains_key(*location_id));
@@ -592,40 +616,47 @@ fn scenarios_are_stable() {
             assert!(model.power_storages.contains_key(*storage_id));
         }
 
-        assert_eq!(report.asteroid_fragment_seed.is_some(), expectation.expect_asteroid_fragment);
+        assert_eq!(
+            report.asteroid_fragment_seed.is_some(),
+            expectation.expect_asteroid_fragment
+        );
     }
 }
 
 #[test]
 fn world_model_chunk_states_roundtrip_json_keys() {
     let mut model = WorldModel::default();
-    model.chunks.insert(ChunkCoord { x: 0, y: 0, z: 0 }, ChunkState::Unexplored);
-    model.chunks.insert(ChunkCoord { x: 1, y: 2, z: 0 }, ChunkState::Generated);
+    model
+        .chunks
+        .insert(ChunkCoord { x: 0, y: 0, z: 0 }, ChunkState::Unexplored);
+    model
+        .chunks
+        .insert(ChunkCoord { x: 1, y: 2, z: 0 }, ChunkState::Generated);
 
     let mut chunk_budget = ChunkResourceBudget::default();
-    chunk_budget.total_by_element_g.insert(FragmentElementKind::Iron, 1200);
+    chunk_budget
+        .total_by_element_g
+        .insert(FragmentElementKind::Iron, 1200);
     chunk_budget
         .remaining_by_element_g
         .insert(FragmentElementKind::Iron, 1200);
     model
         .chunk_resource_budgets
         .insert(ChunkCoord { x: 1, y: 2, z: 0 }, chunk_budget);
-    model
-        .chunk_boundary_reservations
-        .insert(
-            ChunkCoord { x: 0, y: 1, z: 0 },
-            vec![BoundaryReservation {
-                source_chunk: ChunkCoord { x: 0, y: 0, z: 0 },
-                source_fragment_id: "frag-0-0-0-0".to_string(),
-                source_pos: GeoPos {
-                    x_cm: 10.0,
-                    y_cm: 20.0,
-                    z_cm: 30.0,
-                },
-                source_radius_cm: 100,
-                min_spacing_cm: 500,
-            }],
-        );
+    model.chunk_boundary_reservations.insert(
+        ChunkCoord { x: 0, y: 1, z: 0 },
+        vec![BoundaryReservation {
+            source_chunk: ChunkCoord { x: 0, y: 0, z: 0 },
+            source_fragment_id: "frag-0-0-0-0".to_string(),
+            source_pos: GeoPos {
+                x_cm: 10.0,
+                y_cm: 20.0,
+                z_cm: 30.0,
+            },
+            source_radius_cm: 100,
+            min_spacing_cm: 500,
+        }],
+    );
 
     let json = serde_json::to_string(&model).expect("serialize world model");
     assert!(json.contains("\"0:0:0\""));
@@ -649,9 +680,10 @@ fn boundary_reservations_are_created_for_unexplored_neighbor_chunks() {
         height_cm: 1_000_000,
     };
     config.asteroid_fragment.base_density_per_km3 = 0.005;
-    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.voxel_size_km = 10;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 1_000;
     config.asteroid_fragment.radius_max_cm = 1_000;
 
@@ -663,18 +695,14 @@ fn boundary_reservations_are_created_for_unexplored_neighbor_chunks() {
     init.asteroid_fragment.bootstrap_chunks = vec![ChunkCoord { x: 0, y: 0, z: 0 }];
 
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
-    assert!(
-        model
-            .chunks
-            .get(&ChunkCoord { x: 1, y: 0, z: 0 })
-            .is_some_and(|state| matches!(state, ChunkState::Unexplored))
-    );
-    assert!(
-        model
-            .chunk_boundary_reservations
-            .get(&ChunkCoord { x: 1, y: 0, z: 0 })
-            .is_some_and(|entries| !entries.is_empty())
-    );
+    assert!(model
+        .chunks
+        .get(&ChunkCoord { x: 1, y: 0, z: 0 })
+        .is_some_and(|state| matches!(state, ChunkState::Unexplored)));
+    assert!(model
+        .chunk_boundary_reservations
+        .get(&ChunkCoord { x: 1, y: 0, z: 0 })
+        .is_some_and(|entries| !entries.is_empty()));
 }
 
 #[test]
@@ -689,6 +717,7 @@ fn cross_chunk_generation_respects_spacing_with_neighbor_checks() {
     config.asteroid_fragment.voxel_size_km = 20;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 1_000;
     config.asteroid_fragment.radius_max_cm = 1_000;
 
@@ -706,13 +735,17 @@ fn cross_chunk_generation_respects_spacing_with_neighbor_checks() {
     let left: Vec<_> = model
         .locations
         .values()
-        .filter(|loc| chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 0, y: 0, z: 0 }))
+        .filter(|loc| {
+            chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 0, y: 0, z: 0 })
+        })
         .filter(|loc| loc.id.starts_with("frag-"))
         .collect();
     let right: Vec<_> = model
         .locations
         .values()
-        .filter(|loc| chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 1, y: 0, z: 0 }))
+        .filter(|loc| {
+            chunk_coord_of(loc.pos, &config.space) == Some(ChunkCoord { x: 1, y: 0, z: 0 })
+        })
         .filter(|loc| loc.id.starts_with("frag-"))
         .collect();
 
@@ -747,6 +780,7 @@ fn world_model_roundtrip_preserves_fragment_profile() {
     config.asteroid_fragment.voxel_size_km = 1;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 120;
     config.asteroid_fragment.radius_max_cm = 120;
 
@@ -803,6 +837,7 @@ fn consume_fragment_resource_keeps_fragment_and_chunk_conservation() {
     config.asteroid_fragment.voxel_size_km = 1;
     config.asteroid_fragment.cluster_noise = 0.0;
     config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
     config.asteroid_fragment.radius_min_cm = 120;
     config.asteroid_fragment.radius_max_cm = 120;
 
@@ -869,7 +904,9 @@ fn consume_fragment_resource_keeps_fragment_and_chunk_conservation() {
     );
     assert!(matches!(
         overdraw,
-        Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient { .. }))
+        Err(FragmentResourceError::Budget(
+            ElementBudgetError::Insufficient { .. }
+        ))
     ));
 }
 
@@ -907,4 +944,111 @@ fn scenario_asteroid_fragment_bootstrap_chunks_generate_without_seed_locations()
             .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
         assert!(model.chunk_resource_budgets.contains_key(coord));
     }
+}
+
+#[test]
+fn chunk_generation_respects_max_fragments_per_chunk() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 2_000_000,
+        depth_cm: 2_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 10.0;
+    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
+    config.asteroid_fragment.radius_min_cm = 1_000;
+    config.asteroid_fragment.radius_max_cm = 1_000;
+    config.asteroid_fragment.max_fragments_per_chunk = 2;
+
+    let target = ChunkCoord { x: 0, y: 0, z: 0 };
+    let mut observed_non_empty = false;
+
+    for seed in 320..352 {
+        let mut init = WorldInitConfig::default();
+        init.seed = seed;
+        init.origin.enabled = false;
+        init.agents.count = 0;
+        init.asteroid_fragment.bootstrap_chunks = vec![target];
+
+        let (model, _) = build_world_model(&config, &init).expect("build world model");
+
+        let fragment_count = model
+            .locations
+            .values()
+            .filter(|location| location.id.starts_with("frag-"))
+            .filter(|location| {
+                chunk_coord_of(location.pos, &config.space).is_some_and(|coord| coord == target)
+            })
+            .count();
+
+        if fragment_count > 0 {
+            observed_non_empty = true;
+        }
+        assert!(fragment_count <= 2);
+    }
+
+    assert!(observed_non_empty);
+}
+
+#[test]
+fn chunk_generation_respects_block_budgets() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 2_000_000,
+        depth_cm: 2_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 200.0;
+    config.asteroid_fragment.voxel_size_km = 20;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
+    config.asteroid_fragment.radius_min_cm = 3_000;
+    config.asteroid_fragment.radius_max_cm = 3_000;
+    config.asteroid_fragment.max_fragments_per_chunk = 10;
+    config.asteroid_fragment.max_blocks_per_fragment = 3;
+    config.asteroid_fragment.max_blocks_per_chunk = 5;
+
+    let target = ChunkCoord { x: 0, y: 0, z: 0 };
+    let mut observed_non_empty = false;
+
+    for seed in 321..353 {
+        let mut init = WorldInitConfig::default();
+        init.seed = seed;
+        init.origin.enabled = false;
+        init.agents.count = 0;
+        init.asteroid_fragment.bootstrap_chunks = vec![target];
+
+        let (model, _) = build_world_model(&config, &init).expect("build world model");
+
+        let mut total_blocks = 0usize;
+        let mut fragment_count = 0usize;
+        for location in model
+            .locations
+            .values()
+            .filter(|loc| loc.id.starts_with("frag-"))
+        {
+            if !chunk_coord_of(location.pos, &config.space).is_some_and(|coord| coord == target) {
+                continue;
+            }
+            let profile = location
+                .fragment_profile
+                .as_ref()
+                .expect("fragment profile exists");
+            let blocks = profile.blocks.blocks.len();
+            assert!(blocks <= 3);
+            total_blocks = total_blocks.saturating_add(blocks);
+            fragment_count = fragment_count.saturating_add(1);
+        }
+
+        if fragment_count > 0 {
+            observed_non_empty = true;
+        }
+        assert!(total_blocks <= 5);
+    }
+
+    assert!(observed_non_empty);
 }

@@ -216,7 +216,9 @@ pub fn synthesize_fragment_profile(
     let total_volume_cm3 = block_field.total_volume_cm3();
     let total_mass_g = block_field.total_mass_g();
     let bulk_density_kg_per_m3 = if total_volume_cm3 > 0 {
-        total_mass_g.saturating_mul(1000).saturating_div(total_volume_cm3)
+        total_mass_g
+            .saturating_mul(1000)
+            .saturating_div(total_volume_cm3)
     } else {
         0
     };
@@ -232,6 +234,25 @@ pub fn synthesize_fragment_profile(
         total_mass_g,
         bulk_density_kg_per_m3,
     }
+}
+
+pub fn truncate_fragment_profile_blocks(profile: &mut FragmentPhysicalProfile, max_blocks: usize) {
+    if profile.blocks.blocks.len() > max_blocks {
+        profile.blocks.blocks.truncate(max_blocks);
+    }
+
+    profile.total_volume_cm3 = profile.blocks.total_volume_cm3();
+    profile.total_mass_g = profile.blocks.total_mass_g();
+    profile.bulk_density_kg_per_m3 = if profile.total_volume_cm3 > 0 {
+        profile
+            .total_mass_g
+            .saturating_mul(1000)
+            .saturating_div(profile.total_volume_cm3)
+    } else {
+        0
+    };
+    profile.compounds = aggregate_compound_ppm(&profile.blocks);
+    profile.elements = infer_element_ppm(&profile.compounds);
 }
 
 pub fn synthesize_fragment_budget(profile: &FragmentPhysicalProfile) -> FragmentResourceBudget {
@@ -274,7 +295,9 @@ pub fn infer_element_ppm(compounds: &CompoundComposition) -> ElementComposition 
     output
 }
 
-fn compound_element_signature(compound: FragmentCompoundKind) -> &'static [(FragmentElementKind, u32)] {
+fn compound_element_signature(
+    compound: FragmentCompoundKind,
+) -> &'static [(FragmentElementKind, u32)] {
     match compound {
         FragmentCompoundKind::SilicateMatrix => &[
             (FragmentElementKind::Oxygen, 600),
@@ -405,9 +428,7 @@ fn aggregate_compound_ppm(block_field: &FragmentBlockField) -> CompoundCompositi
     }
 
     for (kind, value) in weighted {
-        let ppm = value
-            .saturating_div(total_mass)
-            .min(u32::MAX as u128) as u32;
+        let ppm = value.saturating_div(total_mass).min(u32::MAX as u128) as u32;
         out.set(kind, ppm);
     }
     out

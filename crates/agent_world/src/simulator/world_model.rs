@@ -573,6 +573,9 @@ pub struct AsteroidFragmentConfig {
     pub radius_min_cm: i64,
     pub radius_max_cm: i64,
     pub min_fragment_spacing_cm: i64,
+    pub max_fragments_per_chunk: i64,
+    pub max_blocks_per_fragment: i64,
+    pub max_blocks_per_chunk: i64,
     pub material_weights: MaterialWeights,
 }
 
@@ -587,6 +590,9 @@ impl Default for AsteroidFragmentConfig {
             radius_min_cm: 10,
             radius_max_cm: 10_000,
             min_fragment_spacing_cm: 50_000,
+            max_fragments_per_chunk: 4_000,
+            max_blocks_per_fragment: 64,
+            max_blocks_per_chunk: 120_000,
             material_weights: MaterialWeights::default(),
         }
     }
@@ -617,6 +623,15 @@ impl AsteroidFragmentConfig {
         }
         if self.min_fragment_spacing_cm < 0 {
             self.min_fragment_spacing_cm = 0;
+        }
+        if self.max_fragments_per_chunk < 0 {
+            self.max_fragments_per_chunk = 0;
+        }
+        if self.max_blocks_per_fragment < 0 {
+            self.max_blocks_per_fragment = 0;
+        }
+        if self.max_blocks_per_chunk < 0 {
+            self.max_blocks_per_chunk = 0;
         }
         self.material_weights = self.material_weights.sanitized();
         self
