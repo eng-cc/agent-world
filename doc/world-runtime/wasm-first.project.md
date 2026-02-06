@@ -43,7 +43,7 @@
   - [x] deny 覆盖 modify（拒绝优先）
   - [x] 一致 override 应稳定应用
 - [x] Body 模块更新守卫与回放一致性测试
-- [ ] 治理升级（shadow/approve/apply）与审计覆盖
+- [x] 治理升级（shadow/approve/apply）与审计覆盖
 
 ## 依赖
 - `crates/agent_world` runtime 与模块治理基础设施
@@ -52,5 +52,5 @@
 
 ## 状态
 - 当前阶段：W6（测试与回放）
-- 下一步：W6.3（治理升级 shadow/approve/apply 与审计覆盖测试）
-- 最近更新：补充 Body 模块回放一致性测试（2026-02-06）
+- 下一步：W7（收尾整理/评审）
+- 最近更新：补充治理升级审计覆盖测试（2026-02-06）

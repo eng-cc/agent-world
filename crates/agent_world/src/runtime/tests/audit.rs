@@ -133,3 +133,53 @@ fn audit_log_export_writes_file() {
 
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn audit_filter_governance_events() {
+    let mut world = World::new();
+    let manifest = Manifest {
+        version: 2,
+        content: json!({ "name": "audit" }),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let governance_events = world.audit_events(&AuditFilter {
+        kinds: Some(vec![AuditEventKind::Governance]),
+        ..AuditFilter::default()
+    });
+    assert_eq!(governance_events.len(), 4);
+    assert!(matches!(
+        governance_events[0].body,
+        WorldEventBody::Governance(GovernanceEvent::Proposed { .. })
+    ));
+    assert!(matches!(
+        governance_events[1].body,
+        WorldEventBody::Governance(GovernanceEvent::ShadowReport { .. })
+    ));
+    assert!(matches!(
+        governance_events[2].body,
+        WorldEventBody::Governance(GovernanceEvent::Approved { .. })
+    ));
+    assert!(matches!(
+        governance_events[3].body,
+        WorldEventBody::Governance(GovernanceEvent::Applied { .. })
+    ));
+
+    let manifest_events = world.audit_events(&AuditFilter {
+        kinds: Some(vec![AuditEventKind::ManifestUpdated]),
+        ..AuditFilter::default()
+    });
+    assert_eq!(manifest_events.len(), 1);
+    assert!(matches!(
+        manifest_events[0].body,
+        WorldEventBody::ManifestUpdated(_)
+    ));
+}
