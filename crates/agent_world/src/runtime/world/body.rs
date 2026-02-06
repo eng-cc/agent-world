@@ -63,7 +63,7 @@ impl World {
     }
 }
 
-fn validate_body_kernel_view(
+pub(super) fn validate_body_kernel_view(
     current: &BodyKernelView,
     candidate: &BodyKernelView,
 ) -> Result<(), String> {

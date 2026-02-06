@@ -127,6 +127,13 @@ BodyKernelView {
 - 校验失败时写入 `BodyAttributesRejected { agent_id, reason }` 并丢弃更新。
 - `BodyAttributesUpdated/Rejected` 纳入事件流与审计导出，保证回放一致性。
 
+### Body Action 入口（草案）
+- `action.body_action { agent_id, kind, payload }` 表达机体/零件动作意图（payload 为可扩展 JSON）。
+- Body Module 在 `pre_action` 输出 `rule.decision`，并通过 `override_action` 生成
+  `action.emit_body_attributes { agent_id, view, reason }`。
+- 资源消耗通过 `RuleDecision.cost` 表达（扣费仍由内核资源账本执行）。
+- 若无 Body Module，`action.body_action` 被拒绝（`RuleDenied`）。
+
 ### 现状（实现注记）
 - runtime 已实现 `BodyKernelView` 守卫校验与 `BodyAttributesUpdated/Rejected` 事件记录接口。
 

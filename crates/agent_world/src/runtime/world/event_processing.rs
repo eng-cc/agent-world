@@ -1,4 +1,5 @@
 use super::World;
+use super::body::validate_body_kernel_view;
 use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason, WorldError, WorldEvent,
     WorldEventBody, WorldEventId, WorldTime,
@@ -76,6 +77,48 @@ impl World {
                     observation: observation.clone(),
                 },
             )),
+            Action::BodyAction { agent_id, .. } => {
+                if self.state.agents.contains_key(agent_id) {
+                    Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["body action requires body module".to_string()],
+                        },
+                    }))
+                } else {
+                    Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        },
+                    }))
+                }
+            }
+            Action::EmitBodyAttributes {
+                agent_id,
+                view,
+                reason,
+            } => {
+                let Some(cell) = self.state.agents.get(agent_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        },
+                    }));
+                };
+                if let Err(reason) = validate_body_kernel_view(&cell.state.body_view, view) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
+                        agent_id: agent_id.clone(),
+                        reason,
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::BodyAttributesUpdated {
+                    agent_id: agent_id.clone(),
+                    view: view.clone(),
+                    reason: reason.clone(),
+                }))
+            }
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,

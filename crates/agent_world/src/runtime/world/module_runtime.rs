@@ -892,6 +892,8 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::MoveAgent { .. } => "action.move_agent",
         Action::QueryObservation { .. } => "action.query_observation",
         Action::EmitObservation { .. } => "action.emit_observation",
+        Action::BodyAction { .. } => "action.body_action",
+        Action::EmitBodyAttributes { .. } => "action.emit_body_attributes",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
     }

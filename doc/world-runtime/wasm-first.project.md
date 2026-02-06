@@ -24,7 +24,11 @@
 ### 4. Body Modules 机体模块化
 - [x] 定义 `BodyKernelView` 与 `BodyAttributesUpdated/Rejected` 事件
 - [x] 内核守卫校验（范围/变化率/上限）
-- [ ] 机体/零件动作与资源消耗通过 Body Module 表达
+- [x] 机体/零件动作与资源消耗通过 Body Module 表达
+  - [x] 定义 body action/emit action 与路由约定
+  - [x] 内核处理 emit body attributes（守卫校验/拒绝）
+  - [x] 内置 Body Module（用于测试/示例）
+  - [x] 单元测试覆盖 body action + 资源成本
 
 ### 5. M1 规则迁移
 - [x] 5.1 移动规则迁移为 Rule Module（成本/同位拒绝，内置模块先行）
@@ -44,5 +48,5 @@
 
 ## 状态
 - 当前阶段：W4（迁移 M1 规则到 Rule Modules）
-- 下一步：W4.3（机体/零件动作与资源消耗通过 Body Module 表达）
-- 最近更新：实现 BodyKernelView 内核守卫校验（2026-02-06）
+- 下一步：W4.4（移除旧规则并保持内核仅执行几何与资源守恒）
+- 最近更新：接入 body action 与资源成本（2026-02-06）

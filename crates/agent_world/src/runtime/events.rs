@@ -4,6 +4,7 @@ use crate::geometry::GeoPos;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::types::{ActionId, WorldTime};
@@ -39,6 +40,16 @@ pub enum Action {
     MoveAgent { agent_id: String, to: GeoPos },
     QueryObservation { agent_id: String },
     EmitObservation { observation: Observation },
+    BodyAction {
+        agent_id: String,
+        kind: String,
+        payload: JsonValue,
+    },
+    EmitBodyAttributes {
+        agent_id: String,
+        view: BodyKernelView,
+        reason: String,
+    },
     TransferResource {
         from_agent_id: String,
         to_agent_id: String,
