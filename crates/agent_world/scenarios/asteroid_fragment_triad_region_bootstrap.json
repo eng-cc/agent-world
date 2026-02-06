@@ -1,7 +1,7 @@
 {
   "id": "asteroid_fragment_triad_region_bootstrap",
   "name": "Asteroid Fragment Triad Region Bootstrap",
-  "asteroid_fragment": { "enabled": true, "seed_offset": 131, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": true, "seed_offset": 131, "min_fragment_spacing_cm": 50000, "bootstrap_chunks": [{"x": 1, "y": 2, "z": 0}, {"x": 3, "y": 2, "z": 0}, {"x": 2, "y": 3, "z": 0}] },
   "origin": { "enabled": false },
   "agents": {
     "count": 3,

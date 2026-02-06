@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::geometry::GeoPos;
 
 use super::asteroid_fragment::generate_fragments;
-use super::chunking::{chunk_coord_of, chunk_coords};
+use super::chunking::{chunk_coord_of, chunk_coords, ChunkCoord};
 use super::fragment_physics::{synthesize_fragment_budget, synthesize_fragment_profile};
 use super::kernel::{ChunkRuntimeConfig, WorldKernel};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
@@ -143,6 +143,7 @@ pub struct AsteroidFragmentInitConfig {
     pub enabled: bool,
     pub seed_offset: u64,
     pub min_fragment_spacing_cm: Option<i64>,
+    pub bootstrap_chunks: Vec<ChunkCoord>,
 }
 
 impl Default for AsteroidFragmentInitConfig {
@@ -151,6 +152,7 @@ impl Default for AsteroidFragmentInitConfig {
             enabled: true,
             seed_offset: 1,
             min_fragment_spacing_cm: None,
+            bootstrap_chunks: Vec::new(),
         }
     }
 }
@@ -162,6 +164,8 @@ impl AsteroidFragmentInitConfig {
                 self.min_fragment_spacing_cm = Some(0);
             }
         }
+        self.bootstrap_chunks.sort();
+        self.bootstrap_chunks.dedup();
         self
     }
 }
@@ -374,6 +378,13 @@ pub fn build_world_model(
             seed_positions,
             asteroid_fragment_seed,
         )?;
+        ensure_chunk_generated_at_coords(
+            &mut model,
+            &config,
+            &init,
+            init.asteroid_fragment.bootstrap_chunks.clone(),
+            asteroid_fragment_seed,
+        )?;
     }
 
     let spawn_locations = if !init.agents.spawn_locations.is_empty() {
@@ -417,6 +428,17 @@ pub fn build_world_model(
             agent.resources = init.agents.resources.clone();
             insert_agent(&mut model, agent)?;
         }
+    }
+
+    if init.asteroid_fragment.enabled {
+        let agent_positions: Vec<GeoPos> = model.agents.values().map(|agent| agent.pos).collect();
+        ensure_chunk_generated_at_positions(
+            &mut model,
+            &config,
+            &init,
+            agent_positions,
+            asteroid_fragment_seed,
+        )?;
     }
 
     for plant_seed in &init.power_plants {
@@ -512,10 +534,21 @@ pub fn ensure_chunk_generated_at_positions(
     positions: Vec<GeoPos>,
     asteroid_fragment_seed: Option<u64>,
 ) -> Result<(), WorldInitError> {
-    for pos in positions {
-        let Some(coord) = chunk_coord_of(pos, &config.space) else {
-            continue;
-        };
+    let coords = positions
+        .into_iter()
+        .filter_map(|pos| chunk_coord_of(pos, &config.space))
+        .collect::<Vec<_>>();
+    ensure_chunk_generated_at_coords(model, config, init, coords, asteroid_fragment_seed)
+}
+
+pub fn ensure_chunk_generated_at_coords(
+    model: &mut WorldModel,
+    config: &WorldConfig,
+    init: &WorldInitConfig,
+    coords: Vec<ChunkCoord>,
+    asteroid_fragment_seed: Option<u64>,
+) -> Result<(), WorldInitError> {
+    for coord in coords {
         if model
             .chunks
             .get(&coord)

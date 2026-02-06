@@ -387,6 +387,14 @@ fn asteroid_fragment_bootstrap_seeds_fragments_and_storage() {
     assert!(model.locations.len() >= 1);
     assert!(model.power_storages.contains_key("storage-1"));
     assert!(model.agents.contains_key("agent-0"));
+    assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
+    for coord in &init.asteroid_fragment.bootstrap_chunks {
+        assert!(model
+            .chunks
+            .get(coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
+        assert!(model.chunk_resource_budgets.contains_key(coord));
+    }
 }
 
 #[test]
@@ -403,6 +411,14 @@ fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
     assert!(model.power_storages.contains_key("storage-a"));
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
+    assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
+    for coord in &init.asteroid_fragment.bootstrap_chunks {
+        assert!(model
+            .chunks
+            .get(coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
+        assert!(model.chunk_resource_budgets.contains_key(coord));
+    }
 }
 
 #[test]
@@ -422,6 +438,14 @@ fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     assert!(model.agents.contains_key("agent-0"));
     assert!(model.agents.contains_key("agent-1"));
     assert!(model.agents.contains_key("agent-2"));
+    assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
+    for coord in &init.asteroid_fragment.bootstrap_chunks {
+        assert!(model
+            .chunks
+            .get(coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
+        assert!(model.chunk_resource_budgets.contains_key(coord));
+    }
 }
 
 #[test]
@@ -732,4 +756,40 @@ fn consume_fragment_resource_keeps_fragment_and_chunk_conservation() {
         overdraw,
         Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient { .. }))
     ));
+}
+
+#[test]
+fn scenario_asteroid_fragment_bootstrap_chunks_generate_without_seed_locations() {
+    let spec_json = r#"{
+        "id": "chunk_bootstrap_only",
+        "name": "Chunk Bootstrap Only",
+        "origin": { "enabled": false },
+        "asteroid_fragment": {
+            "enabled": true,
+            "seed_offset": 5,
+            "bootstrap_chunks": [
+                { "x": 0, "y": 0, "z": 0 },
+                { "x": 1, "y": 0, "z": 0 }
+            ]
+        },
+        "agents": { "count": 0 },
+        "locations": []
+    }"#;
+
+    let spec: WorldScenarioSpec = serde_json::from_str(spec_json).expect("parse spec");
+    let config = WorldConfig::default();
+    let init = spec.into_init_config(&config);
+
+    assert_eq!(init.asteroid_fragment.bootstrap_chunks.len(), 2);
+
+    let (model, report) = build_world_model(&config, &init).expect("scenario init");
+    assert!(report.asteroid_fragment_seed.is_some());
+
+    for coord in &init.asteroid_fragment.bootstrap_chunks {
+        assert!(model
+            .chunks
+            .get(coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
+        assert!(model.chunk_resource_budgets.contains_key(coord));
+    }
 }

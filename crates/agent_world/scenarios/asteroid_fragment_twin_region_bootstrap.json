@@ -1,7 +1,7 @@
 {
   "id": "asteroid_fragment_twin_region_bootstrap",
   "name": "Asteroid Fragment Twin Region Bootstrap",
-  "asteroid_fragment": { "enabled": true, "seed_offset": 101, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": true, "seed_offset": 101, "min_fragment_spacing_cm": 50000, "bootstrap_chunks": [{"x": 1, "y": 2, "z": 0}, {"x": 3, "y": 2, "z": 0}] },
   "origin": { "enabled": false },
   "agents": {
     "count": 2,

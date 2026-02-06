@@ -128,6 +128,11 @@
 - `fn synthesize_fragment_budget(profile: &FragmentPhysicalProfile) -> FragmentResourceBudget`
 - `fn consume_fragment_resource(location_id: &str, element: FragmentElementKind, amount_g: i64)`
 
+### 场景接入配置（CG5）
+- `asteroid_fragment.bootstrap_chunks: Vec<ChunkCoord>`：场景可显式声明启动即生成的 chunk 列表。
+- 初始化顺序：`seed_positions -> bootstrap_chunks -> agent_spawn_positions`。
+- 分块尺寸固定：`20km × 20km × 10km`（常量 `CHUNK_SIZE_X/Y/Z_CM`），场景不可覆盖。
+
 ### 运行时触发契约（与 observe/act 集成）
 - `observe` 触发：当 Agent 进行观测时，先对“自身所在坐标 chunk”执行 `ensure_chunk_generated`，再构建 observation。
 - `move` 触发：校验移动动作前，必须保证 `from_chunk` 与 `to_chunk` 已生成。
@@ -193,7 +198,7 @@
 
 ## 世界生成步骤
 1. **初始化索引阶段**：创建 chunk 网格索引，状态置 `Unexplored`。
-2. **引导区块阶段**：仅预生成 origin/初始基地所在 chunk。
+2. **引导区块阶段**：预生成 origin/初始基地/Agent 出生点所在 chunk，并支持场景 `asteroid_fragment.bootstrap_chunks` 显式指定起始 chunk。
 3. **探索触发阶段**：观测/移动/任务访问坐标时调用 `ensure_chunk_generated`。
 4. **区块种子阶段**：`chunk_seed = hash(world_seed, chunk_coord)` 派生随机源。
 5. **碎片外形阶段**：在 chunk 内生成碎片骨架（位置 + 大小范围 + 最小间距）。

@@ -1,7 +1,7 @@
 {
   "id": "asteroid_fragment_bootstrap",
   "name": "Asteroid Fragment Bootstrap",
-  "asteroid_fragment": { "enabled": true, "seed_offset": 77, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": true, "seed_offset": 77, "min_fragment_spacing_cm": 50000, "bootstrap_chunks": [{"x": 2, "y": 2, "z": 0}] },
   "agents": {
     "count": 1,
     "resources": { "amounts": { "electricity": 15 } }

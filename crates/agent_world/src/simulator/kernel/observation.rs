@@ -89,6 +89,7 @@ impl WorldKernel {
                 enabled: self.chunk_runtime.asteroid_fragment_enabled,
                 seed_offset: self.chunk_runtime.asteroid_fragment_seed_offset,
                 min_fragment_spacing_cm: self.chunk_runtime.min_fragment_spacing_cm,
+                bootstrap_chunks: Vec::new(),
             },
             ..WorldInitConfig::default()
         };
