@@ -1,0 +1,14 @@
+version: 1
+name: "triad-p2p"
+scenario: "triad_p2p_bootstrap"
+seed: 7
+expect:
+  agents: 3
+  locations: 3
+  require_locations: ["node-a", "node-b", "node-c"]
+  require_agents: ["agent-0", "agent-1", "agent-2"]
+  expect_dust: false
+  agent_locations:
+    agent-0: "node-a"
+    agent-1: "node-b"
+    agent-2: "node-c"

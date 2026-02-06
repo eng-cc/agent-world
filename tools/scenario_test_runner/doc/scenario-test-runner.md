@@ -48,6 +48,7 @@ expect:
 ### CLI 入口
 - 单文件：`env -u RUSTC_WRAPPER cargo run -- --scenario path/to/file.yaml`
 - 目录批量：`env -u RUSTC_WRAPPER cargo run -- --dir path/to/scenarios`
+- 在 `tools/scenario_test_runner` 目录内执行；目录扫描默认非递归，支持 `.yaml/.yml/.json`。
 - 非 0 退出码表示存在失败或解析错误。
 
 ## 里程碑
