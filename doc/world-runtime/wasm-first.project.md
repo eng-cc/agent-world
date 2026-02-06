@@ -45,12 +45,15 @@
 - [x] Body 模块更新守卫与回放一致性测试
 - [x] 治理升级（shadow/approve/apply）与审计覆盖
 
+### 7. 收尾整理
+- [x] 项目状态更新与评审准备
+
 ## 依赖
 - `crates/agent_world` runtime 与模块治理基础设施
 - `doc/world-runtime/wasm-interface.md`
 - `doc/world-runtime/runtime-integration.md`
 
 ## 状态
-- 当前阶段：W6（测试与回放）
-- 下一步：W7（收尾整理/评审）
-- 最近更新：补充治理升级审计覆盖测试（2026-02-06）
+- 当前阶段：W7（收尾整理/评审）
+- 下一步：完成归档
+- 最近更新：收尾整理完成（2026-02-06）
