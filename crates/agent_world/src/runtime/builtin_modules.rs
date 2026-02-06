@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
 use crate::geometry::{space_distance_cm, GeoPos};
-use crate::simulator::{CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, ResourceKind};
+use crate::simulator::{
+    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, ResourceKind,
+};
 
-use super::events::ActionEnvelope;
+use super::events::{Action, ActionEnvelope, Observation, ObservedAgent};
 use super::rules::{ResourceDelta, RuleDecision, RuleVerdict};
 use super::sandbox::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEmit,
@@ -18,6 +20,7 @@ use super::util::to_canonical_cbor;
 use super::world_event::{WorldEvent, WorldEventBody};
 
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
+pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
 
 pub trait BuiltinModule {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure>;
@@ -93,11 +96,11 @@ impl M1MoveRuleModule {
         &self,
         request: &ModuleCallRequest,
         envelope: ActionEnvelope,
-        state: M1MoveRuleState,
+        state: PositionState,
     ) -> Result<ModuleOutput, ModuleCallFailure> {
         let ActionEnvelope { id, action } = envelope;
         let (agent_id, to) = match action {
-            super::events::Action::MoveAgent { agent_id, to } => (agent_id, to),
+            Action::MoveAgent { agent_id, to } => (agent_id, to),
             _ => {
                 return finalize_output(
                     ModuleOutput {
@@ -166,22 +169,9 @@ impl M1MoveRuleModule {
         &self,
         request: &ModuleCallRequest,
         event: WorldEvent,
-        mut state: M1MoveRuleState,
+        mut state: PositionState,
     ) -> Result<ModuleOutput, ModuleCallFailure> {
-        let mut changed = false;
-        if let WorldEventBody::Domain(domain) = event.body {
-            match domain {
-                super::events::DomainEvent::AgentRegistered { agent_id, pos } => {
-                    state.agents.insert(agent_id, pos);
-                    changed = true;
-                }
-                super::events::DomainEvent::AgentMoved { agent_id, to, .. } => {
-                    state.agents.insert(agent_id, to);
-                    changed = true;
-                }
-                super::events::DomainEvent::ActionRejected { .. } => {}
-            }
-        }
+        let changed = update_position_state(&mut state, event);
 
         let new_state = if changed {
             Some(encode_state(&state, request)?)
@@ -203,7 +193,7 @@ impl M1MoveRuleModule {
 impl BuiltinModule for M1MoveRuleModule {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
         let input = decode_input::<ModuleCallInput>(request, &request.input)?;
-        let state = decode_state(input.state.as_deref(), request)?;
+        let state: PositionState = decode_state(input.state.as_deref(), request)?;
 
         if let Some(action_bytes) = input.action.as_deref() {
             let envelope = decode_input::<ActionEnvelope>(request, action_bytes)?;
@@ -227,26 +217,195 @@ impl BuiltinModule for M1MoveRuleModule {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct M1VisibilityRuleModule {
+    visibility_range_cm: i64,
+}
+
+impl Default for M1VisibilityRuleModule {
+    fn default() -> Self {
+        Self {
+            visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
+        }
+    }
+}
+
+impl M1VisibilityRuleModule {
+    pub fn new(visibility_range_cm: i64) -> Self {
+        Self {
+            visibility_range_cm,
+        }
+    }
+
+    fn handle_action(
+        &self,
+        request: &ModuleCallRequest,
+        envelope: ActionEnvelope,
+        state: PositionState,
+        now: u64,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        let ActionEnvelope { id, action } = envelope;
+        let agent_id = match action {
+            Action::QueryObservation { agent_id } => agent_id,
+            _ => {
+                return finalize_output(
+                    ModuleOutput {
+                        new_state: None,
+                        effects: Vec::new(),
+                        emits: Vec::new(),
+                        output_bytes: 0,
+                    },
+                    request,
+                );
+            }
+        };
+
+        let mut decision = RuleDecision {
+            action_id: id,
+            verdict: RuleVerdict::Modify,
+            override_action: None,
+            cost: ResourceDelta::default(),
+            notes: Vec::new(),
+        };
+
+        let Some(origin) = state.agents.get(&agent_id) else {
+            decision.verdict = RuleVerdict::Deny;
+            decision
+                .notes
+                .push("agent position missing for visibility rule".to_string());
+            return finalize_output(
+                ModuleOutput {
+                    new_state: None,
+                    effects: Vec::new(),
+                    emits: vec![ModuleEmit {
+                        kind: "rule.decision".to_string(),
+                        payload: serde_json::to_value(decision).map_err(|err| failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            format!("rule decision encode failed: {err}"),
+                        ))?,
+                    }],
+                    output_bytes: 0,
+                },
+                request,
+            );
+        };
+
+        let mut visible_agents = Vec::new();
+        for (other_id, other_pos) in &state.agents {
+            if other_id == &agent_id {
+                continue;
+            }
+            let distance_cm = space_distance_cm(*origin, *other_pos);
+            if distance_cm <= self.visibility_range_cm {
+                visible_agents.push(ObservedAgent {
+                    agent_id: other_id.clone(),
+                    pos: *other_pos,
+                    distance_cm,
+                });
+            }
+        }
+
+        let observation = Observation {
+            time: now,
+            agent_id: agent_id.clone(),
+            pos: *origin,
+            visibility_range_cm: self.visibility_range_cm,
+            visible_agents,
+        };
+
+        decision.override_action = Some(Action::EmitObservation { observation });
+
+        finalize_output(
+            ModuleOutput {
+                new_state: None,
+                effects: Vec::new(),
+                emits: vec![ModuleEmit {
+                    kind: "rule.decision".to_string(),
+                    payload: serde_json::to_value(decision).map_err(|err| failure(
+                        request,
+                        ModuleCallErrorCode::InvalidOutput,
+                        format!("rule decision encode failed: {err}"),
+                    ))?,
+                }],
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+
+    fn handle_event(
+        &self,
+        request: &ModuleCallRequest,
+        event: WorldEvent,
+        mut state: PositionState,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        let changed = update_position_state(&mut state, event);
+        let new_state = if changed {
+            Some(encode_state(&state, request)?)
+        } else {
+            None
+        };
+
+        finalize_output(
+            ModuleOutput {
+                new_state,
+                effects: Vec::new(),
+                emits: Vec::new(),
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+}
+
+impl BuiltinModule for M1VisibilityRuleModule {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let input = decode_input::<ModuleCallInput>(request, &request.input)?;
+        let state: PositionState = decode_state(input.state.as_deref(), request)?;
+
+        if let Some(action_bytes) = input.action.as_deref() {
+            let envelope = decode_input::<ActionEnvelope>(request, action_bytes)?;
+            return self.handle_action(request, envelope, state, input.ctx.time);
+        }
+
+        if let Some(event_bytes) = input.event.as_deref() {
+            let event = decode_input::<WorldEvent>(request, event_bytes)?;
+            return self.handle_event(request, event, state);
+        }
+
+        finalize_output(
+            ModuleOutput {
+                new_state: None,
+                effects: Vec::new(),
+                emits: Vec::new(),
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct M1MoveRuleState {
+struct PositionState {
     agents: BTreeMap<String, GeoPos>,
 }
 
-fn decode_state(
+fn decode_state<T: DeserializeOwned + Default>(
     state: Option<&[u8]>,
     request: &ModuleCallRequest,
-) -> Result<M1MoveRuleState, ModuleCallFailure> {
+) -> Result<T, ModuleCallFailure> {
     let Some(state) = state else {
-        return Ok(M1MoveRuleState::default());
+        return Ok(T::default());
     };
     if state.is_empty() {
-        return Ok(M1MoveRuleState::default());
+        return Ok(T::default());
     }
     decode_input(request, state)
 }
 
-fn encode_state(
-    state: &M1MoveRuleState,
+fn encode_state<T: Serialize>(
+    state: &T,
     request: &ModuleCallRequest,
 ) -> Result<Vec<u8>, ModuleCallFailure> {
     to_canonical_cbor(state).map_err(|err| {
@@ -256,6 +415,25 @@ fn encode_state(
             format!("state encode failed: {err:?}"),
         )
     })
+}
+
+fn update_position_state(state: &mut PositionState, event: WorldEvent) -> bool {
+    let mut changed = false;
+    if let WorldEventBody::Domain(domain) = event.body {
+        match domain {
+            super::events::DomainEvent::AgentRegistered { agent_id, pos } => {
+                state.agents.insert(agent_id, pos);
+                changed = true;
+            }
+            super::events::DomainEvent::AgentMoved { agent_id, to, .. } => {
+                state.agents.insert(agent_id, to);
+                changed = true;
+            }
+            super::events::DomainEvent::ActionRejected { .. } => {}
+            super::events::DomainEvent::Observation { .. } => {}
+        }
+    }
+    changed
 }
 
 fn decode_input<T: DeserializeOwned>(

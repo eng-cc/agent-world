@@ -53,6 +53,28 @@ impl World {
                     },
                 })),
             },
+            Action::QueryObservation { agent_id } => {
+                if self.state.agents.contains_key(agent_id) {
+                    Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["observation requires rule module".to_string()],
+                        },
+                    }))
+                } else {
+                    Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        },
+                    }))
+                }
+            }
+            Action::EmitObservation { observation } => Ok(WorldEventBody::Domain(
+                DomainEvent::Observation {
+                    observation: observation.clone(),
+                },
+            )),
         }
     }
 

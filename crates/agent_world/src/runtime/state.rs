@@ -47,6 +47,7 @@ impl WorldState {
                 }
             }
             DomainEvent::ActionRejected { .. } => {}
+            DomainEvent::Observation { .. } => {}
         }
         Ok(())
     }

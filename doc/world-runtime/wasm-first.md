@@ -92,6 +92,9 @@ RuleDecision {
 - 移动规则由内置规则模块 `m1.rule.move` 先行实现（Reducer），订阅 `domain.agent_registered/domain.agent_moved` 维护位置状态。
 - `pre_action` 对 `action.move_agent` 计算距离成本并拒绝同位移动，输出 `rule.decision`。
 - 后续将替换为真实 WASM 工件，并保持相同订阅与输出协议。
+- 可见性规则由内置规则模块 `m1.rule.visibility` 先行实现（Reducer），订阅 `domain.agent_registered/domain.agent_moved` 维护位置状态。
+- `pre_action` 对 `action.query_observation` 生成观测快照并覆盖为 `action.emit_observation`，输出 `rule.decision`。
+- 观测数据仅包含可见 Agent 列表（runtime 暂不维护 Location 数据）。
 
 ## 额外设计 2：机体/零件模块化（Body Modules）
 
