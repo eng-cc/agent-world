@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run the same integration tests that CI executes for viewer servers.
-env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration
-env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+./scripts/ci-tests.sh

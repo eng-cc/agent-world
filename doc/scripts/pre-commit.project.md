@@ -8,10 +8,11 @@
 - [x] 更新任务日志
 - [x] 运行测试 `./scripts/pre-commit.sh`
 - [x] 提交到 git
+- [x] 对齐 CI 测试清单（改为调用 `scripts/ci-tests.sh`）
 
 ## 依赖
 - `cargo test`（agent_world viewer 联测）
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：安装 pre-commit hook（2026-02-06）
+- 最近更新：对齐 CI 测试清单（2026-02-06）

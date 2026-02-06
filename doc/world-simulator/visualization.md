@@ -85,8 +85,7 @@
 - 重点覆盖：状态栏文本、事件列表刷新、回放控制触发后的 UI 变化。
 
 ### 联合测试运行
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
+- 统一测试清单脚本：`./scripts/ci-tests.sh`（包含 viewer 在线/离线联测）。
 
 ### Headless UI 测试方法
 - **目标**：无需窗口/渲染即可验证 UI 行为与状态更新。

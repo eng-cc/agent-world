@@ -27,10 +27,13 @@
 - 验证 `HelloAck` / `Snapshot` / `Event` 消息能被正常接收。
 
 ### CI 任务
-- `env -u RUSTC_WRAPPER cargo test --verbose`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
+- 统一测试清单脚本：`scripts/ci-tests.sh`（CI 与 pre-commit 共用）。
+- CI 运行：`CI_VERBOSE=1 ./scripts/ci-tests.sh`。
+- 脚本覆盖：
+  - `env -u RUSTC_WRAPPER cargo test`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
 - CI 需安装系统依赖（Wayland/X11/ALSA/UDev）以编译 `agent_world_viewer`。
 
 ## 里程碑
