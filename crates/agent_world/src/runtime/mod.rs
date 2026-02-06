@@ -98,8 +98,9 @@ pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
 // Built-in modules (native sandbox helpers)
 pub use builtin_modules::{
-    BuiltinModule, BuiltinModuleSandbox, M1MoveRuleModule, M1VisibilityRuleModule,
-    M1_MOVE_RULE_MODULE_ID, M1_VISIBILITY_RULE_MODULE_ID,
+    BuiltinModule, BuiltinModuleSandbox, M1MoveRuleModule, M1TransferRuleModule,
+    M1VisibilityRuleModule, M1_MOVE_RULE_MODULE_ID, M1_TRANSFER_RULE_MODULE_ID,
+    M1_VISIBILITY_RULE_MODULE_ID,
 };
 
 // Module store

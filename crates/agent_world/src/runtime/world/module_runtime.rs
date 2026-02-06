@@ -866,6 +866,7 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::AgentMoved { .. } => "domain.agent_moved",
             DomainEvent::ActionRejected { .. } => "domain.action_rejected",
             DomainEvent::Observation { .. } => "domain.observation",
+            DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
@@ -889,6 +890,8 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::MoveAgent { .. } => "action.move_agent",
         Action::QueryObservation { .. } => "action.query_observation",
         Action::EmitObservation { .. } => "action.emit_observation",
+        Action::TransferResource { .. } => "action.transfer_resource",
+        Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
     }
 }
 

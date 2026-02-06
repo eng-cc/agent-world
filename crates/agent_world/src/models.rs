@@ -1,4 +1,5 @@
 use crate::geometry::GeoPos;
+use crate::simulator::ResourceStock;
 use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_AGENT_HEIGHT_CM: i64 = 100;
@@ -29,6 +30,8 @@ pub struct AgentState {
     pub agent_id: String,
     pub pos: GeoPos,
     pub body: RobotBodySpec,
+    #[serde(default)]
+    pub resources: ResourceStock,
 }
 
 impl AgentState {
@@ -37,6 +40,7 @@ impl AgentState {
             agent_id: agent_id.into(),
             pos,
             body: RobotBodySpec::default(),
+            resources: ResourceStock::default(),
         }
     }
 }

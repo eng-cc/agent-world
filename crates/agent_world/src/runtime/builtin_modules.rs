@@ -21,6 +21,7 @@ use super::world_event::{WorldEvent, WorldEventBody};
 
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
+pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
 
 pub trait BuiltinModule {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure>;
@@ -391,6 +392,149 @@ struct PositionState {
     agents: BTreeMap<String, GeoPos>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct M1TransferRuleModule;
+
+impl M1TransferRuleModule {
+    fn handle_action(
+        &self,
+        request: &ModuleCallRequest,
+        envelope: ActionEnvelope,
+        state: PositionState,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        let ActionEnvelope { id, action } = envelope;
+        let (from_agent_id, to_agent_id, kind, amount) = match action {
+            Action::TransferResource {
+                from_agent_id,
+                to_agent_id,
+                kind,
+                amount,
+            } => (from_agent_id, to_agent_id, kind, amount),
+            _ => {
+                return finalize_output(
+                    ModuleOutput {
+                        new_state: None,
+                        effects: Vec::new(),
+                        emits: Vec::new(),
+                        output_bytes: 0,
+                    },
+                    request,
+                );
+            }
+        };
+
+        let mut decision = RuleDecision {
+            action_id: id,
+            verdict: RuleVerdict::Modify,
+            override_action: None,
+            cost: ResourceDelta::default(),
+            notes: Vec::new(),
+        };
+
+        if amount <= 0 {
+            decision.verdict = RuleVerdict::Deny;
+            decision
+                .notes
+                .push("transfer amount must be positive".to_string());
+        } else {
+            let from_pos = state.agents.get(&from_agent_id);
+            let to_pos = state.agents.get(&to_agent_id);
+            match (from_pos, to_pos) {
+                (Some(from_pos), Some(to_pos)) => {
+                    let distance_cm = space_distance_cm(*from_pos, *to_pos);
+                    if distance_cm > 0 {
+                        decision.verdict = RuleVerdict::Deny;
+                        decision
+                            .notes
+                            .push("transfer requires co-located agents".to_string());
+                    } else {
+                        decision.override_action = Some(Action::EmitResourceTransfer {
+                            from_agent_id: from_agent_id.clone(),
+                            to_agent_id: to_agent_id.clone(),
+                            kind,
+                            amount,
+                        });
+                    }
+                }
+                _ => {
+                    decision.verdict = RuleVerdict::Deny;
+                    decision
+                        .notes
+                        .push("agent position missing for transfer rule".to_string());
+                }
+            }
+        }
+
+        finalize_output(
+            ModuleOutput {
+                new_state: None,
+                effects: Vec::new(),
+                emits: vec![ModuleEmit {
+                    kind: "rule.decision".to_string(),
+                    payload: serde_json::to_value(decision).map_err(|err| failure(
+                        request,
+                        ModuleCallErrorCode::InvalidOutput,
+                        format!("rule decision encode failed: {err}"),
+                    ))?,
+                }],
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+
+    fn handle_event(
+        &self,
+        request: &ModuleCallRequest,
+        event: WorldEvent,
+        mut state: PositionState,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        let changed = update_position_state(&mut state, event);
+        let new_state = if changed {
+            Some(encode_state(&state, request)?)
+        } else {
+            None
+        };
+
+        finalize_output(
+            ModuleOutput {
+                new_state,
+                effects: Vec::new(),
+                emits: Vec::new(),
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+}
+
+impl BuiltinModule for M1TransferRuleModule {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let input = decode_input::<ModuleCallInput>(request, &request.input)?;
+        let state: PositionState = decode_state(input.state.as_deref(), request)?;
+
+        if let Some(action_bytes) = input.action.as_deref() {
+            let envelope = decode_input::<ActionEnvelope>(request, action_bytes)?;
+            return self.handle_action(request, envelope, state);
+        }
+
+        if let Some(event_bytes) = input.event.as_deref() {
+            let event = decode_input::<WorldEvent>(request, event_bytes)?;
+            return self.handle_event(request, event, state);
+        }
+
+        finalize_output(
+            ModuleOutput {
+                new_state: None,
+                effects: Vec::new(),
+                emits: Vec::new(),
+                output_bytes: 0,
+            },
+            request,
+        )
+    }
+}
+
 fn decode_state<T: DeserializeOwned + Default>(
     state: Option<&[u8]>,
     request: &ModuleCallRequest,
@@ -431,6 +575,7 @@ fn update_position_state(state: &mut PositionState, event: WorldEvent) -> bool {
             }
             super::events::DomainEvent::ActionRejected { .. } => {}
             super::events::DomainEvent::Observation { .. } => {}
+            super::events::DomainEvent::ResourceTransferred { .. } => {}
         }
     }
     changed

@@ -48,16 +48,78 @@ impl WorldState {
             }
             DomainEvent::ActionRejected { .. } => {}
             DomainEvent::Observation { .. } => {}
+            DomainEvent::ResourceTransferred {
+                from_agent_id,
+                to_agent_id,
+                kind,
+                amount,
+            } => {
+                if from_agent_id == to_agent_id {
+                    let cell = self.agents.get_mut(from_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        }
+                    })?;
+                    cell.last_active = now;
+                } else {
+                    let mut from = self.agents.remove(from_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        }
+                    })?;
+                    let mut to = self.agents.remove(to_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: to_agent_id.clone(),
+                        }
+                    })?;
+
+                    from.state
+                        .resources
+                        .remove(*kind, *amount)
+                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                            reason: format!("transfer remove failed: {err:?}"),
+                        })?;
+                    to.state
+                        .resources
+                        .add(*kind, *amount)
+                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                            reason: format!("transfer add failed: {err:?}"),
+                        })?;
+                    from.last_active = now;
+                    to.last_active = now;
+
+                    self.agents.insert(from_agent_id.clone(), from);
+                    self.agents.insert(to_agent_id.clone(), to);
+                }
+            }
         }
         Ok(())
     }
 
     pub fn route_domain_event(&mut self, event: &DomainEvent) {
-        let Some(agent_id) = event.agent_id() else {
-            return;
-        };
-        if let Some(cell) = self.agents.get_mut(agent_id) {
-            cell.mailbox.push_back(event.clone());
+        match event {
+            DomainEvent::ResourceTransferred {
+                from_agent_id,
+                to_agent_id,
+                ..
+            } => {
+                if let Some(cell) = self.agents.get_mut(from_agent_id) {
+                    cell.mailbox.push_back(event.clone());
+                }
+                if from_agent_id != to_agent_id {
+                    if let Some(cell) = self.agents.get_mut(to_agent_id) {
+                        cell.mailbox.push_back(event.clone());
+                    }
+                }
+            }
+            _ => {
+                let Some(agent_id) = event.agent_id() else {
+                    return;
+                };
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.mailbox.push_back(event.clone());
+                }
+            }
         }
     }
 }

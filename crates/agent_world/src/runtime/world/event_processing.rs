@@ -3,6 +3,7 @@ use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason, WorldError, WorldEvent,
     WorldEventBody, WorldEventId, WorldTime,
 };
+use crate::geometry::space_distance_cm;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -75,6 +76,91 @@ impl World {
                     observation: observation.clone(),
                 },
             )),
+            Action::TransferResource {
+                from_agent_id,
+                to_agent_id,
+                ..
+            } => {
+                if !self.state.agents.contains_key(from_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(to_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: to_agent_id.clone(),
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["transfer requires rule module".to_string()],
+                    },
+                }))
+            }
+            Action::EmitResourceTransfer {
+                from_agent_id,
+                to_agent_id,
+                kind,
+                amount,
+            } => {
+                if *amount <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount { amount: *amount },
+                    }));
+                }
+                let Some(from_cell) = self.state.agents.get(from_agent_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        },
+                    }));
+                };
+                let Some(to_cell) = self.state.agents.get(to_agent_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: to_agent_id.clone(),
+                        },
+                    }));
+                };
+                let distance_cm = space_distance_cm(from_cell.state.pos, to_cell.state.pos);
+                if distance_cm > 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentsNotCoLocated {
+                            agent_id: from_agent_id.clone(),
+                            other_agent_id: to_agent_id.clone(),
+                        },
+                    }));
+                }
+                let available = from_cell.state.resources.get(*kind);
+                if available < *amount {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientResource {
+                            agent_id: from_agent_id.clone(),
+                            kind: *kind,
+                            requested: *amount,
+                            available,
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::ResourceTransferred {
+                    from_agent_id: from_agent_id.clone(),
+                    to_agent_id: to_agent_id.clone(),
+                    kind: *kind,
+                    amount: *amount,
+                }))
+            }
         }
     }
 

@@ -38,6 +38,18 @@ pub enum Action {
     MoveAgent { agent_id: String, to: GeoPos },
     QueryObservation { agent_id: String },
     EmitObservation { observation: Observation },
+    TransferResource {
+        from_agent_id: String,
+        to_agent_id: String,
+        kind: ResourceKind,
+        amount: i64,
+    },
+    EmitResourceTransfer {
+        from_agent_id: String,
+        to_agent_id: String,
+        kind: ResourceKind,
+        amount: i64,
+    },
 }
 
 /// Domain events that describe state changes.
@@ -48,6 +60,12 @@ pub enum DomainEvent {
     AgentMoved { agent_id: String, from: GeoPos, to: GeoPos },
     ActionRejected { action_id: ActionId, reason: RejectReason },
     Observation { observation: Observation },
+    ResourceTransferred {
+        from_agent_id: String,
+        to_agent_id: String,
+        kind: ResourceKind,
+        amount: i64,
+    },
 }
 
 impl DomainEvent {
@@ -57,6 +75,9 @@ impl DomainEvent {
             DomainEvent::AgentMoved { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::Observation { observation } => Some(observation.agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
+            DomainEvent::ResourceTransferred { from_agent_id, .. } => {
+                Some(from_agent_id.as_str())
+            }
         }
     }
 }
@@ -67,6 +88,17 @@ impl DomainEvent {
 pub enum RejectReason {
     AgentAlreadyExists { agent_id: String },
     AgentNotFound { agent_id: String },
+    AgentsNotCoLocated {
+        agent_id: String,
+        other_agent_id: String,
+    },
+    InvalidAmount { amount: i64 },
+    InsufficientResource {
+        agent_id: String,
+        kind: ResourceKind,
+        requested: i64,
+        available: i64,
+    },
     InsufficientResources { deficits: BTreeMap<ResourceKind, i64> },
     RuleDenied { notes: Vec<String> },
 }

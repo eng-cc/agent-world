@@ -9,6 +9,8 @@ use super::types::ProposalId;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorldError {
     JournalMismatch,
+    AgentNotFound { agent_id: String },
+    ResourceBalanceInvalid { reason: String },
     CapabilityMissing { cap_ref: String },
     CapabilityExpired { cap_ref: String },
     CapabilityNotAllowed { cap_ref: String, kind: String },

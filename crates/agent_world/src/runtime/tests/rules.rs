@@ -148,6 +148,79 @@ fn install_m1_visibility_rule(world: &mut World) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
+fn install_m1_transfer_rule(world: &mut World) {
+    let wasm_bytes = b"m1-transfer-rule";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: M1_TRANSFER_RULE_MODULE_ID.to_string(),
+        name: "M1TransferRule".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Rule,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![
+            ModuleSubscription {
+                event_kinds: vec![
+                    "domain.agent_registered".to_string(),
+                    "domain.agent_moved".to_string(),
+                ],
+                action_kinds: Vec::new(),
+                stage: Some(ModuleSubscriptionStage::PostEvent),
+                filters: None,
+            },
+            ModuleSubscription {
+                event_kinds: Vec::new(),
+                action_kinds: vec!["action.transfer_resource".to_string()],
+                stage: Some(ModuleSubscriptionStage::PreAction),
+                filters: None,
+            },
+        ],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 10,
+            max_output_bytes: 4096,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+}
+
 #[test]
 fn rule_decision_override_and_cost_apply() {
     let mut world = World::new();
@@ -463,6 +536,144 @@ fn m1_visibility_rule_denies_when_missing_agent() {
 
     world.submit_action(Action::QueryObservation {
         agent_id: "agent-1".to_string(),
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(reason, RejectReason::RuleDenied { .. }));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn m1_transfer_rule_moves_resources() {
+    let mut world = World::new();
+    install_m1_transfer_rule(&mut world);
+
+    let mut sandbox = BuiltinModuleSandbox::new()
+        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-2".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    world
+        .set_agent_resource_balance("agent-1", ResourceKind::Electricity, 5)
+        .unwrap();
+
+    world.submit_action(Action::TransferResource {
+        from_agent_id: "agent-1".to_string(),
+        to_agent_id: "agent-2".to_string(),
+        kind: ResourceKind::Electricity,
+        amount: 3,
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ResourceTransferred {
+            from_agent_id,
+            to_agent_id,
+            kind,
+            amount,
+        }) => {
+            assert_eq!(from_agent_id, "agent-1");
+            assert_eq!(to_agent_id, "agent-2");
+            assert_eq!(*kind, ResourceKind::Electricity);
+            assert_eq!(*amount, 3);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    assert_eq!(
+        world
+            .agent_resource_balance("agent-1", ResourceKind::Electricity)
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        world
+            .agent_resource_balance("agent-2", ResourceKind::Electricity)
+            .unwrap(),
+        3
+    );
+}
+
+#[test]
+fn m1_transfer_rule_rejects_when_insufficient() {
+    let mut world = World::new();
+    install_m1_transfer_rule(&mut world);
+
+    let mut sandbox = BuiltinModuleSandbox::new()
+        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-2".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    world
+        .set_agent_resource_balance("agent-1", ResourceKind::Electricity, 1)
+        .unwrap();
+
+    world.submit_action(Action::TransferResource {
+        from_agent_id: "agent-1".to_string(),
+        to_agent_id: "agent-2".to_string(),
+        kind: ResourceKind::Electricity,
+        amount: 3,
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(reason, RejectReason::InsufficientResource { .. }));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn m1_transfer_rule_denies_when_not_colocated() {
+    let mut world = World::new();
+    install_m1_transfer_rule(&mut world);
+
+    let mut sandbox = BuiltinModuleSandbox::new()
+        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-2".to_string(),
+        pos: pos(10.0, 0.0),
+    });
+    world.step_with_modules(&mut sandbox).unwrap();
+
+    world
+        .set_agent_resource_balance("agent-1", ResourceKind::Electricity, 5)
+        .unwrap();
+
+    world.submit_action(Action::TransferResource {
+        from_agent_id: "agent-1".to_string(),
+        to_agent_id: "agent-2".to_string(),
+        kind: ResourceKind::Electricity,
+        amount: 3,
     });
     world.step_with_modules(&mut sandbox).unwrap();
 
