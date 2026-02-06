@@ -23,6 +23,12 @@ pub struct HeadSyncResult {
     pub world: World,
 }
 
+#[derive(Debug)]
+pub struct HeadSyncReport {
+    pub drained: usize,
+    pub applied: Option<HeadSyncResult>,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -71,6 +77,30 @@ impl ObserverClient {
         follower.sync_from_heads(&heads, client, store)
     }
 
+    pub fn sync_heads_report(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<HeadSyncReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let world = follower.sync_from_heads(&heads, client, store)?;
+        let applied = world
+            .map(|world| {
+                follower
+                    .current_head()
+                    .cloned()
+                    .ok_or_else(|| WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    })
+                    .map(|head| HeadSyncResult { head, world })
+            })
+            .transpose()?;
+        Ok(HeadSyncReport { drained, applied })
+    }
+
     pub fn sync_heads_with_result(
         &self,
         subscription: &ObserverSubscription,
@@ -102,6 +132,31 @@ impl ObserverClient {
     ) -> Result<Option<World>, WorldError> {
         let heads = self.drain_heads(subscription)?;
         follower.sync_from_heads_with_dht(&heads, dht, client, store)
+    }
+
+    pub fn sync_heads_with_dht_report(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<HeadSyncReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let world = follower.sync_from_heads_with_dht(&heads, dht, client, store)?;
+        let applied = world
+            .map(|world| {
+                follower
+                    .current_head()
+                    .cloned()
+                    .ok_or_else(|| WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    })
+                    .map(|head| HeadSyncResult { head, world })
+            })
+            .transpose()?;
+        Ok(HeadSyncReport { drained, applied })
     }
 
     pub fn sync_heads_with_dht_result(

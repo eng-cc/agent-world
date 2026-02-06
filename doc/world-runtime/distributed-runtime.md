@@ -81,6 +81,7 @@
 - **同步策略**：对选中的 head 走 bootstrap 校验流程，重建 `World` 并更新本地 head 视图。
 - **Observer 接入**：`ObserverClient::sync_heads`/`sync_heads_with_dht` 使用 `HeadFollower` 从订阅队列中选 head 并触发 bootstrap。
 - **结果回传**：`ObserverClient::sync_heads_with_result` 可返回已应用的 head 与重建后的 `World`，便于日志/度量。
+- **同步报告**：`ObserverClient::sync_heads_report` 返回已消费 head 数量与是否应用，用于运行状态观测。
 
 ## 租约式单写者切换（草案）
 - **租约模型**：Sequencer 持有带 TTL 的 lease，过期后可被其他节点接管。

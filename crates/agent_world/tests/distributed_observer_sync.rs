@@ -92,10 +92,11 @@ fn observer_sync_heads_bootstraps_world() {
         .expect("publish head");
 
     let mut follower = HeadFollower::new("w1");
-    let result = observer
-        .sync_heads_with_result(&subscription, &mut follower, &client, &store)
-        .expect("sync")
-        .expect("result");
+    let report = observer
+        .sync_heads_report(&subscription, &mut follower, &client, &store)
+        .expect("sync");
+    assert_eq!(report.drained, 1);
+    let result = report.applied.expect("result");
     assert_eq!(result.head, write.head_announce);
     assert_eq!(result.world.state(), &snapshot.state);
 
@@ -104,9 +105,10 @@ fn observer_sync_heads_bootstraps_world() {
         .publish(&topic_head("w1"), &payload)
         .expect("publish head duplicate");
     let duplicate = observer
-        .sync_heads_with_result(&subscription, &mut follower, &client, &store)
+        .sync_heads_report(&subscription, &mut follower, &client, &store)
         .expect("sync duplicate");
-    assert!(duplicate.is_none());
+    assert_eq!(duplicate.drained, 1);
+    assert!(duplicate.applied.is_none());
 
     let _ = fs::remove_dir_all(&dir);
 }

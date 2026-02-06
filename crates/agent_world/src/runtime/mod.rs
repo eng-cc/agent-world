@@ -128,7 +128,7 @@ pub use distributed_provider_cache::{ProviderCache, ProviderCacheConfig};
 // Distributed gateway
 pub use distributed_gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
 // Distributed observer
-pub use distributed_observer::{HeadSyncResult, ObserverClient, ObserverSubscription};
+pub use distributed_observer::{HeadSyncReport, HeadSyncResult, ObserverClient, ObserverSubscription};
 // Distributed observer replay validation
 pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};
 // Distributed bootstrap helpers
