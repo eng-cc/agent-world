@@ -139,6 +139,7 @@ impl LocationSeedConfig {
 pub struct DustInitConfig {
     pub enabled: bool,
     pub seed_offset: u64,
+    pub min_fragment_spacing_cm: Option<i64>,
 }
 
 impl Default for DustInitConfig {
@@ -146,12 +147,18 @@ impl Default for DustInitConfig {
         Self {
             enabled: true,
             seed_offset: 1,
+            min_fragment_spacing_cm: None,
         }
     }
 }
 
 impl DustInitConfig {
-    pub fn sanitized(self) -> Self {
+    pub fn sanitized(mut self) -> Self {
+        if let Some(spacing) = self.min_fragment_spacing_cm {
+            if spacing < 0 {
+                self.min_fragment_spacing_cm = Some(0);
+            }
+        }
         self
     }
 }
@@ -350,7 +357,11 @@ pub fn build_world_model(
 
     let dust_seed = if init.dust.enabled {
         let seed = init.seed.wrapping_add(init.dust.seed_offset);
-        let fragments = generate_fragments(seed, &config.space, &config.dust);
+        let mut dust_config = config.dust.clone();
+        if let Some(spacing) = init.dust.min_fragment_spacing_cm {
+            dust_config.min_fragment_spacing_cm = spacing;
+        }
+        let fragments = generate_fragments(seed, &config.space, &dust_config);
         for frag in fragments {
             insert_location(&mut model, frag)?;
         }

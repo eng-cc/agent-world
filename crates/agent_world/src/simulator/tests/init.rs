@@ -192,6 +192,58 @@ fn scenario_templates_build_models() {
 }
 
 #[test]
+fn scenario_dust_min_spacing_overrides_world_config() {
+    let spec_json = r#"{
+        "id": "spacing_override",
+        "name": "Spacing Override",
+        "seed": 7,
+        "dust": { "enabled": true, "seed_offset": 0, "min_fragment_spacing_cm": 50000 },
+        "agents": { "count": 0 },
+        "locations": []
+    }"#;
+    let spec: WorldScenarioSpec = serde_json::from_str(spec_json).expect("parse spec");
+
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.dust.base_density_per_km3 = 5.0;
+    config.dust.voxel_size_km = 1;
+    config.dust.cluster_noise = 0.0;
+    config.dust.layer_scale_height_km = 0.0;
+    config.dust.radius_min_cm = 10;
+    config.dust.radius_max_cm = 10;
+    config.dust.min_fragment_spacing_cm = 0;
+
+    let init = spec.into_init_config(&config);
+    let (model, _) = build_world_model(&config, &init).expect("scenario init");
+    let fragments: Vec<_> = model
+        .locations
+        .values()
+        .filter(|loc| loc.id.starts_with("frag-"))
+        .collect();
+    assert!(fragments.len() > 1);
+
+    let spacing_cm = init
+        .dust
+        .min_fragment_spacing_cm
+        .expect("spacing override");
+    for i in 0..fragments.len() {
+        for j in (i + 1)..fragments.len() {
+            let a = fragments[i];
+            let b = fragments[j];
+            let dx = a.pos.x_cm - b.pos.x_cm;
+            let dy = a.pos.y_cm - b.pos.y_cm;
+            let dz = a.pos.z_cm - b.pos.z_cm;
+            let min_dist = (a.profile.radius_cm + b.profile.radius_cm + spacing_cm) as f64;
+            assert!((dx * dx + dy * dy + dz * dz) >= (min_dist * min_dist));
+        }
+    }
+}
+
+#[test]
 fn resource_bootstrap_seeds_stock() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::ResourceBootstrap, &config);

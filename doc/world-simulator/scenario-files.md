@@ -29,7 +29,7 @@
 {
   "id": "two_bases",
   "name": "Two Bases",
-  "dust": { "enabled": false },
+  "dust": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": { "count": 2, "location_id": "base-a" },
   "locations": [
     { "location_id": "base-a", "name": "Base A", "pos": { "type": "center_offset", "dx_pct": -0.2 } },
@@ -37,6 +37,8 @@
   ]
 }
 ```
+
+`dust.min_fragment_spacing_cm` 为可选字段，用于覆盖小行星碎片最小间距（cm）；未设置则沿用 `WorldConfig.dust`。
 
 ### 位置表达
 - `center`：空间中心点。

@@ -92,6 +92,7 @@
 - `DustInitConfig`
   - `enabled: bool`
   - `seed_offset: u64`
+  - `min_fragment_spacing_cm: Option<i64>`（可选，覆盖小行星碎片最小间距）
 - `AgentSpawnConfig`
   - `count: usize`
   - `id_prefix: String`
