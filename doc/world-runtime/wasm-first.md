@@ -97,6 +97,7 @@ RuleDecision {
 - 观测数据仅包含可见 Agent 列表（runtime 暂不维护 Location 数据）。
 - 资源转移规则由内置规则模块 `m1.rule.transfer` 先行实现（Reducer），订阅 `domain.agent_registered/domain.agent_moved` 维护位置状态。
 - `pre_action` 对 `action.transfer_resource` 校验同位与数量后覆盖为 `action.emit_resource_transfer`，输出 `rule.decision`。
+- 内核不再执行旧规则逻辑；未安装规则模块时相关动作会被拒绝，内核仅保留几何与资源守恒。
 
 ## 额外设计 2：机体/零件模块化（Body Modules）
 

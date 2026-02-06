@@ -1,5 +1,6 @@
 use super::pos;
 use super::super::*;
+use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 
 fn install_m1_move_rule(world: &mut World) {
@@ -676,6 +677,91 @@ fn m1_transfer_rule_denies_when_not_colocated() {
         amount: 3,
     });
     world.step_with_modules(&mut sandbox).unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(reason, RejectReason::RuleDenied { .. }));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn query_observation_requires_rule_module() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    world.submit_action(Action::QueryObservation {
+        agent_id: "agent-1".to_string(),
+    });
+    world.step().unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(reason, RejectReason::RuleDenied { .. }));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn transfer_requires_rule_module() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-2".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    world.submit_action(Action::TransferResource {
+        from_agent_id: "agent-1".to_string(),
+        to_agent_id: "agent-2".to_string(),
+        kind: ResourceKind::Electricity,
+        amount: 5,
+    });
+    world.step().unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(reason, RejectReason::RuleDenied { .. }));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn body_action_requires_body_module() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let view = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4000,
+    };
+
+    world.submit_action(Action::BodyAction {
+        agent_id: "agent-1".to_string(),
+        kind: "boot".to_string(),
+        payload: serde_json::to_value(view).unwrap(),
+    });
+    world.step().unwrap();
 
     let last = world.journal().events.last().unwrap();
     match &last.body {
