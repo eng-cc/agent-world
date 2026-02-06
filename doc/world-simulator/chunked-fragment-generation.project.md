@@ -29,7 +29,9 @@
 - [x] CG9.2 在 chunk 生成流程接入三档预算与确定性降级
 - [x] CG9.3 补充预算回归测试（fragment/block 上限）
 - [x] CG9.4 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
-- [ ] CG10 补充回放一致性与性能回归测试
+- [x] CG10.1 补充预算约束场景下的 ChunkGenerated 回放一致性测试
+- [x] CG10.2 补充多 chunk 预算回归测试（fragments/blocks 三档上限）
+- [x] CG10.3 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 
 ## 依赖
 - `crates/agent_world/src/simulator/chunking.rs`
@@ -40,5 +42,5 @@
 - `crates/agent_world/src/simulator/world_model.rs`
 
 ## 状态
-- 当前阶段：CG9（实现完成）
-- 下一阶段：CG10（回放一致性与性能回归测试）
+- 当前阶段：CG10（实现完成）
+- 下一阶段：后续迭代（按 M4/M5 路线推进）

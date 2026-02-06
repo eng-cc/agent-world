@@ -369,3 +369,65 @@ fn replay_from_snapshot_applies_compound_refined_event() {
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
     assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
 }
+
+#[test]
+fn replay_with_budget_caps_keeps_chunk_generated_consistent() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 0;
+    config.asteroid_fragment.base_density_per_km3 = 20.0;
+    config.asteroid_fragment.voxel_size_km = 10;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
+    config.asteroid_fragment.radius_min_cm = 2_500;
+    config.asteroid_fragment.radius_max_cm = 2_500;
+    config.asteroid_fragment.max_fragments_per_chunk = 2;
+    config.asteroid_fragment.max_blocks_per_fragment = 2;
+    config.asteroid_fragment.max_blocks_per_chunk = 3;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 197;
+    init.agents.count = 1;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let snapshot = kernel.snapshot();
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-budget".to_string(),
+        name: "budget".to_string(),
+        pos: GeoPos {
+            x_cm: 2_500_000.0,
+            y_cm: 2_500_000.0,
+            z_cm: 0.0,
+        },
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("register location");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-0".to_string(),
+        to: "loc-budget".to_string(),
+    });
+    kernel.step().expect("move agent");
+
+    let journal = kernel.journal_snapshot();
+    let capped_action_event = journal
+        .events
+        .iter()
+        .find_map(|event| match event.kind {
+            WorldEventKind::ChunkGenerated {
+                cause: ChunkGenerationCause::Action,
+                fragment_count,
+                block_count,
+                ..
+            } => Some((fragment_count, block_count)),
+            _ => None,
+        })
+        .expect("action chunk generated event");
+
+    assert!(capped_action_event.0 <= 2);
+    assert!(capped_action_event.1 <= 3);
+
+    let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
+    assert_eq!(replayed.model(), kernel.model());
+}

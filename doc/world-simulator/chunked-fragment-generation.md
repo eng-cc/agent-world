@@ -214,6 +214,11 @@
 - RefineCompound 链路满足电力约束与回放一致性。
 - 在默认预算下，批量生成不出现 OOM 或极端耗时。
 
+### 回放一致性与性能回归测试（CG10 落地）
+- 回放一致性：对携带预算约束的 `ChunkGenerated` 事件执行重放，校验 `fragment_count/block_count/chunk_budget` 与原运行一致。
+- 预算回归：多 chunk 批量初始化下逐块验证 `max_fragments_per_chunk / max_blocks_per_fragment / max_blocks_per_chunk` 约束。
+- 防回归策略：覆盖 `init` 触发与 `action` 触发两条路径，避免后续改动绕过预算裁剪。
+
 ## 世界生成步骤
 1. **初始化索引阶段**：创建 chunk 网格索引，状态置 `Unexplored`。
 2. **引导区块阶段**：预生成 origin/初始基地/Agent 出生点所在 chunk，并支持场景 `asteroid_fragment.bootstrap_chunks` 显式指定起始 chunk。
@@ -239,6 +244,7 @@
 - **CG7**：实现跨 chunk 边界一致性（邻块校验 + BoundaryReservation 保留/消费）。
 - **CG8**：实现经济资源映射最小闭环（`RefineCompound -> electricity/hardware`）。
 - **CG9**：实现分块生成性能预算与确定性降级（fragments/blocks 三档上限）。
+- **CG10**：补充回放一致性与性能回归测试（预算约束场景）。
 
 ## 风险
 - chunk 边界附近的最小间距约束需要考虑相邻 chunk，避免穿边重叠。

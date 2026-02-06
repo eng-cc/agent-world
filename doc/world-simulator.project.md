@@ -79,6 +79,7 @@
 - [x] 接入跨 chunk 边界一致性（CG7：邻块校验 + BoundaryReservation 保留/消费）
 - [x] 接入 RefineCompound 经济资源映射最小闭环（electricity 消耗 + hardware 产出 + 回放）
 - [x] 接入分块生成性能预算与确定性降级（CG9：fragments/blocks 三档上限）
+- [x] 补充分块生成回放一致性与性能回归测试（CG10）
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
@@ -88,4 +89,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：接入分块生成性能预算与确定性降级（2026-02-06）
+- 最近更新：补充分块生成回放一致性与性能回归测试（2026-02-06）

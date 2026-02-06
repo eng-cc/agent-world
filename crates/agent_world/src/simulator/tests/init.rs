@@ -1052,3 +1052,62 @@ fn chunk_generation_respects_block_budgets() {
 
     assert!(observed_non_empty);
 }
+
+#[test]
+fn multi_chunk_generation_respects_budget_caps() {
+    let mut config = WorldConfig::default();
+    config.space = SpaceConfig {
+        width_cm: 4_000_000,
+        depth_cm: 4_000_000,
+        height_cm: 1_000_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 80.0;
+    config.asteroid_fragment.voxel_size_km = 10;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.min_fragment_spacing_cm = 0;
+    config.asteroid_fragment.radius_min_cm = 2_500;
+    config.asteroid_fragment.radius_max_cm = 2_500;
+    config.asteroid_fragment.max_fragments_per_chunk = 2;
+    config.asteroid_fragment.max_blocks_per_fragment = 2;
+    config.asteroid_fragment.max_blocks_per_chunk = 3;
+
+    let chunks = vec![
+        ChunkCoord { x: 0, y: 0, z: 0 },
+        ChunkCoord { x: 1, y: 0, z: 0 },
+        ChunkCoord { x: 0, y: 1, z: 0 },
+        ChunkCoord { x: 1, y: 1, z: 0 },
+    ];
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 410;
+    init.origin.enabled = false;
+    init.agents.count = 0;
+    init.asteroid_fragment.bootstrap_chunks = chunks.clone();
+
+    let (model, _) = build_world_model(&config, &init).expect("build world model");
+
+    for coord in chunks {
+        let mut fragment_count = 0usize;
+        let mut block_count = 0usize;
+        for location in model
+            .locations
+            .values()
+            .filter(|loc| loc.id.starts_with("frag-"))
+        {
+            if !chunk_coord_of(location.pos, &config.space).is_some_and(|c| c == coord) {
+                continue;
+            }
+            let profile = location
+                .fragment_profile
+                .as_ref()
+                .expect("fragment profile exists");
+            let blocks = profile.blocks.blocks.len();
+            assert!(blocks <= 2);
+            block_count = block_count.saturating_add(blocks);
+            fragment_count = fragment_count.saturating_add(1);
+        }
+        assert!(fragment_count <= 2);
+        assert!(block_count <= 3);
+    }
+}
