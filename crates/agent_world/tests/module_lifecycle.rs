@@ -150,7 +150,7 @@ fn module_routing_emits_event() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -236,7 +236,7 @@ fn replay_preserves_module_events() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),

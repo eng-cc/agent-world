@@ -534,6 +534,7 @@ impl World {
         }
 
         for subscription in &module.subscriptions {
+            validate_subscription_stage(subscription, &module.module_id)?;
             validate_subscription_filters(&subscription.filters, &module.module_id)?;
         }
 
@@ -894,7 +895,7 @@ fn module_subscribes_to_event(
     event_value: &JsonValue,
 ) -> bool {
     subscriptions.iter().any(|subscription| {
-        subscription.stage == ModuleSubscriptionStage::PostEvent
+        subscription.resolved_stage() == ModuleSubscriptionStage::PostEvent
             && subscription
                 .event_kinds
                 .iter()
@@ -910,7 +911,7 @@ fn module_subscribes_to_action(
     action_value: &JsonValue,
 ) -> bool {
     subscriptions.iter().any(|subscription| {
-        subscription.stage == stage
+        subscription.resolved_stage() == stage
             && subscription
                 .action_kinds
                 .iter()
@@ -928,6 +929,65 @@ fn subscription_match(pattern: &str, value: &str) -> bool {
         return value.starts_with(prefix);
     }
     pattern == value
+}
+
+fn validate_subscription_stage(
+    subscription: &ModuleSubscription,
+    module_id: &str,
+) -> Result<(), WorldError> {
+    let has_events = !subscription.event_kinds.is_empty();
+    let has_actions = !subscription.action_kinds.is_empty();
+    match subscription.stage {
+        Some(ModuleSubscriptionStage::PostEvent) => {
+            if has_actions {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription post_event cannot include action_kinds"
+                    ),
+                });
+            }
+            if !has_events {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription post_event requires event_kinds"
+                    ),
+                });
+            }
+        }
+        Some(ModuleSubscriptionStage::PreAction) | Some(ModuleSubscriptionStage::PostAction) => {
+            if has_events {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription action stage cannot include event_kinds"
+                    ),
+                });
+            }
+            if !has_actions {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription action stage requires action_kinds"
+                    ),
+                });
+            }
+        }
+        None => {
+            if has_events && has_actions {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription cannot mix event_kinds and action_kinds"
+                    ),
+                });
+            }
+            if !has_events && !has_actions {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module {module_id} subscription requires event_kinds or action_kinds"
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]

@@ -160,10 +160,22 @@ pub struct ModuleSubscription {
     pub event_kinds: Vec<String>,
     #[serde(default)]
     pub action_kinds: Vec<String>,
-    #[serde(default)]
-    pub stage: ModuleSubscriptionStage,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<ModuleSubscriptionStage>,
     #[serde(default)]
     pub filters: Option<JsonValue>,
+}
+
+impl ModuleSubscription {
+    pub fn resolved_stage(&self) -> ModuleSubscriptionStage {
+        self.stage.unwrap_or_else(|| {
+            if !self.event_kinds.is_empty() {
+                ModuleSubscriptionStage::PostEvent
+            } else {
+                ModuleSubscriptionStage::PreAction
+            }
+        })
+    }
 }
 
 /// Routing stage for module subscriptions.

@@ -84,7 +84,7 @@ fn prefetch_active_modules_with_fetch_downloads_artifacts() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["tick".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -193,7 +193,7 @@ fn shadow_and_apply_with_fetch_downloads_artifact() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["tick".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),

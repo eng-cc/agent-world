@@ -17,7 +17,7 @@
 - [x] 实现 pre_action/post_action 路由流程
 - [x] 定义 RuleDecision 结构与冲突合并策略
 - [x] 定义 RuleDecisionRecorded/ActionOverridden 事件与审计导出
-- [ ] 订阅 stage 与 event/action kinds 组合校验与默认值策略
+- [x] 订阅 stage 与 event/action kinds 组合校验与默认值策略
 - [ ] 明确 ResourceDelta 资源类型/单位与余额不足语义
 - [ ] 接入资源扣费与 Action 覆盖逻辑
 
@@ -42,5 +42,5 @@
 
 ## 状态
 - 当前阶段：W3（Rule Modules 路由与合并实现）
-- 下一步：订阅 stage 与 event/action kinds 组合校验与默认值策略
-- 最近更新：RuleDecisionRecorded/ActionOverridden 事件与审计导出（2026-02-06）
+- 下一步：明确 ResourceDelta 资源类型/单位与余额不足语义
+- 最近更新：订阅 stage 与 event/action kinds 组合校验与默认值策略（2026-02-06）

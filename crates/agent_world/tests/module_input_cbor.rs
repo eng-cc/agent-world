@@ -95,7 +95,7 @@ fn module_route_encodes_event_input_as_cbor() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -157,7 +157,7 @@ fn module_route_encodes_action_input_as_cbor() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
-            stage: ModuleSubscriptionStage::PreAction,
+            stage: Some(ModuleSubscriptionStage::PreAction),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -222,7 +222,7 @@ fn module_route_pure_input_omits_state() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),

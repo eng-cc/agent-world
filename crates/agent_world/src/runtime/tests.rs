@@ -217,7 +217,7 @@ fn apply_module_changes_registers_and_activates() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["WeatherTick".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: vec!["cap.weather".to_string()],
@@ -623,7 +623,7 @@ fn step_with_modules_routes_domain_events() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -713,7 +713,7 @@ fn step_with_modules_routes_actions() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
-            stage: ModuleSubscriptionStage::PreAction,
+            stage: Some(ModuleSubscriptionStage::PreAction),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -839,7 +839,7 @@ fn module_calls_use_entrypoint_for_kind() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),
@@ -865,7 +865,7 @@ fn module_calls_use_entrypoint_for_kind() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: None,
         }],
         required_caps: Vec::new(),

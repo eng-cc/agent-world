@@ -65,7 +65,7 @@ fn module_subscription_event_filters_by_agent_id() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: None,
             filters: Some(json!({
                 "event": [
                     {"path": "/body/payload/data/agent_id", "eq": "agent-keep"}
@@ -147,7 +147,7 @@ fn module_subscription_action_filters_by_agent_id() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
-            stage: ModuleSubscriptionStage::PreAction,
+            stage: None,
             filters: Some(json!({
                 "action": [
                     {"path": "/action/data/agent_id", "eq": "agent-keep"}
@@ -229,12 +229,140 @@ fn module_subscription_invalid_filter_is_rejected() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: Some(json!({
                 "event": [
                     {"path": "body/payload/data/agent_id", "eq": "agent-1"}
                 ]
             })),
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+}
+
+#[test]
+fn module_subscription_rejects_mixed_kinds_without_stage() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-mixed";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.mixed".to_string(),
+        name: "FilterMixed".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: vec!["domain.agent_registered".to_string()],
+            action_kinds: vec!["action.register_agent".to_string()],
+            stage: None,
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .unwrap();
+
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+}
+
+#[test]
+fn module_subscription_rejects_action_kinds_in_post_event_stage() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.module"));
+
+    let wasm_bytes = b"module-filter-action-post-event";
+    let wasm_hash = sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.filter.action.post".to_string(),
+        name: "FilterActionPost".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: vec!["action.register_agent".to_string()],
+            stage: Some(ModuleSubscriptionStage::PostEvent),
+            filters: None,
         }],
         required_caps: Vec::new(),
         limits: ModuleLimits {
@@ -297,7 +425,7 @@ fn module_subscription_any_matches() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: Some(json!({
                 "event": {
                     "any": [
@@ -381,7 +509,7 @@ fn module_subscription_numeric_range_matches() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
             action_kinds: Vec::new(),
-            stage: ModuleSubscriptionStage::PostEvent,
+            stage: Some(ModuleSubscriptionStage::PostEvent),
             filters: Some(json!({
                 "event": {
                     "all": [
@@ -466,7 +594,7 @@ fn module_subscription_regex_matches() {
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
             action_kinds: vec!["action.register_agent".to_string()],
-            stage: ModuleSubscriptionStage::PreAction,
+            stage: Some(ModuleSubscriptionStage::PreAction),
             filters: Some(json!({
                 "action": {
                     "all": [
