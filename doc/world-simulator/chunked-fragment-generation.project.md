@@ -20,7 +20,11 @@
 - [x] CG7.3 实现未探索邻块的边界保留写入与后续消费
 - [x] CG7.4 补充跨 chunk 间距与 reservation 回归测试
 - [x] CG7.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
-- [ ] CG8 实现经济资源映射最小闭环（RefineCompound -> hardware/electricity 约束）
+- [x] CG8.1 定义 RefineCompound 动作/事件契约（输入 compound_mass_g，输出硬件）
+- [x] CG8.2 新增 EconomyConfig（精炼电力成本/硬件产率）并接入 WorldConfig
+- [x] CG8.3 在 kernel action/replay 中接入 RefineCompound 执行与回放
+- [x] CG8.4 补充精炼闭环测试（成功/电力不足拒绝/回放一致）
+- [x] CG8.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 - [ ] CG9 增加性能预算与降级策略（fragments/blocks 上限）
 - [ ] CG10 补充回放一致性与性能回归测试
 
@@ -33,5 +37,5 @@
 - `crates/agent_world/src/simulator/world_model.rs`
 
 ## 状态
-- 当前阶段：CG7（实现完成）
-- 下一阶段：CG8（经济资源映射最小闭环）
+- 当前阶段：CG8（实现完成）
+- 下一阶段：CG9（性能预算与降级策略）

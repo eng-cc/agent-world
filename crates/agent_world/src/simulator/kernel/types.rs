@@ -83,6 +83,12 @@ pub enum WorldEventKind {
         amount: i64,
         available: i64,
     },
+    CompoundRefined {
+        owner: ResourceOwner,
+        compound_mass_g: i64,
+        electricity_cost: i64,
+        hardware_output: i64,
+    },
     ChunkGenerated {
         coord: ChunkCoord,
         seed: u64,
@@ -109,22 +115,45 @@ pub enum ChunkGenerationCause {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum RejectReason {
-    AgentAlreadyExists { agent_id: AgentId },
-    AgentNotFound { agent_id: AgentId },
-    LocationAlreadyExists { location_id: LocationId },
-    LocationNotFound { location_id: LocationId },
-    FacilityAlreadyExists { facility_id: FacilityId },
-    FacilityNotFound { facility_id: FacilityId },
-    AgentAlreadyAtLocation { agent_id: AgentId, location_id: LocationId },
-    InvalidAmount { amount: i64 },
+    AgentAlreadyExists {
+        agent_id: AgentId,
+    },
+    AgentNotFound {
+        agent_id: AgentId,
+    },
+    LocationAlreadyExists {
+        location_id: LocationId,
+    },
+    LocationNotFound {
+        location_id: LocationId,
+    },
+    FacilityAlreadyExists {
+        facility_id: FacilityId,
+    },
+    FacilityNotFound {
+        facility_id: FacilityId,
+    },
+    AgentAlreadyAtLocation {
+        agent_id: AgentId,
+        location_id: LocationId,
+    },
+    InvalidAmount {
+        amount: i64,
+    },
     InsufficientResource {
         owner: ResourceOwner,
         kind: ResourceKind,
         requested: i64,
         available: i64,
     },
-    LocationTransferNotAllowed { from: LocationId, to: LocationId },
-    AgentNotAtLocation { agent_id: AgentId, location_id: LocationId },
+    LocationTransferNotAllowed {
+        from: LocationId,
+        to: LocationId,
+    },
+    AgentNotAtLocation {
+        agent_id: AgentId,
+        location_id: LocationId,
+    },
     AgentsNotCoLocated {
         agent_id: AgentId,
         other_agent_id: AgentId,
@@ -132,10 +161,27 @@ pub enum RejectReason {
     AgentShutdown {
         agent_id: AgentId,
     },
-    PositionOutOfBounds { pos: GeoPos },
-    ChunkGenerationFailed { x: i32, y: i32, z: i32 },
-    RadiationUnavailable { location_id: LocationId },
-    ThermalOverload { heat: i64, capacity: i64 },
-    PowerTransferDistanceExceeded { distance_km: i64, max_distance_km: i64 },
-    PowerTransferLossExceedsAmount { amount: i64, loss: i64 },
+    PositionOutOfBounds {
+        pos: GeoPos,
+    },
+    ChunkGenerationFailed {
+        x: i32,
+        y: i32,
+        z: i32,
+    },
+    RadiationUnavailable {
+        location_id: LocationId,
+    },
+    ThermalOverload {
+        heat: i64,
+        capacity: i64,
+    },
+    PowerTransferDistanceExceeded {
+        distance_km: i64,
+        max_distance_km: i64,
+    },
+    PowerTransferLossExceedsAmount {
+        amount: i64,
+        loss: i64,
+    },
 }

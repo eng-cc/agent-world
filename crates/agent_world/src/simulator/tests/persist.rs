@@ -161,16 +161,14 @@ fn journal_version_validation_rejects_unknown() {
     ));
 }
 
-
 #[test]
 fn snapshot_version_validation_accepts_legacy_and_defaults_chunk_schema() {
     let kernel = WorldKernel::new();
     let snapshot = kernel.snapshot();
 
-    let mut value: serde_json::Value = serde_json::from_str(
-        &snapshot.to_json().expect("snapshot to json"),
-    )
-    .expect("parse snapshot json");
+    let mut value: serde_json::Value =
+        serde_json::from_str(&snapshot.to_json().expect("snapshot to json"))
+            .expect("parse snapshot json");
     value["version"] = serde_json::Value::from(SNAPSHOT_VERSION.saturating_sub(1));
     if let serde_json::Value::Object(map) = &mut value {
         map.remove("chunk_generation_schema_version");
@@ -321,4 +319,53 @@ fn kernel_replay_from_snapshot() {
     let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).unwrap();
     let agent = replayed.model().agents.get("agent-1").unwrap();
     assert_eq!(agent.location_id, "loc-2");
+}
+
+#[test]
+fn replay_from_snapshot_applies_compound_refined_event() {
+    let mut config = WorldConfig::default();
+    config.economy.refine_electricity_cost_per_kg = 3;
+    config.economy.refine_hardware_yield_ppm = 2_000;
+
+    let mut kernel = WorldKernel::with_config(config);
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 120;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-refine".to_string(),
+        name: "refine".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-refiner".to_string(),
+        location_id: "loc-refine".to_string(),
+    });
+    kernel.step_until_empty();
+
+    let snapshot = kernel.snapshot();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-refiner".to_string(),
+        max_amount: 50,
+    });
+    kernel.step().expect("seed electricity");
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        compound_mass_g: 2_500,
+    });
+    kernel.step().expect("refine");
+
+    let journal = kernel.journal_snapshot();
+    let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
+
+    let agent = replayed
+        .model()
+        .agents
+        .get("agent-refiner")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
 }

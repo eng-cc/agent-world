@@ -1,14 +1,14 @@
-use super::WorldKernel;
-use super::types::{WorldEvent, WorldEventKind};
-use super::super::persist::PersistError;
-use super::super::power::PowerEvent;
-use super::super::types::{ResourceKind, ResourceOwner, StockError};
-use super::super::world_model::Location;
 use super::super::init::{
     generate_chunk_fragments, summarize_chunk_generation, AsteroidFragmentInitConfig,
     WorldInitConfig,
 };
+use super::super::persist::PersistError;
+use super::super::power::PowerEvent;
+use super::super::types::{ResourceKind, ResourceOwner, StockError};
+use super::super::world_model::Location;
 use super::super::ChunkState;
+use super::types::{WorldEvent, WorldEventKind};
+use super::WorldKernel;
 
 impl WorldKernel {
     pub(super) fn apply_event(&mut self, event: &WorldEvent) -> Result<(), PersistError> {
@@ -131,21 +131,19 @@ impl WorldKernel {
                         message: "transfer amount must be positive".to_string(),
                     });
                 }
-                self.ensure_owner_exists(from).map_err(|reason| {
-                    PersistError::ReplayConflict {
+                self.ensure_owner_exists(from)
+                    .map_err(|reason| PersistError::ReplayConflict {
                         message: format!("invalid transfer source: {reason:?}"),
-                    }
-                })?;
-                self.ensure_owner_exists(to).map_err(|reason| PersistError::ReplayConflict {
-                    message: format!("invalid transfer target: {reason:?}"),
-                })?;
+                    })?;
+                self.ensure_owner_exists(to)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid transfer target: {reason:?}"),
+                    })?;
                 self.remove_from_owner_for_replay(from, *kind, *amount)?;
                 self.add_to_owner_for_replay(to, *kind, *amount)?;
             }
             WorldEventKind::RadiationHarvested {
-                agent_id,
-                amount,
-                ..
+                agent_id, amount, ..
             } => {
                 let Some(agent) = self.model.agents.get_mut(agent_id) else {
                     return Err(PersistError::ReplayConflict {
@@ -158,6 +156,31 @@ impl WorldKernel {
                     .map_err(|err| PersistError::ReplayConflict {
                         message: format!("failed to apply radiation harvest: {err:?}"),
                     })?;
+            }
+            WorldEventKind::CompoundRefined {
+                owner,
+                compound_mass_g,
+                electricity_cost,
+                hardware_output,
+            } => {
+                if *compound_mass_g <= 0 || *electricity_cost < 0 || *hardware_output <= 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "invalid refine event values: mass={}, electricity_cost={}, hardware_output={}",
+                            compound_mass_g, electricity_cost, hardware_output
+                        ),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid refine owner: {reason:?}"),
+                    })?;
+                self.remove_from_owner_for_replay(
+                    owner,
+                    ResourceKind::Electricity,
+                    *electricity_cost,
+                )?;
+                self.add_to_owner_for_replay(owner, ResourceKind::Hardware, *hardware_output)?;
             }
             WorldEventKind::ChunkGenerated {
                 coord,
@@ -247,7 +270,9 @@ impl WorldKernel {
                             message: format!("invalid power plant owner: {reason:?}"),
                         }
                     })?;
-                    self.model.power_plants.insert(plant.id.clone(), plant.clone());
+                    self.model
+                        .power_plants
+                        .insert(plant.id.clone(), plant.clone());
                 }
                 PowerEvent::PowerStorageRegistered { storage } => {
                     if self.model.power_plants.contains_key(&storage.id)
@@ -297,13 +322,11 @@ impl WorldKernel {
                             ),
                         });
                     }
-                    let location =
-                        self.model
-                            .locations
-                            .get_mut(location_id)
-                            .ok_or_else(|| PersistError::ReplayConflict {
-                                message: format!("location not found: {location_id}"),
-                            })?;
+                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
+                        PersistError::ReplayConflict {
+                            message: format!("location not found: {location_id}"),
+                        }
+                    })?;
                     location
                         .resources
                         .add(ResourceKind::Electricity, *amount)
@@ -340,13 +363,11 @@ impl WorldKernel {
                             ),
                         });
                     }
-                    let location =
-                        self.model
-                            .locations
-                            .get_mut(location_id)
-                            .ok_or_else(|| PersistError::ReplayConflict {
-                                message: format!("location not found: {location_id}"),
-                            })?;
+                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
+                        PersistError::ReplayConflict {
+                            message: format!("location not found: {location_id}"),
+                        }
+                    })?;
                     location
                         .resources
                         .remove(ResourceKind::Electricity, *input)
@@ -394,13 +415,11 @@ impl WorldKernel {
                         });
                     }
                     storage.current_level = storage.current_level.saturating_sub(*drawn);
-                    let location =
-                        self.model
-                            .locations
-                            .get_mut(location_id)
-                            .ok_or_else(|| PersistError::ReplayConflict {
-                                message: format!("location not found: {location_id}"),
-                            })?;
+                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
+                        PersistError::ReplayConflict {
+                            message: format!("location not found: {location_id}"),
+                        }
+                    })?;
                     location
                         .resources
                         .add(ResourceKind::Electricity, *output)
@@ -408,13 +427,17 @@ impl WorldKernel {
                             message: format!("failed to apply power discharge output: {err:?}"),
                         })?;
                 }
-                PowerEvent::PowerConsumed { agent_id, amount, .. } => {
+                PowerEvent::PowerConsumed {
+                    agent_id, amount, ..
+                } => {
                     if let Some(agent) = self.model.agents.get_mut(agent_id) {
                         let power_config = self.config.power.clone();
                         agent.power.consume(*amount, &power_config);
                     }
                 }
-                PowerEvent::PowerCharged { agent_id, amount, .. } => {
+                PowerEvent::PowerCharged {
+                    agent_id, amount, ..
+                } => {
                     if let Some(agent) = self.model.agents.get_mut(agent_id) {
                         let power_config = self.config.power.clone();
                         agent.power.charge(*amount, &power_config);
@@ -440,8 +463,10 @@ impl WorldKernel {
                             message: format!("invalid power transfer source: {reason:?}"),
                         }
                     })?;
-                    self.ensure_owner_exists(to).map_err(|reason| PersistError::ReplayConflict {
-                        message: format!("invalid power transfer target: {reason:?}"),
+                    self.ensure_owner_exists(to).map_err(|reason| {
+                        PersistError::ReplayConflict {
+                            message: format!("invalid power transfer target: {reason:?}"),
+                        }
                     })?;
                     self.remove_from_owner_for_replay(from, ResourceKind::Electricity, *amount)?;
                     let delivered = amount.saturating_sub(*loss);

@@ -1,10 +1,10 @@
 use crate::geometry::space_distance_cm;
 
+use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
+use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
+use super::super::world_model::{movement_cost, Agent, Location};
 use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
-use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
-use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM};
-use super::super::world_model::{movement_cost, Agent, Location};
 
 impl WorldKernel {
     pub(super) fn apply_action(&mut self, action: Action) -> WorldEventKind {
@@ -230,10 +230,10 @@ impl WorldKernel {
                         };
                     }
                 };
-                if let Err(reason) = self.ensure_chunk_generated_at(to_pos, ChunkGenerationCause::Action) {
-                    return WorldEventKind::ActionRejected {
-                        reason,
-                    };
+                if let Err(reason) =
+                    self.ensure_chunk_generated_at(to_pos, ChunkGenerationCause::Action)
+                {
+                    return WorldEventKind::ActionRejected { reason };
                 }
                 let Some(location) = self.model.locations.get(&to) else {
                     return WorldEventKind::ActionRejected {
@@ -260,10 +260,8 @@ impl WorldKernel {
                 }
                 let from = agent.location_id.clone();
                 let distance_cm = space_distance_cm(agent.pos, location.pos);
-                let electricity_cost = movement_cost(
-                    distance_cm,
-                    self.config.move_cost_per_km_electricity,
-                );
+                let electricity_cost =
+                    movement_cost(distance_cm, self.config.move_cost_per_km_electricity);
                 if electricity_cost > 0 {
                     let available = agent.resources.get(ResourceKind::Electricity);
                     if available < electricity_cost {
@@ -338,7 +336,9 @@ impl WorldKernel {
                         };
                     }
                 };
-                if let Err(reason) = self.ensure_chunk_generated_at(location_pos, ChunkGenerationCause::Action) {
+                if let Err(reason) =
+                    self.ensure_chunk_generated_at(location_pos, ChunkGenerationCause::Action)
+                {
                     return WorldEventKind::ActionRejected { reason };
                 }
                 let (emission, radius_cm) = match self.model.locations.get(&location_id) {
@@ -365,8 +365,7 @@ impl WorldKernel {
                 }
                 let mut available_for_harvest = local_available;
                 if physics.max_harvest_per_tick > 0 {
-                    available_for_harvest =
-                        available_for_harvest.min(physics.max_harvest_per_tick);
+                    available_for_harvest = available_for_harvest.min(physics.max_harvest_per_tick);
                 }
                 let mut harvested = max_amount.min(available_for_harvest);
                 let Some(agent) = self.model.agents.get_mut(&agent_id) else {
@@ -399,8 +398,10 @@ impl WorldKernel {
                         };
                     }
                     if physics.heat_factor > 0 {
-                        agent.thermal.heat =
-                            agent.thermal.heat.saturating_add(harvested * physics.heat_factor);
+                        agent.thermal.heat = agent
+                            .thermal
+                            .heat
+                            .saturating_add(harvested * physics.heat_factor);
                     }
                 }
                 WorldEventKind::RadiationHarvested {
@@ -438,19 +439,77 @@ impl WorldKernel {
                     return WorldEventKind::ActionRejected { reason };
                 }
                 match self.validate_transfer(&from, &to, kind, amount) {
-                Ok(()) => {
-                    if let Err(reason) = self.apply_transfer(&from, &to, kind, amount) {
-                        WorldEventKind::ActionRejected { reason }
-                    } else {
-                        WorldEventKind::ResourceTransferred {
-                            from,
-                            to,
-                            kind,
-                            amount,
+                    Ok(()) => {
+                        if let Err(reason) = self.apply_transfer(&from, &to, kind, amount) {
+                            WorldEventKind::ActionRejected { reason }
+                        } else {
+                            WorldEventKind::ResourceTransferred {
+                                from,
+                                to,
+                                kind,
+                                amount,
+                            }
                         }
                     }
+                    Err(reason) => WorldEventKind::ActionRejected { reason },
                 }
-                Err(reason) => WorldEventKind::ActionRejected { reason },
+            }
+            Action::RefineCompound {
+                owner,
+                compound_mass_g,
+            } => {
+                if compound_mass_g <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: compound_mass_g,
+                        },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_chunk_generated(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                let (electricity_cost, hardware_output) =
+                    self.compute_refine_compound_outputs(compound_mass_g);
+                if hardware_output <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: compound_mass_g,
+                        },
+                    };
+                }
+
+                let available = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if available < electricity_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner: owner.clone(),
+                            kind: ResourceKind::Electricity,
+                            requested: electricity_cost,
+                            available,
+                        },
+                    };
+                }
+
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Electricity, electricity_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) =
+                    self.add_to_owner(&owner, ResourceKind::Hardware, hardware_output)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                WorldEventKind::CompoundRefined {
+                    owner,
+                    compound_mass_g,
+                    electricity_cost,
+                    hardware_output,
                 }
             }
         }
@@ -478,8 +537,7 @@ impl WorldKernel {
         let from_location = self.owner_location_id(from)?;
         let to_location = self.owner_location_id(to)?;
 
-        if matches!(from, ResourceOwner::Agent { .. })
-            || matches!(to, ResourceOwner::Agent { .. })
+        if matches!(from, ResourceOwner::Agent { .. }) || matches!(to, ResourceOwner::Agent { .. })
         {
             self.ensure_colocated(from, to)?;
         }
@@ -589,7 +647,10 @@ impl WorldKernel {
         self.ensure_owner_exists(to)?;
         self.ensure_colocated(from, to)?;
 
-        let available = self.owner_stock(from).map(|stock| stock.get(kind)).unwrap_or(0);
+        let available = self
+            .owner_stock(from)
+            .map(|stock| stock.get(kind))
+            .unwrap_or(0);
         if available < amount {
             return Err(RejectReason::InsufficientResource {
                 owner: from.clone(),
@@ -643,15 +704,14 @@ impl WorldKernel {
         to: &ResourceOwner,
     ) -> Result<(), RejectReason> {
         match (from, to) {
-            (
-                ResourceOwner::Agent { agent_id },
-                ResourceOwner::Location { location_id },
-            ) => {
-                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
-                    RejectReason::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    }
-                })?;
+            (ResourceOwner::Agent { agent_id }, ResourceOwner::Location { location_id }) => {
+                let agent =
+                    self.model
+                        .agents
+                        .get(agent_id)
+                        .ok_or_else(|| RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
                 if agent.location_id != *location_id {
                     return Err(RejectReason::AgentNotAtLocation {
                         agent_id: agent_id.clone(),
@@ -659,15 +719,14 @@ impl WorldKernel {
                     });
                 }
             }
-            (
-                ResourceOwner::Location { location_id },
-                ResourceOwner::Agent { agent_id },
-            ) => {
-                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
-                    RejectReason::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    }
-                })?;
+            (ResourceOwner::Location { location_id }, ResourceOwner::Agent { agent_id }) => {
+                let agent =
+                    self.model
+                        .agents
+                        .get(agent_id)
+                        .ok_or_else(|| RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
                 if agent.location_id != *location_id {
                     return Err(RejectReason::AgentNotAtLocation {
                         agent_id: agent_id.clone(),
@@ -681,11 +740,13 @@ impl WorldKernel {
                     agent_id: other_agent_id,
                 },
             ) => {
-                let agent = self.model.agents.get(agent_id).ok_or_else(|| {
-                    RejectReason::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    }
-                })?;
+                let agent =
+                    self.model
+                        .agents
+                        .get(agent_id)
+                        .ok_or_else(|| RejectReason::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
                 let other = self.model.agents.get(other_agent_id).ok_or_else(|| {
                     RejectReason::AgentNotFound {
                         agent_id: other_agent_id.clone(),
@@ -718,16 +779,32 @@ impl WorldKernel {
         from: &ResourceOwner,
         to: &ResourceOwner,
     ) -> Result<(), RejectReason> {
-        if let Some(pos) = self.owner_pos(from)? {
-            self.ensure_chunk_generated_at(pos, ChunkGenerationCause::Action)?;
-        }
-        if let Some(pos) = self.owner_pos(to)? {
+        self.ensure_owner_chunk_generated(from)?;
+        self.ensure_owner_chunk_generated(to)?;
+        Ok(())
+    }
+
+    fn ensure_owner_chunk_generated(&mut self, owner: &ResourceOwner) -> Result<(), RejectReason> {
+        if let Some(pos) = self.owner_pos(owner)? {
             self.ensure_chunk_generated_at(pos, ChunkGenerationCause::Action)?;
         }
         Ok(())
     }
 
-    fn owner_pos(&self, owner: &ResourceOwner) -> Result<Option<crate::geometry::GeoPos>, RejectReason> {
+    fn compute_refine_compound_outputs(&self, compound_mass_g: i64) -> (i64, i64) {
+        let economy = &self.config.economy;
+        let mass_kg = compound_mass_g.saturating_add(999).saturating_div(1000);
+        let electricity_cost = mass_kg.saturating_mul(economy.refine_electricity_cost_per_kg);
+        let hardware_output = compound_mass_g
+            .saturating_mul(economy.refine_hardware_yield_ppm)
+            .saturating_div(PPM_BASE);
+        (electricity_cost, hardware_output)
+    }
+
+    fn owner_pos(
+        &self,
+        owner: &ResourceOwner,
+    ) -> Result<Option<crate::geometry::GeoPos>, RejectReason> {
         match owner {
             ResourceOwner::Agent { agent_id } => self
                 .model
@@ -750,7 +827,9 @@ impl WorldKernel {
 
     fn owner_stock(&self, owner: &ResourceOwner) -> Option<&super::super::types::ResourceStock> {
         match owner {
-            ResourceOwner::Agent { agent_id } => self.model.agents.get(agent_id).map(|a| &a.resources),
+            ResourceOwner::Agent { agent_id } => {
+                self.model.agents.get(agent_id).map(|a| &a.resources)
+            }
             ResourceOwner::Location { location_id } => {
                 self.model.locations.get(location_id).map(|l| &l.resources)
             }

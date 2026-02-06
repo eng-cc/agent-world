@@ -1,5 +1,5 @@
 use super::*;
-use crate::geometry::{DEFAULT_CLOUD_WIDTH_CM, GeoPos};
+use crate::geometry::{GeoPos, DEFAULT_CLOUD_WIDTH_CM};
 
 #[test]
 fn kernel_registers_and_moves_agent() {
@@ -185,7 +185,9 @@ fn harvest_radiation_adds_electricity() {
     });
     let event = kernel.step().unwrap();
     match event.kind {
-        WorldEventKind::RadiationHarvested { amount, available, .. } => {
+        WorldEventKind::RadiationHarvested {
+            amount, available, ..
+        } => {
             assert_eq!(amount, 20);
             assert_eq!(available, 50);
         }
@@ -292,7 +294,10 @@ fn kernel_rejects_move_to_same_location() {
     let event = kernel.step().unwrap();
     match event.kind {
         WorldEventKind::ActionRejected { reason } => {
-            assert!(matches!(reason, RejectReason::AgentAlreadyAtLocation { .. }));
+            assert!(matches!(
+                reason,
+                RejectReason::AgentAlreadyAtLocation { .. }
+            ));
         }
         other => panic!("unexpected event: {other:?}"),
     }
@@ -325,8 +330,14 @@ fn kernel_observe_visibility_range() {
 
     let obs = kernel.observe("agent-1").unwrap();
     assert!(obs.visible_agents.is_empty());
-    assert!(obs.visible_locations.iter().any(|loc| loc.location_id == "loc-1"));
-    assert!(!obs.visible_locations.iter().any(|loc| loc.location_id == "loc-2"));
+    assert!(obs
+        .visible_locations
+        .iter()
+        .any(|loc| loc.location_id == "loc-1"));
+    assert!(!obs
+        .visible_locations
+        .iter()
+        .any(|loc| loc.location_id == "loc-2"));
 }
 
 #[test]
@@ -414,7 +425,6 @@ fn observe_triggers_chunk_generation_for_agent_chunk() {
     assert!(after >= before);
 }
 
-
 #[test]
 fn observe_records_chunk_generated_event_with_observe_cause() {
     let mut config = WorldConfig::default();
@@ -487,13 +497,11 @@ fn action_chunk_generation_consumes_boundary_reservations() {
 
     let (mut kernel, _) = initialize_kernel(config, init).expect("init kernel");
     let right_coord = ChunkCoord { x: 1, y: 0, z: 0 };
-    assert!(
-        kernel
-            .model()
-            .chunk_boundary_reservations
-            .get(&right_coord)
-            .is_some_and(|entries| !entries.is_empty())
-    );
+    assert!(kernel
+        .model()
+        .chunk_boundary_reservations
+        .get(&right_coord)
+        .is_some_and(|entries| !entries.is_empty()));
 
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-left".to_string(),
@@ -532,13 +540,11 @@ fn action_chunk_generation_consumes_boundary_reservations() {
     let event = kernel.step().expect("move action");
     assert!(matches!(event.kind, WorldEventKind::AgentMoved { .. }));
 
-    assert!(
-        kernel
-            .model()
-            .chunks
-            .get(&right_coord)
-            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted))
-    );
+    assert!(kernel
+        .model()
+        .chunks
+        .get(&right_coord)
+        .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
     assert!(!kernel
         .model()
         .chunk_boundary_reservations
@@ -554,7 +560,6 @@ fn action_chunk_generation_consumes_boundary_reservations() {
         )
     }));
 }
-
 
 #[test]
 fn kernel_closed_loop_example() {
@@ -665,4 +670,111 @@ fn kernel_consume_fragment_resource_keeps_chunk_budget_in_sync() {
 
     assert_eq!(after_fragment, before_fragment - amount);
     assert_eq!(after_chunk, before_chunk - amount);
+}
+
+#[test]
+fn refine_compound_consumes_electricity_and_outputs_hardware() {
+    let mut config = WorldConfig::default();
+    config.economy.refine_electricity_cost_per_kg = 3;
+    config.economy.refine_hardware_yield_ppm = 2_000;
+
+    let mut kernel = WorldKernel::with_config(config);
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 120;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-refine".to_string(),
+        name: "refine".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-refiner".to_string(),
+        location_id: "loc-refine".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-refiner".to_string(),
+        max_amount: 50,
+    });
+    kernel.step().expect("seed electricity");
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        compound_mass_g: 2_500,
+    });
+
+    let event = kernel.step().expect("refine action");
+    match event.kind {
+        WorldEventKind::CompoundRefined {
+            owner,
+            compound_mass_g,
+            electricity_cost,
+            hardware_output,
+        } => {
+            assert_eq!(
+                owner,
+                ResourceOwner::Agent {
+                    agent_id: "agent-refiner".to_string()
+                }
+            );
+            assert_eq!(compound_mass_g, 2_500);
+            assert_eq!(electricity_cost, 9);
+            assert_eq!(hardware_output, 5);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel
+        .model()
+        .agents
+        .get("agent-refiner")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
+}
+
+#[test]
+fn refine_compound_rejects_when_electricity_insufficient() {
+    let mut config = WorldConfig::default();
+    config.economy.refine_electricity_cost_per_kg = 4;
+    config.economy.refine_hardware_yield_ppm = 1_000;
+
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-refine".to_string(),
+        name: "refine".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-refiner".to_string(),
+        location_id: "loc-refine".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        compound_mass_g: 1_500,
+    });
+
+    let event = kernel.step().expect("refine rejected");
+    match event.kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(
+                reason,
+                RejectReason::InsufficientResource {
+                    kind: ResourceKind::Electricity,
+                    requested: 8,
+                    available: 0,
+                    ..
+                }
+            ));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
 }

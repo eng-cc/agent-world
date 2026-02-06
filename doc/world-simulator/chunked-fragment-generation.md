@@ -166,18 +166,25 @@
 - `snapshot.version=2` / `journal.version=2` 允许迁移到当前版本 `v3`（CG6），并补齐 `chunk_generation_schema_version` 默认值。
 - 其他未知版本保持拒绝加载，避免无声破坏账本一致性。
 
-### 经济资源映射契约（与 M4 对齐）
-为接入现有 `electricity/hardware/data` 三类核心资源，定义“化合物/元素 -> 经济资源”的最小精炼链：
+### 经济资源映射契约（与 M4 对齐，CG8 落地）
+为接入现有 `electricity/hardware/data` 三类核心资源，先落地“化合物质量 -> hardware”的最小闭环：
 
-- `RefineCompound`（动作）：输入 `compound_mass_g`，输出元素库存。
-- `ManufactureHardware`（动作）：输入 Fe/Ni/Si/Cu 等元素库存，输出 `hardware`。
-- `SynthesizeData`（动作，可选）：输入稀有元素 + 电力，输出高质量 `data`。
-- `electricity` 作为加工消耗项，不直接由元素映射生成。
+- `RefineCompound`（动作）：输入 `owner + compound_mass_g`。
+- `CompoundRefined`（事件）：输出 `electricity_cost + hardware_output`。
+- `electricity` 作为加工消耗项；`hardware` 作为加工产物。
+- `data` 与高级工艺链（`ManufactureHardware/SynthesizeData`）留到后续迭代。
 
-最小守恒规则：
-- 质量守恒：输出元素总质量 `<=` 输入化合物质量。
-- 能量约束：精炼与制造必须消耗 `electricity`。
-- 账本约束：所有映射结果都落到 `ResourceDelta`，写入事件日志。
+参数与公式：
+- `WorldConfig.economy.refine_electricity_cost_per_kg`（默认 `2`）
+- `WorldConfig.economy.refine_hardware_yield_ppm`（默认 `1000`）
+- `electricity_cost = ceil(compound_mass_g / 1000) * refine_electricity_cost_per_kg`
+- `hardware_output = compound_mass_g * refine_hardware_yield_ppm / 1_000_000`
+
+最小守恒与约束：
+- 输入约束：`compound_mass_g > 0`。
+- 电力约束：`owner.electricity >= electricity_cost`，否则 `ActionRejected(InsufficientResource)`。
+- 产出约束：`hardware_output > 0`，否则 `ActionRejected(InvalidAmount)`。
+- 落账约束：成功动作必须追加 `CompoundRefined`，并在回放中重放扣电与加硬件。
 
 ### 跨 chunk 边界一致性规则（CG7 落地）
 - 归属规则：碎片按中心点归属 chunk；候选碎片生成时先做“本 chunk 内 spacing”，再做“邻接 chunk（26 邻域）校验”。
@@ -201,7 +208,7 @@
 - 同一 `world_seed + chunk_coord` 在不同运行中生成结果一致（碎片数量/资源账本一致）。
 - 未访问 chunk 不进入 `Generated` 状态。
 - 回放后 chunk 状态与资源账本与原运行一致。
-- 精炼/制造链路满足质量守恒与电力约束。
+- RefineCompound 链路满足电力约束与回放一致性。
 - 在默认预算下，批量生成不出现 OOM 或极端耗时。
 
 ## 世界生成步骤
@@ -227,6 +234,7 @@
 - **CG5**：场景接入起始 chunk 预生成 + 固定 20km×20km×10km 分块配置。
 - **CG6**：实现持久化与回放契约（ChunkGenerated 事件/快照字段/版本迁移）。
 - **CG7**：实现跨 chunk 边界一致性（邻块校验 + BoundaryReservation 保留/消费）。
+- **CG8**：实现经济资源映射最小闭环（`RefineCompound -> electricity/hardware`）。
 
 ## 风险
 - chunk 边界附近的最小间距约束需要考虑相邻 chunk，避免穿边重叠。

@@ -178,7 +178,9 @@ impl FragmentResourceBudget {
     }
 
     pub fn is_exhausted(&self) -> bool {
-        self.remaining_by_element_g.values().all(|value| *value <= 0)
+        self.remaining_by_element_g
+            .values()
+            .all(|value| *value <= 0)
     }
 }
 
@@ -242,13 +244,17 @@ impl ChunkResourceBudget {
     }
 
     pub fn is_exhausted(&self) -> bool {
-        self.remaining_by_element_g.values().all(|value| *value <= 0)
+        self.remaining_by_element_g
+            .values()
+            .all(|value| *value <= 0)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementBudgetError {
-    InvalidAmount { amount_g: i64 },
+    InvalidAmount {
+        amount_g: i64,
+    },
     Insufficient {
         kind: FragmentElementKind,
         requested_g: i64,
@@ -325,7 +331,9 @@ impl ResourceStock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StockError {
-    NegativeAmount { amount: i64 },
+    NegativeAmount {
+        amount: i64,
+    },
     Insufficient {
         kind: ResourceKind,
         requested: i64,
@@ -419,5 +427,9 @@ pub enum Action {
         to: ResourceOwner,
         kind: ResourceKind,
         amount: i64,
+    },
+    RefineCompound {
+        owner: ResourceOwner,
+        compound_mass_g: i64,
     },
 }

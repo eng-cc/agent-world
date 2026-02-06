@@ -7,13 +7,13 @@ use crate::models::RobotBodySpec;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 
+use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::fragment_physics::FragmentPhysicalProfile;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
-use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::types::{
     AgentId, AssetId, ChunkResourceBudget, ElementBudgetError, FacilityId, FragmentElementKind,
     FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, ResourceKind, ResourceStock,
-    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
+    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, PPM_BASE,
 };
 use super::ResourceOwner;
 
@@ -305,34 +305,34 @@ impl WorldModel {
         amount_g: i64,
     ) -> Result<i64, FragmentResourceError> {
         if amount_g <= 0 {
-            return Err(FragmentResourceError::Budget(ElementBudgetError::InvalidAmount {
-                amount_g,
-            }));
+            return Err(FragmentResourceError::Budget(
+                ElementBudgetError::InvalidAmount { amount_g },
+            ));
         }
 
         let location_id_owned = location_id.to_string();
         let (location_pos, location_remaining) = {
-            let location = self
-                .locations
-                .get(location_id)
-                .ok_or_else(|| FragmentResourceError::LocationNotFound {
+            let location = self.locations.get(location_id).ok_or_else(|| {
+                FragmentResourceError::LocationNotFound {
                     location_id: location_id_owned.clone(),
-                })?;
-            let budget = location
-                .fragment_budget
-                .as_ref()
-                .ok_or_else(|| FragmentResourceError::FragmentBudgetMissing {
+                }
+            })?;
+            let budget = location.fragment_budget.as_ref().ok_or_else(|| {
+                FragmentResourceError::FragmentBudgetMissing {
                     location_id: location_id_owned.clone(),
-                })?;
+                }
+            })?;
             (location.pos, budget.get_remaining(kind))
         };
 
         if location_remaining < amount_g {
-            return Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient {
-                kind,
-                requested_g: amount_g,
-                remaining_g: location_remaining,
-            }));
+            return Err(FragmentResourceError::Budget(
+                ElementBudgetError::Insufficient {
+                    kind,
+                    requested_g: amount_g,
+                    remaining_g: location_remaining,
+                },
+            ));
         }
 
         let coord = chunk_coord_of(location_pos, space).ok_or_else(|| {
@@ -347,26 +347,26 @@ impl WorldModel {
             .ok_or(FragmentResourceError::ChunkBudgetMissing { coord })?
             .get_remaining(kind);
         if chunk_remaining < amount_g {
-            return Err(FragmentResourceError::Budget(ElementBudgetError::Insufficient {
-                kind,
-                requested_g: amount_g,
-                remaining_g: chunk_remaining,
-            }));
+            return Err(FragmentResourceError::Budget(
+                ElementBudgetError::Insufficient {
+                    kind,
+                    requested_g: amount_g,
+                    remaining_g: chunk_remaining,
+                },
+            ));
         }
 
         {
-            let location = self
-                .locations
-                .get_mut(location_id)
-                .ok_or_else(|| FragmentResourceError::LocationNotFound {
+            let location = self.locations.get_mut(location_id).ok_or_else(|| {
+                FragmentResourceError::LocationNotFound {
                     location_id: location_id_owned.clone(),
-                })?;
-            let fragment_budget = location
-                .fragment_budget
-                .as_mut()
-                .ok_or_else(|| FragmentResourceError::FragmentBudgetMissing {
+                }
+            })?;
+            let fragment_budget = location.fragment_budget.as_mut().ok_or_else(|| {
+                FragmentResourceError::FragmentBudgetMissing {
                     location_id: location_id_owned.clone(),
-                })?;
+                }
+            })?;
             fragment_budget
                 .consume(kind, amount_g)
                 .map_err(FragmentResourceError::Budget)?;
@@ -402,6 +402,8 @@ pub struct WorldConfig {
     pub power: PowerConfig,
     /// Physics configuration (radiation/thermal/erosion).
     pub physics: PhysicsConfig,
+    /// Economy configuration (refine/manufacture minimal loop).
+    pub economy: EconomyConfig,
     /// Asteroid fragment belt generation configuration.
     pub asteroid_fragment: AsteroidFragmentConfig,
 }
@@ -414,6 +416,7 @@ impl Default for WorldConfig {
             space: SpaceConfig::default(),
             power: PowerConfig::default(),
             physics: PhysicsConfig::default(),
+            economy: EconomyConfig::default(),
             asteroid_fragment: AsteroidFragmentConfig::default(),
         }
     }
@@ -435,6 +438,7 @@ impl WorldConfig {
             self.power.transfer_max_distance_km = 0;
         }
         self.physics = self.physics.sanitized();
+        self.economy = self.economy.sanitized();
         self.asteroid_fragment = self.asteroid_fragment.sanitized();
         self
     }
@@ -519,6 +523,32 @@ impl PhysicsConfig {
         if self.erosion_rate < 0.0 {
             self.erosion_rate = 0.0;
         }
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EconomyConfig {
+    pub refine_electricity_cost_per_kg: i64,
+    pub refine_hardware_yield_ppm: i64,
+}
+
+impl Default for EconomyConfig {
+    fn default() -> Self {
+        Self {
+            refine_electricity_cost_per_kg: 2,
+            refine_hardware_yield_ppm: 1_000,
+        }
+    }
+}
+
+impl EconomyConfig {
+    pub fn sanitized(mut self) -> Self {
+        if self.refine_electricity_cost_per_kg < 0 {
+            self.refine_electricity_cost_per_kg = 0;
+        }
+        self.refine_hardware_yield_ppm = self.refine_hardware_yield_ppm.clamp(0, PPM_BASE);
         self
     }
 }

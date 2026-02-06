@@ -31,22 +31,22 @@ mod tests;
 pub use agent::{ActionResult, AgentBehavior, AgentDecision};
 pub use asteroid_fragment::generate_fragments;
 pub use chunking::{
-    chunk_bounds, chunk_coord_of, chunk_coords, chunk_grid_dims, chunk_seed, ChunkBounds, ChunkCoord,
-    CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM, CHUNK_SIZE_Z_CM,
+    chunk_bounds, chunk_coord_of, chunk_coords, chunk_grid_dims, chunk_seed, ChunkBounds,
+    ChunkCoord, CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM, CHUNK_SIZE_Z_CM,
 };
 pub use fragment_physics::{
-    infer_element_ppm, mass_grams_from_volume_density, CompoundComposition, CuboidSizeCm,
-    FragmentBlock, FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, GridPosCm,
-    synthesize_fragment_budget, synthesize_fragment_profile, CM3_PER_M3, MIN_BLOCK_EDGE_CM,
+    infer_element_ppm, mass_grams_from_volume_density, synthesize_fragment_budget,
+    synthesize_fragment_profile, CompoundComposition, CuboidSizeCm, FragmentBlock,
+    FragmentBlockField, FragmentCompoundKind, FragmentPhysicalProfile, GridPosCm, CM3_PER_M3,
+    MIN_BLOCK_EDGE_CM,
 };
 pub use init::{
-    build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig,
-    OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
-    WorldInitError, WorldInitReport,
+    build_world_model, initialize_kernel, AgentSpawnConfig, AsteroidFragmentInitConfig,
+    LocationSeedConfig, OriginLocationConfig, PowerPlantSeedConfig, PowerStorageSeedConfig,
+    WorldInitConfig, WorldInitError, WorldInitReport,
 };
-pub use scenario::{ScenarioSpecError, WorldScenario, WorldScenarioSpec};
-pub use kernel::{WorldKernel, Observation, ObservedAgent, ObservedLocation};
 pub use kernel::ChunkRuntimeConfig;
+pub use kernel::{Observation, ObservedAgent, ObservedLocation, WorldKernel};
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
 };
@@ -55,18 +55,19 @@ pub use runner::{
     AgentQuota, AgentRunner, AgentStats, AgentTickResult, RateLimitPolicy, RateLimitState,
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, SkippedReason,
 };
+pub use scenario::{ScenarioSpecError, WorldScenario, WorldScenarioSpec};
 pub use types::{
-    Action, ActionEnvelope, ActionId, AgentId, AssetId, ChunkResourceBudget,
-    DEFAULT_ELEMENT_RECOVERABILITY_PPM, ElementBudgetError, ElementComposition, FacilityId,
-    FragmentElementKind, FragmentResourceBudget, LocationId, ResourceKind, LocationProfile, MaterialKind, ResourceOwner,
-    ResourceStock, StockError, WorldEventId,
-    WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
-    CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
+    Action, ActionEnvelope, ActionId, AgentId, AssetId, ChunkResourceBudget, ElementBudgetError,
+    ElementComposition, FacilityId, FragmentElementKind, FragmentResourceBudget, LocationId,
+    LocationProfile, MaterialKind, ResourceKind, ResourceOwner, ResourceStock, StockError,
+    WorldEventId, WorldTime, CHUNK_GENERATION_SCHEMA_VERSION, CM_PER_KM,
+    DEFAULT_ELEMENT_RECOVERABILITY_PPM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+    DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
 pub use world_model::{
     Agent, Asset, AssetKind, AsteroidFragmentConfig, BoundaryReservation, ChunkState,
-    FragmentResourceError, Location, MaterialWeights,
-    PhysicsConfig, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
+    EconomyConfig, FragmentResourceError, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
+    ThermalStatus, WorldConfig, WorldModel,
 };
 
 // Re-export power system types
