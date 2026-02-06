@@ -5,6 +5,7 @@
 - [x] 3D viewer 最小闭环：Snapshot 初始化 + 事件更新 + 三节点场景可跑通
 - [x] 相机控制：旋转 / 平移 / 缩放
 - [x] 基础拾取：点击选中 Agent/Location 并在 UI 显示
+- [x] 3D 标签：Location 名称与 Agent ID 标签渲染
 
 ## 依赖
 - Viewer 协议与 live/offline server（`crates/agent_world/src/viewer`）
@@ -14,4 +15,4 @@
 
 ## 状态
 - 当前阶段：最小闭环与交互完成，待补齐更丰富渲染
-- 最近更新：完成相机控制与拾取交互（2026-02-06）
+- 最近更新：完成 3D 标签渲染（2026-02-06）

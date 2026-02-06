@@ -14,6 +14,7 @@ use agent_world::viewer::{
 };
 use bevy::prelude::*;
 use bevy::ecs::message::MessageReader;
+use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::window::PrimaryWindow;
 
@@ -28,6 +29,10 @@ const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
 const ORBIT_MIN_RADIUS: f32 = 4.0;
 const ORBIT_MAX_RADIUS: f32 = 300.0;
 const PICK_MAX_DISTANCE: f32 = 1.0;
+const LABEL_FONT_SIZE: f32 = 18.0;
+const LOCATION_LABEL_OFFSET: f32 = 0.8;
+const AGENT_LABEL_OFFSET: f32 = 0.6;
+const LABEL_SCALE: f32 = 0.03;
 
 fn main() {
     let addr = resolve_addr();
@@ -162,6 +167,7 @@ struct Viewer3dAssets {
     agent_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
     location_material: Handle<StandardMaterial>,
+    label_font: Handle<Font>,
 }
 
 #[derive(Resource, Default)]
@@ -441,7 +447,9 @@ fn setup_3d_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
+    let label_font = asset_server.load("fonts/DejaVuSans.ttf");
     let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
     let location_mesh = meshes.add(Cuboid::new(
         DEFAULT_LOCATION_SIZE,
@@ -464,6 +472,7 @@ fn setup_3d_scene(
         agent_material,
         location_mesh,
         location_material,
+        label_font,
     });
 
     let focus = Vec3::ZERO;
@@ -685,6 +694,7 @@ fn update_3d_scene(
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
     mut selection: ResMut<ViewerSelection>,
+    mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
     state: Res<ViewerState>,
 ) {
     let Some(snapshot) = state.snapshot.as_ref() else {
@@ -708,6 +718,10 @@ fn update_3d_scene(
         snapshot_time,
         &state.events,
     );
+
+    if let Some(current) = selection.current.as_ref() {
+        apply_entity_highlight(&mut transforms, current.entity);
+    }
 }
 
 fn update_ui(
@@ -1104,6 +1118,15 @@ fn spawn_location_entity(
             BaseScale(Vec3::ONE),
         ))
         .id();
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            format!("{name}"),
+            LOCATION_LABEL_OFFSET,
+            format!("label:location:{location_id}"),
+        );
+    });
     scene.location_entities.insert(location_id.to_string(), entity);
 }
 
@@ -1140,7 +1163,37 @@ fn spawn_agent_entity(
             BaseScale(Vec3::ONE),
         ))
         .id();
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            agent_id.to_string(),
+            AGENT_LABEL_OFFSET,
+            format!("label:agent:{agent_id}"),
+        );
+    });
     scene.agent_entities.insert(agent_id.to_string(), entity);
+}
+
+fn spawn_label(
+    parent: &mut ChildSpawnerCommands,
+    assets: &Viewer3dAssets,
+    text: String,
+    offset_y: f32,
+    name: String,
+) {
+    parent.spawn((
+        Text2d::new(text),
+        TextFont {
+            font: assets.label_font.clone(),
+            font_size: LABEL_FONT_SIZE,
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, offset_y, 0.0))
+            .with_scale(Vec3::splat(LABEL_SCALE)),
+        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+        Name::new(name),
+    ));
 }
 
 fn space_origin(space: &SpaceConfig) -> GeoPos {
@@ -1520,5 +1573,45 @@ mod tests {
         let distance = ray_point_distance(ray, point).expect("distance");
         assert!((distance - 1.0).abs() < 1e-6);
         assert!(ray_point_distance(ray, Vec3::new(-1.0, 0.0, 0.0)).is_none());
+    }
+
+    #[test]
+    fn spawn_location_entity_adds_label_text() {
+        let mut app = App::new();
+        app.add_systems(Update, spawn_label_test_system);
+        app.insert_resource(Viewer3dConfig::default());
+        app.insert_resource(Viewer3dScene::default());
+        app.insert_resource(Viewer3dAssets {
+            agent_mesh: Handle::default(),
+            agent_material: Handle::default(),
+            location_mesh: Handle::default(),
+            location_material: Handle::default(),
+            label_font: Handle::default(),
+        });
+
+        app.update();
+
+        let world = app.world_mut();
+        let mut query = world.query::<&Text2d>();
+        assert!(query.iter(world).next().is_some());
+    }
+
+    fn spawn_label_test_system(
+        mut commands: Commands,
+        config: Res<Viewer3dConfig>,
+        assets: Res<Viewer3dAssets>,
+        mut scene: ResMut<Viewer3dScene>,
+    ) {
+        let origin = GeoPos::new(0.0, 0.0, 0.0);
+        spawn_location_entity(
+            &mut commands,
+            &config,
+            &assets,
+            &mut scene,
+            origin,
+            "loc-1",
+            "Alpha",
+            GeoPos::new(0.0, 0.0, 0.0),
+        );
     }
 }

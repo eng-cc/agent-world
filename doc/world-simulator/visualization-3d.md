@@ -31,7 +31,7 @@
 
 ### 3D 实体
 - **Location**：静态标记（低亮度球/柱），附带名称标签。
-- **Agent**：动态标记（高亮球/小锥），可根据状态变色（如能量不足）。
+- **Agent**：动态标记（高亮球/小锥），显示 Agent ID 标签，可根据状态变色（如能量不足）。
 - **索引表**：维护 `HashMap<String, Entity>`（Agent/Location id → Bevy Entity）。
 
 ### 交互与控制
