@@ -414,6 +414,54 @@ fn observe_triggers_chunk_generation_for_agent_chunk() {
     assert!(after >= before);
 }
 
+
+#[test]
+fn observe_records_chunk_generated_event_with_observe_cause() {
+    let mut config = WorldConfig::default();
+    config.asteroid_fragment.base_density_per_km3 = 0.0;
+
+    let mut model = WorldModel::default();
+    for coord in chunk_coords(&config.space) {
+        model.chunks.insert(coord, ChunkState::Unexplored);
+    }
+
+    let location_pos = pos(100_000.0, 100_000.0);
+    model.locations.insert(
+        "origin".to_string(),
+        Location::new_with_profile(
+            "origin".to_string(),
+            "Origin".to_string(),
+            location_pos,
+            LocationProfile::default(),
+        ),
+    );
+    model.agents.insert(
+        "agent-0".to_string(),
+        Agent::new_with_power("agent-0", "origin", location_pos, &config.power),
+    );
+
+    let chunk_runtime = ChunkRuntimeConfig {
+        world_seed: 9,
+        asteroid_fragment_enabled: true,
+        asteroid_fragment_seed_offset: 1,
+        min_fragment_spacing_cm: None,
+    };
+    let mut kernel = WorldKernel::with_model_and_chunk_runtime(config, model, chunk_runtime);
+
+    let before = kernel.journal().len();
+    let _ = kernel.observe("agent-0").expect("observe");
+    assert!(kernel.journal().len() > before);
+    assert!(kernel.journal().iter().any(|event| {
+        matches!(
+            event.kind,
+            WorldEventKind::ChunkGenerated {
+                cause: ChunkGenerationCause::Observe,
+                ..
+            }
+        )
+    }));
+}
+
 #[test]
 fn kernel_closed_loop_example() {
     let config = WorldConfig {

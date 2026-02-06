@@ -1,10 +1,15 @@
 use crate::geometry::space_distance_cm;
 
-use super::WorldKernel;
-use super::types::{Observation, ObservedAgent, ObservedLocation, RejectReason};
-use super::super::init::{generate_chunk_fragments, AsteroidFragmentInitConfig, WorldInitConfig};
 use super::super::chunking::ChunkCoord;
+use super::super::init::{
+    generate_chunk_fragments, AsteroidFragmentInitConfig, WorldInitConfig,
+};
 use super::super::ChunkState;
+use super::types::{
+    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, RejectReason,
+    WorldEventKind,
+};
+use super::WorldKernel;
 
 impl WorldKernel {
     pub fn observe(&mut self, agent_id: &str) -> Result<Observation, RejectReason> {
@@ -14,7 +19,7 @@ impl WorldKernel {
             });
         };
         let agent_pos = agent.pos;
-        self.ensure_chunk_generated_at(agent_pos)?;
+        self.ensure_chunk_generated_at(agent_pos, ChunkGenerationCause::Observe)?;
 
         let Some(agent) = self.model.agents.get(agent_id) else {
             return Err(RejectReason::AgentNotFound {
@@ -65,6 +70,7 @@ impl WorldKernel {
     pub(super) fn ensure_chunk_generated_at(
         &mut self,
         pos: crate::geometry::GeoPos,
+        cause: ChunkGenerationCause,
     ) -> Result<(), RejectReason> {
         let Some(coord) = super::super::chunking::chunk_coord_of(pos, &self.config.space) else {
             return Ok(());
@@ -80,6 +86,10 @@ impl WorldKernel {
 
         if !self.chunk_runtime.asteroid_fragment_enabled {
             self.model.chunks.insert(coord, ChunkState::Generated);
+            self.model
+                .chunk_resource_budgets
+                .entry(coord)
+                .or_default();
             return Ok(());
         }
 
@@ -94,14 +104,25 @@ impl WorldKernel {
             ..WorldInitConfig::default()
         };
 
-        generate_chunk_fragments(
+        let summary = generate_chunk_fragments(
             &mut self.model,
             &self.config,
             &init,
             coord,
             Some(self.chunk_runtime.asteroid_fragment_seed()),
         )
-        .map_err(|_| reject_chunk_generation(coord))
+        .map_err(|_| reject_chunk_generation(coord))?;
+
+        self.record_event(WorldEventKind::ChunkGenerated {
+            coord: summary.coord,
+            seed: summary.seed,
+            fragment_count: summary.fragment_count,
+            block_count: summary.block_count,
+            chunk_budget: summary.chunk_budget,
+            cause,
+        });
+
+        Ok(())
     }
 }
 

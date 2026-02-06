@@ -1386,6 +1386,7 @@ mod tests {
 
         let snapshot = agent_world::simulator::WorldSnapshot {
             version: agent_world::simulator::SNAPSHOT_VERSION,
+            chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 42,
             config: agent_world::simulator::WorldConfig::default(),
             model,

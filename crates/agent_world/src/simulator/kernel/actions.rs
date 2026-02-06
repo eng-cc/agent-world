@@ -1,6 +1,6 @@
 use crate::geometry::space_distance_cm;
 
-use super::types::{RejectReason, WorldEventKind};
+use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
 use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM};
@@ -230,7 +230,7 @@ impl WorldKernel {
                         };
                     }
                 };
-                if let Err(reason) = self.ensure_chunk_generated_at(to_pos) {
+                if let Err(reason) = self.ensure_chunk_generated_at(to_pos, ChunkGenerationCause::Action) {
                     return WorldEventKind::ActionRejected {
                         reason,
                     };
@@ -338,7 +338,7 @@ impl WorldKernel {
                         };
                     }
                 };
-                if let Err(reason) = self.ensure_chunk_generated_at(location_pos) {
+                if let Err(reason) = self.ensure_chunk_generated_at(location_pos, ChunkGenerationCause::Action) {
                     return WorldEventKind::ActionRejected { reason };
                 }
                 let (emission, radius_cm) = match self.model.locations.get(&location_id) {
@@ -719,10 +719,10 @@ impl WorldKernel {
         to: &ResourceOwner,
     ) -> Result<(), RejectReason> {
         if let Some(pos) = self.owner_pos(from)? {
-            self.ensure_chunk_generated_at(pos)?;
+            self.ensure_chunk_generated_at(pos, ChunkGenerationCause::Action)?;
         }
         if let Some(pos) = self.owner_pos(to)? {
-            self.ensure_chunk_generated_at(pos)?;
+            self.ensure_chunk_generated_at(pos, ChunkGenerationCause::Action)?;
         }
         Ok(())
     }

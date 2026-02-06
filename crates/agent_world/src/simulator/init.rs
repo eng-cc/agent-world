@@ -7,7 +7,7 @@ use crate::geometry::GeoPos;
 use super::asteroid_fragment::generate_fragments;
 use super::chunking::{chunk_coord_of, chunk_coords, ChunkCoord};
 use super::fragment_physics::{synthesize_fragment_budget, synthesize_fragment_profile};
-use super::kernel::{ChunkRuntimeConfig, WorldKernel};
+use super::kernel::{ChunkGenerationCause, ChunkRuntimeConfig, WorldEventKind, WorldKernel};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
 use super::types::{
@@ -527,6 +527,63 @@ pub fn build_world_model(
     Ok((model, report))
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChunkGenerationSummary {
+    pub coord: ChunkCoord,
+    pub seed: u64,
+    pub fragment_count: u32,
+    pub block_count: u32,
+    pub chunk_budget: ChunkResourceBudget,
+}
+
+fn empty_chunk_generation_summary(coord: ChunkCoord, seed: u64) -> ChunkGenerationSummary {
+    ChunkGenerationSummary {
+        coord,
+        seed,
+        fragment_count: 0,
+        block_count: 0,
+        chunk_budget: ChunkResourceBudget::default(),
+    }
+}
+
+pub fn summarize_chunk_generation(
+    model: &WorldModel,
+    config: &WorldConfig,
+    coord: ChunkCoord,
+    seed: u64,
+) -> ChunkGenerationSummary {
+    let fragment_prefix = format!("frag-{}-{}-{}-", coord.x, coord.y, coord.z);
+    let mut fragment_count = 0u32;
+    let mut block_count = 0u32;
+
+    for location in model.locations.values() {
+        if !location.id.starts_with(&fragment_prefix) {
+            continue;
+        }
+        if chunk_coord_of(location.pos, &config.space) != Some(coord) {
+            continue;
+        }
+        fragment_count = fragment_count.saturating_add(1);
+        if let Some(profile) = &location.fragment_profile {
+            block_count = block_count.saturating_add(profile.blocks.blocks.len() as u32);
+        }
+    }
+
+    let chunk_budget = model
+        .chunk_resource_budgets
+        .get(&coord)
+        .cloned()
+        .unwrap_or_default();
+
+    ChunkGenerationSummary {
+        coord,
+        seed,
+        fragment_count,
+        block_count,
+        chunk_budget,
+    }
+}
+
 pub fn ensure_chunk_generated_at_positions(
     model: &mut WorldModel,
     config: &WorldConfig,
@@ -567,33 +624,33 @@ pub fn generate_chunk_fragments(
     init: &WorldInitConfig,
     coord: super::chunking::ChunkCoord,
     asteroid_fragment_seed: Option<u64>,
-) -> Result<(), WorldInitError> {
+) -> Result<ChunkGenerationSummary, WorldInitError> {
+    let base_seed = asteroid_fragment_seed
+        .unwrap_or_else(|| init.seed.wrapping_add(init.asteroid_fragment.seed_offset));
+    let seed = super::chunking::chunk_seed(base_seed, coord);
+
     if !init.asteroid_fragment.enabled {
         model.chunks.insert(coord, ChunkState::Generated);
         model
             .chunk_resource_budgets
             .insert(coord, ChunkResourceBudget::default());
-        return Ok(());
+        return Ok(summarize_chunk_generation(model, config, coord, seed));
     }
 
     if !model.chunks.contains_key(&coord) {
-        return Ok(());
+        return Ok(empty_chunk_generation_summary(coord, seed));
     }
     if model
         .chunks
         .get(&coord)
         .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted))
     {
-        return Ok(());
+        return Ok(summarize_chunk_generation(model, config, coord, seed));
     }
 
     let Some(bounds) = super::chunking::chunk_bounds(coord, &config.space) else {
-        return Ok(());
+        return Ok(empty_chunk_generation_summary(coord, seed));
     };
-
-    let base_seed = asteroid_fragment_seed
-        .unwrap_or_else(|| init.seed.wrapping_add(init.asteroid_fragment.seed_offset));
-    let seed = super::chunking::chunk_seed(base_seed, coord);
 
     let mut asteroid_fragment_config = config.asteroid_fragment.clone();
     if let Some(spacing) = init.asteroid_fragment.min_fragment_spacing_cm {
@@ -606,7 +663,7 @@ pub fn generate_chunk_fragments(
         model
             .chunk_resource_budgets
             .insert(coord, ChunkResourceBudget::default());
-        return Ok(());
+        return Ok(summarize_chunk_generation(model, config, coord, seed));
     }
 
     let fragments = generate_fragments(seed, &local_space, &asteroid_fragment_config);
@@ -640,7 +697,7 @@ pub fn generate_chunk_fragments(
 
     model.chunks.insert(coord, ChunkState::Generated);
     model.chunk_resource_budgets.insert(coord, chunk_budget);
-    Ok(())
+    Ok(summarize_chunk_generation(model, config, coord, seed))
 }
 
 fn chunk_local_space(bounds: super::chunking::ChunkBounds) -> SpaceConfig {
@@ -674,10 +731,38 @@ pub fn initialize_kernel(
         asteroid_fragment_seed_offset: init.asteroid_fragment.seed_offset,
         min_fragment_spacing_cm: init.asteroid_fragment.min_fragment_spacing_cm,
     };
-    Ok((
-        WorldKernel::with_model_and_chunk_runtime(config, model, chunk_runtime),
-        report,
-    ))
+    let mut kernel = WorldKernel::with_model_and_chunk_runtime(config, model, chunk_runtime);
+
+    if init.asteroid_fragment.enabled {
+        let base_seed = init.seed.wrapping_add(init.asteroid_fragment.seed_offset);
+        let generated_coords = kernel
+            .model()
+            .chunks
+            .iter()
+            .filter_map(|(coord, state)| {
+                if matches!(state, ChunkState::Generated | ChunkState::Exhausted) {
+                    Some(*coord)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for coord in generated_coords {
+            let seed = super::chunking::chunk_seed(base_seed, coord);
+            let summary = summarize_chunk_generation(kernel.model(), kernel.config(), coord, seed);
+            kernel.record_event(WorldEventKind::ChunkGenerated {
+                coord: summary.coord,
+                seed: summary.seed,
+                fragment_count: summary.fragment_count,
+                block_count: summary.block_count,
+                chunk_budget: summary.chunk_budget,
+                cause: ChunkGenerationCause::Init,
+            });
+        }
+    }
+
+    Ok((kernel, report))
 }
 
 fn center_pos(space: &super::world_model::SpaceConfig) -> GeoPos {

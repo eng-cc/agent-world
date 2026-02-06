@@ -6,9 +6,12 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use super::kernel::WorldEvent;
 use super::kernel::ChunkRuntimeConfig;
-use super::types::{ActionEnvelope, ActionId, WorldEventId, WorldTime, JOURNAL_VERSION, SNAPSHOT_VERSION};
+use super::kernel::WorldEvent;
+use super::types::{
+    ActionEnvelope, ActionId, WorldEventId, WorldTime, CHUNK_GENERATION_SCHEMA_VERSION,
+    JOURNAL_VERSION, SNAPSHOT_VERSION,
+};
 use super::world_model::{WorldConfig, WorldModel};
 
 // ============================================================================
@@ -23,10 +26,24 @@ fn default_journal_version() -> u32 {
     JOURNAL_VERSION
 }
 
+fn default_chunk_generation_schema_version() -> u32 {
+    CHUNK_GENERATION_SCHEMA_VERSION
+}
+
+fn is_supported_snapshot_version(version: u32) -> bool {
+    version == SNAPSHOT_VERSION || version == SNAPSHOT_VERSION.saturating_sub(1)
+}
+
+fn is_supported_journal_version(version: u32) -> bool {
+    version == JOURNAL_VERSION || version == JOURNAL_VERSION.saturating_sub(1)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldSnapshot {
     #[serde(default = "default_snapshot_version")]
     pub version: u32,
+    #[serde(default = "default_chunk_generation_schema_version")]
+    pub chunk_generation_schema_version: u32,
     pub time: WorldTime,
     pub config: WorldConfig,
     pub model: WorldModel,
@@ -60,7 +77,7 @@ impl WorldSnapshot {
     }
 
     pub(crate) fn validate_version(&self) -> Result<(), PersistError> {
-        if self.version == SNAPSHOT_VERSION {
+        if is_supported_snapshot_version(self.version) {
             Ok(())
         } else {
             Err(PersistError::UnsupportedVersion {
@@ -112,7 +129,7 @@ impl WorldJournal {
     }
 
     pub(crate) fn validate_version(&self) -> Result<(), PersistError> {
-        if self.version == JOURNAL_VERSION {
+        if is_supported_journal_version(self.version) {
             Ok(())
         } else {
             Err(PersistError::UnsupportedVersion {

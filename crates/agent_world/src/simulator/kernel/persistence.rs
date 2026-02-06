@@ -4,12 +4,15 @@ use std::path::Path;
 
 use super::WorldKernel;
 use super::super::persist::{PersistError, WorldJournal, WorldSnapshot};
-use super::super::types::{JOURNAL_VERSION, SNAPSHOT_VERSION};
+use super::super::types::{
+    CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, SNAPSHOT_VERSION,
+};
 
 impl WorldKernel {
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
             version: SNAPSHOT_VERSION,
+            chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
             time: self.time,
             config: self.config.clone(),
             model: self.model.clone(),

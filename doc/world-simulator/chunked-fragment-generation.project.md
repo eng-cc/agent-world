@@ -10,7 +10,11 @@
 - [x] CG3.3 将块状物理与化合物模型接入实际碎片生成流程
 - [x] CG4 实现资源预算一次性生成（total/remaining）与开采扣减守恒
 - [x] CG5 场景接入：起始 chunk 预生成 + 20km×20km×10km 分块配置
-- [ ] CG6 实现持久化与回放契约（ChunkGenerated 事件/快照字段/版本迁移）
+- [x] CG6.1 定义 ChunkGenerated 事件结构与触发点（init/observe/action）
+- [x] CG6.2 扩展快照字段 chunk_generation_schema_version 并提供默认迁移
+- [x] CG6.3 回放接入 ChunkGenerated 事件并执行摘要一致性校验
+- [x] CG6.4 补充持久化/回放/迁移单元测试
+- [x] CG6.5 回顾并更新设计文档/项目文档/任务日志，运行测试并提交 git
 - [ ] CG7 实现跨 chunk 边界一致性（邻块校验/边界保留）
 - [ ] CG8 实现经济资源映射最小闭环（RefineCompound -> hardware/electricity 约束）
 - [ ] CG9 增加性能预算与降级策略（fragments/blocks 上限）
@@ -20,9 +24,10 @@
 - `crates/agent_world/src/simulator/chunking.rs`
 - `crates/agent_world/src/simulator/asteroid_fragment.rs`
 - `crates/agent_world/src/simulator/init.rs`
+- `crates/agent_world/src/simulator/kernel/*`
+- `crates/agent_world/src/simulator/persist.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
-- 场景加载与初始化流程（`scenario.rs` / `WorldInitConfig`）
 
 ## 状态
-- 当前阶段：CG5（实现完成）
-- 下一阶段：CG6（持久化与回放契约：ChunkGenerated 事件/快照字段/版本迁移）
+- 当前阶段：CG6（实现完成）
+- 下一阶段：CG7（跨 chunk 边界一致性）

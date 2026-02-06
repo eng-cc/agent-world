@@ -1,10 +1,11 @@
 use crate::geometry::GeoPos;
 use serde::{Deserialize, Serialize};
 
+use super::super::chunking::ChunkCoord;
 use super::super::power::PowerEvent;
 use super::super::types::{
-    AgentId, FacilityId, LocationId, LocationProfile, ResourceKind, ResourceOwner, WorldEventId,
-    WorldTime,
+    AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
+    ResourceOwner, WorldEventId, WorldTime,
 };
 
 // ============================================================================
@@ -82,11 +83,27 @@ pub enum WorldEventKind {
         amount: i64,
         available: i64,
     },
+    ChunkGenerated {
+        coord: ChunkCoord,
+        seed: u64,
+        fragment_count: u32,
+        block_count: u32,
+        chunk_budget: ChunkResourceBudget,
+        cause: ChunkGenerationCause,
+    },
     ActionRejected {
         reason: RejectReason,
     },
     // Power system events
     Power(PowerEvent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChunkGenerationCause {
+    Init,
+    Observe,
+    Action,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

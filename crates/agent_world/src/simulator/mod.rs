@@ -61,7 +61,7 @@ pub use types::{
     FragmentElementKind, FragmentResourceBudget, LocationId, ResourceKind, LocationProfile, MaterialKind, ResourceOwner,
     ResourceStock, StockError, WorldEventId,
     WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
-    JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
+    CHUNK_GENERATION_SCHEMA_VERSION, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
 pub use world_model::{
     Agent, Asset, AssetKind, AsteroidFragmentConfig, ChunkState, FragmentResourceError, Location, MaterialWeights,
@@ -75,4 +75,4 @@ pub use power::{
 };
 
 // Re-export event types from kernel
-pub use kernel::{RejectReason, WorldEvent, WorldEventKind};
+pub use kernel::{ChunkGenerationCause, RejectReason, WorldEvent, WorldEventKind};

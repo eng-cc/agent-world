@@ -4,6 +4,11 @@ use super::super::persist::PersistError;
 use super::super::power::PowerEvent;
 use super::super::types::{ResourceKind, ResourceOwner, StockError};
 use super::super::world_model::Location;
+use super::super::init::{
+    generate_chunk_fragments, summarize_chunk_generation, AsteroidFragmentInitConfig,
+    WorldInitConfig,
+};
+use super::super::ChunkState;
 
 impl WorldKernel {
     pub(super) fn apply_event(&mut self, event: &WorldEvent) -> Result<(), PersistError> {
@@ -153,6 +158,71 @@ impl WorldKernel {
                     .map_err(|err| PersistError::ReplayConflict {
                         message: format!("failed to apply radiation harvest: {err:?}"),
                     })?;
+            }
+            WorldEventKind::ChunkGenerated {
+                coord,
+                seed,
+                fragment_count,
+                block_count,
+                chunk_budget,
+                ..
+            } => {
+                if !self.model.chunks.contains_key(coord) {
+                    self.model.chunks.insert(*coord, ChunkState::Unexplored);
+                }
+
+                let actual = if self.chunk_runtime.asteroid_fragment_enabled {
+                    let init = WorldInitConfig {
+                        seed: self.chunk_runtime.world_seed,
+                        asteroid_fragment: AsteroidFragmentInitConfig {
+                            enabled: self.chunk_runtime.asteroid_fragment_enabled,
+                            seed_offset: self.chunk_runtime.asteroid_fragment_seed_offset,
+                            min_fragment_spacing_cm: self.chunk_runtime.min_fragment_spacing_cm,
+                            bootstrap_chunks: Vec::new(),
+                        },
+                        ..WorldInitConfig::default()
+                    };
+                    generate_chunk_fragments(
+                        &mut self.model,
+                        &self.config,
+                        &init,
+                        *coord,
+                        Some(self.chunk_runtime.asteroid_fragment_seed()),
+                    )
+                    .map_err(|err| PersistError::ReplayConflict {
+                        message: format!(
+                            "chunk generation failed during replay at ({}, {}, {}): {err:?}",
+                            coord.x, coord.y, coord.z
+                        ),
+                    })?
+                } else {
+                    self.model.chunks.insert(*coord, ChunkState::Generated);
+                    self.model.chunk_resource_budgets.entry(*coord).or_default();
+                    summarize_chunk_generation(&self.model, &self.config, *coord, *seed)
+                };
+
+                if actual.seed != *seed
+                    || actual.fragment_count != *fragment_count
+                    || actual.block_count != *block_count
+                    || actual.chunk_budget != *chunk_budget
+                {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "chunk replay mismatch at ({}, {}, {}): expected seed={}, fragments={}, blocks={}, budget={:?}; actual seed={}, fragments={}, blocks={}, budget={:?}",
+                            coord.x,
+                            coord.y,
+                            coord.z,
+                            seed,
+                            fragment_count,
+                            block_count,
+                            chunk_budget,
+                            actual.seed,
+                            actual.fragment_count,
+                            actual.block_count,
+                            actual.chunk_budget
+                        ),
+                    });
+                }
             }
             WorldEventKind::ActionRejected { .. } => {}
             WorldEventKind::Power(power_event) => match power_event {

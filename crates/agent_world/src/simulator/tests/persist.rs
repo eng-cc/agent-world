@@ -161,6 +161,128 @@ fn journal_version_validation_rejects_unknown() {
     ));
 }
 
+
+#[test]
+fn snapshot_version_validation_accepts_legacy_and_defaults_chunk_schema() {
+    let kernel = WorldKernel::new();
+    let snapshot = kernel.snapshot();
+
+    let mut value: serde_json::Value = serde_json::from_str(
+        &snapshot.to_json().expect("snapshot to json"),
+    )
+    .expect("parse snapshot json");
+    value["version"] = serde_json::Value::from(SNAPSHOT_VERSION.saturating_sub(1));
+    if let serde_json::Value::Object(map) = &mut value {
+        map.remove("chunk_generation_schema_version");
+    }
+
+    let migrated = WorldSnapshot::from_json(
+        &serde_json::to_string(&value).expect("serialize migrated snapshot"),
+    )
+    .expect("load legacy snapshot");
+
+    assert_eq!(migrated.version, SNAPSHOT_VERSION.saturating_sub(1));
+    assert_eq!(
+        migrated.chunk_generation_schema_version,
+        CHUNK_GENERATION_SCHEMA_VERSION
+    );
+}
+
+#[test]
+fn journal_version_validation_accepts_legacy() {
+    let mut journal = WorldJournal::default();
+    journal.version = JOURNAL_VERSION.saturating_sub(1);
+    assert!(journal.validate_version().is_ok());
+}
+
+#[test]
+fn initialize_kernel_records_chunk_generated_init_events() {
+    let mut config = WorldConfig::default();
+    config.asteroid_fragment.base_density_per_km3 = 0.0;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 41;
+    init.agents.count = 1;
+
+    let (kernel, _) = initialize_kernel(config, init).expect("kernel init");
+    let init_chunk_events = kernel
+        .journal()
+        .iter()
+        .filter(|event| {
+            matches!(
+                event.kind,
+                WorldEventKind::ChunkGenerated {
+                    cause: ChunkGenerationCause::Init,
+                    ..
+                }
+            )
+        })
+        .count();
+
+    assert!(init_chunk_events > 0);
+}
+
+#[test]
+fn replay_from_snapshot_rebuilds_and_validates_chunk_generated_events() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 0;
+    config.asteroid_fragment.base_density_per_km3 = 0.0;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 97;
+    init.agents.count = 1;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let snapshot = kernel.snapshot();
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-far".to_string(),
+        name: "far".to_string(),
+        pos: GeoPos {
+            x_cm: 100_000.0,
+            y_cm: 100_000.0,
+            z_cm: 0.0,
+        },
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("register far location");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-0".to_string(),
+        to: "loc-far".to_string(),
+    });
+    kernel.step().expect("move to far location");
+
+    let journal = kernel.journal_snapshot();
+    let chunk_event_index = journal
+        .events
+        .iter()
+        .enumerate()
+        .skip(snapshot.journal_len)
+        .find_map(|(idx, event)| match event.kind {
+            WorldEventKind::ChunkGenerated {
+                cause: ChunkGenerationCause::Action,
+                ..
+            } => Some(idx),
+            _ => None,
+        })
+        .expect("action chunk generation event exists");
+
+    let replayed = WorldKernel::replay_from_snapshot(snapshot.clone(), journal.clone())
+        .expect("replay with chunk-generated event");
+    assert_eq!(replayed.model(), kernel.model());
+
+    let mut tampered = journal;
+    if let WorldEventKind::ChunkGenerated { block_count, .. } =
+        &mut tampered.events[chunk_event_index].kind
+    {
+        *block_count = block_count.saturating_add(1);
+    }
+
+    let err = WorldKernel::replay_from_snapshot(snapshot, tampered).unwrap_err();
+    assert!(matches!(err, PersistError::ReplayConflict { .. }));
+}
+
 #[test]
 fn kernel_replay_from_snapshot() {
     let config = WorldConfig {

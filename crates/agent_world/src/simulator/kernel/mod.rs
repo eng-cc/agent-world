@@ -42,7 +42,8 @@ impl ChunkRuntimeConfig {
 }
 
 pub use types::{
-    Observation, ObservedAgent, ObservedLocation, RejectReason, WorldEvent, WorldEventKind,
+    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, RejectReason,
+    WorldEvent, WorldEventKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

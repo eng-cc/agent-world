@@ -75,6 +75,7 @@
 - [x] 接入碎片块状物理画像与化合物组成生成（体积/密度/质量 + compounds/elements）
 - [x] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
 - [x] 场景接入起始 chunk 预生成与固定 20km×20km×10km 分块配置
+- [x] 接入 ChunkGenerated 事件与持久化/回放校验（CG6：init/observe/action + 版本迁移）
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
@@ -84,4 +85,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：场景接入起始 chunk 预生成与固定分块配置（2026-02-06）
+- 最近更新：接入 ChunkGenerated 事件与持久化/回放校验（2026-02-06）

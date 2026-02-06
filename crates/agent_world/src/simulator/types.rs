@@ -22,8 +22,9 @@ pub type ActionId = u64;
 pub const CM_PER_KM: i64 = 100_000;
 pub const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 pub const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
-pub const SNAPSHOT_VERSION: u32 = 2;
-pub const JOURNAL_VERSION: u32 = 2;
+pub const SNAPSHOT_VERSION: u32 = 3;
+pub const JOURNAL_VERSION: u32 = 3;
+pub const CHUNK_GENERATION_SCHEMA_VERSION: u32 = 1;
 pub const PPM_BASE: i64 = 1_000_000;
 pub const DEFAULT_ELEMENT_RECOVERABILITY_PPM: i64 = 850_000;
 

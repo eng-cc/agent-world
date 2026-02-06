@@ -140,25 +140,31 @@
 - 统一顺序：`ensure_chunk_generated -> action validation -> action apply -> event append`。
 - 一致性要求：同一 tick 内多个 Agent 命中同一未生成 chunk 时，只允许一次成功生成，其余请求复用结果。
 
-### 持久化与回放契约（M2 对齐）
+### 持久化与回放契约（M2 对齐，CG6 落地）
 
-#### 快照新增字段（建议）
-- `ChunkIndexSnapshot`
-  - `states: BTreeMap<ChunkCoord, ChunkState>`
-  - `version: u32`（chunk 生成规则版本）
-  - `generated_count: u32`
-- `ChunkResourceBudgetSnapshot`
-  - 每个已生成 chunk 的 `total/remaining` 账本。
+#### 快照字段（落地）
+- `WorldSnapshot.chunk_generation_schema_version: u32`
+  - 标记 chunk 生成/校验契约版本（与 snapshot/journal 主版本独立）。
+- `WorldSnapshot.chunk_runtime`
+  - 持久化 `world_seed / asteroid_fragment_enabled / seed_offset / spacing`，保证回放时可重建同一生成上下文。
+- `WorldModel.chunks + WorldModel.chunk_resource_budgets`
+  - 快照内保留完整 chunk 状态与资源账本（`total/remaining`）。
 
-#### 事件新增类型（建议）
-- `ChunkGenerationRequested { coord, cause }`
-- `ChunkGenerated { coord, seed, fragment_count, block_count }`
-- `ChunkGenerationSkipped { coord, reason }`
+#### 事件新增类型（落地）
+- `ChunkGenerated {`
+  - `coord: ChunkCoord`
+  - `seed: u64`
+  - `fragment_count: u32`
+  - `block_count: u32`
+  - `chunk_budget: ChunkResourceBudget`
+  - `cause: ChunkGenerationCause`（`init` / `observe` / `action`）
+- `}`
 
-#### 回放规则
-- 回放时以 journal 的 `ChunkGenerated` 为准，不再重新随机生成。
-- 若缺失 `ChunkGenerated` 但存在后续资源扣减事件，视为数据不一致并中止回放。
-- 分叉回放时保留历史 chunk 状态，新增生成事件仅追加在分叉点之后。
+#### 回放规则（落地）
+- 回放遇到 `ChunkGenerated` 时，使用事件中的 `coord + seed` 与快照中的 `chunk_runtime` 重放该 chunk 生成。
+- 回放后必须校验 `fragment_count / block_count / chunk_budget` 与事件载荷一致；不一致即 `ReplayConflict`。
+- `snapshot.version=2` / `journal.version=2` 允许迁移到当前版本 `v3`（CG6），并补齐 `chunk_generation_schema_version` 默认值。
+- 其他未知版本保持拒绝加载，避免无声破坏账本一致性。
 
 ### 经济资源映射契约（与 M4 对齐）
 为接入现有 `electricity/hardware/data` 三类核心资源，定义“化合物/元素 -> 经济资源”的最小精炼链：
@@ -208,17 +214,20 @@
 9. **元素映射阶段**：由化合物组成推导元素统计分布。
 10. **资源定量阶段**：写入碎片与 chunk 的 `total/remaining` 资源账本。
 11. **提交与可见阶段**：写入 `WorldModel` 与 chunk 索引，状态切到 `Generated`。
-12. **开采扣减阶段**：开采只减少 `remaining`，不重算 `total`。
+12. **事件落账阶段**：追加 `ChunkGenerated`（含 seed 与校验摘要）。
+13. **开采扣减阶段**：开采只减少 `remaining`，不重算 `total`。
 
 ## 里程碑
 - **CG1**：完成分块生成与元素/化合物池设计文档、项目管理文档。
 - **CG2**：实现 chunk 索引与按探索触发生成（最小可用闭环）。
 - **CG3**：实现碎片块状物理模型（体积/密度/质量）与化合物组成。
 - **CG4**：实现资源预算一次性写入与开采扣减守恒。
-- **CG5**：补充回放一致性、场景联测与兼容迁移策略。
+- **CG5**：场景接入起始 chunk 预生成 + 固定 20km×20km×10km 分块配置。
+- **CG6**：实现持久化与回放契约（ChunkGenerated 事件/快照字段/版本迁移）。
 
 ## 风险
 - chunk 边界附近的最小间距约束需要考虑相邻 chunk，避免穿边重叠。
 - block 粒度提升后，生成与序列化成本上升，需控制每碎片 block 数量上限。
 - 化合物到元素映射若调整，会影响旧存档资源账本一致性。
 - 质量公式采用整数近似时可能产生累计误差，需要统一舍入策略。
+- ChunkGenerated 事件体积随 chunk 密度上升而增大，需结合快照频率控制日志膨胀。
