@@ -38,6 +38,27 @@ fn init_default_fragment_radius_matches_story_scale() {
 }
 
 #[test]
+fn init_default_fragment_radiation_distribution_is_conservative() {
+    let fragment = WorldConfig::default().asteroid_fragment;
+    let total = fragment.material_weights.total();
+    assert!(total > 0);
+
+    let high_radiation_share =
+        fragment.material_weights.metal + fragment.material_weights.composite;
+    assert!(high_radiation_share * 100 <= total * 15);
+    assert!(fragment.radiation_emission_scale <= 1e-12);
+
+    assert!(
+        fragment.material_radiation_factors.metal_bps
+            > fragment.material_radiation_factors.silicate_bps
+    );
+    assert!(
+        fragment.material_radiation_factors.composite_bps
+            >= fragment.material_radiation_factors.carbon_bps
+    );
+}
+
+#[test]
 fn init_is_deterministic_with_seed() {
     let mut config = WorldConfig::default();
     config.asteroid_fragment.base_density_per_km3 = 0.5;

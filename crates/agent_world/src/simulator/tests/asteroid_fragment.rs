@@ -93,3 +93,75 @@ fn asteroid_fragment_emission_scales_with_radius_exponent() {
 
     assert!(large_emission >= small_emission * 7);
 }
+
+#[test]
+fn asteroid_fragment_default_mix_is_conservative_for_high_radiation_materials() {
+    let config = AsteroidFragmentConfig::default();
+    let total = config.material_weights.total();
+    assert!(total > 0);
+
+    let high_radiation_share = config.material_weights.metal + config.material_weights.composite;
+    assert!(high_radiation_share * 100 <= total * 15);
+    assert!(config.radiation_emission_scale <= 1e-12);
+}
+
+#[test]
+fn asteroid_fragment_default_calibration_keeps_small_silicate_non_extreme() {
+    let space = SpaceConfig {
+        width_cm: 100_000,
+        depth_cm: 100_000,
+        height_cm: 100_000,
+    };
+    let mut config = AsteroidFragmentConfig::default();
+    config.base_density_per_km3 = 20.0;
+    config.voxel_size_km = 1;
+    config.cluster_noise = 0.0;
+    config.layer_scale_height_km = 0.0;
+    config.min_fragment_spacing_cm = 0;
+    config.radius_min_cm = 25_000;
+    config.radius_max_cm = 25_000;
+    config.material_weights = MaterialWeights {
+        silicate: 1,
+        metal: 0,
+        ice: 0,
+        carbon: 0,
+        composite: 0,
+    };
+
+    let fragments = generate_fragments(17, &space, &config);
+    assert!(!fragments.is_empty());
+
+    let emission = fragments[0].profile.radiation_emission_per_tick;
+    assert!(emission > 0);
+    assert!(emission <= 50);
+}
+
+#[test]
+fn asteroid_fragment_default_calibration_preserves_high_radiation_outliers() {
+    let space = SpaceConfig {
+        width_cm: 100_000,
+        depth_cm: 100_000,
+        height_cm: 100_000,
+    };
+    let mut config = AsteroidFragmentConfig::default();
+    config.base_density_per_km3 = 20.0;
+    config.voxel_size_km = 1;
+    config.cluster_noise = 0.0;
+    config.layer_scale_height_km = 0.0;
+    config.min_fragment_spacing_cm = 0;
+    config.radius_min_cm = 500_000;
+    config.radius_max_cm = 500_000;
+    config.material_weights = MaterialWeights {
+        silicate: 0,
+        metal: 1,
+        ice: 0,
+        carbon: 0,
+        composite: 0,
+    };
+
+    let fragments = generate_fragments(29, &space, &config);
+    assert!(!fragments.is_empty());
+
+    let emission = fragments[0].profile.radiation_emission_per_tick;
+    assert!(emission > 50);
+}

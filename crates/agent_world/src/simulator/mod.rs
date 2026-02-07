@@ -72,8 +72,8 @@ pub use types::{
 };
 pub use world_model::{
     Agent, Asset, AssetKind, AsteroidFragmentConfig, BoundaryReservation, ChunkState,
-    EconomyConfig, FragmentResourceError, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
-    ThermalStatus, WorldConfig, WorldModel,
+    EconomyConfig, FragmentResourceError, Location, MaterialRadiationFactors, MaterialWeights,
+    PhysicsConfig, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };
 
 // Re-export power system types

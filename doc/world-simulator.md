@@ -12,7 +12,7 @@
 - 不追求物理写实：只在抽象层表达空间约束（位置、距离、连通性、移动成本），不模拟精细连续物理与复杂动力学。
 - 为方便模拟，空间长度的最小单位为 **1 cm**：世界中所有“长度/距离/尺寸”类数值都应以 cm 为离散粒度（必要时在输出层再换算 m/km）。
 - 每个 Agent 的初始形态为**身高约 1 m 的人形机器人**（作为默认机体规格，可被升级/改造扩展）。
-- 破碎小行星带由直径 **500 m-10 km** 的小行星碎片构成；**多数碎片富含放射性**。
+- 破碎小行星带由直径 **500 m-10 km** 的小行星碎片构成；默认为**多数可采（低至中等放射性）+ 少量高放射性离群体**。
 - 硅基生命依赖放射性物质供能：通过吸收辐射产生电力；每个 Agent 出厂自带“辐射能→电能”转换模块（规则层抽象为“辐射采集 → 电力资源”）。
 - **自由沙盒**：Agent 可以把“新事物”封装为 Rust/WASM 模块动态接入世界，模块仅通过事件/接口与外部交互。
 - **LLM 驱动**：实际运行中 Agent 的决策由 LLM 驱动，推理服务采用 **OpenAI 兼容 API** 形式提供（支持配置 endpoint/model/鉴权/预算策略）。
@@ -99,6 +99,10 @@
   - `radiation_floor`：默认 1 单位/ tick；范围 0~10（解释为外部背景通量强度）。
   - `radiation_floor_cap_per_tick`：默认 5 单位/ tick；范围 0~50（建议不高于 `max_harvest_per_tick`）。
   - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
+  - `radiation_emission_scale`：默认 1e-12（碎片发射尺度系数）；范围 1e-13~1e-8。
+  - `radiation_radius_exponent`：默认 3.0（半径标度指数）；范围 2.0~3.5。
+  - `material_weights`：默认 `52/8/18/18/4`（silicate/metal/ice/carbon/composite）；用于控制材质占比。
+  - `material_radiation_factors`：默认 `7_500/13_000/4_500/6_000/11_000` bps；范围 0~50_000 bps。
   - `max_harvest_per_tick`：默认 50；范围 1~500（受热/面积限制）。
   - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
   - `thermal_dissipation`：默认 5（散热基准系数）；范围 1~50。
@@ -197,8 +201,8 @@
     `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`,
     `thermal_dissipation_gradient_bps`, `heat_factor`, `erosion_rate`）
   - `asteroid_fragment`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
-    `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`,
-    `min_fragment_spacing_cm`, `material_weights`）
+    `layer_scale_height_km`, `size_powerlaw_q`, `radiation_emission_scale`, `radiation_radius_exponent`,
+    `radius_min_cm`, `radius_max_cm`, `min_fragment_spacing_cm`, `material_weights`, `material_radiation_factors`）
 
 ### M1 行动规则（初版）
 - **规则实现**：以下规则由 Rule Modules 以 WASM 实现，内核仅保留位置/资源/基础物理不变量校验。
@@ -363,7 +367,7 @@
   - 已完成：默认配置更新为 `radius_min_cm=25_000`、`radius_max_cm=500_000`（对应直径 500m-10km）。
   - 验收：`doc/*`、`README`、`WorldConfig::default().asteroid_fragment` 三处一致。
 - [x] **C2 辐射源标度修订**：将发射强度与碎片尺度的关系从线性近似升级为可配置标度（建议默认接近体积标度）。
-  - 已完成：`AsteroidFragmentConfig` 新增 `radiation_emission_scale` 与 `radiation_radius_exponent`，默认 `1e-9` 与 `3.0`。
+  - 已完成：`AsteroidFragmentConfig` 新增 `radiation_emission_scale` 与 `radiation_radius_exponent`（初版默认 `1e-9` 与 `3.0`，后续在 C8 校准默认值）。
   - 已完成：`estimate_radiation_emission` 改为 `emission = radius_cm^exponent * scale * material_factor`。
   - 验收：新增单测覆盖“半径翻倍时发射显著上升（立方标度）”。
 - [x] **C3 采集场模型对齐**：将采集可用辐射从“局部近似”扩展为“近邻源 + 背景场”并包含距离项。
@@ -395,8 +399,11 @@
   - 验收：高热状态下散热更快，低热状态下散热更慢；不会出现负热量。
 
 ### P2（增强可信度）
-- [ ] **C8 成分与放射性分布校准**：降低极端高放射性成分的默认占比，保留场景覆盖能力。
-  - 验收：默认分布与“多数可采但非普遍高危”叙事一致。
+- [x] **C8 成分与放射性分布校准**：降低极端高放射性成分的默认占比，保留场景覆盖能力。
+  - 已完成：`material_weights` 默认调整为 `52/8/18/18/4`（silicate/metal/ice/carbon/composite），高放射候选（metal+composite）占比降至 12%。
+  - 已完成：新增 `material_radiation_factors`（bps）并将默认 `radiation_emission_scale` 校准为 `1e-12`，默认场景由“普遍高辐射”回归到“多数可采但非普遍高危”。
+  - 已完成：新增测试覆盖“默认占比上限”“小尺寸硅酸盐非极端发射”“高辐射离群体仍可出现”三条路径。
+  - 验收：默认分布与“多数可采但非普遍高危”叙事一致，同时保留高风险场景可配置能力。
 - [ ] **C9 物理参数表固化**：在文档中固定每个关键参数的单位、推荐范围、调参影响。
   - 验收：新增参数时必须附带量纲与范围说明。
 

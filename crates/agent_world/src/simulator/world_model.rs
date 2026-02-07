@@ -607,6 +607,7 @@ pub struct AsteroidFragmentConfig {
     pub max_blocks_per_fragment: i64,
     pub max_blocks_per_chunk: i64,
     pub material_weights: MaterialWeights,
+    pub material_radiation_factors: MaterialRadiationFactors,
 }
 
 impl Default for AsteroidFragmentConfig {
@@ -617,7 +618,7 @@ impl Default for AsteroidFragmentConfig {
             cluster_noise: 0.5,
             layer_scale_height_km: 2.0,
             size_powerlaw_q: 3.0,
-            radiation_emission_scale: 1e-9,
+            radiation_emission_scale: 1e-12,
             radiation_radius_exponent: 3.0,
             radius_min_cm: 25_000,
             radius_max_cm: 500_000,
@@ -626,6 +627,7 @@ impl Default for AsteroidFragmentConfig {
             max_blocks_per_fragment: 64,
             max_blocks_per_chunk: 120_000,
             material_weights: MaterialWeights::default(),
+            material_radiation_factors: MaterialRadiationFactors::default(),
         }
     }
 }
@@ -672,6 +674,7 @@ impl AsteroidFragmentConfig {
             self.max_blocks_per_chunk = 0;
         }
         self.material_weights = self.material_weights.sanitized();
+        self.material_radiation_factors = self.material_radiation_factors.sanitized();
         self
     }
 }
@@ -689,11 +692,11 @@ pub struct MaterialWeights {
 impl Default for MaterialWeights {
     fn default() -> Self {
         Self {
-            silicate: 50,
-            metal: 20,
-            ice: 15,
-            carbon: 10,
-            composite: 5,
+            silicate: 52,
+            metal: 8,
+            ice: 18,
+            carbon: 18,
+            composite: 4,
         }
     }
 }
@@ -733,6 +736,59 @@ impl MaterialWeights {
             return MaterialKind::Carbon;
         }
         MaterialKind::Composite
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MaterialRadiationFactors {
+    pub silicate_bps: u32,
+    pub metal_bps: u32,
+    pub ice_bps: u32,
+    pub carbon_bps: u32,
+    pub composite_bps: u32,
+}
+
+impl Default for MaterialRadiationFactors {
+    fn default() -> Self {
+        Self {
+            silicate_bps: 7_500,
+            metal_bps: 13_000,
+            ice_bps: 4_500,
+            carbon_bps: 6_000,
+            composite_bps: 11_000,
+        }
+    }
+}
+
+impl MaterialRadiationFactors {
+    pub fn sanitized(mut self) -> Self {
+        self.silicate_bps = self.silicate_bps.min(50_000);
+        self.metal_bps = self.metal_bps.min(50_000);
+        self.ice_bps = self.ice_bps.min(50_000);
+        self.carbon_bps = self.carbon_bps.min(50_000);
+        self.composite_bps = self.composite_bps.min(50_000);
+
+        if self.silicate_bps == 0
+            && self.metal_bps == 0
+            && self.ice_bps == 0
+            && self.carbon_bps == 0
+            && self.composite_bps == 0
+        {
+            self.silicate_bps = 1;
+        }
+        self
+    }
+
+    pub fn factor_for(self, material: MaterialKind) -> f64 {
+        let bps = match material {
+            MaterialKind::Silicate => self.silicate_bps,
+            MaterialKind::Metal => self.metal_bps,
+            MaterialKind::Ice => self.ice_bps,
+            MaterialKind::Carbon => self.carbon_bps,
+            MaterialKind::Composite => self.composite_bps,
+        };
+        bps as f64 / 10_000.0
     }
 }
 
