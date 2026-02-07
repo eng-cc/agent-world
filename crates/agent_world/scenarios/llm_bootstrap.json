@@ -33,18 +33,5 @@
       },
       "resources": { "amounts": { "electricity": 80, "hardware": 10, "data": 15 } }
     }
-  ],
-  "power_storages": [
-    {
-      "facility_id": "llm-storage",
-      "location_id": "llm-hub",
-      "owner": { "type": "Location", "data": { "location_id": "llm-hub" } },
-      "capacity": 70,
-      "current_level": 15,
-      "charge_efficiency": 1.0,
-      "discharge_efficiency": 1.0,
-      "max_charge_rate": 8,
-      "max_discharge_rate": 8
-    }
   ]
 }
