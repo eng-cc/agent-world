@@ -808,8 +808,10 @@ impl WorldKernel {
             }
         }
 
-        let floor = physics.radiation_floor.max(0) as f64;
-        (near_sources + background + floor).floor() as i64
+        let floor = physics.radiation_floor.max(0);
+        let floor_cap = physics.radiation_floor_cap_per_tick.max(0);
+        let floor_contribution = floor.min(floor_cap) as f64;
+        (near_sources + background + floor_contribution).floor() as i64
     }
 
     fn radiation_source_contribution(&self, harvest_pos: GeoPos, source: &Location) -> f64 {

@@ -74,7 +74,8 @@
 - **参数定义（关键物理参数）**
   - `time_step_s`：每 tick 的真实时间。
   - `power_unit_j`：电力单位对应的能量（J）。
-  - `radiation_floor`：背景辐射下限（避免 0 能量）。
+  - `radiation_floor`：外部背景辐射通量（开放系统输入，不来自本地碎片库存）。
+  - `radiation_floor_cap_per_tick`：背景通量每 tick 可采集上限（防止 floor 配置过大导致“无源高功率造能”）。
   - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
   - `max_harvest_per_tick`：每 tick 最大采集量（热/面积限制）。
   - `thermal_capacity`：热容量阈值（超过进入过热区）。
@@ -85,7 +86,8 @@
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
   - `power_unit_j`：1 电力单位≈1 kJ（默认），范围 0.1~10 kJ。
-  - `radiation_floor`：默认 1 单位/ tick；范围 0~10。
+  - `radiation_floor`：默认 1 单位/ tick；范围 0~10（解释为外部背景通量强度）。
+  - `radiation_floor_cap_per_tick`：默认 5 单位/ tick；范围 0~50（建议不高于 `max_harvest_per_tick`）。
   - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
   - `max_harvest_per_tick`：默认 50；范围 1~500（受热/面积限制）。
   - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
@@ -94,7 +96,8 @@
 
 - **辐射采集规则细化（可落地规则）**
   - 可采集量：`harvest = min(max_amount, max_harvest_per_tick, local_radiation)`
-  - 若启用衰减：`local_radiation = emission * exp(-radiation_decay_k * path_cm) + radiation_floor`
+  - 场强估计：`local_radiation = near_sources + background + floor_contribution`
+  - 背景限幅：`floor_contribution = min(radiation_floor, radiation_floor_cap_per_tick)`
   - 采集副作用：产生热量 `heat += harvest * heat_factor`（默认 `heat_factor=1`）。
   - 超温处理：若 `heat > thermal_capacity`，则采集效率下降或动作被拒绝。
 
@@ -350,7 +353,10 @@
   - 已完成：`HarvestRadiation` 改为“近邻源贡献 + 远场背景 + radiation_floor”叠加模型。
   - 已完成：单源贡献包含距离项（几何衰减）与介质吸收项（`exp(-k*d)`）。
   - 验收：补充测试覆盖“多源叠加+距离衰减”与“零源仅背景辐射”两条路径。
-- [ ] **C4 背景辐射守恒说明**：为 `radiation_floor` 增加物理解释（外部背景通量）与上限策略，避免“无源无限造能”叙事。
+- [x] **C4 背景辐射守恒说明**：为 `radiation_floor` 增加物理解释（外部背景通量）与上限策略，避免“无源无限造能”叙事。
+  - 已完成：将 `radiation_floor` 定义为“外部背景辐射通量”（开放系统输入），不计入本地碎片守恒账本。
+  - 已完成：新增 `radiation_floor_cap_per_tick`（默认 5），背景贡献按 `min(radiation_floor, radiation_floor_cap_per_tick)` 限幅。
+  - 已完成：新增单测覆盖“零源场景下 floor 被 cap 限制”路径。
   - 验收：文档明确来源与边界；零源场景下采集行为符合预期。
 
 ### P1（建议尽快完成）

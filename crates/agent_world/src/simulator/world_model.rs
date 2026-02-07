@@ -470,6 +470,7 @@ pub struct PhysicsConfig {
     pub time_step_s: i64,
     pub power_unit_j: i64,
     pub radiation_floor: i64,
+    pub radiation_floor_cap_per_tick: i64,
     pub radiation_decay_k: f64,
     pub max_harvest_per_tick: i64,
     pub thermal_capacity: i64,
@@ -484,6 +485,7 @@ impl Default for PhysicsConfig {
             time_step_s: 10,
             power_unit_j: 1_000,
             radiation_floor: 1,
+            radiation_floor_cap_per_tick: 5,
             radiation_decay_k: 1e-6,
             max_harvest_per_tick: 50,
             thermal_capacity: 100,
@@ -504,6 +506,9 @@ impl PhysicsConfig {
         }
         if self.radiation_floor < 0 {
             self.radiation_floor = 0;
+        }
+        if self.radiation_floor_cap_per_tick < 0 {
+            self.radiation_floor_cap_per_tick = 0;
         }
         if self.radiation_decay_k < 0.0 {
             self.radiation_decay_k = 0.0;

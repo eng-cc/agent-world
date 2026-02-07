@@ -367,6 +367,43 @@ fn harvest_radiation_uses_background_floor_when_no_source() {
 }
 
 #[test]
+fn harvest_radiation_caps_background_floor_when_no_source() {
+    let mut config = WorldConfig::default();
+    config.physics.radiation_floor = 20;
+    config.physics.radiation_floor_cap_per_tick = 4;
+    config.physics.max_harvest_per_tick = 10;
+    let mut kernel = WorldKernel::with_config(config);
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "site".to_string(),
+        name: "site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "site".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10,
+    });
+
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::RadiationHarvested {
+            amount, available, ..
+        } => {
+            assert_eq!(available, 4);
+            assert_eq!(amount, 4);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn kernel_rejects_move_to_same_location() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
