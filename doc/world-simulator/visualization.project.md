@@ -27,6 +27,7 @@
 - [x] 在线模式：live viewer server（WorldKernel + demo script）
 - [x] 在线模式：CLI（world_viewer_live）与运行说明
 - [x] 在线模式：基础单元测试（script/step/reset）
+- [x] 在线模式：live viewer server 支持 LLM 决策驱动（--llm）
 - [x] 在线模式：前后端联合测试（独立 integration test + feature gate）
 - [x] CI：显式执行联测目标（viewer_live_integration + feature）
 - [x] 离线回放：前后端联合测试（viewer_offline_integration）
@@ -42,5 +43,5 @@
 - Bevy（viewer 客户端）
 
 ## 状态
-- 当前阶段：可观测性增强完成（Agent 活动面板 + 背景参照）
-- 最近更新：补齐 Agent 活动面板与世界背景可视化（2026-02-07）
+- 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
+- 最近更新：live viewer 支持 LLM 决策驱动（2026-02-07）

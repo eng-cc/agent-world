@@ -62,9 +62,12 @@
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ## Viewer 快速运行（在线模式）
-1. 启动 live server：  
+1. 启动 live server（脚本驱动，默认）：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
-2. 启动 UI：  
+2. 或启动 live server（LLM 驱动）：  
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010 --tick-ms 300`
+   （需在根目录 `config.toml` 配置 `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`）
+3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ## 路线图（摘要）

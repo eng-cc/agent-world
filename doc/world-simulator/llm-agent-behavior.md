@@ -56,6 +56,9 @@
   - 启动后为场景内每个 agent 构造 `LlmAgentBehavior::from_env(agent_id)`。
   - 使用 `AgentRunner` 执行 `observe -> decide -> act` 循环。
   - 支持参数：`--scenario <name>`、`--ticks <n>`；默认场景为 `llm_bootstrap`。
+- `world_viewer_live --llm`
+  - 在线 viewer server 可切换到 LLM 决策驱动（默认仍为 script）。
+  - 启动参数增加 `--llm`；建议配合 `llm_bootstrap` 场景使用。
 
 ### 决策协议（LLM 输出）
 - 约定输出 JSON：

@@ -90,6 +90,7 @@
 - [x] 新增 LLM 决策解析与失败降级（`Wait`）
 - [x] 补充单元测试并通过 `cargo test -p agent_world`
 - [x] 新增可运行 LLM demo：`world_llm_agent_demo`（`AgentRunner + LlmAgentBehavior`）
+- [x] 在线 viewer 支持 LLM 决策驱动（`world_viewer_live --llm`）
 
 ### 9. 场景测试覆盖矩阵
 - [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵
@@ -104,4 +105,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：补齐 viewer Agent 活动面板与世界背景可视化（2026-02-07）
+- 最近更新：online viewer 支持 LLM 决策驱动（2026-02-07）

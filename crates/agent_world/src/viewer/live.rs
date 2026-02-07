@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use crate::geometry::space_distance_cm;
 use crate::simulator::{
-    initialize_kernel, Action, ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig,
+    initialize_kernel, Action, AgentRunner, LlmAgentBehavior, LlmAgentBuildError,
+    OpenAiChatCompletionClient, ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig,
     WorldInitConfig, WorldInitError, WorldKernel, WorldScenario, WorldSnapshot,
 };
 
@@ -16,12 +17,19 @@ use super::protocol::{
     VIEWER_PROTOCOL_VERSION,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewerLiveDecisionMode {
+    Script,
+    Llm,
+}
+
 #[derive(Debug, Clone)]
 pub struct ViewerLiveServerConfig {
     pub bind_addr: String,
     pub tick_interval: Duration,
     pub scenario: WorldScenario,
     pub world_id: String,
+    pub decision_mode: ViewerLiveDecisionMode,
 }
 
 impl ViewerLiveServerConfig {
@@ -31,6 +39,7 @@ impl ViewerLiveServerConfig {
             tick_interval: Duration::from_millis(200),
             world_id: format!("live-{}", scenario.as_str()),
             scenario,
+            decision_mode: ViewerLiveDecisionMode::Script,
         }
     }
 
@@ -48,6 +57,20 @@ impl ViewerLiveServerConfig {
         self.world_id = world_id.into();
         self
     }
+
+    pub fn with_decision_mode(mut self, mode: ViewerLiveDecisionMode) -> Self {
+        self.decision_mode = mode;
+        self
+    }
+
+    pub fn with_llm_mode(mut self, enabled: bool) -> Self {
+        self.decision_mode = if enabled {
+            ViewerLiveDecisionMode::Llm
+        } else {
+            ViewerLiveDecisionMode::Script
+        };
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -55,6 +78,7 @@ pub enum ViewerLiveServerError {
     Io(io::Error),
     Serde(String),
     Init(WorldInitError),
+    LlmBuild(LlmAgentBuildError),
 }
 
 impl From<io::Error> for ViewerLiveServerError {
@@ -66,6 +90,12 @@ impl From<io::Error> for ViewerLiveServerError {
 impl From<WorldInitError> for ViewerLiveServerError {
     fn from(err: WorldInitError) -> Self {
         ViewerLiveServerError::Init(err)
+    }
+}
+
+impl From<LlmAgentBuildError> for ViewerLiveServerError {
+    fn from(err: LlmAgentBuildError) -> Self {
+        ViewerLiveServerError::LlmBuild(err)
     }
 }
 
@@ -86,7 +116,7 @@ pub struct ViewerLiveServer {
 impl ViewerLiveServer {
     pub fn new(config: ViewerLiveServerConfig) -> Result<Self, ViewerLiveServerError> {
         let init = WorldInitConfig::from_scenario(config.scenario, &WorldConfig::default());
-        let world = LiveWorld::new(WorldConfig::default(), init)?;
+        let world = LiveWorld::new(WorldConfig::default(), init, config.decision_mode)?;
         Ok(Self { config, world })
     }
 
@@ -189,18 +219,29 @@ struct LiveWorld {
     config: WorldConfig,
     init: WorldInitConfig,
     kernel: WorldKernel,
-    script: LiveScript,
+    decision_mode: ViewerLiveDecisionMode,
+    driver: LiveDriver,
+}
+
+enum LiveDriver {
+    Script(LiveScript),
+    Llm(AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>),
 }
 
 impl LiveWorld {
-    fn new(config: WorldConfig, init: WorldInitConfig) -> Result<Self, WorldInitError> {
+    fn new(
+        config: WorldConfig,
+        init: WorldInitConfig,
+        decision_mode: ViewerLiveDecisionMode,
+    ) -> Result<Self, ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
-        let script = LiveScript::new(&kernel);
+        let driver = build_driver(&kernel, decision_mode)?;
         Ok(Self {
             config,
             init,
             kernel,
-            script,
+            decision_mode,
+            driver,
         })
     }
 
@@ -212,18 +253,44 @@ impl LiveWorld {
         self.kernel.snapshot()
     }
 
-    fn reset(&mut self) -> Result<(), WorldInitError> {
+    fn reset(&mut self) -> Result<(), ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(self.config.clone(), self.init.clone())?;
         self.kernel = kernel;
-        self.script = LiveScript::new(&self.kernel);
+        self.driver = build_driver(&self.kernel, self.decision_mode)?;
         Ok(())
     }
 
-    fn step(&mut self) -> Result<Option<crate::simulator::WorldEvent>, WorldInitError> {
-        if let Some(action) = self.script.next_action(&self.kernel) {
-            self.kernel.submit_action(action);
+    fn step(&mut self) -> Result<Option<crate::simulator::WorldEvent>, ViewerLiveServerError> {
+        match &mut self.driver {
+            LiveDriver::Script(script) => {
+                if let Some(action) = script.next_action(&self.kernel) {
+                    self.kernel.submit_action(action);
+                }
+                Ok(self.kernel.step())
+            }
+            LiveDriver::Llm(runner) => Ok(runner
+                .tick(&mut self.kernel)
+                .and_then(|result| result.action_result.map(|action| action.event))),
         }
-        Ok(self.kernel.step())
+    }
+}
+
+fn build_driver(
+    kernel: &WorldKernel,
+    decision_mode: ViewerLiveDecisionMode,
+) -> Result<LiveDriver, ViewerLiveServerError> {
+    match decision_mode {
+        ViewerLiveDecisionMode::Script => Ok(LiveDriver::Script(LiveScript::new(kernel))),
+        ViewerLiveDecisionMode::Llm => {
+            let mut runner = AgentRunner::new();
+            let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
+            agent_ids.sort();
+            for agent_id in agent_ids {
+                let behavior = LlmAgentBehavior::from_env(agent_id)?;
+                runner.register(behavior);
+            }
+            Ok(LiveDriver::Llm(runner))
+        }
     }
 }
 
@@ -612,15 +679,30 @@ mod tests {
     fn live_world_reset_rebuilds_kernel() {
         let config = WorldConfig::default();
         let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-        let mut world = LiveWorld::new(config, init).expect("init ok");
+        let mut world =
+            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
 
-        let kernel_snapshot = world.kernel.clone();
-        let action = world.script.next_action(&kernel_snapshot).expect("action");
-        world.kernel.submit_action(action);
-        world.kernel.step_until_empty();
+        for _ in 0..5 {
+            let _ = world.step().expect("step");
+            if world.kernel.time() > 0 {
+                break;
+            }
+        }
         assert!(world.kernel.time() > 0);
 
         world.reset().expect("reset ok");
         assert_eq!(world.kernel.time(), 0);
+    }
+
+    #[test]
+    fn live_server_config_supports_llm_mode() {
+        let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
+        assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
+
+        let llm_config = config.clone().with_llm_mode(true);
+        assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
+
+        let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
+        assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
     }
 }

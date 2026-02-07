@@ -66,14 +66,19 @@
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ### 在线模式（最小实现）
-- 在线模式直接从 `WorldKernel` 推送事件，使用内置 demo script 生成可观测事件序列。
+- 在线模式直接从 `WorldKernel` 推送事件。
+- 支持两种决策驱动：
+  - 默认 `script`（内置 demo script）
+  - 可选 `llm`（`world_viewer_live --llm`，通过 `LlmAgentBehavior` 决策）
 - 默认单连接、tick 驱动，不保证多客户端一致性。
 - `Seek` 仅支持回到 tick=0（重置世界），其他 tick 会返回错误。
 
 #### 快速运行（在线模式）
-1) 启动 live server：  
+1) 启动 live server（脚本驱动，默认）：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
-2) 启动 UI：  
+2) 启动 live server（LLM 驱动）：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010 --tick-ms 300`
+3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ### 测试策略
