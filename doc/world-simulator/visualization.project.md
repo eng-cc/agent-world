@@ -83,6 +83,8 @@
 - [x] UI：控制按钮交互反馈（hover/pressed）
 - [x] UI：`Step` 等待态（`Step ...`）与 pending 期间防重复触发
 - [x] UI 测试覆盖：滚动命中与 Step loading 状态回归
+- [x] UI：滚动命中改为基于 ComputedNode 实际边界，修复上下半区随机串滚
+- [x] UI：高 DPI 下使用 physical cursor 坐标命中，避免滚轮焦点漂移
 - [x] 提交到 git
 
 ## 依赖
@@ -92,7 +94,7 @@
 
 ## 状态
 - 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
-- 最近更新：完成上半区滚动/按钮交互反馈/Step loading（2026-02-07）
+- 最近更新：完成滚动命中边界修复（ComputedNode）并消除上下半区串滚（2026-02-07）
 
 ## 缺口待办（信息直达）
 - [x] 时间轴按事件类别独立开关/筛选（err/llm/peak）

@@ -88,6 +88,7 @@
 - [x] 右侧上半区独立滚动（命中上半区时优先滚动 Top Controls）
 - [x] 控制按钮 hover/pressed 可点击反馈
 - [x] Step 等待态 loading（`Step ...`）与 pending 去重
+- [x] 右侧滚轮命中改为按 UI 实际边界（ComputedNode）判定，修复上下半区随机串滚
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -149,4 +150,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 viewer 上半区滚动与 Step loading 交互优化（2026-02-07）
+- 最近更新：完成 viewer 滚动命中边界修复（上下半区不再串滚，2026-02-07）

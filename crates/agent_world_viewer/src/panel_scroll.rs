@@ -2,10 +2,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
-use super::panel_layout::RightPanelLayoutState;
-use super::UI_PANEL_WIDTH;
-
-const TOP_SCROLL_HIT_HEIGHT_PX: f32 = 430.0;
+use bevy::ui::{ComputedNode, UiGlobalTransform};
 
 #[derive(Component)]
 pub(super) struct RightPanelScroll;
@@ -25,39 +22,68 @@ fn scroll_delta_px(event: &MouseWheel) -> f32 {
     scroll_delta_px_from_parts(event.unit, event.y)
 }
 
-pub(super) fn cursor_in_right_panel(window_width: f32, cursor_x: f32) -> bool {
-    cursor_x >= (window_width - UI_PANEL_WIDTH).max(0.0)
-}
-
-fn cursor_in_top_control_area(window_height: f32, cursor_y: f32) -> bool {
-    cursor_y >= (window_height - TOP_SCROLL_HIT_HEIGHT_PX).max(0.0)
+fn cursor_in_scroll_node(
+    cursor: Vec2,
+    node: &ComputedNode,
+    transform: &UiGlobalTransform,
+    inherited_visibility: Option<&InheritedVisibility>,
+) -> bool {
+    inherited_visibility.is_none_or(|v| v.get())
+        && !node.is_empty()
+        && node.contains_point(*transform, cursor)
 }
 
 pub(super) fn scroll_right_panel(
     windows: Query<&Window, With<PrimaryWindow>>,
     mut wheel_events: MessageReader<MouseWheel>,
     mut top_scroll_query: Query<
-        &mut ScrollPosition,
+        (
+            &mut ScrollPosition,
+            &ComputedNode,
+            &UiGlobalTransform,
+            Option<&InheritedVisibility>,
+        ),
         (With<TopPanelScroll>, Without<RightPanelScroll>),
     >,
     mut bottom_scroll_query: Query<
-        &mut ScrollPosition,
+        (
+            &mut ScrollPosition,
+            &ComputedNode,
+            &UiGlobalTransform,
+            Option<&InheritedVisibility>,
+        ),
         (With<RightPanelScroll>, Without<TopPanelScroll>),
     >,
-    layout_state: Res<RightPanelLayoutState>,
 ) {
     let Ok(window) = windows.single() else {
         return;
     };
-    let Some(cursor) = window.cursor_position() else {
+    let Some(cursor) = window.physical_cursor_position().or_else(|| {
+        window
+            .cursor_position()
+            .map(|pos| pos * window.scale_factor())
+    }) else {
         return;
     };
-    if !cursor_in_right_panel(window.width(), cursor.x) {
+
+    let mut top_scroll = top_scroll_query.single_mut().ok();
+    let mut bottom_scroll = bottom_scroll_query.single_mut().ok();
+
+    let use_top_scroll = top_scroll
+        .as_ref()
+        .is_some_and(|(_, node, transform, visibility)| {
+            cursor_in_scroll_node(cursor, node, transform, *visibility)
+        });
+    let use_bottom_scroll =
+        bottom_scroll
+            .as_ref()
+            .is_some_and(|(_, node, transform, visibility)| {
+                cursor_in_scroll_node(cursor, node, transform, *visibility)
+            });
+
+    if !use_top_scroll && !use_bottom_scroll {
         return;
     }
-
-    let use_top_scroll =
-        !layout_state.top_panel_collapsed && cursor_in_top_control_area(window.height(), cursor.y);
 
     for event in wheel_events.read() {
         let delta = scroll_delta_px(event);
@@ -66,14 +92,16 @@ pub(super) fn scroll_right_panel(
         }
 
         if use_top_scroll {
-            if let Ok(mut scroll) = top_scroll_query.single_mut() {
+            if let Some((ref mut scroll, ..)) = top_scroll.as_mut() {
                 scroll.y = (scroll.y - delta).max(0.0);
                 continue;
             }
         }
 
-        if let Ok(mut scroll) = bottom_scroll_query.single_mut() {
-            scroll.y = (scroll.y - delta).max(0.0);
+        if use_bottom_scroll {
+            if let Some((ref mut scroll, ..)) = bottom_scroll.as_mut() {
+                scroll.y = (scroll.y - delta).max(0.0);
+            }
         }
     }
 }
@@ -89,16 +117,33 @@ mod tests {
     }
 
     #[test]
-    fn cursor_in_right_panel_matches_panel_width() {
-        assert!(cursor_in_right_panel(1200.0, 900.0));
-        assert!(cursor_in_right_panel(1200.0, 820.0));
-        assert!(!cursor_in_right_panel(1200.0, 819.0));
-    }
+    fn cursor_in_scroll_node_respects_visibility_and_bounds() {
+        let node = ComputedNode {
+            size: Vec2::new(200.0, 100.0),
+            ..default()
+        };
+        let transform = UiGlobalTransform::from_translation(Vec2::new(100.0, 100.0));
 
-    #[test]
-    fn cursor_in_top_control_area_uses_top_band() {
-        assert!(cursor_in_top_control_area(800.0, 780.0));
-        assert!(cursor_in_top_control_area(800.0, 420.0));
-        assert!(!cursor_in_top_control_area(800.0, 360.0));
+        assert!(cursor_in_scroll_node(
+            Vec2::new(100.0, 100.0),
+            &node,
+            &transform,
+            None
+        ));
+
+        let hidden = InheritedVisibility::HIDDEN;
+        assert!(!cursor_in_scroll_node(
+            Vec2::new(100.0, 100.0),
+            &node,
+            &transform,
+            Some(&hidden)
+        ));
+
+        assert!(!cursor_in_scroll_node(
+            Vec2::new(400.0, 400.0),
+            &node,
+            &transform,
+            None
+        ));
     }
 }
