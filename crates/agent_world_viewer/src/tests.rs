@@ -1,4 +1,5 @@
 use super::*;
+use crate::button_feedback::StepControlLoadingState;
 use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
@@ -326,6 +327,9 @@ fn handle_control_buttons_sends_request() {
         tx,
         rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
     });
+    app.world_mut().insert_resource(ViewerState::default());
+    app.world_mut()
+        .insert_resource(StepControlLoadingState::default());
 
     app.world_mut().spawn((
         Button,
@@ -356,6 +360,9 @@ fn control_buttons_send_expected_requests() {
         tx,
         rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
     });
+    app.world_mut().insert_resource(ViewerState::default());
+    app.world_mut()
+        .insert_resource(StepControlLoadingState::default());
 
     for control in [
         ViewerControl::Play,

@@ -4,6 +4,7 @@ use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
+use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
 use crate::{ControlButton, ViewerClient, ViewerState};
 
 const DENSITY_BINS: usize = 16;
@@ -804,13 +805,22 @@ fn format_tick_list(ticks: &[u64], max_items: usize) -> String {
 pub(super) fn handle_control_buttons(
     mut interactions: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
     client: Res<ViewerClient>,
+    state: Res<ViewerState>,
+    mut loading: ResMut<StepControlLoadingState>,
 ) {
     for (interaction, button) in &mut interactions {
-        if *interaction == Interaction::Pressed {
-            let _ = client.tx.send(ViewerRequest::Control {
-                mode: button.control.clone(),
-            });
+        if *interaction != Interaction::Pressed {
+            continue;
         }
+
+        if matches!(button.control, ViewerControl::Step { .. }) && loading.pending {
+            continue;
+        }
+
+        mark_step_loading_on_control(&button.control, &state, &mut loading);
+        let _ = client.tx.send(ViewerRequest::Control {
+            mode: button.control.clone(),
+        });
     }
 }
 

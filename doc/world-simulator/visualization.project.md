@@ -79,6 +79,10 @@
 - [x] UI：右侧顶部控制区折叠开关（Hide/Show Top）
 - [x] UI：高密度文本区字号微调（timeline/diagnosis/overlay）
 - [x] UI 测试覆盖：顶部折叠交互回归
+- [x] UI：右侧上半区滚动（Top Controls 命中优先滚动）
+- [x] UI：控制按钮交互反馈（hover/pressed）
+- [x] UI：`Step` 等待态（`Step ...`）与 pending 期间防重复触发
+- [x] UI 测试覆盖：滚动命中与 Step loading 状态回归
 - [x] 提交到 git
 
 ## 依赖
@@ -88,7 +92,7 @@
 
 ## 状态
 - 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
-- 最近更新：完成顶部折叠交互与文本密度优化（2026-02-07）
+- 最近更新：完成上半区滚动/按钮交互反馈/Step loading（2026-02-07）
 
 ## 缺口待办（信息直达）
 - [x] 时间轴按事件类别独立开关/筛选（err/llm/peak）

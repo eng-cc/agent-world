@@ -13,7 +13,6 @@ use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use bevy::camera::Viewport;
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -34,18 +33,24 @@ const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
+mod button_feedback;
 mod camera_controls;
 mod diagnosis;
 mod event_click_list;
 mod headless;
 mod internal_capture;
 mod panel_layout;
+mod panel_scroll;
 mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
 mod ui_text;
 mod world_overlay;
 
+use button_feedback::{
+    attach_step_button_markers, init_button_visual_base, track_step_loading_state,
+    update_button_hover_visuals, update_step_button_loading_ui, StepControlLoadingState,
+};
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use event_click_list::{
@@ -59,6 +64,7 @@ use panel_layout::{
     handle_top_panel_toggle_button, spawn_top_panel_toggle, RightPanelLayoutState,
     TopPanelContainer,
 };
+use panel_scroll::{scroll_right_panel, RightPanelScroll, TopPanelScroll};
 use scene_helpers::*;
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
@@ -115,6 +121,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
+        .insert_resource(StepControlLoadingState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Agent World Viewer".to_string(),
@@ -151,7 +158,18 @@ fn run_ui(addr: String, offline: bool) {
             )
                 .chain(),
         )
+        .add_systems(Update, attach_step_button_markers)
         .add_systems(Update, handle_top_panel_toggle_button)
+        .add_systems(Update, init_button_visual_base)
+        .add_systems(
+            Update,
+            (
+                track_step_loading_state,
+                update_step_button_loading_ui,
+                update_button_hover_visuals,
+            )
+                .chain(),
+        )
         .add_systems(
             Update,
             (
@@ -397,9 +415,6 @@ struct AgentActivityText;
 
 #[derive(Component)]
 struct SelectionDetailsText;
-
-#[derive(Component)]
-struct RightPanelScroll;
 
 #[derive(Component, Clone)]
 struct ControlButton {
@@ -768,7 +783,9 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 BackgroundColor(Color::srgb(0.1, 0.11, 0.14)),
                 BorderColor::all(Color::srgb(0.2, 0.22, 0.26)),
+                ScrollPosition::default(),
                 TopPanelContainer,
+                TopPanelScroll,
             ))
             .with_children(|bar| {
                 bar.spawn(Node {
@@ -972,49 +989,6 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn scroll_delta_px_from_parts(unit: MouseScrollUnit, y: f32) -> f32 {
-    let scale = match unit {
-        MouseScrollUnit::Line => 32.0,
-        MouseScrollUnit::Pixel => 1.0,
-    };
-    y * scale
-}
-
-fn scroll_delta_px(event: &MouseWheel) -> f32 {
-    scroll_delta_px_from_parts(event.unit, event.y)
-}
-
-fn cursor_in_right_panel(window_width: f32, cursor_x: f32) -> bool {
-    cursor_x >= (window_width - UI_PANEL_WIDTH).max(0.0)
-}
-
-fn scroll_right_panel(
-    windows: Query<&Window, With<PrimaryWindow>>,
-    mut wheel_events: MessageReader<MouseWheel>,
-    mut scroll_query: Query<&mut ScrollPosition, With<RightPanelScroll>>,
-) {
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let Some(cursor) = window.cursor_position() else {
-        return;
-    };
-    if !cursor_in_right_panel(window.width(), cursor.x) {
-        return;
-    }
-
-    let Ok(mut scroll) = scroll_query.single_mut() else {
-        return;
-    };
-    for event in wheel_events.read() {
-        let delta = scroll_delta_px(event);
-        if delta.abs() < f32::EPSILON {
-            continue;
-        }
-        scroll.y = (scroll.y - delta).max(0.0);
-    }
-}
-
 fn poll_viewer_messages(
     mut state: ResMut<ViewerState>,
     config: Res<ViewerConfig>,
@@ -1194,7 +1168,5 @@ fn update_3d_viewport(
     });
 }
 
-#[cfg(test)]
-mod scroll_tests;
 #[cfg(test)]
 mod tests;
