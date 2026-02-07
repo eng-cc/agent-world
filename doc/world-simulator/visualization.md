@@ -81,6 +81,15 @@
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+### 3D 交互说明（2026-02-07 更新）
+- 3D 视口支持鼠标拖拽轨道相机：
+  - 左键拖拽：旋转视角（orbit）
+  - 右键/中键拖拽：平移焦点（pan）
+  - `Shift + 左键拖拽`：平移焦点（便于触控板）
+  - 滚轮：缩放距离（zoom）
+- 交互只在左侧 3D 视口生效，右侧 UI 面板不会触发相机移动。
+- 输入增量使用光标位置差值（cursor delta），避免部分平台 `MouseMotion` 不稳定导致的拖拽失效。
+
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
 - **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。

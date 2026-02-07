@@ -15,8 +15,6 @@ use agent_world::viewer::{
 };
 use bevy::camera::Viewport;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
-use bevy::ecs::message::MessageReader;
-use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -36,8 +34,10 @@ const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
+mod camera_controls;
 mod scene_helpers;
 
+use camera_controls::{orbit_camera_controls, OrbitDragState};
 use scene_helpers::*;
 
 const WORLD_MIN_AXIS: f32 = 0.1;
@@ -66,6 +66,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
+        .insert_resource(OrbitDragState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Agent World Viewer".to_string(),
@@ -867,57 +868,6 @@ fn update_3d_viewport(
         physical_size: UVec2::new(render_width, window_height),
         depth: 0.0..1.0,
     });
-}
-
-fn orbit_camera_controls(
-    mut mouse_motion: MessageReader<MouseMotion>,
-    mut mouse_wheel: MessageReader<MouseWheel>,
-    buttons: Res<ButtonInput<MouseButton>>,
-    mut query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
-) {
-    let mut delta = Vec2::ZERO;
-    for event in mouse_motion.read() {
-        delta += event.delta;
-    }
-
-    let mut scroll = 0.0;
-    for event in mouse_wheel.read() {
-        scroll += event.y;
-    }
-
-    if delta == Vec2::ZERO && scroll == 0.0 {
-        return;
-    }
-
-    let Ok((mut orbit, mut transform)) = query.single_mut() else {
-        return;
-    };
-
-    let mut changed = false;
-
-    if buttons.pressed(MouseButton::Left) && delta != Vec2::ZERO {
-        orbit.yaw -= delta.x * ORBIT_ROTATE_SENSITIVITY;
-        orbit.pitch = (orbit.pitch - delta.y * ORBIT_ROTATE_SENSITIVITY).clamp(-1.54, 1.54);
-        changed = true;
-    } else if buttons.pressed(MouseButton::Right) && delta != Vec2::ZERO {
-        let rotation =
-            Quat::from_axis_angle(Vec3::Y, orbit.yaw) * Quat::from_axis_angle(Vec3::X, orbit.pitch);
-        let right = rotation * Vec3::X;
-        let up = rotation * Vec3::Y;
-        let pan_scale = orbit.radius * ORBIT_PAN_SENSITIVITY;
-        orbit.focus += (-delta.x * pan_scale) * right + (delta.y * pan_scale) * up;
-        changed = true;
-    }
-
-    if scroll != 0.0 {
-        orbit.radius = (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY))
-            .clamp(ORBIT_MIN_RADIUS, ORBIT_MAX_RADIUS);
-        changed = true;
-    }
-
-    if changed {
-        orbit.apply_to_transform(&mut transform);
-    }
 }
 
 fn pick_3d_selection(
