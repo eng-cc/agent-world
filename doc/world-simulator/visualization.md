@@ -100,6 +100,19 @@
 - 新增标注联动按钮（`Jump Err/LLM/Peak`）：点击后自动跳到下一目标 tick，并将事件列表切换到该 tick 的上下文窗口。
 - 新增标注类别独立开关（`Err/LLM/Peak`）：可分别开启/关闭三类标注，跳转按钮、计数与 tick 列表同步按开启状态过滤。
 
+### 世界覆盖层（2026-02-07 实现）
+- 目标：在 3D 视图中直接补齐“chunk 探索态 / 资源热力 / 流动路径”三类全局信息，减少纯文本检索。
+- 覆盖项：
+  - Chunk 探索态覆盖：按开关控制 chunk 覆盖可见性（基于现有 unexplored/generated/exhausted 颜色）。
+  - 资源热力覆盖：按地点资源强度绘制热力柱（优先 electricity，兼顾 hardware/data）。
+  - 电力/交易流覆盖：根据近期 `PowerTransferred/ResourceTransferred` 事件绘制方向连线。
+- 交互：顶部新增覆盖层开关（Chunk/Heat/Flow），可独立启停，状态摘要实时更新。
+- 实现口径：
+  - Heat 强度评分 = `electricity + 4*hardware + 2*data`，并映射到分段颜色与柱高。
+  - Flow 取最近窗口事件（默认 28 条）中的 `PowerTransferred/ResourceTransferred`，按类型着色并按量级映射线宽。
+  - Chunk 覆盖层复用现有 chunk 实体，只做显隐切换，避免重复几何开销。
+- 降级策略：无快照或无可用事件时保留基础场景，覆盖层状态文本明确提示无数据。
+
 ### 事件-对象双向联动（2026-02-07 更新）
 - 事件定位对象：在时间轴区新增 `Locate Focus Event Object` 控件，按当前 focus tick 选择最近事件，并将 3D 选中对象定位到该事件关联实体。
 - 对象跳转事件：在选中对象详情区新增 `Jump Selection Events` 控件，按当前选中对象筛选相关事件并将时间轴目标跳转到下一相关 tick。
@@ -126,18 +139,38 @@
 - 输入增量使用光标位置差值（cursor delta），避免部分平台 `MouseMotion` 不稳定导致的拖拽失效。
 
 
+### 事件列表逐条点击定位对象（2026-02-07 实现）
+- 目标：在事件列表中直接点击事件条目即可完成“时间轴跳转 + 3D 对象选中”，减少“先调焦点再点 Locate”的中间步骤。
+- 交互：
+  - 事件面板新增可点击事件行（按焦点 tick 上下文窗口展示）。
+  - 点击事件行后，自动将时间轴目标设置到该事件 tick，并定位/高亮该事件主对象。
+- 对象映射口径：复用既有 `event -> SelectionTarget` 规则（Agent/Location/设施/Chunk/owner 映射）。
+- 状态反馈：定位结果复用事件联动状态文本，明确显示成功对象或失败原因（无映射/实体未在 3D 中可见）。
+- 降级策略：当事件无可映射对象时，仅更新时间轴目标，不改变当前选中对象并输出提示。
+
 ### 选中对象详情面板（2026-02-07 更新）
 - 右侧 UI 新增“Details”区块：点击 3D 视图中的对象后展示详情。
 - 已支持对象：Agent、Location、Asset、PowerPlant、PowerStorage、Chunk。
 - Agent 详情包含：位置/坐标、机体参数、电力与热状态、资源、最近事件。
-- LLM 模式下，Agent 详情额外展示最近 LLM 输入输出：
+- LLM 模式下，Agent 详情额外展示最近 LLM 输入输出与诊断字段：
   - `llm_input`（system+user prompt）
   - `llm_output`（completion 文本）
   - `llm_error / parse_error`（若存在）
+  - `model / latency_ms / prompt_tokens / completion_tokens / total_tokens / retry_count`
 - Location 详情包含：名称/坐标、profile、资源、碎片物理与预算摘要、最近相关事件。
 - Asset 详情包含：种类、数量、归属者、归属者关联事件。
 - PowerPlant/PowerStorage 详情包含：设施参数、电力状态与相关电力事件。
 - 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
+
+### 自动诊断结论面板（2026-02-07 实现）
+- 目标：当出现问题时由系统直接给出可执行结论，尽量避免人工翻日志/手动分析。
+- 交互：顶部展示 `Diagnosis` 文本，随世界状态实时更新，不需要额外点击按钮。
+- 诊断优先级：
+  - 连接异常：直接结论为数据流不可用（优先检查 live server / 网络）。
+  - LLM 异常：直接结论为决策降级或输出格式不匹配（优先检查模型端点/输出约束）。
+  - ActionRejected：按拒绝原因归纳结论（资源不足、位置约束不满足、热过载等）。
+- 健康态结论：无阻塞问题时给出“simulation healthy”并附当前选中对象。
+- 降级策略：无快照时明确提示“等待首帧快照”，避免误判为系统故障。
 
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
@@ -180,10 +213,10 @@
 ### 现状缺口（信息直达视角，2026-02-07）
 - 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。
 - 时间轴仍有增强空间：当前已支持标注跳转、类别开关与联动定位，但仍缺更细粒度的多级刻度与跨窗口聚合浏览。
-- 联动检索仍可增强：当前已支持“focus event -> 定位对象”与“selection -> 跳转事件”，后续可补“事件列表逐条点击定位对象”。
-- LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
-- 世界层表达不足：已有边界盒与网格，但缺少 chunk 探索态、资源热力图、电力/交易流覆盖层。
-- 信息导出不足：缺少对“当前选中对象完整状态 + 最近 trace”的一键导出/复制能力。
+- 联动检索能力已补齐：支持“focus event -> 定位对象”“selection -> 跳转事件”与“事件列表逐条点击定位对象”。
+- LLM 诊断维度仍可增强：已展示 `model/latency/token/retry`，后续可补链路级成本估算与请求 ID 追踪。
+- 世界层表达仍可增强：已补齐 chunk/热力/流动覆盖层，后续可进一步增加分层图例与时间衰减轨迹。
+- 诊断结论直出能力已补齐：问题优先级与结论可直接读取；后续可补“根因树 + 自动修复建议”。
 
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）

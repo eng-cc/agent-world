@@ -73,6 +73,10 @@
 - [x] Viewer 时间轴标注联动事件列表上下文跳转
 - [x] Viewer 时间轴事件类别独立开关/筛选（err/llm/peak）
 - [x] Viewer 事件与对象双向联动（事件定位对象、对象跳转事件）
+- [x] Viewer 详情面板补齐 LLM 诊断字段（模型/耗时/token/重试）
+- [x] Viewer 世界覆盖层（chunk 探索态/资源热力/电力交易流）
+- [x] Viewer 自动诊断结论面板（无需人工分析）
+- [x] Viewer 事件列表逐条点击定位对象（Click Event -> Select Object）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

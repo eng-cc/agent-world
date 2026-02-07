@@ -681,6 +681,35 @@ fn agent_recent_traces(agent_id: &str, traces: &[AgentDecisionTrace], limit: usi
                     truncate_text(parse_error, 160)
                 ));
             }
+            if let Some(diagnostics) = trace.llm_diagnostics.as_ref() {
+                lines.push(format!(
+                    "  model: {}",
+                    diagnostics.model.as_deref().unwrap_or("-")
+                ));
+                lines.push(format!(
+                    "  latency_ms: {}",
+                    diagnostics
+                        .latency_ms
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "-".to_string())
+                ));
+                lines.push(format!(
+                    "  tokens: prompt={} completion={} total={}",
+                    diagnostics
+                        .prompt_tokens
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "-".to_string()),
+                    diagnostics
+                        .completion_tokens
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "-".to_string()),
+                    diagnostics
+                        .total_tokens
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "-".to_string())
+                ));
+                lines.push(format!("  retries: {}", diagnostics.retry_count));
+            }
             lines
         })
         .take(limit * 5)

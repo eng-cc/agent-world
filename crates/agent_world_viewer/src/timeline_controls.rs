@@ -862,6 +862,7 @@ mod tests {
                 llm_output: None,
                 llm_error: None,
                 parse_error: None,
+                llm_diagnostics: None,
             },
             AgentDecisionTrace {
                 agent_id: "agent-2".to_string(),
@@ -871,6 +872,7 @@ mod tests {
                 llm_output: None,
                 llm_error: None,
                 parse_error: None,
+                llm_diagnostics: None,
             },
         ];
 

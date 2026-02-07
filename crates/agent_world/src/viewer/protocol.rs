@@ -147,6 +147,7 @@ mod tests {
                 llm_output: Some("{\"decision\":\"wait\"}".to_string()),
                 llm_error: None,
                 parse_error: None,
+                llm_diagnostics: None,
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

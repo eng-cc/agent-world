@@ -59,6 +59,8 @@ pub(super) fn rebuild_scene_from_snapshot(
         .chain(scene.power_storage_entities.values())
         .chain(scene.chunk_entities.values())
         .chain(scene.background_entities.iter())
+        .chain(scene.heat_overlay_entities.iter())
+        .chain(scene.flow_overlay_entities.iter())
     {
         commands.entity(*entity).despawn();
     }
@@ -71,6 +73,8 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.chunk_entities.clear();
     scene.location_positions.clear();
     scene.background_entities.clear();
+    scene.heat_overlay_entities.clear();
+    scene.flow_overlay_entities.clear();
 
     let origin = space_origin(&snapshot.config.space);
     scene.origin = Some(origin);
