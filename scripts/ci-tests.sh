@@ -4,18 +4,21 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
-verbose_flags=()
-if [[ "${CI_VERBOSE:-}" == "1" ]]; then
-  verbose_flags=(--verbose)
-fi
-
 run() {
   echo "+ $*"
   "$@"
 }
 
+run_cargo() {
+  if [[ "${CI_VERBOSE:-}" == "1" ]]; then
+    run env -u RUSTC_WRAPPER cargo "$@" --verbose
+  else
+    run env -u RUSTC_WRAPPER cargo "$@"
+  fi
+}
+
 run env -u RUSTC_WRAPPER cargo fmt --all -- --check
-run env -u RUSTC_WRAPPER cargo test "${verbose_flags[@]}"
-run env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime "${verbose_flags[@]}"
-run env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration "${verbose_flags[@]}"
-run env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration "${verbose_flags[@]}"
+run_cargo test
+run_cargo test -p agent_world --features wasmtime
+run_cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration
+run_cargo test -p agent_world --test viewer_offline_integration

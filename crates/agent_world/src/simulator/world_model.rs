@@ -570,6 +570,8 @@ pub struct AsteroidFragmentConfig {
     pub cluster_noise: f64,
     pub layer_scale_height_km: f64,
     pub size_powerlaw_q: f64,
+    pub radiation_emission_scale: f64,
+    pub radiation_radius_exponent: f64,
     pub radius_min_cm: i64,
     pub radius_max_cm: i64,
     pub min_fragment_spacing_cm: i64,
@@ -587,8 +589,10 @@ impl Default for AsteroidFragmentConfig {
             cluster_noise: 0.5,
             layer_scale_height_km: 2.0,
             size_powerlaw_q: 3.0,
-            radius_min_cm: 10,
-            radius_max_cm: 10_000,
+            radiation_emission_scale: 1e-9,
+            radiation_radius_exponent: 3.0,
+            radius_min_cm: 25_000,
+            radius_max_cm: 500_000,
             min_fragment_spacing_cm: 50_000,
             max_fragments_per_chunk: 4_000,
             max_blocks_per_fragment: 64,
@@ -614,6 +618,12 @@ impl AsteroidFragmentConfig {
         }
         if self.size_powerlaw_q <= 0.0 {
             self.size_powerlaw_q = 1.0;
+        }
+        if !self.radiation_emission_scale.is_finite() || self.radiation_emission_scale < 0.0 {
+            self.radiation_emission_scale = 0.0;
+        }
+        if !self.radiation_radius_exponent.is_finite() || self.radiation_radius_exponent < 0.0 {
+            self.radiation_radius_exponent = 0.0;
         }
         if self.radius_min_cm < 0 {
             self.radius_min_cm = 0;

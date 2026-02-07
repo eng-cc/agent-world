@@ -69,7 +69,12 @@ pub fn generate_fragments(
 
                         let roll = rng.next_u32() % total_weights;
                         let material = config.material_weights.pick(roll);
-                        let emission = estimate_radiation_emission(radius_cm as f64, material);
+                        let emission = estimate_radiation_emission(
+                            radius_cm as f64,
+                            material,
+                            config.radiation_emission_scale,
+                            config.radiation_radius_exponent,
+                        );
                         let profile = LocationProfile {
                             material,
                             radius_cm,
@@ -116,7 +121,12 @@ fn spacing_allows(
     true
 }
 
-fn estimate_radiation_emission(radius_cm: f64, material: MaterialKind) -> i64 {
+fn estimate_radiation_emission(
+    radius_cm: f64,
+    material: MaterialKind,
+    emission_scale: f64,
+    radius_exponent: f64,
+) -> i64 {
     let factor = match material {
         MaterialKind::Silicate => 1.0,
         MaterialKind::Metal => 1.2,
@@ -124,7 +134,8 @@ fn estimate_radiation_emission(radius_cm: f64, material: MaterialKind) -> i64 {
         MaterialKind::Carbon => 0.9,
         MaterialKind::Composite => 1.1,
     };
-    let base = (radius_cm / 100.0).max(1.0) * factor;
+    let radius_term = radius_cm.max(1.0).powf(radius_exponent.max(0.0));
+    let base = radius_term * emission_scale.max(0.0) * factor;
     base.round().max(1.0) as i64
 }
 
