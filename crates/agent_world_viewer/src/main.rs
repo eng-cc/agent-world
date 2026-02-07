@@ -36,12 +36,17 @@ const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
 mod headless;
 mod scene_helpers;
+mod selection_linking;
 mod timeline_controls;
 mod ui_text;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use headless::headless_report;
 use scene_helpers::*;
+use selection_linking::{
+    handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
+    spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
+};
 use timeline_controls::{
     handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
     handle_timeline_mark_filter_buttons, handle_timeline_mark_jump_buttons,
@@ -78,6 +83,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
+        .insert_resource(EventObjectLinkState::default())
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
         .insert_resource(OrbitDragState::default())
@@ -102,6 +108,9 @@ fn run_ui(addr: String, offline: bool) {
                 handle_timeline_bar_drag,
                 handle_timeline_mark_jump_buttons,
                 handle_timeline_seek_submit,
+                handle_locate_focus_event_button,
+                handle_jump_selection_events_button,
+                update_event_object_link_text,
                 update_timeline_ui,
                 update_ui,
             )
@@ -657,7 +666,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(230.0),
+                    height: Val::Px(280.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(6.0),
                     padding: UiRect::all(Val::Px(12.0)),
@@ -730,6 +739,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     SelectionText,
                 ));
 
+                spawn_event_object_link_controls(bar, font.clone());
                 spawn_timeline_controls(bar, font.clone());
             });
 
@@ -1018,177 +1028,6 @@ fn update_3d_viewport(
         physical_size: UVec2::new(render_width, window_height),
         depth: 0.0..1.0,
     });
-}
-
-fn pick_3d_selection(
-    buttons: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
-    agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
-    locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
-    assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
-    power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
-    power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
-    chunks: Query<(Entity, &GlobalTransform, &ChunkMarker)>,
-    config: Res<Viewer3dConfig>,
-    mut selection: ResMut<ViewerSelection>,
-    mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
-) {
-    if !buttons.just_pressed(MouseButton::Left) {
-        return;
-    }
-
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let Some(cursor_position) = window.cursor_position() else {
-        return;
-    };
-    if cursor_position.x > (window.width() - UI_PANEL_WIDTH) {
-        return;
-    }
-
-    let Ok((camera, camera_transform)) = camera_query.single() else {
-        return;
-    };
-    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-        return;
-    };
-
-    let mut best: Option<(Entity, SelectionKind, String, Option<String>, f32)> = None;
-
-    for (entity, transform, marker) in agents.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::Agent,
-                    marker.id.clone(),
-                    None,
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in locations.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::Location,
-                    marker.id.clone(),
-                    Some(marker.name.clone()),
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in assets.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::Asset,
-                    marker.id.clone(),
-                    None,
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in power_plants.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::PowerPlant,
-                    marker.id.clone(),
-                    None,
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in power_storages.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::PowerStorage,
-                    marker.id.clone(),
-                    None,
-                    distance,
-                ));
-            }
-        }
-    }
-
-    for (entity, transform, marker) in chunks.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= CHUNK_PICK_MAX_DISTANCE
-                && best
-                    .as_ref()
-                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
-                    .unwrap_or(true)
-            {
-                best = Some((
-                    entity,
-                    SelectionKind::Chunk,
-                    marker.id.clone(),
-                    Some(marker.state.clone()),
-                    distance,
-                ));
-            }
-        }
-    }
-
-    if let Some((entity, kind, id, name, _)) = best {
-        if let Some(current) = selection.current.take() {
-            reset_entity_scale(&mut transforms, current.entity);
-        }
-        selection.current = Some(SelectionInfo {
-            entity,
-            kind,
-            id,
-            name,
-        });
-        if config.highlight_selected {
-            apply_entity_highlight(&mut transforms, entity);
-        }
-    } else if selection.current.is_some() {
-        if let Some(current) = selection.current.take() {
-            reset_entity_scale(&mut transforms, current.entity);
-        }
-    }
 }
 
 #[cfg(test)]
