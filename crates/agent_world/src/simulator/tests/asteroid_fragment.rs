@@ -58,3 +58,38 @@ fn asteroid_fragment_generator_respects_min_fragment_spacing() {
         }
     }
 }
+
+#[test]
+fn asteroid_fragment_emission_scales_with_radius_exponent() {
+    let space = SpaceConfig {
+        width_cm: 20_000,
+        depth_cm: 20_000,
+        height_cm: 20_000,
+    };
+
+    let mut small = AsteroidFragmentConfig::default();
+    small.base_density_per_km3 = 10.0;
+    small.voxel_size_km = 1;
+    small.cluster_noise = 0.0;
+    small.layer_scale_height_km = 0.0;
+    small.radius_min_cm = 100;
+    small.radius_max_cm = 100;
+    small.min_fragment_spacing_cm = 0;
+    small.radiation_emission_scale = 1e-6;
+    small.radiation_radius_exponent = 3.0;
+
+    let mut large = small.clone();
+    large.radius_min_cm = 200;
+    large.radius_max_cm = 200;
+
+    let small_frags = generate_fragments(11, &space, &small);
+    let large_frags = generate_fragments(11, &space, &large);
+
+    assert!(!small_frags.is_empty());
+    assert!(!large_frags.is_empty());
+
+    let small_emission = small_frags[0].profile.radiation_emission_per_tick;
+    let large_emission = large_frags[0].profile.radiation_emission_per_tick;
+
+    assert!(large_emission >= small_emission * 7);
+}

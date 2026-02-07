@@ -342,8 +342,10 @@
 - [x] **C1 尺寸口径统一**：统一“小行星碎片尺寸范围”的文档与默认配置。
   - 已完成：默认配置更新为 `radius_min_cm=25_000`、`radius_max_cm=500_000`（对应直径 500m-10km）。
   - 验收：`doc/*`、`README`、`WorldConfig::default().asteroid_fragment` 三处一致。
-- [ ] **C2 辐射源标度修订**：将发射强度与碎片尺度的关系从线性近似升级为可配置标度（建议默认接近体积标度）。
-  - 验收：`estimate_radiation_emission` 由可解释参数驱动，且有单测覆盖“半径增大时发射不减”。
+- [x] **C2 辐射源标度修订**：将发射强度与碎片尺度的关系从线性近似升级为可配置标度（建议默认接近体积标度）。
+  - 已完成：`AsteroidFragmentConfig` 新增 `radiation_emission_scale` 与 `radiation_radius_exponent`，默认 `1e-9` 与 `3.0`。
+  - 已完成：`estimate_radiation_emission` 改为 `emission = radius_cm^exponent * scale * material_factor`。
+  - 验收：新增单测覆盖“半径翻倍时发射显著上升（立方标度）”。
 - [ ] **C3 采集场模型对齐**：将采集可用辐射从“局部近似”扩展为“近邻源 + 背景场”并包含距离项。
   - 验收：采集量随源距离增加单调下降；多源叠加结果可复现。
 - [ ] **C4 背景辐射守恒说明**：为 `radiation_floor` 增加物理解释（外部背景通量）与上限策略，避免“无源无限造能”叙事。
