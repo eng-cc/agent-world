@@ -89,6 +89,13 @@
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 
+### 在线模式时间轴 UI（2026-02-07 更新）
+- 顶部控制区新增 `Timeline` 区块：显示 `now/target/max` 三个 tick 指标。
+- 提供 `-100/-10/-1/+1/+10/+100` 目标 tick 微调按钮，支持快速定位。
+- 新增时间轴拖拽条（scrub bar）：按住拖拽可在可见 tick 范围内连续设置目标 tick。
+- 点击 `Seek Target` 后发送 `ViewerControl::Seek { tick: target }`，服务端返回目标 `Snapshot + Metrics`。
+- 时间轴默认跟随当前 tick；当用户手动调整目标后切换为“手动目标”直到发送 seek。
+
 ### 在线模式时间轴语义（2026-02-07 更新）
 - `Seek {tick}` 会让 live world 真正切到目标 tick，而不是只移动日志游标。
 - 当 `target_tick < current_tick`：先重置世界到初始场景，再按当前驱动模式重放到目标 tick。
@@ -160,7 +167,7 @@
 
 ### 现状缺口（信息直达视角，2026-02-07）
 - 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。
-- 时序交互仍有缺口：live 模式后端已支持任意 tick seek，但 UI 侧仍缺少目标 tick 输入与时间轴拖拽能力（当前仅 `Seek 0` 按钮）。
+- 时间轴仍有增强空间：当前已支持目标 tick 微调与拖拽 seek，但缺少按事件密度/关键节点（错误、LLM 决策）标注的可视化轨道。
 - 联动检索不足：事件列表与 3D 对象仍是弱关联，缺少“点击事件 -> 定位对象”与“详情 -> 跳转事件上下文”。
 - LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
 - 世界层表达不足：已有边界盒与网格，但缺少 chunk 探索态、资源热力图、电力/交易流覆盖层。

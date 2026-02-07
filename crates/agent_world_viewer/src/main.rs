@@ -13,7 +13,6 @@ use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use bevy::camera::Viewport;
-use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -36,10 +35,16 @@ const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
 mod scene_helpers;
+mod timeline_controls;
 mod ui_text;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use scene_helpers::*;
+use timeline_controls::{
+    handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
+    handle_timeline_seek_submit, spawn_timeline_controls, sync_timeline_state_from_world,
+    update_timeline_ui, TimelineUiState,
+};
 use ui_text::{
     agent_activity_summary, events_summary, format_status, selection_details_summary, world_summary,
 };
@@ -70,6 +75,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
+        .insert_resource(TimelineUiState::default())
         .insert_resource(OrbitDragState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -85,7 +91,18 @@ fn run_ui(addr: String, offline: bool) {
             Update,
             (
                 poll_viewer_messages,
+                sync_timeline_state_from_world,
+                handle_timeline_adjust_buttons,
+                handle_timeline_bar_drag,
+                handle_timeline_seek_submit,
+                update_timeline_ui,
                 update_ui,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            (
                 update_3d_scene,
                 orbit_camera_controls,
                 update_3d_viewport,
@@ -633,7 +650,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(92.0),
+                    height: Val::Px(170.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(6.0),
                     padding: UiRect::all(Val::Px(12.0)),
@@ -705,6 +722,8 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     TextColor(Color::srgb(0.9, 0.9, 0.9)),
                     SelectionText,
                 ));
+
+                spawn_timeline_controls(bar, font.clone());
             });
 
             root.spawn(Node {
@@ -1148,19 +1167,6 @@ fn pick_3d_selection(
     } else if selection.current.is_some() {
         if let Some(current) = selection.current.take() {
             reset_entity_scale(&mut transforms, current.entity);
-        }
-    }
-}
-
-fn handle_control_buttons(
-    mut interactions: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
-    client: Res<ViewerClient>,
-) {
-    for (interaction, button) in &mut interactions {
-        if *interaction == Interaction::Pressed {
-            let _ = client.tx.send(ViewerRequest::Control {
-                mode: button.control.clone(),
-            });
         }
     }
 }

@@ -1,4 +1,8 @@
 use super::*;
+use crate::timeline_controls::{
+    normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
+    TimelineSeekSubmitButton, TimelineStatusText,
+};
 use agent_world::simulator::{ResourceKind, WorldEventKind};
 
 #[test]
@@ -382,6 +386,133 @@ fn control_buttons_send_expected_requests() {
     assert!(seen.contains(&ViewerRequest::Control {
         mode: ViewerControl::Seek { tick: 0 }
     }));
+}
+
+#[test]
+fn timeline_adjust_and_submit_sends_seek_request() {
+    let mut app = App::new();
+    app.add_systems(
+        Update,
+        (handle_timeline_adjust_buttons, handle_timeline_seek_submit).chain(),
+    );
+
+    let (tx, rx) = mpsc::channel::<ViewerRequest>();
+    app.world_mut().insert_resource(ViewerClient {
+        tx,
+        rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
+    });
+    app.world_mut().insert_resource(TimelineUiState {
+        target_tick: 10,
+        max_tick_seen: 100,
+        manual_override: false,
+        drag_active: false,
+    });
+
+    app.world_mut().spawn((
+        Button,
+        Interaction::Pressed,
+        TimelineAdjustButton { delta: 15 },
+    ));
+
+    app.update();
+
+    app.world_mut()
+        .spawn((Button, Interaction::Pressed, TimelineSeekSubmitButton));
+
+    app.update();
+
+    let request = rx.try_recv().expect("seek request");
+    assert_eq!(
+        request,
+        ViewerRequest::Control {
+            mode: ViewerControl::Seek { tick: 25 }
+        }
+    );
+}
+
+#[test]
+fn timeline_drag_updates_target_tick() {
+    let mut app = App::new();
+    app.add_systems(Update, handle_timeline_bar_drag);
+
+    app.world_mut().insert_resource(ViewerState::default());
+    app.world_mut().insert_resource(TimelineUiState {
+        target_tick: 0,
+        max_tick_seen: 100,
+        manual_override: false,
+        drag_active: false,
+    });
+
+    app.world_mut().spawn((
+        Button,
+        Interaction::Pressed,
+        bevy::ui::RelativeCursorPosition {
+            cursor_over: true,
+            normalized: Some(Vec2::new(0.25, 0.0)),
+        },
+        TimelineBar,
+    ));
+
+    app.update();
+
+    let timeline = app.world().resource::<TimelineUiState>();
+    assert_eq!(timeline.target_tick, 75);
+    assert!(timeline.manual_override);
+    assert!(timeline.drag_active);
+}
+
+#[test]
+fn update_timeline_ui_renders_text_and_fill() {
+    let mut app = App::new();
+    app.add_systems(Update, update_timeline_ui);
+
+    app.world_mut().spawn((Text::new(""), TimelineStatusText));
+    app.world_mut().spawn((
+        Node {
+            width: Val::Px(0.0),
+            height: Val::Px(8.0),
+            ..default()
+        },
+        TimelineBarFill,
+    ));
+
+    let mut state = ViewerState::default();
+    state.metrics = Some(RunnerMetrics {
+        total_ticks: 40,
+        ..RunnerMetrics::default()
+    });
+    app.world_mut().insert_resource(state);
+    app.world_mut().insert_resource(TimelineUiState {
+        target_tick: 50,
+        max_tick_seen: 100,
+        manual_override: true,
+        drag_active: false,
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let timeline_text = {
+        let mut query = world.query::<(&Text, &TimelineStatusText)>();
+        query.single(world).expect("timeline text").0.clone()
+    };
+    assert!(timeline_text.0.contains("now=40"));
+    assert!(timeline_text.0.contains("target=50"));
+    assert!(timeline_text.0.contains("max=100"));
+    assert!(timeline_text.0.contains("mode=manual"));
+
+    let fill_width = {
+        let mut query = world.query::<(&Node, &TimelineBarFill)>();
+        query.single(world).expect("timeline fill").0.width
+    };
+    assert_eq!(fill_width, Val::Percent(50.0));
+}
+
+#[test]
+fn normalized_x_to_tick_maps_centered_range() {
+    assert_eq!(normalized_x_to_tick(-0.5, 100), 0);
+    assert_eq!(normalized_x_to_tick(0.0, 100), 50);
+    assert_eq!(normalized_x_to_tick(0.5, 100), 100);
 }
 
 #[test]
