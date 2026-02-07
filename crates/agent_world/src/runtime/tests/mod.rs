@@ -15,4 +15,5 @@ mod effects;
 mod governance;
 mod modules;
 mod persistence;
+mod power_bootstrap;
 mod rules;

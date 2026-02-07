@@ -20,11 +20,20 @@ use super::sandbox::{
 use super::util::to_canonical_cbor;
 use super::world_event::{WorldEvent, WorldEventBody};
 
+mod power_modules;
+
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
 pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
 pub const M1_BODY_MODULE_ID: &str = "m1.body.core";
 pub const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
+
+pub use power_modules::{
+    M1RadiationPowerModule, M1StoragePowerModule, M1_POWER_HARVEST_BASE_PER_TICK,
+    M1_POWER_HARVEST_DISTANCE_BONUS_CAP, M1_POWER_HARVEST_DISTANCE_STEP_CM,
+    M1_POWER_MODULE_VERSION, M1_POWER_STORAGE_CAPACITY, M1_POWER_STORAGE_INITIAL_LEVEL,
+    M1_POWER_STORAGE_MOVE_COST_PER_KM, M1_RADIATION_POWER_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
+};
 
 pub trait BuiltinModule {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure>;
