@@ -51,6 +51,12 @@
 - `LlmAgentBehavior<C: LlmCompletionClient>`
   - 在 `decide` 中调用 LLM 并解析为 `AgentDecision`
 
+### Demo 入口（已落地）
+- `world_llm_agent_demo`
+  - 启动后为场景内每个 agent 构造 `LlmAgentBehavior::from_env(agent_id)`。
+  - 使用 `AgentRunner` 执行 `observe -> decide -> act` 循环。
+  - 支持参数：`--scenario <name>`、`--ticks <n>`；默认场景为 `llm_bootstrap`。
+
 ### 决策协议（LLM 输出）
 - 约定输出 JSON：
   - `{"decision":"wait"}`

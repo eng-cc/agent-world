@@ -88,6 +88,7 @@
 - [x] 新增 `config.toml` 配置读取与 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 默认值
 - [x] 新增 LLM 决策解析与失败降级（`Wait`）
 - [x] 补充单元测试并通过 `cargo test -p agent_world`
+- [x] 新增可运行 LLM demo：`world_llm_agent_demo`（`AgentRunner + LlmAgentBehavior`）
 
 ### 9. 场景测试覆盖矩阵
 - [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵

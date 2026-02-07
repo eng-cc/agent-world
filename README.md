@@ -47,6 +47,9 @@
 - `world_init_demo`：输出世界初始化场景的摘要信息  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
   - 场景：`minimal` / `two_bases` / `llm_bootstrap` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
+- `world_llm_agent_demo`：以 `AgentRunner + LlmAgentBehavior` 运行 LLM 决策循环
+  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 20`
+  - 配置：默认读取项目根目录 `config.toml`（`AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY` 必填）
 - `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
 

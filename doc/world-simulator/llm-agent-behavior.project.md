@@ -10,6 +10,7 @@
 - [x] LLM7 补充单元测试（配置、解析、失败降级）
 - [x] LLM8 更新 README 与 `config.example.toml`（配置说明）
 - [x] LLM9 回顾并更新设计文档/项目管理文档状态，补任务日志，运行测试
+- [x] LLM10 新增 `world_llm_agent_demo`（AgentRunner + LlmAgentBehavior）
 
 ## 依赖
 - `crates/agent_world/src/simulator/agent.rs`
@@ -18,6 +19,6 @@
 - `config.example.toml`
 
 ## 状态
-- 当前阶段：LLM9（收尾完成）
+- 当前阶段：LLM10（可运行 demo 已落地）
 - 下一步：按 runtime 路线补齐 LLM effect/receipt 审计闭环
-- 最近更新：完成 LLM Agent 行为落地（config.toml + 默认 system prompt + 测试通过，2026-02-06）
+- 最近更新：新增 world_llm_agent_demo 并接入 llm_bootstrap 场景（2026-02-06）
