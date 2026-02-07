@@ -188,6 +188,7 @@ fn scenario_templates_build_models() {
     let scenarios = [
         WorldScenario::Minimal,
         WorldScenario::TwoBases,
+        WorldScenario::LlmBootstrap,
         WorldScenario::PowerBootstrap,
         WorldScenario::ResourceBootstrap,
         WorldScenario::TwinRegionBootstrap,
@@ -471,6 +472,7 @@ fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
 fn scenario_aliases_parse() {
     let cases = [
         ("two-bases", WorldScenario::TwoBases),
+        ("llm", WorldScenario::LlmBootstrap),
         ("bootstrap", WorldScenario::PowerBootstrap),
         ("resources", WorldScenario::ResourceBootstrap),
         ("twin-regions", WorldScenario::TwinRegionBootstrap),
@@ -525,6 +527,15 @@ fn scenarios_are_stable() {
             required_locations: &["origin", "base-a", "base-b"],
             required_plants: &[],
             required_storages: &[],
+            expect_asteroid_fragment: false,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::LlmBootstrap,
+            expected_agents: 1,
+            expect_origin: true,
+            required_locations: &["origin", "llm-hub", "llm-outpost"],
+            required_plants: &[],
+            required_storages: &["llm-storage"],
             expect_asteroid_fragment: false,
         },
         ScenarioExpectation {

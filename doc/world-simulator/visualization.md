@@ -5,6 +5,11 @@
 - 支持最小调试闭环：世界状态面板、事件浏览、回放控制。
 - 以“可重放的可视化”为核心：先支持离线回放（snapshot/journal），再扩展在线实时流。
 
+## 设计原则（2026-02-07 更新）
+- 希望通过可视化能以最直接的方式获取所有模拟相关的信息。
+- 信息直达优先：默认视图应直接回答“谁在什么位置、正在做什么、为何这么做（事件与 LLM 决策）”。
+- 先完整呈现，再按需折叠：优先减少在终端/日志/UI 之间来回切换。
+
 ## 范围
 - **范围内**
   - 新增 Bevy 可视化 crate：`crates/agent_world_viewer`。
@@ -46,6 +51,7 @@
 { "type": "event", "tick": 121, "event": { /* WorldEvent */ } }
 { "type": "metrics", "tick": 121, "metrics": { /* RunnerMetrics */ } }
 { "type": "error", "message": "..." }
+{ "type": "decision_trace", "trace": { /* AgentDecisionTrace */ } }
 ```
 
 ### 数据结构对齐
@@ -66,15 +72,43 @@
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ### 在线模式（最小实现）
-- 在线模式直接从 `WorldKernel` 推送事件，使用内置 demo script 生成可观测事件序列。
+- 在线模式直接从 `WorldKernel` 推送事件。
+- 支持两种决策驱动：
+  - 默认 `script`（内置 demo script）
+  - 可选 `llm`（`world_viewer_live --llm`，通过 `LlmAgentBehavior` 决策）
 - 默认单连接、tick 驱动，不保证多客户端一致性。
 - `Seek` 仅支持回到 tick=0（重置世界），其他 tick 会返回错误。
 
 #### 快速运行（在线模式）
-1) 启动 live server：  
+1) 启动 live server（脚本驱动，默认）：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
-2) 启动 UI：  
+2) 启动 live server（LLM 驱动）：  
+`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010 --tick-ms 300`
+3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
+### 3D 交互说明（2026-02-07 更新）
+- 3D 视口支持鼠标拖拽轨道相机：
+  - 左键拖拽：旋转视角（orbit）
+  - 右键/中键拖拽：平移焦点（pan）
+  - `Shift + 左键拖拽`：平移焦点（便于触控板）
+  - 滚轮：缩放距离（zoom）
+- 交互只在左侧 3D 视口生效，右侧 UI 面板不会触发相机移动。
+- 输入增量使用光标位置差值（cursor delta），避免部分平台 `MouseMotion` 不稳定导致的拖拽失效。
+
+
+### 选中对象详情面板（2026-02-07 更新）
+- 右侧 UI 新增“Details”区块：点击 3D 视图中的对象后展示详情。
+- 已支持对象：Agent、Location、Asset、PowerPlant、PowerStorage。
+- Agent 详情包含：位置/坐标、机体参数、电力与热状态、资源、最近事件。
+- LLM 模式下，Agent 详情额外展示最近 LLM 输入输出：
+  - `llm_input`（system+user prompt）
+  - `llm_output`（completion 文本）
+  - `llm_error / parse_error`（若存在）
+- Location 详情包含：名称/坐标、profile、资源、碎片物理与预算摘要、最近相关事件。
+- Asset 详情包含：种类、数量、归属者、归属者关联事件。
+- PowerPlant/PowerStorage 详情包含：设施参数、电力状态与相关电力事件。
+- 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
 
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
@@ -98,6 +132,30 @@
 - **要求**：新增 UI 功能必须同步新增 headless UI 测试，覆盖输入/状态变化与输出文本/结构。
 - **离线模式**：headless 默认离线；如需联网，设置 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1`；也可显式设置 `AGENT_WORLD_VIEWER_OFFLINE=1` 强制离线。
 
+### 可观测性增强（2026-02-07）
+- **背景问题**：当前 3D 视图缺少空间边界/背景参照，事件列表也难以直接回答“每个 Agent 正在做什么”。
+- **增强目标**：
+  - 在右侧 UI 新增「Agent 活动面板」，按 Agent 展示位置、电力与最近一次动作/功耗活动。
+  - 在 3D 场景新增世界背景参照（空间边界盒 + 地板网格线），提升运动与距离感知。
+- **接口/数据**：
+  - `Agent 活动面板` 从 `WorldSnapshot + WorldEvent` 派生：
+    - `snapshot.model.agents[*].location_id`
+    - `snapshot.model.agents[*].resources[electricity]`
+    - `events` 逆序扫描最近的 Agent 相关事件（move/harvest/transfer/power/refine 等）
+  - `背景参照` 从 `snapshot.config.space` 派生：
+    - `width_cm/depth_cm/height_cm` 映射到 3D 单位后生成边界盒和网格。
+- **验收标准**：
+  - 打开 viewer 后可直接看到每个 Agent 的当前状态与最近活动。
+  - 场景中可见边界和地板参照，不再是“黑底悬浮点”。
+
+### 现状缺口（信息直达视角，2026-02-07）
+- 对象覆盖仍有缺口：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage，尚未覆盖 Chunk。
+- 时序定位不足：live 模式 `Seek` 仅支持 `tick=0` 重置，缺少任意 tick 回看与时间轴跳转。
+- 联动检索不足：事件列表与 3D 对象仍是弱关联，缺少“点击事件 -> 定位对象”与“详情 -> 跳转事件上下文”。
+- LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
+- 世界层表达不足：已有边界盒与网格，但缺少 chunk 探索态、资源热力图、电力/交易流覆盖层。
+- 信息导出不足：缺少对“当前选中对象完整状态 + 最近 trace”的一键导出/复制能力。
+
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）
 - **M5.2** Bevy UI 骨架：连接、状态面板、事件列表
@@ -109,3 +167,4 @@
 - **回放一致性**：事件顺序与 tick 对齐不一致会导致 UI 误导，需要严格定义回放语义。
 - **协议演进**：JSON 协议易变，需版本字段与兼容策略。
 - **性能**：大量事件会导致 UI 卡顿，需分页/采样/聚合策略。
+- **Camera order 冲突风险**：多相机（3D 场景 + UI）若使用相同优先级会导致渲染歧义与交互异常；通过显式 `Camera.order` 分层（3D=0, UI=1）规避。

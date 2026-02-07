@@ -29,7 +29,7 @@ mod world_model;
 mod tests;
 
 // Re-export all public types
-pub use agent::{ActionResult, AgentBehavior, AgentDecision};
+pub use agent::{ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace};
 pub use asteroid_fragment::generate_fragments;
 pub use chunking::{
     chunk_bounds, chunk_coord_of, chunk_coords, chunk_grid_dims, chunk_seed, ChunkBounds,

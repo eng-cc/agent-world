@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::kernel::{Observation, RejectReason, WorldEvent, WorldEventKind};
-use super::types::{Action, ActionId};
+use super::types::{Action, ActionId, WorldTime};
 
 // ============================================================================
 // Agent Interface (observe → decide → act)
@@ -39,6 +39,14 @@ pub trait AgentBehavior {
     fn on_event(&mut self, _event: &WorldEvent) {
         // Default: no-op
     }
+
+    /// Takes and clears the latest decision trace if available.
+    ///
+    /// Useful for live debugging/visualization pipelines that need decision internals
+    /// (e.g. LLM prompt/completion I/O).
+    fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
+        None
+    }
 }
 
 /// The result of an agent's decision process.
@@ -65,6 +73,18 @@ impl AgentDecision {
             _ => None,
         }
     }
+}
+
+/// Optional decision trace payload, intended for observability/diagnostics.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AgentDecisionTrace {
+    pub agent_id: String,
+    pub time: WorldTime,
+    pub decision: AgentDecision,
+    pub llm_input: Option<String>,
+    pub llm_output: Option<String>,
+    pub llm_error: Option<String>,
+    pub parse_error: Option<String>,
 }
 
 /// Result of an action execution, providing feedback to the agent.

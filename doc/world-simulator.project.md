@@ -60,6 +60,13 @@
 - [ ] 事件浏览器（筛选、回放、聚合统计）
 - [ ] 运行控制（暂停/加速/单步/回滚到快照）
 - [ ] 任务分册：`doc/world-simulator/visualization.project.md`
+- [x] Viewer 可观测性增强：Agent 活动面板与世界背景参照（边界盒 + 地板网格）
+- [x] 修复 viewer 多相机渲染歧义（Camera order）并恢复 3D 交互
+- [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer-selection-details.md`）
+- [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer-selection-details.project.md`）
+- [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
+- [x] Viewer 选中对象详情扩展（Asset/PowerPlant/PowerStorage）
+- [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -88,6 +95,14 @@
 - [x] 新增 `config.toml` 配置读取与 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 默认值
 - [x] 新增 LLM 决策解析与失败降级（`Wait`）
 - [x] 补充单元测试并通过 `cargo test -p agent_world`
+- [x] 新增可运行 LLM demo：`world_llm_agent_demo`（`AgentRunner + LlmAgentBehavior`）
+- [x] 在线 viewer 支持 LLM 决策驱动（`world_viewer_live --llm`）
+- [x] 修复 viewer 3D 相机拖拽输入兼容性（支持触控板/Shift+左键平移）
+
+### 9. 场景测试覆盖矩阵
+- [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵
+- [x] 在 `doc/world-simulator/scenario-files.project.md` 记录矩阵任务与状态
+- [x] 新增 `llm_bootstrap` 场景并接入 scenario 枚举/解析/测试矩阵
 
 ### 9. 背景故事物理一致性修订
 - [x] 输出“背景故事物理一致性修订清单”并附加到设计文档（`doc/world-simulator.md`）
@@ -111,3 +126,5 @@
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）并行推进“背景故事物理一致性修订（C3 优先）”
 - 最近更新：完成 C2 辐射源标度修订（新增可配置标度参数与单测，2026-02-07）
+- 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
+- 最近更新：详情面板对象覆盖扩展至 Asset/PowerPlant/PowerStorage（2026-02-07）

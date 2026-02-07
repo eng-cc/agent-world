@@ -18,6 +18,7 @@ use super::world_model::{SpaceConfig, WorldConfig};
 pub enum WorldScenario {
     Minimal,
     TwoBases,
+    LlmBootstrap,
     PowerBootstrap,
     ResourceBootstrap,
     TwinRegionBootstrap,
@@ -33,6 +34,7 @@ impl WorldScenario {
         match self {
             WorldScenario::Minimal => "minimal",
             WorldScenario::TwoBases => "two_bases",
+            WorldScenario::LlmBootstrap => "llm_bootstrap",
             WorldScenario::PowerBootstrap => "power_bootstrap",
             WorldScenario::ResourceBootstrap => "resource_bootstrap",
             WorldScenario::TwinRegionBootstrap => "twin_region_bootstrap",
@@ -52,6 +54,7 @@ impl WorldScenario {
         match input.trim().to_lowercase().as_str() {
             "minimal" => Some(WorldScenario::Minimal),
             "two_bases" | "two-bases" => Some(WorldScenario::TwoBases),
+            "llm_bootstrap" | "llm-bootstrap" | "llm" => Some(WorldScenario::LlmBootstrap),
             "power_bootstrap" | "power-bootstrap" | "bootstrap" => {
                 Some(WorldScenario::PowerBootstrap)
             }
@@ -94,6 +97,7 @@ impl WorldScenario {
         &[
             "minimal",
             "two_bases",
+            "llm_bootstrap",
             "power_bootstrap",
             "resource_bootstrap",
             "twin_region_bootstrap",
@@ -368,6 +372,10 @@ fn scenario_spec_json(scenario: WorldScenario) -> &'static str {
             env!("CARGO_MANIFEST_DIR"),
             "/scenarios/two_bases.json"
         )),
+        WorldScenario::LlmBootstrap => include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/scenarios/llm_bootstrap.json"
+        )),
         WorldScenario::PowerBootstrap => include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/scenarios/power_bootstrap.json"
@@ -412,6 +420,7 @@ mod tests {
         let scenarios = [
             WorldScenario::Minimal,
             WorldScenario::TwoBases,
+            WorldScenario::LlmBootstrap,
             WorldScenario::PowerBootstrap,
             WorldScenario::ResourceBootstrap,
             WorldScenario::TwinRegionBootstrap,

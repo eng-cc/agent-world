@@ -28,3 +28,6 @@ config.toml
 
 # Legacy local env file (deprecated)
 .env
+
+# Local debug artifacts
+.tmp/

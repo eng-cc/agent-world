@@ -46,7 +46,10 @@
 ## 示例工具
 - `world_init_demo`：输出世界初始化场景的摘要信息  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
-  - 场景：`minimal` / `two_bases` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
+  - 场景：`minimal` / `two_bases` / `llm_bootstrap` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
+- `world_llm_agent_demo`：以 `AgentRunner + LlmAgentBehavior` 运行 LLM 决策循环
+  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 20`
+  - 配置：默认读取项目根目录 `config.toml`（`AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY` 必填）
 - `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
 
@@ -59,10 +62,14 @@
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 ## Viewer 快速运行（在线模式）
-1. 启动 live server：  
+1. 启动 live server（脚本驱动，默认）：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
-2. 启动 UI：  
+2. 或启动 live server（LLM 驱动）：  
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010 --tick-ms 300`
+   （需在根目录 `config.toml` 配置 `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`）
+3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
 
 ## 路线图（摘要）
 - M1：世界内核最小闭环（时间、地点、事件、行动校验、可恢复）

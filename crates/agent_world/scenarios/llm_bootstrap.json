@@ -1,0 +1,50 @@
+{
+  "id": "llm_bootstrap",
+  "name": "LLM Bootstrap",
+  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "origin": {
+    "resources": { "amounts": { "electricity": 180, "hardware": 30, "data": 40 } }
+  },
+  "agents": {
+    "count": 1,
+    "location_id": "llm-hub",
+    "resources": { "amounts": { "electricity": 30, "data": 12 } }
+  },
+  "locations": [
+    {
+      "location_id": "llm-hub",
+      "name": "LLM Hub",
+      "pos": { "type": "center_offset", "dx_pct": -0.18 },
+      "profile": {
+        "material": "composite",
+        "radius_cm": 240,
+        "radiation_emission_per_tick": 45
+      },
+      "resources": { "amounts": { "electricity": 120, "hardware": 20, "data": 25 } }
+    },
+    {
+      "location_id": "llm-outpost",
+      "name": "LLM Outpost",
+      "pos": { "type": "center_offset", "dx_pct": 0.18 },
+      "profile": {
+        "material": "metal",
+        "radius_cm": 180,
+        "radiation_emission_per_tick": 25
+      },
+      "resources": { "amounts": { "electricity": 80, "hardware": 10, "data": 15 } }
+    }
+  ],
+  "power_storages": [
+    {
+      "facility_id": "llm-storage",
+      "location_id": "llm-hub",
+      "owner": { "type": "Location", "data": { "location_id": "llm-hub" } },
+      "capacity": 70,
+      "current_level": 15,
+      "charge_efficiency": 1.0,
+      "discharge_efficiency": 1.0,
+      "max_charge_rate": 8,
+      "max_discharge_rate": 8
+    }
+  ]
+}

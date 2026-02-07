@@ -14,6 +14,19 @@ fn world_init_demo_runs_summary_only() {
 }
 
 #[test]
+fn world_init_demo_runs_llm_bootstrap_summary() {
+    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+    let output = Command::new(bin)
+        .args(["--summary-only", "llm_bootstrap"])
+        .output()
+        .expect("run world_init_demo");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("scenario: llm_bootstrap"));
+}
+
+#[test]
 fn world_init_demo_runs_asteroid_fragment_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
     let output = Command::new(bin)

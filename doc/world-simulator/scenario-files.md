@@ -58,3 +58,26 @@
 - 场景文件与代码结构漂移导致解析失败。
 - 相对位置表达不当引入边界越界风险。
 - 场景文件修改需要重新编译才能生效。
+
+## 场景测试覆盖矩阵（2026-02-06）
+
+> 目标：将“场景是否有意义”转化为可验证口径。每个场景至少对应一个**稳定断言**，避免保留“只存在但无测试价值”的场景。
+
+| 场景 ID | 主要测试目标 | 关键覆盖测试 |
+| --- | --- | --- |
+| `minimal` | 最小初始化基线（origin + 默认 agent） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`world_init_demo_runs_summary_only`、`world_init_demo_runs_from_scenario_file` |
+| `two_bases` | 双基地拓扑与双 agent 基础分布 | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(two-bases)` |
+| `llm_bootstrap` | LLM 驱动预置基线（双站点 + 辐射 profile + data/electricity 资源 + storage） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(llm)`、`world_init_demo_runs_llm_bootstrap_summary` |
+| `power_bootstrap` | 电力设施（plant/storage）与 owner 约束 | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(bootstrap)` |
+| `resource_bootstrap` | 资源初值注入（origin/agent） | `resource_bootstrap_seeds_stock`、`scenario_specs_match_ids`、`scenarios_are_stable`、`scenario_aliases_parse(resources)` |
+| `twin_region_bootstrap` | 双区域结构（location/plant/storage/agents） | `twin_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(twin-regions)`、`plan_demo_actions_includes_move_for_multi_location_scenario` |
+| `triad_region_bootstrap` | 三区域结构与设施完整性 | `triad_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(triad-regions)`、`world_init_demo_runs_triad_summary` |
+| `triad_p2p_bootstrap` | P2P 节点化分布（spawn_locations） | `triad_p2p_bootstrap_seeds_nodes_and_agents`、`scenarios_are_stable`、`scenario_aliases_parse(p2p-triad)` |
+| `asteroid_fragment_bootstrap` | 碎片分块生成 + bootstrap chunk + 预算账本 | `asteroid_fragment_bootstrap_seeds_fragments_and_storage`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_summary` |
+| `asteroid_fragment_twin_region_bootstrap` | 碎片分块 + 双区域基础设施联动 | `asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_twin_summary` |
+| `asteroid_fragment_triad_region_bootstrap` | 碎片分块 + 三区域基础设施联动 | `asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_triad_summary` |
+
+说明：
+- `scenario_specs_match_ids` 定位于 `crates/agent_world/src/simulator/scenario.rs`，用于约束“枚举 ID 与 JSON ID 一致”。
+- 其余命名测试主要位于 `crates/agent_world/src/simulator/tests/init.rs` 与 `crates/agent_world/tests/world_init_demo.rs`。
+- 场景矩阵应随测试变更同步更新，避免“文档保留但测试漂移”。

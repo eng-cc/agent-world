@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
-use super::agent::{AgentBehavior, AgentDecision};
+use super::agent::{AgentBehavior, AgentDecision, AgentDecisionTrace};
 use super::kernel::Observation;
 use super::types::Action;
 
@@ -293,6 +293,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     agent_id: String,
     config: LlmAgentConfig,
     client: C,
+    pending_trace: Option<AgentDecisionTrace>,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -310,6 +311,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             agent_id: agent_id.into(),
             config,
             client,
+            pending_trace: None,
         }
     }
 
@@ -328,6 +330,10 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             self.agent_id, observation_json
         )
     }
+
+    fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
+        format!("[system]\n{}\n\n[user]\n{}", system_prompt, user_prompt)
+    }
 }
 
 impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
@@ -336,16 +342,46 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     }
 
     fn decide(&mut self, observation: &Observation) -> AgentDecision {
+        let user_prompt = self.user_prompt(observation);
         let request = LlmCompletionRequest {
             model: self.config.model.clone(),
             system_prompt: self.config.system_prompt.clone(),
-            user_prompt: self.user_prompt(observation),
+            user_prompt,
         };
+        let trace_input = Self::trace_input(&request.system_prompt, &request.user_prompt);
 
         match self.client.complete(&request) {
-            Ok(output) => parse_llm_decision(output.as_str(), self.agent_id.as_str()),
-            Err(_) => AgentDecision::Wait,
+            Ok(output) => {
+                let (decision, parse_error) =
+                    parse_llm_decision_with_error(output.as_str(), self.agent_id.as_str());
+                self.pending_trace = Some(AgentDecisionTrace {
+                    agent_id: self.agent_id.clone(),
+                    time: observation.time,
+                    decision: decision.clone(),
+                    llm_input: Some(trace_input),
+                    llm_output: Some(output),
+                    llm_error: None,
+                    parse_error,
+                });
+                decision
+            }
+            Err(err) => {
+                self.pending_trace = Some(AgentDecisionTrace {
+                    agent_id: self.agent_id.clone(),
+                    time: observation.time,
+                    decision: AgentDecision::Wait,
+                    llm_input: Some(trace_input),
+                    llm_output: None,
+                    llm_error: Some(err.to_string()),
+                    parse_error: None,
+                });
+                AgentDecision::Wait
+            }
         }
+    }
+
+    fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
+        self.pending_trace.take()
     }
 }
 
@@ -374,20 +410,28 @@ struct LlmDecisionPayload {
     max_amount: Option<i64>,
 }
 
-fn parse_llm_decision(output: &str, agent_id: &str) -> AgentDecision {
+fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
     let json = extract_json_block(output).unwrap_or(output);
     let parsed = match serde_json::from_str::<LlmDecisionPayload>(json) {
         Ok(value) => value,
-        Err(_) => return AgentDecision::Wait,
+        Err(err) => {
+            return (
+                AgentDecision::Wait,
+                Some(format!("json parse failed: {err}")),
+            )
+        }
     };
 
-    match parsed.decision.trim().to_ascii_lowercase().as_str() {
+    let decision = match parsed.decision.trim().to_ascii_lowercase().as_str() {
         "wait" => AgentDecision::Wait,
         "wait_ticks" => AgentDecision::WaitTicks(parsed.ticks.unwrap_or(1).max(1)),
         "move_agent" => {
             let to = parsed.to.unwrap_or_default();
             if to.trim().is_empty() {
-                return AgentDecision::Wait;
+                return (
+                    AgentDecision::Wait,
+                    Some("move_agent missing `to`".to_string()),
+                );
             }
             AgentDecision::Act(Action::MoveAgent {
                 agent_id: agent_id.to_string(),
@@ -397,15 +441,25 @@ fn parse_llm_decision(output: &str, agent_id: &str) -> AgentDecision {
         "harvest_radiation" => {
             let max_amount = parsed.max_amount.unwrap_or(1);
             if max_amount <= 0 {
-                return AgentDecision::Wait;
+                return (
+                    AgentDecision::Wait,
+                    Some("harvest_radiation requires positive max_amount".to_string()),
+                );
             }
             AgentDecision::Act(Action::HarvestRadiation {
                 agent_id: agent_id.to_string(),
                 max_amount,
             })
         }
-        _ => AgentDecision::Wait,
-    }
+        other => {
+            return (
+                AgentDecision::Wait,
+                Some(format!("unsupported decision: {other}")),
+            )
+        }
+    };
+
+    (decision, None)
 }
 
 fn extract_json_block(raw: &str) -> Option<&str> {
@@ -610,5 +664,56 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
         let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
         let decision = behavior.decide(&make_observation());
         assert_eq!(decision, AgentDecision::Wait);
+    }
+
+    #[test]
+    fn llm_agent_emits_decision_trace_with_io() {
+        let client = MockClient {
+            output: Some("{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string()),
+            err: None,
+        };
+        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+        let decision = behavior.decide(&make_observation());
+        assert!(matches!(
+            decision,
+            AgentDecision::Act(Action::MoveAgent { .. })
+        ));
+
+        let trace = behavior.take_decision_trace().expect("trace should exist");
+        assert_eq!(trace.agent_id, "agent-1");
+        assert!(trace
+            .llm_input
+            .as_deref()
+            .unwrap_or_default()
+            .contains("[system]"));
+        assert!(trace
+            .llm_output
+            .as_deref()
+            .unwrap_or_default()
+            .contains("move_agent"));
+        assert_eq!(trace.llm_error, None);
+        assert_eq!(trace.parse_error, None);
+        assert_eq!(behavior.take_decision_trace(), None);
+    }
+
+    #[test]
+    fn llm_agent_emits_parse_error_in_trace() {
+        let client = MockClient {
+            output: Some("not json".to_string()),
+            err: None,
+        };
+        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+        let decision = behavior.decide(&make_observation());
+        assert_eq!(decision, AgentDecision::Wait);
+
+        let trace = behavior.take_decision_trace().expect("trace should exist");
+        assert!(trace.parse_error.is_some());
+        assert!(trace
+            .llm_output
+            .as_deref()
+            .unwrap_or_default()
+            .contains("not json"));
     }
 }

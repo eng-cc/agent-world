@@ -45,13 +45,13 @@ pub use runtime::{
 
 // Agent interface (observe → decide → act)
 pub use simulator::{
-    ActionResult, AgentBehavior, AgentDecision, AgentMemory, AgentQuota, AgentRunner, AgentStats,
-    AgentTickResult, ChunkRuntimeConfig, LlmAgentBehavior, LlmAgentBuildError, LlmAgentConfig,
-    LlmClientError, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind,
-    OpenAiChatCompletionClient, RateLimitPolicy, RateLimitState, RegisteredAgent, RunnerLogEntry,
-    RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason, DEFAULT_CONFIG_FILE_NAME,
-    DEFAULT_LLM_SYSTEM_PROMPT, ENV_LLM_API_KEY, ENV_LLM_BASE_URL, ENV_LLM_MODEL,
-    ENV_LLM_SYSTEM_PROMPT, ENV_LLM_TIMEOUT_MS,
+    ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, AgentMemory, AgentQuota,
+    AgentRunner, AgentStats, AgentTickResult, ChunkRuntimeConfig, LlmAgentBehavior,
+    LlmAgentBuildError, LlmAgentConfig, LlmClientError, LongTermMemory, LongTermMemoryEntry,
+    MemoryEntry, MemoryEntryKind, OpenAiChatCompletionClient, RateLimitPolicy, RateLimitState,
+    RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
+    DEFAULT_CONFIG_FILE_NAME, DEFAULT_LLM_SYSTEM_PROMPT, ENV_LLM_API_KEY, ENV_LLM_BASE_URL,
+    ENV_LLM_MODEL, ENV_LLM_SYSTEM_PROMPT, ENV_LLM_TIMEOUT_MS,
 };
 
 // World initialization

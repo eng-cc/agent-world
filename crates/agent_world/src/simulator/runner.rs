@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use super::agent::{ActionResult, AgentBehavior, AgentDecision};
+use super::agent::{ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace};
 use super::kernel::{WorldEvent, WorldEventKind, WorldKernel};
 use super::types::{Action, WorldTime};
 
@@ -426,6 +426,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
         agent.decision_count += 1;
 
         let decision = agent.behavior.decide(&observation);
+        let decision_trace = agent.behavior.take_decision_trace();
 
         match decision {
             AgentDecision::Wait => Some(AgentTickResult {
@@ -433,6 +434,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 decision: AgentDecision::Wait,
                 action_result: None,
                 skipped_reason: None,
+                decision_trace,
             }),
             AgentDecision::WaitTicks(ticks) => {
                 agent.wait_until = Some(now.saturating_add(ticks));
@@ -441,6 +443,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     decision: AgentDecision::WaitTicks(ticks),
                     action_result: None,
                     skipped_reason: None,
+                    decision_trace,
                 })
             }
             AgentDecision::Act(action) => {
@@ -474,6 +477,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                     decision: AgentDecision::Act(action),
                     action_result,
                     skipped_reason: None,
+                    decision_trace,
                 })
             }
         }
@@ -763,6 +767,8 @@ pub struct AgentTickResult {
     pub action_result: Option<ActionResult>,
     /// Reason why the agent was skipped (if applicable).
     pub skipped_reason: Option<SkippedReason>,
+    /// Optional decision trace payload (e.g. LLM prompt/completion).
+    pub decision_trace: Option<AgentDecisionTrace>,
 }
 
 impl AgentTickResult {
