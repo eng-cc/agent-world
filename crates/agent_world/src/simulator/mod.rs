@@ -15,9 +15,11 @@ mod asteroid_fragment;
 mod chunking;
 mod fragment_physics;
 mod init;
+mod init_module_visual;
 mod kernel;
 mod llm_agent;
 mod memory;
+mod module_visual;
 mod persist;
 mod power;
 mod runner;
@@ -58,6 +60,7 @@ pub use llm_agent::{
 pub use memory::{
     AgentMemory, LongTermMemory, LongTermMemoryEntry, MemoryEntry, MemoryEntryKind, ShortTermMemory,
 };
+pub use module_visual::{ModuleVisualAnchor, ModuleVisualEntity};
 pub use persist::{PersistError, WorldJournal, WorldSnapshot};
 pub use runner::{
     AgentQuota, AgentRunner, AgentStats, AgentTickResult, RateLimitPolicy, RateLimitState,

@@ -248,6 +248,35 @@ impl WorldKernel {
                 }
             }
             WorldEventKind::ActionRejected { .. } => {}
+            WorldEventKind::ModuleVisualEntityUpserted { entity } => {
+                if entity.entity_id.trim().is_empty() || entity.module_id.trim().is_empty() {
+                    return Err(PersistError::ReplayConflict {
+                        message: "invalid module visual entity payload".to_string(),
+                    });
+                }
+                self.ensure_module_visual_anchor_exists(&entity.anchor)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!(
+                            "module visual entity anchor missing for {}: {reason:?}",
+                            entity.entity_id
+                        ),
+                    })?;
+                self.model
+                    .module_visual_entities
+                    .insert(entity.entity_id.clone(), entity.clone());
+            }
+            WorldEventKind::ModuleVisualEntityRemoved { entity_id } => {
+                if self
+                    .model
+                    .module_visual_entities
+                    .remove(entity_id)
+                    .is_none()
+                {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("module visual entity not found: {entity_id}"),
+                    });
+                }
+            }
             WorldEventKind::Power(power_event) => match power_event {
                 PowerEvent::PowerPlantRegistered { plant } => {
                     if self.model.power_plants.contains_key(&plant.id)

@@ -352,6 +352,7 @@ pub enum ResourceOwner {
 // Action Types
 // ============================================================================
 
+use super::module_visual::ModuleVisualEntity;
 use crate::geometry::GeoPos;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -393,6 +394,12 @@ pub enum Action {
         discharge_efficiency: f64,
         max_charge_rate: i64,
         max_discharge_rate: i64,
+    },
+    UpsertModuleVisualEntity {
+        entity: ModuleVisualEntity,
+    },
+    RemoveModuleVisualEntity {
+        entity_id: String,
     },
     DrawPower {
         storage_id: FacilityId,

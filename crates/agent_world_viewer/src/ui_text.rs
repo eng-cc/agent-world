@@ -1,8 +1,8 @@
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
     chunk_bounds, AgentDecisionTrace, Asset, AssetKind, ChunkCoord, ChunkState,
-    FragmentElementKind, PowerEvent, PowerPlant, ResourceKind, ResourceOwner, RunnerMetrics,
-    WorldEvent, WorldEventKind, WorldSnapshot,
+    FragmentElementKind, ModuleVisualAnchor, PowerEvent, PowerPlant, ResourceKind, ResourceOwner,
+    RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
 };
 
 use super::{ConnectionStatus, SelectionKind, ViewerSelection};
@@ -26,6 +26,10 @@ pub(super) fn world_summary(
         lines.push(format!("Locations: {}", model.locations.len()));
         lines.push(format!("Agents: {}", model.agents.len()));
         lines.push(format!("Assets: {}", model.assets.len()));
+        lines.push(format!(
+            "Module Visuals: {}",
+            model.module_visual_entities.len()
+        ));
         lines.push(format!("Power Plants: {}", model.power_plants.len()));
         lines.push(format!("Power Storages: {}", model.power_storages.len()));
         lines.push(format!("Chunks: {}", model.chunks.len()));
@@ -313,28 +317,32 @@ fn asset_details_summary(
         return format!("Details: asset {asset_id}\n(no snapshot)");
     };
 
-    let Some(asset) = snapshot.model.assets.get(asset_id) else {
-        return format!("Details: asset {asset_id}\n(not found in snapshot)");
-    };
+    if let Some(asset) = snapshot.model.assets.get(asset_id) {
+        let mut lines = Vec::new();
+        lines.push(format!("Details: asset {asset_id}"));
+        lines.push(format!("Kind: {}", asset_kind_name(asset)));
+        lines.push(format!("Quantity: {}", asset.quantity));
+        lines.push(format!("Owner: {}", owner_label(&asset.owner)));
+        if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
+            lines.push(format!("Owner Pos(cm): {}", format_geo_pos(anchor)));
+        }
 
-    let mut lines = Vec::new();
-    lines.push(format!("Details: asset {asset_id}"));
-    lines.push(format!("Kind: {}", asset_kind_name(asset)));
-    lines.push(format!("Quantity: {}", asset.quantity));
-    lines.push(format!("Owner: {}", owner_label(&asset.owner)));
-    if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
-        lines.push(format!("Owner Pos(cm): {}", format_geo_pos(anchor)));
+        lines.push("".to_string());
+        lines.push("Recent Owner Events:".to_string());
+        let mut related = owner_recent_events(&asset.owner, events, 6);
+        if related.is_empty() {
+            related.push("(none)".to_string());
+        }
+        lines.extend(related);
+
+        return lines.join("\n");
     }
 
-    lines.push("".to_string());
-    lines.push("Recent Owner Events:".to_string());
-    let mut related = owner_recent_events(&asset.owner, events, 6);
-    if related.is_empty() {
-        related.push("(none)".to_string());
+    if let Some(module_entity) = snapshot.model.module_visual_entities.get(asset_id) {
+        return module_visual_details_summary(module_entity, snapshot, events);
     }
-    lines.extend(related);
 
-    lines.join("\n")
+    format!("Details: asset {asset_id}\n(not found in snapshot)")
 }
 
 fn power_plant_details_summary(
@@ -554,6 +562,70 @@ fn facility_details_lines(
     lines
 }
 
+fn module_visual_details_summary(
+    module_entity: &agent_world::simulator::ModuleVisualEntity,
+    snapshot: &WorldSnapshot,
+    events: &[WorldEvent],
+) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!(
+        "Details: module_visual {}",
+        module_entity.entity_id
+    ));
+    lines.push(format!("Module: {}", module_entity.module_id));
+    lines.push(format!("Kind: {}", module_entity.kind));
+    lines.push(format!(
+        "Label: {}",
+        module_entity
+            .label
+            .as_deref()
+            .filter(|label| !label.trim().is_empty())
+            .unwrap_or("(none)")
+    ));
+    lines.push(format!(
+        "Anchor: {}",
+        module_visual_anchor_label(&module_entity.anchor)
+    ));
+    if let Some(pos) = module_visual_anchor_pos(snapshot, &module_entity.anchor) {
+        lines.push(format!("Anchor Pos(cm): {}", format_geo_pos(pos)));
+    }
+
+    lines.push("".to_string());
+    lines.push("Recent Events:".to_string());
+    let mut related = module_visual_recent_events(module_entity.entity_id.as_str(), events, 6);
+    if related.is_empty() {
+        related.push("(none)".to_string());
+    }
+    lines.extend(related);
+
+    lines.join("\n")
+}
+
+fn module_visual_anchor_label(anchor: &ModuleVisualAnchor) -> String {
+    match anchor {
+        ModuleVisualAnchor::Agent { agent_id } => format!("agent::{agent_id}"),
+        ModuleVisualAnchor::Location { location_id } => format!("location::{location_id}"),
+        ModuleVisualAnchor::Absolute { pos } => format!("absolute({})", format_geo_pos(*pos)),
+    }
+}
+
+fn module_visual_anchor_pos(
+    snapshot: &WorldSnapshot,
+    anchor: &ModuleVisualAnchor,
+) -> Option<GeoPos> {
+    match anchor {
+        ModuleVisualAnchor::Agent { agent_id } => {
+            snapshot.model.agents.get(agent_id).map(|agent| agent.pos)
+        }
+        ModuleVisualAnchor::Location { location_id } => snapshot
+            .model
+            .locations
+            .get(location_id)
+            .map(|location| location.pos),
+        ModuleVisualAnchor::Absolute { pos } => Some(*pos),
+    }
+}
+
 fn asset_kind_name(asset: &Asset) -> String {
     match &asset.kind {
         AssetKind::Resource { kind } => format!("resource::{kind:?}"),
@@ -652,6 +724,22 @@ fn power_storage_recent_events(
         .rev()
         .filter_map(|event| {
             event_activity_for_power_storage(event, storage_id)
+                .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
+        })
+        .take(limit)
+        .collect()
+}
+
+fn module_visual_recent_events(
+    entity_id: &str,
+    events: &[WorldEvent],
+    limit: usize,
+) -> Vec<String> {
+    events
+        .iter()
+        .rev()
+        .filter_map(|event| {
+            event_activity_for_module_visual(event, entity_id)
                 .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
         })
         .take(limit)
@@ -884,6 +972,23 @@ fn event_activity_for_chunk(event: &WorldEvent, coord: ChunkCoord) -> Option<Str
             "generated fragments={} blocks={} cause={:?}",
             fragment_count, block_count, cause
         )),
+        _ => None,
+    }
+}
+
+fn event_activity_for_module_visual(event: &WorldEvent, entity_id: &str) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::ModuleVisualEntityUpserted { entity } if entity.entity_id == entity_id => {
+            Some(format!(
+                "upsert module={} kind={} anchor={}",
+                entity.module_id,
+                entity.kind,
+                module_visual_anchor_label(&entity.anchor)
+            ))
+        }
+        WorldEventKind::ModuleVisualEntityRemoved { entity_id: id } if id == entity_id => {
+            Some("removed".to_string())
+        }
         _ => None,
     }
 }

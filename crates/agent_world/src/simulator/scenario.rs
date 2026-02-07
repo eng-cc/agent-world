@@ -10,6 +10,7 @@ use super::init::{
     AgentSpawnConfig, AsteroidFragmentInitConfig, LocationSeedConfig, OriginLocationConfig,
     PowerPlantSeedConfig, PowerStorageSeedConfig, WorldInitConfig,
 };
+use super::module_visual::ModuleVisualEntity;
 use super::types::{LocationId, LocationProfile, ResourceStock};
 use super::world_model::{SpaceConfig, WorldConfig};
 
@@ -184,6 +185,7 @@ pub struct WorldScenarioSpec {
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
     pub power_storages: Vec<PowerStorageSeedConfig>,
+    pub module_visual_entities: Vec<ModuleVisualEntity>,
 }
 
 impl Default for WorldScenarioSpec {
@@ -198,6 +200,7 @@ impl Default for WorldScenarioSpec {
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
             power_storages: Vec::new(),
+            module_visual_entities: Vec::new(),
         }
     }
 }
@@ -216,6 +219,7 @@ impl WorldScenarioSpec {
             agents: self.agents,
             power_plants: self.power_plants,
             power_storages: self.power_storages,
+            module_visual_entities: self.module_visual_entities,
         }
     }
 

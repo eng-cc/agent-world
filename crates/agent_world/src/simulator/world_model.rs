@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::fragment_physics::FragmentPhysicalProfile;
+use super::module_visual::ModuleVisualEntity;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
     AgentId, AssetId, ChunkResourceBudget, ElementBudgetError, FacilityId, FragmentElementKind,
@@ -134,6 +135,8 @@ pub struct WorldModel {
     pub agents: BTreeMap<AgentId, Agent>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,
+    #[serde(default)]
+    pub module_visual_entities: BTreeMap<String, ModuleVisualEntity>,
     #[serde(default)]
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]

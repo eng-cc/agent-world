@@ -2,6 +2,7 @@ use crate::geometry::GeoPos;
 use serde::{Deserialize, Serialize};
 
 use super::super::chunking::ChunkCoord;
+use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
 use super::super::types::{
     AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
@@ -88,6 +89,12 @@ pub enum WorldEventKind {
         compound_mass_g: i64,
         electricity_cost: i64,
         hardware_output: i64,
+    },
+    ModuleVisualEntityUpserted {
+        entity: ModuleVisualEntity,
+    },
+    ModuleVisualEntityRemoved {
+        entity_id: String,
     },
     ChunkGenerated {
         coord: ChunkCoord,

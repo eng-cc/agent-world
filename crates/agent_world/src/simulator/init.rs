@@ -9,7 +9,9 @@ use super::chunking::{chunk_coord_of, chunk_coords, ChunkCoord};
 use super::fragment_physics::{
     synthesize_fragment_budget, synthesize_fragment_profile, truncate_fragment_profile_blocks,
 };
+use super::init_module_visual::{ensure_module_visual_anchor_exists, insert_module_visual_entity};
 use super::kernel::{ChunkGenerationCause, ChunkRuntimeConfig, WorldEventKind, WorldKernel};
+use super::module_visual::{ModuleVisualAnchor, ModuleVisualEntity};
 use super::power::{PlantStatus, PowerPlant, PowerStorage};
 use super::scenario::WorldScenario;
 use super::types::{
@@ -30,6 +32,7 @@ pub struct WorldInitConfig {
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
     pub power_storages: Vec<PowerStorageSeedConfig>,
+    pub module_visual_entities: Vec<ModuleVisualEntity>,
 }
 
 impl Default for WorldInitConfig {
@@ -42,6 +45,7 @@ impl Default for WorldInitConfig {
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
             power_storages: Vec::new(),
+            module_visual_entities: Vec::new(),
         }
     }
 }
@@ -65,6 +69,11 @@ impl WorldInitConfig {
             .power_storages
             .into_iter()
             .map(|storage| storage.sanitized())
+            .collect();
+        self.module_visual_entities = self
+            .module_visual_entities
+            .into_iter()
+            .map(|entity| entity.sanitized())
             .collect();
         self
     }
@@ -319,6 +328,16 @@ pub enum WorldInitError {
     FacilityOwnerNotFound {
         owner: ResourceOwner,
     },
+    InvalidModuleVisualEntityId {
+        entity_id: String,
+    },
+    ModuleVisualEntityIdConflict {
+        entity_id: String,
+    },
+    ModuleVisualEntityAnchorNotFound {
+        entity_id: String,
+        anchor: ModuleVisualAnchor,
+    },
     SpawnLocationMissing,
     SpawnLocationNotFound {
         location_id: LocationId,
@@ -545,6 +564,16 @@ pub fn build_world_model(
             max_discharge_rate: storage_seed.max_discharge_rate,
         };
         insert_power_storage(&mut model, storage)?;
+    }
+
+    for module_entity in &init.module_visual_entities {
+        if module_entity.entity_id.trim().is_empty() || module_entity.module_id.trim().is_empty() {
+            return Err(WorldInitError::InvalidModuleVisualEntityId {
+                entity_id: module_entity.entity_id.clone(),
+            });
+        }
+        ensure_module_visual_anchor_exists(&model, &config, module_entity)?;
+        insert_module_visual_entity(&mut model, module_entity.clone())?;
     }
 
     let report = WorldInitReport {

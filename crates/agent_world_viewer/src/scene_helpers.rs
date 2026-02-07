@@ -1,12 +1,15 @@
 use super::*;
 use agent_world::simulator::{
-    chunk_bounds, ChunkCoord, ChunkState, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind,
+    chunk_bounds, ChunkCoord, ChunkState, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent,
+    ResourceOwner, SpaceConfig, WorldEventKind,
 };
 
 const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
 const FACILITY_MARKER_VERTICAL_OFFSET: f32 = 0.45;
 const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
+const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
+const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
 const CHUNK_MARKER_MIN_SIZE: f32 = 0.45;
 const CHUNK_MARKER_MAX_SIZE: f32 = 1.8;
 const CHUNK_MARKER_VERTICAL_OFFSET: f32 = 0.2;
@@ -55,6 +58,7 @@ pub(super) fn rebuild_scene_from_snapshot(
         .values()
         .chain(scene.location_entities.values())
         .chain(scene.asset_entities.values())
+        .chain(scene.module_visual_entities.values())
         .chain(scene.power_plant_entities.values())
         .chain(scene.power_storage_entities.values())
         .chain(scene.chunk_entities.values())
@@ -66,8 +70,10 @@ pub(super) fn rebuild_scene_from_snapshot(
     }
 
     scene.agent_entities.clear();
+    scene.agent_positions.clear();
     scene.location_entities.clear();
     scene.asset_entities.clear();
+    scene.module_visual_entities.clear();
     scene.power_plant_entities.clear();
     scene.power_storage_entities.clear();
     scene.chunk_entities.clear();
@@ -131,6 +137,21 @@ pub(super) fn rebuild_scene_from_snapshot(
     for (asset_id, asset) in snapshot.model.assets.iter() {
         if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
             spawn_asset_entity(commands, config, assets, scene, origin, asset_id, anchor);
+        }
+    }
+
+    for module_entity in snapshot.model.module_visual_entities.values() {
+        if let Some(anchor) = module_visual_anchor_pos_in_snapshot(snapshot, &module_entity.anchor)
+        {
+            spawn_module_visual_entity(
+                commands,
+                config,
+                assets,
+                scene,
+                origin,
+                module_entity,
+                anchor,
+            );
         }
     }
 
@@ -200,6 +221,18 @@ pub(super) fn apply_events_to_scene(
             WorldEventKind::AgentMoved { agent_id, to, .. } => {
                 if let Some(pos) = scene.location_positions.get(to) {
                     spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+                }
+            }
+            WorldEventKind::ModuleVisualEntityUpserted { entity } => {
+                if let Some(anchor) = module_visual_anchor_pos_in_scene(scene, &entity.anchor) {
+                    spawn_module_visual_entity(
+                        commands, config, assets, scene, origin, entity, anchor,
+                    );
+                }
+            }
+            WorldEventKind::ModuleVisualEntityRemoved { entity_id } => {
+                if let Some(entity) = scene.module_visual_entities.remove(entity_id.as_str()) {
+                    commands.entity(entity).despawn();
                 }
             }
             WorldEventKind::ChunkGenerated { coord, .. } => {
@@ -436,6 +469,8 @@ pub(super) fn spawn_agent_entity(
     agent_id: &str,
     pos: GeoPos,
 ) {
+    scene.agent_positions.insert(agent_id.to_string(), pos);
+
     if !config.show_agents {
         return;
     }
@@ -496,6 +531,98 @@ fn asset_translation(base: Vec3, asset_id: &str) -> Vec3 {
     let angle = id_hash_fraction(asset_id) * std::f32::consts::TAU;
     let lateral = Vec3::new(angle.cos(), 0.0, angle.sin()) * ASSET_MARKER_RING_RADIUS;
     base + lateral + Vec3::Y * ASSET_MARKER_VERTICAL_OFFSET
+}
+
+fn module_visual_anchor_pos_in_snapshot(
+    snapshot: &WorldSnapshot,
+    anchor: &ModuleVisualAnchor,
+) -> Option<GeoPos> {
+    match anchor {
+        ModuleVisualAnchor::Agent { agent_id } => {
+            snapshot.model.agents.get(agent_id).map(|agent| agent.pos)
+        }
+        ModuleVisualAnchor::Location { location_id } => snapshot
+            .model
+            .locations
+            .get(location_id)
+            .map(|location| location.pos),
+        ModuleVisualAnchor::Absolute { pos } => Some(*pos),
+    }
+}
+
+fn module_visual_anchor_pos_in_scene(
+    scene: &Viewer3dScene,
+    anchor: &ModuleVisualAnchor,
+) -> Option<GeoPos> {
+    match anchor {
+        ModuleVisualAnchor::Agent { agent_id } => scene.agent_positions.get(agent_id).copied(),
+        ModuleVisualAnchor::Location { location_id } => {
+            scene.location_positions.get(location_id).copied()
+        }
+        ModuleVisualAnchor::Absolute { pos } => Some(*pos),
+    }
+}
+
+fn module_visual_translation(base: Vec3, module_id: &str, entity_id: &str) -> Vec3 {
+    let hash_key = format!("{module_id}:{entity_id}");
+    let angle = id_hash_fraction(hash_key.as_str()) * std::f32::consts::TAU;
+    let lateral = Vec3::new(angle.cos(), 0.0, angle.sin()) * MODULE_VISUAL_RING_RADIUS;
+    base + lateral + Vec3::Y * MODULE_VISUAL_VERTICAL_OFFSET
+}
+
+pub(super) fn spawn_module_visual_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    module_entity: &ModuleVisualEntity,
+    anchor_pos: GeoPos,
+) {
+    let translation = module_visual_translation(
+        geo_to_vec3(anchor_pos, origin, config.cm_to_unit),
+        module_entity.module_id.as_str(),
+        module_entity.entity_id.as_str(),
+    );
+
+    if let Some(entity) = scene
+        .module_visual_entities
+        .remove(module_entity.entity_id.as_str())
+    {
+        commands.entity(entity).despawn();
+    }
+
+    let visual_id = module_entity.entity_id.clone();
+    let visual_label = module_entity.resolved_label();
+    let visual_name = format!(
+        "module_visual:{}:{}:{}",
+        module_entity.module_id, module_entity.kind, module_entity.entity_id
+    );
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.asset_mesh.clone()),
+            MeshMaterial3d(assets.asset_material.clone()),
+            Transform::from_translation(translation).with_scale(Vec3::splat(0.9)),
+            Name::new(visual_name),
+            AssetMarker {
+                id: visual_id.clone(),
+            },
+            BaseScale(Vec3::splat(0.9)),
+        ))
+        .id();
+
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            visual_label,
+            AGENT_LABEL_OFFSET,
+            format!("label:module_visual:{visual_id}"),
+        );
+    });
+
+    scene.module_visual_entities.insert(visual_id, entity);
 }
 
 pub(super) fn spawn_power_plant_entity(

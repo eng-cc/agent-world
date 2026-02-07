@@ -23,6 +23,7 @@ mod fragment_physics;
 mod init;
 mod kernel;
 mod memory;
+mod module_visual;
 mod monotonicity;
 mod persist;
 mod physics_parameters;

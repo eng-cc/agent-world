@@ -77,6 +77,10 @@
 - [x] Viewer 世界覆盖层（chunk 探索态/资源热力/电力交易流）
 - [x] Viewer 自动诊断结论面板（无需人工分析）
 - [x] Viewer 事件列表逐条点击定位对象（Click Event -> Select Object）
+- [x] 输出 WASM 模块通用可视实体设计文档（`doc/world-simulator/module-visual-entities.md`）
+- [x] 输出 WASM 模块通用可视实体项目文档（`doc/world-simulator/module-visual-entities.project.md`）
+- [x] simulator 接入 `module_visual_entities`（init/scenario/action/event/replay）
+- [x] viewer 接入模块可视实体通用渲染与详情展示（snapshot + 增量事件）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -138,4 +142,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 T4 边界测试补齐（极端参数下生成/初始化稳定，2026-02-07）
+- 最近更新：完成 WASM 模块通用可视实体链路（simulator + viewer + 测试，2026-02-07）

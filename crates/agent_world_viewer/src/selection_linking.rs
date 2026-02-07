@@ -547,6 +547,7 @@ pub(super) fn event_primary_target(
         }),
         WorldEventKind::ActionRejected { reason } => reject_reason_to_target(reason, snapshot),
         WorldEventKind::Power(power_event) => power_event_target(power_event, snapshot),
+        _ => None,
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::geometry::{space_distance_cm, GeoPos};
 
 use super::super::chunking::CHUNK_SIZE_X_CM;
+use super::super::module_visual::ModuleVisualAnchor;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
 use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
 use super::super::world_model::{Agent, Location};
@@ -209,6 +210,42 @@ impl WorldKernel {
                     .power_storages
                     .insert(facility_id, storage.clone());
                 WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage })
+            }
+            Action::UpsertModuleVisualEntity { entity } => {
+                let entity = entity.sanitized();
+                if entity.entity_id.is_empty() || entity.module_id.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: 0 },
+                    };
+                }
+                if let Err(reason) = self.ensure_module_visual_anchor_exists(&entity.anchor) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                self.model
+                    .module_visual_entities
+                    .insert(entity.entity_id.clone(), entity.clone());
+                WorldEventKind::ModuleVisualEntityUpserted { entity }
+            }
+            Action::RemoveModuleVisualEntity { entity_id } => {
+                let entity_id = entity_id.trim().to_string();
+                if entity_id.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: 0 },
+                    };
+                }
+                if self
+                    .model
+                    .module_visual_entities
+                    .remove(&entity_id)
+                    .is_none()
+                {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityNotFound {
+                            facility_id: entity_id,
+                        },
+                    };
+                }
+                WorldEventKind::ModuleVisualEntityRemoved { entity_id }
             }
             Action::DrawPower { storage_id, amount } => {
                 match self.discharge_power_storage_event(&storage_id, amount) {
@@ -691,6 +728,39 @@ impl WorldKernel {
         self.remove_from_owner(from, kind, amount)?;
         self.add_to_owner(to, kind, amount)?;
         Ok(())
+    }
+
+    pub(super) fn ensure_module_visual_anchor_exists(
+        &self,
+        anchor: &ModuleVisualAnchor,
+    ) -> Result<(), RejectReason> {
+        match anchor {
+            ModuleVisualAnchor::Agent { agent_id } => {
+                if self.model.agents.contains_key(agent_id) {
+                    Ok(())
+                } else {
+                    Err(RejectReason::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    })
+                }
+            }
+            ModuleVisualAnchor::Location { location_id } => {
+                if self.model.locations.contains_key(location_id) {
+                    Ok(())
+                } else {
+                    Err(RejectReason::LocationNotFound {
+                        location_id: location_id.clone(),
+                    })
+                }
+            }
+            ModuleVisualAnchor::Absolute { pos } => {
+                if self.config.space.contains(*pos) {
+                    Ok(())
+                } else {
+                    Err(RejectReason::PositionOutOfBounds { pos: *pos })
+                }
+            }
+        }
     }
 
     pub(super) fn ensure_owner_exists(&self, owner: &ResourceOwner) -> Result<(), RejectReason> {
