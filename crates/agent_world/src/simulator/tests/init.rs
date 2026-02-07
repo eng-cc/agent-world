@@ -31,6 +31,13 @@ fn init_defaults_create_origin_and_agents() {
 }
 
 #[test]
+fn init_default_fragment_radius_matches_story_scale() {
+    let config = WorldConfig::default();
+    assert_eq!(config.asteroid_fragment.radius_min_cm, 25_000);
+    assert_eq!(config.asteroid_fragment.radius_max_cm, 500_000);
+}
+
+#[test]
 fn init_is_deterministic_with_seed() {
     let mut config = WorldConfig::default();
     config.asteroid_fragment.base_density_per_km3 = 0.5;
