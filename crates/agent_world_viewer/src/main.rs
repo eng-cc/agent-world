@@ -34,6 +34,7 @@ const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
+mod event_click_list;
 mod headless;
 mod scene_helpers;
 mod selection_export;
@@ -43,6 +44,9 @@ mod ui_text;
 mod world_overlay;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
+use event_click_list::{
+    handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
+};
 use headless::headless_report;
 use scene_helpers::*;
 use selection_export::{
@@ -124,11 +128,13 @@ fn run_ui(addr: String, offline: bool) {
                 handle_timeline_seek_submit,
                 handle_world_overlay_toggle_buttons,
                 handle_selection_export_button,
+                handle_event_click_buttons,
                 handle_locate_focus_event_button,
                 handle_jump_selection_events_button,
                 update_event_object_link_text,
                 update_world_overlay_status_text,
                 update_selection_export_status_text,
+                update_event_click_list_ui,
                 update_timeline_ui,
                 update_ui,
             )
@@ -909,6 +915,8 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             TextColor(Color::srgb(0.85, 0.85, 0.85)),
                             EventsText,
                         ));
+
+                        spawn_event_click_list(events, font.clone());
                     });
             });
         });

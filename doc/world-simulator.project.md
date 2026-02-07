@@ -76,6 +76,7 @@
 - [x] Viewer 详情面板补齐 LLM 诊断字段（模型/耗时/token/重试）
 - [x] Viewer 世界覆盖层（chunk 探索态/资源热力/电力交易流）
 - [x] Viewer 选中对象状态与 trace 一键导出
+- [x] Viewer 事件列表逐条点击定位对象（Click Event -> Select Object）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -134,4 +135,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；并行推进背景故事物理一致性修订 C3 与可视化信息直达剩余项）
-- 最近更新：viewer 选中对象状态与 trace 一键导出（结构化 JSON，2026-02-07）
+- 最近更新：viewer 事件列表支持逐条点击定位对象（2026-02-07）

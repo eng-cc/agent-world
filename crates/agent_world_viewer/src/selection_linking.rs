@@ -30,10 +30,10 @@ pub(super) struct JumpSelectionEventsButton;
 pub(super) struct EventObjectLinkText;
 
 #[derive(Clone)]
-struct SelectionTarget {
-    kind: SelectionKind,
-    id: String,
-    name: Option<String>,
+pub(super) struct SelectionTarget {
+    pub(super) kind: SelectionKind,
+    pub(super) id: String,
+    pub(super) name: Option<String>,
 }
 
 pub(super) fn spawn_event_object_link_controls(
@@ -516,7 +516,7 @@ fn event_matches_selection(
     }
 }
 
-fn event_primary_target(
+pub(super) fn event_primary_target(
     event: &WorldEvent,
     snapshot: Option<&WorldSnapshot>,
 ) -> Option<SelectionTarget> {
@@ -673,7 +673,7 @@ fn facility_target(facility_id: &str, snapshot: Option<&WorldSnapshot>) -> Optio
     None
 }
 
-fn target_entity(scene: &Viewer3dScene, target: &SelectionTarget) -> Option<Entity> {
+pub(super) fn target_entity(scene: &Viewer3dScene, target: &SelectionTarget) -> Option<Entity> {
     match target.kind {
         SelectionKind::Agent => scene.agent_entities.get(target.id.as_str()).copied(),
         SelectionKind::Location => scene.location_entities.get(target.id.as_str()).copied(),
