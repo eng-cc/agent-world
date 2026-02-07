@@ -22,12 +22,18 @@ pub(super) struct DiagnosisText;
 
 pub(super) fn spawn_diagnosis_panel(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
     parent
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            row_gap: Val::Px(4.0),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        })
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                row_gap: Val::Px(4.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.16, 0.14, 0.1)),
+            BorderColor::all(Color::srgb(0.32, 0.27, 0.18)),
+        ))
         .with_children(|root| {
             root.spawn((
                 Text::new("Diagnosis: waiting world data"),

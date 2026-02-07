@@ -727,29 +727,40 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 position_type: PositionType::Absolute,
                 right: Val::Px(0.0),
                 top: Val::Px(0.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                row_gap: Val::Px(8.0),
                 flex_direction: FlexDirection::Column,
+                border: UiRect::left(Val::Px(1.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.1, 0.11, 0.13)),
+            BackgroundColor(Color::srgb(0.07, 0.08, 0.1)),
+            BorderColor::all(Color::srgb(0.18, 0.2, 0.24)),
         ))
         .with_children(|root| {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
                     height: Val::Px(372.0),
+                    min_height: Val::Px(260.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(6.0),
+                    row_gap: Val::Px(8.0),
                     padding: UiRect::all(Val::Px(12.0)),
+                    overflow: Overflow::scroll_y(),
+                    flex_shrink: 0.0,
+                    border: UiRect::all(Val::Px(1.0)),
                     ..default()
                 },
-                BackgroundColor(Color::srgb(0.12, 0.12, 0.14)),
+                BackgroundColor(Color::srgb(0.1, 0.11, 0.14)),
+                BorderColor::all(Color::srgb(0.2, 0.22, 0.26)),
             ))
             .with_children(|bar| {
                 bar.spawn(Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(32.0),
+                    min_height: Val::Px(32.0),
                     column_gap: Val::Px(8.0),
+                    row_gap: Val::Px(6.0),
                     flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
                     align_items: AlignItems::Center,
                     ..default()
                 })
@@ -818,13 +829,17 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
+                    min_height: Val::Px(0.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(6.0),
+                    row_gap: Val::Px(8.0),
                     overflow: Overflow::scroll_y(),
-                    flex_shrink: 0.0,
+                    flex_grow: 1.0,
+                    flex_shrink: 1.0,
+                    border: UiRect::all(Val::Px(1.0)),
                     ..default()
                 },
+                BackgroundColor(Color::srgb(0.08, 0.09, 0.11)),
+                BorderColor::all(Color::srgb(0.2, 0.22, 0.26)),
                 ScrollPosition::default(),
                 RightPanelScroll,
             ))
@@ -835,9 +850,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             width: Val::Percent(100.0),
                             min_height: Val::Px(140.0),
                             padding: UiRect::all(Val::Px(14.0)),
+                            border: UiRect::all(Val::Px(1.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.11, 0.11, 0.13)),
+                        BackgroundColor(Color::srgb(0.12, 0.13, 0.16)),
+                        BorderColor::all(Color::srgb(0.24, 0.26, 0.32)),
                     ))
                     .with_children(|summary| {
                         summary.spawn((
@@ -858,9 +875,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             width: Val::Percent(100.0),
                             min_height: Val::Px(170.0),
                             padding: UiRect::all(Val::Px(14.0)),
+                            border: UiRect::all(Val::Px(1.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.10, 0.10, 0.12)),
+                        BackgroundColor(Color::srgb(0.1, 0.11, 0.14)),
+                        BorderColor::all(Color::srgb(0.21, 0.23, 0.29)),
                     ))
                     .with_children(|activity| {
                         activity.spawn((
@@ -884,9 +903,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             width: Val::Percent(100.0),
                             min_height: Val::Px(240.0),
                             padding: UiRect::all(Val::Px(14.0)),
+                            border: UiRect::all(Val::Px(1.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.09, 0.09, 0.11)),
+                        BackgroundColor(Color::srgb(0.09, 0.1, 0.13)),
+                        BorderColor::all(Color::srgb(0.2, 0.22, 0.28)),
                     ))
                     .with_children(|details| {
                         details.spawn((
@@ -910,9 +931,11 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             width: Val::Percent(100.0),
                             min_height: Val::Px(260.0),
                             padding: UiRect::all(Val::Px(14.0)),
+                            border: UiRect::all(Val::Px(1.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.08, 0.08, 0.1)),
+                        BackgroundColor(Color::srgb(0.09, 0.1, 0.12)),
+                        BorderColor::all(Color::srgb(0.2, 0.22, 0.28)),
                     ))
                     .with_children(|events| {
                         events.spawn((

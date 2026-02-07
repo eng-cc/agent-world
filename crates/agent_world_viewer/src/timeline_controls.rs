@@ -110,9 +110,12 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                 width: Val::Percent(100.0),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(6.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.14, 0.14, 0.16)),
+            BackgroundColor(Color::srgb(0.13, 0.14, 0.18)),
+            BorderColor::all(Color::srgb(0.24, 0.26, 0.3)),
         ))
         .with_children(|timeline| {
             timeline.spawn((
@@ -142,9 +145,11 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
             timeline
                 .spawn(Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(24.0),
+                    min_height: Val::Px(24.0),
                     column_gap: Val::Px(6.0),
+                    row_gap: Val::Px(6.0),
                     flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
                     align_items: AlignItems::Center,
                     ..default()
                 })
@@ -157,9 +162,11 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
             timeline
                 .spawn(Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(24.0),
+                    min_height: Val::Px(24.0),
                     column_gap: Val::Px(6.0),
+                    row_gap: Val::Px(6.0),
                     flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
                     align_items: AlignItems::Center,
                     ..default()
                 })
@@ -190,9 +197,11 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
             timeline
                 .spawn(Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(28.0),
+                    min_height: Val::Px(28.0),
                     column_gap: Val::Px(6.0),
+                    row_gap: Val::Px(6.0),
                     flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
                     align_items: AlignItems::Center,
                     ..default()
                 })
@@ -212,6 +221,7 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                                 height: Val::Px(24.0),
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::Center,
+                                min_width: Val::Px(100.0),
                                 ..default()
                             },
                             BackgroundColor(Color::srgb(0.18, 0.28, 0.22)),
@@ -266,13 +276,14 @@ fn spawn_adjust_button(
         .spawn((
             Button,
             Node {
+                min_width: Val::Px(44.0),
                 padding: UiRect::horizontal(Val::Px(8.0)),
                 height: Val::Px(24.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.2, 0.2, 0.24)),
+            BackgroundColor(Color::srgb(0.2, 0.2, 0.26)),
             TimelineAdjustButton { delta },
         ))
         .with_children(|button| {
@@ -298,6 +309,7 @@ fn spawn_mark_filter_button(
         .spawn((
             Button,
             Node {
+                min_width: Val::Px(78.0),
                 padding: UiRect::horizontal(Val::Px(8.0)),
                 height: Val::Px(22.0),
                 align_items: AlignItems::Center,
@@ -332,6 +344,7 @@ fn spawn_mark_jump_button(
         .spawn((
             Button,
             Node {
+                min_width: Val::Px(88.0),
                 padding: UiRect::horizontal(Val::Px(8.0)),
                 height: Val::Px(22.0),
                 align_items: AlignItems::Center,

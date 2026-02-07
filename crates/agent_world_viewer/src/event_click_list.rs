@@ -24,9 +24,13 @@ pub(super) fn spawn_event_click_list(parent: &mut ChildSpawnerCommands, font: Ha
             Node {
                 width: Val::Percent(100.0),
                 row_gap: Val::Px(4.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
+            BackgroundColor(Color::srgb(0.11, 0.13, 0.17)),
+            BorderColor::all(Color::srgb(0.2, 0.24, 0.3)),
             EventClickListRoot { font: font.clone() },
         ))
         .with_children(|list| {

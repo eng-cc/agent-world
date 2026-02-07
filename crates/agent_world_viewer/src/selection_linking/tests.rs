@@ -287,3 +287,37 @@ fn jump_selection_events_button_moves_timeline_target() {
     let link = app.world().resource::<EventObjectLinkState>();
     assert!(link.message.contains("-> t9"));
 }
+
+#[test]
+fn event_object_link_controls_use_wrapping_layout() {
+    let mut app = App::new();
+    app.add_systems(Startup, |mut commands: Commands| {
+        let root = commands.spawn(Node::default()).id();
+        commands.entity(root).with_children(|parent| {
+            spawn_event_object_link_controls(parent, Handle::<Font>::default());
+        });
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+
+    let mut wrapping_row_count = 0usize;
+    let mut row_query = world.query::<&Node>();
+    for node in row_query.iter(world) {
+        if node.flex_wrap == FlexWrap::Wrap && node.min_height == Val::Px(24.0) {
+            wrapping_row_count += 1;
+        }
+    }
+    assert!(wrapping_row_count >= 1, "expected wrapping controls row");
+
+    let mut locate_query = world.query::<(&Node, &LocateFocusEventButton)>();
+    let (locate_button, _) = locate_query.single(world).expect("locate button");
+    assert_eq!(locate_button.min_width, Val::Px(120.0));
+    assert_eq!(locate_button.flex_grow, 1.0);
+
+    let mut jump_query = world.query::<(&Node, &JumpSelectionEventsButton)>();
+    let (jump_button, _) = jump_query.single(world).expect("jump button");
+    assert_eq!(jump_button.min_width, Val::Px(120.0));
+    assert_eq!(jump_button.flex_grow, 1.0);
+}

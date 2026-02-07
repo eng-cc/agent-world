@@ -41,18 +41,26 @@ pub(super) fn spawn_event_object_link_controls(
     font: Handle<Font>,
 ) {
     parent
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            row_gap: Val::Px(6.0),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        })
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                row_gap: Val::Px(6.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.12, 0.13, 0.18)),
+            BorderColor::all(Color::srgb(0.23, 0.25, 0.32)),
+        ))
         .with_children(|root| {
             root.spawn(Node {
                 width: Val::Percent(100.0),
-                height: Val::Px(24.0),
+                min_height: Val::Px(24.0),
                 column_gap: Val::Px(6.0),
+                row_gap: Val::Px(6.0),
                 flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
                 align_items: AlignItems::Center,
                 ..default()
             })
@@ -60,14 +68,14 @@ pub(super) fn spawn_event_object_link_controls(
                 spawn_link_button(
                     buttons,
                     &font,
-                    "Locate Focus Event Object",
+                    "Locate Focus",
                     LocateFocusEventButton,
                     Color::srgb(0.22, 0.32, 0.24),
                 );
                 spawn_link_button(
                     buttons,
                     &font,
-                    "Jump Selection Events",
+                    "Jump Selection",
                     JumpSelectionEventsButton,
                     Color::srgb(0.22, 0.24, 0.34),
                 );
@@ -97,10 +105,12 @@ fn spawn_link_button<C: Component>(
         .spawn((
             Button,
             Node {
+                min_width: Val::Px(120.0),
                 padding: UiRect::horizontal(Val::Px(8.0)),
                 height: Val::Px(22.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
+                flex_grow: 1.0,
                 ..default()
             },
             BackgroundColor(background),

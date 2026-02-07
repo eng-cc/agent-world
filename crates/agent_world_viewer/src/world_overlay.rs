@@ -73,18 +73,26 @@ struct LocationHeatPoint {
 
 pub(super) fn spawn_world_overlay_controls(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
     parent
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            row_gap: Val::Px(4.0),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        })
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                row_gap: Val::Px(4.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                border: UiRect::all(Val::Px(1.0)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.12, 0.14, 0.17)),
+            BorderColor::all(Color::srgb(0.22, 0.26, 0.31)),
+        ))
         .with_children(|root| {
             root.spawn(Node {
                 width: Val::Percent(100.0),
-                height: Val::Px(24.0),
+                min_height: Val::Px(24.0),
                 column_gap: Val::Px(6.0),
+                row_gap: Val::Px(6.0),
                 flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
                 align_items: AlignItems::Center,
                 ..default()
             })
