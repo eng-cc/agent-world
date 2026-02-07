@@ -10,14 +10,17 @@
 - [x] 更新 `README.md`（脚本入口）
 - [x] 运行验证（`./scripts/capture-viewer-frame.sh --help` + 实际抓图）
 - [x] 更新任务日志（`doc/devlog/2026-02-07.md`）
+- [x] M4：按平台分支截图实现（Linux: Xvfb/ffmpeg，macOS: screencapture/osascript）
+- [x] M4：脚本自动识别 `uname` 并切换依赖检查与抓图流程
+- [x] M4：保持输出产物路径与文件命名一致（`root.png` / `window.png` / `window_geom.txt`）
+- [x] M4：补充文档与任务日志并验证脚本语法/帮助信息
 
 ## 依赖
-- `Xvfb`
-- `ffmpeg`
-- `xwininfo`
+- Linux：`Xvfb`、`ffmpeg`、`xwininfo`
+- macOS：`screencapture`、`osascript`
 - Rust/Cargo（`world_viewer_live` + `agent_world_viewer`）
 
 ## 状态
-- 当前阶段：M3（实现与文档同步完成）
+- 当前阶段：M4（跨平台分支实现完成）
 - 下一阶段：按需补充“多帧抓图”或“自动交互注入”
-- 最近更新：新增一键 UI 截图闭环调试脚本并默认清空 `.tmp/`（2026-02-07）
+- 最近更新：新增 Linux/macOS 平台分支截图逻辑（2026-02-07）
