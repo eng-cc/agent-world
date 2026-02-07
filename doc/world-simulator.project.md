@@ -60,7 +60,7 @@
 - [ ] 事件浏览器（筛选、回放、聚合统计）
 - [ ] 运行控制（暂停/加速/单步/回滚到快照）
 - [ ] 任务分册：`doc/world-simulator/visualization.project.md`
-- [ ] 任务分册：3D 渲染物理准确性（`doc/world-simulator/rendering-physical-accuracy.project.md`）
+- [x] 任务分册：3D 渲染物理准确性（`doc/world-simulator/rendering-physical-accuracy.project.md`，RPA-1 已完成）
 - [x] Viewer 可观测性增强：Agent 活动面板与世界背景参照（边界盒 + 地板网格）
 - [x] 修复 viewer 多相机渲染歧义（Camera order）并恢复 3D 交互
 - [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer-selection-details.md`）

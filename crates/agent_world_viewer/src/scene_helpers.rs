@@ -298,9 +298,9 @@ pub(super) fn spawn_world_background(
     snapshot: &WorldSnapshot,
 ) {
     let space = &snapshot.config.space;
-    let world_width = (space.width_cm as f32 * config.cm_to_unit).max(WORLD_MIN_AXIS);
-    let world_depth = (space.depth_cm as f32 * config.cm_to_unit).max(WORLD_MIN_AXIS);
-    let world_height = (space.height_cm as f32 * config.cm_to_unit).max(WORLD_MIN_AXIS);
+    let world_width = (space.width_cm as f32 * config.effective_cm_to_unit()).max(WORLD_MIN_AXIS);
+    let world_depth = (space.depth_cm as f32 * config.effective_cm_to_unit()).max(WORLD_MIN_AXIS);
+    let world_height = (space.height_cm as f32 * config.effective_cm_to_unit()).max(WORLD_MIN_AXIS);
 
     let floor_entity = commands
         .spawn((
@@ -421,7 +421,7 @@ pub(super) fn spawn_location_entity(
         return;
     }
 
-    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
+    let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
             Transform::from_translation(translation),
@@ -475,7 +475,7 @@ pub(super) fn spawn_agent_entity(
         return;
     }
 
-    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
+    let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.agent_entities.get(agent_id) {
         commands
             .entity(*entity)
@@ -580,7 +580,7 @@ pub(super) fn spawn_module_visual_entity(
     anchor_pos: GeoPos,
 ) {
     let translation = module_visual_translation(
-        geo_to_vec3(anchor_pos, origin, config.cm_to_unit),
+        geo_to_vec3(anchor_pos, origin, config.effective_cm_to_unit()),
         module_entity.module_id.as_str(),
         module_entity.entity_id.as_str(),
     );
@@ -635,7 +635,7 @@ pub(super) fn spawn_power_plant_entity(
     location_id: &str,
     location_pos: GeoPos,
 ) {
-    let base = geo_to_vec3(location_pos, origin, config.cm_to_unit);
+    let base = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
     let translation = base
         + Vec3::new(
             FACILITY_MARKER_LATERAL_OFFSET,
@@ -686,7 +686,7 @@ pub(super) fn spawn_power_storage_entity(
     location_id: &str,
     location_pos: GeoPos,
 ) {
-    let base = geo_to_vec3(location_pos, origin, config.cm_to_unit);
+    let base = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
     let translation = base
         + Vec3::new(
             0.0,
@@ -736,7 +736,7 @@ pub(super) fn spawn_asset_entity(
     asset_id: &str,
     owner_pos: GeoPos,
 ) {
-    let base = geo_to_vec3(owner_pos, origin, config.cm_to_unit);
+    let base = geo_to_vec3(owner_pos, origin, config.effective_cm_to_unit());
     let translation = asset_translation(base, asset_id);
 
     if let Some(entity) = scene.asset_entities.get(asset_id) {
@@ -831,7 +831,7 @@ pub(super) fn spawn_chunk_entity(
     space: &SpaceConfig,
 ) {
     let Some((translation, marker_scale)) =
-        chunk_transform(coord, space, origin, config.cm_to_unit)
+        chunk_transform(coord, space, origin, config.effective_cm_to_unit())
     else {
         return;
     };

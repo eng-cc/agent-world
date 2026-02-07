@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] 输出设计文档（`doc/world-simulator/rendering-physical-accuracy.md`）
 - [x] 输出项目管理文档（本文件）
-- [ ] RPA-1：viewer 物理渲染配置结构落地（单位、光照、曝光、精度）
+- [x] RPA-1：viewer 物理渲染配置结构落地（单位、光照、曝光、精度）
 - [ ] RPA-2：尺寸映射链路落地（cm→m、Agent/Location 尺寸统一）
 - [ ] RPA-3：大场景精度方案落地（floating origin + 相机裁剪）
 - [ ] RPA-4：材质物理参数库接入（silicate/metal/ice/carbon/composite）
@@ -19,6 +19,6 @@
 - 截图闭环脚本（`scripts/capture-viewer-frame.sh`）
 
 ## 状态
-- 当前阶段：设计完成，待进入实现阶段（RPA-1 起）。
-- 下一优先项：RPA-1（配置结构落地，确保单位与默认参数可在代码中被统一消费）。
-- 最近更新：新增 3D 物理准确性设计与任务拆解（2026-02-07）。
+- 当前阶段：RPA-1 已完成，进入 RPA-2（尺寸映射链路）准备阶段。
+- 下一优先项：RPA-2（cm→m 尺寸映射在实体尺寸层全面落地）。
+- 最近更新：RPA-1 完成（新增 `viewer_3d_config` 配置模块、环境变量解析、基础光照/相机参数接入与单测，2026-02-07）。

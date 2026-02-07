@@ -224,6 +224,7 @@ pub(super) fn handle_world_overlay_toggle_buttons(
 
 pub(super) fn update_world_overlay_status_text(
     state: Res<ViewerState>,
+    viewer_3d_config: Res<Viewer3dConfig>,
     config: Res<WorldOverlayConfig>,
     i18n: Option<Res<UiI18n>>,
     mut ui_state: ResMut<WorldOverlayUiState>,
@@ -233,14 +234,23 @@ pub(super) fn update_world_overlay_status_text(
         .as_ref()
         .map(|value| value.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !config.is_changed() && !locale_changed {
+    if !state.is_changed()
+        && !viewer_3d_config.is_changed()
+        && !config.is_changed()
+        && !locale_changed
+    {
         return;
     }
 
     let locale = locale_or_default(i18n.as_deref());
 
-    let summary =
-        build_overlay_status_text(state.snapshot.as_ref(), &state.events, *config, locale);
+    let summary = build_overlay_status_text(
+        state.snapshot.as_ref(),
+        &state.events,
+        *config,
+        viewer_3d_config.effective_cm_to_unit(),
+        locale,
+    );
     ui_state.status_text = summary.clone();
 
     if let Ok(mut text) = text_query.single_mut() {
@@ -251,12 +261,13 @@ pub(super) fn update_world_overlay_status_text(
 pub(super) fn update_world_overlays_3d(
     mut commands: Commands,
     state: Res<ViewerState>,
+    viewer_3d_config: Res<Viewer3dConfig>,
     overlay_config: Res<WorldOverlayConfig>,
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
     mut chunk_visibility: Query<&mut Visibility>,
 ) {
-    if !state.is_changed() && !overlay_config.is_changed() {
+    if !state.is_changed() && !overlay_config.is_changed() && !viewer_3d_config.is_changed() {
         return;
     }
 
@@ -289,8 +300,10 @@ pub(super) fn update_world_overlays_3d(
         return;
     };
 
+    let cm_to_unit = viewer_3d_config.effective_cm_to_unit();
+
     if overlay_config.show_resource_heatmap {
-        let heat_points = collect_location_heat_points(snapshot, origin, DEFAULT_CM_TO_UNIT);
+        let heat_points = collect_location_heat_points(snapshot, origin, cm_to_unit);
         let max_intensity = heat_points
             .iter()
             .map(|point| point.intensity.max(0))
@@ -324,8 +337,7 @@ pub(super) fn update_world_overlays_3d(
     }
 
     if overlay_config.show_flow_overlay {
-        let mut flow_segments =
-            collect_flow_segments(snapshot, &state.events, origin, DEFAULT_CM_TO_UNIT);
+        let mut flow_segments = collect_flow_segments(snapshot, &state.events, origin, cm_to_unit);
         let max_amount = flow_segments
             .iter()
             .map(|segment| segment.amount.abs())
@@ -357,6 +369,7 @@ fn build_overlay_status_text(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
     config: WorldOverlayConfig,
+    cm_to_unit: f32,
     locale: UiLocale,
 ) -> String {
     let Some(snapshot) = snapshot else {
@@ -379,7 +392,7 @@ fn build_overlay_status_text(
         snapshot,
         events,
         space_origin(&snapshot.config.space),
-        DEFAULT_CM_TO_UNIT,
+        cm_to_unit,
     )
     .len();
 
@@ -606,6 +619,7 @@ mod tests {
             Some(&snapshot),
             &events,
             WorldOverlayConfig::default(),
+            0.00001,
             UiLocale::EnUs,
         );
         assert!(text.contains("Overlay[chunk:on heat:on flow:on]"));
@@ -650,7 +664,7 @@ mod tests {
             },
         ];
 
-        let segments = collect_flow_segments(&snapshot, &events, origin, DEFAULT_CM_TO_UNIT);
+        let segments = collect_flow_segments(&snapshot, &events, origin, 0.00001);
         assert_eq!(segments.len(), 2);
         assert!(segments
             .iter()

@@ -18,7 +18,6 @@ use bevy::window::PrimaryWindow;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
-const DEFAULT_CM_TO_UNIT: f32 = 0.00001;
 const DEFAULT_AGENT_RADIUS: f32 = 0.35;
 const DEFAULT_LOCATION_SIZE: f32 = 1.2;
 const ORBIT_ROTATE_SENSITIVITY: f32 = 0.005;
@@ -48,6 +47,7 @@ mod selection_linking;
 mod timeline_controls;
 mod ui_locale_text;
 mod ui_text;
+mod viewer_3d_config;
 mod world_overlay;
 
 use button_feedback::{
@@ -87,6 +87,7 @@ use ui_locale_text::{
     status_line, summary_no_snapshot,
 };
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
+use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
     update_world_overlay_status_text, update_world_overlay_toggle_labels, update_world_overlays_3d,
@@ -111,12 +112,14 @@ fn main() {
 }
 
 fn run_ui(addr: String, offline: bool) {
+    let viewer_3d_config = resolve_viewer_3d_config();
+
     App::new()
         .insert_resource(ViewerConfig {
             addr,
             max_events: DEFAULT_MAX_EVENTS,
         })
-        .insert_resource(Viewer3dConfig::default())
+        .insert_resource(viewer_3d_config)
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
         .insert_resource(WorldOverlayConfig::default())
@@ -258,25 +261,6 @@ impl Default for ViewerState {
             events: Vec::new(),
             decision_traces: Vec::new(),
             metrics: None,
-        }
-    }
-}
-
-#[derive(Resource)]
-struct Viewer3dConfig {
-    cm_to_unit: f32,
-    show_agents: bool,
-    show_locations: bool,
-    highlight_selected: bool,
-}
-
-impl Default for Viewer3dConfig {
-    fn default() -> Self {
-        Self {
-            cm_to_unit: DEFAULT_CM_TO_UNIT,
-            show_agents: true,
-            show_locations: true,
-            highlight_selected: true,
         }
     }
 }
@@ -584,6 +568,7 @@ fn send_request(
 
 fn setup_3d_scene(
     mut commands: Commands,
+    config: Res<Viewer3dConfig>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
@@ -721,8 +706,14 @@ fn setup_3d_scene(
     let focus = Vec3::ZERO;
     let transform = Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(focus, Vec3::Y);
     let orbit = OrbitCamera::from_transform(&transform, focus);
+    let perspective = PerspectiveProjection {
+        near: config.physical.camera_near_m,
+        far: config.physical.camera_far_m,
+        ..default()
+    };
     commands.spawn((
         Camera3d::default(),
+        Projection::Perspective(perspective),
         Camera {
             order: 0,
             ..default()
@@ -732,9 +723,14 @@ fn setup_3d_scene(
         orbit,
     ));
 
+    let irradiance_lux =
+        config.physical.irradiance_w_m2() * config.physical.luminous_efficacy_lm_per_w;
+    let exposure_scale = 2.0_f32.powf((config.physical.exposure_ev100 - 13.5).clamp(-4.0, 4.0));
+    let intensity = (irradiance_lux / exposure_scale).clamp(2_500.0, 120_000.0);
+
     commands.spawn((
         PointLight {
-            intensity: 6000.0,
+            intensity,
             shadows_enabled: true,
             ..default()
         },
