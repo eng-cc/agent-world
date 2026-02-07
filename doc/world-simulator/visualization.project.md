@@ -37,6 +37,9 @@
 - [x] UI 测试覆盖：Agent 活动面板文本（headless 断言）
 - [x] 修复多相机 order 冲突（3D/UI）并恢复视角交互
 - [x] 修复 3D 轨道相机拖拽输入（基于 cursor delta，支持 Shift+左键平移）
+- [x] UI 测试覆盖：选中详情面板（Location + Agent LLM I/O）
+- [x] 在线模式：新增 LLM 决策 trace 下发（DecisionTrace）
+- [x] UI：新增选中对象详情面板（Agent/Location）
 - [x] 提交到 git
 
 ## 依赖
@@ -46,4 +49,4 @@
 
 ## 状态
 - 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
-- 最近更新：修复 3D 相机拖拽输入兼容性（cursor delta），恢复旋转/平移交互（2026-02-07）
+- 最近更新：新增选中对象详情面板并接入 LLM 决策 I/O trace（2026-02-07）

@@ -7,8 +7,7 @@ use std::thread;
 
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    PowerEvent, ResourceKind, ResourceOwner, RunnerMetrics, SpaceConfig, WorldEvent,
-    WorldEventKind, WorldSnapshot,
+    AgentDecisionTrace, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
@@ -36,9 +35,13 @@ const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
 mod scene_helpers;
+mod ui_text;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use scene_helpers::*;
+use ui_text::{
+    agent_activity_summary, events_summary, format_status, selection_details_summary, world_summary,
+};
 
 const WORLD_MIN_AXIS: f32 = 0.1;
 const WORLD_FLOOR_THICKNESS: f32 = 0.03;
@@ -131,6 +134,7 @@ struct ViewerState {
     status: ConnectionStatus,
     snapshot: Option<WorldSnapshot>,
     events: Vec<WorldEvent>,
+    decision_traces: Vec<AgentDecisionTrace>,
     metrics: Option<RunnerMetrics>,
 }
 
@@ -140,6 +144,7 @@ impl Default for ViewerState {
             status: ConnectionStatus::Connecting,
             snapshot: None,
             events: Vec::new(),
+            decision_traces: Vec::new(),
             metrics: None,
         }
     }
@@ -297,6 +302,9 @@ struct SelectionText;
 
 #[derive(Component)]
 struct AgentActivityText;
+
+#[derive(Component)]
+struct SelectionDetailsText;
 
 #[derive(Component, Clone)]
 struct ControlButton {
@@ -699,7 +707,33 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.2,
+                            flex_grow: 1.3,
+                            padding: UiRect::all(Val::Px(14.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.09, 0.09, 0.11)),
+                    ))
+                    .with_children(|details| {
+                        details.spawn((
+                            Text::new(
+                                "Details:
+(click agent/location to inspect)",
+                            ),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 13.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.88, 0.9, 0.94)),
+                            SelectionDetailsText,
+                        ));
+                    });
+
+                content
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_grow: 1.0,
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -751,6 +785,13 @@ fn poll_viewer_messages(
                     if state.events.len() > config.max_events {
                         let overflow = state.events.len() - config.max_events;
                         state.events.drain(0..overflow);
+                    }
+                }
+                ViewerResponse::DecisionTrace { trace } => {
+                    state.decision_traces.push(trace);
+                    if state.decision_traces.len() > config.max_events {
+                        let overflow = state.decision_traces.len() - config.max_events;
+                        state.decision_traces.drain(0..overflow);
                     }
                 }
                 ViewerResponse::Metrics { metrics, .. } => {
@@ -820,6 +861,7 @@ fn update_ui(
         Query<&mut Text, With<EventsText>>,
         Query<&mut Text, With<SelectionText>>,
         Query<&mut Text, With<AgentActivityText>>,
+        Query<&mut Text, With<SelectionDetailsText>>,
     )>,
 ) {
     if !state.is_changed() && !selection.is_changed() {
@@ -844,6 +886,15 @@ fn update_ui(
 
     if let Ok(mut text) = queries.p4().single_mut() {
         text.0 = agent_activity_summary(state.snapshot.as_ref(), &state.events);
+    }
+
+    if let Ok(mut text) = queries.p5().single_mut() {
+        text.0 = selection_details_summary(
+            &selection,
+            state.snapshot.as_ref(),
+            &state.events,
+            &state.decision_traces,
+        );
     }
 }
 
@@ -989,177 +1040,6 @@ fn headless_report(mut status: ResMut<HeadlessStatus>, state: Res<ViewerState>) 
         println!("viewer events: {}", state.events.len());
         status.last_events = state.events.len();
     }
-}
-
-fn format_status(status: &ConnectionStatus) -> String {
-    match status {
-        ConnectionStatus::Connecting => "connecting".to_string(),
-        ConnectionStatus::Connected => "connected".to_string(),
-        ConnectionStatus::Error(message) => format!("error: {message}"),
-    }
-}
-
-fn world_summary(snapshot: Option<&WorldSnapshot>, metrics: Option<&RunnerMetrics>) -> String {
-    let mut lines = Vec::new();
-    if let Some(snapshot) = snapshot {
-        let model = &snapshot.model;
-        lines.push(format!("Time: {}", snapshot.time));
-        lines.push(format!("Locations: {}", model.locations.len()));
-        lines.push(format!("Agents: {}", model.agents.len()));
-        lines.push(format!("Assets: {}", model.assets.len()));
-        lines.push(format!("Power Plants: {}", model.power_plants.len()));
-        lines.push(format!("Power Storages: {}", model.power_storages.len()));
-    } else {
-        lines.push("World: (no snapshot)".to_string());
-    }
-
-    if let Some(metrics) = metrics {
-        lines.push("".to_string());
-        lines.push(format!("Ticks: {}", metrics.total_ticks));
-        lines.push(format!("Actions: {}", metrics.total_actions));
-        lines.push(format!("Decisions: {}", metrics.total_decisions));
-    }
-
-    lines.join("\n")
-}
-
-fn events_summary(events: &[WorldEvent]) -> String {
-    if events.is_empty() {
-        return "Events:\n(no events)".to_string();
-    }
-
-    let mut lines = Vec::new();
-    lines.push("Events:".to_string());
-    for event in events.iter().rev().take(20).rev() {
-        lines.push(format!("#{} t{} {:?}", event.id, event.time, event.kind));
-    }
-    lines.join("\n")
-}
-
-fn agent_activity_summary(snapshot: Option<&WorldSnapshot>, events: &[WorldEvent]) -> String {
-    let Some(snapshot) = snapshot else {
-        return "Agents Activity:
-(no snapshot)"
-            .to_string();
-    };
-
-    if snapshot.model.agents.is_empty() {
-        return "Agents Activity:
-(none)"
-            .to_string();
-    }
-
-    let mut lines = Vec::new();
-    lines.push("Agents Activity:".to_string());
-
-    let mut agent_ids: Vec<_> = snapshot.model.agents.keys().cloned().collect();
-    agent_ids.sort();
-
-    for agent_id in agent_ids {
-        if let Some(agent) = snapshot.model.agents.get(&agent_id) {
-            let electricity = agent.resources.get(ResourceKind::Electricity);
-            let activity =
-                latest_agent_activity(&agent_id, events).unwrap_or_else(|| "idle".to_string());
-            lines.push(format!(
-                "{agent_id} @ {} | E={} | {}",
-                agent.location_id, electricity, activity
-            ));
-        }
-    }
-
-    lines.join("\n")
-}
-
-fn latest_agent_activity(agent_id: &str, events: &[WorldEvent]) -> Option<String> {
-    for event in events.iter().rev() {
-        if let Some(activity) = event_activity_for_agent(event, agent_id) {
-            return Some(format!("t{} {}", event.time, activity));
-        }
-    }
-    None
-}
-
-fn event_activity_for_agent(event: &WorldEvent, agent_id: &str) -> Option<String> {
-    match &event.kind {
-        WorldEventKind::AgentRegistered {
-            agent_id: id,
-            location_id,
-            ..
-        } if id == agent_id => Some(format!("register at {location_id}")),
-        WorldEventKind::AgentMoved {
-            agent_id: id,
-            to,
-            electricity_cost,
-            ..
-        } if id == agent_id => Some(format!("move -> {to} (cost {electricity_cost})")),
-        WorldEventKind::RadiationHarvested {
-            agent_id: id,
-            amount,
-            location_id,
-            ..
-        } if id == agent_id => Some(format!("harvest +{amount} at {location_id}")),
-        WorldEventKind::ResourceTransferred {
-            from,
-            to,
-            kind,
-            amount,
-        } => {
-            let from_agent = owner_matches_agent(from, agent_id);
-            let to_agent = owner_matches_agent(to, agent_id);
-            match (from_agent, to_agent) {
-                (true, true) => Some(format!("transfer {:?} {} (self)", kind, amount)),
-                (true, false) => Some(format!("transfer out {:?} {}", kind, amount)),
-                (false, true) => Some(format!("transfer in {:?} {}", kind, amount)),
-                _ => None,
-            }
-        }
-        WorldEventKind::CompoundRefined {
-            owner,
-            compound_mass_g,
-            hardware_output,
-            ..
-        } if owner_matches_agent(owner, agent_id) => Some(format!(
-            "refine {}g -> hw {}",
-            compound_mass_g, hardware_output
-        )),
-        WorldEventKind::Power(power_event) => match power_event {
-            PowerEvent::PowerConsumed {
-                agent_id: id,
-                amount,
-                ..
-            } if id == agent_id => Some(format!("power -{amount}")),
-            PowerEvent::PowerStateChanged {
-                agent_id: id, to, ..
-            } if id == agent_id => Some(format!("power state -> {:?}", to)),
-            PowerEvent::PowerCharged {
-                agent_id: id,
-                amount,
-                ..
-            } if id == agent_id => Some(format!("power +{amount}")),
-            PowerEvent::PowerTransferred {
-                from,
-                to,
-                amount,
-                loss,
-                ..
-            } => {
-                let from_agent = owner_matches_agent(from, agent_id);
-                let to_agent = owner_matches_agent(to, agent_id);
-                match (from_agent, to_agent) {
-                    (true, true) => Some(format!("trade power {} (loss {})", amount, loss)),
-                    (true, false) => Some(format!("sell power {} (loss {})", amount, loss)),
-                    (false, true) => Some(format!("buy power {} (loss {})", amount, loss)),
-                    _ => None,
-                }
-            }
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn owner_matches_agent(owner: &ResourceOwner, agent_id: &str) -> bool {
-    matches!(owner, ResourceOwner::Agent { agent_id: id } if id == agent_id)
 }
 
 #[cfg(test)]

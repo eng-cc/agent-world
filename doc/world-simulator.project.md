@@ -62,6 +62,9 @@
 - [ ] 任务分册：`doc/world-simulator/visualization.project.md`
 - [x] Viewer 可观测性增强：Agent 活动面板与世界背景参照（边界盒 + 地板网格）
 - [x] 修复 viewer 多相机渲染歧义（Camera order）并恢复 3D 交互
+- [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer-selection-details.md`）
+- [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer-selection-details.project.md`）
+- [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -107,4 +110,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：修复 viewer 3D 相机拖拽输入兼容性并恢复旋转/平移（2026-02-07）
+- 最近更新：新增 viewer 选中详情面板并接入 LLM 决策 I/O trace（2026-02-07）

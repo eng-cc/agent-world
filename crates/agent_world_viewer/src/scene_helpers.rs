@@ -1,4 +1,5 @@
 use super::*;
+use agent_world::simulator::WorldEventKind;
 
 pub(super) fn rebuild_scene_from_snapshot(
     commands: &mut Commands,

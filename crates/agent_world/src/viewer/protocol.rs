@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::simulator::{RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot, WorldTime};
+use crate::simulator::{
+    AgentDecisionTrace, RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot, WorldTime,
+};
 
 pub const VIEWER_PROTOCOL_VERSION: u32 = 1;
 
@@ -86,6 +88,9 @@ pub enum ViewerResponse {
     Event {
         event: WorldEvent,
     },
+    DecisionTrace {
+        trace: AgentDecisionTrace,
+    },
     Metrics {
         time: Option<WorldTime>,
         metrics: RunnerMetrics,
@@ -98,6 +103,7 @@ pub enum ViewerResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::simulator::AgentDecision;
 
     #[test]
     fn viewer_request_round_trip() {
@@ -124,6 +130,24 @@ mod tests {
     fn viewer_response_round_trip_error() {
         let response = ViewerResponse::Error {
             message: "boom".to_string(),
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_decision_trace() {
+        let response = ViewerResponse::DecisionTrace {
+            trace: AgentDecisionTrace {
+                agent_id: "agent-0".to_string(),
+                time: 12,
+                decision: AgentDecision::Wait,
+                llm_input: Some("prompt".to_string()),
+                llm_output: Some("{\"decision\":\"wait\"}".to_string()),
+                llm_error: None,
+                parse_error: None,
+            },
         };
         let json = serde_json::to_string(&response).expect("serialize response");
         let parsed: ViewerResponse = serde_json::from_str(&json).expect("deserialize response");

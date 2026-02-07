@@ -1,4 +1,5 @@
 use super::*;
+use agent_world::simulator::{ResourceKind, WorldEventKind};
 
 #[test]
 fn update_ui_sets_status_and_events() {
@@ -24,6 +25,7 @@ fn update_ui_sets_status_and_events() {
         status: ConnectionStatus::Error("oops".to_string()),
         snapshot: None,
         events: vec![event.clone()],
+        decision_traces: Vec::new(),
         metrics: None,
     };
     app.world_mut().insert_resource(state);
@@ -119,6 +121,7 @@ fn update_ui_populates_world_summary_and_metrics() {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events: Vec::new(),
+        decision_traces: Vec::new(),
         metrics: Some(metrics),
     };
     app.world_mut().insert_resource(state);
@@ -168,6 +171,7 @@ fn update_ui_reflects_filtered_events() {
         status: ConnectionStatus::Connected,
         snapshot: None,
         events: vec![event.clone()],
+        decision_traces: Vec::new(),
         metrics: None,
     };
     app.world_mut().insert_resource(state);
@@ -248,6 +252,7 @@ fn update_ui_populates_agent_activity_panel() {
         status: ConnectionStatus::Connected,
         snapshot: Some(snapshot),
         events,
+        decision_traces: Vec::new(),
         metrics: None,
     });
 
@@ -370,6 +375,68 @@ fn control_buttons_send_expected_requests() {
 }
 
 #[test]
+fn poll_viewer_messages_collects_decision_traces() {
+    let mut app = App::new();
+    app.add_systems(Update, poll_viewer_messages);
+
+    app.world_mut().insert_resource(ViewerConfig {
+        addr: "127.0.0.1:0".to_string(),
+        max_events: 2,
+    });
+
+    let (tx, rx) = mpsc::channel::<ViewerResponse>();
+    app.world_mut().insert_resource(ViewerClient {
+        tx: mpsc::channel::<ViewerRequest>().0,
+        rx: Mutex::new(rx),
+    });
+    app.world_mut().insert_resource(ViewerState::default());
+
+    tx.send(ViewerResponse::DecisionTrace {
+        trace: agent_world::simulator::AgentDecisionTrace {
+            agent_id: "agent-1".to_string(),
+            time: 1,
+            decision: agent_world::simulator::AgentDecision::Wait,
+            llm_input: Some("p1".to_string()),
+            llm_output: Some("o1".to_string()),
+            llm_error: None,
+            parse_error: None,
+        },
+    })
+    .expect("send trace1");
+    tx.send(ViewerResponse::DecisionTrace {
+        trace: agent_world::simulator::AgentDecisionTrace {
+            agent_id: "agent-1".to_string(),
+            time: 2,
+            decision: agent_world::simulator::AgentDecision::Wait,
+            llm_input: Some("p2".to_string()),
+            llm_output: Some("o2".to_string()),
+            llm_error: None,
+            parse_error: None,
+        },
+    })
+    .expect("send trace2");
+    tx.send(ViewerResponse::DecisionTrace {
+        trace: agent_world::simulator::AgentDecisionTrace {
+            agent_id: "agent-1".to_string(),
+            time: 3,
+            decision: agent_world::simulator::AgentDecision::Wait,
+            llm_input: Some("p3".to_string()),
+            llm_output: Some("o3".to_string()),
+            llm_error: None,
+            parse_error: None,
+        },
+    })
+    .expect("send trace3");
+
+    app.update();
+
+    let state = app.world_mut().resource::<ViewerState>();
+    assert_eq!(state.decision_traces.len(), 2);
+    assert_eq!(state.decision_traces[0].time, 2);
+    assert_eq!(state.decision_traces[1].time, 3);
+}
+
+#[test]
 fn headless_report_tracks_status_and_event_count() {
     let mut app = App::new();
     app.add_systems(Update, headless_report);
@@ -379,6 +446,7 @@ fn headless_report_tracks_status_and_event_count() {
         status: ConnectionStatus::Connecting,
         snapshot: None,
         events: Vec::new(),
+        decision_traces: Vec::new(),
         metrics: None,
     });
 
@@ -398,6 +466,7 @@ fn headless_report_tracks_status_and_event_count() {
                 reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
             },
         }],
+        decision_traces: Vec::new(),
         metrics: None,
     });
 
@@ -475,6 +544,173 @@ fn spawn_location_entity_adds_label_text() {
     let world = app.world_mut();
     let mut query = world.query::<&Text2d>();
     assert!(query.iter(world).next().is_some());
+}
+
+#[test]
+fn update_ui_populates_agent_selection_details_with_llm_trace() {
+    let mut app = App::new();
+    app.add_systems(Update, update_ui);
+
+    app.world_mut().spawn((Text::new(""), StatusText));
+    app.world_mut().spawn((Text::new(""), SummaryText));
+    app.world_mut().spawn((Text::new(""), EventsText));
+    app.world_mut().spawn((Text::new(""), SelectionText));
+    app.world_mut().spawn((Text::new(""), AgentActivityText));
+    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
+
+    let entity = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity,
+            kind: SelectionKind::Agent,
+            id: "agent-1".to_string(),
+            name: None,
+        }),
+    });
+
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.locations.insert(
+        "loc-1".to_string(),
+        agent_world::simulator::Location::new(
+            "loc-1",
+            "Alpha",
+            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        ),
+    );
+    model.agents.insert(
+        "agent-1".to_string(),
+        agent_world::simulator::Agent::new(
+            "agent-1",
+            "loc-1",
+            agent_world::geometry::GeoPos::new(1.0, 2.0, 3.0),
+        ),
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 11,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 3,
+        next_action_id: 2,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    let events = vec![WorldEvent {
+        id: 2,
+        time: 10,
+        kind: agent_world::simulator::WorldEventKind::AgentMoved {
+            agent_id: "agent-1".to_string(),
+            from: "loc-0".to_string(),
+            to: "loc-1".to_string(),
+            distance_cm: 100,
+            electricity_cost: 2,
+        },
+    }];
+
+    let decision_traces = vec![agent_world::simulator::AgentDecisionTrace {
+        agent_id: "agent-1".to_string(),
+        time: 10,
+        decision: agent_world::simulator::AgentDecision::Wait,
+        llm_input: Some("prompt content".to_string()),
+        llm_output: Some("{\"decision\":\"wait\"}".to_string()),
+        llm_error: None,
+        parse_error: None,
+    }];
+
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: Some(snapshot),
+        events,
+        decision_traces,
+        metrics: None,
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let details_text = {
+        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
+        query.single(world).expect("details text").0.clone()
+    };
+
+    assert!(details_text.0.contains("Details: agent agent-1"));
+    assert!(details_text.0.contains("Recent LLM I/O"));
+    assert!(details_text.0.contains("input:"));
+    assert!(details_text.0.contains("output:"));
+}
+
+#[test]
+fn update_ui_populates_location_selection_details() {
+    let mut app = App::new();
+    app.add_systems(Update, update_ui);
+
+    app.world_mut().spawn((Text::new(""), StatusText));
+    app.world_mut().spawn((Text::new(""), SummaryText));
+    app.world_mut().spawn((Text::new(""), EventsText));
+    app.world_mut().spawn((Text::new(""), SelectionText));
+    app.world_mut().spawn((Text::new(""), AgentActivityText));
+    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
+
+    let entity = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity,
+            kind: SelectionKind::Location,
+            id: "loc-1".to_string(),
+            name: Some("Alpha".to_string()),
+        }),
+    });
+
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.locations.insert(
+        "loc-1".to_string(),
+        agent_world::simulator::Location::new_with_profile(
+            "loc-1",
+            "Alpha",
+            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+            agent_world::simulator::LocationProfile {
+                material: agent_world::simulator::MaterialKind::Silicate,
+                radius_cm: 320,
+                radiation_emission_per_tick: 9,
+            },
+        ),
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 3,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 1,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: Some(snapshot),
+        events: Vec::new(),
+        decision_traces: Vec::new(),
+        metrics: None,
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let details_text = {
+        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
+        query.single(world).expect("details text").0.clone()
+    };
+
+    assert!(details_text.0.contains("Details: location loc-1"));
+    assert!(details_text.0.contains("radiation/tick=9"));
 }
 
 fn spawn_background_test_system(

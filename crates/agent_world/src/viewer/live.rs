@@ -7,9 +7,10 @@ use std::time::{Duration, Instant};
 
 use crate::geometry::space_distance_cm;
 use crate::simulator::{
-    initialize_kernel, Action, AgentRunner, LlmAgentBehavior, LlmAgentBuildError,
-    OpenAiChatCompletionClient, ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig,
-    WorldInitConfig, WorldInitError, WorldKernel, WorldScenario, WorldSnapshot,
+    initialize_kernel, Action, AgentDecisionTrace, AgentRunner, LlmAgentBehavior,
+    LlmAgentBuildError, OpenAiChatCompletionClient, ResourceKind, ResourceOwner, RunnerMetrics,
+    WorldConfig, WorldEvent, WorldInitConfig, WorldInitError, WorldKernel, WorldScenario,
+    WorldSnapshot,
 };
 
 use super::protocol::{
@@ -176,7 +177,22 @@ impl ViewerLiveServer {
             }
 
             if session.should_emit_event() && last_tick.elapsed() >= session.tick_interval {
-                if let Some(event) = self.world.step()? {
+                let step = self.world.step()?;
+
+                if let Some(trace) = step.decision_trace {
+                    if session.subscribed.contains(&ViewerStream::Events) {
+                        if let Err(err) =
+                            send_response(&mut writer, &ViewerResponse::DecisionTrace { trace })
+                        {
+                            if err.is_disconnect() {
+                                break;
+                            }
+                            return Err(err);
+                        }
+                    }
+                }
+
+                if let Some(event) = step.event {
                     if session.event_allowed(&event)
                         && session.subscribed.contains(&ViewerStream::Events)
                     {
@@ -207,8 +223,9 @@ impl ViewerLiveServer {
                         }
                         return Err(err);
                     }
-                    last_tick = Instant::now();
                 }
+
+                last_tick = Instant::now();
             }
         }
         Ok(())
@@ -226,6 +243,11 @@ struct LiveWorld {
 enum LiveDriver {
     Script(LiveScript),
     Llm(AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>),
+}
+
+struct LiveStepResult {
+    event: Option<WorldEvent>,
+    decision_trace: Option<AgentDecisionTrace>,
 }
 
 impl LiveWorld {
@@ -260,17 +282,29 @@ impl LiveWorld {
         Ok(())
     }
 
-    fn step(&mut self) -> Result<Option<crate::simulator::WorldEvent>, ViewerLiveServerError> {
+    fn step(&mut self) -> Result<LiveStepResult, ViewerLiveServerError> {
         match &mut self.driver {
             LiveDriver::Script(script) => {
                 if let Some(action) = script.next_action(&self.kernel) {
                     self.kernel.submit_action(action);
                 }
-                Ok(self.kernel.step())
+                Ok(LiveStepResult {
+                    event: self.kernel.step(),
+                    decision_trace: None,
+                })
             }
-            LiveDriver::Llm(runner) => Ok(runner
-                .tick(&mut self.kernel)
-                .and_then(|result| result.action_result.map(|action| action.event))),
+            LiveDriver::Llm(runner) => {
+                let tick_result = runner.tick(&mut self.kernel);
+                let event = tick_result
+                    .as_ref()
+                    .and_then(|result| result.action_result.as_ref())
+                    .map(|action| action.event.clone());
+                let decision_trace = tick_result.and_then(|result| result.decision_trace);
+                Ok(LiveStepResult {
+                    event,
+                    decision_trace,
+                })
+            }
         }
     }
 }
@@ -503,7 +537,15 @@ impl ViewerLiveSession {
                 ViewerControl::Step { count } => {
                     let steps = count.max(1);
                     for _ in 0..steps {
-                        if let Some(event) = world.step()? {
+                        let step = world.step()?;
+
+                        if let Some(trace) = step.decision_trace {
+                            if self.subscribed.contains(&ViewerStream::Events) {
+                                send_response(writer, &ViewerResponse::DecisionTrace { trace })?;
+                            }
+                        }
+
+                        if let Some(event) = step.event {
                             if self.event_allowed(&event)
                                 && self.subscribed.contains(&ViewerStream::Events)
                             {

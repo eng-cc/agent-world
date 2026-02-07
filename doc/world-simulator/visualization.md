@@ -46,6 +46,7 @@
 { "type": "event", "tick": 121, "event": { /* WorldEvent */ } }
 { "type": "metrics", "tick": 121, "metrics": { /* RunnerMetrics */ } }
 { "type": "error", "message": "..." }
+{ "type": "decision_trace", "trace": { /* AgentDecisionTrace */ } }
 ```
 
 ### 数据结构对齐
@@ -89,6 +90,17 @@
   - 滚轮：缩放距离（zoom）
 - 交互只在左侧 3D 视口生效，右侧 UI 面板不会触发相机移动。
 - 输入增量使用光标位置差值（cursor delta），避免部分平台 `MouseMotion` 不稳定导致的拖拽失效。
+
+
+### 选中对象详情面板（2026-02-07 更新）
+- 右侧 UI 新增“Details”区块：点击 3D 视图中的 Agent/Location 后展示详情。
+- Agent 详情包含：位置/坐标、机体参数、电力与热状态、资源、最近事件。
+- LLM 模式下，Agent 详情额外展示最近 LLM 输入输出：
+  - `llm_input`（system+user prompt）
+  - `llm_output`（completion 文本）
+  - `llm_error / parse_error`（若存在）
+- Location 详情包含：名称/坐标、profile、资源、碎片物理与预算摘要、最近相关事件。
+- 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
 
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
