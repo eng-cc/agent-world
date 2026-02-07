@@ -81,6 +81,8 @@
 - [x] 输出 WASM 模块通用可视实体项目文档（`doc/world-simulator/module-visual-entities.project.md`）
 - [x] simulator 接入 `module_visual_entities`（init/scenario/action/event/replay）
 - [x] viewer 接入模块可视实体通用渲染与详情展示（snapshot + 增量事件）
+- [x] 补齐模块可视实体事件 -> 对象联动（Event Click -> Select Object）
+- [x] 右侧信息区支持滚动条与滚轮滚动（长内容可浏览）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -142,4 +144,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 WASM 模块通用可视实体链路（simulator + viewer + 测试，2026-02-07）
+- 最近更新：完成模块可视实体事件联动与右侧滚动条（2026-02-07）

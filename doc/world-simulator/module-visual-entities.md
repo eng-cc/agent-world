@@ -14,6 +14,8 @@
 - 在回放链路保证该类事件可重放，保持快照与事件一致。
 - viewer 侧新增统一渲染路径：从 `snapshot.model.module_visual_entities` 与增量事件中构建/更新 marker。
 - viewer 详情面板支持展示模块可视实体的基础信息（module/kind/anchor/label）。
+- 事件列表对象联动支持模块可视实体（点击事件可定位对应 marker）。
+- 右侧信息区支持滚动浏览，保证长详情/长事件列表可访问。
 
 ### Out of Scope
 - 不定义具体 WASM ABI 的细节字段（本期仅定义 simulator/viewer 内部数据形态）。
@@ -54,12 +56,18 @@
 - 渲染位置由 `anchor` 解析；`label` 为空时回退为 `kind:entity_id`。
 - 通过增量事件做 upsert/remove，避免全量重建。
 
+### Viewer 交互约定（V1.1）
+- `ModuleVisualEntityUpserted/Removed` 事件可映射为对象联动目标（`SelectionKind::Asset` 复用路径）。
+- 对象实体查找顺序：先真实资产 `asset_entities`，再模块可视实体 `module_visual_entities`。
+- 右侧内容区域启用滚动条，滚轮仅在右侧面板命中时生效，避免干扰 3D 视图缩放。
+
 ## 里程碑
 
 - **M1**：设计文档与项目管理文档。
 - **M2**：simulator 数据结构、action/event、初始化与回放链路打通。
 - **M3**：viewer 通用渲染 + 基础详情展示。
 - **M4**：测试回归、文档状态回写、任务日志与提交。
+- **M5**：补齐事件联动与右侧滚动交互。
 
 ## 风险
 

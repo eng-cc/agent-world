@@ -423,6 +423,72 @@ mod tests {
     }
 
     #[test]
+    fn event_click_maps_module_visual_event_to_scene_entity() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_event_click_buttons);
+        app.world_mut().insert_resource(Viewer3dConfig::default());
+        app.world_mut().insert_resource(ViewerSelection::default());
+        app.world_mut()
+            .insert_resource(EventObjectLinkState::default());
+        app.world_mut().insert_resource(TimelineUiState::default());
+
+        let visual_entity = app
+            .world_mut()
+            .spawn((
+                Transform::default(),
+                GlobalTransform::default(),
+                BaseScale(Vec3::ONE),
+            ))
+            .id();
+
+        let mut scene = Viewer3dScene::default();
+        scene
+            .module_visual_entities
+            .insert("mv-1".to_string(), visual_entity);
+        app.world_mut().insert_resource(scene);
+
+        let event = WorldEvent {
+            id: 13,
+            time: 12,
+            kind: agent_world::simulator::WorldEventKind::ModuleVisualEntityUpserted {
+                entity: agent_world::simulator::ModuleVisualEntity {
+                    entity_id: "mv-1".to_string(),
+                    module_id: "m.test".to_string(),
+                    kind: "relay".to_string(),
+                    label: None,
+                    anchor: agent_world::simulator::ModuleVisualAnchor::Absolute {
+                        pos: GeoPos::new(0.0, 0.0, 0.0),
+                    },
+                },
+            },
+        };
+
+        app.world_mut().insert_resource(ViewerState {
+            status: ConnectionStatus::Connected,
+            snapshot: Some(sample_snapshot()),
+            events: vec![event],
+            decision_traces: Vec::new(),
+            metrics: None,
+        });
+
+        app.world_mut().spawn((
+            Button,
+            Interaction::Pressed,
+            EventClickButton { event_id: 13 },
+        ));
+
+        app.update();
+
+        let selection = app.world().resource::<ViewerSelection>();
+        let current = selection.current.as_ref().expect("selection exists");
+        assert_eq!(current.kind, SelectionKind::Asset);
+        assert_eq!(current.id, "mv-1");
+
+        let link_state = app.world().resource::<EventObjectLinkState>();
+        assert!(link_state.message.contains("event #13 -> asset mv-1"));
+    }
+
+    #[test]
     fn event_click_without_target_only_updates_message() {
         let mut app = App::new();
         app.add_systems(Update, handle_event_click_buttons);

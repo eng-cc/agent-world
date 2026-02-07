@@ -13,6 +13,7 @@ use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use bevy::camera::Viewport;
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -132,6 +133,7 @@ fn run_ui(addr: String, offline: bool) {
                 update_diagnosis_panel,
                 update_event_click_list_ui,
                 update_timeline_ui,
+                scroll_right_panel,
                 update_ui,
             )
                 .chain(),
@@ -381,6 +383,9 @@ struct AgentActivityText;
 
 #[derive(Component)]
 struct SelectionDetailsText;
+
+#[derive(Component)]
+struct RightPanelScroll;
 
 #[derive(Component, Clone)]
 struct ControlButton {
@@ -810,18 +815,25 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 spawn_timeline_controls(bar, font.clone());
             });
 
-            root.spawn(Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Column,
-                ..default()
-            })
+            root.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    overflow: Overflow::scroll_y(),
+                    flex_shrink: 0.0,
+                    ..default()
+                },
+                ScrollPosition::default(),
+                RightPanelScroll,
+            ))
             .with_children(|content| {
                 content
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.0,
+                            min_height: Val::Px(140.0),
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -844,7 +856,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.1,
+                            min_height: Val::Px(170.0),
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -870,7 +882,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.3,
+                            min_height: Val::Px(240.0),
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -896,7 +908,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.0,
+                            min_height: Val::Px(260.0),
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -918,6 +930,49 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     });
             });
         });
+}
+
+fn scroll_delta_px_from_parts(unit: MouseScrollUnit, y: f32) -> f32 {
+    let scale = match unit {
+        MouseScrollUnit::Line => 32.0,
+        MouseScrollUnit::Pixel => 1.0,
+    };
+    y * scale
+}
+
+fn scroll_delta_px(event: &MouseWheel) -> f32 {
+    scroll_delta_px_from_parts(event.unit, event.y)
+}
+
+fn cursor_in_right_panel(window_width: f32, cursor_x: f32) -> bool {
+    cursor_x >= (window_width - UI_PANEL_WIDTH).max(0.0)
+}
+
+fn scroll_right_panel(
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut wheel_events: MessageReader<MouseWheel>,
+    mut scroll_query: Query<&mut ScrollPosition, With<RightPanelScroll>>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
+    if !cursor_in_right_panel(window.width(), cursor.x) {
+        return;
+    }
+
+    let Ok(mut scroll) = scroll_query.single_mut() else {
+        return;
+    };
+    for event in wheel_events.read() {
+        let delta = scroll_delta_px(event);
+        if delta.abs() < f32::EPSILON {
+            continue;
+        }
+        scroll.y = (scroll.y - delta).max(0.0);
+    }
 }
 
 fn poll_viewer_messages(
@@ -1099,5 +1154,7 @@ fn update_3d_viewport(
     });
 }
 
+#[cfg(test)]
+mod scroll_tests;
 #[cfg(test)]
 mod tests;
