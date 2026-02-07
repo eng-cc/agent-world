@@ -39,6 +39,7 @@ mod diagnosis;
 mod event_click_list;
 mod headless;
 mod internal_capture;
+mod panel_layout;
 mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
@@ -53,6 +54,10 @@ use event_click_list::{
 use headless::headless_report;
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
+};
+use panel_layout::{
+    handle_top_panel_toggle_button, spawn_top_panel_toggle, RightPanelLayoutState,
+    TopPanelContainer,
 };
 use scene_helpers::*;
 use selection_linking::{
@@ -109,6 +114,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(OrbitDragState::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
+        .insert_resource(RightPanelLayoutState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Agent World Viewer".to_string(),
@@ -145,6 +151,7 @@ fn run_ui(addr: String, offline: bool) {
             )
                 .chain(),
         )
+        .add_systems(Update, handle_top_panel_toggle_button)
         .add_systems(
             Update,
             (
@@ -744,6 +751,8 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             BorderColor::all(Color::srgb(0.18, 0.2, 0.24)),
         ))
         .with_children(|root| {
+            spawn_top_panel_toggle(root, font.clone());
+
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
@@ -759,6 +768,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 BackgroundColor(Color::srgb(0.1, 0.11, 0.14)),
                 BorderColor::all(Color::srgb(0.2, 0.22, 0.26)),
+                TopPanelContainer,
             ))
             .with_children(|bar| {
                 bar.spawn(Node {
@@ -809,7 +819,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     Text::new("Status: connecting"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 15.0,
+                        font_size: 14.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -820,7 +830,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     Text::new("Selection: (none)"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 13.0,
+                        font_size: 12.0,
                         ..default()
                     },
                     TextColor(Color::srgb(0.9, 0.9, 0.9)),

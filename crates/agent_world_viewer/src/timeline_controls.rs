@@ -122,7 +122,7 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                 Text::new("Timeline: now=0 target=0 max=0"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 12.0,
+                    font_size: 11.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.88, 0.9, 0.95)),
@@ -135,7 +135,7 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                 ),
                 TextFont {
                     font: font.clone(),
-                    font_size: 11.0,
+                    font_size: 10.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.75, 0.8, 0.9)),
@@ -229,10 +229,10 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                         ))
                         .with_children(|button| {
                             button.spawn((
-                                Text::new("Seek Target"),
+                                Text::new("Seek"),
                                 TextFont {
                                     font: font.clone(),
-                                    font_size: 12.0,
+                                    font_size: 11.0,
                                     ..default()
                                 },
                                 TextColor(Color::WHITE),

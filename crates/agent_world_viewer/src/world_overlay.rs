@@ -124,7 +124,7 @@ pub(super) fn spawn_world_overlay_controls(parent: &mut ChildSpawnerCommands, fo
                 Text::new("Overlay: loading"),
                 TextFont {
                     font,
-                    font_size: 11.0,
+                    font_size: 10.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.76, 0.8, 0.9)),

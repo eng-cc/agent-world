@@ -39,7 +39,7 @@ pub(super) fn spawn_diagnosis_panel(parent: &mut ChildSpawnerCommands, font: Han
                 Text::new("Diagnosis: waiting world data"),
                 TextFont {
                     font,
-                    font_size: 11.0,
+                    font_size: 10.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.9, 0.84, 0.68)),
