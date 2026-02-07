@@ -17,9 +17,10 @@
 - CI 格式化校验：`scripts/ci-tests.sh` 与 `.github/workflows/rust.yml` 会执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
 
 ## Git Hook
-- 已在本仓库安装 `pre-commit` hook：提交前会自动执行 `scripts/pre-commit.sh`。
-- 如需重装，可在仓库根目录创建 `.git/hooks/pre-commit` 并调用脚本：
+- **注意**：Git hooks 不会随仓库内容一并版本化；克隆到新仓库（或重新初始化 `.git`）后，默认不会自动带上 `pre-commit` hook，需要手动重新注册。
+- 在仓库根目录重新注册：
 ```
+cat > .git/hooks/pre-commit <<'HOOK'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -27,6 +28,13 @@ repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
 ./scripts/pre-commit.sh
+HOOK
+
+chmod +x .git/hooks/pre-commit
+```
+- 可用以下命令确认是否已注册：
+```
+test -x .git/hooks/pre-commit && echo "pre-commit hook installed"
 ```
 
 ## 失败修复
@@ -39,6 +47,7 @@ cd "$repo_root"
 ## 里程碑
 - **M1**：新增本地提交前联测脚本并纳入文档说明。
 - **M2**：提交前加入自动格式化时机，并在 CI 增加格式化检查。
+- **M3**：补充“新仓库需重新注册 hook”文档与操作步骤。
 
 ## 风险
 - **执行耗时**：全量测试与集成测试耗时较长，需控制在本地可接受范围。

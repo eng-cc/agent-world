@@ -11,6 +11,7 @@
 - [x] 对齐 CI 测试清单（改为调用 `scripts/ci-tests.sh`）
 - [x] 提交前新增代码格式化时机（`cargo fmt --all`）
 - [x] CI 增加格式化检查（`cargo fmt --all -- --check`）
+- [x] 文档补充：新仓库需重新注册 pre-commit hook（2026-02-07）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
@@ -18,4 +19,4 @@
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：提交前格式化 + CI 格式化检查（2026-02-06）
+- 最近更新：补充“新仓库需重新注册 hook”文档与操作步骤（2026-02-07）
