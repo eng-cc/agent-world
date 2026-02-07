@@ -485,6 +485,7 @@ pub struct PhysicsConfig {
     pub max_harvest_per_tick: i64,
     pub thermal_capacity: i64,
     pub thermal_dissipation: i64,
+    pub thermal_dissipation_gradient_bps: i64,
     pub heat_factor: i64,
     pub erosion_rate: f64,
 }
@@ -502,6 +503,7 @@ impl Default for PhysicsConfig {
             max_harvest_per_tick: 50,
             thermal_capacity: 100,
             thermal_dissipation: 5,
+            thermal_dissipation_gradient_bps: 10_000,
             heat_factor: 1,
             erosion_rate: 1e-6,
         }
@@ -539,6 +541,9 @@ impl PhysicsConfig {
         }
         if self.thermal_dissipation < 0 {
             self.thermal_dissipation = 0;
+        }
+        if self.thermal_dissipation_gradient_bps < 0 {
+            self.thermal_dissipation_gradient_bps = 0;
         }
         if self.heat_factor < 0 {
             self.heat_factor = 0;

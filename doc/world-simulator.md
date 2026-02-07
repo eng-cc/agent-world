@@ -84,8 +84,9 @@
   - `radiation_floor_cap_per_tick`：背景通量每 tick 可采集上限（防止 floor 配置过大导致“无源高功率造能”）。
   - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
   - `max_harvest_per_tick`：每 tick 最大采集量（热/面积限制）。
-  - `thermal_capacity`：热容量阈值（超过进入过热区）。
-  - `thermal_dissipation`：每 tick 热量散逸值。
+  - `thermal_capacity`：热容量阈值（用于归一化热状态与散热强度）。
+  - `thermal_dissipation`：散热基准系数（在 `heat == thermal_capacity` 且梯度=100% 时约等于每 tick 散热量）。
+  - `thermal_dissipation_gradient_bps`：散热梯度系数（基点，10_000=100%）。
   - `heat_factor`：单位采集量带来的热增量。
   - `erosion_rate`：碎屑侵蚀系数（与速度/密度缩放）。
 
@@ -100,7 +101,8 @@
   - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
   - `max_harvest_per_tick`：默认 50；范围 1~500（受热/面积限制）。
   - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
-  - `thermal_dissipation`：默认 5/tick；范围 1~50。
+  - `thermal_dissipation`：默认 5（散热基准系数）；范围 1~50。
+  - `thermal_dissipation_gradient_bps`：默认 10,000（100%）；范围 1,000~50,000。
   - `erosion_rate`：默认 1e-6（随速度/密度缩放）；范围 1e-7~1e-4。
 
 - **辐射采集规则细化（可落地规则）**
@@ -111,7 +113,9 @@
   - 超温处理：若 `heat > thermal_capacity`，则采集效率下降或动作被拒绝。
 
 - **热管理与硬件损耗（规则建议）**
-  - 每 tick 热量衰减：`heat = max(0, heat - thermal_dissipation)`
+  - 温差相关散热：
+    - `dissipation = ceil(thermal_dissipation * heat / max(thermal_capacity,1) * thermal_dissipation_gradient_bps / 10000)`
+    - `heat = max(0, heat - dissipation)`
   - 超温惩罚（任选其一）：  
     - 降效：`harvest *= clamp(thermal_capacity / heat, 0.1..1.0)`  
     - 损耗：`hardware -= (heat - thermal_capacity) * damage_factor`
@@ -190,8 +194,8 @@
   - `space`（`width_cm/depth_cm/height_cm`，破碎小行星带空间尺寸）
   - `physics`（`time_step_s`, `power_unit_j`, `max_move_distance_cm_per_tick`,
     `max_move_speed_cm_per_s`, `radiation_floor`, `radiation_decay_k`,
-    `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
-    `erosion_rate`）
+    `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`,
+    `thermal_dissipation_gradient_bps`, `heat_factor`, `erosion_rate`）
   - `asteroid_fragment`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
     `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`,
     `min_fragment_spacing_cm`, `material_weights`）
@@ -384,7 +388,10 @@
   - 已完成：新增测试覆盖“time_step/power_unit 联动缩放”与“MoveAgent 使用校准成本”两条路径。
   - 默认示例：1m 机体执行 1~5km 典型位移，默认参数下约消耗 1~5 电力单位（约 1~5kJ）。
   - 验收：给出默认参数推导示例（1m 机体在典型位移下的能耗区间）。
-- [ ] **C7 热模型从常数散热升级**：将固定散热替换为“至少与温差相关”的可配置散热模型。
+- [x] **C7 热模型从常数散热升级**：将固定散热替换为“至少与温差相关”的可配置散热模型。
+  - 已完成：`PhysicsConfig` 新增 `thermal_dissipation_gradient_bps`，散热模型改为“热量占比 × 梯度系数”计算。
+  - 已完成：`process_power_tick` 按当前热量动态计算每 tick 散热，高热散得更多、低热散得更少。
+  - 已完成：新增测试覆盖“高热散热更快”与“散热后不出现负热量”两条路径。
   - 验收：高热状态下散热更快，低热状态下散热更慢；不会出现负热量。
 
 ### P2（增强可信度）
