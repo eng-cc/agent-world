@@ -28,3 +28,16 @@
 - 当前阶段：I18N10 完成（中英切换实现 + 文档收口）
 - 下一阶段：按需扩展第三语言与本地配置持久化
 - 最近更新：完成 UI 多语言任务收口并提交前校验（2026-02-07）
+
+## 增量任务（2026-02-07）：中文字体渲染修复
+- [x] I18N11：引入 CJK 字体资源并替换 `agent_world_viewer` 的 UI/3D 标签字体加载路径（`fonts/ms-yahei.ttf`）
+- [x] I18N12：截图闭环验证中文渲染（方块字问题消除）
+
+## 依赖（增量）
+- `crates/agent_world_viewer/assets/fonts/ms-yahei.ttf`
+- `crates/agent_world_viewer/src/main.rs`
+- `./scripts/capture-viewer-frame.sh`
+
+## 状态（增量）
+- 当前阶段：I18N12 完成（中文字体渲染问题已修复）
+- 最近更新：完成 CJK 字体接入、截图验证与回归测试（2026-02-07）

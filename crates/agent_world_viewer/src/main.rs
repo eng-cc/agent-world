@@ -588,7 +588,7 @@ fn setup_3d_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    let label_font = asset_server.load("fonts/DejaVuSans.ttf");
+    let label_font = asset_server.load("fonts/ms-yahei.ttf");
     let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
     let location_mesh = meshes.add(Cuboid::new(
         DEFAULT_LOCATION_SIZE,
@@ -743,7 +743,7 @@ fn setup_3d_scene(
 }
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/DejaVuSans.ttf");
+    let font = asset_server.load("fonts/ms-yahei.ttf");
     let i18n = UiI18n::default();
     let locale = i18n.locale;
 
