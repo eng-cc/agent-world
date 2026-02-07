@@ -153,6 +153,18 @@
 - PowerPlant/PowerStorage 详情包含：设施参数、电力状态与相关电力事件。
 - 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
 
+### 选中对象状态与 trace 一键导出（2026-02-07 实现）
+- 目标：将当前选中对象的完整状态、关联事件与决策 trace 一次性导出为结构化 JSON，便于离线分析与问题复盘。
+- 交互：顶部新增 `Export Selection` 按钮，点击即导出；旁边状态文本显示成功路径或失败原因。
+- 导出目录：默认写入 `.tmp/selection-exports/`，可通过 `AGENT_WORLD_VIEWER_EXPORT_DIR` 覆盖。
+- 导出内容：
+  - 选择元数据：对象类型、ID、名称、导出时间、当前 tick。
+  - 对象状态快照：从 `WorldSnapshot` 提取对应对象完整结构（Agent/Location/Asset/PowerPlant/PowerStorage/Chunk）。
+  - 关联事件：按选中对象匹配最近事件窗口（默认最近 40 条）。
+  - 决策 trace：Agent 导出对应 `decision_traces`；非 Agent 保留空列表。
+  - 详情文案：同步保留 UI `Details` 面板文本，便于人工快速阅读。
+- 降级策略：未选中对象、无快照、对象不存在、写文件失败时，状态文本直接返回可读错误，不中断 viewer 主循环。
+
 ### 测试策略
 - UI 自动化测试使用 Bevy 自带 App/ECS（无需额外依赖），以系统级断言 UI 文本/状态更新为主。
 - **优先使用 headless 模式验证功能**：在无显示环境下以 `MinimalPlugins` + 逻辑系统驱动 UI 状态变更。
@@ -197,7 +209,7 @@
 - 联动检索仍可增强：当前已支持“focus event -> 定位对象”与“selection -> 跳转事件”，后续可补“事件列表逐条点击定位对象”。
 - LLM 诊断维度仍可增强：已展示 `model/latency/token/retry`，后续可补链路级成本估算与请求 ID 追踪。
 - 世界层表达仍可增强：已补齐 chunk/热力/流动覆盖层，后续可进一步增加分层图例与时间衰减轨迹。
-- 信息导出不足：缺少对“当前选中对象完整状态 + 最近 trace”的一键导出/复制能力。
+- 信息导出能力已补齐：支持一键导出当前选中对象状态、关联事件与 LLM trace；后续可补“复制到剪贴板”和批量导出。
 
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）

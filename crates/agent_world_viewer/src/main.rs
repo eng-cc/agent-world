@@ -36,6 +36,7 @@ const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
 mod headless;
 mod scene_helpers;
+mod selection_export;
 mod selection_linking;
 mod timeline_controls;
 mod ui_text;
@@ -44,6 +45,10 @@ mod world_overlay;
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use headless::headless_report;
 use scene_helpers::*;
+use selection_export::{
+    handle_selection_export_button, spawn_selection_export_controls,
+    update_selection_export_status_text, SelectionExportState,
+};
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
     spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
@@ -91,6 +96,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(ViewerSelection::default())
         .insert_resource(WorldOverlayConfig::default())
         .insert_resource(WorldOverlayUiState::default())
+        .insert_resource(SelectionExportState::default())
         .insert_resource(EventObjectLinkState::default())
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
@@ -117,10 +123,12 @@ fn run_ui(addr: String, offline: bool) {
                 handle_timeline_mark_jump_buttons,
                 handle_timeline_seek_submit,
                 handle_world_overlay_toggle_buttons,
+                handle_selection_export_button,
                 handle_locate_focus_event_button,
                 handle_jump_selection_events_button,
                 update_event_object_link_text,
                 update_world_overlay_status_text,
+                update_selection_export_status_text,
                 update_timeline_ui,
                 update_ui,
             )
@@ -719,7 +727,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(340.0),
+                    height: Val::Px(372.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(6.0),
                     padding: UiRect::all(Val::Px(12.0)),
@@ -793,6 +801,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ));
 
                 spawn_world_overlay_controls(bar, font.clone());
+                spawn_selection_export_controls(bar, font.clone());
                 spawn_event_object_link_controls(bar, font.clone());
                 spawn_timeline_controls(bar, font.clone());
             });
