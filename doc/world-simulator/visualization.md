@@ -98,6 +98,22 @@
 - **要求**：新增 UI 功能必须同步新增 headless UI 测试，覆盖输入/状态变化与输出文本/结构。
 - **离线模式**：headless 默认离线；如需联网，设置 `AGENT_WORLD_VIEWER_FORCE_ONLINE=1`；也可显式设置 `AGENT_WORLD_VIEWER_OFFLINE=1` 强制离线。
 
+### 可观测性增强（2026-02-07）
+- **背景问题**：当前 3D 视图缺少空间边界/背景参照，事件列表也难以直接回答“每个 Agent 正在做什么”。
+- **增强目标**：
+  - 在右侧 UI 新增「Agent 活动面板」，按 Agent 展示位置、电力与最近一次动作/功耗活动。
+  - 在 3D 场景新增世界背景参照（空间边界盒 + 地板网格线），提升运动与距离感知。
+- **接口/数据**：
+  - `Agent 活动面板` 从 `WorldSnapshot + WorldEvent` 派生：
+    - `snapshot.model.agents[*].location_id`
+    - `snapshot.model.agents[*].resources[electricity]`
+    - `events` 逆序扫描最近的 Agent 相关事件（move/harvest/transfer/power/refine 等）
+  - `背景参照` 从 `snapshot.config.space` 派生：
+    - `width_cm/depth_cm/height_cm` 映射到 3D 单位后生成边界盒和网格。
+- **验收标准**：
+  - 打开 viewer 后可直接看到每个 Agent 的当前状态与最近活动。
+  - 场景中可见边界和地板参照，不再是“黑底悬浮点”。
+
 ## 里程碑
 - **M5.1** 协议与数据服务雏形：定义消息结构与最小 server（能返回快照/事件）
 - **M5.2** Bevy UI 骨架：连接、状态面板、事件列表

@@ -31,6 +31,9 @@
 - [x] CI：显式执行联测目标（viewer_live_integration + feature）
 - [x] 离线回放：前后端联合测试（viewer_offline_integration）
 - [x] 修复 live viewer 断连导致联测失败（忽略连接重置）
+- [x] UI：新增 Agent 活动面板（位置/电力/最近动作）
+- [x] 3D：新增世界背景参照（边界盒 + 地板网格）
+- [x] UI 测试覆盖：Agent 活动面板文本（headless 断言）
 - [x] 提交到 git
 
 ## 依赖
@@ -39,5 +42,5 @@
 - Bevy（viewer 客户端）
 
 ## 状态
-- 当前阶段：联测稳定性修复完成
-- 最近更新：修复 live viewer 断连处理（2026-02-06）
+- 当前阶段：可观测性增强完成（Agent 活动面板 + 背景参照）
+- 最近更新：补齐 Agent 活动面板与世界背景可视化（2026-02-07）

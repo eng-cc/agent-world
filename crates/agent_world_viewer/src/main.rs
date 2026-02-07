@@ -7,7 +7,8 @@ use std::thread;
 
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    RunnerMetrics, SpaceConfig, WorldEvent, WorldEventKind, WorldSnapshot,
+    PowerEvent, ResourceKind, ResourceOwner, RunnerMetrics, SpaceConfig, WorldEvent,
+    WorldEventKind, WorldSnapshot,
 };
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
@@ -35,6 +36,14 @@ const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
+mod scene_helpers;
+
+use scene_helpers::*;
+
+const WORLD_MIN_AXIS: f32 = 0.1;
+const WORLD_FLOOR_THICKNESS: f32 = 0.03;
+const WORLD_GRID_LINE_THICKNESS: f32 = 0.01;
+const WORLD_GRID_LINES_PER_AXIS: usize = 8;
 
 fn main() {
     let addr = resolve_addr();
@@ -162,6 +171,7 @@ struct Viewer3dScene {
     agent_entities: HashMap<String, Entity>,
     location_entities: HashMap<String, Entity>,
     location_positions: HashMap<String, GeoPos>,
+    background_entities: Vec<Entity>,
 }
 
 #[derive(Resource)]
@@ -170,6 +180,10 @@ struct Viewer3dAssets {
     agent_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
     location_material: Handle<StandardMaterial>,
+    world_box_mesh: Handle<Mesh>,
+    world_floor_material: Handle<StandardMaterial>,
+    world_bounds_material: Handle<StandardMaterial>,
+    world_grid_material: Handle<StandardMaterial>,
     label_font: Handle<Font>,
 }
 
@@ -279,6 +293,9 @@ struct EventsText;
 
 #[derive(Component)]
 struct SelectionText;
+
+#[derive(Component)]
+struct AgentActivityText;
 
 #[derive(Component, Clone)]
 struct ControlButton {
@@ -453,6 +470,7 @@ fn setup_3d_scene(
         DEFAULT_LOCATION_SIZE * 0.2,
         DEFAULT_LOCATION_SIZE,
     ));
+    let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.2, 0.7, 1.0),
         perceptual_roughness: 0.6,
@@ -463,12 +481,33 @@ fn setup_3d_scene(
         perceptual_roughness: 0.8,
         ..default()
     });
+    let world_floor_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.08, 0.09, 0.11),
+        unlit: true,
+        ..default()
+    });
+    let world_bounds_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.22, 0.48, 0.65, 0.10),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let world_grid_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.30, 0.34, 0.38, 0.55),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
 
     commands.insert_resource(Viewer3dAssets {
         agent_mesh,
         agent_material,
         location_mesh,
         location_material,
+        world_box_mesh,
+        world_floor_material,
+        world_bounds_material,
+        world_grid_material,
         label_font,
     });
 
@@ -617,7 +656,33 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.4,
+                            flex_grow: 1.1,
+                            padding: UiRect::all(Val::Px(14.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.10, 0.10, 0.12)),
+                    ))
+                    .with_children(|activity| {
+                        activity.spawn((
+                            Text::new(
+                                "Agents Activity:
+(no snapshot)",
+                            ),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 13.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.86, 0.88, 0.92)),
+                            AgentActivityText,
+                        ));
+                    });
+
+                content
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_grow: 1.2,
                             padding: UiRect::all(Val::Px(14.0)),
                             ..default()
                         },
@@ -737,6 +802,7 @@ fn update_ui(
         Query<&mut Text, With<SummaryText>>,
         Query<&mut Text, With<EventsText>>,
         Query<&mut Text, With<SelectionText>>,
+        Query<&mut Text, With<AgentActivityText>>,
     )>,
 ) {
     if !state.is_changed() && !selection.is_changed() {
@@ -757,6 +823,10 @@ fn update_ui(
 
     if let Ok(mut text) = queries.p3().single_mut() {
         text.0 = selection.label();
+    }
+
+    if let Ok(mut text) = queries.p4().single_mut() {
+        text.0 = agent_activity_summary(state.snapshot.as_ref(), &state.events);
     }
 }
 
@@ -1000,661 +1070,131 @@ fn events_summary(events: &[WorldEvent]) -> String {
     lines.join("\n")
 }
 
-fn rebuild_scene_from_snapshot(
-    commands: &mut Commands,
-    config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
-    scene: &mut Viewer3dScene,
-    snapshot: &WorldSnapshot,
-) {
-    for entity in scene
-        .agent_entities
-        .values()
-        .chain(scene.location_entities.values())
-    {
-        commands.entity(*entity).despawn();
-    }
-
-    scene.agent_entities.clear();
-    scene.location_entities.clear();
-    scene.location_positions.clear();
-
-    let origin = space_origin(&snapshot.config.space);
-    scene.origin = Some(origin);
-
-    for (location_id, location) in snapshot.model.locations.iter() {
-        spawn_location_entity(
-            commands,
-            config,
-            assets,
-            scene,
-            origin,
-            location_id,
-            &location.name,
-            location.pos,
-        );
-    }
-
-    for (agent_id, agent) in snapshot.model.agents.iter() {
-        spawn_agent_entity(commands, config, assets, scene, origin, agent_id, agent.pos);
-    }
-}
-
-fn apply_events_to_scene(
-    commands: &mut Commands,
-    config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
-    scene: &mut Viewer3dScene,
-    snapshot_time: u64,
-    events: &[WorldEvent],
-) {
-    let Some(origin) = scene.origin else {
-        return;
+fn agent_activity_summary(snapshot: Option<&WorldSnapshot>, events: &[WorldEvent]) -> String {
+    let Some(snapshot) = snapshot else {
+        return "Agents Activity:
+(no snapshot)"
+            .to_string();
     };
 
-    let mut last_event_id = scene.last_event_id;
-    let mut processed = false;
+    if snapshot.model.agents.is_empty() {
+        return "Agents Activity:
+(none)"
+            .to_string();
+    }
 
-    for event in events {
-        if event.time <= snapshot_time {
-            continue;
+    let mut lines = Vec::new();
+    lines.push("Agents Activity:".to_string());
+
+    let mut agent_ids: Vec<_> = snapshot.model.agents.keys().cloned().collect();
+    agent_ids.sort();
+
+    for agent_id in agent_ids {
+        if let Some(agent) = snapshot.model.agents.get(&agent_id) {
+            let electricity = agent.resources.get(ResourceKind::Electricity);
+            let activity =
+                latest_agent_activity(&agent_id, events).unwrap_or_else(|| "idle".to_string());
+            lines.push(format!(
+                "{agent_id} @ {} | E={} | {}",
+                agent.location_id, electricity, activity
+            ));
         }
-        if let Some(last_id) = last_event_id {
-            if event.id <= last_id {
-                continue;
+    }
+
+    lines.join("\n")
+}
+
+fn latest_agent_activity(agent_id: &str, events: &[WorldEvent]) -> Option<String> {
+    for event in events.iter().rev() {
+        if let Some(activity) = event_activity_for_agent(event, agent_id) {
+            return Some(format!("t{} {}", event.time, activity));
+        }
+    }
+    None
+}
+
+fn event_activity_for_agent(event: &WorldEvent, agent_id: &str) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::AgentRegistered {
+            agent_id: id,
+            location_id,
+            ..
+        } if id == agent_id => Some(format!("register at {location_id}")),
+        WorldEventKind::AgentMoved {
+            agent_id: id,
+            to,
+            electricity_cost,
+            ..
+        } if id == agent_id => Some(format!("move -> {to} (cost {electricity_cost})")),
+        WorldEventKind::RadiationHarvested {
+            agent_id: id,
+            amount,
+            location_id,
+            ..
+        } if id == agent_id => Some(format!("harvest +{amount} at {location_id}")),
+        WorldEventKind::ResourceTransferred {
+            from,
+            to,
+            kind,
+            amount,
+        } => {
+            let from_agent = owner_matches_agent(from, agent_id);
+            let to_agent = owner_matches_agent(to, agent_id);
+            match (from_agent, to_agent) {
+                (true, true) => Some(format!("transfer {:?} {} (self)", kind, amount)),
+                (true, false) => Some(format!("transfer out {:?} {}", kind, amount)),
+                (false, true) => Some(format!("transfer in {:?} {}", kind, amount)),
+                _ => None,
             }
         }
-
-        match &event.kind {
-            WorldEventKind::LocationRegistered {
-                location_id,
-                name,
-                pos,
+        WorldEventKind::CompoundRefined {
+            owner,
+            compound_mass_g,
+            hardware_output,
+            ..
+        } if owner_matches_agent(owner, agent_id) => Some(format!(
+            "refine {}g -> hw {}",
+            compound_mass_g, hardware_output
+        )),
+        WorldEventKind::Power(power_event) => match power_event {
+            PowerEvent::PowerConsumed {
+                agent_id: id,
+                amount,
+                ..
+            } if id == agent_id => Some(format!("power -{amount}")),
+            PowerEvent::PowerStateChanged {
+                agent_id: id, to, ..
+            } if id == agent_id => Some(format!("power state -> {:?}", to)),
+            PowerEvent::PowerCharged {
+                agent_id: id,
+                amount,
+                ..
+            } if id == agent_id => Some(format!("power +{amount}")),
+            PowerEvent::PowerTransferred {
+                from,
+                to,
+                amount,
+                loss,
                 ..
             } => {
-                spawn_location_entity(
-                    commands,
-                    config,
-                    assets,
-                    scene,
-                    origin,
-                    location_id,
-                    name,
-                    *pos,
-                );
-            }
-            WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
-                spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
-            }
-            WorldEventKind::AgentMoved { agent_id, to, .. } => {
-                if let Some(pos) = scene.location_positions.get(to) {
-                    spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+                let from_agent = owner_matches_agent(from, agent_id);
+                let to_agent = owner_matches_agent(to, agent_id);
+                match (from_agent, to_agent) {
+                    (true, true) => Some(format!("trade power {} (loss {})", amount, loss)),
+                    (true, false) => Some(format!("sell power {} (loss {})", amount, loss)),
+                    (false, true) => Some(format!("buy power {} (loss {})", amount, loss)),
+                    _ => None,
                 }
             }
-            _ => {}
-        }
-
-        last_event_id = Some(event.id);
-        processed = true;
-    }
-
-    if processed {
-        scene.last_event_id = last_event_id;
-    }
-}
-
-fn spawn_location_entity(
-    commands: &mut Commands,
-    config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
-    scene: &mut Viewer3dScene,
-    origin: GeoPos,
-    location_id: &str,
-    name: &str,
-    pos: GeoPos,
-) {
-    scene
-        .location_positions
-        .insert(location_id.to_string(), pos);
-
-    if !config.show_locations {
-        return;
-    }
-
-    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
-    if let Some(entity) = scene.location_entities.get(location_id) {
-        commands.entity(*entity).insert((
-            Transform::from_translation(translation),
-            LocationMarker {
-                id: location_id.to_string(),
-                name: name.to_string(),
-            },
-        ));
-        return;
-    }
-
-    let entity = commands
-        .spawn((
-            Mesh3d(assets.location_mesh.clone()),
-            MeshMaterial3d(assets.location_material.clone()),
-            Transform::from_translation(translation),
-            Name::new(format!("location:{location_id}:{name}")),
-            LocationMarker {
-                id: location_id.to_string(),
-                name: name.to_string(),
-            },
-            BaseScale(Vec3::ONE),
-        ))
-        .id();
-    commands.entity(entity).with_children(|parent| {
-        spawn_label(
-            parent,
-            assets,
-            format!("{name}"),
-            LOCATION_LABEL_OFFSET,
-            format!("label:location:{location_id}"),
-        );
-    });
-    scene
-        .location_entities
-        .insert(location_id.to_string(), entity);
-}
-
-fn spawn_agent_entity(
-    commands: &mut Commands,
-    config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
-    scene: &mut Viewer3dScene,
-    origin: GeoPos,
-    agent_id: &str,
-    pos: GeoPos,
-) {
-    if !config.show_agents {
-        return;
-    }
-
-    let translation = geo_to_vec3(pos, origin, config.cm_to_unit);
-    if let Some(entity) = scene.agent_entities.get(agent_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
-        return;
-    }
-
-    let entity = commands
-        .spawn((
-            Mesh3d(assets.agent_mesh.clone()),
-            MeshMaterial3d(assets.agent_material.clone()),
-            Transform::from_translation(translation),
-            Name::new(format!("agent:{agent_id}")),
-            AgentMarker {
-                id: agent_id.to_string(),
-            },
-            BaseScale(Vec3::ONE),
-        ))
-        .id();
-    commands.entity(entity).with_children(|parent| {
-        spawn_label(
-            parent,
-            assets,
-            agent_id.to_string(),
-            AGENT_LABEL_OFFSET,
-            format!("label:agent:{agent_id}"),
-        );
-    });
-    scene.agent_entities.insert(agent_id.to_string(), entity);
-}
-
-fn spawn_label(
-    parent: &mut ChildSpawnerCommands,
-    assets: &Viewer3dAssets,
-    text: String,
-    offset_y: f32,
-    name: String,
-) {
-    parent.spawn((
-        Text2d::new(text),
-        TextFont {
-            font: assets.label_font.clone(),
-            font_size: LABEL_FONT_SIZE,
-            ..default()
+            _ => None,
         },
-        Transform::from_translation(Vec3::new(0.0, offset_y, 0.0))
-            .with_scale(Vec3::splat(LABEL_SCALE)),
-        TextColor(Color::srgb(0.9, 0.9, 0.9)),
-        Name::new(name),
-    ));
-}
-
-fn space_origin(space: &SpaceConfig) -> GeoPos {
-    GeoPos {
-        x_cm: space.width_cm as f64 / 2.0,
-        y_cm: space.depth_cm as f64 / 2.0,
-        z_cm: space.height_cm as f64 / 2.0,
+        _ => None,
     }
 }
 
-fn geo_to_vec3(pos: GeoPos, origin: GeoPos, cm_to_unit: f32) -> Vec3 {
-    let scale = cm_to_unit as f64;
-    Vec3::new(
-        ((pos.x_cm - origin.x_cm) * scale) as f32,
-        ((pos.z_cm - origin.z_cm) * scale) as f32,
-        ((pos.y_cm - origin.y_cm) * scale) as f32,
-    )
-}
-
-fn ray_point_distance(ray: Ray3d, point: Vec3) -> Option<f32> {
-    let direction = ray.direction.as_vec3();
-    let to_point = point - ray.origin;
-    let t = direction.dot(to_point);
-    if t < 0.0 {
-        return None;
-    }
-    let closest = ray.origin + direction * t;
-    Some(closest.distance(point))
-}
-
-fn apply_entity_highlight(
-    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
-    entity: Entity,
-) {
-    if let Ok((mut transform, base)) = transforms.get_mut(entity) {
-        let base_scale = base.map(|scale| scale.0).unwrap_or(Vec3::ONE);
-        transform.scale = base_scale * 1.6;
-    }
-}
-
-fn reset_entity_scale(
-    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
-    entity: Entity,
-) {
-    if let Ok((mut transform, base)) = transforms.get_mut(entity) {
-        let base_scale = base.map(|scale| scale.0).unwrap_or(Vec3::ONE);
-        transform.scale = base_scale;
-    }
+fn owner_matches_agent(owner: &ResourceOwner, agent_id: &str) -> bool {
+    matches!(owner, ResourceOwner::Agent { agent_id: id } if id == agent_id)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn update_ui_sets_status_and_events() {
-        let mut app = App::new();
-        app.add_systems(Update, update_ui);
-
-        app.world_mut().spawn((Text::new(""), StatusText));
-        app.world_mut().spawn((Text::new(""), SummaryText));
-        app.world_mut().spawn((Text::new(""), EventsText));
-        app.world_mut().spawn((Text::new(""), SelectionText));
-        app.world_mut().insert_resource(ViewerSelection::default());
-
-        let event = WorldEvent {
-            id: 1,
-            time: 7,
-            kind: agent_world::simulator::WorldEventKind::ActionRejected {
-                reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
-            },
-        };
-
-        let state = ViewerState {
-            status: ConnectionStatus::Error("oops".to_string()),
-            snapshot: None,
-            events: vec![event.clone()],
-            metrics: None,
-        };
-        app.world_mut().insert_resource(state);
-
-        app.update();
-
-        let world = app.world_mut();
-
-        let status_text = {
-            let mut query = world.query::<(&Text, &StatusText)>();
-            query.single(world).expect("status text").0.clone()
-        };
-        assert_eq!(status_text.0, "Status: error: oops");
-
-        let events_text = {
-            let mut query = world.query::<(&Text, &EventsText)>();
-            query.single(world).expect("events text").0.clone()
-        };
-        assert_eq!(events_text.0, events_summary(&[event]));
-    }
-
-    #[test]
-    fn update_ui_populates_world_summary_and_metrics() {
-        let mut app = App::new();
-        app.add_systems(Update, update_ui);
-
-        app.world_mut().spawn((Text::new(""), SummaryText));
-        app.world_mut().spawn((Text::new(""), StatusText));
-        app.world_mut().spawn((Text::new(""), EventsText));
-        app.world_mut().spawn((Text::new(""), SelectionText));
-        app.world_mut().insert_resource(ViewerSelection::default());
-
-        let mut model = agent_world::simulator::WorldModel::default();
-        model.locations.insert(
-            "loc-1".to_string(),
-            agent_world::simulator::Location::new(
-                "loc-1",
-                "Alpha",
-                agent_world::geometry::GeoPos {
-                    x_cm: 0.0,
-                    y_cm: 0.0,
-                    z_cm: 0.0,
-                },
-            ),
-        );
-        model.locations.insert(
-            "loc-2".to_string(),
-            agent_world::simulator::Location::new(
-                "loc-2",
-                "Beta",
-                agent_world::geometry::GeoPos {
-                    x_cm: 1.0,
-                    y_cm: 1.0,
-                    z_cm: 0.0,
-                },
-            ),
-        );
-        model.agents.insert(
-            "agent-1".to_string(),
-            agent_world::simulator::Agent::new(
-                "agent-1",
-                "loc-1",
-                agent_world::geometry::GeoPos {
-                    x_cm: 0.0,
-                    y_cm: 0.0,
-                    z_cm: 0.0,
-                },
-            ),
-        );
-
-        let snapshot = agent_world::simulator::WorldSnapshot {
-            version: agent_world::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version:
-                agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
-            time: 42,
-            config: agent_world::simulator::WorldConfig::default(),
-            model,
-            chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
-            next_event_id: 1,
-            next_action_id: 1,
-            pending_actions: Vec::new(),
-            journal_len: 0,
-        };
-
-        let metrics = RunnerMetrics {
-            total_ticks: 42,
-            total_actions: 7,
-            total_decisions: 4,
-            ..RunnerMetrics::default()
-        };
-
-        let state = ViewerState {
-            status: ConnectionStatus::Connected,
-            snapshot: Some(snapshot),
-            events: Vec::new(),
-            metrics: Some(metrics),
-        };
-        app.world_mut().insert_resource(state);
-
-        app.update();
-
-        let world = app.world_mut();
-        let summary_text = {
-            let mut query = world.query::<(&Text, &SummaryText)>();
-            query.single(world).expect("summary text").0.clone()
-        };
-
-        assert!(summary_text.0.contains("Time: 42"));
-        assert!(summary_text.0.contains("Locations: 2"));
-        assert!(summary_text.0.contains("Agents: 1"));
-        assert!(summary_text.0.contains("Ticks: 42"));
-        assert!(summary_text.0.contains("Actions: 7"));
-        assert!(summary_text.0.contains("Decisions: 4"));
-    }
-
-    #[test]
-    fn update_ui_reflects_filtered_events() {
-        let mut app = App::new();
-        app.add_systems(Update, update_ui);
-
-        app.world_mut().spawn((Text::new(""), EventsText));
-        app.world_mut().spawn((Text::new(""), SummaryText));
-        app.world_mut().spawn((Text::new(""), StatusText));
-        app.world_mut().spawn((Text::new(""), SelectionText));
-        app.world_mut().insert_resource(ViewerSelection::default());
-
-        let event = WorldEvent {
-            id: 9,
-            time: 5,
-            kind: agent_world::simulator::WorldEventKind::Power(
-                agent_world::simulator::PowerEvent::PowerConsumed {
-                    agent_id: "agent-1".to_string(),
-                    amount: 3,
-                    reason: agent_world::simulator::ConsumeReason::Decision,
-                    remaining: 7,
-                },
-            ),
-        };
-
-        let state = ViewerState {
-            status: ConnectionStatus::Connected,
-            snapshot: None,
-            events: vec![event.clone()],
-            metrics: None,
-        };
-        app.world_mut().insert_resource(state);
-
-        app.update();
-
-        let world = app.world_mut();
-        let events_text = {
-            let mut query = world.query::<(&Text, &EventsText)>();
-            query.single(world).expect("events text").0.clone()
-        };
-        assert!(events_text.0.contains("Power"));
-    }
-
-    #[test]
-    fn handle_control_buttons_sends_request() {
-        let mut app = App::new();
-        app.add_systems(Update, handle_control_buttons);
-
-        let (tx, rx) = mpsc::channel::<ViewerRequest>();
-        app.world_mut().insert_resource(ViewerClient {
-            tx,
-            rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
-        });
-
-        app.world_mut().spawn((
-            Button,
-            Interaction::Pressed,
-            ControlButton {
-                control: ViewerControl::Step { count: 2 },
-            },
-        ));
-
-        app.update();
-
-        let request = rx.try_recv().expect("request sent");
-        assert_eq!(
-            request,
-            ViewerRequest::Control {
-                mode: ViewerControl::Step { count: 2 }
-            }
-        );
-    }
-
-    #[test]
-    fn control_buttons_send_expected_requests() {
-        let mut app = App::new();
-        app.add_systems(Update, handle_control_buttons);
-
-        let (tx, rx) = mpsc::channel::<ViewerRequest>();
-        app.world_mut().insert_resource(ViewerClient {
-            tx,
-            rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
-        });
-
-        for control in [
-            ViewerControl::Play,
-            ViewerControl::Pause,
-            ViewerControl::Step { count: 1 },
-            ViewerControl::Seek { tick: 0 },
-        ] {
-            app.world_mut().spawn((
-                Button,
-                Interaction::Pressed,
-                ControlButton {
-                    control: control.clone(),
-                },
-            ));
-        }
-
-        app.update();
-
-        let mut seen = Vec::new();
-        while let Ok(request) = rx.try_recv() {
-            seen.push(request);
-        }
-
-        assert!(seen.contains(&ViewerRequest::Control {
-            mode: ViewerControl::Play
-        }));
-        assert!(seen.contains(&ViewerRequest::Control {
-            mode: ViewerControl::Pause
-        }));
-        assert!(seen.contains(&ViewerRequest::Control {
-            mode: ViewerControl::Step { count: 1 }
-        }));
-        assert!(seen.contains(&ViewerRequest::Control {
-            mode: ViewerControl::Seek { tick: 0 }
-        }));
-    }
-
-    #[test]
-    fn headless_report_tracks_status_and_event_count() {
-        let mut app = App::new();
-        app.add_systems(Update, headless_report);
-        app.world_mut().insert_resource(HeadlessStatus::default());
-
-        app.world_mut().insert_resource(ViewerState {
-            status: ConnectionStatus::Connecting,
-            snapshot: None,
-            events: Vec::new(),
-            metrics: None,
-        });
-
-        app.update();
-
-        let status = app.world_mut().resource::<HeadlessStatus>();
-        assert_eq!(status.last_status, Some(ConnectionStatus::Connecting));
-        assert_eq!(status.last_events, 0);
-
-        app.world_mut().insert_resource(ViewerState {
-            status: ConnectionStatus::Connected,
-            snapshot: None,
-            events: vec![WorldEvent {
-                id: 1,
-                time: 1,
-                kind: agent_world::simulator::WorldEventKind::ActionRejected {
-                    reason: agent_world::simulator::RejectReason::InvalidAmount { amount: 1 },
-                },
-            }],
-            metrics: None,
-        });
-
-        app.update();
-
-        let status = app.world_mut().resource::<HeadlessStatus>();
-        assert_eq!(status.last_status, Some(ConnectionStatus::Connected));
-        assert_eq!(status.last_events, 1);
-    }
-
-    #[test]
-    fn decide_offline_defaults_headless_and_respects_overrides() {
-        assert!(decide_offline(true, false, false));
-        assert!(!decide_offline(false, false, false));
-        assert!(decide_offline(false, true, false));
-        assert!(!decide_offline(true, true, true));
-        assert!(!decide_offline(true, false, true));
-    }
-
-    #[test]
-    fn space_origin_is_center_of_bounds() {
-        let space = SpaceConfig {
-            width_cm: 100,
-            depth_cm: 200,
-            height_cm: 300,
-        };
-        let origin = space_origin(&space);
-        assert_eq!(origin.x_cm, 50.0);
-        assert_eq!(origin.y_cm, 100.0);
-        assert_eq!(origin.z_cm, 150.0);
-    }
-
-    #[test]
-    fn geo_to_vec3_scales_and_swaps_axes() {
-        let origin = GeoPos::new(100.0, 200.0, 300.0);
-        let pos = GeoPos::new(110.0, 220.0, 330.0);
-        let vec = geo_to_vec3(pos, origin, 0.01);
-        assert!((vec.x - 0.1).abs() < 1e-6);
-        assert!((vec.y - 0.3).abs() < 1e-6);
-        assert!((vec.z - 0.2).abs() < 1e-6);
-    }
-
-    #[test]
-    fn ray_point_distance_returns_expected_distance() {
-        let ray = Ray3d {
-            origin: Vec3::ZERO,
-            direction: Dir3::new(Vec3::X).expect("direction"),
-        };
-        let point = Vec3::new(2.0, 1.0, 0.0);
-        let distance = ray_point_distance(ray, point).expect("distance");
-        assert!((distance - 1.0).abs() < 1e-6);
-        assert!(ray_point_distance(ray, Vec3::new(-1.0, 0.0, 0.0)).is_none());
-    }
-
-    #[test]
-    fn spawn_location_entity_adds_label_text() {
-        let mut app = App::new();
-        app.add_systems(Update, spawn_label_test_system);
-        app.insert_resource(Viewer3dConfig::default());
-        app.insert_resource(Viewer3dScene::default());
-        app.insert_resource(Viewer3dAssets {
-            agent_mesh: Handle::default(),
-            agent_material: Handle::default(),
-            location_mesh: Handle::default(),
-            location_material: Handle::default(),
-            label_font: Handle::default(),
-        });
-
-        app.update();
-
-        let world = app.world_mut();
-        let mut query = world.query::<&Text2d>();
-        assert!(query.iter(world).next().is_some());
-    }
-
-    fn spawn_label_test_system(
-        mut commands: Commands,
-        config: Res<Viewer3dConfig>,
-        assets: Res<Viewer3dAssets>,
-        mut scene: ResMut<Viewer3dScene>,
-    ) {
-        let origin = GeoPos::new(0.0, 0.0, 0.0);
-        spawn_location_entity(
-            &mut commands,
-            &config,
-            &assets,
-            &mut scene,
-            origin,
-            "loc-1",
-            "Alpha",
-            GeoPos::new(0.0, 0.0, 0.0),
-        );
-    }
-}
+mod tests;
