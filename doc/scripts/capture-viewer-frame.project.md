@@ -14,13 +14,17 @@
 - [x] M4：脚本自动识别 `uname` 并切换依赖检查与抓图流程
 - [x] M4：保持输出产物路径与文件命名一致（`root.png` / `window.png` / `window_geom.txt`）
 - [x] M4：补充文档与任务日志并验证脚本语法/帮助信息
+- [x] M5：viewer 新增内置自动截图能力（Bevy screenshot API）
+- [x] M5：脚本 macOS 分支切换为“进程内截图”链路，规避系统录屏权限
+- [x] M5：新增/更新测试（内置截图配置解析与触发条件）
+- [x] M5：验证脚本在 macOS 下可产出有效 `window.png` 并可用于 UI 评审
 
 ## 依赖
 - Linux：`Xvfb`、`ffmpeg`、`xwininfo`
-- macOS：`screencapture`、`osascript`
+- macOS：无需系统录屏权限（使用 viewer 进程内截图）
 - Rust/Cargo（`world_viewer_live` + `agent_world_viewer`）
 
 ## 状态
-- 当前阶段：M4（跨平台分支实现完成）
+- 当前阶段：M5（内置截图链路完成）
 - 下一阶段：按需补充“多帧抓图”或“自动交互注入”
-- 最近更新：新增 Linux/macOS 平台分支截图逻辑（2026-02-07）
+- 最近更新：macOS 默认改用 Bevy 内置截图，避免录屏权限失败（2026-02-07）

@@ -38,6 +38,7 @@ mod camera_controls;
 mod diagnosis;
 mod event_click_list;
 mod headless;
+mod internal_capture;
 mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
@@ -50,6 +51,9 @@ use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
 };
 use headless::headless_report;
+use internal_capture::{
+    internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
+};
 use scene_helpers::*;
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
@@ -103,6 +107,8 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
         .insert_resource(OrbitDragState::default())
+        .insert_resource(internal_capture_config_from_env())
+        .insert_resource(InternalCaptureState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Agent World Viewer".to_string(),
@@ -135,6 +141,7 @@ fn run_ui(addr: String, offline: bool) {
                 update_timeline_ui,
                 scroll_right_panel,
                 update_ui,
+                trigger_internal_capture,
             )
                 .chain(),
         )

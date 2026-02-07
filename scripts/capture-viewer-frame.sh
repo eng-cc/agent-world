@@ -22,7 +22,7 @@ Options:
 
 Behavior:
   - Linux: uses Xvfb + xwininfo + ffmpeg
-  - macOS: uses screencapture + osascript (window info best-effort)
+  - macOS: uses Bevy internal screenshot (no system screen-recording permission)
 
 Output:
   .tmp/screens/
@@ -72,41 +72,18 @@ wait_linux_window_line() {
   return 1
 }
 
-wait_macos_window_info() {
-  local info=""
-  for _ in $(seq 1 30); do
-    info=$(osascript <<'APPLESCRIPT' 2>/dev/null || true
-tell application "System Events"
-  repeat with p in (every process whose background only is false)
-    try
-      tell p
-        repeat with w in windows
-          set windowTitle to ""
-          try
-            set windowTitle to name of w
-          end try
-          if windowTitle contains "Agent World Viewer" then
-            set {xPos, yPos} to position of w
-            set {wSize, hSize} to size of w
-            set winId to ""
-            try
-              set winId to value of attribute "AXWindowNumber" of w
-            end try
-            return (name of p) & "|" & xPos & "|" & yPos & "|" & wSize & "|" & hSize & "|" & winId
-          end if
-        end repeat
-      end tell
-    end try
-  end repeat
-end tell
-return ""
-APPLESCRIPT
-)
-    if [[ -n "$info" ]]; then
-      echo "$info"
+wait_for_file() {
+  local path=$1
+  local timeout_secs=$2
+  local steps=$((timeout_secs * 2))
+  if [[ "$steps" -lt 1 ]]; then
+    steps=1
+  fi
+  for _ in $(seq 1 "$steps"); do
+    if [[ -s "$path" ]]; then
       return 0
     fi
-    sleep 1
+    sleep 0.5
   done
   return 1
 }
@@ -167,34 +144,32 @@ capture_macos() {
   local window_line_txt=$7
   local window_geom_txt=$8
 
-  echo "macOS mode: no Xvfb required" > "$xvfb_log"
+  local viewer_wait_int=${viewer_wait%.*}
+  if [[ -z "$viewer_wait_int" ]]; then
+    viewer_wait_int=8
+  fi
+  local capture_max_wait=$((viewer_wait_int + 20))
 
-  echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+  echo "macOS mode: Bevy internal screenshot (no Xvfb)" > "$xvfb_log"
+  echo "bevy_internal_capture Agent World Viewer" > "$window_line_txt"
+  echo "internal" > "$window_geom_txt"
+
+  echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+  AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
+  AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
+  AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
   env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
   VIEWER_PID=$!
 
-  local window_info
-  window_info=$(wait_macos_window_info || true)
-
-  sleep "$viewer_wait"
-  run screencapture -x "$root_png"
-
-  if [[ -z "$window_info" ]]; then
-    echo "window info unavailable (macOS accessibility may be restricted); using full-screen fallback" > "$window_line_txt"
-    cp "$root_png" "$window_png"
-    echo "unknown" > "$window_geom_txt"
-    return 0
+  if ! wait_for_file "$window_png" "$capture_max_wait"; then
+    echo "failed to generate internal viewer capture: $window_png" >&2
+    exit 3
   fi
 
-  IFS='|' read -r process_name window_x window_y window_w window_h window_id <<<"$window_info"
-  echo "${process_name} Agent World Viewer ${window_w}x${window_h}+${window_x}+${window_y}" > "$window_line_txt"
-  echo "${window_w}x${window_h}+${window_x}+${window_y}" > "$window_geom_txt"
+  cp "$window_png" "$root_png"
 
-  if [[ -n "${window_id:-}" ]]; then
-    run screencapture -x -l "$window_id" "$window_png"
-  else
-    run screencapture -x -R "${window_x},${window_y},${window_w},${window_h}" "$window_png"
-  fi
+  # viewer should exit automatically after capture; tolerate delayed termination
+  wait "$VIEWER_PID" >/dev/null 2>&1 || true
 }
 
 scenario="llm_bootstrap"
@@ -268,9 +243,6 @@ if [[ "$platform" == "linux" ]]; then
   require_cmd Xvfb
   require_cmd xwininfo
   require_cmd ffmpeg
-else
-  require_cmd screencapture
-  require_cmd osascript
 fi
 
 if [[ $keep_tmp -eq 0 ]]; then
