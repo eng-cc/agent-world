@@ -34,16 +34,19 @@ const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod camera_controls;
+mod headless;
 mod scene_helpers;
 mod timeline_controls;
 mod ui_text;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
+use headless::headless_report;
 use scene_helpers::*;
 use timeline_controls::{
     handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
+    handle_timeline_mark_filter_buttons, handle_timeline_mark_jump_buttons,
     handle_timeline_seek_submit, spawn_timeline_controls, sync_timeline_state_from_world,
-    update_timeline_ui, TimelineUiState,
+    update_timeline_mark_filter_ui, update_timeline_ui, TimelineMarkFilterState, TimelineUiState,
 };
 use ui_text::{
     agent_activity_summary, events_summary, format_status, selection_details_summary, world_summary,
@@ -76,6 +79,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
         .insert_resource(TimelineUiState::default())
+        .insert_resource(TimelineMarkFilterState::default())
         .insert_resource(OrbitDragState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -93,7 +97,10 @@ fn run_ui(addr: String, offline: bool) {
                 poll_viewer_messages,
                 sync_timeline_state_from_world,
                 handle_timeline_adjust_buttons,
+                handle_timeline_mark_filter_buttons,
+                update_timeline_mark_filter_ui,
                 handle_timeline_bar_drag,
+                handle_timeline_mark_jump_buttons,
                 handle_timeline_seek_submit,
                 update_timeline_ui,
                 update_ui,
@@ -650,7 +657,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(170.0),
+                    height: Val::Px(230.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(6.0),
                     padding: UiRect::all(Val::Px(12.0)),
@@ -934,6 +941,7 @@ fn update_3d_scene(
 fn update_ui(
     state: Res<ViewerState>,
     selection: Res<ViewerSelection>,
+    timeline: Option<Res<TimelineUiState>>,
     mut queries: ParamSet<(
         Query<&mut Text, With<StatusText>>,
         Query<&mut Text, With<SummaryText>>,
@@ -943,7 +951,11 @@ fn update_ui(
         Query<&mut Text, With<SelectionDetailsText>>,
     )>,
 ) {
-    if !state.is_changed() && !selection.is_changed() {
+    let timeline_changed = timeline
+        .as_ref()
+        .map(|timeline| timeline.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !selection.is_changed() && !timeline_changed {
         return;
     }
 
@@ -955,8 +967,16 @@ fn update_ui(
         text.0 = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
     }
 
+    let focus_tick = timeline.as_ref().and_then(|timeline| {
+        if timeline.manual_override || timeline.drag_active {
+            Some(timeline.target_tick)
+        } else {
+            None
+        }
+    });
+
     if let Ok(mut text) = queries.p2().single_mut() {
-        text.0 = events_summary(&state.events);
+        text.0 = events_summary(&state.events, focus_tick);
     }
 
     if let Ok(mut text) = queries.p3().single_mut() {
@@ -1168,23 +1188,6 @@ fn pick_3d_selection(
         if let Some(current) = selection.current.take() {
             reset_entity_scale(&mut transforms, current.entity);
         }
-    }
-}
-
-fn headless_report(mut status: ResMut<HeadlessStatus>, state: Res<ViewerState>) {
-    if status
-        .last_status
-        .as_ref()
-        .map(|last| last != &state.status)
-        .unwrap_or(true)
-    {
-        println!("viewer status: {}", format_status(&state.status));
-        status.last_status = Some(state.status.clone());
-    }
-
-    if state.events.len() != status.last_events {
-        println!("viewer events: {}", state.events.len());
-        status.last_events = state.events.len();
     }
 }
 

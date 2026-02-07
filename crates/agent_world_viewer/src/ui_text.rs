@@ -43,15 +43,60 @@ pub(super) fn world_summary(
     lines.join("\n")
 }
 
-pub(super) fn events_summary(events: &[WorldEvent]) -> String {
+pub(super) fn events_summary(events: &[WorldEvent], focus_tick: Option<u64>) -> String {
+    const WINDOW_SIZE: usize = 20;
+
     if events.is_empty() {
-        return "Events:\n(no events)".to_string();
+        return "Events:
+(no events)"
+            .to_string();
     }
 
+    if focus_tick.is_none() {
+        let mut lines = Vec::new();
+        lines.push("Events:".to_string());
+        for event in events.iter().rev().take(WINDOW_SIZE).rev() {
+            lines.push(format!("#{} t{} {:?}", event.id, event.time, event.kind));
+        }
+        return lines.join("\n");
+    }
+
+    let requested_focus = focus_tick.unwrap_or(0);
+    let mut nearest_idx = 0_usize;
+    let mut nearest_dist = u64::MAX;
+
+    for (idx, event) in events.iter().enumerate() {
+        let dist = event.time.abs_diff(requested_focus);
+        if dist < nearest_dist {
+            nearest_dist = dist;
+            nearest_idx = idx;
+        }
+    }
+
+    let total = events.len();
+    let half = WINDOW_SIZE / 2;
+    let max_start = total.saturating_sub(WINDOW_SIZE);
+    let window_start = nearest_idx.saturating_sub(half).min(max_start);
+    let window_end = (window_start + WINDOW_SIZE).min(total);
+
+    let focused = &events[nearest_idx];
     let mut lines = Vec::new();
-    lines.push("Events:".to_string());
-    for event in events.iter().rev().take(20).rev() {
-        lines.push(format!("#{} t{} {:?}", event.id, event.time, event.kind));
+    lines.push("Events (focused):".to_string());
+    lines.push(format!(
+        "Focus: requested t{} -> nearest t{} (#{}), Δt={}",
+        requested_focus, focused.time, focused.id, nearest_dist
+    ));
+    for (idx, event) in events
+        .iter()
+        .enumerate()
+        .skip(window_start)
+        .take(window_end - window_start)
+    {
+        let prefix = if idx == nearest_idx { ">>" } else { "  " };
+        lines.push(format!(
+            "{} #{} t{} {:?}",
+            prefix, event.id, event.time, event.kind
+        ));
     }
     lines.join("\n")
 }
@@ -915,4 +960,58 @@ fn owner_matches_agent(owner: &ResourceOwner, agent_id: &str) -> bool {
 
 fn owner_matches_location(owner: &ResourceOwner, location_id: &str) -> bool {
     matches!(owner, ResourceOwner::Location { location_id: id } if id == location_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agent_world::simulator::RejectReason;
+
+    #[test]
+    fn events_summary_without_focus_keeps_compact_view() {
+        let events = vec![WorldEvent {
+            id: 1,
+            time: 7,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InvalidAmount { amount: 1 },
+            },
+        }];
+
+        let text = events_summary(&events, None);
+        assert!(text.starts_with("Events:"));
+        assert!(text.contains("#1 t7"));
+        assert!(!text.contains("Events (focused):"));
+    }
+
+    #[test]
+    fn events_summary_with_focus_marks_nearest_context() {
+        let events = vec![
+            WorldEvent {
+                id: 1,
+                time: 3,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 1 },
+                },
+            },
+            WorldEvent {
+                id: 2,
+                time: 8,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 2 },
+                },
+            },
+            WorldEvent {
+                id: 3,
+                time: 11,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 3 },
+                },
+            },
+        ];
+
+        let text = events_summary(&events, Some(9));
+        assert!(text.starts_with("Events (focused):"));
+        assert!(text.contains("Focus: requested t9 -> nearest t8 (#2), Δt=1"));
+        assert!(text.contains(">> #2 t8"));
+    }
 }

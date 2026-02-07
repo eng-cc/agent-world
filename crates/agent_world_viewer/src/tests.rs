@@ -48,7 +48,7 @@ fn update_ui_sets_status_and_events() {
         let mut query = world.query::<(&Text, &EventsText)>();
         query.single(world).expect("events text").0.clone()
     };
-    assert_eq!(events_text.0, events_summary(&[event]));
+    assert_eq!(events_text.0, events_summary(&[event], None));
 }
 
 #[test]

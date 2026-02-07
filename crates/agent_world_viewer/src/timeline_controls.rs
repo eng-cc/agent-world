@@ -18,6 +18,41 @@ pub(super) struct TimelineUiState {
     pub drag_active: bool,
 }
 
+#[derive(Resource, Clone, Copy)]
+pub(super) struct TimelineMarkFilterState {
+    pub show_error: bool,
+    pub show_llm: bool,
+    pub show_peak: bool,
+}
+
+impl Default for TimelineMarkFilterState {
+    fn default() -> Self {
+        Self {
+            show_error: true,
+            show_llm: true,
+            show_peak: true,
+        }
+    }
+}
+
+impl TimelineMarkFilterState {
+    fn is_enabled(&self, kind: TimelineMarkKind) -> bool {
+        match kind {
+            TimelineMarkKind::Error => self.show_error,
+            TimelineMarkKind::Llm => self.show_llm,
+            TimelineMarkKind::Peak => self.show_peak,
+        }
+    }
+
+    fn toggle(&mut self, kind: TimelineMarkKind) {
+        match kind {
+            TimelineMarkKind::Error => self.show_error = !self.show_error,
+            TimelineMarkKind::Llm => self.show_llm = !self.show_llm,
+            TimelineMarkKind::Peak => self.show_peak = !self.show_peak,
+        }
+    }
+}
+
 #[derive(Component)]
 pub(super) struct TimelineAdjustButton {
     pub delta: i64,
@@ -37,6 +72,28 @@ pub(super) struct TimelineStatusText;
 
 #[derive(Component)]
 pub(super) struct TimelineInsightsText;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TimelineMarkKind {
+    Error,
+    Llm,
+    Peak,
+}
+
+#[derive(Component)]
+pub(super) struct TimelineMarkJumpButton {
+    kind: TimelineMarkKind,
+}
+
+#[derive(Component)]
+pub(super) struct TimelineMarkFilterButton {
+    kind: TimelineMarkKind,
+}
+
+#[derive(Component)]
+pub(super) struct TimelineMarkFilterLabel {
+    kind: TimelineMarkKind,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TimelineKeyInsights {
@@ -81,6 +138,54 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                 TextColor(Color::srgb(0.75, 0.8, 0.9)),
                 TimelineInsightsText,
             ));
+
+            timeline
+                .spawn(Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(24.0),
+                    column_gap: Val::Px(6.0),
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|filters| {
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Error);
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Llm);
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Peak);
+                });
+
+            timeline
+                .spawn(Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(24.0),
+                    column_gap: Val::Px(6.0),
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|marks| {
+                    spawn_mark_jump_button(
+                        marks,
+                        &font,
+                        "Jump Err",
+                        TimelineMarkKind::Error,
+                        Color::srgb(0.42, 0.2, 0.2),
+                    );
+                    spawn_mark_jump_button(
+                        marks,
+                        &font,
+                        "Jump LLM",
+                        TimelineMarkKind::Llm,
+                        Color::srgb(0.2, 0.32, 0.42),
+                    );
+                    spawn_mark_jump_button(
+                        marks,
+                        &font,
+                        "Jump Peak",
+                        TimelineMarkKind::Peak,
+                        Color::srgb(0.32, 0.28, 0.16),
+                    );
+                });
 
             timeline
                 .spawn(Node {
@@ -183,6 +288,72 @@ fn spawn_adjust_button(
         });
 }
 
+fn spawn_mark_filter_button(
+    buttons: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    kind: TimelineMarkKind,
+) {
+    let enabled = true;
+    buttons
+        .spawn((
+            Button,
+            Node {
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                height: Val::Px(22.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(mark_filter_background(kind, enabled)),
+            TimelineMarkFilterButton { kind },
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(mark_filter_label(kind, enabled)),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                TimelineMarkFilterLabel { kind },
+            ));
+        });
+}
+
+fn spawn_mark_jump_button(
+    buttons: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    label: &str,
+    kind: TimelineMarkKind,
+    background: Color,
+) {
+    buttons
+        .spawn((
+            Button,
+            Node {
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                height: Val::Px(22.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(background),
+            TimelineMarkJumpButton { kind },
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
+}
+
 pub(super) fn sync_timeline_state_from_world(
     mut timeline: ResMut<TimelineUiState>,
     state: Res<ViewerState>,
@@ -215,6 +386,74 @@ pub(super) fn handle_timeline_adjust_buttons(
             timeline.target_tick = timeline.target_tick.saturating_sub((-button.delta) as u64);
         } else {
             timeline.target_tick = timeline.target_tick.saturating_add(button.delta as u64);
+        }
+    }
+}
+
+pub(super) fn handle_timeline_mark_filter_buttons(
+    mut filters: ResMut<TimelineMarkFilterState>,
+    mut interactions: Query<
+        (&Interaction, &TimelineMarkFilterButton),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    for (interaction, button) in &mut interactions {
+        if *interaction == Interaction::Pressed {
+            filters.toggle(button.kind);
+        }
+    }
+}
+
+pub(super) fn update_timeline_mark_filter_ui(
+    filters: Res<TimelineMarkFilterState>,
+    mut button_query: Query<(&TimelineMarkFilterButton, &mut BackgroundColor)>,
+    mut label_query: Query<(&TimelineMarkFilterLabel, &mut Text)>,
+) {
+    if !filters.is_changed() {
+        return;
+    }
+
+    for (button, mut background) in &mut button_query {
+        let enabled = filters.is_enabled(button.kind);
+        background.0 = mark_filter_background(button.kind, enabled);
+    }
+
+    for (label, mut text) in &mut label_query {
+        let enabled = filters.is_enabled(label.kind);
+        text.0 = mark_filter_label(label.kind, enabled);
+    }
+}
+
+pub(super) fn handle_timeline_mark_jump_buttons(
+    state: Res<ViewerState>,
+    mut timeline: ResMut<TimelineUiState>,
+    mark_filters: Option<Res<TimelineMarkFilterState>>,
+    mut interactions: Query<
+        (&Interaction, &TimelineMarkJumpButton),
+        (Changed<Interaction>, With<Button>),
+    >,
+) {
+    let axis_max = timeline_axis_max(&timeline, current_tick_from_state(&state));
+    let insights = apply_mark_filters(
+        build_timeline_key_insights(&state.events, &state.decision_traces, axis_max),
+        mark_filters.as_ref().map(|filters| filters.as_ref()),
+    );
+
+    for (interaction, button) in &mut interactions {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        let ticks = match button.kind {
+            TimelineMarkKind::Error => insights.error_ticks.as_slice(),
+            TimelineMarkKind::Llm => insights.llm_ticks.as_slice(),
+            TimelineMarkKind::Peak => insights.resource_peak_ticks.as_slice(),
+        };
+
+        if let Some(next_tick) = select_next_mark_tick(ticks, timeline.target_tick) {
+            timeline.target_tick = next_tick;
+            timeline.manual_override = true;
+            timeline.drag_active = false;
         }
     }
 }
@@ -267,13 +506,18 @@ pub(super) fn handle_timeline_bar_drag(
 pub(super) fn update_timeline_ui(
     state: Res<ViewerState>,
     timeline: Res<TimelineUiState>,
+    mark_filters: Option<Res<TimelineMarkFilterState>>,
     mut queries: ParamSet<(
         Query<&mut Text, With<TimelineStatusText>>,
         Query<&mut Text, With<TimelineInsightsText>>,
         Query<&mut Node, With<TimelineBarFill>>,
     )>,
 ) {
-    if !state.is_changed() && !timeline.is_changed() {
+    let filter_changed = mark_filters
+        .as_ref()
+        .map(|filters| filters.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !timeline.is_changed() && !filter_changed {
         return;
     }
 
@@ -295,15 +539,23 @@ pub(super) fn update_timeline_ui(
     }
 
     if let Ok(mut text) = queries.p1().single_mut() {
-        let key = build_timeline_key_insights(&state.events, &state.decision_traces, axis_max);
+        let filters = mark_filters.as_ref().map(|filters| filters.as_ref());
+        let key = apply_mark_filters(
+            build_timeline_key_insights(&state.events, &state.decision_traces, axis_max),
+            filters,
+        );
+        let filter_state = filters.copied().unwrap_or_default();
         text.0 = format!(
-            "Marks: err={} llm={} peak={}\nTicks: E[{}] L[{}] P[{}]\nDensity: {}",
+            "Marks: err={} llm={} peak={}\nTicks: E[{}] L[{}] P[{}]\nFilter: err={} llm={} peak={}\nDensity: {}",
             key.error_ticks.len(),
             key.llm_ticks.len(),
             key.resource_peak_ticks.len(),
             format_tick_list(&key.error_ticks, MAX_TICK_LABELS),
             format_tick_list(&key.llm_ticks, MAX_TICK_LABELS),
             format_tick_list(&key.resource_peak_ticks, MAX_TICK_LABELS),
+            enabled_label(filter_state.show_error),
+            enabled_label(filter_state.show_llm),
+            enabled_label(filter_state.show_peak),
             key.density_sparkline,
         );
     }
@@ -341,6 +593,59 @@ fn timeline_axis_max(timeline: &TimelineUiState, current_tick: u64) -> u64 {
         .max_tick_seen
         .max(current_tick)
         .max(timeline.target_tick)
+}
+
+fn select_next_mark_tick(ticks: &[u64], current_target: u64) -> Option<u64> {
+    ticks
+        .iter()
+        .copied()
+        .find(|tick| *tick > current_target)
+        .or_else(|| ticks.first().copied())
+}
+
+fn apply_mark_filters(
+    mut insights: TimelineKeyInsights,
+    filters: Option<&TimelineMarkFilterState>,
+) -> TimelineKeyInsights {
+    let filters = filters.copied().unwrap_or_default();
+    if !filters.show_error {
+        insights.error_ticks.clear();
+    }
+    if !filters.show_llm {
+        insights.llm_ticks.clear();
+    }
+    if !filters.show_peak {
+        insights.resource_peak_ticks.clear();
+    }
+    insights
+}
+
+fn mark_filter_background(kind: TimelineMarkKind, enabled: bool) -> Color {
+    if !enabled {
+        return Color::srgb(0.16, 0.16, 0.18);
+    }
+    match kind {
+        TimelineMarkKind::Error => Color::srgb(0.52, 0.22, 0.22),
+        TimelineMarkKind::Llm => Color::srgb(0.22, 0.4, 0.52),
+        TimelineMarkKind::Peak => Color::srgb(0.42, 0.36, 0.18),
+    }
+}
+
+fn mark_filter_label(kind: TimelineMarkKind, enabled: bool) -> String {
+    let prefix = match kind {
+        TimelineMarkKind::Error => "Err",
+        TimelineMarkKind::Llm => "LLM",
+        TimelineMarkKind::Peak => "Peak",
+    };
+    format!("{}:{}", prefix, if enabled { "ON" } else { "OFF" })
+}
+
+fn enabled_label(enabled: bool) -> &'static str {
+    if enabled {
+        "on"
+    } else {
+        "off"
+    }
 }
 
 fn build_timeline_key_insights(
@@ -620,5 +925,127 @@ mod tests {
         assert_eq!(format_tick_list(&[], 4), "-");
         assert_eq!(format_tick_list(&[1, 2, 3], 4), "1,2,3");
         assert_eq!(format_tick_list(&[1, 2, 3, 4, 5], 3), "1,2,3+2");
+    }
+
+    #[test]
+    fn select_next_mark_tick_cycles_forward_then_wraps() {
+        let ticks = vec![3, 8, 12];
+        assert_eq!(select_next_mark_tick(&ticks, 0), Some(3));
+        assert_eq!(select_next_mark_tick(&ticks, 3), Some(8));
+        assert_eq!(select_next_mark_tick(&ticks, 11), Some(12));
+        assert_eq!(select_next_mark_tick(&ticks, 99), Some(3));
+        assert_eq!(select_next_mark_tick(&[], 10), None);
+    }
+
+    #[test]
+    fn mark_filter_button_toggles_state() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_timeline_mark_filter_buttons);
+
+        app.world_mut()
+            .insert_resource(TimelineMarkFilterState::default());
+        app.world_mut().spawn((
+            Button,
+            Interaction::Pressed,
+            TimelineMarkFilterButton {
+                kind: TimelineMarkKind::Error,
+            },
+        ));
+
+        app.update();
+
+        let filters = app.world().resource::<TimelineMarkFilterState>();
+        assert!(!filters.show_error);
+        assert!(filters.show_llm);
+        assert!(filters.show_peak);
+    }
+
+    #[test]
+    fn mark_jump_respects_disabled_filter() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_timeline_mark_jump_buttons);
+
+        let events = vec![WorldEvent {
+            id: 1,
+            time: 5,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InvalidAmount { amount: 1 },
+            },
+        }];
+
+        app.world_mut().insert_resource(ViewerState {
+            status: crate::ConnectionStatus::Connected,
+            snapshot: None,
+            events,
+            decision_traces: Vec::new(),
+            metrics: None,
+        });
+        app.world_mut().insert_resource(TimelineUiState {
+            target_tick: 0,
+            max_tick_seen: 10,
+            manual_override: false,
+            drag_active: false,
+        });
+        app.world_mut().insert_resource(TimelineMarkFilterState {
+            show_error: false,
+            show_llm: true,
+            show_peak: true,
+        });
+
+        app.world_mut().spawn((
+            Button,
+            Interaction::Pressed,
+            TimelineMarkJumpButton {
+                kind: TimelineMarkKind::Error,
+            },
+        ));
+
+        app.update();
+
+        let timeline = app.world().resource::<TimelineUiState>();
+        assert_eq!(timeline.target_tick, 0);
+        assert!(!timeline.manual_override);
+    }
+
+    #[test]
+    fn mark_jump_button_updates_timeline_target() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_timeline_mark_jump_buttons);
+
+        let events = vec![WorldEvent {
+            id: 1,
+            time: 5,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InvalidAmount { amount: 1 },
+            },
+        }];
+
+        app.world_mut().insert_resource(ViewerState {
+            status: crate::ConnectionStatus::Connected,
+            snapshot: None,
+            events,
+            decision_traces: Vec::new(),
+            metrics: None,
+        });
+        app.world_mut().insert_resource(TimelineUiState {
+            target_tick: 0,
+            max_tick_seen: 10,
+            manual_override: false,
+            drag_active: false,
+        });
+
+        app.world_mut().spawn((
+            Button,
+            Interaction::Pressed,
+            TimelineMarkJumpButton {
+                kind: TimelineMarkKind::Error,
+            },
+        ));
+
+        app.update();
+
+        let timeline = app.world().resource::<TimelineUiState>();
+        assert_eq!(timeline.target_tick, 5);
+        assert!(timeline.manual_override);
     }
 }
