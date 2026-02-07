@@ -1,10 +1,47 @@
 use super::*;
-use agent_world::simulator::{PowerEvent, ResourceOwner, WorldEventKind};
+use agent_world::simulator::{
+    chunk_bounds, ChunkCoord, ChunkState, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind,
+};
 
 const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
 const FACILITY_MARKER_VERTICAL_OFFSET: f32 = 0.45;
 const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
+const CHUNK_MARKER_MIN_SIZE: f32 = 0.45;
+const CHUNK_MARKER_MAX_SIZE: f32 = 1.8;
+const CHUNK_MARKER_VERTICAL_OFFSET: f32 = 0.2;
+
+#[derive(Component)]
+pub(super) struct AgentMarker {
+    pub id: String,
+}
+
+#[derive(Component)]
+pub(super) struct LocationMarker {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Component)]
+pub(super) struct AssetMarker {
+    pub id: String,
+}
+
+#[derive(Component)]
+pub(super) struct PowerPlantMarker {
+    pub id: String,
+}
+
+#[derive(Component)]
+pub(super) struct PowerStorageMarker {
+    pub id: String,
+}
+
+#[derive(Component)]
+pub(super) struct ChunkMarker {
+    pub id: String,
+    pub state: String,
+}
 
 pub(super) fn rebuild_scene_from_snapshot(
     commands: &mut Commands,
@@ -20,6 +57,7 @@ pub(super) fn rebuild_scene_from_snapshot(
         .chain(scene.asset_entities.values())
         .chain(scene.power_plant_entities.values())
         .chain(scene.power_storage_entities.values())
+        .chain(scene.chunk_entities.values())
         .chain(scene.background_entities.iter())
     {
         commands.entity(*entity).despawn();
@@ -30,11 +68,13 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.asset_entities.clear();
     scene.power_plant_entities.clear();
     scene.power_storage_entities.clear();
+    scene.chunk_entities.clear();
     scene.location_positions.clear();
     scene.background_entities.clear();
 
     let origin = space_origin(&snapshot.config.space);
     scene.origin = Some(origin);
+    scene.space = Some(snapshot.config.space.clone());
     spawn_world_background(commands, config, assets, scene, snapshot);
 
     for (location_id, location) in snapshot.model.locations.iter() {
@@ -89,6 +129,19 @@ pub(super) fn rebuild_scene_from_snapshot(
             spawn_asset_entity(commands, config, assets, scene, origin, asset_id, anchor);
         }
     }
+
+    for (coord, state) in snapshot.model.chunks.iter() {
+        spawn_chunk_entity(
+            commands,
+            config,
+            assets,
+            scene,
+            origin,
+            *coord,
+            *state,
+            &snapshot.config.space,
+        );
+    }
 }
 
 pub(super) fn apply_events_to_scene(
@@ -100,6 +153,9 @@ pub(super) fn apply_events_to_scene(
     events: &[WorldEvent],
 ) {
     let Some(origin) = scene.origin else {
+        return;
+    };
+    let Some(space) = scene.space.clone() else {
         return;
     };
 
@@ -141,6 +197,18 @@ pub(super) fn apply_events_to_scene(
                 if let Some(pos) = scene.location_positions.get(to) {
                     spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
                 }
+            }
+            WorldEventKind::ChunkGenerated { coord, .. } => {
+                spawn_chunk_entity(
+                    commands,
+                    config,
+                    assets,
+                    scene,
+                    origin,
+                    *coord,
+                    ChunkState::Generated,
+                    &space,
+                );
             }
             WorldEventKind::Power(power_event) => match power_event {
                 PowerEvent::PowerPlantRegistered { plant } => {
@@ -569,6 +637,114 @@ pub(super) fn spawn_asset_entity(
         );
     });
     scene.asset_entities.insert(asset_id.to_string(), entity);
+}
+
+fn chunk_coord_id(coord: ChunkCoord) -> String {
+    format!("{},{},{}", coord.x, coord.y, coord.z)
+}
+
+fn chunk_state_name(state: ChunkState) -> String {
+    match state {
+        ChunkState::Unexplored => "unexplored".to_string(),
+        ChunkState::Generated => "generated".to_string(),
+        ChunkState::Exhausted => "exhausted".to_string(),
+    }
+}
+
+fn chunk_material(assets: &Viewer3dAssets, state: ChunkState) -> Handle<StandardMaterial> {
+    match state {
+        ChunkState::Unexplored => assets.chunk_unexplored_material.clone(),
+        ChunkState::Generated => assets.chunk_generated_material.clone(),
+        ChunkState::Exhausted => assets.chunk_exhausted_material.clone(),
+    }
+}
+
+fn chunk_transform(
+    coord: ChunkCoord,
+    space: &SpaceConfig,
+    origin: GeoPos,
+    cm_to_unit: f32,
+) -> Option<(Vec3, Vec3)> {
+    let bounds = chunk_bounds(coord, space)?;
+    let center = GeoPos::new(
+        (bounds.min.x_cm + bounds.max.x_cm) * 0.5,
+        (bounds.min.y_cm + bounds.max.y_cm) * 0.5,
+        (bounds.min.z_cm + bounds.max.z_cm) * 0.5,
+    );
+
+    let full_size = Vec3::new(
+        ((bounds.max.x_cm - bounds.min.x_cm) * cm_to_unit as f64) as f32,
+        ((bounds.max.z_cm - bounds.min.z_cm) * cm_to_unit as f64) as f32,
+        ((bounds.max.y_cm - bounds.min.y_cm) * cm_to_unit as f64) as f32,
+    );
+
+    let marker_scale = Vec3::new(
+        (full_size.x * 0.18).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
+        (full_size.y * 0.08).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
+        (full_size.z * 0.18).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
+    );
+
+    let translation = geo_to_vec3(center, origin, cm_to_unit)
+        + Vec3::Y * (full_size.y * 0.5 + CHUNK_MARKER_VERTICAL_OFFSET);
+    Some((translation, marker_scale))
+}
+
+pub(super) fn spawn_chunk_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    coord: ChunkCoord,
+    state: ChunkState,
+    space: &SpaceConfig,
+) {
+    let Some((translation, marker_scale)) =
+        chunk_transform(coord, space, origin, config.cm_to_unit)
+    else {
+        return;
+    };
+    let chunk_id = chunk_coord_id(coord);
+    let state_name = chunk_state_name(state);
+
+    if let Some(entity) = scene.chunk_entities.get(&chunk_id) {
+        commands.entity(*entity).insert((
+            MeshMaterial3d(chunk_material(assets, state)),
+            Transform::from_translation(translation).with_scale(marker_scale),
+            ChunkMarker {
+                id: chunk_id.clone(),
+                state: state_name.clone(),
+            },
+            BaseScale(marker_scale),
+        ));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.chunk_mesh.clone()),
+            MeshMaterial3d(chunk_material(assets, state)),
+            Transform::from_translation(translation).with_scale(marker_scale),
+            Name::new(format!("chunk:{}:{}:{}", coord.x, coord.y, coord.z)),
+            ChunkMarker {
+                id: chunk_id.clone(),
+                state: state_name.clone(),
+            },
+            BaseScale(marker_scale),
+        ))
+        .id();
+
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            format!("chunk {chunk_id}"),
+            LOCATION_LABEL_OFFSET,
+            format!("label:chunk:{chunk_id}"),
+        );
+    });
+
+    scene.chunk_entities.insert(chunk_id, entity);
 }
 
 pub(super) fn spawn_label(

@@ -1,7 +1,8 @@
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    AgentDecisionTrace, Asset, AssetKind, PowerEvent, PowerPlant, ResourceKind, ResourceOwner,
-    RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
+    chunk_bounds, AgentDecisionTrace, Asset, AssetKind, ChunkCoord, ChunkState,
+    FragmentElementKind, PowerEvent, PowerPlant, ResourceKind, ResourceOwner, RunnerMetrics,
+    WorldEvent, WorldEventKind, WorldSnapshot,
 };
 
 use super::{ConnectionStatus, SelectionKind, ViewerSelection};
@@ -27,6 +28,7 @@ pub(super) fn world_summary(
         lines.push(format!("Assets: {}", model.assets.len()));
         lines.push(format!("Power Plants: {}", model.power_plants.len()));
         lines.push(format!("Power Storages: {}", model.power_storages.len()));
+        lines.push(format!("Chunks: {}", model.chunks.len()));
     } else {
         lines.push("World: (no snapshot)".to_string());
     }
@@ -114,6 +116,12 @@ pub(super) fn selection_details_summary(
         SelectionKind::PowerStorage => {
             power_storage_details_summary(selected.id.as_str(), snapshot, events)
         }
+        SelectionKind::Chunk => chunk_details_summary(
+            selected.id.as_str(),
+            selected.name.as_deref(),
+            snapshot,
+            events,
+        ),
     }
 }
 
@@ -345,6 +353,120 @@ fn power_storage_details_summary(
     lines.extend(related);
 
     lines.join("\n")
+}
+
+fn chunk_details_summary(
+    chunk_id: &str,
+    selected_state: Option<&str>,
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> String {
+    let Some(snapshot) = snapshot else {
+        return format!("Details: chunk {chunk_id}\n(no snapshot)");
+    };
+
+    let Some(coord) = parse_chunk_coord(chunk_id) else {
+        return format!("Details: chunk {chunk_id}\n(invalid chunk id)");
+    };
+
+    let Some(state) = snapshot.model.chunks.get(&coord) else {
+        return format!("Details: chunk {chunk_id}\n(not found in snapshot)");
+    };
+
+    let mut lines = Vec::new();
+    lines.push(format!("Details: chunk {chunk_id}"));
+    lines.push(format!(
+        "State: {}",
+        selected_state.unwrap_or(chunk_state_name(*state))
+    ));
+
+    if let Some(bounds) = chunk_bounds(coord, &snapshot.config.space) {
+        lines.push(format!(
+            "Bounds(cm): x[{:.0},{:.0}] y[{:.0},{:.0}] z[{:.0},{:.0}]",
+            bounds.min.x_cm,
+            bounds.max.x_cm,
+            bounds.min.y_cm,
+            bounds.max.y_cm,
+            bounds.min.z_cm,
+            bounds.max.z_cm
+        ));
+    }
+
+    let reservation_count = snapshot
+        .model
+        .chunk_boundary_reservations
+        .get(&coord)
+        .map(|items| items.len())
+        .unwrap_or(0);
+    lines.push(format!("Boundary Reservations: {}", reservation_count));
+
+    lines.push("".to_string());
+    lines.push("Budget (remaining top):".to_string());
+    if let Some(budget) = snapshot.model.chunk_resource_budgets.get(&coord) {
+        lines.extend(format_element_budget(&budget.remaining_by_element_g, 6));
+
+        lines.push("Budget (total top):".to_string());
+        lines.extend(format_element_budget(&budget.total_by_element_g, 6));
+    } else {
+        lines.push("- (none)".to_string());
+    }
+
+    lines.push("".to_string());
+    lines.push("Recent Events:".to_string());
+    let mut related = chunk_recent_events(coord, events, 6);
+    if related.is_empty() {
+        related.push("(none)".to_string());
+    }
+    lines.extend(related);
+
+    lines.join("\n")
+}
+
+fn parse_chunk_coord(chunk_id: &str) -> Option<ChunkCoord> {
+    let mut parts = chunk_id.split(',');
+    let x = parts.next()?.trim().parse::<i32>().ok()?;
+    let y = parts.next()?.trim().parse::<i32>().ok()?;
+    let z = parts.next()?.trim().parse::<i32>().ok()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(ChunkCoord { x, y, z })
+}
+
+fn chunk_state_name(state: ChunkState) -> &'static str {
+    match state {
+        ChunkState::Unexplored => "unexplored",
+        ChunkState::Generated => "generated",
+        ChunkState::Exhausted => "exhausted",
+    }
+}
+
+fn format_element_budget(
+    budgets: &std::collections::BTreeMap<FragmentElementKind, i64>,
+    limit: usize,
+) -> Vec<String> {
+    if budgets.is_empty() {
+        return vec!["- (empty)".to_string()];
+    }
+    let mut entries: Vec<_> = budgets.iter().collect();
+    entries.sort_by(|a, b| b.1.cmp(a.1));
+    entries
+        .into_iter()
+        .take(limit)
+        .map(|(kind, amount)| format!("- {:?}: {}g", kind, amount))
+        .collect()
+}
+
+fn chunk_recent_events(coord: ChunkCoord, events: &[WorldEvent], limit: usize) -> Vec<String> {
+    events
+        .iter()
+        .rev()
+        .filter_map(|event| {
+            event_activity_for_chunk(event, coord)
+                .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
+        })
+        .take(limit)
+        .collect()
 }
 
 fn facility_details_lines(
@@ -672,6 +794,22 @@ fn event_activity_for_location(event: &WorldEvent, location_id: &str) -> Option<
             storage_id,
             ..
         }) if id == location_id => Some(format!("storage {storage_id} discharged {output}")),
+        _ => None,
+    }
+}
+
+fn event_activity_for_chunk(event: &WorldEvent, coord: ChunkCoord) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::ChunkGenerated {
+            coord: event_coord,
+            fragment_count,
+            block_count,
+            cause,
+            ..
+        } if *event_coord == coord => Some(format!(
+            "generated fragments={} blocks={} cause={:?}",
+            fragment_count, block_count, cause
+        )),
         _ => None,
     }
 }

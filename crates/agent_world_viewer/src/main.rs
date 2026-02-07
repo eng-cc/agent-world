@@ -28,6 +28,7 @@ const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
 const ORBIT_MIN_RADIUS: f32 = 4.0;
 const ORBIT_MAX_RADIUS: f32 = 300.0;
 const PICK_MAX_DISTANCE: f32 = 1.0;
+const CHUNK_PICK_MAX_DISTANCE: f32 = 1.2;
 const LABEL_FONT_SIZE: f32 = 18.0;
 const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
@@ -172,6 +173,7 @@ impl Default for Viewer3dConfig {
 #[derive(Resource, Default)]
 struct Viewer3dScene {
     origin: Option<GeoPos>,
+    space: Option<SpaceConfig>,
     last_snapshot_time: Option<u64>,
     last_event_id: Option<u64>,
     agent_entities: HashMap<String, Entity>,
@@ -179,6 +181,7 @@ struct Viewer3dScene {
     asset_entities: HashMap<String, Entity>,
     power_plant_entities: HashMap<String, Entity>,
     power_storage_entities: HashMap<String, Entity>,
+    chunk_entities: HashMap<String, Entity>,
     location_positions: HashMap<String, GeoPos>,
     background_entities: Vec<Entity>,
 }
@@ -195,6 +198,10 @@ struct Viewer3dAssets {
     power_plant_material: Handle<StandardMaterial>,
     power_storage_mesh: Handle<Mesh>,
     power_storage_material: Handle<StandardMaterial>,
+    chunk_mesh: Handle<Mesh>,
+    chunk_unexplored_material: Handle<StandardMaterial>,
+    chunk_generated_material: Handle<StandardMaterial>,
+    chunk_exhausted_material: Handle<StandardMaterial>,
     world_box_mesh: Handle<Mesh>,
     world_floor_material: Handle<StandardMaterial>,
     world_bounds_material: Handle<StandardMaterial>,
@@ -222,6 +229,7 @@ enum SelectionKind {
     Asset,
     PowerPlant,
     PowerStorage,
+    Chunk,
 }
 
 impl ViewerSelection {
@@ -240,6 +248,7 @@ impl ViewerSelection {
                 SelectionKind::Asset => format!("Selection: asset {}", info.id),
                 SelectionKind::PowerPlant => format!("Selection: power_plant {}", info.id),
                 SelectionKind::PowerStorage => format!("Selection: power_storage {}", info.id),
+                SelectionKind::Chunk => format!("Selection: chunk {}", info.id),
             },
             None => "Selection: (none)".to_string(),
         }
@@ -280,32 +289,6 @@ impl OrbitCamera {
         transform.translation = self.focus + offset;
         transform.look_at(self.focus, Vec3::Y);
     }
-}
-
-#[derive(Component)]
-struct AgentMarker {
-    id: String,
-}
-
-#[derive(Component)]
-struct LocationMarker {
-    id: String,
-    name: String,
-}
-
-#[derive(Component)]
-struct AssetMarker {
-    id: String,
-}
-
-#[derive(Component)]
-struct PowerPlantMarker {
-    id: String,
-}
-
-#[derive(Component)]
-struct PowerStorageMarker {
-    id: String,
 }
 
 #[derive(Component, Copy, Clone)]
@@ -512,6 +495,7 @@ fn setup_3d_scene(
     let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
     let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
     let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
+    let chunk_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.2, 0.7, 1.0),
@@ -536,6 +520,24 @@ fn setup_3d_scene(
     let power_storage_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.2, 0.86, 0.48),
         perceptual_roughness: 0.45,
+        ..default()
+    });
+    let chunk_unexplored_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.30, 0.42, 0.66, 0.12),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let chunk_generated_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.24, 0.78, 0.44, 0.18),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let chunk_exhausted_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.62, 0.40, 0.28, 0.18),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
         ..default()
     });
     let world_floor_material = materials.add(StandardMaterial {
@@ -567,6 +569,10 @@ fn setup_3d_scene(
         power_plant_material,
         power_storage_mesh,
         power_storage_material,
+        chunk_mesh,
+        chunk_unexplored_material,
+        chunk_generated_material,
+        chunk_exhausted_material,
         world_box_mesh,
         world_floor_material,
         world_bounds_material,
@@ -984,6 +990,7 @@ fn pick_3d_selection(
     assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
     power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
     power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
+    chunks: Query<(Entity, &GlobalTransform, &ChunkMarker)>,
     config: Res<Viewer3dConfig>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
@@ -1100,6 +1107,25 @@ fn pick_3d_selection(
                     SelectionKind::PowerStorage,
                     marker.id.clone(),
                     None,
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in chunks.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= CHUNK_PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::Chunk,
+                    marker.id.clone(),
+                    Some(marker.state.clone()),
                     distance,
                 ));
             }

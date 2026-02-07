@@ -8,6 +8,7 @@
 - [x] viewer 新增“选中对象详情”面板（Agent/Location 分支）
 - [x] 详情面板接入最近事件与最近 LLM trace 展示
 - [x] 选中对象扩展：Asset/PowerPlant/PowerStorage（3D marker + 点击 + 详情）
+- [x] 选中对象扩展：Chunk（3D marker + 点击 + 详情）
 - [x] 新增/更新测试（协议 round-trip + viewer UI 文案 + live trace 流）
 - [x] 新增/更新测试（Asset/PowerPlant 详情文案）
 - [x] 更新可视化文档与总项目管理文档状态
@@ -20,6 +21,6 @@
 - `crates/agent_world_viewer/src/main.rs`
 
 ## 状态
-- 当前阶段：M4（对象覆盖扩展完成）
-- 下一阶段：补齐 Chunk 详情与时间轴回看能力
-- 最近更新：详情面板覆盖扩展至 Asset/PowerPlant/PowerStorage（2026-02-07）
+- 当前阶段：M5（对象覆盖扩展完成）
+- 下一阶段：补齐时间轴回看能力与对象-事件联动
+- 最近更新：详情面板覆盖扩展至 Asset/PowerPlant/PowerStorage/Chunk（2026-02-07）

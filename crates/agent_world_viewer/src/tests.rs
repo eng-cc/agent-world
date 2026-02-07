@@ -285,6 +285,10 @@ fn spawn_world_background_adds_bounds_and_grid() {
         power_plant_material: Handle::default(),
         power_storage_mesh: Handle::default(),
         power_storage_material: Handle::default(),
+        chunk_mesh: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
         world_box_mesh: Handle::default(),
         world_floor_material: Handle::default(),
         world_bounds_material: Handle::default(),
@@ -544,6 +548,10 @@ fn spawn_location_entity_adds_label_text() {
         power_plant_material: Handle::default(),
         power_storage_mesh: Handle::default(),
         power_storage_material: Handle::default(),
+        chunk_mesh: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
         world_box_mesh: Handle::default(),
         world_floor_material: Handle::default(),
         world_bounds_material: Handle::default(),
@@ -912,6 +920,94 @@ fn update_ui_populates_power_plant_selection_details() {
     assert!(details_text.0.contains("Details: power_plant plant-1"));
     assert!(details_text.0.contains("Output: current=12"));
     assert!(details_text.0.contains("generated 7"));
+}
+
+#[test]
+fn update_ui_populates_chunk_selection_details() {
+    let mut app = App::new();
+    app.add_systems(Update, update_ui);
+
+    app.world_mut().spawn((Text::new(""), StatusText));
+    app.world_mut().spawn((Text::new(""), SummaryText));
+    app.world_mut().spawn((Text::new(""), EventsText));
+    app.world_mut().spawn((Text::new(""), SelectionText));
+    app.world_mut().spawn((Text::new(""), AgentActivityText));
+    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
+
+    let entity = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity,
+            kind: SelectionKind::Chunk,
+            id: "0,0,0".to_string(),
+            name: Some("generated".to_string()),
+        }),
+    });
+
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.chunks.insert(
+        agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+        agent_world::simulator::ChunkState::Generated,
+    );
+
+    let mut budget = agent_world::simulator::ChunkResourceBudget::default();
+    budget
+        .total_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 120);
+    budget
+        .remaining_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 90);
+    model.chunk_resource_budgets.insert(
+        agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+        budget,
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 12,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 3,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    let events = vec![WorldEvent {
+        id: 2,
+        time: 12,
+        kind: agent_world::simulator::WorldEventKind::ChunkGenerated {
+            coord: agent_world::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
+            seed: 11,
+            fragment_count: 4,
+            block_count: 18,
+            chunk_budget: agent_world::simulator::ChunkResourceBudget::default(),
+            cause: agent_world::simulator::ChunkGenerationCause::Action,
+        },
+    }];
+
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: Some(snapshot),
+        events,
+        decision_traces: Vec::new(),
+        metrics: None,
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let details_text = {
+        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
+        query.single(world).expect("details text").0.clone()
+    };
+
+    assert!(details_text.0.contains("Details: chunk 0,0,0"));
+    assert!(details_text.0.contains("State: generated"));
+    assert!(details_text.0.contains("Budget (remaining top):"));
+    assert!(details_text.0.contains("generated fragments=4 blocks=18"));
 }
 
 fn spawn_background_test_system(
