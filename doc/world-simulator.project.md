@@ -89,6 +89,8 @@
 - [x] 控制按钮 hover/pressed 可点击反馈
 - [x] Step 等待态 loading（`Step ...`）与 pending 去重
 - [x] 右侧滚轮命中改为按 UI 实际边界（ComputedNode）判定，修复上下半区随机串滚
+- [x] 输出 Viewer UI 多语言支持设计文档（`doc/world-simulator/viewer-i18n.md`）
+- [x] 输出 Viewer UI 多语言支持项目管理文档（`doc/world-simulator/viewer-i18n.project.md`）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
