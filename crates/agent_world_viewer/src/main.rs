@@ -514,7 +514,16 @@ fn setup_3d_scene(
     let focus = Vec3::ZERO;
     let transform = Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(focus, Vec3::Y);
     let orbit = OrbitCamera::from_transform(&transform, focus);
-    commands.spawn((Camera3d::default(), transform, Viewer3dCamera, orbit));
+    commands.spawn((
+        Camera3d::default(),
+        Camera {
+            order: 0,
+            ..default()
+        },
+        transform,
+        Viewer3dCamera,
+        orbit,
+    ));
 
     commands.spawn((
         PointLight {
@@ -529,7 +538,14 @@ fn setup_3d_scene(
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/DejaVuSans.ttf");
 
-    commands.spawn((Camera2d, IsDefaultUiCamera));
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 1,
+            ..default()
+        },
+        IsDefaultUiCamera,
+    ));
 
     commands
         .spawn((
