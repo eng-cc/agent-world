@@ -12,7 +12,7 @@
 - 不追求物理写实：只在抽象层表达空间约束（位置、距离、连通性、移动成本），不模拟精细连续物理与复杂动力学。
 - 为方便模拟，空间长度的最小单位为 **1 cm**：世界中所有“长度/距离/尺寸”类数值都应以 cm 为离散粒度（必要时在输出层再换算 m/km）。
 - 每个 Agent 的初始形态为**身高约 1 m 的人形机器人**（作为默认机体规格，可被升级/改造扩展）。
-- 破碎小行星带由直径 **500 m-10 km** 的小行星碎片构成；**多数碎片富含放射性**。
+- 破碎小行星带由直径 **500 m-10 km** 的小行星碎片构成；默认为**多数可采（低至中等放射性）+ 少量高放射性离群体**。
 - 硅基生命依赖放射性物质供能：通过吸收辐射产生电力；每个 Agent 出厂自带“辐射能→电能”转换模块（规则层抽象为“辐射采集 → 电力资源”）。
 - **自由沙盒**：Agent 可以把“新事物”封装为 Rust/WASM 模块动态接入世界，模块仅通过事件/接口与外部交互。
 - **LLM 驱动**：实际运行中 Agent 的决策由 LLM 驱动，推理服务采用 **OpenAI 兼容 API** 形式提供（支持配置 endpoint/model/鉴权/预算策略）。
@@ -64,6 +64,9 @@
 - **推进与能量预算（近似）**
   - 线性能耗模型等效于“恒定推力 + 恒定效率”近似：  
     `E_move ≈ k * distance`，用于替代复杂动力学。
+  - 每 tick 运动学约束：
+    - `distance_cm <= max_move_distance_cm_per_tick`
+    - `ceil(distance_cm / max(time_step_s, 1)) <= max_move_speed_cm_per_s`
   - 若引入质量 `m` 与最大加速度 `a_max`，可用  
     `v_max ≈ sqrt(2 * a_max * distance)` 作上限校验。
 
@@ -74,32 +77,70 @@
 - **参数定义（关键物理参数）**
   - `time_step_s`：每 tick 的真实时间。
   - `power_unit_j`：电力单位对应的能量（J）。
-  - `radiation_floor`：背景辐射下限（避免 0 能量）。
+  - `move_cost_per_km_electricity`：移动基准能耗系数（以 `time_step_s=10` 且 `power_unit_j=1000` 为参考口径）。
+  - `max_move_distance_cm_per_tick`：每 tick 最大位移（超限移动直接拒绝）。
+  - `max_move_speed_cm_per_s`：移动速度上限（按 `required_speed = ceil(distance_cm / time_step_s)` 计算）。
+  - `radiation_floor`：外部背景辐射通量（开放系统输入，不来自本地碎片库存）。
+  - `radiation_floor_cap_per_tick`：背景通量每 tick 可采集上限（防止 floor 配置过大导致“无源高功率造能”）。
   - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
   - `max_harvest_per_tick`：每 tick 最大采集量（热/面积限制）。
-  - `thermal_capacity`：热容量阈值（超过进入过热区）。
-  - `thermal_dissipation`：每 tick 热量散逸值。
+  - `thermal_capacity`：热容量阈值（用于归一化热状态与散热强度）。
+  - `thermal_dissipation`：散热基准系数（在 `heat == thermal_capacity` 且梯度=100% 时约等于每 tick 散热量）。
+  - `thermal_dissipation_gradient_bps`：散热梯度系数（基点，10_000=100%）。
   - `heat_factor`：单位采集量带来的热增量。
   - `erosion_rate`：碎屑侵蚀系数（与速度/密度缩放）。
 
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
   - `power_unit_j`：1 电力单位≈1 kJ（默认），范围 0.1~10 kJ。
-  - `radiation_floor`：默认 1 单位/ tick；范围 0~10。
+  - `move_cost_per_km_electricity`：默认 1（参考口径下每 km 基准电力消耗）；范围 1~20。
+  - `max_move_distance_cm_per_tick`：默认 1,000,000 cm（10 km）/ tick；范围 100~5,000,000 cm。
+  - `max_move_speed_cm_per_s`：默认 100,000 cm/s（1 km/s）；范围 100~500,000 cm/s。
+  - `radiation_floor`：默认 1 单位/ tick；范围 0~10（解释为外部背景通量强度）。
+  - `radiation_floor_cap_per_tick`：默认 5 单位/ tick；范围 0~50（建议不高于 `max_harvest_per_tick`）。
   - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
+  - `radiation_emission_scale`：默认 1e-12（碎片发射尺度系数）；范围 1e-13~1e-8。
+  - `radiation_radius_exponent`：默认 3.0（半径标度指数）；范围 2.0~3.5。
+  - `material_weights`：默认 `52/8/18/18/4`（silicate/metal/ice/carbon/composite）；用于控制材质占比。
+  - `material_radiation_factors`：默认 `7_500/13_000/4_500/6_000/11_000` bps；范围 0~50_000 bps。
   - `max_harvest_per_tick`：默认 50；范围 1~500（受热/面积限制）。
   - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
-  - `thermal_dissipation`：默认 5/tick；范围 1~50。
+  - `thermal_dissipation`：默认 5（散热基准系数）；范围 1~50。
+  - `thermal_dissipation_gradient_bps`：默认 10,000（100%）；范围 1,000~50,000。
+  - `heat_factor`：默认 1（单位采集量的热增量）；范围 1~20。
   - `erosion_rate`：默认 1e-6（随速度/密度缩放）；范围 1e-7~1e-4。
+
+- **物理参数固化表（C9，`PhysicsConfig`）**
+
+| 参数 | 单位 | 默认 | 推荐范围 | 调参影响 |
+| --- | --- | --- | --- | --- |
+| `time_step_s` | `s/tick` | `10` | `1~60` | 增大后单步跨度更大，离散误差上升 |
+| `power_unit_j` | `J/power_unit` | `1000` | `100~10000` | 影响电力单位换算，联动移动与发电口径 |
+| `max_move_distance_cm_per_tick` | `cm/tick` | `1_000_000` | `100~5_000_000` | 限制瞬时位移，防止跨域瞬移 |
+| `max_move_speed_cm_per_s` | `cm/s` | `100_000` | `100~500_000` | 控制速度上限，约束运动学解释性 |
+| `radiation_floor` | `power_unit/tick` | `1` | `0~10` | 抬升背景可采基线 |
+| `radiation_floor_cap_per_tick` | `power_unit/tick` | `5` | `0~50` | 限制背景采集峰值，约束 floor 造能 |
+| `radiation_decay_k` | `cm^-1` | `1e-6` | `1e-7~1e-4` | 增大后近距离源优势更明显 |
+| `max_harvest_per_tick` | `power_unit/tick` | `50` | `1~500` | 控制单 tick 采集峰值 |
+| `thermal_capacity` | `heat_unit` | `100` | `10~1000` | 提升热惯性，降低过热频率 |
+| `thermal_dissipation` | `heat_unit/tick` | `5` | `1~50` | 增强散热后稳态温度下降 |
+| `thermal_dissipation_gradient_bps` | `bps` | `10_000` | `1_000~50_000` | 控制高热区散热斜率 |
+| `heat_factor` | `heat_unit/power_unit` | `1` | `1~20` | 增大后采集更易触发热降效 |
+| `erosion_rate` | `tick^-1 (scaled)` | `1e-6` | `1e-7~1e-4` | 控制长期磨损与维护压力 |
+
+  - 工程约束：`physics_parameter_specs()` 与回归测试会校验字段覆盖、单位非空、默认值落在推荐范围。
 
 - **辐射采集规则细化（可落地规则）**
   - 可采集量：`harvest = min(max_amount, max_harvest_per_tick, local_radiation)`
-  - 若启用衰减：`local_radiation = emission * exp(-radiation_decay_k * path_cm) + radiation_floor`
+  - 场强估计：`local_radiation = near_sources + background + floor_contribution`
+  - 背景限幅：`floor_contribution = min(radiation_floor, radiation_floor_cap_per_tick)`
   - 采集副作用：产生热量 `heat += harvest * heat_factor`（默认 `heat_factor=1`）。
   - 超温处理：若 `heat > thermal_capacity`，则采集效率下降或动作被拒绝。
 
 - **热管理与硬件损耗（规则建议）**
-  - 每 tick 热量衰减：`heat = max(0, heat - thermal_dissipation)`
+  - 温差相关散热：
+    - `dissipation = ceil(thermal_dissipation * heat / max(thermal_capacity,1) * thermal_dissipation_gradient_bps / 10000)`
+    - `heat = max(0, heat - dissipation)`
   - 超温惩罚（任选其一）：  
     - 降效：`harvest *= clamp(thermal_capacity / heat, 0.1..1.0)`  
     - 损耗：`hardware -= (heat - thermal_capacity) * damage_factor`
@@ -176,17 +217,21 @@
   - `event_id`, `time`, `type`, `payload`, `caused_by`（action_id/agent_id）
 - `WorldConfig`（物理相关）
   - `space`（`width_cm/depth_cm/height_cm`，破碎小行星带空间尺寸）
-  - `physics`（`time_step_s`, `power_unit_j`, `radiation_floor`, `radiation_decay_k`,
-    `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
-    `erosion_rate`）
+  - `physics`（`time_step_s`, `power_unit_j`, `max_move_distance_cm_per_tick`,
+    `max_move_speed_cm_per_s`, `radiation_floor`, `radiation_decay_k`,
+    `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`,
+    `thermal_dissipation_gradient_bps`, `heat_factor`, `erosion_rate`）
   - `asteroid_fragment`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
-    `layer_scale_height_km`, `size_powerlaw_q`, `radius_min_cm`, `radius_max_cm`,
-    `min_fragment_spacing_cm`, `material_weights`）
+    `layer_scale_height_km`, `size_powerlaw_q`, `radiation_emission_scale`, `radiation_radius_exponent`,
+    `radius_min_cm`, `radius_max_cm`, `min_fragment_spacing_cm`, `material_weights`, `material_radiation_factors`）
 
 ### M1 行动规则（初版）
 - **规则实现**：以下规则由 Rule Modules 以 WASM 实现，内核仅保留位置/资源/基础物理不变量校验。
 - **时间推进**：每个 Action 处理会推进 1 tick；事件按队列顺序确定性处理。
-- **移动成本**：`MoveAgent` 按**三维欧氏距离**计费，电力消耗 = `ceil(distance_km) * 1`（电力单位/公里）；若电力不足则拒绝。
+- **移动成本**：`MoveAgent` 按**三维欧氏距离**计费，
+  - `effective_move_cost_per_km = ceil(move_cost_per_km_electricity * time_step_s / 10 * 1000 / power_unit_j)`
+  - `electricity_cost = ceil(distance_cm / 100000) * effective_move_cost_per_km`
+  - 默认参数下（`time_step_s=10`, `power_unit_j=1000`, `move_cost_per_km_electricity=1`）即 `1` 电力单位/公里。
 - **移动约束**：移动到相同 `location_id` 视为无效动作并拒绝。
 - **可见性**：`query_observation` 以固定可见半径输出可见 Agent/Location（默认 **100 km**）。
 - **资源交互**：
@@ -197,7 +242,7 @@
   - 采集上限受 `max_harvest_per_tick` 与热管理约束影响；采集会增加热量。
 - **配置参数（内核级）**：
   - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
-  - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
+  - `move_cost_per_km_electricity`（默认 `1`，参考口径的公里基准能耗系数）
   - `space`（小行星带空间尺寸：`width_cm/depth_cm/height_cm`）
   - `physics`（辐射/热/侵蚀参数）
   - `asteroid_fragment`（碎片分布生成器参数）
@@ -343,38 +388,66 @@
   - 已完成：默认配置更新为 `radius_min_cm=25_000`、`radius_max_cm=500_000`（对应直径 500m-10km）。
   - 验收：`doc/*`、`README`、`WorldConfig::default().asteroid_fragment` 三处一致。
 - [x] **C2 辐射源标度修订**：将发射强度与碎片尺度的关系从线性近似升级为可配置标度（建议默认接近体积标度）。
-  - 已完成：`AsteroidFragmentConfig` 新增 `radiation_emission_scale` 与 `radiation_radius_exponent`，默认 `1e-9` 与 `3.0`。
+  - 已完成：`AsteroidFragmentConfig` 新增 `radiation_emission_scale` 与 `radiation_radius_exponent`（初版默认 `1e-9` 与 `3.0`，后续在 C8 校准默认值）。
   - 已完成：`estimate_radiation_emission` 改为 `emission = radius_cm^exponent * scale * material_factor`。
   - 验收：新增单测覆盖“半径翻倍时发射显著上升（立方标度）”。
-- [ ] **C3 采集场模型对齐**：将采集可用辐射从“局部近似”扩展为“近邻源 + 背景场”并包含距离项。
-  - 验收：采集量随源距离增加单调下降；多源叠加结果可复现。
-- [ ] **C4 背景辐射守恒说明**：为 `radiation_floor` 增加物理解释（外部背景通量）与上限策略，避免“无源无限造能”叙事。
+- [x] **C3 采集场模型对齐**：将采集可用辐射从“局部近似”扩展为“近邻源 + 背景场”并包含距离项。
+  - 已完成：`HarvestRadiation` 改为“近邻源贡献 + 远场背景 + radiation_floor”叠加模型。
+  - 已完成：单源贡献包含距离项（几何衰减）与介质吸收项（`exp(-k*d)`）。
+  - 验收：补充测试覆盖“多源叠加+距离衰减”与“零源仅背景辐射”两条路径。
+- [x] **C4 背景辐射守恒说明**：为 `radiation_floor` 增加物理解释（外部背景通量）与上限策略，避免“无源无限造能”叙事。
+  - 已完成：将 `radiation_floor` 定义为“外部背景辐射通量”（开放系统输入），不计入本地碎片守恒账本。
+  - 已完成：新增 `radiation_floor_cap_per_tick`（默认 5），背景贡献按 `min(radiation_floor, radiation_floor_cap_per_tick)` 限幅。
+  - 已完成：新增单测覆盖“零源场景下 floor 被 cap 限制”路径。
   - 验收：文档明确来源与边界；零源场景下采集行为符合预期。
 
 ### P1（建议尽快完成）
-- [ ] **C5 运动学约束补齐**：在“按距离计费”之外增加每 tick 最大位移/速度上限，避免瞬时跨域移动。
+- [x] **C5 运动学约束补齐**：在“按距离计费”之外增加每 tick 最大位移/速度上限，避免瞬时跨域移动。
+  - 已完成：`PhysicsConfig` 新增 `max_move_distance_cm_per_tick` 与 `max_move_speed_cm_per_s`，默认 10km/tick 与 1km/s（保守口径）。
+  - 已完成：`MoveAgent` 增加“位移上限 + 速度上限”双重校验，超限返回明确拒绝原因。
+  - 已完成：新增单测覆盖“超位移拒绝”与“超速度拒绝”路径，并为长距用例显式配置上限。
   - 验收：超限移动被拒绝或分段执行，回放结果确定。
-- [ ] **C6 能耗参数重标定**：联动 `time_step_s`、`power_unit_j`、移动能耗系数，形成同一数量级口径。
+- [x] **C6 能耗参数重标定**：联动 `time_step_s`、`power_unit_j`、移动能耗系数，形成同一数量级口径。
+  - 已完成：将 `move_cost_per_km_electricity` 解释为参考口径（10s tick、1kJ 电力单位）下的基准系数，并在运行时按 `time_step_s` 与 `power_unit_j` 做缩放。
+  - 已完成：移动动作统一使用校准后的每 km 成本，避免 `time_step_s` / `power_unit_j` 调整后移动能耗口径漂移。
+  - 已完成：新增测试覆盖“time_step/power_unit 联动缩放”与“MoveAgent 使用校准成本”两条路径。
+  - 默认示例：1m 机体执行 1~5km 典型位移，默认参数下约消耗 1~5 电力单位（约 1~5kJ）。
   - 验收：给出默认参数推导示例（1m 机体在典型位移下的能耗区间）。
-- [ ] **C7 热模型从常数散热升级**：将固定散热替换为“至少与温差相关”的可配置散热模型。
+- [x] **C7 热模型从常数散热升级**：将固定散热替换为“至少与温差相关”的可配置散热模型。
+  - 已完成：`PhysicsConfig` 新增 `thermal_dissipation_gradient_bps`，散热模型改为“热量占比 × 梯度系数”计算。
+  - 已完成：`process_power_tick` 按当前热量动态计算每 tick 散热，高热散得更多、低热散得更少。
+  - 已完成：新增测试覆盖“高热散热更快”与“散热后不出现负热量”两条路径。
   - 验收：高热状态下散热更快，低热状态下散热更慢；不会出现负热量。
 
 ### P2（增强可信度）
-- [ ] **C8 成分与放射性分布校准**：降低极端高放射性成分的默认占比，保留场景覆盖能力。
-  - 验收：默认分布与“多数可采但非普遍高危”叙事一致。
-- [ ] **C9 物理参数表固化**：在文档中固定每个关键参数的单位、推荐范围、调参影响。
-  - 验收：新增参数时必须附带量纲与范围说明。
+- [x] **C8 成分与放射性分布校准**：降低极端高放射性成分的默认占比，保留场景覆盖能力。
+  - 已完成：`material_weights` 默认调整为 `52/8/18/18/4`（silicate/metal/ice/carbon/composite），高放射候选（metal+composite）占比降至 12%。
+  - 已完成：新增 `material_radiation_factors`（bps）并将默认 `radiation_emission_scale` 校准为 `1e-12`，默认场景由“普遍高辐射”回归到“多数可采但非普遍高危”。
+  - 已完成：新增测试覆盖“默认占比上限”“小尺寸硅酸盐非极端发射”“高辐射离群体仍可出现”三条路径。
+  - 验收：默认分布与“多数可采但非普遍高危”叙事一致，同时保留高风险场景可配置能力。
+- [x] **C9 物理参数表固化**：在文档中固定每个关键参数的单位、推荐范围、调参影响。
+  - 已完成：新增“物理参数固化表（C9）”，固定 `PhysicsConfig` 全量字段的单位、默认值、推荐范围与调参影响。
+  - 已完成：代码侧新增 `physics_parameter_specs()` 元数据，并用测试校验“参数表字段覆盖 + 单位/范围完整 + 默认值在推荐区间内”。
+  - 验收：新增参数时必须附带量纲与范围说明（由元数据覆盖测试约束）。
 
 ### 回归与验收测试清单
-- [ ] **T1 单调性测试**：辐射随距离衰减、采集随过热降效、移动能耗随距离不减。
-- [ ] **T2 守恒性测试**：资源账本满足 `0 <= remaining <= total`，加工/采集过程无凭空增益。
-- [ ] **T3 一致性测试**：同 seed + 同动作序列在快照恢复与回放路径下结果一致。
-- [ ] **T4 边界测试**：极端参数（最小/最大半径、spacing=0、超高密度）下系统不崩溃。
+- [x] **T1 单调性测试**：辐射随距离衰减、采集随过热降效、移动能耗随距离不减。
+  - 已完成：新增测试覆盖“采集可用辐射随距离增加单调下降”“过热后采集量不增加”“移动能耗随距离非递减”。
+  - 验收：三条单调性在默认口径下均可重复通过。
+- [x] **T2 守恒性测试**：资源账本满足 `0 <= remaining <= total`，加工/采集过程无凭空增益。
+  - 已完成：新增测试覆盖“fragment/chunk 预算边界（`0 <= remaining <= total`）”与“采集+加工账本等式（电力/硬件不凭空增益）”。
+  - 验收：预算边界与加工账本在回归测试中可重复通过。
+- [x] **T3 一致性测试**：同 seed + 同动作序列在快照恢复与回放路径下结果一致。
+  - 已完成：新增测试覆盖“中途快照 + 后续同动作序列”的 `replay_from_snapshot` 与 `from_snapshot` 两条路径结果一致性。
+  - 验收：同 seed + 同动作序列下，回放模型与直接执行模型一致。
+- [x] **T4 边界测试**：极端参数（最小/最大半径、spacing=0、超高密度）下系统不崩溃。
+  - 已完成：新增测试覆盖极端半径（`1cm` 与 `5_000_000cm`）、`spacing=0`、高密度生成与预算上限约束下的 world init。
+  - 验收：极端参数下可稳定完成碎片生成与初始化，模型保持可读取状态。
 
 ### 里程碑
 - **PC1**：完成 P0（口径冲突消除 + 辐射采集模型对齐）。
 - **PC2**：完成 P1（运动/能耗/热模型可解释且可测）。
-- **PC3**：完成 P2（参数治理与可信度增强）。
+- [x] **PC3**：完成 P2（参数治理与可信度增强）与 T1-T4 回归补齐。
 
 ## 风险
 - **真实性与可计算性冲突**：规则越真实成本越高；需要阶段性抽象（先“像”再“真”）。

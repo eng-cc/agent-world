@@ -17,6 +17,9 @@ use super::types::{
 };
 use super::ResourceOwner;
 
+const MOVE_COST_REFERENCE_TIME_STEP_S: i64 = 10;
+const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
+
 // ============================================================================
 // World Entities
 // ============================================================================
@@ -444,7 +447,12 @@ impl WorldConfig {
     }
 
     pub fn movement_cost(&self, distance_cm: i64) -> i64 {
-        movement_cost(distance_cm, self.move_cost_per_km_electricity)
+        let per_km_cost = calibrated_move_cost_per_km(
+            self.move_cost_per_km_electricity,
+            self.physics.time_step_s,
+            self.physics.power_unit_j,
+        );
+        movement_cost(distance_cm, per_km_cost)
     }
 }
 
@@ -469,11 +477,15 @@ pub struct SpaceConfig {
 pub struct PhysicsConfig {
     pub time_step_s: i64,
     pub power_unit_j: i64,
+    pub max_move_distance_cm_per_tick: i64,
+    pub max_move_speed_cm_per_s: i64,
     pub radiation_floor: i64,
+    pub radiation_floor_cap_per_tick: i64,
     pub radiation_decay_k: f64,
     pub max_harvest_per_tick: i64,
     pub thermal_capacity: i64,
     pub thermal_dissipation: i64,
+    pub thermal_dissipation_gradient_bps: i64,
     pub heat_factor: i64,
     pub erosion_rate: f64,
 }
@@ -481,13 +493,17 @@ pub struct PhysicsConfig {
 impl Default for PhysicsConfig {
     fn default() -> Self {
         Self {
-            time_step_s: 10,
-            power_unit_j: 1_000,
+            time_step_s: MOVE_COST_REFERENCE_TIME_STEP_S,
+            power_unit_j: MOVE_COST_REFERENCE_POWER_UNIT_J,
+            max_move_distance_cm_per_tick: 1_000_000,
+            max_move_speed_cm_per_s: 100_000,
             radiation_floor: 1,
+            radiation_floor_cap_per_tick: 5,
             radiation_decay_k: 1e-6,
             max_harvest_per_tick: 50,
             thermal_capacity: 100,
             thermal_dissipation: 5,
+            thermal_dissipation_gradient_bps: 10_000,
             heat_factor: 1,
             erosion_rate: 1e-6,
         }
@@ -502,8 +518,17 @@ impl PhysicsConfig {
         if self.power_unit_j < 0 {
             self.power_unit_j = 0;
         }
+        if self.max_move_distance_cm_per_tick < 0 {
+            self.max_move_distance_cm_per_tick = 0;
+        }
+        if self.max_move_speed_cm_per_s < 0 {
+            self.max_move_speed_cm_per_s = 0;
+        }
         if self.radiation_floor < 0 {
             self.radiation_floor = 0;
+        }
+        if self.radiation_floor_cap_per_tick < 0 {
+            self.radiation_floor_cap_per_tick = 0;
         }
         if self.radiation_decay_k < 0.0 {
             self.radiation_decay_k = 0.0;
@@ -517,6 +542,9 @@ impl PhysicsConfig {
         if self.thermal_dissipation < 0 {
             self.thermal_dissipation = 0;
         }
+        if self.thermal_dissipation_gradient_bps < 0 {
+            self.thermal_dissipation_gradient_bps = 0;
+        }
         if self.heat_factor < 0 {
             self.heat_factor = 0;
         }
@@ -525,6 +553,113 @@ impl PhysicsConfig {
         }
         self
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PhysicsParameterSpec {
+    pub key: &'static str,
+    pub unit: &'static str,
+    pub recommended_min: f64,
+    pub recommended_max: f64,
+    pub tuning_impact: &'static str,
+}
+
+const PHYSICS_PARAMETER_SPECS: [PhysicsParameterSpec; 13] = [
+    PhysicsParameterSpec {
+        key: "time_step_s",
+        unit: "s/tick",
+        recommended_min: 1.0,
+        recommended_max: 60.0,
+        tuning_impact: "时间步越大，单次动作跨度更大、离散误差更明显。",
+    },
+    PhysicsParameterSpec {
+        key: "power_unit_j",
+        unit: "J/power_unit",
+        recommended_min: 100.0,
+        recommended_max: 10_000.0,
+        tuning_impact: "影响电力单位到焦耳的映射，与移动/发电口径联动。",
+    },
+    PhysicsParameterSpec {
+        key: "max_move_distance_cm_per_tick",
+        unit: "cm/tick",
+        recommended_min: 100.0,
+        recommended_max: 5_000_000.0,
+        tuning_impact: "限制单 tick 最大位移，防止瞬移跨域。",
+    },
+    PhysicsParameterSpec {
+        key: "max_move_speed_cm_per_s",
+        unit: "cm/s",
+        recommended_min: 100.0,
+        recommended_max: 500_000.0,
+        tuning_impact: "限制速度上限，约束动力学可解释区间。",
+    },
+    PhysicsParameterSpec {
+        key: "radiation_floor",
+        unit: "power_unit/tick",
+        recommended_min: 0.0,
+        recommended_max: 10.0,
+        tuning_impact: "外部背景辐射通量基线，抬升全局可采下限。",
+    },
+    PhysicsParameterSpec {
+        key: "radiation_floor_cap_per_tick",
+        unit: "power_unit/tick",
+        recommended_min: 0.0,
+        recommended_max: 50.0,
+        tuning_impact: "背景通量采集上限，限制 floor 造能强度。",
+    },
+    PhysicsParameterSpec {
+        key: "radiation_decay_k",
+        unit: "cm^-1",
+        recommended_min: 1e-7,
+        recommended_max: 1e-4,
+        tuning_impact: "介质吸收强度，数值越大近距离优势越明显。",
+    },
+    PhysicsParameterSpec {
+        key: "max_harvest_per_tick",
+        unit: "power_unit/tick",
+        recommended_min: 1.0,
+        recommended_max: 500.0,
+        tuning_impact: "限制单 tick 采集峰值，影响高辐射区收益上限。",
+    },
+    PhysicsParameterSpec {
+        key: "thermal_capacity",
+        unit: "heat_unit",
+        recommended_min: 10.0,
+        recommended_max: 1_000.0,
+        tuning_impact: "热惯性参数，越大越不容易过热。",
+    },
+    PhysicsParameterSpec {
+        key: "thermal_dissipation",
+        unit: "heat_unit/tick",
+        recommended_min: 1.0,
+        recommended_max: 50.0,
+        tuning_impact: "散热基准强度，提升后稳态温度下降。",
+    },
+    PhysicsParameterSpec {
+        key: "thermal_dissipation_gradient_bps",
+        unit: "bps",
+        recommended_min: 1_000.0,
+        recommended_max: 50_000.0,
+        tuning_impact: "温差梯度放大系数，控制高热状态散热斜率。",
+    },
+    PhysicsParameterSpec {
+        key: "heat_factor",
+        unit: "heat_unit/power_unit",
+        recommended_min: 1.0,
+        recommended_max: 20.0,
+        tuning_impact: "采集转热系数，越高越容易触发热降效。",
+    },
+    PhysicsParameterSpec {
+        key: "erosion_rate",
+        unit: "tick^-1 (scaled)",
+        recommended_min: 1e-7,
+        recommended_max: 1e-4,
+        tuning_impact: "磨损基准速率，影响长期维护与硬件损耗。",
+    },
+];
+
+pub fn physics_parameter_specs() -> &'static [PhysicsParameterSpec] {
+    &PHYSICS_PARAMETER_SPECS
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -579,6 +714,7 @@ pub struct AsteroidFragmentConfig {
     pub max_blocks_per_fragment: i64,
     pub max_blocks_per_chunk: i64,
     pub material_weights: MaterialWeights,
+    pub material_radiation_factors: MaterialRadiationFactors,
 }
 
 impl Default for AsteroidFragmentConfig {
@@ -589,7 +725,7 @@ impl Default for AsteroidFragmentConfig {
             cluster_noise: 0.5,
             layer_scale_height_km: 2.0,
             size_powerlaw_q: 3.0,
-            radiation_emission_scale: 1e-9,
+            radiation_emission_scale: 1e-12,
             radiation_radius_exponent: 3.0,
             radius_min_cm: 25_000,
             radius_max_cm: 500_000,
@@ -598,6 +734,7 @@ impl Default for AsteroidFragmentConfig {
             max_blocks_per_fragment: 64,
             max_blocks_per_chunk: 120_000,
             material_weights: MaterialWeights::default(),
+            material_radiation_factors: MaterialRadiationFactors::default(),
         }
     }
 }
@@ -644,6 +781,7 @@ impl AsteroidFragmentConfig {
             self.max_blocks_per_chunk = 0;
         }
         self.material_weights = self.material_weights.sanitized();
+        self.material_radiation_factors = self.material_radiation_factors.sanitized();
         self
     }
 }
@@ -661,11 +799,11 @@ pub struct MaterialWeights {
 impl Default for MaterialWeights {
     fn default() -> Self {
         Self {
-            silicate: 50,
-            metal: 20,
-            ice: 15,
-            carbon: 10,
-            composite: 5,
+            silicate: 52,
+            metal: 8,
+            ice: 18,
+            carbon: 18,
+            composite: 4,
         }
     }
 }
@@ -708,6 +846,59 @@ impl MaterialWeights {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MaterialRadiationFactors {
+    pub silicate_bps: u32,
+    pub metal_bps: u32,
+    pub ice_bps: u32,
+    pub carbon_bps: u32,
+    pub composite_bps: u32,
+}
+
+impl Default for MaterialRadiationFactors {
+    fn default() -> Self {
+        Self {
+            silicate_bps: 7_500,
+            metal_bps: 13_000,
+            ice_bps: 4_500,
+            carbon_bps: 6_000,
+            composite_bps: 11_000,
+        }
+    }
+}
+
+impl MaterialRadiationFactors {
+    pub fn sanitized(mut self) -> Self {
+        self.silicate_bps = self.silicate_bps.min(50_000);
+        self.metal_bps = self.metal_bps.min(50_000);
+        self.ice_bps = self.ice_bps.min(50_000);
+        self.carbon_bps = self.carbon_bps.min(50_000);
+        self.composite_bps = self.composite_bps.min(50_000);
+
+        if self.silicate_bps == 0
+            && self.metal_bps == 0
+            && self.ice_bps == 0
+            && self.carbon_bps == 0
+            && self.composite_bps == 0
+        {
+            self.silicate_bps = 1;
+        }
+        self
+    }
+
+    pub fn factor_for(self, material: MaterialKind) -> f64 {
+        let bps = match material {
+            MaterialKind::Silicate => self.silicate_bps,
+            MaterialKind::Metal => self.metal_bps,
+            MaterialKind::Ice => self.ice_bps,
+            MaterialKind::Carbon => self.carbon_bps,
+            MaterialKind::Composite => self.composite_bps,
+        };
+        bps as f64 / 10_000.0
+    }
+}
+
 impl Default for SpaceConfig {
     fn default() -> Self {
         Self {
@@ -743,6 +934,23 @@ impl SpaceConfig {
             && pos.z_cm >= 0.0
             && pos.z_cm <= max_z
     }
+}
+
+fn calibrated_move_cost_per_km(base_per_km_cost: i64, time_step_s: i64, power_unit_j: i64) -> i64 {
+    if base_per_km_cost <= 0 {
+        return 0;
+    }
+
+    let time_step_s = time_step_s.max(1) as i128;
+    let power_unit_j = power_unit_j.max(1) as i128;
+    let scaled = (base_per_km_cost as i128)
+        .saturating_mul(time_step_s)
+        .saturating_mul(MOVE_COST_REFERENCE_POWER_UNIT_J as i128);
+    let denom = (MOVE_COST_REFERENCE_TIME_STEP_S as i128).saturating_mul(power_unit_j);
+    let adjusted = scaled
+        .saturating_add(denom.saturating_sub(1))
+        .saturating_div(denom);
+    adjusted.clamp(0, i64::MAX as i128) as i64
 }
 
 /// Calculate movement cost based on distance and per-km cost.
