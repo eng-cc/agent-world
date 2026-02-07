@@ -224,6 +224,8 @@ fn initialize_kernel_records_chunk_generated_init_events() {
 fn replay_from_snapshot_rebuilds_and_validates_chunk_generated_events() {
     let mut config = WorldConfig::default();
     config.move_cost_per_km_electricity = 0;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
     config.asteroid_fragment.base_density_per_km3 = 0.0;
 
     let mut init = WorldInitConfig::default();
@@ -374,6 +376,8 @@ fn replay_from_snapshot_applies_compound_refined_event() {
 fn replay_with_budget_caps_keeps_chunk_generated_consistent() {
     let mut config = WorldConfig::default();
     config.move_cost_per_km_electricity = 0;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
     config.asteroid_fragment.base_density_per_km3 = 20.0;
     config.asteroid_fragment.voxel_size_km = 10;
     config.asteroid_fragment.cluster_noise = 0.0;

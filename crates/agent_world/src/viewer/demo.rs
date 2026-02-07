@@ -163,7 +163,9 @@ mod tests {
 
     #[test]
     fn plan_demo_actions_includes_move_for_multi_location_scenario() {
-        let config = WorldConfig::default();
+        let mut config = WorldConfig::default();
+        config.physics.max_move_distance_cm_per_tick = i64::MAX;
+        config.physics.max_move_speed_cm_per_s = i64::MAX;
         let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
         let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
 

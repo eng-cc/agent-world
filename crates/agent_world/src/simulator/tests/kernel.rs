@@ -404,6 +404,94 @@ fn harvest_radiation_caps_background_floor_when_no_source() {
 }
 
 #[test]
+fn kernel_rejects_move_beyond_max_distance_per_tick() {
+    let mut config = WorldConfig::default();
+    config.physics.max_move_distance_cm_per_tick = 100;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "far".to_string(),
+        pos: pos(101.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(
+                reason,
+                RejectReason::MoveDistanceExceeded {
+                    distance_cm: 101,
+                    max_distance_cm: 100,
+                }
+            ));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn kernel_rejects_move_beyond_max_speed() {
+    let mut config = WorldConfig::default();
+    config.physics.time_step_s = 1;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = 100;
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "fast".to_string(),
+        pos: pos(101.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(
+                reason,
+                RejectReason::MoveSpeedExceeded {
+                    required_speed_cm_per_s: 101,
+                    max_speed_cm_per_s: 100,
+                    time_step_s: 1,
+                }
+            ));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn kernel_rejects_move_to_same_location() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
@@ -618,6 +706,8 @@ fn action_chunk_generation_consumes_boundary_reservations() {
     config.asteroid_fragment.layer_scale_height_km = 0.0;
     config.asteroid_fragment.radius_min_cm = 1_000;
     config.asteroid_fragment.radius_max_cm = 1_000;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
 
     let mut init = WorldInitConfig::default();
     init.seed = 1337;

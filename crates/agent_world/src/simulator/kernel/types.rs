@@ -137,6 +137,15 @@ pub enum RejectReason {
         agent_id: AgentId,
         location_id: LocationId,
     },
+    MoveDistanceExceeded {
+        distance_cm: i64,
+        max_distance_cm: i64,
+    },
+    MoveSpeedExceeded {
+        required_speed_cm_per_s: i64,
+        max_speed_cm_per_s: i64,
+        time_step_s: i64,
+    },
     InvalidAmount {
         amount: i64,
     },

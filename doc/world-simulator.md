@@ -64,6 +64,9 @@
 - **推进与能量预算（近似）**
   - 线性能耗模型等效于“恒定推力 + 恒定效率”近似：  
     `E_move ≈ k * distance`，用于替代复杂动力学。
+  - 每 tick 运动学约束：
+    - `distance_cm <= max_move_distance_cm_per_tick`
+    - `ceil(distance_cm / max(time_step_s, 1)) <= max_move_speed_cm_per_s`
   - 若引入质量 `m` 与最大加速度 `a_max`，可用  
     `v_max ≈ sqrt(2 * a_max * distance)` 作上限校验。
 
@@ -74,6 +77,8 @@
 - **参数定义（关键物理参数）**
   - `time_step_s`：每 tick 的真实时间。
   - `power_unit_j`：电力单位对应的能量（J）。
+  - `max_move_distance_cm_per_tick`：每 tick 最大位移（超限移动直接拒绝）。
+  - `max_move_speed_cm_per_s`：移动速度上限（按 `required_speed = ceil(distance_cm / time_step_s)` 计算）。
   - `radiation_floor`：外部背景辐射通量（开放系统输入，不来自本地碎片库存）。
   - `radiation_floor_cap_per_tick`：背景通量每 tick 可采集上限（防止 floor 配置过大导致“无源高功率造能”）。
   - `radiation_decay_k`：辐射介质吸收系数（影响 `exp(-tau)`）。
@@ -86,6 +91,8 @@
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
   - `power_unit_j`：1 电力单位≈1 kJ（默认），范围 0.1~10 kJ。
+  - `max_move_distance_cm_per_tick`：默认 1,000,000 cm（10 km）/ tick；范围 100~5,000,000 cm。
+  - `max_move_speed_cm_per_s`：默认 100,000 cm/s（1 km/s）；范围 100~500,000 cm/s。
   - `radiation_floor`：默认 1 单位/ tick；范围 0~10（解释为外部背景通量强度）。
   - `radiation_floor_cap_per_tick`：默认 5 单位/ tick；范围 0~50（建议不高于 `max_harvest_per_tick`）。
   - `radiation_decay_k`：默认 1e-6（以 `cm^-1` 表示）；范围 1e-7~1e-4。
@@ -179,7 +186,8 @@
   - `event_id`, `time`, `type`, `payload`, `caused_by`（action_id/agent_id）
 - `WorldConfig`（物理相关）
   - `space`（`width_cm/depth_cm/height_cm`，破碎小行星带空间尺寸）
-  - `physics`（`time_step_s`, `power_unit_j`, `radiation_floor`, `radiation_decay_k`,
+  - `physics`（`time_step_s`, `power_unit_j`, `max_move_distance_cm_per_tick`,
+    `max_move_speed_cm_per_s`, `radiation_floor`, `radiation_decay_k`,
     `max_harvest_per_tick`, `thermal_capacity`, `thermal_dissipation`, `heat_factor`,
     `erosion_rate`）
   - `asteroid_fragment`（小行星带碎片分布生成器参数：`base_density_per_km3`, `voxel_size_km`, `cluster_noise`,
@@ -360,7 +368,10 @@
   - 验收：文档明确来源与边界；零源场景下采集行为符合预期。
 
 ### P1（建议尽快完成）
-- [ ] **C5 运动学约束补齐**：在“按距离计费”之外增加每 tick 最大位移/速度上限，避免瞬时跨域移动。
+- [x] **C5 运动学约束补齐**：在“按距离计费”之外增加每 tick 最大位移/速度上限，避免瞬时跨域移动。
+  - 已完成：`PhysicsConfig` 新增 `max_move_distance_cm_per_tick` 与 `max_move_speed_cm_per_s`，默认 10km/tick 与 1km/s（保守口径）。
+  - 已完成：`MoveAgent` 增加“位移上限 + 速度上限”双重校验，超限返回明确拒绝原因。
+  - 已完成：新增单测覆盖“超位移拒绝”与“超速度拒绝”路径，并为长距用例显式配置上限。
   - 验收：超限移动被拒绝或分段执行，回放结果确定。
 - [ ] **C6 能耗参数重标定**：联动 `time_step_s`、`power_unit_j`、移动能耗系数，形成同一数量级口径。
   - 验收：给出默认参数推导示例（1m 机体在典型位移下的能耗区间）。

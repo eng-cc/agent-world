@@ -469,6 +469,8 @@ pub struct SpaceConfig {
 pub struct PhysicsConfig {
     pub time_step_s: i64,
     pub power_unit_j: i64,
+    pub max_move_distance_cm_per_tick: i64,
+    pub max_move_speed_cm_per_s: i64,
     pub radiation_floor: i64,
     pub radiation_floor_cap_per_tick: i64,
     pub radiation_decay_k: f64,
@@ -484,6 +486,8 @@ impl Default for PhysicsConfig {
         Self {
             time_step_s: 10,
             power_unit_j: 1_000,
+            max_move_distance_cm_per_tick: 1_000_000,
+            max_move_speed_cm_per_s: 100_000,
             radiation_floor: 1,
             radiation_floor_cap_per_tick: 5,
             radiation_decay_k: 1e-6,
@@ -503,6 +507,12 @@ impl PhysicsConfig {
         }
         if self.power_unit_j < 0 {
             self.power_unit_j = 0;
+        }
+        if self.max_move_distance_cm_per_tick < 0 {
+            self.max_move_distance_cm_per_tick = 0;
+        }
+        if self.max_move_speed_cm_per_s < 0 {
+            self.max_move_speed_cm_per_s = 0;
         }
         if self.radiation_floor < 0 {
             self.radiation_floor = 0;

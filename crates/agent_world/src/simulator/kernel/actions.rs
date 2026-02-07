@@ -261,6 +261,31 @@ impl WorldKernel {
                 }
                 let from = agent.location_id.clone();
                 let distance_cm = space_distance_cm(agent.pos, location.pos);
+                let physics = &self.config.physics;
+                let max_move_distance_cm = physics.max_move_distance_cm_per_tick;
+                if max_move_distance_cm > 0 && distance_cm > max_move_distance_cm {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::MoveDistanceExceeded {
+                            distance_cm,
+                            max_distance_cm: max_move_distance_cm,
+                        },
+                    };
+                }
+                let max_move_speed_cm_per_s = physics.max_move_speed_cm_per_s;
+                if max_move_speed_cm_per_s > 0 {
+                    let time_step_s = physics.time_step_s.max(1);
+                    let required_speed_cm_per_s =
+                        (distance_cm + time_step_s - 1).saturating_div(time_step_s);
+                    if required_speed_cm_per_s > max_move_speed_cm_per_s {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::MoveSpeedExceeded {
+                                required_speed_cm_per_s,
+                                max_speed_cm_per_s: max_move_speed_cm_per_s,
+                                time_step_s,
+                            },
+                        };
+                    }
+                }
                 let electricity_cost =
                     movement_cost(distance_cm, self.config.move_cost_per_km_electricity);
                 if electricity_cost > 0 {
