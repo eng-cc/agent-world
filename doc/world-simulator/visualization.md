@@ -71,13 +71,14 @@
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+
 ### 在线模式（最小实现）
 - 在线模式直接从 `WorldKernel` 推送事件。
 - 支持两种决策驱动：
   - 默认 `script`（内置 demo script）
   - 可选 `llm`（`world_viewer_live --llm`，通过 `LlmAgentBehavior` 决策）
 - 默认单连接、tick 驱动，不保证多客户端一致性。
-- `Seek` 仅支持回到 tick=0（重置世界），其他 tick 会返回错误。
+- `Seek` 支持任意 tick：`seek` 到历史 tick 会触发 reset + replay，到未来 tick 会在当前状态继续推进。
 
 #### 快速运行（在线模式）
 1) 启动 live server（脚本驱动，默认）：  
@@ -86,6 +87,15 @@
 `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010 --tick-ms 300`
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
+
+
+### 在线模式时间轴语义（2026-02-07 更新）
+- `Seek {tick}` 会让 live world 真正切到目标 tick，而不是只移动日志游标。
+- 当 `target_tick < current_tick`：先重置世界到初始场景，再按当前驱动模式重放到目标 tick。
+- 当 `target_tick >= current_tick`：从当前状态继续推进到目标 tick。
+- Seek 期间不会回放中间事件流；完成后只返回目标状态的 `Snapshot + Metrics`，便于 UI 直接落在目标时刻。
+- 若世界无法继续推进（例如无可执行动作）会返回错误并停在当前可达 tick。
+- 在 `llm` 模式下，回放会重新触发 LLM 决策调用，可能带来额外耗时/费用，且结果不保证与先前运行完全一致。
 
 ### 3D 交互说明（2026-02-07 更新）
 - 3D 视口支持鼠标拖拽轨道相机：
@@ -150,7 +160,7 @@
 
 ### 现状缺口（信息直达视角，2026-02-07）
 - 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。
-- 时序定位不足：live 模式 `Seek` 仅支持 `tick=0` 重置，缺少任意 tick 回看与时间轴跳转。
+- 时序交互仍有缺口：live 模式后端已支持任意 tick seek，但 UI 侧仍缺少目标 tick 输入与时间轴拖拽能力（当前仅 `Seek 0` 按钮）。
 - 联动检索不足：事件列表与 3D 对象仍是弱关联，缺少“点击事件 -> 定位对象”与“详情 -> 跳转事件上下文”。
 - LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
 - 世界层表达不足：已有边界盒与网格，但缺少 chunk 探索态、资源热力图、电力/交易流覆盖层。

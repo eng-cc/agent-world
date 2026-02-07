@@ -245,9 +245,17 @@ enum LiveDriver {
     Llm(AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>),
 }
 
+const SEEK_STALL_LIMIT: u64 = 128;
+
 struct LiveStepResult {
     event: Option<WorldEvent>,
     decision_trace: Option<AgentDecisionTrace>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LiveSeekResult {
+    reached: bool,
+    current_tick: u64,
 }
 
 impl LiveWorld {
@@ -306,6 +314,44 @@ impl LiveWorld {
                 })
             }
         }
+    }
+
+    fn seek_to_tick(&mut self, target_tick: u64) -> Result<LiveSeekResult, ViewerLiveServerError> {
+        let current_tick = self.kernel.time();
+        if target_tick == current_tick {
+            return Ok(LiveSeekResult {
+                reached: true,
+                current_tick,
+            });
+        }
+
+        if target_tick < current_tick {
+            self.reset()?;
+        }
+
+        let mut stalled_steps = 0_u64;
+        while self.kernel.time() < target_tick {
+            let tick_before = self.kernel.time();
+            let _ = self.step()?;
+            let tick_after = self.kernel.time();
+
+            if tick_after == tick_before {
+                stalled_steps = stalled_steps.saturating_add(1);
+                if stalled_steps >= SEEK_STALL_LIMIT {
+                    return Ok(LiveSeekResult {
+                        reached: false,
+                        current_tick: tick_after,
+                    });
+                }
+            } else {
+                stalled_steps = 0;
+            }
+        }
+
+        Ok(LiveSeekResult {
+            reached: true,
+            current_tick: self.kernel.time(),
+        })
     }
 }
 
@@ -566,23 +612,26 @@ impl ViewerLiveSession {
                     self.playing = false;
                 }
                 ViewerControl::Seek { tick } => {
-                    if tick == 0 {
-                        world.reset()?;
-                        if self.subscribed.contains(&ViewerStream::Snapshot) {
-                            send_response(
-                                writer,
-                                &ViewerResponse::Snapshot {
-                                    snapshot: world.snapshot(),
-                                },
-                            )?;
-                        }
-                        self.update_metrics_from_kernel(world.kernel());
-                        self.emit_metrics(writer)?;
-                    } else {
+                    self.playing = false;
+                    let seek_result = world.seek_to_tick(tick)?;
+                    if self.subscribed.contains(&ViewerStream::Snapshot) {
+                        send_response(
+                            writer,
+                            &ViewerResponse::Snapshot {
+                                snapshot: world.snapshot(),
+                            },
+                        )?;
+                    }
+                    self.update_metrics_from_kernel(world.kernel());
+                    self.emit_metrics(writer)?;
+                    if !seek_result.reached {
                         send_response(
                             writer,
                             &ViewerResponse::Error {
-                                message: "live mode only supports seek to tick 0".to_string(),
+                                message: format!(
+                                    "live seek stalled at tick {} before target {}",
+                                    seek_result.current_tick, tick
+                                ),
                             },
                         )?;
                     }
@@ -746,5 +795,52 @@ mod tests {
 
         let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
         assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
+    }
+
+    #[test]
+    fn live_world_seek_to_future_tick_advances_time() {
+        let config = WorldConfig::default();
+        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+        let mut world =
+            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+        let result = world.seek_to_tick(3).expect("seek ok");
+        assert!(result.reached);
+        assert_eq!(result.current_tick, 3);
+        assert_eq!(world.kernel.time(), 3);
+    }
+
+    #[test]
+    fn live_world_seek_to_past_tick_resets_and_replays() {
+        let config = WorldConfig::default();
+        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+        let mut world =
+            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+        let forward = world.seek_to_tick(5).expect("seek forward");
+        assert!(forward.reached);
+        assert_eq!(world.kernel.time(), 5);
+
+        let rewind = world.seek_to_tick(2).expect("seek rewind");
+        assert!(rewind.reached);
+        assert_eq!(rewind.current_tick, 2);
+        assert_eq!(world.kernel.time(), 2);
+    }
+
+    #[test]
+    fn live_world_seek_reports_stall_when_world_cannot_advance() {
+        let config = WorldConfig::default();
+        let mut init = WorldInitConfig::default();
+        init.agents = crate::simulator::AgentSpawnConfig {
+            count: 0,
+            ..crate::simulator::AgentSpawnConfig::default()
+        };
+        let mut world =
+            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+        let result = world.seek_to_tick(2).expect("seek handled");
+        assert!(!result.reached);
+        assert_eq!(result.current_tick, 0);
+        assert_eq!(world.kernel.time(), 0);
     }
 }

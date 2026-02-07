@@ -67,6 +67,7 @@
 - [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
 - [x] Viewer 选中对象详情扩展（Asset/PowerPlant/PowerStorage/Chunk）
 - [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
+- [x] 在线模式支持任意 tick seek（reset+replay，含不可达保护）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -127,4 +128,4 @@
 - 下一步：M4（最小社会与经济）并行推进“背景故事物理一致性修订（C3 优先）”
 - 最近更新：完成 C2 辐射源标度修订（新增可配置标度参数与单测，2026-02-07）
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：详情面板对象覆盖扩展至 Asset/PowerPlant/PowerStorage/Chunk（2026-02-07）
+- 最近更新：在线模式支持任意 tick seek（reset+replay，含不可达保护）（2026-02-07）
