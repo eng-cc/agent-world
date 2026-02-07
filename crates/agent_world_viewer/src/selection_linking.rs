@@ -309,8 +309,10 @@ pub(super) fn update_event_object_link_text(
 
 pub(super) fn update_event_object_link_button_labels(
     i18n: Option<Res<UiI18n>>,
-    mut locate_query: Query<&mut Text, With<LocateFocusEventButtonLabel>>,
-    mut jump_query: Query<&mut Text, With<JumpSelectionEventsButtonLabel>>,
+    mut labels: ParamSet<(
+        Query<&mut Text, With<LocateFocusEventButtonLabel>>,
+        Query<&mut Text, With<JumpSelectionEventsButtonLabel>>,
+    )>,
 ) {
     let Some(i18n) = i18n else {
         return;
@@ -320,10 +322,10 @@ pub(super) fn update_event_object_link_button_labels(
     }
 
     let locale = i18n.locale;
-    if let Ok(mut text) = locate_query.single_mut() {
+    if let Ok(mut text) = labels.p0().single_mut() {
         text.0 = locate_focus_label(locale).to_string();
     }
-    if let Ok(mut text) = jump_query.single_mut() {
+    if let Ok(mut text) = labels.p1().single_mut() {
         text.0 = jump_selection_label(locale).to_string();
     }
 }

@@ -325,3 +325,49 @@ fn event_object_link_controls_use_wrapping_layout() {
     assert_eq!(jump_button.min_width, Val::Px(120.0));
     assert_eq!(jump_button.flex_grow, 1.0);
 }
+
+#[test]
+fn event_object_link_button_labels_follow_locale_without_query_conflict() {
+    let mut app = App::new();
+    app.add_systems(Update, update_event_object_link_button_labels);
+    app.world_mut().insert_resource(crate::i18n::UiI18n {
+        locale: crate::i18n::UiLocale::ZhCn,
+    });
+
+    app.world_mut()
+        .spawn((Text::new("定位焦点事件"), LocateFocusEventButtonLabel));
+    app.world_mut().spawn((
+        Text::new("跳转选中对象事件"),
+        JumpSelectionEventsButtonLabel,
+    ));
+
+    app.update();
+
+    {
+        let mut query = app
+            .world_mut()
+            .query::<(&Text, &LocateFocusEventButtonLabel)>();
+        let (text, _) = query.single(app.world()).expect("locate label");
+        assert_eq!(text.0, "定位焦点事件");
+    }
+
+    app.world_mut().insert_resource(crate::i18n::UiI18n {
+        locale: crate::i18n::UiLocale::EnUs,
+    });
+    app.update();
+
+    {
+        let mut query = app
+            .world_mut()
+            .query::<(&Text, &LocateFocusEventButtonLabel)>();
+        let (text, _) = query.single(app.world()).expect("locate label");
+        assert_eq!(text.0, "Locate Focus");
+    }
+    {
+        let mut query = app
+            .world_mut()
+            .query::<(&Text, &JumpSelectionEventsButtonLabel)>();
+        let (text, _) = query.single(app.world()).expect("jump label");
+        assert_eq!(text.0, "Jump Selection");
+    }
+}
