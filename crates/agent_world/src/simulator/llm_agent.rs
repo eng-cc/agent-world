@@ -7,9 +7,9 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use super::agent::{AgentBehavior, AgentDecision, AgentDecisionTrace};
+use super::agent::{AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics};
 use super::kernel::Observation;
 use super::types::Action;
 
@@ -155,7 +155,19 @@ pub struct LlmCompletionRequest {
 }
 
 pub trait LlmCompletionClient {
-    fn complete(&self, request: &LlmCompletionRequest) -> Result<String, LlmClientError>;
+    fn complete(
+        &self,
+        request: &LlmCompletionRequest,
+    ) -> Result<LlmCompletionResult, LlmClientError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LlmCompletionResult {
+    pub output: String,
+    pub model: Option<String>,
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -223,7 +235,21 @@ struct ChatMessage<'a> {
 
 #[derive(Debug, Deserialize)]
 struct ChatCompletionResponse {
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    usage: Option<ChatUsage>,
     choices: Vec<ChatChoice>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ChatUsage {
+    #[serde(default)]
+    prompt_tokens: Option<u64>,
+    #[serde(default)]
+    completion_tokens: Option<u64>,
+    #[serde(default)]
+    total_tokens: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -237,7 +263,10 @@ struct ChatChoiceMessage {
 }
 
 impl LlmCompletionClient for OpenAiChatCompletionClient {
-    fn complete(&self, request: &LlmCompletionRequest) -> Result<String, LlmClientError> {
+    fn complete(
+        &self,
+        request: &LlmCompletionRequest,
+    ) -> Result<LlmCompletionResult, LlmClientError> {
         let url = format!("{}/chat/completions", self.base_url);
         let payload = ChatCompletionRequest {
             model: request.model.as_str(),
@@ -279,12 +308,21 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
                     message: err.to_string(),
                 })?;
 
+        let model = response.model;
+        let usage = response.usage;
         let first = response
             .choices
             .into_iter()
             .next()
             .ok_or(LlmClientError::EmptyChoice)?;
-        Ok(first.message.content)
+
+        Ok(LlmCompletionResult {
+            output: first.message.content,
+            model,
+            prompt_tokens: usage.as_ref().and_then(|usage| usage.prompt_tokens),
+            completion_tokens: usage.as_ref().and_then(|usage| usage.completion_tokens),
+            total_tokens: usage.as_ref().and_then(|usage| usage.total_tokens),
+        })
     }
 }
 
@@ -350,22 +388,35 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         };
         let trace_input = Self::trace_input(&request.system_prompt, &request.user_prompt);
 
+        let request_started_at = Instant::now();
         match self.client.complete(&request) {
-            Ok(output) => {
-                let (decision, parse_error) =
-                    parse_llm_decision_with_error(output.as_str(), self.agent_id.as_str());
+            Ok(completion) => {
+                let latency_ms = request_started_at.elapsed().as_millis() as u64;
+                let (decision, parse_error) = parse_llm_decision_with_error(
+                    completion.output.as_str(),
+                    self.agent_id.as_str(),
+                );
                 self.pending_trace = Some(AgentDecisionTrace {
                     agent_id: self.agent_id.clone(),
                     time: observation.time,
                     decision: decision.clone(),
                     llm_input: Some(trace_input),
-                    llm_output: Some(output),
+                    llm_output: Some(completion.output),
                     llm_error: None,
                     parse_error,
+                    llm_diagnostics: Some(LlmDecisionDiagnostics {
+                        model: completion.model.or(Some(request.model.clone())),
+                        latency_ms: Some(latency_ms),
+                        prompt_tokens: completion.prompt_tokens,
+                        completion_tokens: completion.completion_tokens,
+                        total_tokens: completion.total_tokens,
+                        retry_count: 0,
+                    }),
                 });
                 decision
             }
             Err(err) => {
+                let latency_ms = request_started_at.elapsed().as_millis() as u64;
                 self.pending_trace = Some(AgentDecisionTrace {
                     agent_id: self.agent_id.clone(),
                     time: observation.time,
@@ -374,6 +425,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     llm_output: None,
                     llm_error: Some(err.to_string()),
                     parse_error: None,
+                    llm_diagnostics: Some(LlmDecisionDiagnostics {
+                        model: Some(request.model.clone()),
+                        latency_ms: Some(latency_ms),
+                        prompt_tokens: None,
+                        completion_tokens: None,
+                        total_tokens: None,
+                        retry_count: 0,
+                    }),
                 });
                 AgentDecision::Wait
             }
@@ -487,14 +546,23 @@ mod tests {
     }
 
     impl LlmCompletionClient for MockClient {
-        fn complete(&self, _request: &LlmCompletionRequest) -> Result<String, LlmClientError> {
+        fn complete(
+            &self,
+            request: &LlmCompletionRequest,
+        ) -> Result<LlmCompletionResult, LlmClientError> {
             if let Some(err) = &self.err {
                 return Err(err.clone());
             }
-            Ok(self
-                .output
-                .clone()
-                .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string()))
+            Ok(LlmCompletionResult {
+                output: self
+                    .output
+                    .clone()
+                    .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string()),
+                model: Some(request.model.clone()),
+                prompt_tokens: Some(12),
+                completion_tokens: Some(4),
+                total_tokens: Some(16),
+            })
         }
     }
 
@@ -694,6 +762,13 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
             .contains("move_agent"));
         assert_eq!(trace.llm_error, None);
         assert_eq!(trace.parse_error, None);
+        let diagnostics = trace.llm_diagnostics.as_ref().expect("diagnostics");
+        assert_eq!(diagnostics.model.as_deref(), Some("gpt-test"));
+        assert_eq!(diagnostics.prompt_tokens, Some(12));
+        assert_eq!(diagnostics.completion_tokens, Some(4));
+        assert_eq!(diagnostics.total_tokens, Some(16));
+        assert_eq!(diagnostics.retry_count, 0);
+        assert!(diagnostics.latency_ms.is_some());
         assert_eq!(behavior.take_decision_trace(), None);
     }
 
@@ -715,5 +790,8 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
             .as_deref()
             .unwrap_or_default()
             .contains("not json"));
+        let diagnostics = trace.llm_diagnostics.as_ref().expect("diagnostics");
+        assert_eq!(diagnostics.model.as_deref(), Some("gpt-test"));
+        assert_eq!(diagnostics.retry_count, 0);
     }
 }

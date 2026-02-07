@@ -541,6 +541,7 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_output: Some("o1".to_string()),
             llm_error: None,
             parse_error: None,
+            llm_diagnostics: None,
         },
     })
     .expect("send trace1");
@@ -553,6 +554,7 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_output: Some("o2".to_string()),
             llm_error: None,
             parse_error: None,
+            llm_diagnostics: None,
         },
     })
     .expect("send trace2");
@@ -565,6 +567,7 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_output: Some("o3".to_string()),
             llm_error: None,
             parse_error: None,
+            llm_diagnostics: None,
         },
     })
     .expect("send trace3");
@@ -770,6 +773,14 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         llm_output: Some("{\"decision\":\"wait\"}".to_string()),
         llm_error: None,
         parse_error: None,
+        llm_diagnostics: Some(agent_world::simulator::LlmDecisionDiagnostics {
+            model: Some("gpt-4o-mini".to_string()),
+            latency_ms: Some(123),
+            prompt_tokens: Some(77),
+            completion_tokens: Some(9),
+            total_tokens: Some(86),
+            retry_count: 1,
+        }),
     }];
 
     app.world_mut().insert_resource(ViewerState {
@@ -792,6 +803,12 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     assert!(details_text.0.contains("Recent LLM I/O"));
     assert!(details_text.0.contains("input:"));
     assert!(details_text.0.contains("output:"));
+    assert!(details_text.0.contains("model: gpt-4o-mini"));
+    assert!(details_text.0.contains("latency_ms: 123"));
+    assert!(details_text
+        .0
+        .contains("tokens: prompt=77 completion=9 total=86"));
+    assert!(details_text.0.contains("retries: 1"));
 }
 
 #[test]

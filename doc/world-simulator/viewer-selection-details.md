@@ -21,7 +21,8 @@
 
 ## 接口 / 数据
 - 新增数据结构：`AgentDecisionTrace`
-  - 字段：`agent_id`、`time`、`decision`、`llm_input`、`llm_output`、`llm_error`
+  - 字段：`agent_id`、`time`、`decision`、`llm_input`、`llm_output`、`llm_error`、`parse_error`
+  - 诊断字段：`llm_diagnostics`（`model`、`latency_ms`、`prompt_tokens`、`completion_tokens`、`total_tokens`、`retry_count`）
 - 协议扩展：`ViewerResponse::DecisionTrace { trace }`
 - 详情面板展示策略：
   - Agent：基础状态（位置、坐标、资源、电力/热状态）+ 最近相关事件 + 最近 LLM trace

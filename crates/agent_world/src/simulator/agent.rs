@@ -85,6 +85,24 @@ pub struct AgentDecisionTrace {
     pub llm_output: Option<String>,
     pub llm_error: Option<String>,
     pub parse_error: Option<String>,
+    #[serde(default)]
+    pub llm_diagnostics: Option<LlmDecisionDiagnostics>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct LlmDecisionDiagnostics {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latency_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_tokens: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_tokens: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_tokens: Option<u64>,
+    #[serde(default)]
+    pub retry_count: u32,
 }
 
 /// Result of an action execution, providing feedback to the agent.
