@@ -20,6 +20,7 @@ mod fragment_physics;
 mod init;
 mod kernel;
 mod memory;
+mod monotonicity;
 mod persist;
 mod physics_parameters;
 mod power;
