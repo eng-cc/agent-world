@@ -189,7 +189,7 @@ fn harvest_radiation_adds_electricity() {
             amount, available, ..
         } => {
             assert_eq!(amount, 20);
-            assert_eq!(available, 50);
+            assert_eq!(available, 51);
         }
         other => panic!("unexpected event: {other:?}"),
     }
@@ -267,6 +267,100 @@ fn harvest_radiation_applies_thermal_penalty() {
     match event.kind {
         WorldEventKind::RadiationHarvested { amount, .. } => {
             assert!(amount < 10);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn harvest_radiation_includes_nearby_sources_and_distance_decay() {
+    let mut config = WorldConfig::default();
+    config.physics.radiation_floor = 0;
+    config.physics.radiation_decay_k = 0.0;
+    config.physics.max_harvest_per_tick = 10_000;
+    let mut kernel = WorldKernel::with_config(config);
+
+    let source_near = LocationProfile {
+        material: MaterialKind::Metal,
+        radius_cm: 100,
+        radiation_emission_per_tick: 90,
+    };
+    let source_far = LocationProfile {
+        material: MaterialKind::Metal,
+        radius_cm: 100,
+        radiation_emission_per_tick: 90,
+    };
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "harvest-site".to_string(),
+        name: "harvest-site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "source-near".to_string(),
+        name: "source-near".to_string(),
+        pos: pos(100.0, 0.0),
+        profile: source_near,
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "source-far".to_string(),
+        name: "source-far".to_string(),
+        pos: pos(2_000.0, 0.0),
+        profile: source_far,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "harvest-site".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10_000,
+    });
+
+    let event = kernel.step().unwrap();
+    let available = match event.kind {
+        WorldEventKind::RadiationHarvested { available, .. } => available,
+        other => panic!("unexpected event: {other:?}"),
+    };
+
+    assert!(available > 0);
+    assert!(available < 180);
+}
+
+#[test]
+fn harvest_radiation_uses_background_floor_when_no_source() {
+    let mut config = WorldConfig::default();
+    config.physics.radiation_floor = 3;
+    config.physics.max_harvest_per_tick = 10;
+    let mut kernel = WorldKernel::with_config(config);
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "site".to_string(),
+        name: "site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "site".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10,
+    });
+
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::RadiationHarvested {
+            amount, available, ..
+        } => {
+            assert_eq!(available, 3);
+            assert_eq!(amount, 3);
         }
         other => panic!("unexpected event: {other:?}"),
     }
