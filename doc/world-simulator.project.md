@@ -65,6 +65,7 @@
 - [x] 输出 viewer 选中详情设计文档（`doc/world-simulator/viewer-selection-details.md`）
 - [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer-selection-details.project.md`）
 - [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
+- [x] Viewer 选中对象详情扩展（Asset/PowerPlant/PowerStorage）
 - [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
 
 ### 6. 维护
@@ -111,4 +112,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济；核心为 WASM 动态调用系统，Agent 创造的 Rust/WASM 模块通过事件/接口与世界交互）
-- 最近更新：补充可视化“信息直达”原则并完成现状缺口盘点（2026-02-07）
+- 最近更新：详情面板对象覆盖扩展至 Asset/PowerPlant/PowerStorage（2026-02-07）

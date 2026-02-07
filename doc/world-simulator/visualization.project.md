@@ -40,6 +40,8 @@
 - [x] UI 测试覆盖：选中详情面板（Location + Agent LLM I/O）
 - [x] 在线模式：新增 LLM 决策 trace 下发（DecisionTrace）
 - [x] UI：新增选中对象详情面板（Agent/Location）
+- [x] UI：选中对象详情扩展（Asset/PowerPlant/PowerStorage）
+- [x] UI 测试覆盖：Asset/PowerPlant 详情文案（headless 断言）
 - [x] 可视化设计文档补充“信息直达”原则
 - [x] 可视化现状缺口盘点并形成待办清单
 - [x] 提交到 git
@@ -51,10 +53,10 @@
 
 ## 状态
 - 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
-- 最近更新：补充“信息直达”可视化原则并完成现状缺口盘点（2026-02-07）
+- 最近更新：详情面板对象覆盖扩展至 Asset/PowerPlant/PowerStorage（2026-02-07）
 
 ## 缺口待办（信息直达）
-- [ ] 详情面板覆盖 Asset / PowerPlant / PowerStorage / Chunk 对象
+- [ ] 详情面板补齐 Chunk 对象覆盖（其余对象已完成）
 - [ ] 在线模式支持任意 tick 回看与时间轴跳转
 - [ ] 增加事件与对象双向联动（事件定位对象、对象跳转事件上下文）
 - [ ] 补充 LLM 诊断字段（模型、耗时、token、重试）

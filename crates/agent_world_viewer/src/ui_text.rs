@@ -1,7 +1,7 @@
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
-    AgentDecisionTrace, PowerEvent, ResourceKind, ResourceOwner, RunnerMetrics, WorldEvent,
-    WorldEventKind, WorldSnapshot,
+    AgentDecisionTrace, Asset, AssetKind, PowerEvent, PowerPlant, ResourceKind, ResourceOwner,
+    RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
 };
 
 use super::{ConnectionStatus, SelectionKind, ViewerSelection};
@@ -94,7 +94,7 @@ pub(super) fn selection_details_summary(
     decision_traces: &[AgentDecisionTrace],
 ) -> String {
     let Some(selected) = selection.current.as_ref() else {
-        return "Details:\n(click agent/location to inspect)".to_string();
+        return "Details:\n(click object to inspect)".to_string();
     };
 
     match selected.kind {
@@ -107,6 +107,13 @@ pub(super) fn selection_details_summary(
             snapshot,
             events,
         ),
+        SelectionKind::Asset => asset_details_summary(selected.id.as_str(), snapshot, events),
+        SelectionKind::PowerPlant => {
+            power_plant_details_summary(selected.id.as_str(), snapshot, events)
+        }
+        SelectionKind::PowerStorage => {
+            power_storage_details_summary(selected.id.as_str(), snapshot, events)
+        }
     }
 }
 
@@ -174,6 +181,25 @@ fn location_details_summary(
         return format!("Details: location {location_id}\n(not found in snapshot)");
     };
 
+    let plant_count = snapshot
+        .model
+        .power_plants
+        .values()
+        .filter(|plant| plant.location_id == location_id)
+        .count();
+    let storage_count = snapshot
+        .model
+        .power_storages
+        .values()
+        .filter(|storage| storage.location_id == location_id)
+        .count();
+    let asset_count = snapshot
+        .model
+        .assets
+        .values()
+        .filter(|asset| owner_matches_location(&asset.owner, location_id))
+        .count();
+
     let mut lines = Vec::new();
     lines.push(format!("Details: location {location_id}"));
     lines.push(format!(
@@ -186,6 +212,10 @@ fn location_details_summary(
         location.profile.material,
         location.profile.radius_cm,
         location.profile.radiation_emission_per_tick
+    ));
+    lines.push(format!(
+        "Facilities: plants={} storages={} assets_owned={}",
+        plant_count, storage_count, asset_count
     ));
 
     lines.push("Resources:".to_string());
@@ -221,6 +251,168 @@ fn location_details_summary(
     lines.join("\n")
 }
 
+fn asset_details_summary(
+    asset_id: &str,
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> String {
+    let Some(snapshot) = snapshot else {
+        return format!("Details: asset {asset_id}\n(no snapshot)");
+    };
+
+    let Some(asset) = snapshot.model.assets.get(asset_id) else {
+        return format!("Details: asset {asset_id}\n(not found in snapshot)");
+    };
+
+    let mut lines = Vec::new();
+    lines.push(format!("Details: asset {asset_id}"));
+    lines.push(format!("Kind: {}", asset_kind_name(asset)));
+    lines.push(format!("Quantity: {}", asset.quantity));
+    lines.push(format!("Owner: {}", owner_label(&asset.owner)));
+    if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
+        lines.push(format!("Owner Pos(cm): {}", format_geo_pos(anchor)));
+    }
+
+    lines.push("".to_string());
+    lines.push("Recent Owner Events:".to_string());
+    let mut related = owner_recent_events(&asset.owner, events, 6);
+    if related.is_empty() {
+        related.push("(none)".to_string());
+    }
+    lines.extend(related);
+
+    lines.join("\n")
+}
+
+fn power_plant_details_summary(
+    facility_id: &str,
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> String {
+    let Some(snapshot) = snapshot else {
+        return format!("Details: power_plant {facility_id}\n(no snapshot)");
+    };
+
+    let Some(plant) = snapshot.model.power_plants.get(facility_id) else {
+        return format!("Details: power_plant {facility_id}\n(not found in snapshot)");
+    };
+
+    facility_details_lines(facility_id, plant, snapshot, events).join("\n")
+}
+
+fn power_storage_details_summary(
+    facility_id: &str,
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> String {
+    let Some(snapshot) = snapshot else {
+        return format!("Details: power_storage {facility_id}\n(no snapshot)");
+    };
+
+    let Some(storage) = snapshot.model.power_storages.get(facility_id) else {
+        return format!("Details: power_storage {facility_id}\n(not found in snapshot)");
+    };
+
+    let mut lines = Vec::new();
+    lines.push(format!("Details: power_storage {facility_id}"));
+    lines.push(format!("Location: {}", storage.location_id));
+    lines.push(format!("Owner: {}", owner_label(&storage.owner)));
+    lines.push(format!(
+        "Level: {}/{} (charge_eff={:.2}, discharge_eff={:.2})",
+        storage.current_level,
+        storage.capacity,
+        storage.charge_efficiency,
+        storage.discharge_efficiency
+    ));
+    lines.push(format!(
+        "Rates: max_charge={} max_discharge={}",
+        storage.max_charge_rate, storage.max_discharge_rate
+    ));
+
+    if let Some(location) = snapshot.model.locations.get(&storage.location_id) {
+        lines.push(format!(
+            "Location Pos(cm): {}",
+            format_geo_pos(location.pos)
+        ));
+    }
+
+    lines.push("".to_string());
+    lines.push("Recent Events:".to_string());
+    let mut related = power_storage_recent_events(facility_id, events, 6);
+    if related.is_empty() {
+        related.push("(none)".to_string());
+    }
+    lines.extend(related);
+
+    lines.join("\n")
+}
+
+fn facility_details_lines(
+    facility_id: &str,
+    plant: &PowerPlant,
+    snapshot: &WorldSnapshot,
+    events: &[WorldEvent],
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("Details: power_plant {facility_id}"));
+    lines.push(format!("Location: {}", plant.location_id));
+    lines.push(format!("Owner: {}", owner_label(&plant.owner)));
+    lines.push(format!("Status: {:?}", plant.status));
+    lines.push(format!(
+        "Output: current={} capacity/tick={} effective={}",
+        plant.current_output,
+        plant.capacity_per_tick,
+        plant.effective_output()
+    ));
+    lines.push(format!(
+        "Costs: fuel_per_pu={} maintenance={} efficiency={:.2} degradation={:.2}",
+        plant.fuel_cost_per_pu, plant.maintenance_cost, plant.efficiency, plant.degradation
+    ));
+
+    if let Some(location) = snapshot.model.locations.get(&plant.location_id) {
+        lines.push(format!(
+            "Location Pos(cm): {}",
+            format_geo_pos(location.pos)
+        ));
+    }
+
+    lines.push("".to_string());
+    lines.push("Recent Events:".to_string());
+    let mut related = power_plant_recent_events(facility_id, events, 6);
+    if related.is_empty() {
+        related.push("(none)".to_string());
+    }
+    lines.extend(related);
+
+    lines
+}
+
+fn asset_kind_name(asset: &Asset) -> String {
+    match &asset.kind {
+        AssetKind::Resource { kind } => format!("resource::{kind:?}"),
+    }
+}
+
+fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<GeoPos> {
+    match owner {
+        ResourceOwner::Agent { agent_id } => {
+            snapshot.model.agents.get(agent_id).map(|agent| agent.pos)
+        }
+        ResourceOwner::Location { location_id } => snapshot
+            .model
+            .locations
+            .get(location_id)
+            .map(|location| location.pos),
+    }
+}
+
+fn owner_label(owner: &ResourceOwner) -> String {
+    match owner {
+        ResourceOwner::Agent { agent_id } => format!("agent::{agent_id}"),
+        ResourceOwner::Location { location_id } => format!("location::{location_id}"),
+    }
+}
+
 fn format_geo_pos(pos: GeoPos) -> String {
     format!("x={:.0}, y={:.0}, z={:.0}", pos.x_cm, pos.y_cm, pos.z_cm)
 }
@@ -253,6 +445,46 @@ fn location_recent_events(location_id: &str, events: &[WorldEvent], limit: usize
         .rev()
         .filter_map(|event| {
             event_activity_for_location(event, location_id)
+                .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
+        })
+        .take(limit)
+        .collect()
+}
+
+fn owner_recent_events(owner: &ResourceOwner, events: &[WorldEvent], limit: usize) -> Vec<String> {
+    events
+        .iter()
+        .rev()
+        .filter_map(|event| {
+            event_activity_for_owner(event, owner)
+                .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
+        })
+        .take(limit)
+        .collect()
+}
+
+fn power_plant_recent_events(plant_id: &str, events: &[WorldEvent], limit: usize) -> Vec<String> {
+    events
+        .iter()
+        .rev()
+        .filter_map(|event| {
+            event_activity_for_power_plant(event, plant_id)
+                .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
+        })
+        .take(limit)
+        .collect()
+}
+
+fn power_storage_recent_events(
+    storage_id: &str,
+    events: &[WorldEvent],
+    limit: usize,
+) -> Vec<String> {
+    events
+        .iter()
+        .rev()
+        .filter_map(|event| {
+            event_activity_for_power_storage(event, storage_id)
                 .map(|activity| format!("- t{} #{} {}", event.time, event.id, activity))
         })
         .take(limit)
@@ -423,6 +655,118 @@ fn event_activity_for_location(event: &WorldEvent, location_id: &str) -> Option<
                 _ => None,
             }
         }
+        WorldEventKind::Power(PowerEvent::PowerGenerated {
+            location_id: id,
+            amount,
+            plant_id,
+        }) if id == location_id => Some(format!("plant {plant_id} generated {amount}")),
+        WorldEventKind::Power(PowerEvent::PowerStored {
+            location_id: id,
+            stored,
+            storage_id,
+            ..
+        }) if id == location_id => Some(format!("storage {storage_id} stored {stored}")),
+        WorldEventKind::Power(PowerEvent::PowerDischarged {
+            location_id: id,
+            output,
+            storage_id,
+            ..
+        }) if id == location_id => Some(format!("storage {storage_id} discharged {output}")),
+        _ => None,
+    }
+}
+
+fn event_activity_for_owner(event: &WorldEvent, owner: &ResourceOwner) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::ResourceTransferred {
+            from,
+            to,
+            kind,
+            amount,
+        } if from == owner && to == owner => Some(format!("transfer {:?} {} (self)", kind, amount)),
+        WorldEventKind::ResourceTransferred {
+            from,
+            to: _,
+            kind,
+            amount,
+        } if from == owner => Some(format!("transfer out {:?} {}", kind, amount)),
+        WorldEventKind::ResourceTransferred {
+            from: _,
+            to,
+            kind,
+            amount,
+        } if to == owner => Some(format!("transfer in {:?} {}", kind, amount)),
+        WorldEventKind::CompoundRefined {
+            owner: refined_owner,
+            compound_mass_g,
+            hardware_output,
+            ..
+        } if refined_owner == owner => Some(format!(
+            "refine {}g -> hw {}",
+            compound_mass_g, hardware_output
+        )),
+        WorldEventKind::Power(PowerEvent::PowerTransferred {
+            from,
+            to,
+            amount,
+            loss,
+            ..
+        }) if from == owner && to == owner => {
+            Some(format!("trade power {} (loss {})", amount, loss))
+        }
+        WorldEventKind::Power(PowerEvent::PowerTransferred {
+            from,
+            to: _,
+            amount,
+            loss,
+            ..
+        }) if from == owner => Some(format!("sell power {} (loss {})", amount, loss)),
+        WorldEventKind::Power(PowerEvent::PowerTransferred {
+            from: _,
+            to,
+            amount,
+            loss,
+            ..
+        }) if to == owner => Some(format!("buy power {} (loss {})", amount, loss)),
+        _ => None,
+    }
+}
+
+fn event_activity_for_power_plant(event: &WorldEvent, facility_id: &str) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::Power(PowerEvent::PowerPlantRegistered { plant })
+            if plant.id == facility_id =>
+        {
+            Some(format!("register at {}", plant.location_id))
+        }
+        WorldEventKind::Power(PowerEvent::PowerGenerated {
+            plant_id,
+            amount,
+            location_id,
+        }) if plant_id == facility_id => Some(format!("generated {} at {}", amount, location_id)),
+        _ => None,
+    }
+}
+
+fn event_activity_for_power_storage(event: &WorldEvent, storage_id: &str) -> Option<String> {
+    match &event.kind {
+        WorldEventKind::Power(PowerEvent::PowerStorageRegistered { storage })
+            if storage.id == storage_id =>
+        {
+            Some(format!("register at {}", storage.location_id))
+        }
+        WorldEventKind::Power(PowerEvent::PowerStored {
+            storage_id: id,
+            input,
+            stored,
+            ..
+        }) if id == storage_id => Some(format!("stored {} (input {})", stored, input)),
+        WorldEventKind::Power(PowerEvent::PowerDischarged {
+            storage_id: id,
+            output,
+            drawn,
+            ..
+        }) if id == storage_id => Some(format!("discharged {} (drawn {})", output, drawn)),
         _ => None,
     }
 }

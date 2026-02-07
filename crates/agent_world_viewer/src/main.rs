@@ -176,6 +176,9 @@ struct Viewer3dScene {
     last_event_id: Option<u64>,
     agent_entities: HashMap<String, Entity>,
     location_entities: HashMap<String, Entity>,
+    asset_entities: HashMap<String, Entity>,
+    power_plant_entities: HashMap<String, Entity>,
+    power_storage_entities: HashMap<String, Entity>,
     location_positions: HashMap<String, GeoPos>,
     background_entities: Vec<Entity>,
 }
@@ -186,6 +189,12 @@ struct Viewer3dAssets {
     agent_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
     location_material: Handle<StandardMaterial>,
+    asset_mesh: Handle<Mesh>,
+    asset_material: Handle<StandardMaterial>,
+    power_plant_mesh: Handle<Mesh>,
+    power_plant_material: Handle<StandardMaterial>,
+    power_storage_mesh: Handle<Mesh>,
+    power_storage_material: Handle<StandardMaterial>,
     world_box_mesh: Handle<Mesh>,
     world_floor_material: Handle<StandardMaterial>,
     world_bounds_material: Handle<StandardMaterial>,
@@ -210,6 +219,9 @@ struct SelectionInfo {
 enum SelectionKind {
     Agent,
     Location,
+    Asset,
+    PowerPlant,
+    PowerStorage,
 }
 
 impl ViewerSelection {
@@ -225,6 +237,9 @@ impl ViewerSelection {
                     Some(name) => format!("Selection: location {} ({})", info.id, name),
                     None => format!("Selection: location {}", info.id),
                 },
+                SelectionKind::Asset => format!("Selection: asset {}", info.id),
+                SelectionKind::PowerPlant => format!("Selection: power_plant {}", info.id),
+                SelectionKind::PowerStorage => format!("Selection: power_storage {}", info.id),
             },
             None => "Selection: (none)".to_string(),
         }
@@ -276,6 +291,21 @@ struct AgentMarker {
 struct LocationMarker {
     id: String,
     name: String,
+}
+
+#[derive(Component)]
+struct AssetMarker {
+    id: String,
+}
+
+#[derive(Component)]
+struct PowerPlantMarker {
+    id: String,
+}
+
+#[derive(Component)]
+struct PowerStorageMarker {
+    id: String,
 }
 
 #[derive(Component, Copy, Clone)]
@@ -479,6 +509,9 @@ fn setup_3d_scene(
         DEFAULT_LOCATION_SIZE * 0.2,
         DEFAULT_LOCATION_SIZE,
     ));
+    let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
+    let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
+    let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.2, 0.7, 1.0),
@@ -488,6 +521,21 @@ fn setup_3d_scene(
     let location_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.35, 0.35, 0.4),
         perceptual_roughness: 0.8,
+        ..default()
+    });
+    let asset_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.82, 0.76, 0.34),
+        perceptual_roughness: 0.55,
+        ..default()
+    });
+    let power_plant_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.42, 0.2),
+        perceptual_roughness: 0.5,
+        ..default()
+    });
+    let power_storage_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.2, 0.86, 0.48),
+        perceptual_roughness: 0.45,
         ..default()
     });
     let world_floor_material = materials.add(StandardMaterial {
@@ -513,6 +561,12 @@ fn setup_3d_scene(
         agent_material,
         location_mesh,
         location_material,
+        asset_mesh,
+        asset_material,
+        power_plant_mesh,
+        power_plant_material,
+        power_storage_mesh,
+        power_storage_material,
         world_box_mesh,
         world_floor_material,
         world_bounds_material,
@@ -927,6 +981,9 @@ fn pick_3d_selection(
     camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
     agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
     locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
+    assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
+    power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
+    power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
     config: Res<Viewer3dConfig>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
@@ -986,6 +1043,63 @@ fn pick_3d_selection(
                     SelectionKind::Location,
                     marker.id.clone(),
                     Some(marker.name.clone()),
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in assets.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::Asset,
+                    marker.id.clone(),
+                    None,
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in power_plants.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::PowerPlant,
+                    marker.id.clone(),
+                    None,
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in power_storages.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::PowerStorage,
+                    marker.id.clone(),
+                    None,
                     distance,
                 ));
             }

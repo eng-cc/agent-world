@@ -1,5 +1,10 @@
 use super::*;
-use agent_world::simulator::WorldEventKind;
+use agent_world::simulator::{PowerEvent, ResourceOwner, WorldEventKind};
+
+const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
+const FACILITY_MARKER_VERTICAL_OFFSET: f32 = 0.45;
+const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
+const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
 
 pub(super) fn rebuild_scene_from_snapshot(
     commands: &mut Commands,
@@ -12,6 +17,9 @@ pub(super) fn rebuild_scene_from_snapshot(
         .agent_entities
         .values()
         .chain(scene.location_entities.values())
+        .chain(scene.asset_entities.values())
+        .chain(scene.power_plant_entities.values())
+        .chain(scene.power_storage_entities.values())
         .chain(scene.background_entities.iter())
     {
         commands.entity(*entity).despawn();
@@ -19,6 +27,9 @@ pub(super) fn rebuild_scene_from_snapshot(
 
     scene.agent_entities.clear();
     scene.location_entities.clear();
+    scene.asset_entities.clear();
+    scene.power_plant_entities.clear();
+    scene.power_storage_entities.clear();
     scene.location_positions.clear();
     scene.background_entities.clear();
 
@@ -41,6 +52,42 @@ pub(super) fn rebuild_scene_from_snapshot(
 
     for (agent_id, agent) in snapshot.model.agents.iter() {
         spawn_agent_entity(commands, config, assets, scene, origin, agent_id, agent.pos);
+    }
+
+    for (facility_id, plant) in snapshot.model.power_plants.iter() {
+        if let Some(location) = snapshot.model.locations.get(&plant.location_id) {
+            spawn_power_plant_entity(
+                commands,
+                config,
+                assets,
+                scene,
+                origin,
+                facility_id,
+                plant.location_id.as_str(),
+                location.pos,
+            );
+        }
+    }
+
+    for (facility_id, storage) in snapshot.model.power_storages.iter() {
+        if let Some(location) = snapshot.model.locations.get(&storage.location_id) {
+            spawn_power_storage_entity(
+                commands,
+                config,
+                assets,
+                scene,
+                origin,
+                facility_id,
+                storage.location_id.as_str(),
+                location.pos,
+            );
+        }
+    }
+
+    for (asset_id, asset) in snapshot.model.assets.iter() {
+        if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
+            spawn_asset_entity(commands, config, assets, scene, origin, asset_id, anchor);
+        }
     }
 }
 
@@ -95,6 +142,37 @@ pub(super) fn apply_events_to_scene(
                     spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
                 }
             }
+            WorldEventKind::Power(power_event) => match power_event {
+                PowerEvent::PowerPlantRegistered { plant } => {
+                    if let Some(pos) = scene.location_positions.get(&plant.location_id) {
+                        spawn_power_plant_entity(
+                            commands,
+                            config,
+                            assets,
+                            scene,
+                            origin,
+                            &plant.id,
+                            &plant.location_id,
+                            *pos,
+                        );
+                    }
+                }
+                PowerEvent::PowerStorageRegistered { storage } => {
+                    if let Some(pos) = scene.location_positions.get(&storage.location_id) {
+                        spawn_power_storage_entity(
+                            commands,
+                            config,
+                            assets,
+                            scene,
+                            origin,
+                            &storage.id,
+                            &storage.location_id,
+                            *pos,
+                        );
+                    }
+                }
+                _ => {}
+            },
             _ => {}
         }
 
@@ -267,7 +345,7 @@ pub(super) fn spawn_location_entity(
         spawn_label(
             parent,
             assets,
-            format!("{name}"),
+            name.to_string(),
             LOCATION_LABEL_OFFSET,
             format!("label:location:{location_id}"),
         );
@@ -320,6 +398,177 @@ pub(super) fn spawn_agent_entity(
         );
     });
     scene.agent_entities.insert(agent_id.to_string(), entity);
+}
+
+fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<GeoPos> {
+    match owner {
+        ResourceOwner::Agent { agent_id } => {
+            snapshot.model.agents.get(agent_id).map(|agent| agent.pos)
+        }
+        ResourceOwner::Location { location_id } => snapshot
+            .model
+            .locations
+            .get(location_id)
+            .map(|location| location.pos),
+    }
+}
+
+fn id_hash_fraction(id: &str) -> f32 {
+    let hash = id.bytes().fold(0u32, |acc, value| {
+        acc.wrapping_mul(31).wrapping_add(value as u32)
+    });
+    (hash % 1024) as f32 / 1024.0
+}
+
+fn asset_translation(base: Vec3, asset_id: &str) -> Vec3 {
+    let angle = id_hash_fraction(asset_id) * std::f32::consts::TAU;
+    let lateral = Vec3::new(angle.cos(), 0.0, angle.sin()) * ASSET_MARKER_RING_RADIUS;
+    base + lateral + Vec3::Y * ASSET_MARKER_VERTICAL_OFFSET
+}
+
+pub(super) fn spawn_power_plant_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    facility_id: &str,
+    location_id: &str,
+    location_pos: GeoPos,
+) {
+    let base = geo_to_vec3(location_pos, origin, config.cm_to_unit);
+    let translation = base
+        + Vec3::new(
+            FACILITY_MARKER_LATERAL_OFFSET,
+            FACILITY_MARKER_VERTICAL_OFFSET,
+            0.0,
+        );
+
+    if let Some(entity) = scene.power_plant_entities.get(facility_id) {
+        commands
+            .entity(*entity)
+            .insert(Transform::from_translation(translation));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.power_plant_mesh.clone()),
+            MeshMaterial3d(assets.power_plant_material.clone()),
+            Transform::from_translation(translation),
+            Name::new(format!("power_plant:{facility_id}:{location_id}")),
+            PowerPlantMarker {
+                id: facility_id.to_string(),
+            },
+            BaseScale(Vec3::ONE),
+        ))
+        .id();
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            format!("plant:{facility_id}"),
+            LOCATION_LABEL_OFFSET,
+            format!("label:power_plant:{facility_id}"),
+        );
+    });
+    scene
+        .power_plant_entities
+        .insert(facility_id.to_string(), entity);
+}
+
+pub(super) fn spawn_power_storage_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    facility_id: &str,
+    location_id: &str,
+    location_pos: GeoPos,
+) {
+    let base = geo_to_vec3(location_pos, origin, config.cm_to_unit);
+    let translation = base
+        + Vec3::new(
+            0.0,
+            FACILITY_MARKER_VERTICAL_OFFSET,
+            FACILITY_MARKER_LATERAL_OFFSET,
+        );
+
+    if let Some(entity) = scene.power_storage_entities.get(facility_id) {
+        commands
+            .entity(*entity)
+            .insert(Transform::from_translation(translation));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.power_storage_mesh.clone()),
+            MeshMaterial3d(assets.power_storage_material.clone()),
+            Transform::from_translation(translation),
+            Name::new(format!("power_storage:{facility_id}:{location_id}")),
+            PowerStorageMarker {
+                id: facility_id.to_string(),
+            },
+            BaseScale(Vec3::ONE),
+        ))
+        .id();
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            format!("storage:{facility_id}"),
+            LOCATION_LABEL_OFFSET,
+            format!("label:power_storage:{facility_id}"),
+        );
+    });
+    scene
+        .power_storage_entities
+        .insert(facility_id.to_string(), entity);
+}
+
+pub(super) fn spawn_asset_entity(
+    commands: &mut Commands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    scene: &mut Viewer3dScene,
+    origin: GeoPos,
+    asset_id: &str,
+    owner_pos: GeoPos,
+) {
+    let base = geo_to_vec3(owner_pos, origin, config.cm_to_unit);
+    let translation = asset_translation(base, asset_id);
+
+    if let Some(entity) = scene.asset_entities.get(asset_id) {
+        commands
+            .entity(*entity)
+            .insert(Transform::from_translation(translation));
+        return;
+    }
+
+    let entity = commands
+        .spawn((
+            Mesh3d(assets.asset_mesh.clone()),
+            MeshMaterial3d(assets.asset_material.clone()),
+            Transform::from_translation(translation),
+            Name::new(format!("asset:{asset_id}")),
+            AssetMarker {
+                id: asset_id.to_string(),
+            },
+            BaseScale(Vec3::ONE),
+        ))
+        .id();
+    commands.entity(entity).with_children(|parent| {
+        spawn_label(
+            parent,
+            assets,
+            format!("asset:{asset_id}"),
+            AGENT_LABEL_OFFSET,
+            format!("label:asset:{asset_id}"),
+        );
+    });
+    scene.asset_entities.insert(asset_id.to_string(), entity);
 }
 
 pub(super) fn spawn_label(

@@ -98,13 +98,16 @@
 
 
 ### 选中对象详情面板（2026-02-07 更新）
-- 右侧 UI 新增“Details”区块：点击 3D 视图中的 Agent/Location 后展示详情。
+- 右侧 UI 新增“Details”区块：点击 3D 视图中的对象后展示详情。
+- 已支持对象：Agent、Location、Asset、PowerPlant、PowerStorage。
 - Agent 详情包含：位置/坐标、机体参数、电力与热状态、资源、最近事件。
 - LLM 模式下，Agent 详情额外展示最近 LLM 输入输出：
   - `llm_input`（system+user prompt）
   - `llm_output`（completion 文本）
   - `llm_error / parse_error`（若存在）
 - Location 详情包含：名称/坐标、profile、资源、碎片物理与预算摘要、最近相关事件。
+- Asset 详情包含：种类、数量、归属者、归属者关联事件。
+- PowerPlant/PowerStorage 详情包含：设施参数、电力状态与相关电力事件。
 - 离线回放与 script 模式无 LLM trace 时，面板显示降级提示（`no llm trace yet`）。
 
 ### 测试策略
@@ -146,7 +149,7 @@
   - 场景中可见边界和地板参照，不再是“黑底悬浮点”。
 
 ### 现状缺口（信息直达视角，2026-02-07）
-- 对象覆盖不足：选中详情当前仅支持 Agent/Location，尚未覆盖 Asset/PowerPlant/PowerStorage/Chunk。
+- 对象覆盖仍有缺口：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage，尚未覆盖 Chunk。
 - 时序定位不足：live 模式 `Seek` 仅支持 `tick=0` 重置，缺少任意 tick 回看与时间轴跳转。
 - 联动检索不足：事件列表与 3D 对象仍是弱关联，缺少“点击事件 -> 定位对象”与“详情 -> 跳转事件上下文”。
 - LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
