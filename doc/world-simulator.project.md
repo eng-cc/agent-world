@@ -89,6 +89,11 @@
 - [x] 新增 LLM 决策解析与失败降级（`Wait`）
 - [x] 补充单元测试并通过 `cargo test -p agent_world`
 
+### 9. 场景测试覆盖矩阵
+- [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵
+- [x] 在 `doc/world-simulator/scenario-files.project.md` 记录矩阵任务与状态
+- [x] 新增 `llm_bootstrap` 场景并接入 scenario 枚举/解析/测试矩阵
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
