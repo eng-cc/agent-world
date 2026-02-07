@@ -297,6 +297,11 @@ fn spawn_world_background_adds_bounds_and_grid() {
         world_floor_material: Handle::default(),
         world_bounds_material: Handle::default(),
         world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
         label_font: Handle::default(),
     });
 
@@ -690,6 +695,11 @@ fn spawn_location_entity_adds_label_text() {
         world_floor_material: Handle::default(),
         world_bounds_material: Handle::default(),
         world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
         label_font: Handle::default(),
     });
 

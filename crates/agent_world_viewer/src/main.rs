@@ -39,6 +39,7 @@ mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
 mod ui_text;
+mod world_overlay;
 
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use headless::headless_report;
@@ -55,6 +56,11 @@ use timeline_controls::{
 };
 use ui_text::{
     agent_activity_summary, events_summary, format_status, selection_details_summary, world_summary,
+};
+use world_overlay::{
+    handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
+    update_world_overlay_status_text, update_world_overlays_3d, WorldOverlayConfig,
+    WorldOverlayUiState,
 };
 
 const WORLD_MIN_AXIS: f32 = 0.1;
@@ -83,6 +89,8 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dConfig::default())
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerSelection::default())
+        .insert_resource(WorldOverlayConfig::default())
+        .insert_resource(WorldOverlayUiState::default())
         .insert_resource(EventObjectLinkState::default())
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
@@ -108,9 +116,11 @@ fn run_ui(addr: String, offline: bool) {
                 handle_timeline_bar_drag,
                 handle_timeline_mark_jump_buttons,
                 handle_timeline_seek_submit,
+                handle_world_overlay_toggle_buttons,
                 handle_locate_focus_event_button,
                 handle_jump_selection_events_button,
                 update_event_object_link_text,
+                update_world_overlay_status_text,
                 update_timeline_ui,
                 update_ui,
             )
@@ -120,6 +130,7 @@ fn run_ui(addr: String, offline: bool) {
             Update,
             (
                 update_3d_scene,
+                update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
                 update_3d_viewport,
                 handle_control_buttons,
@@ -217,6 +228,8 @@ struct Viewer3dScene {
     chunk_entities: HashMap<String, Entity>,
     location_positions: HashMap<String, GeoPos>,
     background_entities: Vec<Entity>,
+    heat_overlay_entities: Vec<Entity>,
+    flow_overlay_entities: Vec<Entity>,
 }
 
 #[derive(Resource)]
@@ -239,6 +252,11 @@ struct Viewer3dAssets {
     world_floor_material: Handle<StandardMaterial>,
     world_bounds_material: Handle<StandardMaterial>,
     world_grid_material: Handle<StandardMaterial>,
+    heat_low_material: Handle<StandardMaterial>,
+    heat_mid_material: Handle<StandardMaterial>,
+    heat_high_material: Handle<StandardMaterial>,
+    flow_power_material: Handle<StandardMaterial>,
+    flow_trade_material: Handle<StandardMaterial>,
     label_font: Handle<Font>,
 }
 
@@ -590,6 +608,36 @@ fn setup_3d_scene(
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
+    let heat_low_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.24, 0.52, 0.88, 0.42),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let heat_mid_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.92, 0.62, 0.18, 0.48),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let heat_high_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.95, 0.26, 0.20, 0.55),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let flow_power_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.22, 0.72, 0.98, 0.62),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
+    let flow_trade_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.92, 0.80, 0.26, 0.58),
+        unlit: true,
+        alpha_mode: AlphaMode::Blend,
+        ..default()
+    });
 
     commands.insert_resource(Viewer3dAssets {
         agent_mesh,
@@ -610,6 +658,11 @@ fn setup_3d_scene(
         world_floor_material,
         world_bounds_material,
         world_grid_material,
+        heat_low_material,
+        heat_mid_material,
+        heat_high_material,
+        flow_power_material,
+        flow_trade_material,
         label_font,
     });
 
@@ -666,7 +719,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             root.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(280.0),
+                    height: Val::Px(340.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(6.0),
                     padding: UiRect::all(Val::Px(12.0)),
@@ -739,6 +792,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     SelectionText,
                 ));
 
+                spawn_world_overlay_controls(bar, font.clone());
                 spawn_event_object_link_controls(bar, font.clone());
                 spawn_timeline_controls(bar, font.clone());
             });
