@@ -70,6 +70,12 @@
 3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+
+## Agent 调试截图（给 Codex）
+- 一键闭环脚本：`./scripts/capture-viewer-frame.sh`
+- 默认行为：每次开始会清空 `.tmp/`，再启动 live server + Xvfb + viewer，并输出截图到 `.tmp/screens/`。
+- 常用参数示例：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
+
 ## 路线图（摘要）
 - M1：世界内核最小闭环（时间、地点、事件、行动校验、可恢复）
 - M2：持久化与回放（快照/事件日志、可审计、可分叉）

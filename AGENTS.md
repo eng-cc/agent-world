@@ -20,12 +20,18 @@
 - 执行cargo命令需要如下形式 env -u RUSTC_WRAPPER cargo check
 - 所有代码和功能(包括UI)应该都是可以被测试的，单元测试或者模拟闭环测试都可以
 
-## Agent 专用：UI 截图闭环调试（给 Codex 用）
+## Agent 专用：UI 截图闭环调试（给 Codex 用，优先脚本）
 - 目标：在无法直接“看实时窗口”时，完成 `运行程序 -> 保存截图 -> 读取截图 -> 继续调试` 的闭环。
 - 适用场景：`agent_world_viewer` 可视化问题定位（黑屏、布局、相机交互、文本状态等）。
 - 说明：此流程主要给 agent 使用，人类开发者可忽略。
 
-### 标准流程（Xvfb + ffmpeg）
+### 标准流程（优先使用脚本）
+1) 一键脚本（默认会先清空 `.tmp/`）：
+   `./scripts/capture-viewer-frame.sh`
+2) 可选参数：
+   `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
+
+### 手动流程（Xvfb + ffmpeg）
 1) 启动 live server（示例）：
    `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --tick-ms 300`
 2) 启动虚拟显示：
@@ -38,7 +44,7 @@
 5) agent 读取图片并分析，再继续改代码。
 
 ### 推荐约定
-- 临时产物统一放在 `.tmp/screens/`（日志、截图、窗口几何）。
+- 临时产物统一放在 `.tmp/screens/`（日志、截图、窗口几何）；默认每次新调试前由脚本清空 `.tmp/`。
 - 每次调试结束清理后台进程（viewer/server/Xvfb），避免端口或 DISPLAY 冲突。
 - 若截图全黑，优先排查：
   - 抓图时机过早（应用未首帧渲染）
