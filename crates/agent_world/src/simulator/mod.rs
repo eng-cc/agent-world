@@ -73,10 +73,9 @@ pub use types::{
     DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
 pub use world_model::{
-    physics_parameter_specs, Agent, Asset, AssetKind, AsteroidFragmentConfig, BoundaryReservation,
-    ChunkState, EconomyConfig, FragmentResourceError, Location, MaterialRadiationFactors,
-    MaterialWeights, PhysicsConfig, PhysicsParameterSpec, SpaceConfig, ThermalStatus, WorldConfig,
-    WorldModel,
+    Agent, Asset, AssetKind, AsteroidFragmentConfig, BoundaryReservation, ChunkState,
+    EconomyConfig, FragmentResourceError, Location, MaterialWeights, PhysicsConfig, SpaceConfig,
+    ThermalStatus, WorldConfig, WorldModel,
 };
 
 // Re-export power system types

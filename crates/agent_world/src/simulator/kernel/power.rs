@@ -10,9 +10,7 @@ impl WorldKernel {
         let mut events = Vec::new();
         let idle_cost = self.config.power.idle_cost_per_tick;
         let power_config = self.config.power.clone();
-        let thermal_capacity = self.config.physics.thermal_capacity;
         let thermal_dissipation = self.config.physics.thermal_dissipation;
-        let thermal_dissipation_gradient_bps = self.config.physics.thermal_dissipation_gradient_bps;
 
         let agent_ids: Vec<AgentId> = self.model.agents.keys().cloned().collect();
 
@@ -30,14 +28,8 @@ impl WorldKernel {
                 let old_state = agent.power.state;
                 let consumed = agent.power.consume(idle_cost, &power_config);
                 let new_state = agent.power.state;
-                let thermal_drop = Self::scaled_thermal_dissipation(
-                    agent.thermal.heat,
-                    thermal_capacity,
-                    thermal_dissipation,
-                    thermal_dissipation_gradient_bps,
-                );
-                if thermal_drop > 0 {
-                    agent.thermal.heat = agent.thermal.heat.saturating_sub(thermal_drop);
+                if thermal_dissipation > 0 {
+                    agent.thermal.heat = (agent.thermal.heat - thermal_dissipation).max(0);
                 }
                 (consumed, agent.power.level, old_state, new_state)
             };
@@ -66,27 +58,6 @@ impl WorldKernel {
         }
 
         events
-    }
-
-    fn scaled_thermal_dissipation(
-        heat: i64,
-        thermal_capacity: i64,
-        thermal_dissipation: i64,
-        thermal_dissipation_gradient_bps: i64,
-    ) -> i64 {
-        if heat <= 0 || thermal_dissipation <= 0 || thermal_dissipation_gradient_bps <= 0 {
-            return 0;
-        }
-
-        let reference_heat = thermal_capacity.max(1) as i128;
-        let numerator = (thermal_dissipation as i128)
-            .saturating_mul(heat as i128)
-            .saturating_mul(thermal_dissipation_gradient_bps as i128);
-        let denominator = reference_heat.saturating_mul(10_000);
-        let scaled = numerator
-            .saturating_add(denominator.saturating_sub(1))
-            .saturating_div(denominator);
-        scaled.clamp(1, i64::MAX as i128) as i64
     }
 
     /// Process power generation for all power plants.

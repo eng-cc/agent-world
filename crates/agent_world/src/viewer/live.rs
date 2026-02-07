@@ -745,9 +745,7 @@ mod tests {
 
     #[test]
     fn live_script_moves_between_locations() {
-        let mut config = WorldConfig::default();
-        config.physics.max_move_distance_cm_per_tick = i64::MAX;
-        config.physics.max_move_speed_cm_per_s = i64::MAX;
+        let config = WorldConfig::default();
         let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
         let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
 

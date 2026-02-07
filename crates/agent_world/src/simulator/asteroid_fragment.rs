@@ -2,7 +2,7 @@
 
 use crate::geometry::GeoPos;
 
-use super::types::LocationProfile;
+use super::types::{LocationProfile, MaterialKind};
 use super::world_model::{AsteroidFragmentConfig, Location, SpaceConfig};
 
 const MAX_PLACEMENT_ATTEMPTS: usize = 8;
@@ -69,11 +69,9 @@ pub fn generate_fragments(
 
                         let roll = rng.next_u32() % total_weights;
                         let material = config.material_weights.pick(roll);
-                        let material_factor =
-                            config.material_radiation_factors.factor_for(material);
                         let emission = estimate_radiation_emission(
                             radius_cm as f64,
-                            material_factor,
+                            material,
                             config.radiation_emission_scale,
                             config.radiation_radius_exponent,
                         );
@@ -125,12 +123,19 @@ fn spacing_allows(
 
 fn estimate_radiation_emission(
     radius_cm: f64,
-    material_factor: f64,
+    material: MaterialKind,
     emission_scale: f64,
     radius_exponent: f64,
 ) -> i64 {
+    let factor = match material {
+        MaterialKind::Silicate => 1.0,
+        MaterialKind::Metal => 1.2,
+        MaterialKind::Ice => 0.8,
+        MaterialKind::Carbon => 0.9,
+        MaterialKind::Composite => 1.1,
+    };
     let radius_term = radius_cm.max(1.0).powf(radius_exponent.max(0.0));
-    let base = radius_term * emission_scale.max(0.0) * material_factor.max(0.0);
+    let base = radius_term * emission_scale.max(0.0) * factor;
     base.round().max(1.0) as i64
 }
 

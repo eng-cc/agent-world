@@ -1,9 +1,8 @@
-use crate::geometry::{space_distance_cm, GeoPos};
+use crate::geometry::space_distance_cm;
 
-use super::super::chunking::CHUNK_SIZE_X_CM;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
 use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
-use super::super::world_model::{Agent, Location};
+use super::super::world_model::{movement_cost, Agent, Location};
 use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
 
@@ -261,32 +260,8 @@ impl WorldKernel {
                 }
                 let from = agent.location_id.clone();
                 let distance_cm = space_distance_cm(agent.pos, location.pos);
-                let physics = &self.config.physics;
-                let max_move_distance_cm = physics.max_move_distance_cm_per_tick;
-                if max_move_distance_cm > 0 && distance_cm > max_move_distance_cm {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::MoveDistanceExceeded {
-                            distance_cm,
-                            max_distance_cm: max_move_distance_cm,
-                        },
-                    };
-                }
-                let max_move_speed_cm_per_s = physics.max_move_speed_cm_per_s;
-                if max_move_speed_cm_per_s > 0 {
-                    let time_step_s = physics.time_step_s.max(1);
-                    let required_speed_cm_per_s =
-                        (distance_cm + time_step_s - 1).saturating_div(time_step_s);
-                    if required_speed_cm_per_s > max_move_speed_cm_per_s {
-                        return WorldEventKind::ActionRejected {
-                            reason: RejectReason::MoveSpeedExceeded {
-                                required_speed_cm_per_s,
-                                max_speed_cm_per_s: max_move_speed_cm_per_s,
-                                time_step_s,
-                            },
-                        };
-                    }
-                }
-                let electricity_cost = self.config.movement_cost(distance_cm);
+                let electricity_cost =
+                    movement_cost(distance_cm, self.config.move_cost_per_km_electricity);
                 if electricity_cost > 0 {
                     let available = agent.resources.get(ResourceKind::Electricity);
                     if available < electricity_cost {
@@ -366,21 +341,28 @@ impl WorldKernel {
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
-                let harvest_pos = match self.model.locations.get(&location_id) {
-                    Some(location) => location.pos,
+                let (emission, radius_cm) = match self.model.locations.get(&location_id) {
+                    Some(location) => (
+                        location.profile.radiation_emission_per_tick,
+                        location.profile.radius_cm,
+                    ),
                     None => {
                         return WorldEventKind::ActionRejected {
                             reason: RejectReason::LocationNotFound { location_id },
                         };
                     }
                 };
-                let local_available = self.radiation_available_at(harvest_pos);
+                let physics = &self.config.physics;
+                let path_cm = radius_cm.max(0) as f64;
+                let decay = (-physics.radiation_decay_k * path_cm).exp();
+                let local_available = ((emission.max(0) as f64) * decay
+                    + (physics.radiation_floor.max(0) as f64))
+                    .floor() as i64;
                 if local_available <= 0 {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::RadiationUnavailable { location_id },
                     };
                 }
-                let physics = &self.config.physics;
                 let mut available_for_harvest = local_available;
                 if physics.max_harvest_per_tick > 0 {
                     available_for_harvest = available_for_harvest.min(physics.max_harvest_per_tick);
@@ -807,51 +789,6 @@ impl WorldKernel {
             self.ensure_chunk_generated_at(pos, ChunkGenerationCause::Action)?;
         }
         Ok(())
-    }
-
-    fn radiation_available_at(&self, harvest_pos: GeoPos) -> i64 {
-        let physics = &self.config.physics;
-        let near_range_cm = CHUNK_SIZE_X_CM.max(1) as f64;
-        let mut near_sources = 0.0;
-        let mut background = 0.0;
-
-        for source in self.model.locations.values() {
-            let contribution = self.radiation_source_contribution(harvest_pos, source);
-            if contribution <= 0.0 {
-                continue;
-            }
-
-            let source_radius_cm = source.profile.radius_cm.max(1) as f64;
-            let source_distance_cm = space_distance_cm(harvest_pos, source.pos).max(0) as f64;
-            let surface_distance_cm = (source_distance_cm - source_radius_cm).max(0.0);
-
-            if surface_distance_cm <= near_range_cm {
-                near_sources += contribution;
-            } else {
-                background += contribution;
-            }
-        }
-
-        let floor = physics.radiation_floor.max(0);
-        let floor_cap = physics.radiation_floor_cap_per_tick.max(0);
-        let floor_contribution = floor.min(floor_cap) as f64;
-        (near_sources + background + floor_contribution).floor() as i64
-    }
-
-    fn radiation_source_contribution(&self, harvest_pos: GeoPos, source: &Location) -> f64 {
-        let emission = source.profile.radiation_emission_per_tick.max(0) as f64;
-        if emission <= 0.0 {
-            return 0.0;
-        }
-
-        let source_radius_cm = source.profile.radius_cm.max(1) as f64;
-        let source_distance_cm = space_distance_cm(harvest_pos, source.pos).max(0) as f64;
-        let surface_distance_cm = (source_distance_cm - source_radius_cm).max(0.0);
-        let normalized_distance = surface_distance_cm / source_radius_cm;
-
-        let geometric_attenuation = 1.0 / (1.0 + normalized_distance * normalized_distance);
-        let medium_decay = (-self.config.physics.radiation_decay_k * surface_distance_cm).exp();
-        emission * geometric_attenuation * medium_decay
     }
 
     fn compute_refine_compound_outputs(&self, compound_mass_g: i64) -> (i64, i64) {
