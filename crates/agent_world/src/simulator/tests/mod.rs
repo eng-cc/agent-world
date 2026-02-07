@@ -16,6 +16,7 @@ fn pos(x: f64, y: f64) -> GeoPos {
 mod asteroid_fragment;
 mod basics;
 mod chunking;
+mod conservation;
 mod fragment_physics;
 mod init;
 mod kernel;
