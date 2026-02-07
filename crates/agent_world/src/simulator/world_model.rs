@@ -17,6 +17,9 @@ use super::types::{
 };
 use super::ResourceOwner;
 
+const MOVE_COST_REFERENCE_TIME_STEP_S: i64 = 10;
+const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
+
 // ============================================================================
 // World Entities
 // ============================================================================
@@ -444,7 +447,12 @@ impl WorldConfig {
     }
 
     pub fn movement_cost(&self, distance_cm: i64) -> i64 {
-        movement_cost(distance_cm, self.move_cost_per_km_electricity)
+        let per_km_cost = calibrated_move_cost_per_km(
+            self.move_cost_per_km_electricity,
+            self.physics.time_step_s,
+            self.physics.power_unit_j,
+        );
+        movement_cost(distance_cm, per_km_cost)
     }
 }
 
@@ -484,8 +492,8 @@ pub struct PhysicsConfig {
 impl Default for PhysicsConfig {
     fn default() -> Self {
         Self {
-            time_step_s: 10,
-            power_unit_j: 1_000,
+            time_step_s: MOVE_COST_REFERENCE_TIME_STEP_S,
+            power_unit_j: MOVE_COST_REFERENCE_POWER_UNIT_J,
             max_move_distance_cm_per_tick: 1_000_000,
             max_move_speed_cm_per_s: 100_000,
             radiation_floor: 1,
@@ -758,6 +766,23 @@ impl SpaceConfig {
             && pos.z_cm >= 0.0
             && pos.z_cm <= max_z
     }
+}
+
+fn calibrated_move_cost_per_km(base_per_km_cost: i64, time_step_s: i64, power_unit_j: i64) -> i64 {
+    if base_per_km_cost <= 0 {
+        return 0;
+    }
+
+    let time_step_s = time_step_s.max(1) as i128;
+    let power_unit_j = power_unit_j.max(1) as i128;
+    let scaled = (base_per_km_cost as i128)
+        .saturating_mul(time_step_s)
+        .saturating_mul(MOVE_COST_REFERENCE_POWER_UNIT_J as i128);
+    let denom = (MOVE_COST_REFERENCE_TIME_STEP_S as i128).saturating_mul(power_unit_j);
+    let adjusted = scaled
+        .saturating_add(denom.saturating_sub(1))
+        .saturating_div(denom);
+    adjusted.clamp(0, i64::MAX as i128) as i64
 }
 
 /// Calculate movement cost based on distance and per-km cost.

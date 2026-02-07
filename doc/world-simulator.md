@@ -77,6 +77,7 @@
 - **参数定义（关键物理参数）**
   - `time_step_s`：每 tick 的真实时间。
   - `power_unit_j`：电力单位对应的能量（J）。
+  - `move_cost_per_km_electricity`：移动基准能耗系数（以 `time_step_s=10` 且 `power_unit_j=1000` 为参考口径）。
   - `max_move_distance_cm_per_tick`：每 tick 最大位移（超限移动直接拒绝）。
   - `max_move_speed_cm_per_s`：移动速度上限（按 `required_speed = ceil(distance_cm / time_step_s)` 计算）。
   - `radiation_floor`：外部背景辐射通量（开放系统输入，不来自本地碎片库存）。
@@ -91,6 +92,7 @@
 - **参数草案（更具体的默认值与范围）**
   - `time_step_s`：默认 10s；范围 1s~60s。
   - `power_unit_j`：1 电力单位≈1 kJ（默认），范围 0.1~10 kJ。
+  - `move_cost_per_km_electricity`：默认 1（参考口径下每 km 基准电力消耗）；范围 1~20。
   - `max_move_distance_cm_per_tick`：默认 1,000,000 cm（10 km）/ tick；范围 100~5,000,000 cm。
   - `max_move_speed_cm_per_s`：默认 100,000 cm/s（1 km/s）；范围 100~500,000 cm/s。
   - `radiation_floor`：默认 1 单位/ tick；范围 0~10（解释为外部背景通量强度）。
@@ -197,7 +199,10 @@
 ### M1 行动规则（初版）
 - **规则实现**：以下规则由 Rule Modules 以 WASM 实现，内核仅保留位置/资源/基础物理不变量校验。
 - **时间推进**：每个 Action 处理会推进 1 tick；事件按队列顺序确定性处理。
-- **移动成本**：`MoveAgent` 按**三维欧氏距离**计费，电力消耗 = `ceil(distance_km) * 1`（电力单位/公里）；若电力不足则拒绝。
+- **移动成本**：`MoveAgent` 按**三维欧氏距离**计费，
+  - `effective_move_cost_per_km = ceil(move_cost_per_km_electricity * time_step_s / 10 * 1000 / power_unit_j)`
+  - `electricity_cost = ceil(distance_cm / 100000) * effective_move_cost_per_km`
+  - 默认参数下（`time_step_s=10`, `power_unit_j=1000`, `move_cost_per_km_electricity=1`）即 `1` 电力单位/公里。
 - **移动约束**：移动到相同 `location_id` 视为无效动作并拒绝。
 - **可见性**：`query_observation` 以固定可见半径输出可见 Agent/Location（默认 **100 km**）。
 - **资源交互**：
@@ -208,7 +213,7 @@
   - 采集上限受 `max_harvest_per_tick` 与热管理约束影响；采集会增加热量。
 - **配置参数（内核级）**：
   - `visibility_range_cm`（默认 `10_000_000`，即 **100 km**）
-  - `move_cost_per_km_electricity`（默认 `1`，电力单位/公里）
+  - `move_cost_per_km_electricity`（默认 `1`，参考口径的公里基准能耗系数）
   - `space`（小行星带空间尺寸：`width_cm/depth_cm/height_cm`）
   - `physics`（辐射/热/侵蚀参数）
   - `asteroid_fragment`（碎片分布生成器参数）
@@ -373,7 +378,11 @@
   - 已完成：`MoveAgent` 增加“位移上限 + 速度上限”双重校验，超限返回明确拒绝原因。
   - 已完成：新增单测覆盖“超位移拒绝”与“超速度拒绝”路径，并为长距用例显式配置上限。
   - 验收：超限移动被拒绝或分段执行，回放结果确定。
-- [ ] **C6 能耗参数重标定**：联动 `time_step_s`、`power_unit_j`、移动能耗系数，形成同一数量级口径。
+- [x] **C6 能耗参数重标定**：联动 `time_step_s`、`power_unit_j`、移动能耗系数，形成同一数量级口径。
+  - 已完成：将 `move_cost_per_km_electricity` 解释为参考口径（10s tick、1kJ 电力单位）下的基准系数，并在运行时按 `time_step_s` 与 `power_unit_j` 做缩放。
+  - 已完成：移动动作统一使用校准后的每 km 成本，避免 `time_step_s` / `power_unit_j` 调整后移动能耗口径漂移。
+  - 已完成：新增测试覆盖“time_step/power_unit 联动缩放”与“MoveAgent 使用校准成本”两条路径。
+  - 默认示例：1m 机体执行 1~5km 典型位移，默认参数下约消耗 1~5 电力单位（约 1~5kJ）。
   - 验收：给出默认参数推导示例（1m 机体在典型位移下的能耗区间）。
 - [ ] **C7 热模型从常数散热升级**：将固定散热替换为“至少与温差相关”的可配置散热模型。
   - 验收：高热状态下散热更快，低热状态下散热更慢；不会出现负热量。

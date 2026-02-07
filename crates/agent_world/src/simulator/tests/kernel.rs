@@ -578,6 +578,76 @@ fn kernel_config_overrides_defaults() {
 }
 
 #[test]
+fn movement_cost_scales_with_time_step_and_power_unit() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 2;
+
+    assert_eq!(config.movement_cost(CM_PER_KM), 2);
+
+    config.physics.time_step_s = 20;
+    assert_eq!(config.movement_cost(CM_PER_KM), 4);
+
+    config.physics.power_unit_j = 2_000;
+    assert_eq!(config.movement_cost(CM_PER_KM), 2);
+
+    config.physics.power_unit_j = 500;
+    assert_eq!(config.movement_cost(CM_PER_KM), 8);
+}
+
+#[test]
+fn movement_cost_uses_calibrated_per_km_in_move_action() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 2;
+    config.physics.time_step_s = 20;
+    config.physics.power_unit_j = 2_000;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
+    config.physics.max_harvest_per_tick = 50;
+    let mut kernel = WorldKernel::with_config(config);
+
+    let mut source_profile = LocationProfile::default();
+    source_profile.radiation_emission_per_tick = 100;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: source_profile,
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "outpost".to_string(),
+        pos: pos(CM_PER_KM as f64, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-1".to_string(),
+        max_amount: 10,
+    });
+    let _ = kernel.step().unwrap();
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+
+    let event = kernel.step().unwrap();
+    match event.kind {
+        WorldEventKind::AgentMoved {
+            electricity_cost, ..
+        } => {
+            assert_eq!(electricity_cost, 2);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn kernel_transfer_requires_colocation() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {

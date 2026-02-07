@@ -3,7 +3,7 @@ use crate::geometry::{space_distance_cm, GeoPos};
 use super::super::chunking::CHUNK_SIZE_X_CM;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
 use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
-use super::super::world_model::{movement_cost, Agent, Location};
+use super::super::world_model::{Agent, Location};
 use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
 
@@ -286,8 +286,7 @@ impl WorldKernel {
                         };
                     }
                 }
-                let electricity_cost =
-                    movement_cost(distance_cm, self.config.move_cost_per_km_electricity);
+                let electricity_cost = self.config.movement_cost(distance_cm);
                 if electricity_cost > 0 {
                     let available = agent.resources.get(ResourceKind::Electricity);
                     if available < electricity_cost {
