@@ -294,7 +294,11 @@ fn event_object_link_controls_use_wrapping_layout() {
     app.add_systems(Startup, |mut commands: Commands| {
         let root = commands.spawn(Node::default()).id();
         commands.entity(root).with_children(|parent| {
-            spawn_event_object_link_controls(parent, Handle::<Font>::default());
+            spawn_event_object_link_controls(
+                parent,
+                Handle::<Font>::default(),
+                crate::i18n::UiLocale::EnUs,
+            );
         });
     });
 

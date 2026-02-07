@@ -4,6 +4,9 @@ use agent_world::simulator::{
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
+use crate::i18n::{locale_or_default, UiI18n, UiLocale};
+use crate::ui_locale_text::{overlay_button_label, overlay_loading, overlay_status};
+
 use super::*;
 
 const FLOW_WINDOW: usize = 28;
@@ -49,6 +52,11 @@ pub(super) struct WorldOverlayToggleButton {
 }
 
 #[derive(Component)]
+pub(super) struct WorldOverlayToggleLabel {
+    kind: WorldOverlayKind,
+}
+
+#[derive(Component)]
 pub(super) struct WorldOverlayStatusText;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -71,7 +79,11 @@ struct LocationHeatPoint {
     intensity: i64,
 }
 
-pub(super) fn spawn_world_overlay_controls(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
+pub(super) fn spawn_world_overlay_controls(
+    parent: &mut ChildSpawnerCommands,
+    font: Handle<Font>,
+    locale: UiLocale,
+) {
     parent
         .spawn((
             Node {
@@ -101,27 +113,27 @@ pub(super) fn spawn_world_overlay_controls(parent: &mut ChildSpawnerCommands, fo
                     buttons,
                     &font,
                     WorldOverlayKind::Chunk,
-                    "Chunk",
+                    overlay_button_label("chunk", locale),
                     Color::srgb(0.25, 0.31, 0.37),
                 );
                 spawn_overlay_button(
                     buttons,
                     &font,
                     WorldOverlayKind::Heat,
-                    "Heat",
+                    overlay_button_label("heat", locale),
                     Color::srgb(0.35, 0.28, 0.14),
                 );
                 spawn_overlay_button(
                     buttons,
                     &font,
                     WorldOverlayKind::Flow,
-                    "Flow",
+                    overlay_button_label("flow", locale),
                     Color::srgb(0.2, 0.26, 0.38),
                 );
             });
 
             root.spawn((
-                Text::new("Overlay: loading"),
+                Text::new(overlay_loading(locale)),
                 TextFont {
                     font,
                     font_size: 10.0,
@@ -162,8 +174,31 @@ fn spawn_overlay_button(
                     ..default()
                 },
                 TextColor(Color::WHITE),
+                WorldOverlayToggleLabel { kind },
             ));
         });
+}
+
+pub(super) fn update_world_overlay_toggle_labels(
+    i18n: Option<Res<UiI18n>>,
+    mut query: Query<(&WorldOverlayToggleLabel, &mut Text)>,
+) {
+    let Some(i18n) = i18n else {
+        return;
+    };
+    if !i18n.is_changed() {
+        return;
+    }
+
+    let locale = i18n.locale;
+    for (label, mut text) in &mut query {
+        text.0 = match label.kind {
+            WorldOverlayKind::Chunk => overlay_button_label("chunk", locale),
+            WorldOverlayKind::Heat => overlay_button_label("heat", locale),
+            WorldOverlayKind::Flow => overlay_button_label("flow", locale),
+        }
+        .to_string();
+    }
 }
 
 pub(super) fn handle_world_overlay_toggle_buttons(
@@ -190,14 +225,22 @@ pub(super) fn handle_world_overlay_toggle_buttons(
 pub(super) fn update_world_overlay_status_text(
     state: Res<ViewerState>,
     config: Res<WorldOverlayConfig>,
+    i18n: Option<Res<UiI18n>>,
     mut ui_state: ResMut<WorldOverlayUiState>,
     mut text_query: Query<&mut Text, With<WorldOverlayStatusText>>,
 ) {
-    if !state.is_changed() && !config.is_changed() {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !config.is_changed() && !locale_changed {
         return;
     }
 
-    let summary = build_overlay_status_text(state.snapshot.as_ref(), &state.events, *config);
+    let locale = locale_or_default(i18n.as_deref());
+
+    let summary =
+        build_overlay_status_text(state.snapshot.as_ref(), &state.events, *config, locale);
     ui_state.status_text = summary.clone();
 
     if let Ok(mut text) = text_query.single_mut() {
@@ -314,16 +357,18 @@ fn build_overlay_status_text(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
     config: WorldOverlayConfig,
+    locale: UiLocale,
 ) -> String {
-    let mode = format!(
-        "Overlay[chunk:{} heat:{} flow:{}]",
-        on_off(config.show_chunk_overlay),
-        on_off(config.show_resource_heatmap),
-        on_off(config.show_flow_overlay)
-    );
-
     let Some(snapshot) = snapshot else {
-        return format!("{mode} no snapshot");
+        return overlay_status(
+            None,
+            None,
+            0,
+            config.show_chunk_overlay,
+            config.show_resource_heatmap,
+            config.show_flow_overlay,
+            locale,
+        );
     };
 
     let (unexplored, generated, exhausted) = chunk_state_counts(snapshot);
@@ -338,8 +383,14 @@ fn build_overlay_status_text(
     )
     .len();
 
-    format!(
-        "{mode} chunks(u/g/e)={unexplored}/{generated}/{exhausted} heat_peak={heat_peak} flows={flow_count}"
+    overlay_status(
+        Some((unexplored, generated, exhausted)),
+        Some(heat_peak),
+        flow_count,
+        config.show_chunk_overlay,
+        config.show_resource_heatmap,
+        config.show_flow_overlay,
+        locale,
     )
 }
 
@@ -483,14 +534,6 @@ fn line_transform(from: Vec3, to: Vec3, thickness: f32) -> Transform {
     }
 }
 
-fn on_off(value: bool) -> &'static str {
-    if value {
-        "on"
-    } else {
-        "off"
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -559,8 +602,12 @@ mod tests {
             }),
         }];
 
-        let text =
-            build_overlay_status_text(Some(&snapshot), &events, WorldOverlayConfig::default());
+        let text = build_overlay_status_text(
+            Some(&snapshot),
+            &events,
+            WorldOverlayConfig::default(),
+            UiLocale::EnUs,
+        );
         assert!(text.contains("Overlay[chunk:on heat:on flow:on]"));
         assert!(text.contains("chunks(u/g/e)=0/1/0"));
         assert!(text.contains("heat_peak=loc-b:80"));

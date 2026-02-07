@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::i18n::{locale_or_default, step_button_label, UiI18n};
+
 use super::{ControlButton, ViewerControl, ViewerState};
 
 #[derive(Component, Clone, Copy)]
@@ -104,12 +106,19 @@ pub(super) fn track_step_loading_state(
 
 pub(super) fn update_step_button_loading_ui(
     loading: Res<StepControlLoadingState>,
+    i18n: Option<Res<UiI18n>>,
     mut button_query: Query<(&mut BackgroundColor, &ButtonVisualBase), With<StepButton>>,
     mut label_query: Query<&mut Text, With<StepButtonLabel>>,
 ) {
-    if !loading.is_changed() {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !loading.is_changed() && !locale_changed {
         return;
     }
+
+    let locale = locale_or_default(i18n.as_deref());
 
     for (mut background, base) in &mut button_query {
         background.0 = if loading.pending {
@@ -120,11 +129,7 @@ pub(super) fn update_step_button_loading_ui(
     }
 
     for mut label in &mut label_query {
-        label.0 = if loading.pending {
-            "Step ...".to_string()
-        } else {
-            "Step".to_string()
-        };
+        label.0 = step_button_label(locale, loading.pending).to_string();
     }
 }
 

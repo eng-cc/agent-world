@@ -5,6 +5,11 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
+use crate::i18n::{locale_or_default, UiI18n, UiLocale};
+use crate::ui_locale_text::{
+    seek_button_label, timeline_insights, timeline_jump_label, timeline_mark_filter_label,
+    timeline_mode_label, timeline_status_line,
+};
 use crate::{ControlButton, ViewerClient, ViewerState};
 
 const DENSITY_BINS: usize = 16;
@@ -96,6 +101,14 @@ pub(super) struct TimelineMarkFilterLabel {
     kind: TimelineMarkKind,
 }
 
+#[derive(Component)]
+pub(super) struct TimelineMarkJumpLabel {
+    kind: TimelineMarkKind,
+}
+
+#[derive(Component)]
+pub(super) struct TimelineSeekLabel;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TimelineKeyInsights {
     error_ticks: Vec<u64>,
@@ -104,7 +117,11 @@ struct TimelineKeyInsights {
     density_sparkline: String,
 }
 
-pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
+pub(super) fn spawn_timeline_controls(
+    parent: &mut ChildSpawnerCommands,
+    font: Handle<Font>,
+    locale: UiLocale,
+) {
     parent
         .spawn((
             Node {
@@ -120,7 +137,13 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
         ))
         .with_children(|timeline| {
             timeline.spawn((
-                Text::new("Timeline: now=0 target=0 max=0"),
+                Text::new(timeline_status_line(
+                    0,
+                    0,
+                    0,
+                    timeline_mode_label(false, false, locale),
+                    locale,
+                )),
                 TextFont {
                     font: font.clone(),
                     font_size: 11.0,
@@ -131,9 +154,19 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
             ));
 
             timeline.spawn((
-                Text::new(
-                    "Marks: err=0 llm=0 peak=0\nTicks: E[-] L[-] P[-]\nDensity: ················",
-                ),
+                Text::new(timeline_insights(
+                    0,
+                    0,
+                    0,
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    true,
+                    true,
+                    true,
+                    "················",
+                    locale,
+                )),
                 TextFont {
                     font: font.clone(),
                     font_size: 10.0,
@@ -155,9 +188,9 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                     ..default()
                 })
                 .with_children(|filters| {
-                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Error);
-                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Llm);
-                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Peak);
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Error, locale);
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Llm, locale);
+                    spawn_mark_filter_button(filters, &font, TimelineMarkKind::Peak, locale);
                 });
 
             timeline
@@ -175,21 +208,21 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                     spawn_mark_jump_button(
                         marks,
                         &font,
-                        "Jump Err",
+                        timeline_jump_label("err", locale),
                         TimelineMarkKind::Error,
                         Color::srgb(0.42, 0.2, 0.2),
                     );
                     spawn_mark_jump_button(
                         marks,
                         &font,
-                        "Jump LLM",
+                        timeline_jump_label("llm", locale),
                         TimelineMarkKind::Llm,
                         Color::srgb(0.2, 0.32, 0.42),
                     );
                     spawn_mark_jump_button(
                         marks,
                         &font,
-                        "Jump Peak",
+                        timeline_jump_label("peak", locale),
                         TimelineMarkKind::Peak,
                         Color::srgb(0.32, 0.28, 0.16),
                     );
@@ -230,13 +263,14 @@ pub(super) fn spawn_timeline_controls(parent: &mut ChildSpawnerCommands, font: H
                         ))
                         .with_children(|button| {
                             button.spawn((
-                                Text::new("Seek"),
+                                Text::new(seek_button_label(locale)),
                                 TextFont {
                                     font: font.clone(),
                                     font_size: 11.0,
                                     ..default()
                                 },
                                 TextColor(Color::WHITE),
+                                TimelineSeekLabel,
                             ));
                         });
                 });
@@ -304,6 +338,7 @@ fn spawn_mark_filter_button(
     buttons: &mut ChildSpawnerCommands,
     font: &Handle<Font>,
     kind: TimelineMarkKind,
+    locale: UiLocale,
 ) {
     let enabled = true;
     buttons
@@ -322,7 +357,7 @@ fn spawn_mark_filter_button(
         ))
         .with_children(|button| {
             button.spawn((
-                Text::new(mark_filter_label(kind, enabled)),
+                Text::new(mark_filter_label(kind, enabled, locale)),
                 TextFont {
                     font: font.clone(),
                     font_size: 11.0,
@@ -364,6 +399,7 @@ fn spawn_mark_jump_button(
                     ..default()
                 },
                 TextColor(Color::WHITE),
+                TimelineMarkJumpLabel { kind },
             ));
         });
 }
@@ -420,12 +456,19 @@ pub(super) fn handle_timeline_mark_filter_buttons(
 
 pub(super) fn update_timeline_mark_filter_ui(
     filters: Res<TimelineMarkFilterState>,
+    i18n: Option<Res<UiI18n>>,
     mut button_query: Query<(&TimelineMarkFilterButton, &mut BackgroundColor)>,
     mut label_query: Query<(&TimelineMarkFilterLabel, &mut Text)>,
 ) {
-    if !filters.is_changed() {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !filters.is_changed() && !locale_changed {
         return;
     }
+
+    let locale = locale_or_default(i18n.as_deref());
 
     for (button, mut background) in &mut button_query {
         let enabled = filters.is_enabled(button.kind);
@@ -434,7 +477,7 @@ pub(super) fn update_timeline_mark_filter_ui(
 
     for (label, mut text) in &mut label_query {
         let enabled = filters.is_enabled(label.kind);
-        text.0 = mark_filter_label(label.kind, enabled);
+        text.0 = mark_filter_label(label.kind, enabled, locale);
     }
 }
 
@@ -520,35 +563,41 @@ pub(super) fn handle_timeline_bar_drag(
 pub(super) fn update_timeline_ui(
     state: Res<ViewerState>,
     timeline: Res<TimelineUiState>,
+    i18n: Option<Res<UiI18n>>,
     mark_filters: Option<Res<TimelineMarkFilterState>>,
     mut queries: ParamSet<(
         Query<&mut Text, With<TimelineStatusText>>,
         Query<&mut Text, With<TimelineInsightsText>>,
         Query<&mut Node, With<TimelineBarFill>>,
+        Query<(&TimelineMarkJumpLabel, &mut Text)>,
+        Query<&mut Text, With<TimelineSeekLabel>>,
     )>,
 ) {
     let filter_changed = mark_filters
         .as_ref()
         .map(|filters| filters.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !timeline.is_changed() && !filter_changed {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !timeline.is_changed() && !filter_changed && !locale_changed {
         return;
     }
 
+    let locale = locale_or_default(i18n.as_deref());
+
     let current_tick = current_tick_from_state(&state);
     let axis_max = timeline_axis_max(&timeline, current_tick);
-    let mode_label = if timeline.drag_active {
-        "dragging"
-    } else if timeline.manual_override {
-        "manual"
-    } else {
-        "follow"
-    };
+    let mode_label = timeline_mode_label(timeline.drag_active, timeline.manual_override, locale);
 
     if let Ok(mut text) = queries.p0().single_mut() {
-        text.0 = format!(
-            "Timeline: now={} target={} max={} mode={}",
-            current_tick, timeline.target_tick, axis_max, mode_label
+        text.0 = timeline_status_line(
+            current_tick,
+            timeline.target_tick,
+            axis_max,
+            mode_label,
+            locale,
         );
     }
 
@@ -559,18 +608,18 @@ pub(super) fn update_timeline_ui(
             filters,
         );
         let filter_state = filters.copied().unwrap_or_default();
-        text.0 = format!(
-            "Marks: err={} llm={} peak={}\nTicks: E[{}] L[{}] P[{}]\nFilter: err={} llm={} peak={}\nDensity: {}",
+        text.0 = timeline_insights(
             key.error_ticks.len(),
             key.llm_ticks.len(),
             key.resource_peak_ticks.len(),
             format_tick_list(&key.error_ticks, MAX_TICK_LABELS),
             format_tick_list(&key.llm_ticks, MAX_TICK_LABELS),
             format_tick_list(&key.resource_peak_ticks, MAX_TICK_LABELS),
-            enabled_label(filter_state.show_error),
-            enabled_label(filter_state.show_llm),
-            enabled_label(filter_state.show_peak),
-            key.density_sparkline,
+            filter_state.show_error,
+            filter_state.show_llm,
+            filter_state.show_peak,
+            &key.density_sparkline,
+            locale,
         );
     }
 
@@ -582,6 +631,18 @@ pub(super) fn update_timeline_ui(
 
     for mut fill in &mut queries.p2() {
         fill.width = Val::Percent(progress);
+    }
+
+    for (jump, mut text) in &mut queries.p3() {
+        text.0 = match jump.kind {
+            TimelineMarkKind::Error => timeline_jump_label("err", locale).to_string(),
+            TimelineMarkKind::Llm => timeline_jump_label("llm", locale).to_string(),
+            TimelineMarkKind::Peak => timeline_jump_label("peak", locale).to_string(),
+        };
+    }
+
+    for mut text in &mut queries.p4() {
+        text.0 = seek_button_label(locale).to_string();
     }
 }
 
@@ -645,21 +706,13 @@ fn mark_filter_background(kind: TimelineMarkKind, enabled: bool) -> Color {
     }
 }
 
-fn mark_filter_label(kind: TimelineMarkKind, enabled: bool) -> String {
-    let prefix = match kind {
-        TimelineMarkKind::Error => "Err",
-        TimelineMarkKind::Llm => "LLM",
-        TimelineMarkKind::Peak => "Peak",
+fn mark_filter_label(kind: TimelineMarkKind, enabled: bool, locale: UiLocale) -> String {
+    let key = match kind {
+        TimelineMarkKind::Error => "err",
+        TimelineMarkKind::Llm => "llm",
+        TimelineMarkKind::Peak => "peak",
     };
-    format!("{}:{}", prefix, if enabled { "ON" } else { "OFF" })
-}
-
-fn enabled_label(enabled: bool) -> &'static str {
-    if enabled {
-        "on"
-    } else {
-        "off"
-    }
+    timeline_mark_filter_label(key, enabled, locale)
 }
 
 fn build_timeline_key_insights(

@@ -2,6 +2,11 @@ use agent_world::simulator::WorldEvent;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
+use crate::i18n::UiLocale;
+use crate::ui_locale_text::{
+    event_links_empty, event_links_hint, event_links_waiting, localized_event_row_label,
+};
+
 use super::selection_linking::{event_primary_target, target_entity, EventObjectLinkState};
 use super::*;
 
@@ -18,7 +23,11 @@ pub(super) struct EventClickButton {
     event_id: u64,
 }
 
-pub(super) fn spawn_event_click_list(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
+pub(super) fn spawn_event_click_list(
+    parent: &mut ChildSpawnerCommands,
+    font: Handle<Font>,
+    locale: UiLocale,
+) {
     parent
         .spawn((
             Node {
@@ -35,7 +44,7 @@ pub(super) fn spawn_event_click_list(parent: &mut ChildSpawnerCommands, font: Ha
         ))
         .with_children(|list| {
             list.spawn((
-                Text::new("Event Links:\n(waiting events)"),
+                Text::new(event_links_waiting(locale)),
                 TextFont {
                     font,
                     font_size: 11.0,
@@ -49,6 +58,7 @@ pub(super) fn spawn_event_click_list(parent: &mut ChildSpawnerCommands, font: Ha
 pub(super) fn update_event_click_list_ui(
     mut commands: Commands,
     state: Res<ViewerState>,
+    i18n: Option<Res<crate::i18n::UiI18n>>,
     timeline: Option<Res<TimelineUiState>>,
     roots: Query<(Entity, &EventClickListRoot, Option<&Children>)>,
 ) {
@@ -56,9 +66,15 @@ pub(super) fn update_event_click_list_ui(
         .as_ref()
         .map(|timeline| timeline.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !timeline_changed {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !timeline_changed && !locale_changed {
         return;
     }
+
+    let locale = crate::i18n::locale_or_default(i18n.as_deref());
 
     let focus = focus_tick(&state, timeline.as_deref());
 
@@ -74,7 +90,7 @@ pub(super) fn update_event_click_list_ui(
 
             if window.is_empty() {
                 list.spawn((
-                    Text::new("Event Links:\n(no events)"),
+                    Text::new(event_links_empty(locale)),
                     TextFont {
                         font: marker.font.clone(),
                         font_size: 11.0,
@@ -86,7 +102,7 @@ pub(super) fn update_event_click_list_ui(
             }
 
             list.spawn((
-                Text::new("Event Links: click row to locate object"),
+                Text::new(event_links_hint(locale)),
                 TextFont {
                     font: marker.font.clone(),
                     font_size: 11.0,
@@ -116,7 +132,7 @@ pub(super) fn update_event_click_list_ui(
                 ))
                 .with_children(|button| {
                     button.spawn((
-                        Text::new(event_row_label(event, focused)),
+                        Text::new(event_row_label(event, focused, locale)),
                         TextFont {
                             font: marker.font.clone(),
                             font_size: 11.0,
@@ -245,14 +261,10 @@ fn event_window(
     )
 }
 
-fn event_row_label(event: &WorldEvent, focused: bool) -> String {
-    let mut body = format!("#{:>3} t{:>4} {:?}", event.id, event.time, event.kind);
+fn event_row_label(event: &WorldEvent, focused: bool, locale: UiLocale) -> String {
+    let mut body = localized_event_row_label(event, focused, locale);
     truncate_chars(&mut body, EVENT_LABEL_MAX_CHARS);
-    if focused {
-        format!(">> {body}")
-    } else {
-        format!("   {body}")
-    }
+    body
 }
 
 fn truncate_chars(text: &mut String, limit: usize) {

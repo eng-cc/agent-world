@@ -91,6 +91,9 @@
 - [x] 右侧滚轮命中改为按 UI 实际边界（ComputedNode）判定，修复上下半区随机串滚
 - [x] 输出 Viewer UI 多语言支持设计文档（`doc/world-simulator/viewer-i18n.md`）
 - [x] 输出 Viewer UI 多语言支持项目管理文档（`doc/world-simulator/viewer-i18n.project.md`）
+- [x] Viewer UI 多语言落地：默认中文 + 顶部语言切换（中文/English）
+- [x] Viewer UI 多语言文案迁移（status/selection/timeline/diagnosis/overlay/link/details）
+- [x] Viewer UI 多语言回归测试通过（`cargo test -p agent_world_viewer`）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

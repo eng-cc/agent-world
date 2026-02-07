@@ -5,6 +5,11 @@ use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::i18n::{locale_or_default, UiI18n, UiLocale};
+use crate::ui_locale_text::{
+    jump_selection_label, link_ready, locate_focus_label, map_link_message_for_locale,
+};
+
 use super::*;
 
 #[derive(Resource)]
@@ -15,7 +20,7 @@ pub(super) struct EventObjectLinkState {
 impl Default for EventObjectLinkState {
     fn default() -> Self {
         Self {
-            message: "Link: ready".to_string(),
+            message: link_ready(UiLocale::EnUs).to_string(),
         }
     }
 }
@@ -29,6 +34,12 @@ pub(super) struct JumpSelectionEventsButton;
 #[derive(Component)]
 pub(super) struct EventObjectLinkText;
 
+#[derive(Component)]
+pub(super) struct LocateFocusEventButtonLabel;
+
+#[derive(Component)]
+pub(super) struct JumpSelectionEventsButtonLabel;
+
 #[derive(Clone)]
 pub(super) struct SelectionTarget {
     pub(super) kind: SelectionKind,
@@ -39,6 +50,7 @@ pub(super) struct SelectionTarget {
 pub(super) fn spawn_event_object_link_controls(
     parent: &mut ChildSpawnerCommands,
     font: Handle<Font>,
+    locale: UiLocale,
 ) {
     parent
         .spawn((
@@ -65,24 +77,12 @@ pub(super) fn spawn_event_object_link_controls(
                 ..default()
             })
             .with_children(|buttons| {
-                spawn_link_button(
-                    buttons,
-                    &font,
-                    "Locate Focus",
-                    LocateFocusEventButton,
-                    Color::srgb(0.22, 0.32, 0.24),
-                );
-                spawn_link_button(
-                    buttons,
-                    &font,
-                    "Jump Selection",
-                    JumpSelectionEventsButton,
-                    Color::srgb(0.22, 0.24, 0.34),
-                );
+                spawn_locate_focus_button(buttons, &font, locale);
+                spawn_jump_selection_button(buttons, &font, locale);
             });
 
             root.spawn((
-                Text::new("Link: ready"),
+                Text::new(link_ready(locale)),
                 TextFont {
                     font,
                     font_size: 11.0,
@@ -94,12 +94,10 @@ pub(super) fn spawn_event_object_link_controls(
         });
 }
 
-fn spawn_link_button<C: Component>(
+fn spawn_locate_focus_button(
     buttons: &mut ChildSpawnerCommands,
     font: &Handle<Font>,
-    label: &str,
-    marker: C,
-    background: Color,
+    locale: UiLocale,
 ) {
     buttons
         .spawn((
@@ -113,18 +111,53 @@ fn spawn_link_button<C: Component>(
                 flex_grow: 1.0,
                 ..default()
             },
-            BackgroundColor(background),
-            marker,
+            BackgroundColor(Color::srgb(0.22, 0.32, 0.24)),
+            LocateFocusEventButton,
         ))
         .with_children(|button| {
             button.spawn((
-                Text::new(label),
+                Text::new(locate_focus_label(locale)),
                 TextFont {
                     font: font.clone(),
                     font_size: 11.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
+                LocateFocusEventButtonLabel,
+            ));
+        });
+}
+
+fn spawn_jump_selection_button(
+    buttons: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    locale: UiLocale,
+) {
+    buttons
+        .spawn((
+            Button,
+            Node {
+                min_width: Val::Px(120.0),
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                height: Val::Px(22.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                flex_grow: 1.0,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.22, 0.24, 0.34)),
+            JumpSelectionEventsButton,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(jump_selection_label(locale)),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                JumpSelectionEventsButtonLabel,
             ));
         });
 }
@@ -258,13 +291,40 @@ pub(super) fn handle_jump_selection_events_button(
 
 pub(super) fn update_event_object_link_text(
     link_state: Res<EventObjectLinkState>,
+    i18n: Option<Res<UiI18n>>,
     mut query: Query<&mut Text, With<EventObjectLinkText>>,
 ) {
-    if !link_state.is_changed() {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !link_state.is_changed() && !locale_changed {
         return;
     }
+    let locale = locale_or_default(i18n.as_deref());
     if let Ok(mut text) = query.single_mut() {
-        text.0 = link_state.message.clone();
+        text.0 = map_link_message_for_locale(&link_state.message, locale);
+    }
+}
+
+pub(super) fn update_event_object_link_button_labels(
+    i18n: Option<Res<UiI18n>>,
+    mut locate_query: Query<&mut Text, With<LocateFocusEventButtonLabel>>,
+    mut jump_query: Query<&mut Text, With<JumpSelectionEventsButtonLabel>>,
+) {
+    let Some(i18n) = i18n else {
+        return;
+    };
+    if !i18n.is_changed() {
+        return;
+    }
+
+    let locale = i18n.locale;
+    if let Ok(mut text) = locate_query.single_mut() {
+        text.0 = locate_focus_label(locale).to_string();
+    }
+    if let Ok(mut text) = jump_query.single_mut() {
+        text.0 = jump_selection_label(locale).to_string();
     }
 }
 

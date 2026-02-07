@@ -35,15 +35,18 @@ const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod button_feedback;
 mod camera_controls;
+mod control_labels;
 mod diagnosis;
 mod event_click_list;
 mod headless;
+mod i18n;
 mod internal_capture;
 mod panel_layout;
 mod panel_scroll;
 mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
+mod ui_locale_text;
 mod ui_text;
 mod world_overlay;
 
@@ -52,23 +55,26 @@ use button_feedback::{
     update_button_hover_visuals, update_step_button_loading_ui, StepControlLoadingState,
 };
 use camera_controls::{orbit_camera_controls, OrbitDragState};
+use control_labels::{update_control_button_labels, ControlButtonLabel};
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
 };
 use headless::headless_report;
+use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
 use panel_layout::{
-    handle_top_panel_toggle_button, spawn_top_panel_toggle, RightPanelLayoutState,
-    TopPanelContainer,
+    handle_language_toggle_button, handle_top_panel_toggle_button, spawn_top_panel_toggle,
+    RightPanelLayoutState, TopPanelContainer,
 };
 use panel_scroll::{scroll_right_panel, RightPanelScroll, TopPanelScroll};
 use scene_helpers::*;
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
-    spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
+    spawn_event_object_link_controls, update_event_object_link_button_labels,
+    update_event_object_link_text, EventObjectLinkState,
 };
 use timeline_controls::{
     handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
@@ -76,13 +82,15 @@ use timeline_controls::{
     handle_timeline_seek_submit, spawn_timeline_controls, sync_timeline_state_from_world,
     update_timeline_mark_filter_ui, update_timeline_ui, TimelineMarkFilterState, TimelineUiState,
 };
-use ui_text::{
-    agent_activity_summary, events_summary, format_status, selection_details_summary, world_summary,
+use ui_locale_text::{
+    agents_activity_no_snapshot, details_click_to_inspect, events_empty, selection_line,
+    status_line, summary_no_snapshot,
 };
+use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
-    update_world_overlay_status_text, update_world_overlays_3d, WorldOverlayConfig,
-    WorldOverlayUiState,
+    update_world_overlay_status_text, update_world_overlay_toggle_labels, update_world_overlays_3d,
+    WorldOverlayConfig, WorldOverlayUiState,
 };
 
 const WORLD_MIN_AXIS: f32 = 0.1;
@@ -118,6 +126,7 @@ fn run_ui(addr: String, offline: bool) {
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
         .insert_resource(OrbitDragState::default())
+        .insert_resource(UiI18n::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
@@ -158,8 +167,22 @@ fn run_ui(addr: String, offline: bool) {
             )
                 .chain(),
         )
+        .add_systems(
+            Update,
+            (
+                update_control_button_labels,
+                update_event_object_link_button_labels,
+                update_world_overlay_toggle_labels,
+            ),
+        )
         .add_systems(Update, attach_step_button_markers)
-        .add_systems(Update, handle_top_panel_toggle_button)
+        .add_systems(
+            Update,
+            (
+                handle_top_panel_toggle_button,
+                handle_language_toggle_button,
+            ),
+        )
         .add_systems(Update, init_button_visual_base)
         .add_systems(
             Update,
@@ -332,23 +355,6 @@ enum SelectionKind {
 impl ViewerSelection {
     fn clear(&mut self) {
         self.current = None;
-    }
-
-    fn label(&self) -> String {
-        match &self.current {
-            Some(info) => match info.kind {
-                SelectionKind::Agent => format!("Selection: agent {}", info.id),
-                SelectionKind::Location => match &info.name {
-                    Some(name) => format!("Selection: location {} ({})", info.id, name),
-                    None => format!("Selection: location {}", info.id),
-                },
-                SelectionKind::Asset => format!("Selection: asset {}", info.id),
-                SelectionKind::PowerPlant => format!("Selection: power_plant {}", info.id),
-                SelectionKind::PowerStorage => format!("Selection: power_storage {}", info.id),
-                SelectionKind::Chunk => format!("Selection: chunk {}", info.id),
-            },
-            None => "Selection: (none)".to_string(),
-        }
     }
 }
 
@@ -738,6 +744,8 @@ fn setup_3d_scene(
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/DejaVuSans.ttf");
+    let i18n = UiI18n::default();
+    let locale = i18n.locale;
 
     commands.spawn((
         Camera2d,
@@ -766,7 +774,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             BorderColor::all(Color::srgb(0.18, 0.2, 0.24)),
         ))
         .with_children(|root| {
-            spawn_top_panel_toggle(root, font.clone());
+            spawn_top_panel_toggle(root, font.clone(), locale);
 
             root.spawn((
                 Node {
@@ -800,10 +808,16 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 })
                 .with_children(|controls| {
                     for (label, control) in [
-                        ("Play", ViewerControl::Play),
-                        ("Pause", ViewerControl::Pause),
-                        ("Step", ViewerControl::Step { count: 1 }),
-                        ("Seek 0", ViewerControl::Seek { tick: 0 }),
+                        (ViewerControl::Play, ViewerControl::Play),
+                        (ViewerControl::Pause, ViewerControl::Pause),
+                        (
+                            ViewerControl::Step { count: 1 },
+                            ViewerControl::Step { count: 1 },
+                        ),
+                        (
+                            ViewerControl::Seek { tick: 0 },
+                            ViewerControl::Seek { tick: 0 },
+                        ),
                     ] {
                         controls
                             .spawn((
@@ -820,20 +834,23 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             ))
                             .with_children(|button| {
                                 button.spawn((
-                                    Text::new(label),
+                                    Text::new(control_button_label(&label, locale)),
                                     TextFont {
                                         font: font.clone(),
                                         font_size: 14.0,
                                         ..default()
                                     },
                                     TextColor(Color::WHITE),
+                                    ControlButtonLabel {
+                                        control: label.clone(),
+                                    },
                                 ));
                             });
                     }
                 });
 
                 bar.spawn((
-                    Text::new("Status: connecting"),
+                    Text::new(status_line(&ConnectionStatus::Connecting, locale)),
                     TextFont {
                         font: font.clone(),
                         font_size: 14.0,
@@ -844,7 +861,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ));
 
                 bar.spawn((
-                    Text::new("Selection: (none)"),
+                    Text::new(selection_line(&ViewerSelection::default(), locale)),
                     TextFont {
                         font: font.clone(),
                         font_size: 12.0,
@@ -854,10 +871,10 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     SelectionText,
                 ));
 
-                spawn_world_overlay_controls(bar, font.clone());
-                spawn_diagnosis_panel(bar, font.clone());
-                spawn_event_object_link_controls(bar, font.clone());
-                spawn_timeline_controls(bar, font.clone());
+                spawn_world_overlay_controls(bar, font.clone(), locale);
+                spawn_diagnosis_panel(bar, font.clone(), locale);
+                spawn_event_object_link_controls(bar, font.clone(), locale);
+                spawn_timeline_controls(bar, font.clone(), locale);
             });
 
             root.spawn((
@@ -892,7 +909,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ))
                     .with_children(|summary| {
                         summary.spawn((
-                            Text::new("World: (no snapshot)"),
+                            Text::new(summary_no_snapshot(locale)),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 16.0,
@@ -917,10 +934,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ))
                     .with_children(|activity| {
                         activity.spawn((
-                            Text::new(
-                                "Agents Activity:
-(no snapshot)",
-                            ),
+                            Text::new(agents_activity_no_snapshot(locale)),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 13.0,
@@ -945,10 +959,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ))
                     .with_children(|details| {
                         details.spawn((
-                            Text::new(
-                                "Details:
-(click agent/location to inspect)",
-                            ),
+                            Text::new(details_click_to_inspect(locale)),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 13.0,
@@ -973,7 +984,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ))
                     .with_children(|events| {
                         events.spawn((
-                            Text::new("Events:\n(no events)"),
+                            Text::new(events_empty(locale)),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 14.0,
@@ -983,7 +994,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                             EventsText,
                         ));
 
-                        spawn_event_click_list(events, font.clone());
+                        spawn_event_click_list(events, font.clone(), locale);
                     });
             });
         });
@@ -1089,6 +1100,7 @@ fn update_3d_scene(
 fn update_ui(
     state: Res<ViewerState>,
     selection: Res<ViewerSelection>,
+    i18n: Option<Res<UiI18n>>,
     timeline: Option<Res<TimelineUiState>>,
     mut queries: ParamSet<(
         Query<&mut Text, With<StatusText>>,
@@ -1103,16 +1115,25 @@ fn update_ui(
         .as_ref()
         .map(|timeline| timeline.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !selection.is_changed() && !timeline_changed {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|locale| locale.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !selection.is_changed() && !timeline_changed && !locale_changed {
         return;
     }
 
+    let locale = locale_or_default(i18n.as_deref());
+
     if let Ok(mut text) = queries.p0().single_mut() {
-        text.0 = format!("Status: {}", format_status(&state.status));
+        text.0 = status_line(&state.status, locale);
     }
 
     if let Ok(mut text) = queries.p1().single_mut() {
-        text.0 = world_summary(state.snapshot.as_ref(), state.metrics.as_ref());
+        text.0 = ui_locale_text::localize_world_summary_block(
+            world_summary(state.snapshot.as_ref(), state.metrics.as_ref()),
+            locale,
+        );
     }
 
     let focus_tick = timeline.as_ref().and_then(|timeline| {
@@ -1124,27 +1145,35 @@ fn update_ui(
     });
 
     if let Ok(mut text) = queries.p2().single_mut() {
-        text.0 = events_summary(&state.events, focus_tick);
+        text.0 = ui_locale_text::localize_events_summary_block(
+            events_summary(&state.events, focus_tick),
+            locale,
+        );
     }
 
     if let Ok(mut text) = queries.p3().single_mut() {
-        text.0 = selection.label();
+        text.0 = selection_line(&selection, locale);
     }
 
     if let Ok(mut text) = queries.p4().single_mut() {
-        text.0 = agent_activity_summary(state.snapshot.as_ref(), &state.events);
+        text.0 = ui_locale_text::localize_agent_activity_block(
+            agent_activity_summary(state.snapshot.as_ref(), &state.events),
+            locale,
+        );
     }
 
     if let Ok(mut text) = queries.p5().single_mut() {
-        text.0 = selection_details_summary(
-            &selection,
-            state.snapshot.as_ref(),
-            &state.events,
-            &state.decision_traces,
+        text.0 = ui_locale_text::localize_details_block(
+            selection_details_summary(
+                &selection,
+                state.snapshot.as_ref(),
+                &state.events,
+                &state.decision_traces,
+            ),
+            locale,
         );
     }
 }
-
 fn update_3d_viewport(
     windows: Query<&Window, With<PrimaryWindow>>,
     mut cameras: Query<&mut Camera, With<Viewer3dCamera>>,
@@ -1167,6 +1196,5 @@ fn update_3d_viewport(
         depth: 0.0..1.0,
     });
 }
-
 #[cfg(test)]
 mod tests;

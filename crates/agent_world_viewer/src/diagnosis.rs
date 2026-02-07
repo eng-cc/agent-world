@@ -2,6 +2,9 @@ use agent_world::simulator::{RejectReason, WorldEventKind};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
+use crate::i18n::{locale_or_default, UiI18n};
+use crate::ui_locale_text::{diagnosis_waiting, localize_diagnosis_text};
+
 use super::*;
 
 #[derive(Resource)]
@@ -12,7 +15,7 @@ pub(super) struct DiagnosisState {
 impl Default for DiagnosisState {
     fn default() -> Self {
         Self {
-            text: "Diagnosis: waiting world data".to_string(),
+            text: diagnosis_waiting(crate::i18n::UiLocale::EnUs).to_string(),
         }
     }
 }
@@ -20,7 +23,11 @@ impl Default for DiagnosisState {
 #[derive(Component)]
 pub(super) struct DiagnosisText;
 
-pub(super) fn spawn_diagnosis_panel(parent: &mut ChildSpawnerCommands, font: Handle<Font>) {
+pub(super) fn spawn_diagnosis_panel(
+    parent: &mut ChildSpawnerCommands,
+    font: Handle<Font>,
+    locale: crate::i18n::UiLocale,
+) {
     parent
         .spawn((
             Node {
@@ -36,7 +43,7 @@ pub(super) fn spawn_diagnosis_panel(parent: &mut ChildSpawnerCommands, font: Han
         ))
         .with_children(|root| {
             root.spawn((
-                Text::new("Diagnosis: waiting world data"),
+                Text::new(diagnosis_waiting(locale)),
                 TextFont {
                     font,
                     font_size: 10.0,
@@ -51,18 +58,26 @@ pub(super) fn spawn_diagnosis_panel(parent: &mut ChildSpawnerCommands, font: Han
 pub(super) fn update_diagnosis_panel(
     state: Res<ViewerState>,
     selection: Res<ViewerSelection>,
+    i18n: Option<Res<UiI18n>>,
     mut diagnosis_state: ResMut<DiagnosisState>,
     mut query: Query<&mut Text, With<DiagnosisText>>,
 ) {
-    if !state.is_changed() && !selection.is_changed() {
+    let locale_changed = i18n
+        .as_ref()
+        .map(|value| value.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed() && !selection.is_changed() && !locale_changed {
         return;
     }
 
+    let locale = locale_or_default(i18n.as_deref());
+
     let text = build_diagnosis_text(&state, &selection);
-    diagnosis_state.text = text.clone();
+    let localized = localize_diagnosis_text(text, locale);
+    diagnosis_state.text = localized.clone();
 
     if let Ok(mut diagnosis_text) = query.single_mut() {
-        diagnosis_text.0 = text;
+        diagnosis_text.0 = localized;
     }
 }
 
