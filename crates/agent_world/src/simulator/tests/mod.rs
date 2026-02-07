@@ -21,5 +21,6 @@ mod init;
 mod kernel;
 mod memory;
 mod persist;
+mod physics_parameters;
 mod power;
 mod runner;

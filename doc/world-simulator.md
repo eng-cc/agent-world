@@ -107,7 +107,28 @@
   - `thermal_capacity`：默认 100（抽象热容量）；范围 10~1000。
   - `thermal_dissipation`：默认 5（散热基准系数）；范围 1~50。
   - `thermal_dissipation_gradient_bps`：默认 10,000（100%）；范围 1,000~50,000。
+  - `heat_factor`：默认 1（单位采集量的热增量）；范围 1~20。
   - `erosion_rate`：默认 1e-6（随速度/密度缩放）；范围 1e-7~1e-4。
+
+- **物理参数固化表（C9，`PhysicsConfig`）**
+
+| 参数 | 单位 | 默认 | 推荐范围 | 调参影响 |
+| --- | --- | --- | --- | --- |
+| `time_step_s` | `s/tick` | `10` | `1~60` | 增大后单步跨度更大，离散误差上升 |
+| `power_unit_j` | `J/power_unit` | `1000` | `100~10000` | 影响电力单位换算，联动移动与发电口径 |
+| `max_move_distance_cm_per_tick` | `cm/tick` | `1_000_000` | `100~5_000_000` | 限制瞬时位移，防止跨域瞬移 |
+| `max_move_speed_cm_per_s` | `cm/s` | `100_000` | `100~500_000` | 控制速度上限，约束运动学解释性 |
+| `radiation_floor` | `power_unit/tick` | `1` | `0~10` | 抬升背景可采基线 |
+| `radiation_floor_cap_per_tick` | `power_unit/tick` | `5` | `0~50` | 限制背景采集峰值，约束 floor 造能 |
+| `radiation_decay_k` | `cm^-1` | `1e-6` | `1e-7~1e-4` | 增大后近距离源优势更明显 |
+| `max_harvest_per_tick` | `power_unit/tick` | `50` | `1~500` | 控制单 tick 采集峰值 |
+| `thermal_capacity` | `heat_unit` | `100` | `10~1000` | 提升热惯性，降低过热频率 |
+| `thermal_dissipation` | `heat_unit/tick` | `5` | `1~50` | 增强散热后稳态温度下降 |
+| `thermal_dissipation_gradient_bps` | `bps` | `10_000` | `1_000~50_000` | 控制高热区散热斜率 |
+| `heat_factor` | `heat_unit/power_unit` | `1` | `1~20` | 增大后采集更易触发热降效 |
+| `erosion_rate` | `tick^-1 (scaled)` | `1e-6` | `1e-7~1e-4` | 控制长期磨损与维护压力 |
+
+  - 工程约束：`physics_parameter_specs()` 与回归测试会校验字段覆盖、单位非空、默认值落在推荐范围。
 
 - **辐射采集规则细化（可落地规则）**
   - 可采集量：`harvest = min(max_amount, max_harvest_per_tick, local_radiation)`
@@ -404,8 +425,10 @@
   - 已完成：新增 `material_radiation_factors`（bps）并将默认 `radiation_emission_scale` 校准为 `1e-12`，默认场景由“普遍高辐射”回归到“多数可采但非普遍高危”。
   - 已完成：新增测试覆盖“默认占比上限”“小尺寸硅酸盐非极端发射”“高辐射离群体仍可出现”三条路径。
   - 验收：默认分布与“多数可采但非普遍高危”叙事一致，同时保留高风险场景可配置能力。
-- [ ] **C9 物理参数表固化**：在文档中固定每个关键参数的单位、推荐范围、调参影响。
-  - 验收：新增参数时必须附带量纲与范围说明。
+- [x] **C9 物理参数表固化**：在文档中固定每个关键参数的单位、推荐范围、调参影响。
+  - 已完成：新增“物理参数固化表（C9）”，固定 `PhysicsConfig` 全量字段的单位、默认值、推荐范围与调参影响。
+  - 已完成：代码侧新增 `physics_parameter_specs()` 元数据，并用测试校验“参数表字段覆盖 + 单位/范围完整 + 默认值在推荐区间内”。
+  - 验收：新增参数时必须附带量纲与范围说明（由元数据覆盖测试约束）。
 
 ### 回归与验收测试清单
 - [ ] **T1 单调性测试**：辐射随距离衰减、采集随过热降效、移动能耗随距离不减。
