@@ -17,6 +17,7 @@ mod asteroid_fragment;
 mod basics;
 mod chunking;
 mod conservation;
+mod consistency;
 mod fragment_physics;
 mod init;
 mod kernel;
