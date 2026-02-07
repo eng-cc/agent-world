@@ -95,6 +95,8 @@
 - 新增时间轴拖拽条（scrub bar）：按住拖拽可在可见 tick 范围内连续设置目标 tick。
 - 点击 `Seek Target` 后发送 `ViewerControl::Seek { tick: target }`，服务端返回目标 `Snapshot + Metrics`。
 - 时间轴默认跟随当前 tick；当用户手动调整目标后切换为“手动目标”直到发送 seek。
+- 新增关键事件标注摘要：`err/llm/peak` 计数 + 关键 tick 列表（错误、LLM 决策、资源峰值）。
+- 新增事件密度 sparkline：按 tick 分桶显示近期事件分布，快速识别事件高密度区间。
 
 ### 在线模式时间轴语义（2026-02-07 更新）
 - `Seek {tick}` 会让 live world 真正切到目标 tick，而不是只移动日志游标。
@@ -167,7 +169,7 @@
 
 ### 现状缺口（信息直达视角，2026-02-07）
 - 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。
-- 时间轴仍有增强空间：当前已支持目标 tick 微调与拖拽 seek，但缺少按事件密度/关键节点（错误、LLM 决策）标注的可视化轨道。
+- 时间轴仍有增强空间：当前已支持关键事件摘要与密度 sparkline，但尚未支持“点击时间轴标注直接跳转对应事件上下文”。
 - 联动检索不足：事件列表与 3D 对象仍是弱关联，缺少“点击事件 -> 定位对象”与“详情 -> 跳转事件上下文”。
 - LLM 诊断维度不足：仅展示 `llm_input/llm_output/error`，缺少模型名、耗时、token、重试等诊断字段。
 - 世界层表达不足：已有边界盒与网格，但缺少 chunk 探索态、资源热力图、电力/交易流覆盖层。
