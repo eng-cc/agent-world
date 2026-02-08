@@ -387,6 +387,7 @@ pub(super) fn pick_3d_selection(
     }
 
     for (entity, transform, marker) in locations.iter() {
+        let _material = marker.material;
         if let Some(distance) = ray_point_distance(ray, transform.translation()) {
             if distance <= PICK_MAX_DISTANCE
                 && best

@@ -1,10 +1,11 @@
 use super::*;
+use crate::app_bootstrap::decide_offline;
 use crate::button_feedback::StepControlLoadingState;
 use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
 };
-use agent_world::simulator::{ResourceKind, WorldEventKind};
+use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 
 #[test]
 fn update_ui_sets_status_and_events() {
@@ -283,7 +284,7 @@ fn spawn_world_background_adds_bounds_and_grid() {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
         location_mesh: Handle::default(),
-        location_material: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -687,7 +688,7 @@ fn spawn_location_entity_adds_label_text() {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
         location_mesh: Handle::default(),
-        location_material: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -727,7 +728,7 @@ fn spawn_location_entity_uses_physical_radius_scale() {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
         location_mesh: Handle::default(),
-        location_material: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -754,11 +755,12 @@ fn spawn_location_entity_uses_physical_radius_scale() {
 
     let world = app.world_mut();
     let mut query = world.query::<(&LocationMarker, &BaseScale)>();
-    let (_, base) = query
+    let (marker, base) = query
         .iter(world)
         .find(|(marker, _)| marker.id == "loc-scale")
         .expect("location marker exists");
     assert!((base.0.x - 200.0).abs() < 1e-3);
+    assert_eq!(marker.material, MaterialKind::Silicate);
 }
 
 #[test]
@@ -771,7 +773,7 @@ fn spawn_agent_entity_uses_body_height_scale() {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
         location_mesh: Handle::default(),
-        location_material: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1318,6 +1320,7 @@ fn spawn_label_test_system(
         "loc-1",
         "Alpha",
         GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
         100,
     );
 }
@@ -1338,6 +1341,7 @@ fn spawn_location_scale_test_system(
         "loc-scale",
         "Scale",
         GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
         20_000,
     );
 }

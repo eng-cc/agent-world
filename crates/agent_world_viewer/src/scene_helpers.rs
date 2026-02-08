@@ -1,4 +1,5 @@
 use super::*;
+use agent_world::simulator::MaterialKind;
 use agent_world::simulator::{
     chunk_bounds, ChunkCoord, ChunkState, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent,
     ResourceOwner, SpaceConfig, WorldEventKind,
@@ -27,6 +28,7 @@ pub(super) struct AgentMarker {
 pub(super) struct LocationMarker {
     pub id: String,
     pub name: String,
+    pub material: MaterialKind,
 }
 
 #[derive(Component)]
@@ -109,6 +111,7 @@ pub(super) fn rebuild_scene_from_snapshot(
             location_id,
             &location.name,
             location.pos,
+            location.profile.material,
             location.profile.radius_cm,
         );
     }
@@ -235,6 +238,7 @@ pub(super) fn apply_events_to_scene(
                     location_id,
                     name,
                     *pos,
+                    profile.material,
                     profile.radius_cm,
                 );
             }
@@ -453,6 +457,7 @@ pub(super) fn spawn_location_entity(
     location_id: &str,
     name: &str,
     pos: GeoPos,
+    material: MaterialKind,
     radius_cm: i64,
 ) {
     scene
@@ -469,9 +474,11 @@ pub(super) fn spawn_location_entity(
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
             Transform::from_translation(translation),
+            MeshMaterial3d(assets.location_material_library.handle_for(material)),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
+                material,
             },
             BaseScale(marker_scale),
         ));
@@ -481,12 +488,13 @@ pub(super) fn spawn_location_entity(
     let entity = commands
         .spawn((
             Mesh3d(assets.location_mesh.clone()),
-            MeshMaterial3d(assets.location_material.clone()),
+            MeshMaterial3d(assets.location_material_library.handle_for(material)),
             Transform::from_translation(translation).with_scale(marker_scale),
             Name::new(format!("location:{location_id}:{name}")),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
+                material,
             },
             BaseScale(marker_scale),
         ))

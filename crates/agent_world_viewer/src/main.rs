@@ -31,6 +31,7 @@ const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
+mod app_bootstrap;
 mod button_feedback;
 mod camera_controls;
 mod control_labels;
@@ -40,6 +41,7 @@ mod floating_origin;
 mod headless;
 mod i18n;
 mod internal_capture;
+mod material_library;
 mod panel_layout;
 mod panel_scroll;
 mod scene_helpers;
@@ -50,6 +52,7 @@ mod ui_text;
 mod viewer_3d_config;
 mod world_overlay;
 
+use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
 use button_feedback::{
     attach_step_button_markers, init_button_visual_base, track_step_loading_state,
     update_button_hover_visuals, update_step_button_loading_ui, StepControlLoadingState,
@@ -66,6 +69,7 @@ use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
+use material_library::{build_location_material_handles, LocationMaterialHandles};
 use panel_layout::{
     handle_language_toggle_button, handle_top_panel_toggle_button, spawn_top_panel_toggle,
     RightPanelLayoutState, TopPanelContainer,
@@ -110,123 +114,6 @@ fn main() {
     } else {
         run_ui(addr, offline);
     }
-}
-
-fn run_ui(addr: String, offline: bool) {
-    let viewer_3d_config = resolve_viewer_3d_config();
-
-    App::new()
-        .insert_resource(ViewerConfig {
-            addr,
-            max_events: DEFAULT_MAX_EVENTS,
-        })
-        .insert_resource(viewer_3d_config)
-        .insert_resource(Viewer3dScene::default())
-        .insert_resource(ViewerSelection::default())
-        .insert_resource(WorldOverlayConfig::default())
-        .insert_resource(WorldOverlayUiState::default())
-        .insert_resource(DiagnosisState::default())
-        .insert_resource(EventObjectLinkState::default())
-        .insert_resource(TimelineUiState::default())
-        .insert_resource(TimelineMarkFilterState::default())
-        .insert_resource(OrbitDragState::default())
-        .insert_resource(UiI18n::default())
-        .insert_resource(internal_capture_config_from_env())
-        .insert_resource(InternalCaptureState::default())
-        .insert_resource(RightPanelLayoutState::default())
-        .insert_resource(StepControlLoadingState::default())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Agent World Viewer".to_string(),
-                resolution: (1200, 800).into(),
-                ..default()
-            }),
-            ..default()
-        }))
-        .insert_resource(OfflineConfig { offline })
-        .add_systems(Startup, (setup_startup_state, setup_3d_scene, setup_ui))
-        .add_systems(
-            Update,
-            (
-                poll_viewer_messages,
-                sync_timeline_state_from_world,
-                handle_timeline_adjust_buttons,
-                handle_timeline_mark_filter_buttons,
-                update_timeline_mark_filter_ui,
-                handle_timeline_bar_drag,
-                handle_timeline_mark_jump_buttons,
-                handle_timeline_seek_submit,
-                handle_world_overlay_toggle_buttons,
-                handle_event_click_buttons,
-                handle_locate_focus_event_button,
-                handle_jump_selection_events_button,
-                update_event_object_link_text,
-                update_world_overlay_status_text,
-                update_diagnosis_panel,
-                update_event_click_list_ui,
-                update_timeline_ui,
-                scroll_right_panel,
-                update_ui,
-                trigger_internal_capture,
-            )
-                .chain(),
-        )
-        .add_systems(
-            Update,
-            (
-                update_control_button_labels,
-                update_event_object_link_button_labels,
-                update_world_overlay_toggle_labels,
-            ),
-        )
-        .add_systems(Update, attach_step_button_markers)
-        .add_systems(
-            Update,
-            (
-                handle_top_panel_toggle_button,
-                handle_language_toggle_button,
-            ),
-        )
-        .add_systems(Update, init_button_visual_base)
-        .add_systems(
-            Update,
-            (
-                track_step_loading_state,
-                update_step_button_loading_ui,
-                update_button_hover_visuals,
-            )
-                .chain(),
-        )
-        .add_systems(
-            Update,
-            (
-                update_3d_scene,
-                update_world_overlays_3d.after(update_3d_scene),
-                orbit_camera_controls,
-                update_floating_origin.after(orbit_camera_controls),
-                update_3d_viewport,
-                handle_control_buttons,
-            ),
-        )
-        .add_systems(
-            PostUpdate,
-            pick_3d_selection.after(TransformSystems::Propagate),
-        )
-        .run();
-}
-
-fn run_headless(addr: String, offline: bool) {
-    App::new()
-        .insert_resource(ViewerConfig {
-            addr,
-            max_events: DEFAULT_MAX_EVENTS,
-        })
-        .insert_resource(HeadlessStatus::default())
-        .insert_resource(OfflineConfig { offline })
-        .add_plugins(MinimalPlugins)
-        .add_systems(Startup, setup_startup_state)
-        .add_systems(Update, (poll_viewer_messages, headless_report))
-        .run();
 }
 
 #[derive(Resource)]
@@ -295,7 +182,7 @@ struct Viewer3dAssets {
     agent_mesh: Handle<Mesh>,
     agent_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
-    location_material: Handle<StandardMaterial>,
+    location_material_library: LocationMaterialHandles,
     asset_mesh: Handle<Mesh>,
     asset_material: Handle<StandardMaterial>,
     power_plant_mesh: Handle<Mesh>,
@@ -423,29 +310,6 @@ struct ControlButton {
 struct HeadlessStatus {
     last_status: Option<ConnectionStatus>,
     last_events: usize,
-}
-
-fn resolve_addr() -> String {
-    std::env::var("AGENT_WORLD_VIEWER_ADDR")
-        .ok()
-        .or_else(|| std::env::args().nth(1))
-        .unwrap_or_else(|| DEFAULT_ADDR.to_string())
-}
-
-fn resolve_offline(headless: bool) -> bool {
-    let offline_env = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
-    let force_online = std::env::var("AGENT_WORLD_VIEWER_FORCE_ONLINE").is_ok();
-    decide_offline(headless, offline_env, force_online)
-}
-
-fn decide_offline(headless: bool, offline_env: bool, force_online: bool) -> bool {
-    if force_online {
-        return false;
-    }
-    if offline_env {
-        return true;
-    }
-    headless
 }
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
@@ -604,11 +468,7 @@ fn setup_3d_scene(
         perceptual_roughness: 0.6,
         ..default()
     });
-    let location_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.35, 0.35, 0.4),
-        perceptual_roughness: 0.8,
-        ..default()
-    });
+    let location_material_library = build_location_material_handles(&mut materials);
     let asset_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.82, 0.76, 0.34),
         perceptual_roughness: 0.55,
@@ -694,7 +554,7 @@ fn setup_3d_scene(
         agent_mesh,
         agent_material,
         location_mesh,
-        location_material,
+        location_material_library,
         asset_mesh,
         asset_material,
         power_plant_mesh,
