@@ -68,6 +68,7 @@
 - `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
 - `doc/world-runtime/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
 - `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
+- `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）

@@ -102,6 +102,14 @@
 ### 6. 维护
 - [x] 拆分 runtime world 模块文件以满足单文件行数上限
 
+### 7. Agent 默认模块体系（ADM）
+- [x] 输出默认模块设计分册（`doc/world-runtime/agent-default-modules.md`）
+- [x] 输出默认模块项目管理文档（`doc/world-runtime/agent-default-modules.project.md`）
+- [ ] 冻结默认模块安装入口（`install_m1_agent_default_modules`）
+- [ ] 落地身体接口扩容动作与事件（消耗接口模块）
+- [ ] 落地默认 `sensor/mobility/memory/storage` 四模块最小实现
+- [ ] 完成默认模块回放一致性与降级策略测试
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
@@ -110,4 +118,4 @@
 ## 状态
 - 当前阶段：M5（模块治理闭环 + 沙箱接入最小闭环已完成）
 - 下一步：评估真实 WASM 执行器接入与事件订阅扩展
-- 最近更新：补充 runtime 总览中的 LLM 驱动与 memory module 说明（2026-02-05）
+- 最近更新：新增 Agent 默认模块体系分册与项目任务（2026-02-08）
