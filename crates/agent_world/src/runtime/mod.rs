@@ -198,7 +198,7 @@ pub use snapshot::{
 pub use state::WorldState;
 
 // World
-pub use world::World;
+pub use world::{M1ScenarioBootstrapConfig, World};
 
 // World event
 pub use world_event::{WorldEvent, WorldEventBody};

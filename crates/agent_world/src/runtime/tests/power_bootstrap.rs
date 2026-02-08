@@ -87,6 +87,49 @@ fn install_agent_default_modules_is_idempotent() {
 }
 
 #[test]
+fn install_scenario_bootstrap_modules_supports_default_package_toggle() {
+    let mut world = World::new();
+    world
+        .install_m1_scenario_bootstrap_modules(
+            "bootstrap",
+            M1ScenarioBootstrapConfig {
+                install_default_module_package: false,
+            },
+        )
+        .expect("install scenario bootstrap modules");
+
+    assert!(has_active(&world, M1_RADIATION_POWER_MODULE_ID));
+    assert!(has_active(&world, M1_STORAGE_POWER_MODULE_ID));
+    assert!(!has_active(&world, M1_SENSOR_MODULE_ID));
+    assert!(!has_active(&world, M1_MOBILITY_MODULE_ID));
+    assert!(!has_active(&world, M1_MEMORY_MODULE_ID));
+    assert!(!has_active(&world, M1_STORAGE_CARGO_MODULE_ID));
+}
+
+#[test]
+fn install_scenario_bootstrap_modules_is_idempotent() {
+    let mut world = World::new();
+    let config = M1ScenarioBootstrapConfig::default();
+
+    world
+        .install_m1_scenario_bootstrap_modules("bootstrap", config)
+        .expect("first scenario install");
+    assert!(has_active(&world, M1_RADIATION_POWER_MODULE_ID));
+    assert!(has_active(&world, M1_STORAGE_POWER_MODULE_ID));
+    assert!(has_active(&world, M1_SENSOR_MODULE_ID));
+    assert!(has_active(&world, M1_MOBILITY_MODULE_ID));
+    assert!(has_active(&world, M1_MEMORY_MODULE_ID));
+    assert!(has_active(&world, M1_STORAGE_CARGO_MODULE_ID));
+    let event_len = world.journal().len();
+
+    world
+        .install_m1_scenario_bootstrap_modules("bootstrap", config)
+        .expect("second scenario install");
+
+    assert_eq!(world.journal().len(), event_len);
+}
+
+#[test]
 fn install_power_bootstrap_modules_is_idempotent() {
     let mut world = World::new();
     world

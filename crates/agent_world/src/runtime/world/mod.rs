@@ -16,6 +16,8 @@ mod scheduling;
 mod snapshot;
 mod step;
 
+pub use bootstrap_power::M1ScenarioBootstrapConfig;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 

@@ -14,6 +14,19 @@ const M1_MOBILITY_ARTIFACT: &[u8] = b"m1-mobility-basic";
 const M1_MEMORY_ARTIFACT: &[u8] = b"m1-memory-core";
 const M1_STORAGE_CARGO_ARTIFACT: &[u8] = b"m1-storage-cargo";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct M1ScenarioBootstrapConfig {
+    pub install_default_module_package: bool,
+}
+
+impl Default for M1ScenarioBootstrapConfig {
+    fn default() -> Self {
+        Self {
+            install_default_module_package: true,
+        }
+    }
+}
+
 impl World {
     pub fn install_m1_power_bootstrap_modules(
         &mut self,
@@ -58,6 +71,19 @@ impl World {
         self.approve_proposal(proposal_id, actor.clone(), ProposalDecision::Approve)?;
         self.apply_proposal(proposal_id)?;
 
+        Ok(())
+    }
+
+    pub fn install_m1_scenario_bootstrap_modules(
+        &mut self,
+        actor: impl Into<String>,
+        config: M1ScenarioBootstrapConfig,
+    ) -> Result<(), WorldError> {
+        let actor = actor.into();
+        self.install_m1_power_bootstrap_modules(actor.clone())?;
+        if config.install_default_module_package {
+            self.install_m1_agent_default_modules(actor)?;
+        }
         Ok(())
     }
 
