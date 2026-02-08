@@ -101,6 +101,7 @@
 
 ### 6. 维护
 - [x] 拆分 runtime world 模块文件以满足单文件行数上限
+- [x] 拆分 runtime builtin_modules（rule/body/default/power）以满足可维护性与文件行数约束
 
 ### 7. Agent 默认模块体系（ADM）
 - [x] 输出默认模块设计分册（`doc/world-runtime/agent-default-modules.md`）
@@ -118,4 +119,4 @@
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
 - 下一步：推进接口模块来源机制分册（制造/交易/回收/奖励）并继续评估真实 WASM 执行器接入
-- 最近更新：完成 ADM-S5（低电降级协同与回放一致性测试）（2026-02-08）
+- 最近更新：完成 runtime builtin_modules 目录化拆分（2026-02-08）
