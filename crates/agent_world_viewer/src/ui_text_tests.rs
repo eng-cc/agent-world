@@ -69,3 +69,32 @@ fn radiation_visual_metrics_convert_to_power_and_flux() {
     assert!((fallback_area - 1.0).abs() < f64::EPSILON);
     assert!((fallback_flux - 1_500.0).abs() < f64::EPSILON);
 }
+
+#[test]
+fn world_summary_includes_physical_render_block_when_enabled() {
+    let mut physical = ViewerPhysicalRenderConfig::default();
+    physical.enabled = true;
+    physical.meters_per_unit = 1.0;
+    physical.stellar_distance_au = 2.5;
+    physical.exposure_ev100 = 13.5;
+    physical.reference_radiation_area_m2 = 2.0;
+
+    let summary = world_summary(None, None, Some(&physical));
+    assert!(summary.contains("World: (no snapshot)"));
+    assert!(summary.contains("Render Physical: on"));
+    assert!(summary.contains("Unit: 1u=1.00m"));
+    assert!(summary.contains("Camera Clip(m): near=0.10 far=25000"));
+    assert!(summary.contains("Stellar Distance(AU): 2.50"));
+    assert!(summary.contains("Irradiance(W/m²): 217.8"));
+    assert!(summary.contains("Exposed Illuminance(lux): 26131"));
+    assert!(summary.contains("Exposure(EV100): 13.50"));
+    assert!(summary.contains("Radiation Ref Area(m²): 2.00"));
+}
+
+#[test]
+fn world_summary_displays_physical_flag_when_disabled() {
+    let physical = ViewerPhysicalRenderConfig::default();
+    let summary = world_summary(None, None, Some(&physical));
+    assert!(summary.contains("Render Physical: off"));
+    assert!(!summary.contains("Unit: 1u="));
+}

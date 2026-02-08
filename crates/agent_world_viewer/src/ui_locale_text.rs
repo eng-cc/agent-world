@@ -382,6 +382,15 @@ pub(super) fn localize_world_summary_block(text: String, locale: UiLocale) -> St
     converted = converted.replace("Ticks:", "Tick:");
     converted = converted.replace("Actions:", "动作数:");
     converted = converted.replace("Decisions:", "决策数:");
+    converted = converted.replace("Render Physical: on", "物理渲染: 开启");
+    converted = converted.replace("Render Physical: off", "物理渲染: 关闭");
+    converted = converted.replace("Unit:", "单位:");
+    converted = converted.replace("Camera Clip(m):", "相机裁剪(m):");
+    converted = converted.replace("Stellar Distance(AU):", "恒星距离(AU):");
+    converted = converted.replace("Irradiance(W/m²):", "辐照度(W/m²):");
+    converted = converted.replace("Exposed Illuminance(lux):", "曝光后照度(lux):");
+    converted = converted.replace("Exposure(EV100):", "曝光(EV100):");
+    converted = converted.replace("Radiation Ref Area(m²):", "辐射参考面积(m²):");
     converted
 }
 

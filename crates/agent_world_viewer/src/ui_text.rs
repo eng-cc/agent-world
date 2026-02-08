@@ -5,6 +5,7 @@ use agent_world::simulator::{
     RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
 };
 
+use super::viewer_3d_config::ViewerPhysicalRenderConfig;
 use super::{ConnectionStatus, SelectionKind, ViewerSelection};
 
 pub(super) fn format_status(status: &ConnectionStatus) -> String {
@@ -18,6 +19,7 @@ pub(super) fn format_status(status: &ConnectionStatus) -> String {
 pub(super) fn world_summary(
     snapshot: Option<&WorldSnapshot>,
     metrics: Option<&RunnerMetrics>,
+    physical: Option<&ViewerPhysicalRenderConfig>,
 ) -> String {
     let mut lines = Vec::new();
     if let Some(snapshot) = snapshot {
@@ -42,6 +44,38 @@ pub(super) fn world_summary(
         lines.push(format!("Ticks: {}", metrics.total_ticks));
         lines.push(format!("Actions: {}", metrics.total_actions));
         lines.push(format!("Decisions: {}", metrics.total_decisions));
+    }
+
+    if let Some(physical) = physical {
+        lines.push("".to_string());
+        lines.push(format!(
+            "Render Physical: {}",
+            if physical.enabled { "on" } else { "off" }
+        ));
+        if physical.enabled {
+            lines.push(format!("Unit: 1u={:.2}m", physical.meters_per_unit));
+            lines.push(format!(
+                "Camera Clip(m): near={:.2} far={:.0}",
+                physical.camera_near_m, physical.camera_far_m
+            ));
+            lines.push(format!(
+                "Stellar Distance(AU): {:.2}",
+                physical.stellar_distance_au
+            ));
+            lines.push(format!(
+                "Irradiance(W/m²): {:.1}",
+                physical.irradiance_w_m2()
+            ));
+            lines.push(format!(
+                "Exposed Illuminance(lux): {:.0}",
+                physical.exposed_illuminance_lux()
+            ));
+            lines.push(format!("Exposure(EV100): {:.2}", physical.exposure_ev100));
+            lines.push(format!(
+                "Radiation Ref Area(m²): {:.2}",
+                physical.reference_radiation_area_m2
+            ));
+        }
     }
 
     lines.join("\n")

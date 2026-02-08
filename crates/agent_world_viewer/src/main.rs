@@ -1008,7 +1008,11 @@ fn update_ui(
 
     if let Ok(mut text) = queries.p1().single_mut() {
         text.0 = ui_locale_text::localize_world_summary_block(
-            world_summary(state.snapshot.as_ref(), state.metrics.as_ref()),
+            world_summary(
+                state.snapshot.as_ref(),
+                state.metrics.as_ref(),
+                viewer_3d_config.as_deref().map(|cfg| &cfg.physical),
+            ),
             locale,
         );
     }

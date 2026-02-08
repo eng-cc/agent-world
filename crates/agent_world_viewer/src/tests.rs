@@ -5,6 +5,7 @@ use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
 };
+use crate::viewer_3d_config::Viewer3dConfig;
 use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 
 #[path = "tests_selection_details.rs"]
@@ -21,6 +22,7 @@ fn update_ui_sets_status_and_events() {
     app.world_mut().spawn((Text::new(""), SelectionText));
     app.world_mut().spawn((Text::new(""), AgentActivityText));
     app.world_mut().insert_resource(ViewerSelection::default());
+    app.world_mut().insert_resource(Viewer3dConfig::default());
 
     let event = WorldEvent {
         id: 1,
@@ -67,6 +69,7 @@ fn update_ui_populates_world_summary_and_metrics() {
     app.world_mut().spawn((Text::new(""), SelectionText));
     app.world_mut().spawn((Text::new(""), AgentActivityText));
     app.world_mut().insert_resource(ViewerSelection::default());
+    app.world_mut().insert_resource(Viewer3dConfig::default());
 
     let mut model = agent_world::simulator::WorldModel::default();
     model.locations.insert(
@@ -149,6 +152,7 @@ fn update_ui_populates_world_summary_and_metrics() {
     assert!(summary_text.0.contains("Ticks: 42"));
     assert!(summary_text.0.contains("Actions: 7"));
     assert!(summary_text.0.contains("Decisions: 4"));
+    assert!(summary_text.0.contains("Render Physical: off"));
 }
 
 #[test]
@@ -162,6 +166,7 @@ fn update_ui_reflects_filtered_events() {
     app.world_mut().spawn((Text::new(""), SelectionText));
     app.world_mut().spawn((Text::new(""), AgentActivityText));
     app.world_mut().insert_resource(ViewerSelection::default());
+    app.world_mut().insert_resource(Viewer3dConfig::default());
 
     let event = WorldEvent {
         id: 9,
