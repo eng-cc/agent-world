@@ -853,6 +853,10 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::Observation { .. } => "domain.observation",
             DomainEvent::BodyAttributesUpdated { .. } => "domain.body_attributes_updated",
             DomainEvent::BodyAttributesRejected { .. } => "domain.body_attributes_rejected",
+            DomainEvent::BodyInterfaceExpanded { .. } => "domain.body_interface_expanded",
+            DomainEvent::BodyInterfaceExpandRejected { .. } => {
+                "domain.body_interface_expand_rejected"
+            }
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
@@ -879,6 +883,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::EmitObservation { .. } => "action.emit_observation",
         Action::BodyAction { .. } => "action.body_action",
         Action::EmitBodyAttributes { .. } => "action.emit_body_attributes",
+        Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
     }

@@ -1,7 +1,7 @@
 //! Action and domain event types.
 
 use crate::geometry::GeoPos;
-use crate::models::BodyKernelView;
+use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::ResourceKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -60,6 +60,10 @@ pub enum Action {
         view: BodyKernelView,
         reason: String,
     },
+    ExpandBodyInterface {
+        agent_id: String,
+        interface_module_item_id: String,
+    },
     TransferResource {
         from_agent_id: String,
         to_agent_id: String,
@@ -103,6 +107,19 @@ pub enum DomainEvent {
         agent_id: String,
         reason: String,
     },
+    BodyInterfaceExpanded {
+        agent_id: String,
+        slot_capacity: u16,
+        expansion_level: u16,
+        consumed_item_id: String,
+        new_slot_id: String,
+        slot_type: BodySlotType,
+    },
+    BodyInterfaceExpandRejected {
+        agent_id: String,
+        consumed_item_id: String,
+        reason: String,
+    },
     ResourceTransferred {
         from_agent_id: String,
         to_agent_id: String,
@@ -119,6 +136,8 @@ impl DomainEvent {
             DomainEvent::Observation { observation } => Some(observation.agent_id.as_str()),
             DomainEvent::BodyAttributesUpdated { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::BodyAttributesRejected { agent_id, .. } => Some(agent_id.as_str()),
+            DomainEvent::BodyInterfaceExpanded { agent_id, .. } => Some(agent_id.as_str()),
+            DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
         }

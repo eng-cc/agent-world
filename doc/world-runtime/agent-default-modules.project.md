@@ -8,9 +8,9 @@
 - [x] 明确身体接口槽位扩容规则（消耗接口模块）
 
 ### ADM-S2 模型与动作接入
-- [ ] 在 runtime 状态中增加 `AgentBodyState`（槽位/扩容等级）
-- [ ] 增加 `expand_body_interface` 动作与事件（成功/拒绝）
-- [ ] 将“接口模块实体”接入 cargo 存储与消耗校验
+- [x] 在 runtime 状态中增加 `AgentBodyState`（槽位/扩容等级）
+- [x] 增加 `expand_body_interface` 动作与事件（成功/拒绝）
+- [x] 将“接口模块实体”接入 cargo 存储与消耗校验
 
 ### ADM-S3 默认模块实现
 - [ ] 落地 `m1.sensor.basic`（基础感知模块）
@@ -34,7 +34,6 @@
 - Agent 资源账本与动作路由（pre_action/post_event）
 
 ## 状态
-- 当前阶段：ADM-S1 完成（设计冻结）
-- 下一阶段：推进 ADM-S2（身体接口槽位模型与扩容动作）
-- 最近更新：新增 Agent 默认模块体系设计分册与任务拆解（2026-02-08）
-
+- 当前阶段：ADM-S2 完成（模型与动作接入）
+- 下一阶段：推进 ADM-S3（sensor/mobility/memory/storage 默认模块）
+- 最近更新：完成 `expand_body_interface` 动作链路与回放测试（2026-02-08）

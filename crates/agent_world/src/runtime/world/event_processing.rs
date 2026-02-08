@@ -2,7 +2,7 @@ use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason, WorldError, WorldEvent,
     WorldEventBody, WorldEventId, WorldTime,
 };
-use super::body::validate_body_kernel_view;
+use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::World;
 use crate::geometry::space_distance_cm;
 
@@ -121,6 +121,15 @@ impl World {
                     reason: reason.clone(),
                 }))
             }
+            Action::ExpandBodyInterface {
+                agent_id,
+                interface_module_item_id,
+            } => Ok(evaluate_expand_body_interface(
+                self,
+                action_id,
+                agent_id,
+                interface_module_item_id,
+            )),
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,

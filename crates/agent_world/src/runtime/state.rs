@@ -71,6 +71,59 @@ impl WorldState {
                     });
                 }
             }
+            DomainEvent::BodyInterfaceExpanded {
+                agent_id,
+                slot_capacity,
+                expansion_level,
+                consumed_item_id,
+                new_slot_id,
+                slot_type,
+                ..
+            } => {
+                let cell =
+                    self.agents
+                        .get_mut(agent_id)
+                        .ok_or_else(|| WorldError::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
+                cell.state
+                    .body_state
+                    .consume_interface_module_item(consumed_item_id)
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "consume interface module item failed for {agent_id}: {reason}"
+                        ),
+                    })?;
+                cell.state.body_state.slot_capacity = *slot_capacity;
+                cell.state.body_state.expansion_level = *expansion_level;
+                if !cell
+                    .state
+                    .body_state
+                    .slots
+                    .iter()
+                    .any(|slot| slot.slot_id == *new_slot_id)
+                {
+                    cell.state
+                        .body_state
+                        .slots
+                        .push(crate::models::BodyModuleSlot {
+                            slot_id: new_slot_id.clone(),
+                            slot_type: *slot_type,
+                            installed_module: None,
+                            locked: false,
+                        });
+                }
+                cell.last_active = now;
+            }
+            DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    });
+                }
+            }
             DomainEvent::ResourceTransferred {
                 from_agent_id,
                 to_agent_id,

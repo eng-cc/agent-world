@@ -1,6 +1,6 @@
 use super::super::*;
 use super::pos;
-use crate::models::BodyKernelView;
+use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry, CargoEntityKind};
 use crate::simulator::ResourceKind;
 
 fn install_m1_body_module(world: &mut World) {
@@ -348,4 +348,165 @@ fn body_update_replay_is_consistent() {
     let journal = world.journal().clone();
     let restored = World::from_snapshot(snapshot, journal).unwrap();
     assert_eq!(restored.state(), world.state());
+}
+
+#[test]
+fn expand_body_interface_consumes_item_and_adds_slot() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    world
+        .add_agent_cargo_entity(
+            "agent-1",
+            CargoEntityEntry {
+                entity_id: "iface-kit-1".to_string(),
+                entity_kind: CargoEntityKind::InterfaceModuleItem,
+                quantity: 2,
+                size_per_unit: 1,
+            },
+        )
+        .unwrap();
+
+    world.submit_action(Action::ExpandBodyInterface {
+        agent_id: "agent-1".to_string(),
+        interface_module_item_id: "iface-kit-1".to_string(),
+    });
+    world.step().unwrap();
+
+    let agent = world.state().agents.get("agent-1").unwrap();
+    assert_eq!(agent.state.body_state.slot_capacity, 8);
+    assert_eq!(agent.state.body_state.expansion_level, 1);
+    assert!(agent
+        .state
+        .body_state
+        .slots
+        .iter()
+        .any(|slot| slot.slot_id == "slot-8" && slot.slot_type == BodySlotType::Universal));
+
+    let item = agent
+        .state
+        .body_state
+        .cargo_entries
+        .iter()
+        .find(|entry| entry.entity_id == "iface-kit-1")
+        .unwrap();
+    assert_eq!(item.quantity, 1);
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::BodyInterfaceExpanded {
+            agent_id,
+            consumed_item_id,
+            ..
+        }) => {
+            assert_eq!(agent_id, "agent-1");
+            assert_eq!(consumed_item_id, "iface-kit-1");
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn expand_body_interface_rejects_when_item_missing() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    world.submit_action(Action::ExpandBodyInterface {
+        agent_id: "agent-1".to_string(),
+        interface_module_item_id: "iface-kit-missing".to_string(),
+    });
+    world.step().unwrap();
+
+    let agent = world.state().agents.get("agent-1").unwrap();
+    assert_eq!(agent.state.body_state.slot_capacity, 7);
+    assert_eq!(agent.state.body_state.expansion_level, 0);
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::BodyInterfaceExpandRejected {
+            agent_id,
+            consumed_item_id,
+            reason,
+        }) => {
+            assert_eq!(agent_id, "agent-1");
+            assert_eq!(consumed_item_id, "iface-kit-missing");
+            assert!(reason.contains("unavailable") || reason.contains("depleted"));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn expand_body_interface_rejects_missing_agent() {
+    let mut world = World::new();
+    world.submit_action(Action::ExpandBodyInterface {
+        agent_id: "missing-agent".to_string(),
+        interface_module_item_id: "iface-kit-1".to_string(),
+    });
+    world.step().unwrap();
+
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected {
+            reason: RejectReason::AgentNotFound { agent_id },
+            ..
+        }) => {
+            assert_eq!(agent_id, "missing-agent");
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn expanded_body_state_persists_after_restore() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    world
+        .add_agent_cargo_entity(
+            "agent-1",
+            CargoEntityEntry {
+                entity_id: "iface-kit-1".to_string(),
+                entity_kind: CargoEntityKind::InterfaceModuleItem,
+                quantity: 1,
+                size_per_unit: 1,
+            },
+        )
+        .unwrap();
+
+    world.submit_action(Action::ExpandBodyInterface {
+        agent_id: "agent-1".to_string(),
+        interface_module_item_id: "iface-kit-1".to_string(),
+    });
+    world.step().unwrap();
+
+    let snapshot = world.snapshot();
+    let restored = World::from_snapshot(snapshot, world.journal().clone()).unwrap();
+    let agent = restored.state().agents.get("agent-1").unwrap();
+    assert_eq!(agent.state.body_state.slot_capacity, 8);
+    assert_eq!(agent.state.body_state.expansion_level, 1);
+    assert!(agent
+        .state
+        .body_state
+        .slots
+        .iter()
+        .any(|slot| slot.slot_id == "slot-8"));
+    assert!(!agent
+        .state
+        .body_state
+        .cargo_entries
+        .iter()
+        .any(|entry| entry.entity_id == "iface-kit-1"));
 }

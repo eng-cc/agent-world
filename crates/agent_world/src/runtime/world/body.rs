@@ -1,6 +1,8 @@
-use super::super::{CausedBy, DomainEvent, WorldError, WorldEventBody, WorldEventId};
+use super::super::{
+    ActionId, CausedBy, DomainEvent, RejectReason, WorldError, WorldEventBody, WorldEventId,
+};
 use super::World;
-use crate::models::BodyKernelView;
+use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry};
 
 const BODY_MASS_KG_MIN: u64 = 1;
 const BODY_MASS_KG_MAX: u64 = 1_000_000_000;
@@ -10,6 +12,7 @@ const BODY_THRUST_LIMIT_MIN: u64 = 0;
 const BODY_THRUST_LIMIT_MAX: u64 = 10_000_000_000;
 const BODY_CROSS_SECTION_CM2_MIN: u64 = 1;
 const BODY_CHANGE_FACTOR_MAX: u64 = 10;
+const BODY_SLOT_CAPACITY_MAX: u16 = 128;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -61,6 +64,113 @@ impl World {
             caused_by,
         )
     }
+
+    pub fn add_agent_cargo_entity(
+        &mut self,
+        agent_id: impl Into<String>,
+        entry: CargoEntityEntry,
+    ) -> Result<(), WorldError> {
+        if entry.entity_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "cargo entry requires non-empty entity_id".to_string(),
+            });
+        }
+        if entry.quantity <= 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!("cargo entry quantity must be > 0, got {}", entry.quantity),
+            });
+        }
+        if entry.size_per_unit <= 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "cargo entry size_per_unit must be > 0, got {}",
+                    entry.size_per_unit
+                ),
+            });
+        }
+
+        let agent_id = agent_id.into();
+        let cell =
+            self.state
+                .agents
+                .get_mut(&agent_id)
+                .ok_or_else(|| WorldError::AgentNotFound {
+                    agent_id: agent_id.clone(),
+                })?;
+
+        if let Some(existing) = cell
+            .state
+            .body_state
+            .cargo_entries
+            .iter_mut()
+            .find(|existing| existing.entity_id == entry.entity_id)
+        {
+            if existing.entity_kind != entry.entity_kind
+                || existing.size_per_unit != entry.size_per_unit
+            {
+                return Err(WorldError::ResourceBalanceInvalid {
+                    reason: format!(
+                        "cargo entry {} kind/size mismatch for merge",
+                        entry.entity_id
+                    ),
+                });
+            }
+            existing.quantity = existing.quantity.saturating_add(entry.quantity);
+        } else {
+            cell.state.body_state.cargo_entries.push(entry);
+        }
+        Ok(())
+    }
+}
+
+pub(super) fn evaluate_expand_body_interface(
+    world: &World,
+    action_id: ActionId,
+    agent_id: &str,
+    interface_module_item_id: &str,
+) -> WorldEventBody {
+    let Some(cell) = world.state.agents.get(agent_id) else {
+        return WorldEventBody::Domain(DomainEvent::ActionRejected {
+            action_id,
+            reason: RejectReason::AgentNotFound {
+                agent_id: agent_id.to_string(),
+            },
+        });
+    };
+
+    let item_id = interface_module_item_id.trim();
+    if item_id.is_empty() {
+        return WorldEventBody::Domain(DomainEvent::BodyInterfaceExpandRejected {
+            agent_id: agent_id.to_string(),
+            consumed_item_id: interface_module_item_id.to_string(),
+            reason: "interface module item id is empty".to_string(),
+        });
+    }
+
+    if cell.state.body_state.slot_capacity >= BODY_SLOT_CAPACITY_MAX {
+        return WorldEventBody::Domain(DomainEvent::BodyInterfaceExpandRejected {
+            agent_id: agent_id.to_string(),
+            consumed_item_id: item_id.to_string(),
+            reason: format!("body slot capacity reached max {}", BODY_SLOT_CAPACITY_MAX),
+        });
+    }
+
+    if !cell.state.body_state.has_interface_module_item(item_id) {
+        return WorldEventBody::Domain(DomainEvent::BodyInterfaceExpandRejected {
+            agent_id: agent_id.to_string(),
+            consumed_item_id: item_id.to_string(),
+            reason: "interface module item unavailable or depleted".to_string(),
+        });
+    }
+
+    WorldEventBody::Domain(DomainEvent::BodyInterfaceExpanded {
+        agent_id: agent_id.to_string(),
+        slot_capacity: cell.state.body_state.slot_capacity.saturating_add(1),
+        expansion_level: cell.state.body_state.expansion_level.saturating_add(1),
+        consumed_item_id: item_id.to_string(),
+        new_slot_id: cell.state.body_state.next_slot_id(),
+        slot_type: BodySlotType::Universal,
+    })
 }
 
 pub(super) fn validate_body_kernel_view(

@@ -433,6 +433,8 @@ fn update_power_state_positions(state: &mut PowerState, event: WorldEvent) -> bo
             super::super::events::DomainEvent::Observation { .. } => {}
             super::super::events::DomainEvent::BodyAttributesUpdated { .. } => {}
             super::super::events::DomainEvent::BodyAttributesRejected { .. } => {}
+            super::super::events::DomainEvent::BodyInterfaceExpanded { .. } => {}
+            super::super::events::DomainEvent::BodyInterfaceExpandRejected { .. } => {}
             super::super::events::DomainEvent::ResourceTransferred { .. } => {}
         }
     }
