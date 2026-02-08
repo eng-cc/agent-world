@@ -236,8 +236,9 @@
 - **移动约束**：移动到相同 `location_id` 视为无效动作并拒绝。
 - **可见性**：`query_observation` 以固定可见半径输出可见 Agent/Location（默认 **100 km**）。
 - **资源交互**：
-  - 资源转移需要同地（Agent 与 Location 同处，或 Agent 与 Agent 同处）。
-  - Location 与 Location 之间的直接转移不允许（需由 Agent 搬运）。
+  - 普通资源转移（`TransferResource`）需要同地（Agent 与 Location 同处，或 Agent 与 Agent 同处）。
+  - 普通资源的 Location 与 Location 之间直接转移不允许（需由 Agent 搬运）。
+  - 电力交易（`BuyPower`/`SellPower`，M4.3）允许 Location 与 Location 跨地点传输：按距离与 `transfer_loss_per_km_bps` 计算损耗，并受 `transfer_max_distance_km` 限制；涉及 Agent 时仍需共址。
 - **辐射采集**：
   - `HarvestRadiation` 允许 Agent 从所处 Location 的辐射强度中采集电力（抽象为电力资源的增加）。
   - 采集上限受 `max_harvest_per_tick` 与热管理约束影响；采集会增加热量。
@@ -375,6 +376,11 @@
 - M3：Agent SDK 与运行时（调度、限速、可观测性、失败处理）
 - M4：最小社会与经济（工作/生产/交易/关系/声誉；核心为**自由沙盒 + WASM 动态新事物**，Agent 创造的模块以 Rust 编写并编译为 WASM，通过事件/接口影响世界）
 - M5：可视化与调试工具（世界面板、事件浏览、回放、指标；详见 `doc/world-simulator/visualization.md`）
+
+### M4 交叉引用（当前实现）
+- 电力子系统已完成 **M4.1~M4.3**：基础电力状态管理、发电/储能设施、跨 Location 传输与交易基础接口。
+- 电价与市场机制（M4.4）仍为可选后续。
+- 详细设计与任务状态以 `doc/m4-power-system.md` 与 `doc/m4-power-system.project.md` 为准。
 
 ## 分册索引
 - 世界初始化：`doc/world-simulator/world-initialization.md`
