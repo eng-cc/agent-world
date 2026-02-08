@@ -332,6 +332,7 @@ pub(super) fn update_world_overlays_3d(
                     Name::new("overlay:heat"),
                 ))
                 .id();
+            attach_to_scene_root(&mut commands, &scene, entity);
             scene.heat_overlay_entities.push(entity);
         }
     }
@@ -360,6 +361,7 @@ pub(super) fn update_world_overlays_3d(
                     Name::new("overlay:flow"),
                 ))
                 .id();
+            attach_to_scene_root(&mut commands, &scene, entity);
             scene.flow_overlay_entities.push(entity);
         }
     }

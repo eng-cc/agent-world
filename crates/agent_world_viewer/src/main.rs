@@ -36,6 +36,7 @@ mod camera_controls;
 mod control_labels;
 mod diagnosis;
 mod event_click_list;
+mod floating_origin;
 mod headless;
 mod i18n;
 mod internal_capture;
@@ -59,6 +60,7 @@ use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
 };
+use floating_origin::update_floating_origin;
 use headless::headless_report;
 use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
@@ -201,6 +203,7 @@ fn run_ui(addr: String, offline: bool) {
                 update_3d_scene,
                 update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
+                update_floating_origin.after(orbit_camera_controls),
                 update_3d_viewport,
                 handle_control_buttons,
             ),
@@ -266,6 +269,8 @@ impl Default for ViewerState {
 
 #[derive(Resource, Default)]
 struct Viewer3dScene {
+    root_entity: Option<Entity>,
+    floating_origin_offset: Vec3,
     origin: Option<GeoPos>,
     space: Option<SpaceConfig>,
     last_snapshot_time: Option<u64>,
@@ -344,6 +349,9 @@ impl ViewerSelection {
 
 #[derive(Component)]
 struct Viewer3dCamera;
+
+#[derive(Component)]
+struct Viewer3dSceneRoot;
 
 #[derive(Component)]
 struct OrbitCamera {
@@ -569,10 +577,20 @@ fn send_request(
 fn setup_3d_scene(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
+    mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
+    let root_entity = commands
+        .spawn((
+            Transform::default(),
+            GlobalTransform::default(),
+            Viewer3dSceneRoot,
+        ))
+        .id();
+    scene.root_entity = Some(root_entity);
+
     let label_font = asset_server.load("fonts/ms-yahei.ttf");
     let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
     let location_mesh = meshes.add(Sphere::new(1.0));

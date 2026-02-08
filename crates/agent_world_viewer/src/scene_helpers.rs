@@ -50,6 +50,12 @@ pub(super) struct ChunkMarker {
     pub state: String,
 }
 
+pub(super) fn attach_to_scene_root(commands: &mut Commands, scene: &Viewer3dScene, entity: Entity) {
+    if let Some(root) = scene.root_entity {
+        commands.entity(root).add_child(entity);
+    }
+}
+
 pub(super) fn rebuild_scene_from_snapshot(
     commands: &mut Commands,
     config: &Viewer3dConfig,
@@ -86,6 +92,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.background_entities.clear();
     scene.heat_overlay_entities.clear();
     scene.flow_overlay_entities.clear();
+    scene.floating_origin_offset = Vec3::ZERO;
 
     let origin = space_origin(&snapshot.config.space);
     scene.origin = Some(origin);
@@ -346,6 +353,7 @@ pub(super) fn spawn_world_background(
             BaseScale(Vec3::new(world_width, WORLD_FLOOR_THICKNESS, world_depth)),
         ))
         .id();
+    attach_to_scene_root(commands, scene, floor_entity);
     scene.background_entities.push(floor_entity);
 
     let bounds_entity = commands
@@ -357,6 +365,7 @@ pub(super) fn spawn_world_background(
             BaseScale(Vec3::new(world_width, world_height, world_depth)),
         ))
         .id();
+    attach_to_scene_root(commands, scene, bounds_entity);
     scene.background_entities.push(bounds_entity);
 
     spawn_world_grid(
@@ -406,6 +415,7 @@ pub(super) fn spawn_world_grid(
                 )),
             ))
             .id();
+        attach_to_scene_root(commands, scene, x_line);
         scene.background_entities.push(x_line);
     }
 
@@ -429,6 +439,7 @@ pub(super) fn spawn_world_grid(
                 )),
             ))
             .id();
+        attach_to_scene_root(commands, scene, z_line);
         scene.background_entities.push(z_line);
     }
 }
@@ -480,6 +491,7 @@ pub(super) fn spawn_location_entity(
             BaseScale(marker_scale),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
         spawn_label(
             parent,
@@ -535,6 +547,7 @@ pub(super) fn spawn_agent_entity(
             BaseScale(marker_scale),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
         spawn_label(
             parent,
@@ -675,6 +688,7 @@ pub(super) fn spawn_module_visual_entity(
             BaseScale(Vec3::splat(0.9)),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
 
     commands.entity(entity).with_children(|parent| {
         spawn_label(
@@ -726,6 +740,7 @@ pub(super) fn spawn_power_plant_entity(
             BaseScale(Vec3::ONE),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
         spawn_label(
             parent,
@@ -777,6 +792,7 @@ pub(super) fn spawn_power_storage_entity(
             BaseScale(Vec3::ONE),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
         spawn_label(
             parent,
@@ -822,6 +838,7 @@ pub(super) fn spawn_asset_entity(
             BaseScale(Vec3::ONE),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
         spawn_label(
             parent,
@@ -928,6 +945,7 @@ pub(super) fn spawn_chunk_entity(
             BaseScale(marker_scale),
         ))
         .id();
+    attach_to_scene_root(commands, scene, entity);
 
     commands.entity(entity).with_children(|parent| {
         spawn_label(
