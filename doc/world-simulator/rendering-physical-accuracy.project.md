@@ -4,7 +4,7 @@
 - [x] 输出设计文档（`doc/world-simulator/rendering-physical-accuracy.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] RPA-1：viewer 物理渲染配置结构落地（单位、光照、曝光、精度）
-- [ ] RPA-2：尺寸映射链路落地（cm→m、Agent/Location 尺寸统一）
+- [x] RPA-2：尺寸映射链路落地（cm→m、Agent/Location 尺寸统一）
 - [ ] RPA-3：大场景精度方案落地（floating origin + 相机裁剪）
 - [ ] RPA-4：材质物理参数库接入（silicate/metal/ice/carbon/composite）
 - [ ] RPA-5：小行星带光照模型接入（`1/d²` 辐照度 + 曝光回归）
@@ -19,6 +19,6 @@
 - 截图闭环脚本（`scripts/capture-viewer-frame.sh`）
 
 ## 状态
-- 当前阶段：RPA-1 已完成，进入 RPA-2（尺寸映射链路）准备阶段。
-- 下一优先项：RPA-2（cm→m 尺寸映射在实体尺寸层全面落地）。
-- 最近更新：RPA-1 完成（新增 `viewer_3d_config` 配置模块、环境变量解析、基础光照/相机参数接入与单测，2026-02-07）。
+- 当前阶段：RPA-2 已完成，进入 RPA-3（大场景精度）准备阶段。
+- 下一优先项：RPA-3（floating origin + 相机裁剪与远景稳定性）。
+- 最近更新：RPA-2 完成（Location 采用 `radius_cm` 实尺渲染、Agent 采用 `height_cm` 推导实尺渲染，补齐回归测试，2026-02-07）。

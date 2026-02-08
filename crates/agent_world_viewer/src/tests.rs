@@ -718,6 +718,94 @@ fn spawn_location_entity_adds_label_text() {
 }
 
 #[test]
+fn spawn_location_entity_uses_physical_radius_scale() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_scale_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material: Handle::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_mesh: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<(&LocationMarker, &BaseScale)>();
+    let (_, base) = query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "loc-scale")
+        .expect("location marker exists");
+    assert!((base.0.x - 200.0).abs() < 1e-3);
+}
+
+#[test]
+fn spawn_agent_entity_uses_body_height_scale() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_scale_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material: Handle::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_mesh: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<(&AgentMarker, &BaseScale)>();
+    let (_, base) = query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "agent-scale")
+        .expect("agent marker exists");
+    assert!((base.0.x - 0.7).abs() < 1e-3);
+}
+
+#[test]
 fn update_ui_populates_agent_selection_details_with_llm_trace() {
     let mut app = App::new();
     app.add_systems(Update, update_ui);
@@ -1230,5 +1318,45 @@ fn spawn_label_test_system(
         "loc-1",
         "Alpha",
         GeoPos::new(0.0, 0.0, 0.0),
+        100,
+    );
+}
+
+fn spawn_location_scale_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-scale",
+        "Scale",
+        GeoPos::new(0.0, 0.0, 0.0),
+        20_000,
+    );
+}
+
+fn spawn_agent_scale_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-scale",
+        GeoPos::new(0.0, 0.0, 0.0),
+        200,
     );
 }

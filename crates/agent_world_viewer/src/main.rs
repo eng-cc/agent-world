@@ -19,7 +19,6 @@ use bevy::window::PrimaryWindow;
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
 const DEFAULT_AGENT_RADIUS: f32 = 0.35;
-const DEFAULT_LOCATION_SIZE: f32 = 1.2;
 const ORBIT_ROTATE_SENSITIVITY: f32 = 0.005;
 const ORBIT_PAN_SENSITIVITY: f32 = 0.002;
 const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
@@ -273,6 +272,7 @@ struct Viewer3dScene {
     last_event_id: Option<u64>,
     agent_entities: HashMap<String, Entity>,
     agent_positions: HashMap<String, GeoPos>,
+    agent_heights_cm: HashMap<String, i64>,
     location_entities: HashMap<String, Entity>,
     asset_entities: HashMap<String, Entity>,
     module_visual_entities: HashMap<String, Entity>,
@@ -575,11 +575,7 @@ fn setup_3d_scene(
 ) {
     let label_font = asset_server.load("fonts/ms-yahei.ttf");
     let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
-    let location_mesh = meshes.add(Cuboid::new(
-        DEFAULT_LOCATION_SIZE,
-        DEFAULT_LOCATION_SIZE * 0.2,
-        DEFAULT_LOCATION_SIZE,
-    ));
+    let location_mesh = meshes.add(Sphere::new(1.0));
     let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
     let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
     let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));

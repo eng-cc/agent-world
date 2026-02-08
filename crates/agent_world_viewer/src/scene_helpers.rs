@@ -13,6 +13,10 @@ const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
 const CHUNK_MARKER_MIN_SIZE: f32 = 0.45;
 const CHUNK_MARKER_MAX_SIZE: f32 = 1.8;
 const CHUNK_MARKER_VERTICAL_OFFSET: f32 = 0.2;
+const LOCATION_RADIUS_MIN_M: f32 = 0.25;
+const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
+const AGENT_HEIGHT_MIN_M: f32 = 0.25;
+const AGENT_HEIGHT_MAX_M: f32 = 4.0;
 
 #[derive(Component)]
 pub(super) struct AgentMarker {
@@ -71,6 +75,7 @@ pub(super) fn rebuild_scene_from_snapshot(
 
     scene.agent_entities.clear();
     scene.agent_positions.clear();
+    scene.agent_heights_cm.clear();
     scene.location_entities.clear();
     scene.asset_entities.clear();
     scene.module_visual_entities.clear();
@@ -97,11 +102,21 @@ pub(super) fn rebuild_scene_from_snapshot(
             location_id,
             &location.name,
             location.pos,
+            location.profile.radius_cm,
         );
     }
 
     for (agent_id, agent) in snapshot.model.agents.iter() {
-        spawn_agent_entity(commands, config, assets, scene, origin, agent_id, agent.pos);
+        spawn_agent_entity(
+            commands,
+            config,
+            assets,
+            scene,
+            origin,
+            agent_id,
+            agent.pos,
+            agent.body.height_cm,
+        );
     }
 
     for (facility_id, plant) in snapshot.model.power_plants.iter() {
@@ -202,7 +217,7 @@ pub(super) fn apply_events_to_scene(
                 location_id,
                 name,
                 pos,
-                ..
+                profile,
             } => {
                 spawn_location_entity(
                     commands,
@@ -213,14 +228,29 @@ pub(super) fn apply_events_to_scene(
                     location_id,
                     name,
                     *pos,
+                    profile.radius_cm,
                 );
             }
             WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
-                spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+                let height_cm = scene
+                    .agent_heights_cm
+                    .get(agent_id)
+                    .copied()
+                    .unwrap_or(agent_height_cm(None));
+                spawn_agent_entity(
+                    commands, config, assets, scene, origin, agent_id, *pos, height_cm,
+                );
             }
             WorldEventKind::AgentMoved { agent_id, to, .. } => {
                 if let Some(pos) = scene.location_positions.get(to) {
-                    spawn_agent_entity(commands, config, assets, scene, origin, agent_id, *pos);
+                    let height_cm = scene
+                        .agent_heights_cm
+                        .get(agent_id)
+                        .copied()
+                        .unwrap_or(agent_height_cm(None));
+                    spawn_agent_entity(
+                        commands, config, assets, scene, origin, agent_id, *pos, height_cm,
+                    );
                 }
             }
             WorldEventKind::ModuleVisualEntityUpserted { entity } => {
@@ -412,6 +442,7 @@ pub(super) fn spawn_location_entity(
     location_id: &str,
     name: &str,
     pos: GeoPos,
+    radius_cm: i64,
 ) {
     scene
         .location_positions
@@ -421,6 +452,8 @@ pub(super) fn spawn_location_entity(
         return;
     }
 
+    let radius_m = location_radius_m(radius_cm);
+    let marker_scale = Vec3::splat(radius_m);
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
@@ -429,6 +462,7 @@ pub(super) fn spawn_location_entity(
                 id: location_id.to_string(),
                 name: name.to_string(),
             },
+            BaseScale(marker_scale),
         ));
         return;
     }
@@ -437,13 +471,13 @@ pub(super) fn spawn_location_entity(
         .spawn((
             Mesh3d(assets.location_mesh.clone()),
             MeshMaterial3d(assets.location_material.clone()),
-            Transform::from_translation(translation),
+            Transform::from_translation(translation).with_scale(marker_scale),
             Name::new(format!("location:{location_id}:{name}")),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
             },
-            BaseScale(Vec3::ONE),
+            BaseScale(marker_scale),
         ))
         .id();
     commands.entity(entity).with_children(|parent| {
@@ -451,7 +485,7 @@ pub(super) fn spawn_location_entity(
             parent,
             assets,
             name.to_string(),
-            LOCATION_LABEL_OFFSET,
+            location_label_offset(radius_m),
             format!("label:location:{location_id}"),
         );
     });
@@ -468,18 +502,24 @@ pub(super) fn spawn_agent_entity(
     origin: GeoPos,
     agent_id: &str,
     pos: GeoPos,
+    height_cm: i64,
 ) {
     scene.agent_positions.insert(agent_id.to_string(), pos);
+    scene
+        .agent_heights_cm
+        .insert(agent_id.to_string(), height_cm.max(1));
 
     if !config.show_agents {
         return;
     }
 
+    let marker_scale = Vec3::splat(agent_radius_m(height_cm));
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.agent_entities.get(agent_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
+        commands.entity(*entity).insert((
+            Transform::from_translation(translation).with_scale(marker_scale),
+            BaseScale(marker_scale),
+        ));
         return;
     }
 
@@ -487,12 +527,12 @@ pub(super) fn spawn_agent_entity(
         .spawn((
             Mesh3d(assets.agent_mesh.clone()),
             MeshMaterial3d(assets.agent_material.clone()),
-            Transform::from_translation(translation),
+            Transform::from_translation(translation).with_scale(marker_scale),
             Name::new(format!("agent:{agent_id}")),
             AgentMarker {
                 id: agent_id.to_string(),
             },
-            BaseScale(Vec3::ONE),
+            BaseScale(marker_scale),
         ))
         .id();
     commands.entity(entity).with_children(|parent| {
@@ -500,7 +540,7 @@ pub(super) fn spawn_agent_entity(
             parent,
             assets,
             agent_id.to_string(),
-            AGENT_LABEL_OFFSET,
+            agent_label_offset(height_cm),
             format!("label:agent:{agent_id}"),
         );
     });
@@ -518,6 +558,30 @@ fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<G
             .get(location_id)
             .map(|location| location.pos),
     }
+}
+
+fn location_radius_m(radius_cm: i64) -> f32 {
+    (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
+}
+
+fn location_label_offset(radius_m: f32) -> f32 {
+    (radius_m + 0.5).max(LOCATION_LABEL_OFFSET)
+}
+
+fn agent_height_cm(height_cm: Option<i64>) -> i64 {
+    height_cm.unwrap_or(agent_world::models::DEFAULT_AGENT_HEIGHT_CM)
+}
+
+fn agent_radius_m(height_cm: i64) -> f32 {
+    let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
+        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
+    (height_m * 0.35).clamp(0.08, 1.5)
+}
+
+fn agent_label_offset(height_cm: i64) -> f32 {
+    let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
+        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
+    (height_m * 0.65).max(AGENT_LABEL_OFFSET)
 }
 
 fn id_hash_fraction(id: &str) -> f32 {
