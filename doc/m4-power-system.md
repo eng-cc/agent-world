@@ -40,7 +40,7 @@
 
 ### 电力单位
 - **PowerUnit (PU)**：电力的基本单位，1 PU = 1 单位电力
-- Agent 的电力以 `i64` 存储（负数表示欠电，触发休眠）
+- Agent 的电力以 `i64` 存储，当前实现采用饱和扣减，不会出现负值；`level <= 0` 时进入 `Shutdown`
 
 ### 电力来源
 
@@ -91,7 +91,8 @@ struct PowerStorage {
 1. **空闲消耗 (Idle)**：Agent 存活的基础消耗
    - 默认：1 PU/tick
 2. **移动消耗 (Move)**：已实现，按距离计费
-   - 默认：ceil(distance_km) PU
+   - 参考口径（`time_step_s=10`、`power_unit_j=1000`、`move_cost_per_km_electricity=1`）下为 `ceil(distance_km) PU`
+   - 实际运行时通过 `WorldConfig::movement_cost(distance_cm)` 按 `time_step_s` 与 `power_unit_j` 自动缩放
 3. **计算消耗 (Compute)**：执行决策/推理的消耗
    - 默认：每次决策 1 PU
 4. **维护消耗 (Maintenance)**：硬件老化的持续消耗
@@ -110,6 +111,11 @@ struct PowerConfig {
     transfer_max_distance_km: i64,  // 跨 Location 传输最大距离，默认 10_000
 }
 ```
+
+#### 与物理配置的联动（已实现）
+
+- 移动电耗最终由 `WorldConfig::movement_cost` 计算，除 `PowerConfig` 外还受 `PhysicsConfig.time_step_s` 与 `PhysicsConfig.power_unit_j` 影响
+- `process_power_tick` 在处理空闲耗电的同时执行热量散逸（与 `PhysicsConfig.thermal_capacity / thermal_dissipation / thermal_dissipation_gradient_bps` 联动）
 
 ### 电力传输
 
@@ -132,9 +138,9 @@ enum AgentPowerState {
 ```
 
 #### 降级策略
-1. **LowPower**：限制移动距离，降低计算频率
-2. **Critical**：禁止移动，只能接受充电或求助
-3. **Shutdown**：完全停机，从调度器移除，直到被充电恢复
+1. **LowPower**：当前主要作为状态信号，供策略层（规则/调度）降级决策
+2. **Critical**：当前主要作为状态信号，默认动作层尚未单独强制限制
+3. **Shutdown**：已在动作层强制拒绝关键动作（如 `MoveAgent`），并需外部充电恢复
 
 ### 电力交易
 
@@ -174,14 +180,18 @@ enum PowerAction {
 ```rust
 impl WorldKernel {
     // 电力系统 tick 处理
-    fn process_power_tick(&mut self) -> Vec<PowerEvent>;
+    fn process_power_tick(&mut self) -> Vec<WorldEvent>;
     
     // 查询 Agent 电力状态
-    fn agent_power_state(&self, agent_id: &AgentId) -> AgentPowerState;
+    fn agent_power_state(&self, agent_id: &AgentId) -> Option<AgentPowerState>;
+
+    // 判断 Agent 是否停机
+    fn is_agent_shutdown(&self, agent_id: &AgentId) -> bool;
+
+    // 查询所有停机 Agent
+    fn shutdown_agents(&self) -> Vec<AgentId>;
     
-    // 查询 Location 电力设施
-    fn location_power_facilities(&self, location_id: &LocationId) 
-        -> (Vec<PowerPlant>, Vec<PowerStorage>);
+    // 设施查询目前通过 WorldModel.power_plants / power_storages 访问
 }
 ```
 
@@ -218,7 +228,7 @@ enum ConsumeReason {
 ## 实现计划
 
 ### Phase 1：基础电力消耗
-1. 扩展 Agent 结构，添加 `power_state` 字段
+1. 扩展 Agent 结构，添加 `power` 字段（`AgentPowerStatus`）
 2. 实现空闲消耗：每 tick 扣除电力
 3. 实现电力不足检测与状态切换
 4. 实现 Shutdown 状态的调度器处理

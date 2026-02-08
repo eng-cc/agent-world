@@ -27,7 +27,7 @@
 - [x] 定义 PowerPlant 结构（发电设施）
 - [x] 定义 PowerStorage 结构（储能设施）
 - [x] 定义 PlantStatus 枚举（Running/Offline/Maintenance）
-- [x] 扩展 WorldModel 添加 facilities 字段
+- [x] 扩展 WorldModel 添加 `power_plants`/`power_storages` 字段
 - [x] 实现 RegisterPowerPlant/RegisterPowerStorage 动作
 - [x] 实现每 tick 发电逻辑
 - [x] 实现充放电逻辑
@@ -59,3 +59,4 @@
 - 下一阶段：M4.4 电价与市场机制（可选）
 - 上一阶段：M4.1 基础电力消耗与状态管理（已完成）
 - 背景设定：初始自给自足、未工业化，设施由 Agent 后续创造（已同步设计文档）
+- 设计对齐：已同步当前实现口径（移动能耗按 `time_step_s/power_unit_j` 标定、`process_power_tick` 热散逸耦合、`LowPower/Critical` 目前为状态信号）
