@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 
-use super::{OrbitCamera, Viewer3dCamera, Viewer3dConfig, Viewer3dScene};
+use super::{OrbitCamera, Viewer3dCamera, Viewer3dConfig, Viewer3dScene, Viewer3dSceneRoot};
 
 pub(super) fn update_floating_origin(
     config: Res<Viewer3dConfig>,
     mut scene: ResMut<Viewer3dScene>,
-    mut root_query: Query<&mut Transform>,
-    mut camera_query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
+    mut root_query: Query<&mut Transform, (With<Viewer3dSceneRoot>, Without<Viewer3dCamera>)>,
+    mut camera_query: Query<
+        (&mut OrbitCamera, &mut Transform),
+        (With<Viewer3dCamera>, Without<Viewer3dSceneRoot>),
+    >,
 ) {
     let Some(root_entity) = scene.root_entity else {
         return;

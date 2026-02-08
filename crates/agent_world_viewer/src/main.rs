@@ -597,18 +597,15 @@ fn setup_3d_scene(
         orbit,
     ));
 
-    let irradiance_lux =
-        config.physical.irradiance_w_m2() * config.physical.luminous_efficacy_lm_per_w;
-    let exposure_scale = 2.0_f32.powf((config.physical.exposure_ev100 - 13.5).clamp(-4.0, 4.0));
-    let intensity = (irradiance_lux / exposure_scale).clamp(2_500.0, 120_000.0);
+    let illuminance = config.physical.exposed_illuminance_lux();
 
     commands.spawn((
-        PointLight {
-            intensity,
+        DirectionalLight {
+            illuminance,
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_xyz(20.0, 30.0, 20.0),
+        Transform::from_xyz(20.0, 30.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
@@ -970,6 +967,7 @@ fn update_3d_scene(
 fn update_ui(
     state: Res<ViewerState>,
     selection: Res<ViewerSelection>,
+    viewer_3d_config: Option<Res<Viewer3dConfig>>,
     i18n: Option<Res<UiI18n>>,
     timeline: Option<Res<TimelineUiState>>,
     mut queries: ParamSet<(
@@ -989,7 +987,16 @@ fn update_ui(
         .as_ref()
         .map(|locale| locale.is_changed())
         .unwrap_or(false);
-    if !state.is_changed() && !selection.is_changed() && !timeline_changed && !locale_changed {
+    let physical_config_changed = viewer_3d_config
+        .as_ref()
+        .map(|config| config.is_changed())
+        .unwrap_or(false);
+    if !state.is_changed()
+        && !selection.is_changed()
+        && !timeline_changed
+        && !locale_changed
+        && !physical_config_changed
+    {
         return;
     }
 
@@ -1033,12 +1040,17 @@ fn update_ui(
     }
 
     if let Ok(mut text) = queries.p5().single_mut() {
+        let reference_radiation_area_m2 = viewer_3d_config
+            .as_deref()
+            .map(|config| config.physical.reference_radiation_area_m2)
+            .unwrap_or(1.0);
         text.0 = ui_locale_text::localize_details_block(
             selection_details_summary(
                 &selection,
                 state.snapshot.as_ref(),
                 &state.events,
                 &state.decision_traces,
+                reference_radiation_area_m2,
             ),
             locale,
         );

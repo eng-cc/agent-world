@@ -433,6 +433,11 @@ pub(super) fn localize_details_block(text: String, locale: UiLocale) -> String {
     converted = converted.replace("Recent Owner Events:", "近期归属者事件:");
     converted = converted.replace("Budget (remaining top):", "预算（剩余 Top）:");
     converted = converted.replace("Budget (total top):", "预算（总量 Top）:");
+    converted = converted.replace("Thermal Visual:", "热态可视:");
+    converted = converted.replace("Radiation Visual:", "辐射可视:");
+    converted = converted.replace("color=heat_low", "颜色=低温");
+    converted = converted.replace("color=heat_mid", "颜色=暖态");
+    converted = converted.replace("color=heat_high", "颜色=过热");
     converted
 }
 

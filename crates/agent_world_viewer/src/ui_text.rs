@@ -143,6 +143,7 @@ pub(super) fn selection_details_summary(
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
     decision_traces: &[AgentDecisionTrace],
+    reference_radiation_area_m2: f32,
 ) -> String {
     let Some(selected) = selection.current.as_ref() else {
         return "Details:\n(click object to inspect)".to_string();
@@ -157,6 +158,7 @@ pub(super) fn selection_details_summary(
             selected.name.as_deref(),
             snapshot,
             events,
+            reference_radiation_area_m2,
         ),
         SelectionKind::Asset => asset_details_summary(selected.id.as_str(), snapshot, events),
         SelectionKind::PowerPlant => {
@@ -201,6 +203,12 @@ fn agent_details_summary(
         agent.power.level, agent.power.capacity, agent.power.state
     ));
     lines.push(format!("Thermal: heat={}", agent.thermal.heat));
+    let thermal_ratio = thermal_ratio(agent.thermal.heat, snapshot.config.physics.thermal_capacity);
+    lines.push(format!(
+        "Thermal Visual: ratio={:.2} color={}",
+        thermal_ratio,
+        thermal_ratio_color(thermal_ratio)
+    ));
 
     lines.push("Resources:".to_string());
     lines.extend(format_resource_stock(&agent.resources.amounts));
@@ -229,6 +237,7 @@ fn location_details_summary(
     selected_name: Option<&str>,
     snapshot: Option<&WorldSnapshot>,
     events: &[WorldEvent],
+    reference_radiation_area_m2: f32,
 ) -> String {
     let Some(snapshot) = snapshot else {
         return format!("Details: location {location_id}\n(no snapshot)");
@@ -269,6 +278,15 @@ fn location_details_summary(
         location.profile.material,
         location.profile.radius_cm,
         location.profile.radiation_emission_per_tick
+    ));
+    let (radiation_power_w, radiation_flux_w_m2, area_m2) = radiation_visual_metrics(
+        location.profile.radiation_emission_per_tick,
+        snapshot.config.physics.power_unit_j,
+        snapshot.config.physics.time_step_s,
+        reference_radiation_area_m2,
+    );
+    lines.push(format!(
+        "Radiation Visual: power={radiation_power_w:.2}W flux={radiation_flux_w_m2:.2}W/m2 area={area_m2:.2}m2"
     ));
     lines.push(format!(
         "Facilities: plants={} storages={} assets_owned={}",
@@ -654,6 +672,41 @@ fn owner_label(owner: &ResourceOwner) -> String {
 
 fn format_geo_pos(pos: GeoPos) -> String {
     format!("x={:.0}, y={:.0}, z={:.0}", pos.x_cm, pos.y_cm, pos.z_cm)
+}
+
+fn thermal_ratio(heat: i64, capacity: i64) -> f64 {
+    let heat = heat.max(0) as f64;
+    let capacity = capacity.max(1) as f64;
+    heat / capacity
+}
+
+fn thermal_ratio_color(thermal_ratio: f64) -> &'static str {
+    if thermal_ratio <= 0.6 {
+        "heat_low"
+    } else if thermal_ratio <= 1.0 {
+        "heat_mid"
+    } else {
+        "heat_high"
+    }
+}
+
+fn radiation_visual_metrics(
+    radiation_emission_per_tick: i64,
+    power_unit_j: i64,
+    time_step_s: i64,
+    reference_radiation_area_m2: f32,
+) -> (f64, f64, f64) {
+    let emission = radiation_emission_per_tick.max(0) as f64;
+    let joule_per_unit = power_unit_j.max(1) as f64;
+    let seconds_per_tick = time_step_s.max(1) as f64;
+    let area_m2 = if reference_radiation_area_m2.is_finite() && reference_radiation_area_m2 > 0.0 {
+        reference_radiation_area_m2 as f64
+    } else {
+        1.0
+    };
+    let radiation_power_w = emission * joule_per_unit / seconds_per_tick;
+    let radiation_flux_w_m2 = radiation_power_w / area_m2;
+    (radiation_power_w, radiation_flux_w_m2, area_m2)
 }
 
 fn format_resource_stock(amounts: &std::collections::BTreeMap<ResourceKind, i64>) -> Vec<String> {
@@ -1097,55 +1150,5 @@ fn owner_matches_location(owner: &ResourceOwner, location_id: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use agent_world::simulator::RejectReason;
-
-    #[test]
-    fn events_summary_without_focus_keeps_compact_view() {
-        let events = vec![WorldEvent {
-            id: 1,
-            time: 7,
-            kind: WorldEventKind::ActionRejected {
-                reason: RejectReason::InvalidAmount { amount: 1 },
-            },
-        }];
-
-        let text = events_summary(&events, None);
-        assert!(text.starts_with("Events:"));
-        assert!(text.contains("#1 t7"));
-        assert!(!text.contains("Events (focused):"));
-    }
-
-    #[test]
-    fn events_summary_with_focus_marks_nearest_context() {
-        let events = vec![
-            WorldEvent {
-                id: 1,
-                time: 3,
-                kind: WorldEventKind::ActionRejected {
-                    reason: RejectReason::InvalidAmount { amount: 1 },
-                },
-            },
-            WorldEvent {
-                id: 2,
-                time: 8,
-                kind: WorldEventKind::ActionRejected {
-                    reason: RejectReason::InvalidAmount { amount: 2 },
-                },
-            },
-            WorldEvent {
-                id: 3,
-                time: 11,
-                kind: WorldEventKind::ActionRejected {
-                    reason: RejectReason::InvalidAmount { amount: 3 },
-                },
-            },
-        ];
-
-        let text = events_summary(&events, Some(9));
-        assert!(text.starts_with("Events (focused):"));
-        assert!(text.contains("Focus: requested t9 -> nearest t8 (#2), Δt=1"));
-        assert!(text.contains(">> #2 t8"));
-    }
-}
+#[path = "ui_text_tests.rs"]
+mod tests;

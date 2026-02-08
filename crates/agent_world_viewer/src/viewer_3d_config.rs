@@ -10,6 +10,10 @@ const DEFAULT_STELLAR_DISTANCE_AU: f32 = 2.5;
 const DEFAULT_LUMINOUS_EFFICACY_LM_PER_W: f32 = 120.0;
 const DEFAULT_EXPOSURE_EV100: f32 = 13.5;
 const DEFAULT_REFERENCE_RADIATION_AREA_M2: f32 = 1.0;
+const SOLAR_CONSTANT_W_M2_AT_1_AU: f32 = 1361.0;
+const BASELINE_EXPOSURE_EV100: f32 = 13.5;
+const MIN_LIGHT_ILLUMINANCE_LUX: f32 = 2_500.0;
+const MAX_LIGHT_ILLUMINANCE_LUX: f32 = 120_000.0;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -58,7 +62,20 @@ pub(super) struct ViewerPhysicalRenderConfig {
 impl ViewerPhysicalRenderConfig {
     pub(super) fn irradiance_w_m2(&self) -> f32 {
         let distance = self.stellar_distance_au.max(0.1);
-        1361.0 / (distance * distance)
+        SOLAR_CONSTANT_W_M2_AT_1_AU / (distance * distance)
+    }
+
+    pub(super) fn directional_illuminance_lux(&self) -> f32 {
+        self.irradiance_w_m2() * self.luminous_efficacy_lm_per_w
+    }
+
+    pub(super) fn exposure_scale(&self) -> f32 {
+        2.0_f32.powf((self.exposure_ev100 - BASELINE_EXPOSURE_EV100).clamp(-4.0, 4.0))
+    }
+
+    pub(super) fn exposed_illuminance_lux(&self) -> f32 {
+        (self.directional_illuminance_lux() / self.exposure_scale())
+            .clamp(MIN_LIGHT_ILLUMINANCE_LUX, MAX_LIGHT_ILLUMINANCE_LUX)
     }
 }
 
@@ -292,5 +309,58 @@ mod tests {
 
         let irradiance = config.physical.irradiance_w_m2();
         assert!((irradiance - 217.76).abs() < 0.5);
+
+        let directional = config.physical.directional_illuminance_lux();
+        assert!((directional - 26_131.2).abs() < 80.0);
+    }
+
+    #[test]
+    fn asteroid_belt_irradiance_is_monotonic_in_2_2_to_3_2_au() {
+        let mut config = Viewer3dConfig::default();
+        config.physical.enabled = true;
+
+        config.physical.stellar_distance_au = 2.2;
+        let near = config.physical.irradiance_w_m2();
+        config.physical.stellar_distance_au = 2.5;
+        let middle = config.physical.irradiance_w_m2();
+        config.physical.stellar_distance_au = 3.2;
+        let far = config.physical.irradiance_w_m2();
+
+        assert!(near > middle);
+        assert!(middle > far);
+    }
+
+    #[test]
+    fn exposure_ev100_controls_exposed_illuminance_lux() {
+        let mut config = Viewer3dConfig::default();
+        config.physical.enabled = true;
+        config.physical.stellar_distance_au = 2.5;
+        config.physical.luminous_efficacy_lm_per_w = 120.0;
+
+        config.physical.exposure_ev100 = 13.5;
+        let baseline = config.physical.exposed_illuminance_lux();
+        config.physical.exposure_ev100 = 14.5;
+        let darker = config.physical.exposed_illuminance_lux();
+        config.physical.exposure_ev100 = 12.5;
+        let brighter = config.physical.exposed_illuminance_lux();
+
+        assert!(brighter > baseline);
+        assert!(baseline > darker);
+        assert!((baseline - 26_131.2).abs() < 80.0);
+    }
+
+    #[test]
+    fn exposed_illuminance_respects_clamp_range() {
+        let mut config = Viewer3dConfig::default();
+        config.physical.enabled = true;
+        config.physical.stellar_distance_au = 0.1;
+        config.physical.exposure_ev100 = 9.5;
+        let high = config.physical.exposed_illuminance_lux();
+        assert!((high - MAX_LIGHT_ILLUMINANCE_LUX).abs() < f32::EPSILON);
+
+        config.physical.stellar_distance_au = 15.0;
+        config.physical.exposure_ev100 = 17.5;
+        let low = config.physical.exposed_illuminance_lux();
+        assert!((low - MIN_LIGHT_ILLUMINANCE_LUX).abs() < f32::EPSILON);
     }
 }
