@@ -2,19 +2,45 @@ use super::super::*;
 use super::pos;
 use crate::models::{CargoEntityEntry, CargoEntityKind};
 
+fn default_module_sandbox() -> BuiltinModuleSandbox {
+    BuiltinModuleSandbox::new()
+        .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
+        .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
+        .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
+        .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
+}
+
+fn scenario_module_sandbox() -> BuiltinModuleSandbox {
+    BuiltinModuleSandbox::new()
+        .register_builtin(
+            M1_RADIATION_POWER_MODULE_ID,
+            M1RadiationPowerModule::default(),
+        )
+        .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
+        .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
+        .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
+        .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
+        .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
+}
+
 fn setup_world_with_default_modules() -> (World, BuiltinModuleSandbox) {
     let mut world = World::new();
     world
         .install_m1_agent_default_modules("bootstrap")
         .expect("install default modules");
 
-    let sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
-        .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
-        .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
-        .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule);
+    (world, default_module_sandbox())
+}
 
-    (world, sandbox)
+fn setup_world_with_scenario_modules(
+    config: M1ScenarioBootstrapConfig,
+) -> (World, BuiltinModuleSandbox) {
+    let mut world = World::new();
+    world
+        .install_m1_scenario_bootstrap_modules("bootstrap", config)
+        .expect("install scenario bootstrap modules");
+
+    (world, scenario_module_sandbox())
 }
 
 fn last_module_state(world: &World, module_id: &str) -> Option<Vec<u8>> {
@@ -129,12 +155,15 @@ fn default_memory_module_records_domain_events() {
         .get("entries")
         .and_then(|value| value.as_array())
         .expect("memory entries array");
-    assert!(entries.iter().any(|entry| entry.get("kind")
-        == Some(&serde_json::Value::String(
-            "domain.agent_registered".to_string()
-        ))));
-    assert!(entries.iter().any(|entry| entry.get("kind")
-        == Some(&serde_json::Value::String("domain.observation".to_string()))));
+    assert!(entries.iter().any(|entry| {
+        entry.get("kind")
+            == Some(&serde_json::Value::String(
+                "domain.agent_registered".to_string(),
+            ))
+    }));
+    assert!(entries.iter().any(|entry| {
+        entry.get("kind") == Some(&serde_json::Value::String("domain.observation".to_string()))
+    }));
 }
 
 #[test]
@@ -181,4 +210,105 @@ fn default_storage_cargo_module_tracks_expand_events() {
         consumed.get("iface-kit-1"),
         Some(&serde_json::Value::Number(1_u64.into()))
     );
+}
+
+#[test]
+fn scenario_modules_limit_mobility_before_sensor_when_power_low() {
+    let (mut world, mut sandbox) =
+        setup_world_with_scenario_modules(M1ScenarioBootstrapConfig::default());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("register agent step");
+
+    let mut rejected_by_storage = false;
+    for idx in 0..8 {
+        world.submit_action(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: pos((idx as f64 + 1.0) * 100_000.0, 0.0),
+        });
+        world
+            .step_with_modules(&mut sandbox)
+            .expect("move step with scenario modules");
+
+        let Some(DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        }) = last_domain_event(&world)
+        else {
+            continue;
+        };
+        if notes
+            .iter()
+            .any(|note| note.contains("storage insufficient"))
+        {
+            rejected_by_storage = true;
+            break;
+        }
+    }
+    assert!(rejected_by_storage);
+
+    world.submit_action(Action::QueryObservation {
+        agent_id: "agent-1".to_string(),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("query observation after low power move rejection");
+
+    let last = last_domain_event(&world).expect("last domain event");
+    assert!(matches!(last, DomainEvent::Observation { .. }));
+}
+
+#[test]
+fn scenario_modules_replay_keeps_state_consistent() {
+    let (mut world, mut sandbox) =
+        setup_world_with_scenario_modules(M1ScenarioBootstrapConfig::default());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("register agent step");
+
+    world
+        .add_agent_cargo_entity(
+            "agent-1",
+            CargoEntityEntry {
+                entity_id: "iface-kit-1".to_string(),
+                entity_kind: CargoEntityKind::InterfaceModuleItem,
+                quantity: 1,
+                size_per_unit: 1,
+            },
+        )
+        .expect("seed cargo entry");
+
+    world.submit_action(Action::ExpandBodyInterface {
+        agent_id: "agent-1".to_string(),
+        interface_module_item_id: "iface-kit-1".to_string(),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("expand body interface step");
+
+    world.submit_action(Action::QueryObservation {
+        agent_id: "agent-1".to_string(),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("query observation step");
+
+    let snapshot = world.snapshot();
+    let journal = world.journal().clone();
+    let restored = World::from_snapshot(snapshot, journal).expect("restore world");
+
+    assert_eq!(restored.state(), world.state());
+    assert_eq!(restored.module_registry(), world.module_registry());
+
+    assert_eq!(last_domain_event(&restored), last_domain_event(&world));
 }
