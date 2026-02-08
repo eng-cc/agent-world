@@ -13,15 +13,15 @@
 - [x] 将“接口模块实体”接入 cargo 存储与消耗校验
 
 ### ADM-S3 默认模块实现
-- [ ] 落地 `m1.sensor.basic`（基础感知模块）
-- [ ] 落地 `m1.mobility.basic`（移动语义模块）
-- [ ] 落地 `m1.memory.core`（记忆模块最小实现）
-- [ ] 落地 `m1.storage.cargo`（实体存储模块）
+- [x] 落地 `m1.sensor.basic`（基础感知模块）
+- [x] 落地 `m1.mobility.basic`（移动语义模块）
+- [x] 落地 `m1.memory.core`（记忆模块最小实现）
+- [x] 落地 `m1.storage.cargo`（实体存储模块）
 
 ### ADM-S4 安装与场景
-- [ ] 提供 `World::install_m1_agent_default_modules(actor)` 安装入口
+- [x] 提供 `World::install_m1_agent_default_modules(actor)` 安装入口
 - [ ] 在场景初始化中支持“是否安装默认模块包”开关
-- [ ] 保证重复安装幂等（已激活版本跳过）
+- [x] 保证重复安装幂等（已激活版本跳过）
 
 ### ADM-S5 测试与收口
 - [ ] 单元测试：槽位扩容、模块安装/卸载、实体存储增删
@@ -34,6 +34,6 @@
 - Agent 资源账本与动作路由（pre_action/post_event）
 
 ## 状态
-- 当前阶段：ADM-S2 完成（模型与动作接入）
-- 下一阶段：推进 ADM-S3（sensor/mobility/memory/storage 默认模块）
-- 最近更新：完成 `expand_body_interface` 动作链路与回放测试（2026-02-08）
+- 当前阶段：ADM-S3 完成，ADM-S4 部分完成（安装入口 + 幂等）
+- 下一阶段：推进 ADM-S4 场景初始化开关与 ADM-S5 收口
+- 最近更新：新增四个默认模块实现及安装入口，并补充默认模块回归测试（2026-02-08）

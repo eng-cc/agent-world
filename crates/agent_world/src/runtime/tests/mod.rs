@@ -8,6 +8,7 @@ pub(super) fn pos(x: f64, y: f64) -> crate::geometry::GeoPos {
     }
 }
 
+mod agent_default_modules;
 mod audit;
 mod basic;
 mod body;

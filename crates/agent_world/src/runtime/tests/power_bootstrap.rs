@@ -45,6 +45,48 @@ fn install_power_bootstrap_modules_registers_and_activates() {
 }
 
 #[test]
+fn install_agent_default_modules_registers_and_activates() {
+    let mut world = World::new();
+    world
+        .install_m1_agent_default_modules("bootstrap")
+        .expect("install default modules");
+
+    assert!(has_active(&world, M1_SENSOR_MODULE_ID));
+    assert!(has_active(&world, M1_MOBILITY_MODULE_ID));
+    assert!(has_active(&world, M1_MEMORY_MODULE_ID));
+    assert!(has_active(&world, M1_STORAGE_CARGO_MODULE_ID));
+
+    let sensor_key =
+        ModuleRegistry::record_key(M1_SENSOR_MODULE_ID, M1_AGENT_DEFAULT_MODULE_VERSION);
+    let mobility_key =
+        ModuleRegistry::record_key(M1_MOBILITY_MODULE_ID, M1_AGENT_DEFAULT_MODULE_VERSION);
+    let memory_key =
+        ModuleRegistry::record_key(M1_MEMORY_MODULE_ID, M1_AGENT_DEFAULT_MODULE_VERSION);
+    let cargo_key =
+        ModuleRegistry::record_key(M1_STORAGE_CARGO_MODULE_ID, M1_AGENT_DEFAULT_MODULE_VERSION);
+
+    assert!(world.module_registry().records.contains_key(&sensor_key));
+    assert!(world.module_registry().records.contains_key(&mobility_key));
+    assert!(world.module_registry().records.contains_key(&memory_key));
+    assert!(world.module_registry().records.contains_key(&cargo_key));
+}
+
+#[test]
+fn install_agent_default_modules_is_idempotent() {
+    let mut world = World::new();
+    world
+        .install_m1_agent_default_modules("bootstrap")
+        .expect("first install");
+    let event_len = world.journal().len();
+
+    world
+        .install_m1_agent_default_modules("bootstrap")
+        .expect("second install");
+
+    assert_eq!(world.journal().len(), event_len);
+}
+
+#[test]
 fn install_power_bootstrap_modules_is_idempotent() {
     let mut world = World::new();
     world
