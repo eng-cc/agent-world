@@ -162,6 +162,8 @@ struct RawLlmExecuteUntilUntil {
     event: Option<String>,
     #[serde(default)]
     event_any_of: Vec<String>,
+    #[serde(default)]
+    value_lte: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -177,6 +179,10 @@ pub(super) enum ExecuteUntilEventKind {
     NewVisibleAgent,
     NewVisibleLocation,
     ArriveTarget,
+    InsufficientElectricity,
+    ThermalOverload,
+    HarvestYieldBelow,
+    HarvestAvailableBelow,
 }
 
 impl ExecuteUntilEventKind {
@@ -186,6 +192,10 @@ impl ExecuteUntilEventKind {
             "new_visible_agent" => Some(Self::NewVisibleAgent),
             "new_visible_location" => Some(Self::NewVisibleLocation),
             "arrive_target" => Some(Self::ArriveTarget),
+            "insufficient_electricity" => Some(Self::InsufficientElectricity),
+            "thermal_overload" => Some(Self::ThermalOverload),
+            "harvest_yield_below" => Some(Self::HarvestYieldBelow),
+            "harvest_available_below" => Some(Self::HarvestAvailableBelow),
             _ => None,
         }
     }
@@ -196,6 +206,30 @@ impl ExecuteUntilEventKind {
             Self::NewVisibleAgent => "new_visible_agent",
             Self::NewVisibleLocation => "new_visible_location",
             Self::ArriveTarget => "arrive_target",
+            Self::InsufficientElectricity => "insufficient_electricity",
+            Self::ThermalOverload => "thermal_overload",
+            Self::HarvestYieldBelow => "harvest_yield_below",
+            Self::HarvestAvailableBelow => "harvest_available_below",
+        }
+    }
+
+    pub(super) fn requires_value_lte(self) -> bool {
+        matches!(self, Self::HarvestYieldBelow | Self::HarvestAvailableBelow)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ExecuteUntilCondition {
+    pub kind: ExecuteUntilEventKind,
+    pub value_lte: Option<i64>,
+}
+
+impl ExecuteUntilCondition {
+    pub(super) fn summary(&self) -> String {
+        if let Some(value_lte) = self.value_lte {
+            format!("{}<= {}", self.kind.as_str(), value_lte)
+        } else {
+            self.kind.as_str().to_string()
         }
     }
 }
@@ -203,7 +237,7 @@ impl ExecuteUntilEventKind {
 #[derive(Debug, Clone)]
 pub(super) struct ExecuteUntilDirective {
     pub action: Action,
-    pub until_events: Vec<ExecuteUntilEventKind>,
+    pub until_conditions: Vec<ExecuteUntilCondition>,
     pub max_ticks: u64,
 }
 
@@ -346,7 +380,7 @@ fn parse_execute_until_decision(
         }
     };
 
-    let until_events = parse_execute_until_events(&payload.until)?;
+    let until_conditions = parse_execute_until_conditions(&payload.until)?;
 
     let max_ticks = payload
         .max_ticks
@@ -355,14 +389,14 @@ fn parse_execute_until_decision(
 
     Ok(ExecuteUntilDirective {
         action,
-        until_events,
+        until_conditions,
         max_ticks,
     })
 }
 
-fn parse_execute_until_events(
+fn parse_execute_until_conditions(
     until: &RawLlmExecuteUntilUntil,
-) -> Result<Vec<ExecuteUntilEventKind>, String> {
+) -> Result<Vec<ExecuteUntilCondition>, String> {
     let mut values = Vec::new();
     if let Some(event) = until.event.as_ref() {
         values.push(event.as_str());
@@ -371,26 +405,44 @@ fn parse_execute_until_events(
         values.push(event.as_str());
     }
 
-    let mut events = Vec::new();
+    let mut conditions = Vec::new();
     for value in values {
         for token in value.split(['|', ',']) {
             let trimmed = token.trim();
             if trimmed.is_empty() {
                 continue;
             }
-            let event = ExecuteUntilEventKind::parse(trimmed)
+            let kind = ExecuteUntilEventKind::parse(trimmed)
                 .ok_or_else(|| format!("execute_until unsupported until.event: {trimmed}"))?;
-            if !events.contains(&event) {
-                events.push(event);
+            let value_lte = if kind.requires_value_lte() {
+                let Some(value_lte) = until.value_lte else {
+                    return Err(format!(
+                        "execute_until event {} requires until.value_lte",
+                        kind.as_str()
+                    ));
+                };
+                if value_lte < 0 {
+                    return Err(format!(
+                        "execute_until until.value_lte must be non-negative for {}",
+                        kind.as_str()
+                    ));
+                }
+                Some(value_lte)
+            } else {
+                None
+            };
+            let condition = ExecuteUntilCondition { kind, value_lte };
+            if !conditions.contains(&condition) {
+                conditions.push(condition);
             }
         }
     }
 
-    if events.is_empty() {
+    if conditions.is_empty() {
         return Err("execute_until missing until.event/event_any_of".to_string());
     }
 
-    Ok(events)
+    Ok(conditions)
 }
 
 fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {

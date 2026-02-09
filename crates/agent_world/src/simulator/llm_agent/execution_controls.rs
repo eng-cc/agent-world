@@ -1,7 +1,7 @@
 use super::super::agent::{ActionResult, AgentDecision};
-use super::super::kernel::{Observation, WorldEventKind};
+use super::super::kernel::{Observation, RejectReason, WorldEventKind};
 use super::super::types::Action;
-use super::decision_flow::{ExecuteUntilDirective, ExecuteUntilEventKind};
+use super::decision_flow::{ExecuteUntilCondition, ExecuteUntilDirective, ExecuteUntilEventKind};
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ActionReplanGuardState {
@@ -44,13 +44,16 @@ impl ActionReplanGuardState {
 #[derive(Debug, Clone)]
 pub(super) struct ActiveExecuteUntil {
     action: Action,
-    until_events: Vec<ExecuteUntilEventKind>,
+    until_conditions: Vec<ExecuteUntilCondition>,
     remaining_ticks: u64,
     baseline_visible_agents: usize,
     baseline_visible_locations: usize,
     target_location_id: Option<String>,
     last_action_failed: bool,
     last_action_rejected: bool,
+    last_reject_reason: Option<RejectReason>,
+    last_harvest_amount: Option<i64>,
+    last_harvest_available: Option<i64>,
 }
 
 impl ActiveExecuteUntil {
@@ -65,13 +68,16 @@ impl ActiveExecuteUntil {
 
         Self {
             action: directive.action,
-            until_events: directive.until_events,
+            until_conditions: directive.until_conditions,
             remaining_ticks: directive.max_ticks,
             baseline_visible_agents: observation.visible_agents.len(),
             baseline_visible_locations: observation.visible_locations.len(),
             target_location_id,
             last_action_failed: false,
             last_action_rejected: false,
+            last_reject_reason: None,
+            last_harvest_amount: None,
+            last_harvest_available: None,
         }
     }
 
@@ -80,9 +86,9 @@ impl ActiveExecuteUntil {
     }
 
     pub(super) fn until_events_summary(&self) -> String {
-        self.until_events
+        self.until_conditions
             .iter()
-            .map(|event| event.as_str())
+            .map(ExecuteUntilCondition::summary)
             .collect::<Vec<_>>()
             .join("|")
     }
@@ -97,61 +103,111 @@ impl ActiveExecuteUntil {
         }
 
         self.last_action_failed = !result.success;
-        self.last_action_rejected =
-            matches!(result.event.kind, WorldEventKind::ActionRejected { .. });
+        self.last_action_rejected = false;
+        self.last_reject_reason = None;
+        self.last_harvest_amount = None;
+        self.last_harvest_available = None;
+
+        match &result.event.kind {
+            WorldEventKind::ActionRejected { reason } => {
+                self.last_action_rejected = true;
+                self.last_reject_reason = Some(reason.clone());
+            }
+            WorldEventKind::RadiationHarvested {
+                amount, available, ..
+            } => {
+                self.last_harvest_amount = Some(*amount);
+                self.last_harvest_available = Some(*available);
+            }
+            _ => {}
+        }
     }
 
     pub(super) fn evaluate_next_step(&mut self, observation: &Observation) -> Result<(), String> {
-        if self.last_action_failed {
-            return Err("until plan stop: previous action failed".to_string());
-        }
-
-        if self
-            .until_events
-            .contains(&ExecuteUntilEventKind::ActionRejected)
-            && self.last_action_rejected
-        {
-            return Err("until.event action_rejected matched".to_string());
-        }
-
-        if self
-            .until_events
-            .contains(&ExecuteUntilEventKind::NewVisibleAgent)
-            && observation.visible_agents.len() > self.baseline_visible_agents
-        {
-            return Err(format!(
-                "until.event new_visible_agent matched: baseline={}, current={}",
-                self.baseline_visible_agents,
-                observation.visible_agents.len()
-            ));
-        }
-
-        if self
-            .until_events
-            .contains(&ExecuteUntilEventKind::NewVisibleLocation)
-            && observation.visible_locations.len() > self.baseline_visible_locations
-        {
-            return Err(format!(
-                "until.event new_visible_location matched: baseline={}, current={}",
-                self.baseline_visible_locations,
-                observation.visible_locations.len()
-            ));
-        }
-
-        if self
-            .until_events
-            .contains(&ExecuteUntilEventKind::ArriveTarget)
-        {
-            if let Some(target_location_id) = self.target_location_id.as_ref() {
-                let arrived = observation.visible_locations.iter().any(|location| {
-                    location.location_id == *target_location_id && location.distance_cm <= 0
-                });
-                if arrived {
-                    return Err(format!(
-                        "until.event arrive_target matched: {target_location_id}"
-                    ));
+        for condition in &self.until_conditions {
+            match condition.kind {
+                ExecuteUntilEventKind::ActionRejected => {
+                    if self.last_action_rejected {
+                        return Err("until.event action_rejected matched".to_string());
+                    }
+                }
+                ExecuteUntilEventKind::NewVisibleAgent => {
+                    if observation.visible_agents.len() > self.baseline_visible_agents {
+                        return Err(format!(
+                            "until.event new_visible_agent matched: baseline={}, current={}",
+                            self.baseline_visible_agents,
+                            observation.visible_agents.len()
+                        ));
+                    }
+                }
+                ExecuteUntilEventKind::NewVisibleLocation => {
+                    if observation.visible_locations.len() > self.baseline_visible_locations {
+                        return Err(format!(
+                            "until.event new_visible_location matched: baseline={}, current={}",
+                            self.baseline_visible_locations,
+                            observation.visible_locations.len()
+                        ));
+                    }
+                }
+                ExecuteUntilEventKind::ArriveTarget => {
+                    if let Some(target_location_id) = self.target_location_id.as_ref() {
+                        let arrived = observation.visible_locations.iter().any(|location| {
+                            location.location_id == *target_location_id && location.distance_cm <= 0
+                        });
+                        if arrived {
+                            return Err(format!(
+                                "until.event arrive_target matched: {target_location_id}"
+                            ));
+                        }
+                    }
+                }
+                ExecuteUntilEventKind::InsufficientElectricity => {
+                    if self
+                        .last_reject_reason
+                        .as_ref()
+                        .is_some_and(reject_reason_is_insufficient_electricity)
+                    {
+                        return Err("until.event insufficient_electricity matched".to_string());
+                    }
+                }
+                ExecuteUntilEventKind::ThermalOverload => {
+                    if self
+                        .last_reject_reason
+                        .as_ref()
+                        .is_some_and(reject_reason_is_thermal_overload)
+                    {
+                        return Err("until.event thermal_overload matched".to_string());
+                    }
+                }
+                ExecuteUntilEventKind::HarvestYieldBelow => {
+                    if let (Some(amount), Some(value_lte)) =
+                        (self.last_harvest_amount, condition.value_lte)
+                    {
+                        if amount <= value_lte {
+                            return Err(format!(
+                                "until.event harvest_yield_below matched: amount={}, threshold={}",
+                                amount, value_lte
+                            ));
+                        }
+                    }
+                }
+                ExecuteUntilEventKind::HarvestAvailableBelow => {
+                    if let (Some(available), Some(value_lte)) =
+                        (self.last_harvest_available, condition.value_lte)
+                    {
+                        if available <= value_lte {
+                            return Err(format!(
+                                "until.event harvest_available_below matched: available={}, threshold={}",
+                                available, value_lte
+                            ));
+                        }
+                    }
                 }
             }
+        }
+
+        if self.last_action_failed {
+            return Err("until plan stop: previous action failed".to_string());
         }
 
         if self.remaining_ticks == 0 {
@@ -161,8 +217,23 @@ impl ActiveExecuteUntil {
         self.remaining_ticks = self.remaining_ticks.saturating_sub(1);
         self.last_action_failed = false;
         self.last_action_rejected = false;
+        self.last_reject_reason = None;
+        self.last_harvest_amount = None;
+        self.last_harvest_available = None;
         Ok(())
     }
+}
+
+fn reject_reason_is_insufficient_electricity(reason: &RejectReason) -> bool {
+    matches!(
+        reason,
+        RejectReason::InsufficientResource { kind, .. }
+            if matches!(kind, super::super::types::ResourceKind::Electricity)
+    ) || matches!(reason, RejectReason::AgentShutdown { .. })
+}
+
+fn reject_reason_is_thermal_overload(reason: &RejectReason) -> bool {
+    matches!(reason, RejectReason::ThermalOverload { .. })
 }
 
 fn decision_action_signature(decision: &AgentDecision) -> Option<String> {

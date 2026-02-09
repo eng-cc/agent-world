@@ -65,7 +65,10 @@
 - 若确需连续执行同一动作，可输出 `execute_until`：
   - 单事件：`{"decision":"execute_until","action":{<decision_json>},"until":{"event":"action_rejected"},"max_ticks":<u64>}`
   - 多事件（任一命中即停止）：`{"decision":"execute_until","action":{<decision_json>},"until":{"event_any_of":["action_rejected","new_visible_agent"]},"max_ticks":<u64>}`
-  - 兼容写法：`until.event` 允许 `"a|b"`（会按多事件解析）
+  - 阈值事件：`{"decision":"execute_until","action":{<decision_json>},"until":{"event":"harvest_available_below","value_lte":<i64>},"max_ticks":<u64>}`
+  - `event_name` 可选：`action_rejected`、`new_visible_agent`、`new_visible_location`、`arrive_target`、`insufficient_electricity`、`thermal_overload`、`harvest_yield_below`、`harvest_available_below`
+  - 兼容写法：`until.event` 允许 `"a|b"` 或 `"a,b"`（会按多事件解析）
+  - 当事件为 `harvest_yield_below` / `harvest_available_below` 时，必须提供 `until.value_lte`（`>=0`）
 
 ## 示例工具
 - `world_init_demo`：输出世界初始化场景的摘要信息  
