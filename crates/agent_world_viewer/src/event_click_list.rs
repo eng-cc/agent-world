@@ -167,65 +167,82 @@ pub(super) fn handle_event_click_buttons(
         if *interaction != Interaction::Pressed {
             continue;
         }
-
-        let Some(event) = state
-            .events
-            .iter()
-            .find(|event| event.id == button.event_id)
-        else {
-            link_state.message = format!("Link: event #{} not found", button.event_id);
-            continue;
-        };
-
-        if let Some(timeline) = timeline.as_deref_mut() {
-            timeline.target_tick = event.time;
-            timeline.manual_override = true;
-        }
-
-        let Some(target) = event_primary_target(event, state.snapshot.as_ref()) else {
-            link_state.message = format!(
-                "Link: event #{} at t{} has no mappable target",
-                event.id, event.time
-            );
-            continue;
-        };
-
-        let Some(entity) = target_entity(&scene, &target) else {
-            link_state.message = format!(
-                "Link: event #{} target {} {} not visible",
-                event.id,
-                selection_kind_name(target.kind),
-                target.id
-            );
-            continue;
-        };
-
-        if let Some(current) = selection.current.take() {
-            reset_entity_scale(&mut transforms, current.entity);
-        }
-
-        selection.current = Some(SelectionInfo {
-            entity,
-            kind: target.kind,
-            id: target.id.clone(),
-            name: target.name.clone(),
-        });
-
-        if config.highlight_selected {
-            apply_entity_highlight(&mut transforms, entity);
-        }
-
-        link_state.message = format!(
-            "Link: event #{} -> {} {} (t{})",
-            event.id,
-            selection_kind_name(target.kind),
-            target.id,
-            event.time
+        apply_event_click_action(
+            button.event_id,
+            &state,
+            &scene,
+            &config,
+            &mut selection,
+            &mut transforms,
+            &mut link_state,
+            timeline.as_deref_mut(),
         );
     }
 }
 
-fn event_window(
+pub(super) fn apply_event_click_action(
+    event_id: u64,
+    state: &ViewerState,
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    selection: &mut ViewerSelection,
+    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
+    link_state: &mut EventObjectLinkState,
+    timeline: Option<&mut TimelineUiState>,
+) {
+    let Some(event) = state.events.iter().find(|event| event.id == event_id) else {
+        link_state.message = format!("Link: event #{} not found", event_id);
+        return;
+    };
+
+    if let Some(timeline) = timeline {
+        timeline.target_tick = event.time;
+        timeline.manual_override = true;
+    }
+
+    let Some(target) = event_primary_target(event, state.snapshot.as_ref()) else {
+        link_state.message = format!(
+            "Link: event #{} at t{} has no mappable target",
+            event.id, event.time
+        );
+        return;
+    };
+
+    let Some(entity) = target_entity(scene, &target) else {
+        link_state.message = format!(
+            "Link: event #{} target {} {} not visible",
+            event.id,
+            selection_kind_name(target.kind),
+            target.id
+        );
+        return;
+    };
+
+    if let Some(current) = selection.current.take() {
+        reset_entity_scale(transforms, current.entity);
+    }
+
+    selection.current = Some(SelectionInfo {
+        entity,
+        kind: target.kind,
+        id: target.id.clone(),
+        name: target.name.clone(),
+    });
+
+    if config.highlight_selected {
+        apply_entity_highlight(transforms, entity);
+    }
+
+    link_state.message = format!(
+        "Link: event #{} -> {} {} (t{})",
+        event.id,
+        selection_kind_name(target.kind),
+        target.id,
+        event.time
+    );
+}
+
+pub(super) fn event_window(
     events: &[WorldEvent],
     focus_tick: Option<u64>,
     limit: usize,
@@ -261,7 +278,7 @@ fn event_window(
     )
 }
 
-fn event_row_label(event: &WorldEvent, focused: bool, locale: UiLocale) -> String {
+pub(super) fn event_row_label(event: &WorldEvent, focused: bool, locale: UiLocale) -> String {
     let mut body = localized_event_row_label(event, focused, locale);
     truncate_chars(&mut body, EVENT_LABEL_MAX_CHARS);
     body
@@ -279,7 +296,7 @@ fn truncate_chars(text: &mut String, limit: usize) {
     text.push('…');
 }
 
-fn focus_tick(state: &ViewerState, timeline: Option<&TimelineUiState>) -> Option<u64> {
+pub(super) fn focus_tick(state: &ViewerState, timeline: Option<&TimelineUiState>) -> Option<u64> {
     match timeline {
         Some(timeline) if timeline.manual_override || timeline.drag_active => {
             Some(timeline.target_tick)

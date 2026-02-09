@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::{
-    OrbitCamera, Viewer3dCamera, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY,
-    ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
+    OrbitCamera, RightPanelWidthState, Viewer3dCamera, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS,
+    ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
 };
 
 #[derive(Resource, Default)]
@@ -17,6 +17,7 @@ pub(super) fn orbit_camera_controls(
     windows: Query<&Window, With<PrimaryWindow>>,
     buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
+    panel_width: Option<Res<RightPanelWidthState>>,
     mut mouse_wheel: MessageReader<MouseWheel>,
     mut drag_state: ResMut<OrbitDragState>,
     mut query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
@@ -26,8 +27,12 @@ pub(super) fn orbit_camera_controls(
     };
 
     let cursor_position = window.cursor_position();
+    let panel_width_px = panel_width
+        .as_deref()
+        .map(|state| state.width_px)
+        .unwrap_or(UI_PANEL_WIDTH);
     let cursor_in_3d = cursor_position
-        .map(|cursor| cursor_in_3d_view(window, cursor))
+        .map(|cursor| cursor_in_3d_view(window, cursor, panel_width_px))
         .unwrap_or(false);
 
     let shift_pressed = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
@@ -69,8 +74,8 @@ pub(super) fn orbit_camera_controls(
     }
 }
 
-fn cursor_in_3d_view(window: &Window, cursor: Vec2) -> bool {
-    let viewport_width = (window.width() - UI_PANEL_WIDTH).max(0.0);
+fn cursor_in_3d_view(window: &Window, cursor: Vec2, panel_width_px: f32) -> bool {
+    let viewport_width = (window.width() - panel_width_px).max(0.0);
     cursor.x <= viewport_width
 }
 

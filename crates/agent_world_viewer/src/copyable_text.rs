@@ -162,7 +162,7 @@ fn read_text(text: Option<&Text>) -> String {
     text.map(|value| value.0.clone()).unwrap_or_default()
 }
 
-fn copy_panel_title(locale: crate::i18n::UiLocale) -> &'static str {
+pub(super) fn copy_panel_title(locale: crate::i18n::UiLocale) -> &'static str {
     if locale.is_zh() {
         "可复制信息"
     } else {
@@ -170,7 +170,7 @@ fn copy_panel_title(locale: crate::i18n::UiLocale) -> &'static str {
     }
 }
 
-fn copy_panel_hint(locale: crate::i18n::UiLocale) -> &'static str {
+pub(super) fn copy_panel_hint(locale: crate::i18n::UiLocale) -> &'static str {
     if locale.is_zh() {
         "可拖选文本，并使用 Cmd/Ctrl+C 复制"
     } else {
@@ -178,7 +178,7 @@ fn copy_panel_hint(locale: crate::i18n::UiLocale) -> &'static str {
     }
 }
 
-fn ensure_egui_cjk_font(context: &egui::Context, initialized: &mut bool) {
+pub(super) fn ensure_egui_cjk_font(context: &egui::Context, initialized: &mut bool) {
     if *initialized {
         return;
     }

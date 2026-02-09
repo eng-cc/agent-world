@@ -3,12 +3,12 @@
 ## 任务拆解
 - [x] ER1：输出设计文档（`doc/world-simulator/viewer-egui-right-panel.md`）
 - [x] ER2：输出项目管理文档（本文件）
-- [ ] ER3：实现 EGUI 右侧 SidePanel 骨架并接入调度
-- [ ] ER4：迁移顶部控制、状态摘要、详情、事件、诊断、联动、时间轴、覆盖层到 EGUI
-- [ ] ER5：3D 视口/鼠标命中边界改为读取 EGUI 面板宽度
-- [ ] ER6：移除旧 Bevy UI 右侧面板启动与交互调度
-- [ ] ER7：补充/更新测试并完成截图闭环验证
-- [ ] ER8：更新任务日志并提交
+- [x] ER3：实现 EGUI 右侧 SidePanel 骨架并接入调度
+- [x] ER4：迁移顶部控制、状态摘要、详情、事件、诊断、联动、时间轴、覆盖层到 EGUI
+- [x] ER5：3D 视口/鼠标命中边界改为读取 EGUI 面板宽度
+- [ ] ER6：移除旧 Bevy UI 右侧面板启动与交互调度（代码清理阶段）
+- [x] ER7：补充/更新测试并完成截图闭环验证
+- [x] ER8：更新任务日志并完成本阶段提交
 
 ## 依赖
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
@@ -18,8 +18,10 @@
 - `crates/agent_world_viewer/src/timeline_controls.rs`
 - `crates/agent_world_viewer/src/event_click_list.rs`
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/agent_world_viewer/src/copyable_text.rs`
+- `crates/agent_world_viewer/src/world_overlay.rs`
 
 ## 状态
-- 当前阶段：ER3（准备接入 SidePanel 骨架）
-- 下一阶段：迁移交互控制与详情内容
-- 最近更新：完成迁移设计与任务拆解（2026-02-09）
+- 当前阶段：ER6（清理旧 Bevy UI 调度与无用组件）
+- 下一阶段：删除旧右侧 UI 系统注册并收敛警告
+- 最近更新：完成 ER3/ER4/ER5/ER7，右侧 SidePanel 已可用（2026-02-09）

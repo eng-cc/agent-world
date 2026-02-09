@@ -24,6 +24,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
+        .insert_resource(RightPanelWidthState::default())
         .insert_resource(StepControlLoadingState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -35,7 +36,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         }))
         .add_plugins(EguiPlugin::default())
         .insert_resource(OfflineConfig { offline })
-        .add_systems(Startup, (setup_startup_state, setup_3d_scene, setup_ui))
+        .add_systems(Startup, (setup_startup_state, setup_3d_scene))
         .add_systems(
             Update,
             (
@@ -43,7 +44,6 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 sync_timeline_state_from_world,
                 handle_timeline_adjust_buttons,
                 handle_timeline_mark_filter_buttons,
-                update_timeline_mark_filter_ui,
                 handle_timeline_bar_drag,
                 handle_timeline_mark_jump_buttons,
                 handle_timeline_seek_submit,
@@ -56,39 +56,11 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_diagnosis_panel,
                 update_event_click_list_ui,
                 update_timeline_ui,
-                scroll_right_panel,
-                update_ui,
                 trigger_internal_capture,
             )
                 .chain(),
         )
-        .add_systems(
-            Update,
-            (
-                update_control_button_labels,
-                update_event_object_link_button_labels,
-                update_world_overlay_toggle_labels,
-            ),
-        )
-        .add_systems(Update, attach_step_button_markers)
-        .add_systems(
-            Update,
-            (
-                handle_top_panel_toggle_button,
-                handle_language_toggle_button,
-                handle_copyable_panel_toggle_button,
-            ),
-        )
-        .add_systems(Update, init_button_visual_base)
-        .add_systems(
-            Update,
-            (
-                track_step_loading_state,
-                update_step_button_loading_ui,
-                update_button_hover_visuals,
-            )
-                .chain(),
-        )
+        .add_systems(Update, track_step_loading_state)
         .add_systems(
             Update,
             (
@@ -104,7 +76,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             PostUpdate,
             pick_3d_selection.after(TransformSystems::Propagate),
         )
-        .add_systems(EguiPrimaryContextPass, render_copyable_text_panel)
+        .add_systems(EguiPrimaryContextPass, render_right_side_panel_egui)
         .run();
 }
 

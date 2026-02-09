@@ -37,6 +37,7 @@ mod camera_controls;
 mod control_labels;
 mod copyable_text;
 mod diagnosis;
+mod egui_right_panel;
 mod event_click_list;
 mod floating_origin;
 mod headless;
@@ -54,14 +55,12 @@ mod viewer_3d_config;
 mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
-use button_feedback::{
-    attach_step_button_markers, init_button_visual_base, track_step_loading_state,
-    update_button_hover_visuals, update_step_button_loading_ui, StepControlLoadingState,
-};
+use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{orbit_camera_controls, OrbitDragState};
-use control_labels::{update_control_button_labels, ControlButtonLabel};
-use copyable_text::{render_copyable_text_panel, CopyableTextPanelState};
+use control_labels::ControlButtonLabel;
+use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
+use egui_right_panel::render_right_side_panel_egui;
 use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
 };
@@ -72,23 +71,18 @@ use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
 use material_library::{build_location_material_handles, LocationMaterialHandles};
-use panel_layout::{
-    handle_copyable_panel_toggle_button, handle_language_toggle_button,
-    handle_top_panel_toggle_button, spawn_top_panel_toggle, RightPanelLayoutState,
-    TopPanelContainer,
-};
-use panel_scroll::{scroll_right_panel, RightPanelScroll, TopPanelScroll};
+use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
+use panel_scroll::{RightPanelScroll, TopPanelScroll};
 use scene_helpers::*;
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
-    spawn_event_object_link_controls, update_event_object_link_button_labels,
-    update_event_object_link_text, EventObjectLinkState,
+    spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
 };
 use timeline_controls::{
     handle_control_buttons, handle_timeline_adjust_buttons, handle_timeline_bar_drag,
     handle_timeline_mark_filter_buttons, handle_timeline_mark_jump_buttons,
     handle_timeline_seek_submit, spawn_timeline_controls, sync_timeline_state_from_world,
-    update_timeline_mark_filter_ui, update_timeline_ui, TimelineMarkFilterState, TimelineUiState,
+    update_timeline_ui, TimelineMarkFilterState, TimelineUiState,
 };
 use ui_locale_text::{
     agents_activity_no_snapshot, details_click_to_inspect, events_empty, selection_line,
@@ -98,8 +92,8 @@ use ui_text::{agent_activity_summary, events_summary, selection_details_summary,
 use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
-    update_world_overlay_status_text, update_world_overlay_toggle_labels, update_world_overlays_3d,
-    WorldOverlayConfig, WorldOverlayUiState,
+    update_world_overlay_status_text, update_world_overlays_3d, WorldOverlayConfig,
+    WorldOverlayUiState,
 };
 
 const WORLD_MIN_AXIS: f32 = 0.1;
@@ -313,6 +307,19 @@ struct ControlButton {
 struct HeadlessStatus {
     last_status: Option<ConnectionStatus>,
     last_events: usize,
+}
+
+#[derive(Resource, Clone, Copy, Debug)]
+struct RightPanelWidthState {
+    width_px: f32,
+}
+
+impl Default for RightPanelWidthState {
+    fn default() -> Self {
+        Self {
+            width_px: UI_PANEL_WIDTH,
+        }
+    }
 }
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
@@ -612,6 +619,7 @@ fn setup_3d_scene(
     ));
 }
 
+#[allow(dead_code)]
 fn setup_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -975,6 +983,7 @@ fn update_3d_scene(
     }
 }
 
+#[allow(dead_code)]
 fn update_ui(
     state: Res<ViewerState>,
     selection: Res<ViewerSelection>,
@@ -1073,6 +1082,7 @@ fn update_ui(
 }
 fn update_3d_viewport(
     windows: Query<&Window, With<PrimaryWindow>>,
+    panel_width: Option<Res<RightPanelWidthState>>,
     mut cameras: Query<&mut Camera, With<Viewer3dCamera>>,
 ) {
     let Ok(window) = windows.single() else {
@@ -1082,7 +1092,11 @@ fn update_3d_viewport(
         return;
     };
 
-    let panel_width_physical = (UI_PANEL_WIDTH * window.scale_factor()).round() as u32;
+    let panel_width_logical = panel_width
+        .as_deref()
+        .map(|state| state.width_px)
+        .unwrap_or(UI_PANEL_WIDTH);
+    let panel_width_physical = (panel_width_logical * window.scale_factor()).round() as u32;
     let window_width = window.physical_width();
     let window_height = window.physical_height().max(1);
     let render_width = window_width.saturating_sub(panel_width_physical).max(1);

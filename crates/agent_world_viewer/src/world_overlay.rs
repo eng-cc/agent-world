@@ -409,6 +409,16 @@ fn build_overlay_status_text(
     )
 }
 
+pub(super) fn overlay_status_text_public(
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+    config: WorldOverlayConfig,
+    cm_to_unit: f32,
+    locale: UiLocale,
+) -> String {
+    build_overlay_status_text(snapshot, events, config, cm_to_unit, locale)
+}
+
 fn chunk_state_counts(snapshot: &WorldSnapshot) -> (usize, usize, usize) {
     let mut unexplored = 0;
     let mut generated = 0;

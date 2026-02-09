@@ -86,6 +86,13 @@ enum TimelineMarkKind {
     Peak,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum TimelineMarkKindPublic {
+    Error,
+    Llm,
+    Peak,
+}
+
 #[derive(Component)]
 pub(super) struct TimelineMarkJumpButton {
     kind: TimelineMarkKind,
@@ -490,28 +497,16 @@ pub(super) fn handle_timeline_mark_jump_buttons(
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    let axis_max = timeline_axis_max(&timeline, current_tick_from_state(&state));
-    let insights = apply_mark_filters(
-        build_timeline_key_insights(&state.events, &state.decision_traces, axis_max),
-        mark_filters.as_ref().map(|filters| filters.as_ref()),
-    );
-
     for (interaction, button) in &mut interactions {
         if *interaction != Interaction::Pressed {
             continue;
         }
-
-        let ticks = match button.kind {
-            TimelineMarkKind::Error => insights.error_ticks.as_slice(),
-            TimelineMarkKind::Llm => insights.llm_ticks.as_slice(),
-            TimelineMarkKind::Peak => insights.resource_peak_ticks.as_slice(),
-        };
-
-        if let Some(next_tick) = select_next_mark_tick(ticks, timeline.target_tick) {
-            timeline.target_tick = next_tick;
-            timeline.manual_override = true;
-            timeline.drag_active = false;
-        }
+        timeline_mark_jump_action(
+            &state,
+            &mut timeline,
+            mark_filters.as_deref(),
+            timeline_mark_kind_public(button.kind),
+        );
     }
 }
 
@@ -529,14 +524,73 @@ pub(super) fn handle_timeline_seek_submit(
 ) {
     for interaction in &mut interactions {
         if *interaction == Interaction::Pressed {
-            let _ = client.tx.send(ViewerRequest::Control {
-                mode: ViewerControl::Seek {
-                    tick: timeline.target_tick,
-                },
-            });
-            timeline.manual_override = false;
-            timeline.drag_active = false;
+            timeline_seek_action(&mut timeline, Some(&client));
         }
+    }
+}
+
+pub(super) fn timeline_seek_action(timeline: &mut TimelineUiState, client: Option<&ViewerClient>) {
+    if let Some(client) = client {
+        let _ = client.tx.send(ViewerRequest::Control {
+            mode: ViewerControl::Seek {
+                tick: timeline.target_tick,
+            },
+        });
+    }
+    timeline.manual_override = false;
+    timeline.drag_active = false;
+}
+
+pub(super) fn timeline_mark_jump_action(
+    state: &ViewerState,
+    timeline: &mut TimelineUiState,
+    mark_filters: Option<&TimelineMarkFilterState>,
+    kind: TimelineMarkKindPublic,
+) {
+    let axis_max = timeline_axis_max(timeline, current_tick_from_state(state));
+    let insights = apply_mark_filters(
+        build_timeline_key_insights(&state.events, &state.decision_traces, axis_max),
+        mark_filters,
+    );
+
+    let ticks = match kind {
+        TimelineMarkKindPublic::Error => insights.error_ticks.as_slice(),
+        TimelineMarkKindPublic::Llm => insights.llm_ticks.as_slice(),
+        TimelineMarkKindPublic::Peak => insights.resource_peak_ticks.as_slice(),
+    };
+
+    if let Some(next_tick) = select_next_mark_tick(ticks, timeline.target_tick) {
+        timeline.target_tick = next_tick;
+        timeline.manual_override = true;
+        timeline.drag_active = false;
+    }
+}
+
+pub(super) fn timeline_mark_filter_label_public(
+    kind: TimelineMarkKindPublic,
+    enabled: bool,
+    locale: UiLocale,
+) -> String {
+    mark_filter_label(timeline_mark_kind_internal(kind), enabled, locale)
+}
+
+pub(super) fn timeline_axis_max_public(timeline: &TimelineUiState, current_tick: u64) -> u64 {
+    timeline_axis_max(timeline, current_tick)
+}
+
+fn timeline_mark_kind_public(kind: TimelineMarkKind) -> TimelineMarkKindPublic {
+    match kind {
+        TimelineMarkKind::Error => TimelineMarkKindPublic::Error,
+        TimelineMarkKind::Llm => TimelineMarkKindPublic::Llm,
+        TimelineMarkKind::Peak => TimelineMarkKindPublic::Peak,
+    }
+}
+
+fn timeline_mark_kind_internal(kind: TimelineMarkKindPublic) -> TimelineMarkKind {
+    match kind {
+        TimelineMarkKindPublic::Error => TimelineMarkKind::Error,
+        TimelineMarkKindPublic::Llm => TimelineMarkKind::Llm,
+        TimelineMarkKindPublic::Peak => TimelineMarkKind::Peak,
     }
 }
 

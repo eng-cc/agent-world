@@ -183,52 +183,14 @@ pub(super) fn handle_locate_focus_event_button(
         if *interaction != Interaction::Pressed {
             continue;
         }
-
-        let focus_tick = focus_tick(&state, timeline.as_deref());
-        let Some(event) = nearest_event_to_tick(&state.events, focus_tick) else {
-            link_state.message = "Link: no events available".to_string();
-            continue;
-        };
-
-        let Some(target) = event_primary_target(event, state.snapshot.as_ref()) else {
-            link_state.message = format!(
-                "Link: event #{} t{} has no mappable object",
-                event.id, event.time
-            );
-            continue;
-        };
-
-        let Some(entity) = target_entity(&scene, &target) else {
-            link_state.message = format!(
-                "Link: target {} {} is not in current scene",
-                selection_kind_label(target.kind),
-                target.id
-            );
-            continue;
-        };
-
-        apply_selection(
-            &mut selection,
-            &mut transforms,
+        locate_focus_event_action(
+            &state,
+            &scene,
             &config,
-            entity,
-            target.kind,
-            target.id.clone(),
-            target.name.clone(),
-        );
-
-        if let Some(timeline) = timeline.as_mut() {
-            timeline.target_tick = event.time;
-            timeline.manual_override = true;
-            timeline.drag_active = false;
-        }
-
-        link_state.message = format!(
-            "Link: event #{} t{} -> {} {}",
-            event.id,
-            event.time,
-            selection_kind_label(target.kind),
-            target.id
+            &mut selection,
+            &mut link_state,
+            &mut transforms,
+            timeline.as_deref_mut(),
         );
     }
 }
@@ -251,42 +213,106 @@ pub(super) fn handle_jump_selection_events_button(
         if *interaction != Interaction::Pressed {
             continue;
         }
-
-        let Some(current) = selection.current.as_ref() else {
-            link_state.message = "Link: no selection".to_string();
-            continue;
-        };
-
-        let related_ticks =
-            selection_related_ticks(current, &state.events, state.snapshot.as_ref());
-        if related_ticks.is_empty() {
-            link_state.message = format!(
-                "Link: {} {} has no related events",
-                selection_kind_label(current.kind),
-                current.id
-            );
-            continue;
-        }
-
-        let pivot = focus_tick(&state, timeline.as_deref());
-        let Some(next_tick) = select_next_tick(&related_ticks, pivot) else {
-            link_state.message = "Link: no target tick".to_string();
-            continue;
-        };
-
-        if let Some(timeline) = timeline.as_mut() {
-            timeline.target_tick = next_tick;
-            timeline.manual_override = true;
-            timeline.drag_active = false;
-        }
-
-        link_state.message = format!(
-            "Link: {} {} -> t{}",
-            selection_kind_label(current.kind),
-            current.id,
-            next_tick
-        );
+        jump_selection_events_action(&state, &selection, &mut link_state, timeline.as_deref_mut());
     }
+}
+
+pub(super) fn locate_focus_event_action(
+    state: &ViewerState,
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    selection: &mut ViewerSelection,
+    link_state: &mut EventObjectLinkState,
+    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
+    timeline: Option<&mut TimelineUiState>,
+) {
+    let focus_tick = focus_tick(state, timeline.as_deref());
+    let Some(event) = nearest_event_to_tick(&state.events, focus_tick) else {
+        link_state.message = "Link: no events available".to_string();
+        return;
+    };
+
+    let Some(target) = event_primary_target(event, state.snapshot.as_ref()) else {
+        link_state.message = format!(
+            "Link: event #{} t{} has no mappable object",
+            event.id, event.time
+        );
+        return;
+    };
+
+    let Some(entity) = target_entity(scene, &target) else {
+        link_state.message = format!(
+            "Link: target {} {} is not in current scene",
+            selection_kind_label(target.kind),
+            target.id
+        );
+        return;
+    };
+
+    apply_selection(
+        selection,
+        transforms,
+        config,
+        entity,
+        target.kind,
+        target.id.clone(),
+        target.name.clone(),
+    );
+
+    if let Some(timeline) = timeline {
+        timeline.target_tick = event.time;
+        timeline.manual_override = true;
+        timeline.drag_active = false;
+    }
+
+    link_state.message = format!(
+        "Link: event #{} t{} -> {} {}",
+        event.id,
+        event.time,
+        selection_kind_label(target.kind),
+        target.id
+    );
+}
+
+pub(super) fn jump_selection_events_action(
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    link_state: &mut EventObjectLinkState,
+    timeline: Option<&mut TimelineUiState>,
+) {
+    let Some(current) = selection.current.as_ref() else {
+        link_state.message = "Link: no selection".to_string();
+        return;
+    };
+
+    let related_ticks = selection_related_ticks(current, &state.events, state.snapshot.as_ref());
+    if related_ticks.is_empty() {
+        link_state.message = format!(
+            "Link: {} {} has no related events",
+            selection_kind_label(current.kind),
+            current.id
+        );
+        return;
+    }
+
+    let pivot = focus_tick(state, timeline.as_deref());
+    let Some(next_tick) = select_next_tick(&related_ticks, pivot) else {
+        link_state.message = "Link: no target tick".to_string();
+        return;
+    };
+
+    if let Some(timeline) = timeline {
+        timeline.target_tick = next_tick;
+        timeline.manual_override = true;
+        timeline.drag_active = false;
+    }
+
+    link_state.message = format!(
+        "Link: {} {} -> t{}",
+        selection_kind_label(current.kind),
+        current.id,
+        next_tick
+    );
 }
 
 pub(super) fn update_event_object_link_text(
@@ -341,6 +367,7 @@ pub(super) fn pick_3d_selection(
     power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
     chunks: Query<(Entity, &GlobalTransform, &ChunkMarker)>,
     config: Res<Viewer3dConfig>,
+    panel_width: Option<Res<RightPanelWidthState>>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
 ) {
@@ -354,7 +381,13 @@ pub(super) fn pick_3d_selection(
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
-    if cursor_position.x > (window.width() - UI_PANEL_WIDTH) {
+    if cursor_position.x
+        > (window.width()
+            - panel_width
+                .as_deref()
+                .map(|state| state.width_px)
+                .unwrap_or(UI_PANEL_WIDTH))
+    {
         return;
     }
 
@@ -499,7 +532,7 @@ pub(super) fn pick_3d_selection(
     }
 }
 
-fn apply_selection(
+pub(super) fn apply_selection(
     selection: &mut ViewerSelection,
     transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
     config: &Viewer3dConfig,
@@ -522,7 +555,7 @@ fn apply_selection(
     }
 }
 
-fn focus_tick(state: &ViewerState, timeline: Option<&TimelineUiState>) -> u64 {
+pub(super) fn focus_tick(state: &ViewerState, timeline: Option<&TimelineUiState>) -> u64 {
     match timeline {
         Some(timeline) if timeline.manual_override || timeline.drag_active => timeline.target_tick,
         _ => current_tick_from_state(state),
@@ -542,7 +575,7 @@ fn nearest_event_to_tick(events: &[WorldEvent], tick: u64) -> Option<&WorldEvent
     events.iter().min_by_key(|event| event.time.abs_diff(tick))
 }
 
-fn select_next_tick(ticks: &[u64], pivot: u64) -> Option<u64> {
+pub(super) fn select_next_tick(ticks: &[u64], pivot: u64) -> Option<u64> {
     ticks
         .iter()
         .copied()
@@ -550,7 +583,7 @@ fn select_next_tick(ticks: &[u64], pivot: u64) -> Option<u64> {
         .or_else(|| ticks.first().copied())
 }
 
-fn selection_related_ticks(
+pub(super) fn selection_related_ticks(
     selection: &SelectionInfo,
     events: &[WorldEvent],
     snapshot: Option<&WorldSnapshot>,
@@ -953,7 +986,7 @@ fn owner_is_location(owner: &ResourceOwner, location_id: &str) -> bool {
     matches!(owner, ResourceOwner::Location { location_id: id } if id == location_id)
 }
 
-fn selection_kind_label(kind: SelectionKind) -> &'static str {
+pub(super) fn selection_kind_label(kind: SelectionKind) -> &'static str {
     match kind {
         SelectionKind::Agent => "agent",
         SelectionKind::Location => "location",
