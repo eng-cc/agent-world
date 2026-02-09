@@ -212,6 +212,14 @@
   - `harvest_available_below`：上一轮 `RadiationHarvested.available <= until.value_lte`。
 - 协议兼容：保留 `until.event_any_of` 与 `until.event` 的 `"a|b"` / `"a,b"` 多事件写法，按“任一命中即停止”解释。
 
+### 上下文收敛与压测可观测性（LMSO19）
+- 问题：真实运行态中，`module_call` 返回大 payload（尤其记忆检索）会放大后续 Prompt 中 `Module History` 段，导致输入峰值抖动。
+- 方案：Prompt 注入前对 `ModuleCallExchange.result` 做软压缩：
+  - 小结果保持原结构。
+  - 大结果改写为 `{truncated, original_chars, preview}`，`preview` 使用字符级截断。
+- 预期：不影响模块可用性前提下，降低单轮极端 Prompt 峰值，减少 section 裁剪触发。
+- 压测脚本补强：`scripts/llm-longrun-stress.sh` 在无 `jq` 环境下改为 Python 解析 `report.json`，保证 `prompt_section_clipped` 等指标准确落盘。
+
 ### 风险与约束
 - 风险：过强门控可能打断合理的重复动作。
 - 缓解：通过 `execute_until` 显式表达“重复直到事件”，并允许阈值配置化关闭门控。

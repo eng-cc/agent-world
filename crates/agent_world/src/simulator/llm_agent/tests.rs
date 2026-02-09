@@ -845,6 +845,21 @@ fn llm_agent_user_prompt_respects_history_item_cap() {
 }
 
 #[test]
+fn llm_agent_compacts_large_module_result_payload_for_prompt_history() {
+    let giant_payload = format!("payload-{}", "x".repeat(6000));
+    let compact = LlmAgentBehavior::<MockClient>::module_result_for_prompt(&serde_json::json!({
+        "ok": true,
+        "module": "memory.short_term.recent",
+        "result": [giant_payload.clone()],
+    }));
+
+    let compact_json = serde_json::to_string(&compact).expect("serialize compact result");
+    assert!(compact_json.contains("\"truncated\":true"));
+    assert!(compact_json.contains("\"original_chars\":"));
+    assert!(!compact_json.contains(giant_payload.as_str()));
+}
+
+#[test]
 fn llm_agent_records_failed_action_into_long_term_memory() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let result = ActionResult {
