@@ -18,6 +18,12 @@ use super::kernel::WorldEvent;
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
 use super::types::Action;
 
+mod prompt_assembly;
+
+pub use prompt_assembly::{
+    PromptAssembler, PromptAssemblyInput, PromptAssemblyOutput, PromptStepContext,
+};
+
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
 pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
 pub const ENV_LLM_API_KEY: &str = "AGENT_WORLD_LLM_API_KEY";
@@ -538,42 +544,47 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
     }
 
     fn system_prompt(&self) -> String {
-        format!(
-            "{base}\n\n[Agent Goals]\n- short_term_goal: {short_term}\n- long_term_goal: {long_term}\n\n[Tool Protocol]\n- 如果需要更多信息，可输出模块调用 JSON：{{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{{...}}}}\n- 可用模块由 `agent.modules.list` 返回；禁止虚构模块\n- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。",
-            base = self.config.system_prompt,
-            short_term = self.config.short_term_goal,
-            long_term = self.config.long_term_goal,
-        )
+        let prompt: PromptAssemblyOutput = PromptAssembler::assemble(PromptAssemblyInput {
+            agent_id: self.agent_id.as_str(),
+            base_system_prompt: self.config.system_prompt.as_str(),
+            short_term_goal: self.config.short_term_goal.as_str(),
+            long_term_goal: self.config.long_term_goal.as_str(),
+            observation_json: "{}",
+            module_history_json: "[]",
+            memory_digest: None,
+            step_context: PromptStepContext::default(),
+        });
+        prompt.system_prompt
     }
 
     fn user_prompt(
         &self,
         observation: &Observation,
         module_history: &[ModuleCallExchange],
+        step_index: usize,
+        max_steps: usize,
     ) -> String {
         let observation_json = serde_json::to_string(observation)
             .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string());
         let history_json =
             serde_json::to_string(module_history).unwrap_or_else(|_| "[]".to_string());
-        format!(
-            "你是一个硅基文明 Agent。请严格输出 JSON，不要输出额外文字。\n\
-当前 agent_id: {agent_id}\n\
-当前观测(JSON): {observation_json}\n\
-\n\
-可用模块调用记录(JSON): {history_json}\n\
-\n\
-决策输出支持：\n\
-{{\"decision\":\"wait\"}}\n\
-{{\"decision\":\"wait_ticks\",\"ticks\":<u64>}}\n\
-{{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}}\n\
-{{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}}\n\
-\n\
-若你需要查询信息，请输出模块调用 JSON：\n\
-{{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{{...}}}}",
-            agent_id = self.agent_id,
-            observation_json = observation_json,
-            history_json = history_json,
-        )
+        let memory_digest = self.memory.context_summary(6);
+        let prompt: PromptAssemblyOutput = PromptAssembler::assemble(PromptAssemblyInput {
+            agent_id: self.agent_id.as_str(),
+            base_system_prompt: self.config.system_prompt.as_str(),
+            short_term_goal: self.config.short_term_goal.as_str(),
+            long_term_goal: self.config.long_term_goal.as_str(),
+            observation_json: observation_json.as_str(),
+            module_history_json: history_json.as_str(),
+            memory_digest: Some(memory_digest.as_str()),
+            step_context: PromptStepContext {
+                step_index,
+                max_steps,
+                module_calls_used: module_history.len(),
+                module_calls_max: self.config.max_module_calls,
+            },
+        });
+        prompt.user_prompt
     }
 
     fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
@@ -721,15 +732,15 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut has_completion_tokens = false;
         let mut has_total_tokens = false;
 
-        let system_prompt = self.system_prompt();
         let mut resolved = false;
         let max_turns = self.config.max_module_calls.saturating_add(1);
 
-        for _turn in 0..max_turns {
-            let user_prompt = self.user_prompt(observation, &module_history);
+        for turn in 0..max_turns {
+            let system_prompt = self.system_prompt();
+            let user_prompt = self.user_prompt(observation, &module_history, turn, max_turns);
             let request = LlmCompletionRequest {
                 model: self.config.model.clone(),
-                system_prompt: system_prompt.clone(),
+                system_prompt,
                 user_prompt,
             };
             trace_inputs.push(Self::trace_input(

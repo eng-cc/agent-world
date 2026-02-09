@@ -496,6 +496,28 @@ fn llm_agent_system_prompt_contains_configured_goals() {
 }
 
 #[test]
+fn llm_agent_user_prompt_contains_step_context_metadata() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let prompt = behavior.user_prompt(&make_observation(), &[], 2, 5);
+    assert!(prompt.contains("step_index: 2"));
+    assert!(prompt.contains("max_steps: 5"));
+    assert!(prompt.contains("module_calls_used: 0"));
+    assert!(prompt.contains("module_calls_max: 3"));
+}
+
+#[test]
+fn llm_agent_user_prompt_contains_memory_digest_section() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    behavior
+        .memory
+        .record_note(7, "recent-memory-note-for-prompt");
+
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("[Memory Digest]"));
+    assert!(prompt.contains("recent-memory-note-for-prompt"));
+}
+
+#[test]
 fn llm_agent_records_failed_action_into_long_term_memory() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let result = ActionResult {
