@@ -25,7 +25,6 @@ const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
 const ORBIT_MIN_RADIUS: f32 = 4.0;
 const ORBIT_MAX_RADIUS: f32 = 300.0;
 const PICK_MAX_DISTANCE: f32 = 1.0;
-const CHUNK_PICK_MAX_DISTANCE: f32 = 1.2;
 const LABEL_FONT_SIZE: f32 = 18.0;
 const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
@@ -99,8 +98,10 @@ use world_overlay::{
 
 const WORLD_MIN_AXIS: f32 = 0.1;
 const WORLD_FLOOR_THICKNESS: f32 = 0.03;
-const WORLD_GRID_LINE_THICKNESS: f32 = 0.01;
-const WORLD_GRID_LINES_PER_AXIS: usize = 8;
+const WORLD_GRID_LINE_THICKNESS_2D: f32 = 0.008;
+const WORLD_GRID_LINE_THICKNESS_3D: f32 = 0.014;
+const CHUNK_GRID_LINE_THICKNESS_2D: f32 = 0.012;
+const CHUNK_GRID_LINE_THICKNESS_3D: f32 = 0.022;
 
 fn main() {
     let addr = resolve_addr();
@@ -169,6 +170,7 @@ struct Viewer3dScene {
     power_plant_entities: HashMap<String, Entity>,
     power_storage_entities: HashMap<String, Entity>,
     chunk_entities: HashMap<String, Entity>,
+    chunk_line_entities: HashMap<String, Vec<Entity>>,
     location_positions: HashMap<String, GeoPos>,
     background_entities: Vec<Entity>,
     heat_overlay_entities: Vec<Entity>,
@@ -199,7 +201,6 @@ struct Viewer3dAssets {
     power_plant_material: Handle<StandardMaterial>,
     power_storage_mesh: Handle<Mesh>,
     power_storage_material: Handle<StandardMaterial>,
-    chunk_mesh: Handle<Mesh>,
     chunk_unexplored_material: Handle<StandardMaterial>,
     chunk_generated_material: Handle<StandardMaterial>,
     chunk_exhausted_material: Handle<StandardMaterial>,
@@ -256,6 +257,25 @@ struct WorldFloorSurface;
 #[derive(Component)]
 struct WorldBoundsSurface;
 
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+enum GridLineKind {
+    World,
+    Chunk,
+}
+
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+enum GridLineAxis {
+    AlongX,
+    AlongZ,
+}
+
+#[derive(Component, Clone, Copy, Debug)]
+struct GridLineVisual {
+    kind: GridLineKind,
+    axis: GridLineAxis,
+    span: f32,
+}
+
 #[derive(Component)]
 struct OrbitCamera {
     focus: Vec3,
@@ -271,6 +291,22 @@ impl OrbitCamera {
         let offset = rotation * Vec3::new(0.0, 0.0, self.radius);
         transform.translation = self.focus + offset;
         transform.look_at(self.focus, Vec3::Y);
+    }
+}
+
+fn grid_line_thickness(kind: GridLineKind, mode: ViewerCameraMode) -> f32 {
+    match (kind, mode) {
+        (GridLineKind::World, ViewerCameraMode::TwoD) => WORLD_GRID_LINE_THICKNESS_2D,
+        (GridLineKind::World, ViewerCameraMode::ThreeD) => WORLD_GRID_LINE_THICKNESS_3D,
+        (GridLineKind::Chunk, ViewerCameraMode::TwoD) => CHUNK_GRID_LINE_THICKNESS_2D,
+        (GridLineKind::Chunk, ViewerCameraMode::ThreeD) => CHUNK_GRID_LINE_THICKNESS_3D,
+    }
+}
+
+fn grid_line_scale(axis: GridLineAxis, span: f32, thickness: f32) -> Vec3 {
+    match axis {
+        GridLineAxis::AlongX => Vec3::new(span.max(thickness), thickness, thickness),
+        GridLineAxis::AlongZ => Vec3::new(thickness, thickness, span.max(thickness)),
     }
 }
 
@@ -476,7 +512,6 @@ fn setup_3d_scene(
     let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
     let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
     let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
-    let chunk_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(1.0, 0.34, 0.2),
@@ -500,19 +535,19 @@ fn setup_3d_scene(
         ..default()
     });
     let chunk_unexplored_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.30, 0.42, 0.66, 0.12),
+        base_color: Color::srgba(0.30, 0.42, 0.66, 0.22),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
     let chunk_generated_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.24, 0.78, 0.44, 0.18),
+        base_color: Color::srgba(0.24, 0.78, 0.44, 0.30),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
     let chunk_exhausted_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.62, 0.40, 0.28, 0.18),
+        base_color: Color::srgba(0.62, 0.40, 0.28, 0.30),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
@@ -576,7 +611,6 @@ fn setup_3d_scene(
         power_plant_material,
         power_storage_mesh,
         power_storage_material,
-        chunk_mesh,
         chunk_unexplored_material,
         chunk_generated_material,
         chunk_exhausted_material,

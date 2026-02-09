@@ -252,9 +252,11 @@ pub(super) fn update_world_overlays_3d(
     } else {
         Visibility::Hidden
     };
-    for entity in scene.chunk_entities.values() {
-        if let Ok(mut visibility) = chunk_visibility.get_mut(*entity) {
-            *visibility = chunk_visibility_value;
+    for entities in scene.chunk_line_entities.values() {
+        for entity in entities {
+            if let Ok(mut visibility) = chunk_visibility.get_mut(*entity) {
+                *visibility = chunk_visibility_value;
+            }
         }
     }
 

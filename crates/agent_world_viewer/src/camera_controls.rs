@@ -4,10 +4,11 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::{
-    OrbitCamera, RightPanelWidthState, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode,
-    WorldBoundsSurface, WorldFloorSurface, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS,
-    ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY,
-    ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
+    grid_line_scale, grid_line_thickness, BaseScale, GridLineVisual, OrbitCamera,
+    RightPanelWidthState, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface,
+    WorldFloorSurface, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS,
+    ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY,
+    UI_PANEL_WIDTH,
 };
 
 #[derive(Resource, Default)]
@@ -209,23 +210,34 @@ pub(super) fn sync_camera_mode(
     camera_mode: Res<ViewerCameraMode>,
     config: Res<Viewer3dConfig>,
     mut cameras: Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
+    mut grid_lines: Query<
+        (&GridLineVisual, &mut Transform, &mut BaseScale),
+        Without<Viewer3dCamera>,
+    >,
 ) {
-    if !camera_mode.is_changed() {
-        return;
+    let mode_changed = camera_mode.is_changed();
+
+    if mode_changed {
+        let Ok((mut orbit, mut transform, mut projection)) = cameras.single_mut() else {
+            return;
+        };
+
+        let next_orbit = camera_orbit_preset(
+            *camera_mode,
+            Some(orbit.focus),
+            config.effective_cm_to_unit(),
+        );
+        *orbit = next_orbit;
+        orbit.apply_to_transform(&mut transform);
+        *projection = camera_projection_for_mode(*camera_mode, &config);
     }
 
-    let Ok((mut orbit, mut transform, mut projection)) = cameras.single_mut() else {
-        return;
-    };
-
-    let next_orbit = camera_orbit_preset(
-        *camera_mode,
-        Some(orbit.focus),
-        config.effective_cm_to_unit(),
-    );
-    *orbit = next_orbit;
-    orbit.apply_to_transform(&mut transform);
-    *projection = camera_projection_for_mode(*camera_mode, &config);
+    for (visual, mut transform, mut base_scale) in &mut grid_lines {
+        let thickness = grid_line_thickness(visual.kind, *camera_mode);
+        let scale = grid_line_scale(visual.axis, visual.span, thickness);
+        transform.scale = scale;
+        base_scale.0 = scale;
+    }
 }
 
 pub(super) fn sync_world_background_visibility(
@@ -246,6 +258,7 @@ pub(super) fn sync_world_background_visibility(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GridLineKind;
 
     #[test]
     fn drag_delta_requires_active_dragging() {
@@ -323,6 +336,19 @@ mod tests {
 
         let three_d = camera_projection_for_mode(ViewerCameraMode::ThreeD, &config);
         assert!(matches!(three_d, Projection::Perspective(_)));
+    }
+
+    #[test]
+    fn grid_line_thickness_uses_mode_and_kind() {
+        let world_2d = grid_line_thickness(GridLineKind::World, ViewerCameraMode::TwoD);
+        let world_3d = grid_line_thickness(GridLineKind::World, ViewerCameraMode::ThreeD);
+        let chunk_2d = grid_line_thickness(GridLineKind::Chunk, ViewerCameraMode::TwoD);
+        let chunk_3d = grid_line_thickness(GridLineKind::Chunk, ViewerCameraMode::ThreeD);
+
+        assert!(world_2d < world_3d);
+        assert!(chunk_2d < chunk_3d);
+        assert!(chunk_2d > world_2d);
+        assert!(chunk_3d > world_3d);
     }
 
     #[test]

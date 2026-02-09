@@ -110,8 +110,36 @@
 - 实现口径：
   - Heat 强度评分 = `electricity + 4*hardware + 2*data`，并映射到分段颜色与柱高。
   - Flow 取最近窗口事件（默认 28 条）中的 `PowerTransferred/ResourceTransferred`，按类型着色并按量级映射线宽。
-  - Chunk 覆盖层复用现有 chunk 实体，只做显隐切换，避免重复几何开销。
+  - Chunk 覆盖层由“chunk 网格线”表达，不再使用悬浮立方体 marker。
 - 降级策略：无快照或无可用事件时保留基础场景，覆盖层状态文本明确提示无数据。
+
+### Chunk 网格与背景网格合并（2026-02-09 更新）
+- 背景网格与 chunk 可视化合并为一套“chunk lattice”：
+  - 背景层使用 chunk 尺寸与边界生成主网格线，替代固定等分地板网格。
+  - chunk 覆盖层复用同一批网格实体，仅切换可见性与状态配色。
+- chunk 尺寸口径：
+  - 网格步长来自 `chunk_bounds(coord, space)` 计算结果，而非写死线数。
+  - 对世界边缘不满尺寸 chunk，按真实 `bounds.max - bounds.min` 生成最后一段网格，确保尺寸信息可视化正确。
+- 状态表达：
+  - `Unexplored/Generated/Exhausted` 三态映射为网格线颜色（低透明度），避免遮挡 Agent/地点实体。
+  - 关闭 `Chunk` 覆盖开关后仅保留背景主网格，不显示状态染色层。
+- 交互兼容：
+  - chunk 仍可被选中并联动详情/时间轴；选中对象源改为 chunk 网格实体。
+  - 事件联动（`ChunkGenerated`）更新 chunk 网格状态，不再更新独立 marker。
+
+### 本次补充实现（2026-02-09）
+- 已完成以下落地：
+  - 背景网格按 chunk 步长生成（X 使用 `CHUNK_SIZE_X_CM`，Z 使用 `CHUNK_SIZE_Y_CM`），并保留边缘残块尺寸。
+  - chunk 可视对象由“悬浮 cuboid marker”改为“chunk 边框网格线（每 chunk 4 条）”。
+  - `Chunk` 覆盖开关改为控制 chunk 网格线显隐；资源热力与流动覆盖层行为保持不变。
+  - chunk 选择命中从“点距离”改为“射线与 chunk 网格包围面求交”，保证 2D/3D 下点击稳定。
+
+### 观察增强补充（2026-02-09）
+- 在右侧 EGUI 覆盖层区新增 chunk 图例（未探索/已生成/已耗尽/背景网格），降低颜色语义记忆成本。
+- 新增线宽提示文案，直接展示当前视角下 world/chunk 网格线宽配置。
+- 网格线宽改为按视角分级：
+  - 2D：线更细，减少遮挡与视觉噪声。
+  - 3D：线更粗，保证斜视角可见性。
 
 ### 事件-对象双向联动（2026-02-07 更新）
 - 事件定位对象：在时间轴区新增 `Locate Focus Event Object` 控件，按当前 focus tick 选择最近事件，并将 3D 选中对象定位到该事件关联实体。
@@ -209,6 +237,7 @@
 - **验收标准**：
   - 打开 viewer 后可直接看到每个 Agent 的当前状态与最近活动。
   - 场景中可见边界和地板参照，不再是“黑底悬浮点”。
+  - chunk 轮廓与背景网格一致，不再出现“背景一套网格、chunk 另一套 marker”的视觉割裂。
 
 ### 现状缺口（信息直达视角，2026-02-07）
 - 对象覆盖：选中详情已覆盖 Agent/Location/Asset/PowerPlant/PowerStorage/Chunk。

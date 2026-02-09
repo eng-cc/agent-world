@@ -76,6 +76,7 @@
 - [x] Viewer 事件与对象双向联动（事件定位对象、对象跳转事件）
 - [x] Viewer 详情面板补齐 LLM 诊断字段（模型/耗时/token/重试）
 - [x] Viewer 世界覆盖层（chunk 探索态/资源热力/电力交易流）
+- [x] Viewer chunk 可视化与背景网格合并（按 chunk 尺寸渲染）
 - [x] Viewer 自动诊断结论面板（无需人工分析）
 - [x] Viewer 事件列表逐条点击定位对象（Click Event -> Select Object）
 - [x] 输出 WASM 模块通用可视实体设计文档（`doc/world-simulator/module-visual-entities.md`）

@@ -23,6 +23,7 @@ use crate::timeline_controls::{
 use crate::ui_locale_text::{
     localize_agent_activity_block, localize_details_block, localize_events_summary_block,
     localize_world_summary_block, map_link_message_for_locale, overlay_button_label,
+    overlay_chunk_legend_label, overlay_chunk_legend_title, overlay_grid_line_width_hint,
     overlay_loading, seek_button_label, status_line, timeline_insights, timeline_jump_label,
     timeline_mode_label, timeline_status_line,
 };
@@ -31,9 +32,10 @@ use crate::ui_text::{
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
-    CopyableTextPanelState, DiagnosisState, EventObjectLinkState, RightPanelLayoutState,
-    RightPanelWidthState, TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
-    ViewerControl, ViewerSelection, ViewerState, WorldOverlayConfig,
+    grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
+    GridLineKind, RightPanelLayoutState, RightPanelWidthState, TimelineMarkFilterState,
+    Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl, ViewerSelection, ViewerState,
+    WorldOverlayConfig,
 };
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
@@ -179,6 +181,7 @@ pub(super) fn render_right_side_panel_egui(
             render_overlay_section(
                 ui,
                 locale,
+                *camera_mode,
                 &state,
                 &viewer_3d_config,
                 overlay_config.as_mut(),
@@ -558,6 +561,7 @@ fn truncate_observe_text(text: &str, max_chars: usize) -> String {
 fn render_overlay_section(
     ui: &mut egui::Ui,
     locale: crate::i18n::UiLocale,
+    camera_mode: ViewerCameraMode,
     state: &ViewerState,
     viewer_3d_config: &Option<Res<Viewer3dConfig>>,
     overlay_config: &mut WorldOverlayConfig,
@@ -587,6 +591,40 @@ fn render_overlay_section(
     };
 
     ui.add(egui::Label::new(text).wrap().selectable(true));
+
+    ui.add_space(4.0);
+    ui.strong(overlay_chunk_legend_title(locale));
+    ui.horizontal_wrapped(|ui| {
+        ui.colored_label(
+            egui::Color32::from_rgba_premultiplied(76, 107, 168, 180),
+            format!("● {}", overlay_chunk_legend_label("unexplored", locale)),
+        );
+        ui.colored_label(
+            egui::Color32::from_rgba_premultiplied(61, 199, 112, 196),
+            format!("● {}", overlay_chunk_legend_label("generated", locale)),
+        );
+        ui.colored_label(
+            egui::Color32::from_rgba_premultiplied(158, 102, 71, 196),
+            format!("● {}", overlay_chunk_legend_label("exhausted", locale)),
+        );
+        ui.colored_label(
+            egui::Color32::from_rgba_premultiplied(77, 87, 97, 140),
+            format!("● {}", overlay_chunk_legend_label("world_grid", locale)),
+        );
+    });
+
+    let world_thickness = grid_line_thickness(GridLineKind::World, camera_mode);
+    let chunk_thickness = grid_line_thickness(GridLineKind::Chunk, camera_mode);
+    ui.add(
+        egui::Label::new(overlay_grid_line_width_hint(
+            locale,
+            camera_mode,
+            world_thickness,
+            chunk_thickness,
+        ))
+        .wrap()
+        .selectable(true),
+    );
 }
 
 fn render_timeline_section(
