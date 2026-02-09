@@ -163,6 +163,7 @@ impl PromptAssembler {
                 priority: PromptSectionPriority::High,
                 content: "[Tool Protocol]
 - 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}
+- 在支持 OpenAI tool_calls 的模型上，优先调用已注册工具（function/tool call），不要编造工具名
 - 可用模块由 `agent.modules.list` 返回；禁止虚构模块
 - 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策。
 - 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）。

@@ -436,12 +436,30 @@ impl Error for LlmClientError {}
 struct ChatCompletionRequest<'a> {
     model: &'a str,
     messages: [ChatMessage<'a>; 2],
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tools: Vec<ChatCompletionTool<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_choice: Option<&'a str>,
 }
 
 #[derive(Debug, Serialize)]
 struct ChatMessage<'a> {
     role: &'a str,
     content: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatCompletionTool<'a> {
+    #[serde(rename = "type")]
+    kind: &'a str,
+    function: ChatCompletionToolFunction<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatCompletionToolFunction<'a> {
+    name: &'a str,
+    description: &'a str,
+    parameters: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -470,7 +488,146 @@ struct ChatChoice {
 
 #[derive(Debug, Deserialize)]
 struct ChatChoiceMessage {
-    content: String,
+    #[serde(default)]
+    content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<ChatChoiceToolCall>,
+    #[serde(default)]
+    function_call: Option<ChatChoiceFunctionCall>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatChoiceToolCall {
+    function: ChatChoiceFunctionCall,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatChoiceFunctionCall {
+    name: String,
+    #[serde(default)]
+    arguments: Option<ChatFunctionArguments>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ChatFunctionArguments {
+    Text(String),
+    Json(serde_json::Value),
+}
+
+const OPENAI_TOOL_KIND_FUNCTION: &str = "function";
+const OPENAI_TOOL_CHOICE_AUTO: &str = "auto";
+const OPENAI_TOOL_AGENT_MODULES_LIST: &str = "agent_modules_list";
+const OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION: &str = "environment_current_observation";
+const OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT: &str = "memory_short_term_recent";
+const OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH: &str = "memory_long_term_search";
+
+fn openai_chat_tools() -> Vec<ChatCompletionTool<'static>> {
+    vec![
+        ChatCompletionTool {
+            kind: OPENAI_TOOL_KIND_FUNCTION,
+            function: ChatCompletionToolFunction {
+                name: OPENAI_TOOL_AGENT_MODULES_LIST,
+                description: "列出 Agent 可调用的模块能力与参数。",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ChatCompletionTool {
+            kind: OPENAI_TOOL_KIND_FUNCTION,
+            function: ChatCompletionToolFunction {
+                name: OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
+                description: "读取当前 tick 的环境观测。",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ChatCompletionTool {
+            kind: OPENAI_TOOL_KIND_FUNCTION,
+            function: ChatCompletionToolFunction {
+                name: OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
+                description: "读取最近短期记忆。",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 32
+                        }
+                    },
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ChatCompletionTool {
+            kind: OPENAI_TOOL_KIND_FUNCTION,
+            function: ChatCompletionToolFunction {
+                name: OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
+                description: "按关键词检索长期记忆（query 为空时按重要度返回）。",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 32
+                        }
+                    },
+                    "additionalProperties": false,
+                }),
+            },
+        },
+    ]
+}
+
+fn module_name_from_tool_name(name: &str) -> &str {
+    match name {
+        OPENAI_TOOL_AGENT_MODULES_LIST => "agent.modules.list",
+        OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION => "environment.current_observation",
+        OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT => "memory.short_term.recent",
+        OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH => "memory.long_term.search",
+        other => other,
+    }
+}
+
+fn decode_tool_arguments(arguments: Option<ChatFunctionArguments>) -> serde_json::Value {
+    match arguments {
+        Some(ChatFunctionArguments::Json(value)) => value,
+        Some(ChatFunctionArguments::Text(raw)) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                serde_json::json!({})
+            } else {
+                serde_json::from_str(trimmed).unwrap_or_else(|_| {
+                    serde_json::json!({
+                        "_raw": trimmed,
+                    })
+                })
+            }
+        }
+        None => serde_json::json!({}),
+    }
+}
+
+fn function_call_to_module_call_json(function: ChatChoiceFunctionCall) -> String {
+    let module = module_name_from_tool_name(function.name.as_str());
+    let args = decode_tool_arguments(function.arguments);
+    serde_json::json!({
+        "type": "module_call",
+        "module": module,
+        "args": args,
+    })
+    .to_string()
 }
 
 impl LlmCompletionClient for OpenAiChatCompletionClient {
@@ -478,6 +635,7 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
         &self,
         request: &LlmCompletionRequest,
     ) -> Result<LlmCompletionResult, LlmClientError> {
+        let tools = openai_chat_tools();
         let payload = ChatCompletionRequest {
             model: request.model.as_str(),
             messages: [
@@ -490,6 +648,8 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
                     content: request.user_prompt.as_str(),
                 },
             ],
+            tool_choice: Some(OPENAI_TOOL_CHOICE_AUTO),
+            tools,
         };
 
         let response = match self.send_chat_request(&self.client, &payload) {
@@ -549,8 +709,20 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
             .next()
             .ok_or(LlmClientError::EmptyChoice)?;
 
+        let output = if let Some(tool_call) = first.message.tool_calls.into_iter().next() {
+            function_call_to_module_call_json(tool_call.function)
+        } else if let Some(function_call) = first.message.function_call {
+            function_call_to_module_call_json(function_call)
+        } else {
+            first.message.content.unwrap_or_default()
+        };
+
+        if output.trim().is_empty() {
+            return Err(LlmClientError::EmptyChoice);
+        }
+
         Ok(LlmCompletionResult {
-            output: first.message.content,
+            output,
             model,
             prompt_tokens: usage.as_ref().and_then(|usage| usage.prompt_tokens),
             completion_tokens: usage.as_ref().and_then(|usage| usage.completion_tokens),

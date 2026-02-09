@@ -220,6 +220,17 @@
 - 预期：不影响模块可用性前提下，降低单轮极端 Prompt 峰值，减少 section 裁剪触发。
 - 压测脚本补强：`scripts/llm-longrun-stress.sh` 在无 `jq` 环境下改为 Python 解析 `report.json`，保证 `prompt_section_clipped` 等指标准确落盘。
 
+### OpenAI 兼容 Tool 注册与解析（LMSO20）
+- 问题：当前模块调用主要依赖 `{"type":"module_call",...}` 文本协议，未充分利用 OpenAI `tools/tool_calls` 原生结构，跨模型兼容性与结构化约束不足。
+- 方案：将模块能力以 OpenAI `tools` 形态注册到 `chat/completions` 请求，并在响应侧优先解析 `tool_calls/function_call`：
+  - 请求注册：每轮请求携带函数工具定义（name/description/parameters），`tool_choice=auto`。
+  - 名称兼容：对外使用 OpenAI 友好命名（`agent_modules_list` 等），内部映射回既有模块名（`agent.modules.list` 等）。
+  - 响应解析优先级：`tool_calls/function_call` > 旧 `type=module_call` 文本 JSON > 其他决策协议。
+  - 回退策略：保留旧协议兼容，不强制要求所有模型必须走 tool_call。
+- 预期：
+  - 减少“自然语言夹带 JSON”导致的解析抖动。
+  - 让模块调用语义更贴近 OpenAI 标准接口，便于后续接入更多兼容端。
+
 ### 风险与约束
 - 风险：过强门控可能打断合理的重复动作。
 - 缓解：通过 `execute_until` 显式表达“重复直到事件”，并允许阈值配置化关闭门控。

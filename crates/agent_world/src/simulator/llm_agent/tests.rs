@@ -12,6 +12,7 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -455,8 +456,10 @@ fn openai_client_timeout_retry_can_recover_short_timeout_request() {
     let addr = listener.local_addr().expect("local addr");
     let accepted = Arc::new(AtomicUsize::new(0));
     let accepted_clone = Arc::clone(&accepted);
+    let request_bodies = Arc::new(Mutex::new(Vec::new()));
+    let request_bodies_clone = Arc::clone(&request_bodies);
 
-    let response_body = r#"{"model":"gpt-test","usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2},"choices":[{"message":{"content":"{\"decision\":\"wait\"}"}}]}"#;
+    let response_body = r#"{"model":"gpt-test","usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2},"choices":[{"message":{"content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"agent_modules_list","arguments":"{}"}}]}}]}"#;
     let handle = thread::spawn(move || {
         for incoming in listener.incoming().take(2) {
             let mut stream = match incoming {
@@ -465,8 +468,13 @@ fn openai_client_timeout_retry_can_recover_short_timeout_request() {
             };
             let request_index = accepted_clone.fetch_add(1, Ordering::SeqCst);
 
-            let mut request_buf = [0_u8; 1024];
-            let _ = stream.read(&mut request_buf);
+            let mut request_buf = [0_u8; 4096];
+            let read = stream.read(&mut request_buf).unwrap_or(0);
+            let request_text = String::from_utf8_lossy(&request_buf[..read]).to_string();
+            request_bodies_clone
+                .lock()
+                .expect("request bodies lock")
+                .push(request_text);
 
             if request_index == 0 {
                 thread::sleep(Duration::from_millis(80));
@@ -503,8 +511,82 @@ fn openai_client_timeout_retry_can_recover_short_timeout_request() {
         .complete(&sample_completion_request())
         .expect("retry should recover timeout");
 
-    assert_eq!(completion.output, "{\"decision\":\"wait\"}");
+    let output: serde_json::Value =
+        serde_json::from_str(completion.output.as_str()).expect("output json");
+    assert_eq!(
+        output.get("type").and_then(|value| value.as_str()),
+        Some("module_call")
+    );
+    assert_eq!(
+        output.get("module").and_then(|value| value.as_str()),
+        Some("agent.modules.list")
+    );
     assert_eq!(accepted.load(Ordering::SeqCst), 2);
+
+    let request_bodies = request_bodies.lock().expect("request bodies lock");
+    assert!(!request_bodies.is_empty());
+    let latest_request = &request_bodies[request_bodies.len() - 1];
+    assert!(latest_request.contains("\"tools\""));
+    assert!(latest_request.contains("\"tool_choice\":\"auto\""));
+    assert!(latest_request.contains("agent_modules_list"));
+
+    handle.join().expect("server thread");
+}
+
+#[test]
+fn openai_client_parses_legacy_function_call_payload() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let addr = listener.local_addr().expect("local addr");
+
+    let response_body = r#"{"model":"gpt-test","choices":[{"message":{"content":null,"function_call":{"name":"memory_short_term_recent","arguments":"{\"limit\":5}"}}}]}"#;
+    let handle = thread::spawn(move || {
+        if let Some(Ok(mut stream)) = listener.incoming().next() {
+            let mut request_buf = [0_u8; 1024];
+            let _ = stream.read(&mut request_buf);
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                response_body.len(),
+                response_body
+            );
+            let _ = stream.write_all(response.as_bytes());
+            let _ = stream.flush();
+        }
+    });
+
+    let config = LlmAgentConfig {
+        model: "gpt-test".to_string(),
+        base_url: format!("http://{}/v1", addr),
+        api_key: "test-key".to_string(),
+        timeout_ms: 1000,
+        system_prompt: "prompt".to_string(),
+        short_term_goal: "short-goal".to_string(),
+        long_term_goal: "long-goal".to_string(),
+        max_module_calls: 3,
+        max_decision_steps: 4,
+        max_repair_rounds: 1,
+        prompt_max_history_items: 4,
+        prompt_profile: LlmPromptProfile::Balanced,
+        force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
+    };
+    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
+
+    let completion = client
+        .complete(&sample_completion_request())
+        .expect("legacy function_call should parse");
+
+    let output: serde_json::Value =
+        serde_json::from_str(completion.output.as_str()).expect("output json");
+    assert_eq!(
+        output.get("module").and_then(|value| value.as_str()),
+        Some("memory.short_term.recent")
+    );
+    assert_eq!(
+        output
+            .get("args")
+            .and_then(|args| args.get("limit"))
+            .and_then(|value| value.as_i64()),
+        Some(5)
+    );
 
     handle.join().expect("server thread");
 }
