@@ -509,6 +509,8 @@ impl WorldKernel {
                     self.add_to_owner_for_replay(to, ResourceKind::Electricity, delivered)?;
                 }
             },
+            WorldEventKind::LlmEffectQueued { .. } => {}
+            WorldEventKind::LlmReceiptAppended { .. } => {}
         }
 
         Ok(())

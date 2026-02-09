@@ -427,6 +427,20 @@ impl<B: AgentBehavior> AgentRunner<B> {
 
         let decision = agent.behavior.decide(&observation);
         let decision_trace = agent.behavior.take_decision_trace();
+        if let Some(trace) = decision_trace.as_ref() {
+            for intent in &trace.llm_effect_intents {
+                kernel.record_event(WorldEventKind::LlmEffectQueued {
+                    agent_id: trace.agent_id.clone(),
+                    intent: intent.clone(),
+                });
+            }
+            for receipt in &trace.llm_effect_receipts {
+                kernel.record_event(WorldEventKind::LlmReceiptAppended {
+                    agent_id: trace.agent_id.clone(),
+                    receipt: receipt.clone(),
+                });
+            }
+        }
 
         match decision {
             AgentDecision::Wait => Some(AgentTickResult {

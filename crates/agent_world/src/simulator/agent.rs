@@ -1,6 +1,7 @@
 //! Agent interface: AgentBehavior trait, AgentDecision, ActionResult.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 use super::kernel::{Observation, RejectReason, WorldEvent, WorldEventKind};
 use super::types::{Action, ActionId, WorldTime};
@@ -87,6 +88,27 @@ pub struct AgentDecisionTrace {
     pub parse_error: Option<String>,
     #[serde(default)]
     pub llm_diagnostics: Option<LlmDecisionDiagnostics>,
+    #[serde(default)]
+    pub llm_effect_intents: Vec<LlmEffectIntentTrace>,
+    #[serde(default)]
+    pub llm_effect_receipts: Vec<LlmEffectReceiptTrace>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LlmEffectIntentTrace {
+    pub intent_id: String,
+    pub kind: String,
+    pub params: JsonValue,
+    pub cap_ref: String,
+    pub origin: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LlmEffectReceiptTrace {
+    pub intent_id: String,
+    pub status: String,
+    pub payload: JsonValue,
+    pub cost_cents: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]

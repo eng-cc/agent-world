@@ -89,6 +89,65 @@ impl AgentBehavior for WaitingAgent {
     }
 }
 
+struct TraceEffectAgent {
+    id: String,
+    emitted: bool,
+}
+
+impl TraceEffectAgent {
+    fn new(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            emitted: false,
+        }
+    }
+}
+
+impl AgentBehavior for TraceEffectAgent {
+    fn agent_id(&self) -> &str {
+        &self.id
+    }
+
+    fn decide(&mut self, _observation: &Observation) -> AgentDecision {
+        AgentDecision::Wait
+    }
+
+    fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
+        if self.emitted {
+            return None;
+        }
+        self.emitted = true;
+        Some(AgentDecisionTrace {
+            agent_id: self.id.clone(),
+            time: 1,
+            decision: AgentDecision::Wait,
+            llm_input: Some("in".to_string()),
+            llm_output: Some("out".to_string()),
+            llm_error: None,
+            parse_error: None,
+            llm_diagnostics: None,
+            llm_effect_intents: vec![LlmEffectIntentTrace {
+                intent_id: "llm-intent-0".to_string(),
+                kind: "llm.prompt.module_call".to_string(),
+                params: serde_json::json!({
+                    "module": "agent.modules.list",
+                    "args": {},
+                }),
+                cap_ref: "llm.prompt.module_access".to_string(),
+                origin: "llm_agent".to_string(),
+            }],
+            llm_effect_receipts: vec![LlmEffectReceiptTrace {
+                intent_id: "llm-intent-0".to_string(),
+                status: "ok".to_string(),
+                payload: serde_json::json!({
+                    "ok": true,
+                }),
+                cost_cents: None,
+            }],
+        })
+    }
+}
+
 fn setup_kernel_with_patrol_agent(agent_id: &str) -> WorldKernel {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,
@@ -493,4 +552,34 @@ fn runner_metrics_default() {
     assert_eq!(metrics.total_agents, 0);
     assert_eq!(metrics.total_actions, 0);
     assert_eq!(metrics.total_decisions, 0);
+}
+
+#[test]
+fn runner_persists_llm_effect_trace_to_kernel_journal() {
+    let mut kernel = setup_kernel_with_wait_agent("agent-1");
+    let mut runner: AgentRunner<TraceEffectAgent> = AgentRunner::new();
+    runner.register(TraceEffectAgent::new("agent-1"));
+
+    let _ = runner.tick(&mut kernel).expect("tick result");
+
+    let mut has_intent = false;
+    let mut has_receipt = false;
+    for event in kernel.journal() {
+        match &event.kind {
+            WorldEventKind::LlmEffectQueued { agent_id, intent } => {
+                has_intent = true;
+                assert_eq!(agent_id, "agent-1");
+                assert_eq!(intent.intent_id, "llm-intent-0");
+            }
+            WorldEventKind::LlmReceiptAppended { agent_id, receipt } => {
+                has_receipt = true;
+                assert_eq!(agent_id, "agent-1");
+                assert_eq!(receipt.intent_id, "llm-intent-0");
+            }
+            _ => {}
+        }
+    }
+
+    assert!(has_intent);
+    assert!(has_receipt);
 }

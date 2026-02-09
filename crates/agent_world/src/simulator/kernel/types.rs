@@ -1,6 +1,7 @@
 use crate::geometry::GeoPos;
 use serde::{Deserialize, Serialize};
 
+use super::super::agent::{LlmEffectIntentTrace, LlmEffectReceiptTrace};
 use super::super::chunking::ChunkCoord;
 use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
@@ -106,6 +107,14 @@ pub enum WorldEventKind {
     },
     ActionRejected {
         reason: RejectReason,
+    },
+    LlmEffectQueued {
+        agent_id: AgentId,
+        intent: LlmEffectIntentTrace,
+    },
+    LlmReceiptAppended {
+        agent_id: AgentId,
+        receipt: LlmEffectReceiptTrace,
     },
     // Power system events
     Power(PowerEvent),

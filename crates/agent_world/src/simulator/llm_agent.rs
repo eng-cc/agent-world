@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use super::agent::{
     ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
+    LlmEffectIntentTrace, LlmEffectReceiptTrace,
 };
 use super::kernel::Observation;
 use super::kernel::WorldEvent;
@@ -35,6 +36,9 @@ pub const DEFAULT_LLM_MAX_MODULE_CALLS: usize = 3;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
+const LLM_PROMPT_MODULE_CALL_KIND: &str = "llm.prompt.module_call";
+const LLM_PROMPT_MODULE_CALL_CAP_REF: &str = "llm.prompt.module_access";
+const LLM_PROMPT_MODULE_CALL_ORIGIN: &str = "llm_agent";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {
@@ -425,6 +429,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     config: LlmAgentConfig,
     client: C,
     memory: AgentMemory,
+    next_effect_intent_id: u64,
     pending_trace: Option<AgentDecisionTrace>,
 }
 
@@ -463,6 +468,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             config,
             client,
             memory,
+            next_effect_intent_id: 0,
             pending_trace: None,
         }
     }
@@ -616,6 +622,12 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             }),
         }
     }
+
+    fn next_prompt_intent_id(&mut self) -> String {
+        let intent_id = format!("llm-intent-{}", self.next_effect_intent_id);
+        self.next_effect_intent_id = self.next_effect_intent_id.saturating_add(1);
+        intent_id
+    }
 }
 
 impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
@@ -631,6 +643,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut parse_error: Option<String> = None;
         let mut llm_error: Option<String> = None;
         let mut module_history = Vec::new();
+        let mut llm_effect_intents = Vec::new();
+        let mut llm_effect_receipts = Vec::new();
         let mut trace_inputs = Vec::new();
         let mut trace_outputs = Vec::new();
 
@@ -703,8 +717,37 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 break;
                             }
 
+                            let intent_id = self.next_prompt_intent_id();
+                            let intent = LlmEffectIntentTrace {
+                                intent_id: intent_id.clone(),
+                                kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
+                                params: serde_json::json!({
+                                    "module": module_request.module,
+                                    "args": module_request.args,
+                                }),
+                                cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
+                                origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
+                            };
                             let module_result =
                                 self.run_prompt_module(&module_request, observation);
+                            let status = if module_result
+                                .get("ok")
+                                .and_then(|value| value.as_bool())
+                                .unwrap_or(false)
+                            {
+                                "ok"
+                            } else {
+                                "error"
+                            };
+                            let receipt = LlmEffectReceiptTrace {
+                                intent_id: intent.intent_id.clone(),
+                                status: status.to_string(),
+                                payload: module_result.clone(),
+                                cost_cents: None,
+                            };
+
+                            llm_effect_intents.push(intent);
+                            llm_effect_receipts.push(receipt);
                             trace_inputs.push(format!(
                                 "[module_result:{}]\n{}",
                                 module_request.module,
@@ -757,6 +800,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 total_tokens: has_total_tokens.then_some(total_tokens_total),
                 retry_count: 0,
             }),
+            llm_effect_intents,
+            llm_effect_receipts,
         });
 
         decision

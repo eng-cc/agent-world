@@ -217,6 +217,8 @@ mod tests {
                 llm_error: Some("timeout".to_string()),
                 parse_error: None,
                 llm_diagnostics: Some(LlmDecisionDiagnostics::default()),
+                llm_effect_intents: Vec::new(),
+                llm_effect_receipts: Vec::new(),
             }],
             metrics: None,
         };

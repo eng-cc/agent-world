@@ -347,6 +347,20 @@ fn llm_agent_supports_module_call_then_decision() {
 
     let trace = behavior.take_decision_trace().expect("trace exists");
     assert_eq!(trace.parse_error, None);
+    assert_eq!(trace.llm_effect_intents.len(), 1);
+    assert_eq!(trace.llm_effect_receipts.len(), 1);
+    let intent = &trace.llm_effect_intents[0];
+    assert_eq!(intent.kind, "llm.prompt.module_call");
+    assert_eq!(intent.cap_ref, "llm.prompt.module_access");
+    assert_eq!(intent.origin, "llm_agent");
+    assert_eq!(
+        intent.params.get("module").and_then(|value| value.as_str()),
+        Some("agent.modules.list")
+    );
+    let receipt = &trace.llm_effect_receipts[0];
+    assert_eq!(receipt.intent_id, intent.intent_id);
+    assert_eq!(receipt.status, "ok");
+    assert_eq!(receipt.cost_cents, None);
     let llm_input = trace.llm_input.unwrap_or_default();
     assert!(llm_input.contains("[module_result:agent.modules.list]"));
     let llm_output = trace.llm_output.unwrap_or_default();

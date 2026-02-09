@@ -33,6 +33,7 @@ mod tests;
 // Re-export all public types
 pub use agent::{
     ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
+    LlmEffectIntentTrace, LlmEffectReceiptTrace,
 };
 pub use asteroid_fragment::generate_fragments;
 pub use chunking::{

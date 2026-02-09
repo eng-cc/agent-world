@@ -103,7 +103,7 @@ pub enum ViewerResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulator::AgentDecision;
+    use crate::simulator::{AgentDecision, LlmEffectIntentTrace, LlmEffectReceiptTrace};
 
     #[test]
     fn viewer_request_round_trip() {
@@ -148,6 +148,24 @@ mod tests {
                 llm_error: None,
                 parse_error: None,
                 llm_diagnostics: None,
+                llm_effect_intents: vec![LlmEffectIntentTrace {
+                    intent_id: "llm-intent-0".to_string(),
+                    kind: "llm.prompt.module_call".to_string(),
+                    params: serde_json::json!({
+                        "module": "agent.modules.list",
+                        "args": {},
+                    }),
+                    cap_ref: "llm.prompt.module_access".to_string(),
+                    origin: "llm_agent".to_string(),
+                }],
+                llm_effect_receipts: vec![LlmEffectReceiptTrace {
+                    intent_id: "llm-intent-0".to_string(),
+                    status: "ok".to_string(),
+                    payload: serde_json::json!({
+                        "ok": true,
+                    }),
+                    cost_cents: None,
+                }],
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");

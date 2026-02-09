@@ -939,6 +939,8 @@ mod tests {
                 llm_error: None,
                 parse_error: None,
                 llm_diagnostics: None,
+                llm_effect_intents: Vec::new(),
+                llm_effect_receipts: Vec::new(),
             },
             AgentDecisionTrace {
                 agent_id: "agent-2".to_string(),
@@ -949,6 +951,8 @@ mod tests {
                 llm_error: None,
                 parse_error: None,
                 llm_diagnostics: None,
+                llm_effect_intents: Vec::new(),
+                llm_effect_receipts: Vec::new(),
             },
         ];
 

@@ -603,7 +603,9 @@ pub(super) fn event_primary_target(
         }),
         WorldEventKind::AgentRegistered { agent_id, .. }
         | WorldEventKind::AgentMoved { agent_id, .. }
-        | WorldEventKind::RadiationHarvested { agent_id, .. } => Some(SelectionTarget {
+        | WorldEventKind::RadiationHarvested { agent_id, .. }
+        | WorldEventKind::LlmEffectQueued { agent_id, .. }
+        | WorldEventKind::LlmReceiptAppended { agent_id, .. } => Some(SelectionTarget {
             kind: SelectionKind::Agent,
             id: agent_id.clone(),
             name: None,
@@ -783,7 +785,9 @@ fn event_matches_agent(event: &WorldEvent, agent_id: &str) -> bool {
     match &event.kind {
         WorldEventKind::AgentRegistered { agent_id: id, .. }
         | WorldEventKind::AgentMoved { agent_id: id, .. }
-        | WorldEventKind::RadiationHarvested { agent_id: id, .. } => id == agent_id,
+        | WorldEventKind::RadiationHarvested { agent_id: id, .. }
+        | WorldEventKind::LlmEffectQueued { agent_id: id, .. }
+        | WorldEventKind::LlmReceiptAppended { agent_id: id, .. } => id == agent_id,
         WorldEventKind::ResourceTransferred { from, to, .. }
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_is_agent(from, agent_id) || owner_is_agent(to, agent_id)

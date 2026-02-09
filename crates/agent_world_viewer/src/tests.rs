@@ -563,6 +563,8 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_error: None,
             parse_error: None,
             llm_diagnostics: None,
+            llm_effect_intents: Vec::new(),
+            llm_effect_receipts: Vec::new(),
         },
     })
     .expect("send trace1");
@@ -576,6 +578,8 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_error: None,
             parse_error: None,
             llm_diagnostics: None,
+            llm_effect_intents: Vec::new(),
+            llm_effect_receipts: Vec::new(),
         },
     })
     .expect("send trace2");
@@ -589,6 +593,8 @@ fn poll_viewer_messages_collects_decision_traces() {
             llm_error: None,
             parse_error: None,
             llm_diagnostics: None,
+            llm_effect_intents: Vec::new(),
+            llm_effect_receipts: Vec::new(),
         },
     })
     .expect("send trace3");

@@ -82,6 +82,8 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
             total_tokens: Some(86),
             retry_count: 1,
         }),
+        llm_effect_intents: Vec::new(),
+        llm_effect_receipts: Vec::new(),
     }];
 
     app.world_mut().insert_resource(ViewerState {
