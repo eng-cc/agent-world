@@ -31,3 +31,7 @@ config.toml
 
 # Local debug artifacts
 .tmp/
+# egui_kittest snapshot artifacts
+**/tests/snapshots/*.diff.png
+**/tests/snapshots/*.new.png
+
