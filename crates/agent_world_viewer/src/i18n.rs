@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{SelectionKind, ViewerControl};
+use super::{SelectionKind, ViewerCameraMode, ViewerControl};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum UiLocale {
@@ -60,6 +60,23 @@ pub(super) fn language_toggle_label(locale: UiLocale) -> &'static str {
         "语言：中文"
     } else {
         "Language: English"
+    }
+}
+
+pub(super) fn camera_mode_section_label(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "视角"
+    } else {
+        "View"
+    }
+}
+
+pub(super) fn camera_mode_button_label(mode: ViewerCameraMode, locale: UiLocale) -> &'static str {
+    match (mode, locale) {
+        (ViewerCameraMode::TwoD, UiLocale::ZhCn) => "2D",
+        (ViewerCameraMode::TwoD, UiLocale::EnUs) => "2D",
+        (ViewerCameraMode::ThreeD, UiLocale::ZhCn) => "3D",
+        (ViewerCameraMode::ThreeD, UiLocale::EnUs) => "3D",
     }
 }
 
@@ -212,6 +229,20 @@ mod tests {
         assert_eq!(
             copyable_panel_toggle_label(false, UiLocale::EnUs),
             "Show Details"
+        );
+    }
+
+    #[test]
+    fn camera_mode_labels_are_stable() {
+        assert_eq!(camera_mode_section_label(UiLocale::ZhCn), "视角");
+        assert_eq!(camera_mode_section_label(UiLocale::EnUs), "View");
+        assert_eq!(
+            camera_mode_button_label(ViewerCameraMode::TwoD, UiLocale::ZhCn),
+            "2D"
+        );
+        assert_eq!(
+            camera_mode_button_label(ViewerCameraMode::ThreeD, UiLocale::EnUs),
+            "3D"
         );
     }
 }

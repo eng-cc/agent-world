@@ -17,6 +17,8 @@ use bevy::prelude::*;
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
 const DEFAULT_AGENT_RADIUS: f32 = 0.35;
+const DEFAULT_2D_CAMERA_RADIUS: f32 = 90.0;
+const DEFAULT_3D_CAMERA_RADIUS: f32 = 48.0;
 const ORBIT_ROTATE_SENSITIVITY: f32 = 0.005;
 const ORBIT_PAN_SENSITIVITY: f32 = 0.002;
 const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
@@ -53,7 +55,10 @@ mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
-use camera_controls::{orbit_camera_controls, OrbitDragState};
+use camera_controls::{
+    camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,
+    sync_world_background_visibility, OrbitDragState,
+};
 use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use egui_right_panel::render_right_side_panel_egui;
@@ -170,6 +175,18 @@ struct Viewer3dScene {
     flow_overlay_entities: Vec<Entity>,
 }
 
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerCameraMode {
+    TwoD,
+    ThreeD,
+}
+
+impl Default for ViewerCameraMode {
+    fn default() -> Self {
+        Self::TwoD
+    }
+}
+
 #[derive(Resource)]
 struct Viewer3dAssets {
     agent_mesh: Handle<Mesh>,
@@ -234,6 +251,12 @@ struct Viewer3dCamera;
 struct Viewer3dSceneRoot;
 
 #[derive(Component)]
+struct WorldFloorSurface;
+
+#[derive(Component)]
+struct WorldBoundsSurface;
+
+#[derive(Component)]
 struct OrbitCamera {
     focus: Vec3,
     radius: f32,
@@ -242,21 +265,6 @@ struct OrbitCamera {
 }
 
 impl OrbitCamera {
-    fn from_transform(transform: &Transform, focus: Vec3) -> Self {
-        let offset = transform.translation - focus;
-        let radius = offset.length().max(0.1);
-        let yaw = offset.x.atan2(offset.z);
-        let pitch = offset
-            .y
-            .atan2((offset.x * offset.x + offset.z * offset.z).sqrt());
-        Self {
-            focus,
-            radius,
-            yaw,
-            pitch,
-        }
-    }
-
     fn apply_to_transform(&self, transform: &mut Transform) {
         let rotation =
             Quat::from_axis_angle(Vec3::Y, self.yaw) * Quat::from_axis_angle(Vec3::X, self.pitch);
@@ -447,6 +455,7 @@ fn send_request(
 fn setup_3d_scene(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
+    camera_mode: Res<ViewerCameraMode>,
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -470,8 +479,8 @@ fn setup_3d_scene(
     let chunk_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.2, 0.7, 1.0),
-        perceptual_roughness: 0.6,
+        base_color: Color::srgb(1.0, 0.34, 0.2),
+        perceptual_roughness: 0.45,
         ..default()
     });
     let location_material_library = build_location_material_handles(&mut materials);
@@ -583,17 +592,14 @@ fn setup_3d_scene(
         label_font,
     });
 
-    let focus = Vec3::ZERO;
-    let transform = Transform::from_xyz(-30.0, 24.0, 30.0).looking_at(focus, Vec3::Y);
-    let orbit = OrbitCamera::from_transform(&transform, focus);
-    let perspective = PerspectiveProjection {
-        near: config.physical.camera_near_m,
-        far: config.physical.camera_far_m,
-        ..default()
-    };
+    let mode = *camera_mode;
+    let orbit = camera_orbit_preset(mode, None, config.effective_cm_to_unit());
+    let mut transform = Transform::default();
+    orbit.apply_to_transform(&mut transform);
+    let projection = camera_projection_for_mode(mode, &config);
     commands.spawn((
         Camera3d::default(),
-        Projection::Perspective(perspective),
+        projection,
         Camera {
             order: 0,
             ..default()
@@ -1079,6 +1085,16 @@ fn update_3d_viewport(mut cameras: Query<&mut Camera, With<Viewer3dCamera>>) {
     };
 
     camera.viewport = None;
+}
+
+#[cfg(test)]
+mod camera_mode_tests {
+    use super::*;
+
+    #[test]
+    fn default_camera_mode_is_2d() {
+        assert_eq!(ViewerCameraMode::default(), ViewerCameraMode::TwoD);
+    }
 }
 #[cfg(test)]
 mod tests;

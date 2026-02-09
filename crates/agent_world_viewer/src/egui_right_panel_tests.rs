@@ -426,6 +426,58 @@ fn egui_kittest_timeline_filter_button_toggles_state() {
     assert!(harness.state().filters.show_error);
 }
 
+#[derive(Default)]
+struct CameraModeHarnessState {
+    camera_mode: crate::ViewerCameraMode,
+}
+
+#[test]
+fn egui_kittest_camera_mode_toggle_switches_state() {
+    let mut harness = Harness::new_ui_state(
+        |ui, state: &mut CameraModeHarnessState| {
+            ui.horizontal_wrapped(|ui| {
+                let is_two_d = state.camera_mode == crate::ViewerCameraMode::TwoD;
+                if ui
+                    .selectable_label(
+                        is_two_d,
+                        crate::i18n::camera_mode_button_label(
+                            crate::ViewerCameraMode::TwoD,
+                            crate::i18n::UiLocale::ZhCn,
+                        ),
+                    )
+                    .clicked()
+                {
+                    state.camera_mode = crate::ViewerCameraMode::TwoD;
+                }
+                if ui
+                    .selectable_label(
+                        !is_two_d,
+                        crate::i18n::camera_mode_button_label(
+                            crate::ViewerCameraMode::ThreeD,
+                            crate::i18n::UiLocale::ZhCn,
+                        ),
+                    )
+                    .clicked()
+                {
+                    state.camera_mode = crate::ViewerCameraMode::ThreeD;
+                }
+            });
+        },
+        CameraModeHarnessState::default(),
+    );
+
+    harness.fit_contents();
+    assert_eq!(harness.state().camera_mode, crate::ViewerCameraMode::TwoD);
+
+    harness.get_by_label("3D").click();
+    harness.run();
+    assert_eq!(harness.state().camera_mode, crate::ViewerCameraMode::ThreeD);
+
+    harness.get_by_label("2D").click();
+    harness.run();
+    assert_eq!(harness.state().camera_mode, crate::ViewerCameraMode::TwoD);
+}
+
 #[test]
 fn egui_kittest_snapshot_overview_live() {
     let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());

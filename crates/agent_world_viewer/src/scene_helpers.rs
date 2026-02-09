@@ -353,6 +353,7 @@ pub(super) fn spawn_world_background(
                 0.0,
             ))
             .with_scale(Vec3::new(world_width, WORLD_FLOOR_THICKNESS, world_depth)),
+            WorldFloorSurface,
             Name::new("world:floor"),
             BaseScale(Vec3::new(world_width, WORLD_FLOOR_THICKNESS, world_depth)),
         ))
@@ -365,6 +366,7 @@ pub(super) fn spawn_world_background(
             Mesh3d(assets.world_box_mesh.clone()),
             MeshMaterial3d(assets.world_bounds_material.clone()),
             Transform::from_scale(Vec3::new(world_width, world_height, world_depth)),
+            WorldBoundsSurface,
             Name::new("world:bounds"),
             BaseScale(Vec3::new(world_width, world_height, world_depth)),
         ))

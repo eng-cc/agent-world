@@ -11,6 +11,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         })
         .insert_resource(viewer_3d_config)
         .insert_resource(Viewer3dScene::default())
+        .insert_resource(ViewerCameraMode::default())
         .insert_resource(ViewerSelection::default())
         .insert_resource(WorldOverlayConfig::default())
         .insert_resource(WorldOverlayUiState::default())
@@ -67,6 +68,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_3d_scene,
                 update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
+                sync_camera_mode.after(orbit_camera_controls),
+                sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),
                 update_3d_viewport,
                 handle_control_buttons,

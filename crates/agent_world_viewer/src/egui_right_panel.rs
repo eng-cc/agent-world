@@ -9,8 +9,9 @@ use crate::event_click_list::{
     apply_event_click_action, event_row_label, event_window, focus_tick,
 };
 use crate::i18n::{
-    control_button_label, copyable_panel_toggle_label, language_toggle_label, locale_or_default,
-    step_button_label, top_controls_label, top_panel_toggle_label, UiI18n,
+    camera_mode_button_label, camera_mode_section_label, control_button_label,
+    copyable_panel_toggle_label, language_toggle_label, locale_or_default, step_button_label,
+    top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::selection_linking::{
     jump_selection_events_action, locate_focus_event_action, selection_kind_label,
@@ -31,8 +32,8 @@ use crate::ui_text::{
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
     CopyableTextPanelState, DiagnosisState, EventObjectLinkState, RightPanelLayoutState,
-    RightPanelWidthState, TimelineMarkFilterState, Viewer3dConfig, ViewerClient, ViewerControl,
-    ViewerSelection, ViewerState, WorldOverlayConfig,
+    RightPanelWidthState, TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
+    ViewerControl, ViewerSelection, ViewerState, WorldOverlayConfig,
 };
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
@@ -55,6 +56,7 @@ fn adaptive_panel_default_width(available_width: f32) -> f32 {
 pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
     layout_state: ResMut<'w, RightPanelLayoutState>,
+    camera_mode: ResMut<'w, ViewerCameraMode>,
     i18n: Option<ResMut<'w, UiI18n>>,
     copyable_panel_state: ResMut<'w, CopyableTextPanelState>,
     overlay_config: ResMut<'w, WorldOverlayConfig>,
@@ -79,6 +81,7 @@ pub(super) fn render_right_side_panel_egui(
     let RightPanelParams {
         mut panel_width,
         mut layout_state,
+        mut camera_mode,
         mut i18n,
         mut copyable_panel_state,
         mut overlay_config,
@@ -125,6 +128,30 @@ pub(super) fn render_right_side_panel_egui(
                     if let Some(i18n) = i18n.as_deref_mut() {
                         i18n.locale = i18n.locale.toggled();
                     }
+                }
+
+                ui.separator();
+                ui.label(camera_mode_section_label(locale));
+
+                let is_two_d = *camera_mode == ViewerCameraMode::TwoD;
+                if ui
+                    .selectable_label(
+                        is_two_d,
+                        camera_mode_button_label(ViewerCameraMode::TwoD, locale),
+                    )
+                    .clicked()
+                {
+                    *camera_mode = ViewerCameraMode::TwoD;
+                }
+
+                if ui
+                    .selectable_label(
+                        !is_two_d,
+                        camera_mode_button_label(ViewerCameraMode::ThreeD, locale),
+                    )
+                    .clicked()
+                {
+                    *camera_mode = ViewerCameraMode::ThreeD;
                 }
 
                 if ui
