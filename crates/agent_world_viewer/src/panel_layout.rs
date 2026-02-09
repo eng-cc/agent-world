@@ -1,10 +1,13 @@
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
+#[cfg(test)]
 use crate::copyable_text::CopyableTextPanelState;
+#[cfg(test)]
+use crate::i18n::UiI18n;
 use crate::i18n::{
     copyable_panel_toggle_label, language_toggle_label, top_controls_label, top_panel_toggle_label,
-    UiI18n, UiLocale,
+    UiLocale,
 };
 
 #[derive(Resource, Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -149,6 +152,7 @@ pub(super) fn spawn_top_panel_toggle(
         });
 }
 
+#[cfg(test)]
 pub(super) fn handle_top_panel_toggle_button(
     mut interactions: Query<
         &Interaction,
@@ -187,6 +191,7 @@ pub(super) fn handle_top_panel_toggle_button(
     }
 }
 
+#[cfg(test)]
 pub(super) fn handle_language_toggle_button(
     mut interactions: Query<
         &Interaction,
@@ -241,6 +246,7 @@ pub(super) fn handle_language_toggle_button(
     }
 }
 
+#[cfg(test)]
 pub(super) fn handle_copyable_panel_toggle_button(
     mut interactions: Query<
         &Interaction,

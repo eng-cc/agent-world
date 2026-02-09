@@ -42,14 +42,6 @@ impl Default for TimelineMarkFilterState {
 }
 
 impl TimelineMarkFilterState {
-    fn is_enabled(&self, kind: TimelineMarkKind) -> bool {
-        match kind {
-            TimelineMarkKind::Error => self.show_error,
-            TimelineMarkKind::Llm => self.show_llm,
-            TimelineMarkKind::Peak => self.show_peak,
-        }
-    }
-
     fn toggle(&mut self, kind: TimelineMarkKind) {
         match kind {
             TimelineMarkKind::Error => self.show_error = !self.show_error,
@@ -104,9 +96,7 @@ pub(super) struct TimelineMarkFilterButton {
 }
 
 #[derive(Component)]
-pub(super) struct TimelineMarkFilterLabel {
-    kind: TimelineMarkKind,
-}
+pub(super) struct TimelineMarkFilterLabel;
 
 #[derive(Component)]
 pub(super) struct TimelineMarkJumpLabel {
@@ -371,7 +361,7 @@ fn spawn_mark_filter_button(
                     ..default()
                 },
                 TextColor(Color::WHITE),
-                TimelineMarkFilterLabel { kind },
+                TimelineMarkFilterLabel,
             ));
         });
 }
@@ -458,33 +448,6 @@ pub(super) fn handle_timeline_mark_filter_buttons(
         if *interaction == Interaction::Pressed {
             filters.toggle(button.kind);
         }
-    }
-}
-
-pub(super) fn update_timeline_mark_filter_ui(
-    filters: Res<TimelineMarkFilterState>,
-    i18n: Option<Res<UiI18n>>,
-    mut button_query: Query<(&TimelineMarkFilterButton, &mut BackgroundColor)>,
-    mut label_query: Query<(&TimelineMarkFilterLabel, &mut Text)>,
-) {
-    let locale_changed = i18n
-        .as_ref()
-        .map(|value| value.is_changed())
-        .unwrap_or(false);
-    if !filters.is_changed() && !locale_changed {
-        return;
-    }
-
-    let locale = locale_or_default(i18n.as_deref());
-
-    for (button, mut background) in &mut button_query {
-        let enabled = filters.is_enabled(button.kind);
-        background.0 = mark_filter_background(button.kind, enabled);
-    }
-
-    for (label, mut text) in &mut label_query {
-        let enabled = filters.is_enabled(label.kind);
-        text.0 = mark_filter_label(label.kind, enabled, locale);
     }
 }
 

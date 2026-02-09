@@ -34,7 +34,6 @@ const UI_PANEL_WIDTH: f32 = 380.0;
 mod app_bootstrap;
 mod button_feedback;
 mod camera_controls;
-mod control_labels;
 mod copyable_text;
 mod diagnosis;
 mod egui_right_panel;
@@ -57,7 +56,6 @@ mod world_overlay;
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{orbit_camera_controls, OrbitDragState};
-use control_labels::ControlButtonLabel;
 use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use egui_right_panel::render_right_side_panel_egui;
@@ -727,9 +725,6 @@ fn setup_ui(
                                         ..default()
                                     },
                                     TextColor(Color::WHITE),
-                                    ControlButtonLabel {
-                                        control: label.clone(),
-                                    },
                                 ));
                             });
                     }

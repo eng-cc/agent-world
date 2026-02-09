@@ -52,9 +52,7 @@ pub(super) struct WorldOverlayToggleButton {
 }
 
 #[derive(Component)]
-pub(super) struct WorldOverlayToggleLabel {
-    kind: WorldOverlayKind,
-}
+pub(super) struct WorldOverlayToggleLabel;
 
 #[derive(Component)]
 pub(super) struct WorldOverlayStatusText;
@@ -174,31 +172,9 @@ fn spawn_overlay_button(
                     ..default()
                 },
                 TextColor(Color::WHITE),
-                WorldOverlayToggleLabel { kind },
+                WorldOverlayToggleLabel,
             ));
         });
-}
-
-pub(super) fn update_world_overlay_toggle_labels(
-    i18n: Option<Res<UiI18n>>,
-    mut query: Query<(&WorldOverlayToggleLabel, &mut Text)>,
-) {
-    let Some(i18n) = i18n else {
-        return;
-    };
-    if !i18n.is_changed() {
-        return;
-    }
-
-    let locale = i18n.locale;
-    for (label, mut text) in &mut query {
-        text.0 = match label.kind {
-            WorldOverlayKind::Chunk => overlay_button_label("chunk", locale),
-            WorldOverlayKind::Heat => overlay_button_label("heat", locale),
-            WorldOverlayKind::Flow => overlay_button_label("flow", locale),
-        }
-        .to_string();
-    }
 }
 
 pub(super) fn handle_world_overlay_toggle_buttons(

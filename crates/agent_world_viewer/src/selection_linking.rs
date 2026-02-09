@@ -333,6 +333,7 @@ pub(super) fn update_event_object_link_text(
     }
 }
 
+#[cfg(test)]
 pub(super) fn update_event_object_link_button_labels(
     i18n: Option<Res<UiI18n>>,
     mut labels: ParamSet<(

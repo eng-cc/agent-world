@@ -1,8 +1,6 @@
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
+#[cfg(test)]
+use bevy::input::mouse::MouseScrollUnit;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
-
-use bevy::ui::{ComputedNode, UiGlobalTransform};
 
 #[derive(Component)]
 pub(super) struct RightPanelScroll;
@@ -10,6 +8,7 @@ pub(super) struct RightPanelScroll;
 #[derive(Component)]
 pub(super) struct TopPanelScroll;
 
+#[cfg(test)]
 pub(super) fn scroll_delta_px_from_parts(unit: MouseScrollUnit, y: f32) -> f32 {
     let scale = match unit {
         MouseScrollUnit::Line => 32.0,
@@ -18,92 +17,16 @@ pub(super) fn scroll_delta_px_from_parts(unit: MouseScrollUnit, y: f32) -> f32 {
     y * scale
 }
 
-fn scroll_delta_px(event: &MouseWheel) -> f32 {
-    scroll_delta_px_from_parts(event.unit, event.y)
-}
-
+#[cfg(test)]
 fn cursor_in_scroll_node(
     cursor: Vec2,
-    node: &ComputedNode,
-    transform: &UiGlobalTransform,
+    node: &bevy::ui::ComputedNode,
+    transform: &bevy::ui::UiGlobalTransform,
     inherited_visibility: Option<&InheritedVisibility>,
 ) -> bool {
     inherited_visibility.is_none_or(|v| v.get())
         && !node.is_empty()
         && node.contains_point(*transform, cursor)
-}
-
-pub(super) fn scroll_right_panel(
-    windows: Query<&Window, With<PrimaryWindow>>,
-    mut wheel_events: MessageReader<MouseWheel>,
-    mut top_scroll_query: Query<
-        (
-            &mut ScrollPosition,
-            &ComputedNode,
-            &UiGlobalTransform,
-            Option<&InheritedVisibility>,
-        ),
-        (With<TopPanelScroll>, Without<RightPanelScroll>),
-    >,
-    mut bottom_scroll_query: Query<
-        (
-            &mut ScrollPosition,
-            &ComputedNode,
-            &UiGlobalTransform,
-            Option<&InheritedVisibility>,
-        ),
-        (With<RightPanelScroll>, Without<TopPanelScroll>),
-    >,
-) {
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let Some(cursor) = window.physical_cursor_position().or_else(|| {
-        window
-            .cursor_position()
-            .map(|pos| pos * window.scale_factor())
-    }) else {
-        return;
-    };
-
-    let mut top_scroll = top_scroll_query.single_mut().ok();
-    let mut bottom_scroll = bottom_scroll_query.single_mut().ok();
-
-    let use_top_scroll = top_scroll
-        .as_ref()
-        .is_some_and(|(_, node, transform, visibility)| {
-            cursor_in_scroll_node(cursor, node, transform, *visibility)
-        });
-    let use_bottom_scroll =
-        bottom_scroll
-            .as_ref()
-            .is_some_and(|(_, node, transform, visibility)| {
-                cursor_in_scroll_node(cursor, node, transform, *visibility)
-            });
-
-    if !use_top_scroll && !use_bottom_scroll {
-        return;
-    }
-
-    for event in wheel_events.read() {
-        let delta = scroll_delta_px(event);
-        if delta.abs() < f32::EPSILON {
-            continue;
-        }
-
-        if use_top_scroll {
-            if let Some((ref mut scroll, ..)) = top_scroll.as_mut() {
-                scroll.y = (scroll.y - delta).max(0.0);
-                continue;
-            }
-        }
-
-        if use_bottom_scroll {
-            if let Some((ref mut scroll, ..)) = bottom_scroll.as_mut() {
-                scroll.y = (scroll.y - delta).max(0.0);
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -118,11 +41,11 @@ mod tests {
 
     #[test]
     fn cursor_in_scroll_node_respects_visibility_and_bounds() {
-        let node = ComputedNode {
+        let node = bevy::ui::ComputedNode {
             size: Vec2::new(200.0, 100.0),
             ..default()
         };
-        let transform = UiGlobalTransform::from_translation(Vec2::new(100.0, 100.0));
+        let transform = bevy::ui::UiGlobalTransform::from_translation(Vec2::new(100.0, 100.0));
 
         assert!(cursor_in_scroll_node(
             Vec2::new(100.0, 100.0),
