@@ -1,14 +1,20 @@
+use std::collections::BTreeMap;
 use std::env;
+use std::fs;
+use std::path::Path;
 use std::process;
 
 use agent_world::simulator::{
-    initialize_kernel, AgentRunner, LlmAgentBehavior, WorldConfig, WorldInitConfig, WorldScenario,
+    initialize_kernel, AgentDecision, AgentDecisionTrace, AgentRunner, LlmAgentBehavior,
+    WorldConfig, WorldInitConfig, WorldScenario,
 };
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
     scenario: WorldScenario,
     ticks: u64,
+    report_json: Option<String>,
 }
 
 impl Default for CliOptions {
@@ -16,6 +22,127 @@ impl Default for CliOptions {
         Self {
             scenario: WorldScenario::LlmBootstrap,
             ticks: 20,
+            report_json: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+struct DecisionCounts {
+    wait: u64,
+    wait_ticks: u64,
+    act: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+struct TraceCounts {
+    traces: u64,
+    llm_errors: u64,
+    parse_errors: u64,
+    repair_rounds_total: u64,
+    repair_rounds_max: u32,
+    llm_input_chars_total: u64,
+    llm_input_chars_avg: u64,
+    llm_input_chars_max: usize,
+    step_entries: u64,
+    prompt_section_entries: u64,
+    prompt_section_clipped: u64,
+    step_type_counts: BTreeMap<String, u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct DemoRunReport {
+    scenario: String,
+    ticks_requested: u64,
+    active_ticks: u64,
+    total_actions: u64,
+    total_decisions: u64,
+    action_success: u64,
+    action_failure: u64,
+    decision_counts: DecisionCounts,
+    trace_counts: TraceCounts,
+    world_time: u64,
+    journal_events: usize,
+}
+
+impl DemoRunReport {
+    fn new(scenario: String, ticks_requested: u64) -> Self {
+        Self {
+            scenario,
+            ticks_requested,
+            active_ticks: 0,
+            total_actions: 0,
+            total_decisions: 0,
+            action_success: 0,
+            action_failure: 0,
+            decision_counts: DecisionCounts::default(),
+            trace_counts: TraceCounts::default(),
+            world_time: 0,
+            journal_events: 0,
+        }
+    }
+
+    fn observe_decision(&mut self, decision: &AgentDecision) {
+        match decision {
+            AgentDecision::Wait => {
+                self.decision_counts.wait += 1;
+            }
+            AgentDecision::WaitTicks(_) => {
+                self.decision_counts.wait_ticks += 1;
+            }
+            AgentDecision::Act(_) => {
+                self.decision_counts.act += 1;
+            }
+        }
+    }
+
+    fn observe_trace(&mut self, trace: &AgentDecisionTrace) {
+        self.trace_counts.traces += 1;
+
+        if trace.llm_error.is_some() {
+            self.trace_counts.llm_errors += 1;
+        }
+        if trace.parse_error.is_some() {
+            self.trace_counts.parse_errors += 1;
+        }
+
+        let retry_count = trace
+            .llm_diagnostics
+            .as_ref()
+            .map(|diagnostics| diagnostics.retry_count)
+            .unwrap_or(0);
+        self.trace_counts.repair_rounds_total += retry_count as u64;
+        self.trace_counts.repair_rounds_max = self.trace_counts.repair_rounds_max.max(retry_count);
+
+        if let Some(input) = trace.llm_input.as_ref() {
+            let chars = input.chars().count();
+            self.trace_counts.llm_input_chars_total += chars as u64;
+            self.trace_counts.llm_input_chars_max =
+                self.trace_counts.llm_input_chars_max.max(chars);
+        }
+
+        self.trace_counts.step_entries += trace.llm_step_trace.len() as u64;
+        self.trace_counts.prompt_section_entries += trace.llm_prompt_section_trace.len() as u64;
+
+        for step in &trace.llm_step_trace {
+            *self
+                .trace_counts
+                .step_type_counts
+                .entry(step.step_type.clone())
+                .or_insert(0) += 1;
+        }
+
+        for section in &trace.llm_prompt_section_trace {
+            if !section.included || section.emitted_tokens < section.estimated_tokens {
+                self.trace_counts.prompt_section_clipped += 1;
+            }
+        }
+    }
+
+    fn finalize(&mut self) {
+        if self.trace_counts.traces > 0 {
+            self.trace_counts.llm_input_chars_avg =
+                self.trace_counts.llm_input_chars_total / self.trace_counts.traces;
         }
     }
 }
@@ -66,12 +193,24 @@ fn main() {
     println!("agents: {}", report.agents);
     println!("ticks: {}", options.ticks);
 
-    let mut active_ticks = 0u64;
+    let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
+
     for idx in 0..options.ticks {
         match runner.tick(&mut kernel) {
             Some(result) => {
-                active_ticks += 1;
-                if let Some(action_result) = result.action_result {
+                run_report.active_ticks += 1;
+                run_report.observe_decision(&result.decision);
+
+                if let Some(trace) = result.decision_trace.as_ref() {
+                    run_report.observe_trace(trace);
+                }
+
+                if let Some(action_result) = result.action_result.as_ref() {
+                    if action_result.success {
+                        run_report.action_success += 1;
+                    } else {
+                        run_report.action_failure += 1;
+                    }
                     println!(
                         "tick={} agent={} success={} action={:?}",
                         idx + 1,
@@ -96,11 +235,75 @@ fn main() {
     }
 
     let metrics = runner.metrics();
-    println!("active_ticks: {}", active_ticks);
-    println!("total_actions: {}", metrics.total_actions);
-    println!("total_decisions: {}", metrics.total_decisions);
-    println!("world_time: {}", kernel.time());
-    println!("journal_events: {}", kernel.journal().len());
+    run_report.total_actions = metrics.total_actions;
+    run_report.total_decisions = metrics.total_decisions;
+    run_report.world_time = kernel.time();
+    run_report.journal_events = kernel.journal().len();
+    run_report.finalize();
+
+    if let Some(path) = options.report_json.as_ref() {
+        if let Err(err) = write_report_json(path, &run_report) {
+            eprintln!("failed to write report json: {err}");
+            process::exit(1);
+        }
+        println!("report_json: {path}");
+    }
+
+    println!("active_ticks: {}", run_report.active_ticks);
+    println!("total_actions: {}", run_report.total_actions);
+    println!("total_decisions: {}", run_report.total_decisions);
+    println!("world_time: {}", run_report.world_time);
+    println!("journal_events: {}", run_report.journal_events);
+    println!("action_success: {}", run_report.action_success);
+    println!("action_failure: {}", run_report.action_failure);
+    println!("decision_wait: {}", run_report.decision_counts.wait);
+    println!(
+        "decision_wait_ticks: {}",
+        run_report.decision_counts.wait_ticks
+    );
+    println!("decision_act: {}", run_report.decision_counts.act);
+    println!("trace_count: {}", run_report.trace_counts.traces);
+    println!("llm_errors: {}", run_report.trace_counts.llm_errors);
+    println!("parse_errors: {}", run_report.trace_counts.parse_errors);
+    println!(
+        "repair_rounds_total: {}",
+        run_report.trace_counts.repair_rounds_total
+    );
+    println!(
+        "repair_rounds_max: {}",
+        run_report.trace_counts.repair_rounds_max
+    );
+    println!(
+        "llm_input_chars_avg: {}",
+        run_report.trace_counts.llm_input_chars_avg
+    );
+    println!(
+        "llm_input_chars_max: {}",
+        run_report.trace_counts.llm_input_chars_max
+    );
+}
+
+fn write_report_json(path: &str, run_report: &DemoRunReport) -> Result<(), String> {
+    let report_path = Path::new(path);
+    if let Some(parent) = report_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|err| {
+                format!(
+                    "failed to create report directory {}: {err}",
+                    parent.display()
+                )
+            })?;
+        }
+    }
+
+    let content = serde_json::to_string_pretty(run_report)
+        .map_err(|err| format!("failed to serialize report json: {err}"))?;
+    fs::write(report_path, format!("{content}\n")).map_err(|err| {
+        format!(
+            "failed to write report file {}: {err}",
+            report_path.display()
+        )
+    })
 }
 
 fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -130,6 +333,13 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         .ok_or_else(|| "--scenario requires a scenario name".to_string())?,
                 );
             }
+            "--report-json" => {
+                options.report_json = Some(
+                    iter.next()
+                        .ok_or_else(|| "--report-json requires a file path".to_string())?
+                        .to_string(),
+                );
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -153,10 +363,11 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 }
 
 fn print_help() {
-    println!("Usage: world_llm_agent_demo [scenario] [--ticks <n>]");
+    println!("Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>]");
     println!("Options:");
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
     println!("  --ticks <n>        Max runner ticks (default: 20)");
+    println!("  --report-json <path>  Persist run summary as JSON report");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -184,6 +395,19 @@ mod tests {
     fn parse_options_accepts_ticks() {
         let options = parse_options(["--ticks", "12"].into_iter()).expect("ticks");
         assert_eq!(options.ticks, 12);
+    }
+
+    #[test]
+    fn parse_options_accepts_report_json_path() {
+        let options = parse_options(["--report-json", ".tmp/report.json"].into_iter())
+            .expect("report json path");
+        assert_eq!(options.report_json.as_deref(), Some(".tmp/report.json"));
+    }
+
+    #[test]
+    fn parse_options_rejects_missing_report_json_path() {
+        let err = parse_options(["--report-json"].into_iter()).expect_err("missing report path");
+        assert!(err.contains("file path"));
     }
 
     #[test]

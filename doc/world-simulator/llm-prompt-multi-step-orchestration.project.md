@@ -15,15 +15,18 @@
 - [x] LMSO9 补充单元测试（组装、流转、上限、兼容）
 - [x] LMSO10 更新 README / config 示例 / 开发日志并收口
 - [x] LMSO11 长跑压测（多步+repair+记忆膨胀）并固化回归测试
+- [x] LMSO12 真实 LLM 长跑脚本压测（指标落盘 + 阈值断言 + 结果汇总）
 
 ## 依赖
+- `crates/agent_world/src/bin/world_llm_agent_demo.rs`
 - `crates/agent_world/src/simulator/llm_agent.rs`
 - `crates/agent_world/src/simulator/llm_agent/tests.rs`
+- `scripts/llm-longrun-stress.sh`
 - `README.md`
 - `config.example.toml`
 - `doc/world-simulator/llm-prompt-system.md`
 
 ## 状态
-- 当前阶段：LMSO11（长跑压测已固化）
-- 下一步：补充真实场景脚本压测（viewer_live + llm_bootstrap）与指标落盘
-- 最近更新：完成 LMSO11 压测回归（240 tick、每 tick 5 次LLM阶段循环，2026-02-09）
+- 当前阶段：LMSO12（真实 LLM 长跑脚本压测已完成）
+- 下一步：将 `summary.txt/report.json` 纳入跨版本对比基线，并按 profile（`compact/balanced`）形成双档压力基准
+- 最近更新：完成 LMSO12（`world_llm_agent_demo --report-json` + `scripts/llm-longrun-stress.sh`，并实跑 `llm_bootstrap` 40 tick，2026-02-09）

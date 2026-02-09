@@ -67,9 +67,13 @@
   - 场景：`minimal` / `two_bases` / `llm_bootstrap` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
 - `world_llm_agent_demo`：以 `AgentRunner + LlmAgentBehavior` 运行 LLM 决策循环
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 20`
+  - 输出报告：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 120 --report-json .tmp/llm_stress/report.json`
   - 配置：默认读取项目根目录 `config.toml`（`AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY` 必填）
 - `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
+- `scripts/llm-longrun-stress.sh`：真实 LLM 长跑压测（运行 demo、落盘指标、阈值断言）
+  - 运行：`./scripts/llm-longrun-stress.sh --ticks 120 --out-dir .tmp/llm_stress_longrun`
+  - 结果：默认生成 `report.json`、`run.log`、`summary.txt`，可用于跨版本对比
 
 ## Viewer 快速运行（离线回放）
 1. 生成 demo 数据：  
