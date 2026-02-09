@@ -86,6 +86,14 @@
 - [x] UI：滚动命中改为基于 ComputedNode 实际边界，修复上下半区随机串滚
 - [x] UI：高 DPI 下使用 physical cursor 坐标命中，避免滚轮焦点漂移
 - [x] 提交到 git
+- [x] 3D：chunk 可视化与背景网格合并（用 chunk 网格表达 chunk）
+- [x] 3D：chunk 网格按真实 chunk 尺寸（含边缘残块）渲染
+- [x] UI/联动：chunk 选中与事件联动切换到 chunk 网格实体
+- [x] UI 测试覆盖：背景网格含 chunk 线与 chunk 网格命名断言
+- [x] UI 测试覆盖：chunk 网格点击命中（射线求交）回归
+- [x] UI：覆盖层区新增 chunk 图例与线宽提示
+- [x] 3D：网格线宽按 2D/3D 视角分级
+- [x] UI 测试覆盖：图例显示与线宽提示文案
 
 ## 依赖
 - `WorldSnapshot` / `WorldEvent` / `RunnerMetrics`（`crates/agent_world`）
@@ -94,7 +102,7 @@
 
 ## 状态
 - 当前阶段：在线模式增强完成（支持 script/llm 双驱动）
-- 最近更新：完成滚动命中边界修复（ComputedNode）并消除上下半区串滚（2026-02-07）
+- 最近更新：完成 chunk 可视化与背景网格合并，网格按 chunk 尺寸渲染（2026-02-09）
 
 ## 缺口待办（信息直达）
 - [x] 时间轴按事件类别独立开关/筛选（err/llm/peak）

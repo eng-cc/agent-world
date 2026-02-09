@@ -497,9 +497,9 @@ pub(super) fn pick_3d_selection(
         }
     }
 
-    for (entity, transform, marker) in chunks.iter() {
-        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
-            if distance <= CHUNK_PICK_MAX_DISTANCE
+    for (entity, _transform, marker) in chunks.iter() {
+        if let Some(distance) = ray_chunk_grid_hit_distance(ray, marker) {
+            if distance <= PICK_MAX_DISTANCE
                 && best
                     .as_ref()
                     .map(|(_, _, _, _, best_dist)| distance < *best_dist)
@@ -531,6 +531,23 @@ pub(super) fn pick_3d_selection(
             reset_entity_scale(&mut transforms, current.entity);
         }
     }
+}
+
+fn ray_chunk_grid_hit_distance(ray: Ray3d, marker: &ChunkMarker) -> Option<f32> {
+    let direction = ray.direction.as_vec3();
+    if direction.y.abs() <= f32::EPSILON {
+        return None;
+    }
+    let t = (marker.pick_y - ray.origin.y) / direction.y;
+    if t < 0.0 {
+        return None;
+    }
+    let hit = ray.origin + direction * t;
+    if hit.x < marker.min_x || hit.x > marker.max_x || hit.z < marker.min_z || hit.z > marker.max_z
+    {
+        return None;
+    }
+    Some(t)
 }
 
 pub(super) fn apply_selection(

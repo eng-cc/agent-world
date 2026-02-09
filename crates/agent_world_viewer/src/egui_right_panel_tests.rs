@@ -426,6 +426,32 @@ fn egui_kittest_timeline_filter_button_toggles_state() {
     assert!(harness.state().filters.show_error);
 }
 
+#[test]
+fn egui_kittest_overlay_section_renders_chunk_legend_and_width_hint() {
+    let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let viewer_3d_config: Option<Res<crate::Viewer3dConfig>> = None;
+    let mut overlay_config = crate::WorldOverlayConfig::default();
+
+    let mut harness = Harness::new_ui(move |ui| {
+        render_overlay_section(
+            ui,
+            crate::i18n::UiLocale::ZhCn,
+            crate::ViewerCameraMode::TwoD,
+            &state,
+            &viewer_3d_config,
+            &mut overlay_config,
+        );
+    });
+
+    harness.fit_contents();
+    harness.get_by_label_contains("分块图例");
+    harness.get_by_label_contains("未探索");
+    harness.get_by_label_contains("已生成");
+    harness.get_by_label_contains("已耗尽");
+    harness.get_by_label_contains("背景网格");
+    harness.get_by_label_contains("线宽(2D)");
+}
+
 #[derive(Default)]
 struct CameraModeHarnessState {
     camera_mode: crate::ViewerCameraMode,

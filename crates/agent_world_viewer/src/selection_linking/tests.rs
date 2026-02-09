@@ -371,3 +371,42 @@ fn event_object_link_button_labels_follow_locale_without_query_conflict() {
         assert_eq!(text.0, "Jump Selection");
     }
 }
+
+#[test]
+fn ray_chunk_grid_hit_distance_matches_interior_hit() {
+    let marker = ChunkMarker {
+        id: "0,0,0".to_string(),
+        state: "generated".to_string(),
+        min_x: -1.0,
+        max_x: 1.0,
+        min_z: -1.5,
+        max_z: 1.5,
+        pick_y: 0.0,
+    };
+    let ray = Ray3d {
+        origin: Vec3::new(0.2, 4.0, -0.8),
+        direction: Dir3::new(Vec3::new(0.0, -1.0, 0.0)).expect("dir"),
+    };
+
+    let distance = ray_chunk_grid_hit_distance(ray, &marker).expect("hit");
+    assert!((distance - 4.0).abs() < 1e-6);
+}
+
+#[test]
+fn ray_chunk_grid_hit_distance_rejects_outside_bounds() {
+    let marker = ChunkMarker {
+        id: "0,0,0".to_string(),
+        state: "generated".to_string(),
+        min_x: -1.0,
+        max_x: 1.0,
+        min_z: -1.0,
+        max_z: 1.0,
+        pick_y: 0.0,
+    };
+    let ray = Ray3d {
+        origin: Vec3::new(2.1, 3.0, 0.0),
+        direction: Dir3::new(Vec3::new(0.0, -1.0, 0.0)).expect("dir"),
+    };
+
+    assert!(ray_chunk_grid_hit_distance(ray, &marker).is_none());
+}

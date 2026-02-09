@@ -1,8 +1,8 @@
 use super::*;
 use agent_world::simulator::MaterialKind;
 use agent_world::simulator::{
-    chunk_bounds, ChunkCoord, ChunkState, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent,
-    ResourceOwner, SpaceConfig, WorldEventKind,
+    chunk_bounds, chunk_coords, ChunkCoord, ChunkState, ModuleVisualAnchor, ModuleVisualEntity,
+    PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind, CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM,
 };
 
 const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
@@ -11,9 +11,6 @@ const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
 const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
 const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
-const CHUNK_MARKER_MIN_SIZE: f32 = 0.45;
-const CHUNK_MARKER_MAX_SIZE: f32 = 1.8;
-const CHUNK_MARKER_VERTICAL_OFFSET: f32 = 0.2;
 const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
@@ -50,6 +47,11 @@ pub(super) struct PowerStorageMarker {
 pub(super) struct ChunkMarker {
     pub id: String,
     pub state: String,
+    pub min_x: f32,
+    pub max_x: f32,
+    pub min_z: f32,
+    pub max_z: f32,
+    pub pick_y: f32,
 }
 
 pub(super) fn attach_to_scene_root(commands: &mut Commands, scene: &Viewer3dScene, entity: Entity) {
@@ -73,7 +75,12 @@ pub(super) fn rebuild_scene_from_snapshot(
         .chain(scene.module_visual_entities.values())
         .chain(scene.power_plant_entities.values())
         .chain(scene.power_storage_entities.values())
-        .chain(scene.chunk_entities.values())
+        .chain(
+            scene
+                .chunk_line_entities
+                .values()
+                .flat_map(|items| items.iter()),
+        )
         .chain(scene.background_entities.iter())
         .chain(scene.heat_overlay_entities.iter())
         .chain(scene.flow_overlay_entities.iter())
@@ -90,6 +97,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.power_plant_entities.clear();
     scene.power_storage_entities.clear();
     scene.chunk_entities.clear();
+    scene.chunk_line_entities.clear();
     scene.location_positions.clear();
     scene.background_entities.clear();
     scene.heat_overlay_entities.clear();
@@ -180,15 +188,21 @@ pub(super) fn rebuild_scene_from_snapshot(
         }
     }
 
-    for (coord, state) in snapshot.model.chunks.iter() {
+    for coord in chunk_coords(&snapshot.config.space) {
+        let state = snapshot
+            .model
+            .chunks
+            .get(&coord)
+            .copied()
+            .unwrap_or(ChunkState::Unexplored);
         spawn_chunk_entity(
             commands,
             config,
             assets,
             scene,
             origin,
-            *coord,
-            *state,
+            coord,
+            state,
             &snapshot.config.space,
         );
     }
@@ -378,8 +392,8 @@ pub(super) fn spawn_world_background(
         commands,
         assets,
         scene,
-        world_width,
-        world_depth,
+        space,
+        config.effective_cm_to_unit(),
         world_height,
     );
 }
@@ -388,66 +402,103 @@ pub(super) fn spawn_world_grid(
     commands: &mut Commands,
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
-    world_width: f32,
-    world_depth: f32,
+    space: &SpaceConfig,
+    cm_to_unit: f32,
     world_height: f32,
 ) {
-    if WORLD_GRID_LINES_PER_AXIS == 0 {
-        return;
-    }
+    let thickness = grid_line_thickness(GridLineKind::World, ViewerCameraMode::TwoD);
+    let y = -world_height * 0.5 + thickness * 0.5;
 
-    let half_width = world_width * 0.5;
-    let half_depth = world_depth * 0.5;
-    let y = -world_height * 0.5 + WORLD_GRID_LINE_THICKNESS * 0.5;
-    let steps = WORLD_GRID_LINES_PER_AXIS as f32;
-
-    for idx in 0..=WORLD_GRID_LINES_PER_AXIS {
-        let t = idx as f32 / steps;
-        let x = -half_width + world_width * t;
+    let mut x_idx: usize = 0;
+    for x_cm in grid_positions_cm(space.width_cm, ChunkAxis::X) {
+        let x = (x_cm as f32 - space.width_cm as f32 * 0.5) * cm_to_unit;
+        let world_depth = (space.depth_cm as f32 * cm_to_unit).max(WORLD_MIN_AXIS);
         let x_line = commands
             .spawn((
                 Mesh3d(assets.world_box_mesh.clone()),
                 MeshMaterial3d(assets.world_grid_material.clone()),
-                Transform::from_translation(Vec3::new(x, y, 0.0)).with_scale(Vec3::new(
-                    WORLD_GRID_LINE_THICKNESS,
-                    WORLD_GRID_LINE_THICKNESS,
+                Transform::from_translation(Vec3::new(x, y, 0.0)).with_scale(grid_line_scale(
+                    GridLineAxis::AlongZ,
                     world_depth,
+                    thickness,
                 )),
-                Name::new(format!("world:grid:x:{idx}")),
-                BaseScale(Vec3::new(
-                    WORLD_GRID_LINE_THICKNESS,
-                    WORLD_GRID_LINE_THICKNESS,
+                Name::new(format!("world:grid:x:{x_idx}")),
+                BaseScale(grid_line_scale(
+                    GridLineAxis::AlongZ,
                     world_depth,
+                    thickness,
                 )),
+                GridLineVisual {
+                    kind: GridLineKind::World,
+                    axis: GridLineAxis::AlongZ,
+                    span: world_depth,
+                },
             ))
             .id();
         attach_to_scene_root(commands, scene, x_line);
         scene.background_entities.push(x_line);
+        x_idx += 1;
     }
 
-    for idx in 0..=WORLD_GRID_LINES_PER_AXIS {
-        let t = idx as f32 / steps;
-        let z = -half_depth + world_depth * t;
+    let mut z_idx: usize = 0;
+    for z_cm in grid_positions_cm(space.depth_cm, ChunkAxis::Z) {
+        let z = (z_cm as f32 - space.depth_cm as f32 * 0.5) * cm_to_unit;
+        let world_width = (space.width_cm as f32 * cm_to_unit).max(WORLD_MIN_AXIS);
         let z_line = commands
             .spawn((
                 Mesh3d(assets.world_box_mesh.clone()),
                 MeshMaterial3d(assets.world_grid_material.clone()),
-                Transform::from_translation(Vec3::new(0.0, y, z)).with_scale(Vec3::new(
+                Transform::from_translation(Vec3::new(0.0, y, z)).with_scale(grid_line_scale(
+                    GridLineAxis::AlongX,
                     world_width,
-                    WORLD_GRID_LINE_THICKNESS,
-                    WORLD_GRID_LINE_THICKNESS,
+                    thickness,
                 )),
-                Name::new(format!("world:grid:z:{idx}")),
-                BaseScale(Vec3::new(
+                Name::new(format!("world:grid:z:{z_idx}")),
+                BaseScale(grid_line_scale(
+                    GridLineAxis::AlongX,
                     world_width,
-                    WORLD_GRID_LINE_THICKNESS,
-                    WORLD_GRID_LINE_THICKNESS,
+                    thickness,
                 )),
+                GridLineVisual {
+                    kind: GridLineKind::World,
+                    axis: GridLineAxis::AlongX,
+                    span: world_width,
+                },
             ))
             .id();
         attach_to_scene_root(commands, scene, z_line);
         scene.background_entities.push(z_line);
+        z_idx += 1;
     }
+}
+
+fn grid_positions_cm(axis_cm: i64, axis: ChunkAxis) -> Vec<i64> {
+    if axis_cm <= 0 {
+        return vec![0];
+    }
+    let step_cm = grid_step_cm_for_axis(axis);
+    let mut values = vec![0];
+    let mut cursor = 0_i64;
+    while cursor < axis_cm {
+        cursor = (cursor + step_cm).min(axis_cm);
+        if values.last().copied().unwrap_or(-1) != cursor {
+            values.push(cursor);
+        }
+    }
+    values
+}
+
+fn grid_step_cm_for_axis(axis: ChunkAxis) -> i64 {
+    match axis {
+        ChunkAxis::X => CHUNK_SIZE_X_CM,
+        ChunkAxis::Z => CHUNK_SIZE_Y_CM,
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ChunkAxis {
+    X,
+    Z,
 }
 
 pub(super) fn spawn_location_entity(
@@ -881,34 +932,85 @@ fn chunk_material(assets: &Viewer3dAssets, state: ChunkState) -> Handle<Standard
     }
 }
 
-fn chunk_transform(
-    coord: ChunkCoord,
-    space: &SpaceConfig,
-    origin: GeoPos,
-    cm_to_unit: f32,
-) -> Option<(Vec3, Vec3)> {
-    let bounds = chunk_bounds(coord, space)?;
-    let center = GeoPos::new(
-        (bounds.min.x_cm + bounds.max.x_cm) * 0.5,
-        (bounds.min.y_cm + bounds.max.y_cm) * 0.5,
-        (bounds.min.z_cm + bounds.max.z_cm) * 0.5,
-    );
+fn spawn_chunk_line_segments(
+    commands: &mut Commands,
+    assets: &Viewer3dAssets,
+    scene: &Viewer3dScene,
+    min_x: f32,
+    max_x: f32,
+    min_z: f32,
+    max_z: f32,
+    y: f32,
+    chunk_id: &str,
+    state_name: &str,
+    state: ChunkState,
+) -> Vec<Entity> {
+    let mut entities = Vec::new();
+    let thickness = grid_line_thickness(GridLineKind::Chunk, ViewerCameraMode::TwoD);
 
-    let full_size = Vec3::new(
-        ((bounds.max.x_cm - bounds.min.x_cm) * cm_to_unit as f64) as f32,
-        ((bounds.max.z_cm - bounds.min.z_cm) * cm_to_unit as f64) as f32,
-        ((bounds.max.y_cm - bounds.min.y_cm) * cm_to_unit as f64) as f32,
-    );
+    let x_span = max_z - min_z;
+    let x_line_scale = grid_line_scale(GridLineAxis::AlongZ, x_span, thickness);
+    for (idx, x) in [min_x, max_x].into_iter().enumerate() {
+        let entity = commands
+            .spawn((
+                Mesh3d(assets.world_box_mesh.clone()),
+                MeshMaterial3d(chunk_material(assets, state)),
+                Transform::from_translation(Vec3::new(x, y, (min_z + max_z) * 0.5))
+                    .with_scale(x_line_scale),
+                Name::new(format!("chunk:grid:x:{chunk_id}:{idx}")),
+                ChunkMarker {
+                    id: chunk_id.to_string(),
+                    state: state_name.to_string(),
+                    min_x,
+                    max_x,
+                    min_z,
+                    max_z,
+                    pick_y: y,
+                },
+                BaseScale(x_line_scale),
+                GridLineVisual {
+                    kind: GridLineKind::Chunk,
+                    axis: GridLineAxis::AlongZ,
+                    span: x_span,
+                },
+            ))
+            .id();
+        attach_to_scene_root(commands, scene, entity);
+        entities.push(entity);
+    }
 
-    let marker_scale = Vec3::new(
-        (full_size.x * 0.18).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
-        (full_size.y * 0.08).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
-        (full_size.z * 0.18).clamp(CHUNK_MARKER_MIN_SIZE, CHUNK_MARKER_MAX_SIZE),
-    );
+    let z_span = max_x - min_x;
+    let z_line_scale = grid_line_scale(GridLineAxis::AlongX, z_span, thickness);
+    for (idx, z) in [min_z, max_z].into_iter().enumerate() {
+        let entity = commands
+            .spawn((
+                Mesh3d(assets.world_box_mesh.clone()),
+                MeshMaterial3d(chunk_material(assets, state)),
+                Transform::from_translation(Vec3::new((min_x + max_x) * 0.5, y, z))
+                    .with_scale(z_line_scale),
+                Name::new(format!("chunk:grid:z:{chunk_id}:{idx}")),
+                ChunkMarker {
+                    id: chunk_id.to_string(),
+                    state: state_name.to_string(),
+                    min_x,
+                    max_x,
+                    min_z,
+                    max_z,
+                    pick_y: y,
+                },
+                BaseScale(z_line_scale),
+                GridLineVisual {
+                    kind: GridLineKind::Chunk,
+                    axis: GridLineAxis::AlongX,
+                    span: z_span,
+                },
+            ))
+            .id();
+        attach_to_scene_root(commands, scene, entity);
+        entities.push(entity);
+    }
 
-    let translation = geo_to_vec3(center, origin, cm_to_unit)
-        + Vec3::Y * (full_size.y * 0.5 + CHUNK_MARKER_VERTICAL_OFFSET);
-    Some((translation, marker_scale))
+    entities
 }
 
 pub(super) fn spawn_chunk_entity(
@@ -921,53 +1023,55 @@ pub(super) fn spawn_chunk_entity(
     state: ChunkState,
     space: &SpaceConfig,
 ) {
-    let Some((translation, marker_scale)) =
-        chunk_transform(coord, space, origin, config.effective_cm_to_unit())
-    else {
+    let Some(bounds) = chunk_bounds(coord, space) else {
         return;
     };
+    let cm_to_unit = config.effective_cm_to_unit();
     let chunk_id = chunk_coord_id(coord);
     let state_name = chunk_state_name(state);
 
-    if let Some(entity) = scene.chunk_entities.get(&chunk_id) {
-        commands.entity(*entity).insert((
-            MeshMaterial3d(chunk_material(assets, state)),
-            Transform::from_translation(translation).with_scale(marker_scale),
-            ChunkMarker {
-                id: chunk_id.clone(),
-                state: state_name.clone(),
-            },
-            BaseScale(marker_scale),
-        ));
-        return;
+    if let Some(lines) = scene.chunk_line_entities.remove(&chunk_id) {
+        for entity in lines {
+            commands.entity(entity).despawn();
+        }
+    }
+    scene.chunk_entities.remove(&chunk_id);
+
+    let min_x = ((bounds.min.x_cm - origin.x_cm) * cm_to_unit as f64) as f32;
+    let max_x = ((bounds.max.x_cm - origin.x_cm) * cm_to_unit as f64) as f32;
+    let min_z = ((bounds.min.y_cm - origin.y_cm) * cm_to_unit as f64) as f32;
+    let max_z = ((bounds.max.y_cm - origin.y_cm) * cm_to_unit as f64) as f32;
+    let thickness = grid_line_thickness(GridLineKind::Chunk, ViewerCameraMode::TwoD);
+    let y = -((space.height_cm as f32) * cm_to_unit * 0.5) + thickness * 0.7;
+
+    let lines = spawn_chunk_line_segments(
+        commands,
+        assets,
+        scene,
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+        y,
+        &chunk_id,
+        &state_name,
+        state,
+    );
+
+    if let Some(anchor) = lines.first().copied() {
+        commands.entity(anchor).with_children(|parent| {
+            spawn_label(
+                parent,
+                assets,
+                format!("chunk {chunk_id}"),
+                LOCATION_LABEL_OFFSET,
+                format!("label:chunk:{chunk_id}"),
+            );
+        });
+        scene.chunk_entities.insert(chunk_id.clone(), anchor);
     }
 
-    let entity = commands
-        .spawn((
-            Mesh3d(assets.chunk_mesh.clone()),
-            MeshMaterial3d(chunk_material(assets, state)),
-            Transform::from_translation(translation).with_scale(marker_scale),
-            Name::new(format!("chunk:{}:{}:{}", coord.x, coord.y, coord.z)),
-            ChunkMarker {
-                id: chunk_id.clone(),
-                state: state_name.clone(),
-            },
-            BaseScale(marker_scale),
-        ))
-        .id();
-    attach_to_scene_root(commands, scene, entity);
-
-    commands.entity(entity).with_children(|parent| {
-        spawn_label(
-            parent,
-            assets,
-            format!("chunk {chunk_id}"),
-            LOCATION_LABEL_OFFSET,
-            format!("label:chunk:{chunk_id}"),
-        );
-    });
-
-    scene.chunk_entities.insert(chunk_id, entity);
+    scene.chunk_line_entities.insert(chunk_id, lines);
 }
 
 pub(super) fn spawn_label(

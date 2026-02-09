@@ -1,7 +1,7 @@
 use agent_world::simulator::WorldEvent;
 
 use crate::i18n::{on_off_label, selection_kind_label, UiLocale};
-use crate::{ConnectionStatus, SelectionKind, ViewerSelection};
+use crate::{ConnectionStatus, SelectionKind, ViewerCameraMode, ViewerSelection};
 
 pub(super) fn format_status_label(status: &ConnectionStatus, locale: UiLocale) -> String {
     if locale.is_zh() {
@@ -167,6 +167,51 @@ pub(super) fn overlay_button_label(kind: &str, locale: UiLocale) -> &'static str
             "flow" => "Flow",
             _ => "-",
         }
+    }
+}
+
+pub(super) fn overlay_chunk_legend_title(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "分块图例"
+    } else {
+        "Chunk Legend"
+    }
+}
+
+pub(super) fn overlay_chunk_legend_label(kind: &str, locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        match kind {
+            "unexplored" => "未探索",
+            "generated" => "已生成",
+            "exhausted" => "已耗尽",
+            "world_grid" => "背景网格",
+            _ => "-",
+        }
+    } else {
+        match kind {
+            "unexplored" => "Unexplored",
+            "generated" => "Generated",
+            "exhausted" => "Exhausted",
+            "world_grid" => "World Grid",
+            _ => "-",
+        }
+    }
+}
+
+pub(super) fn overlay_grid_line_width_hint(
+    locale: UiLocale,
+    camera_mode: ViewerCameraMode,
+    world_thickness: f32,
+    chunk_thickness: f32,
+) -> String {
+    let mode = match camera_mode {
+        ViewerCameraMode::TwoD => "2D",
+        ViewerCameraMode::ThreeD => "3D",
+    };
+    if locale.is_zh() {
+        format!("线宽({mode}): 背景={world_thickness:.3} 分块={chunk_thickness:.3}")
+    } else {
+        format!("Line Width ({mode}): world={world_thickness:.3} chunk={chunk_thickness:.3}")
     }
 }
 
@@ -520,5 +565,13 @@ mod tests {
             timeline_mark_filter_label("err", true, UiLocale::ZhCn),
             "错误:开"
         );
+    }
+
+    #[test]
+    fn overlay_grid_line_width_hint_supports_zh() {
+        let text = overlay_grid_line_width_hint(UiLocale::ZhCn, ViewerCameraMode::TwoD, 0.01, 0.02);
+        assert!(text.contains("线宽(2D)"));
+        assert!(text.contains("背景=0.010"));
+        assert!(text.contains("分块=0.020"));
     }
 }

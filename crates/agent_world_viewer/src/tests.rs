@@ -11,6 +11,9 @@ use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 #[path = "tests_selection_details.rs"]
 mod tests_selection_details;
 
+#[path = "tests_scene_grid.rs"]
+mod tests_scene_grid;
+
 #[test]
 fn update_ui_sets_status_and_events() {
     let mut app = App::new();
@@ -280,50 +283,6 @@ fn update_ui_populates_agent_activity_panel() {
     assert!(activity_text.0.contains("agent-1 @ loc-2"));
     assert!(activity_text.0.contains("E=42"));
     assert!(activity_text.0.contains("harvest +6"));
-}
-
-#[test]
-fn spawn_world_background_adds_bounds_and_grid() {
-    let mut app = App::new();
-    app.add_systems(Update, spawn_background_test_system);
-    app.insert_resource(Viewer3dConfig::default());
-    app.insert_resource(Viewer3dScene::default());
-    app.insert_resource(Viewer3dAssets {
-        agent_mesh: Handle::default(),
-        agent_material: Handle::default(),
-        location_mesh: Handle::default(),
-        location_material_library: LocationMaterialHandles::default(),
-        asset_mesh: Handle::default(),
-        asset_material: Handle::default(),
-        power_plant_mesh: Handle::default(),
-        power_plant_material: Handle::default(),
-        power_storage_mesh: Handle::default(),
-        power_storage_material: Handle::default(),
-        chunk_mesh: Handle::default(),
-        chunk_unexplored_material: Handle::default(),
-        chunk_generated_material: Handle::default(),
-        chunk_exhausted_material: Handle::default(),
-        world_box_mesh: Handle::default(),
-        world_floor_material: Handle::default(),
-        world_bounds_material: Handle::default(),
-        world_grid_material: Handle::default(),
-        heat_low_material: Handle::default(),
-        heat_mid_material: Handle::default(),
-        heat_high_material: Handle::default(),
-        flow_power_material: Handle::default(),
-        flow_trade_material: Handle::default(),
-        label_font: Handle::default(),
-    });
-
-    app.update();
-
-    let world = app.world_mut();
-    let mut query = world.query::<&Name>();
-    let names: Vec<String> = query.iter(world).map(|name| name.to_string()).collect();
-    assert!(names.iter().any(|name| name == "world:bounds"));
-    assert!(names.iter().any(|name| name == "world:floor"));
-    assert!(names.iter().any(|name| name.starts_with("world:grid:x:")));
-    assert!(names.iter().any(|name| name.starts_with("world:grid:z:")));
 }
 
 #[test]
@@ -715,7 +674,6 @@ fn spawn_location_entity_adds_label_text() {
         power_plant_material: Handle::default(),
         power_storage_mesh: Handle::default(),
         power_storage_material: Handle::default(),
-        chunk_mesh: Handle::default(),
         chunk_unexplored_material: Handle::default(),
         chunk_generated_material: Handle::default(),
         chunk_exhausted_material: Handle::default(),
@@ -755,7 +713,6 @@ fn spawn_location_entity_uses_physical_radius_scale() {
         power_plant_material: Handle::default(),
         power_storage_mesh: Handle::default(),
         power_storage_material: Handle::default(),
-        chunk_mesh: Handle::default(),
         chunk_unexplored_material: Handle::default(),
         chunk_generated_material: Handle::default(),
         chunk_exhausted_material: Handle::default(),
@@ -800,7 +757,6 @@ fn spawn_agent_entity_uses_body_height_scale() {
         power_plant_material: Handle::default(),
         power_storage_mesh: Handle::default(),
         power_storage_material: Handle::default(),
-        chunk_mesh: Handle::default(),
         chunk_unexplored_material: Handle::default(),
         chunk_generated_material: Handle::default(),
         chunk_exhausted_material: Handle::default(),
@@ -1102,45 +1058,6 @@ fn update_ui_populates_chunk_selection_details() {
     assert!(details_text.0.contains("State: generated"));
     assert!(details_text.0.contains("Budget (remaining top):"));
     assert!(details_text.0.contains("generated fragments=4 blocks=18"));
-}
-
-fn spawn_background_test_system(
-    mut commands: Commands,
-    config: Res<Viewer3dConfig>,
-    assets: Res<Viewer3dAssets>,
-    mut scene: ResMut<Viewer3dScene>,
-) {
-    spawn_world_background(
-        &mut commands,
-        &config,
-        &assets,
-        &mut scene,
-        &sample_snapshot(),
-    );
-}
-
-fn sample_snapshot() -> WorldSnapshot {
-    let mut model = agent_world::simulator::WorldModel::default();
-    model.locations.insert(
-        "loc-1".to_string(),
-        agent_world::simulator::Location::new(
-            "loc-1",
-            "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
-        ),
-    );
-    WorldSnapshot {
-        version: agent_world::simulator::SNAPSHOT_VERSION,
-        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
-        time: 1,
-        config: agent_world::simulator::WorldConfig::default(),
-        model,
-        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
-        next_event_id: 1,
-        next_action_id: 1,
-        pending_actions: Vec::new(),
-        journal_len: 0,
-    }
 }
 
 fn spawn_label_test_system(
