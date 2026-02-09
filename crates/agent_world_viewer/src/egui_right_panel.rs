@@ -807,6 +807,33 @@ fn render_text_sections(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
+    use egui_kittest::{kittest::Queryable as _, Harness};
+
+    fn sample_rejected_event(id: u64, time: u64) -> WorldEvent {
+        WorldEvent {
+            id,
+            time,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::AgentNotFound {
+                    agent_id: format!("agent-{id}"),
+                },
+            },
+        }
+    }
+
+    fn sample_viewer_state(
+        status: crate::ConnectionStatus,
+        events: Vec<WorldEvent>,
+    ) -> crate::ViewerState {
+        crate::ViewerState {
+            status,
+            snapshot: None,
+            events,
+            decision_traces: Vec::new(),
+            metrics: None,
+        }
+    }
 
     #[test]
     fn adaptive_panel_width_clamps_to_bounds() {
@@ -836,9 +863,155 @@ mod tests {
     }
 
     #[test]
+    fn connection_signal_uses_error_palette() {
+        let (_, color) = connection_signal(
+            &crate::ConnectionStatus::Error("failed".to_string()),
+            crate::i18n::UiLocale::ZhCn,
+        );
+        assert_eq!(color, egui::Color32::from_rgb(160, 52, 52));
+    }
+
+    #[test]
+    fn health_signal_uses_three_levels() {
+        let (ok_text, ok_color) = health_signal(0, crate::i18n::UiLocale::EnUs);
+        assert_eq!(ok_text, "Health: OK");
+        assert_eq!(ok_color, egui::Color32::from_rgb(32, 112, 64));
+
+        let (warn_text, warn_color) = health_signal(2, crate::i18n::UiLocale::ZhCn);
+        assert_eq!(warn_text, "健康:告警2");
+        assert_eq!(warn_color, egui::Color32::from_rgb(150, 110, 32));
+
+        let (high_text, high_color) = health_signal(3, crate::i18n::UiLocale::EnUs);
+        assert_eq!(high_text, "Health: High 3");
+        assert_eq!(high_color, egui::Color32::from_rgb(154, 48, 48));
+    }
+
+    #[test]
+    fn mode_signal_reflects_timeline_state() {
+        let live_timeline = TimelineUiState::default();
+        let (live_text, live_color) = mode_signal(&live_timeline, crate::i18n::UiLocale::EnUs);
+        assert_eq!(live_text, "View: Live");
+        assert_eq!(live_color, egui::Color32::from_rgb(38, 94, 148));
+
+        let manual_timeline = TimelineUiState {
+            drag_active: true,
+            ..Default::default()
+        };
+        let (manual_text, manual_color) =
+            mode_signal(&manual_timeline, crate::i18n::UiLocale::ZhCn);
+        assert_eq!(manual_text, "观察:手动");
+        assert_eq!(manual_color, egui::Color32::from_rgb(125, 96, 28));
+    }
+
+    #[test]
+    fn truncate_observe_text_keeps_short_text() {
+        let text = "观察";
+        assert_eq!(truncate_observe_text(text, 8), text);
+    }
+
+    #[test]
+    fn truncate_observe_text_supports_multibyte_chars() {
+        let text = "观察模式状态很长很长";
+        let truncated = truncate_observe_text(text, 6);
+        assert_eq!(truncated.chars().count(), 6);
+        assert!(truncated.ends_with('…'));
+    }
+
+    #[test]
+    fn event_row_preview_limit_uses_constant() {
+        let long_line = "x".repeat(EVENT_ROW_LABEL_MAX_CHARS + 20);
+        let preview = truncate_observe_text(&long_line, EVENT_ROW_LABEL_MAX_CHARS);
+        assert_eq!(preview.chars().count(), EVENT_ROW_LABEL_MAX_CHARS);
+        assert!(preview.ends_with('…'));
+    }
+
+    #[test]
+    fn egui_kittest_overview_renders_status_badges() {
+        let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+        let selection = crate::ViewerSelection::default();
+        let timeline = TimelineUiState::default();
+
+        let mut harness = Harness::new_ui(move |ui| {
+            render_overview_section(
+                ui,
+                crate::i18n::UiLocale::ZhCn,
+                &state,
+                &selection,
+                &timeline,
+            );
+        });
+
+        harness.fit_contents();
+        harness.get_by_label_contains("连接正常");
+        harness.get_by_label_contains("健康:正常");
+        harness.get_by_label_contains("观察:实时");
+        harness.get_by_label_contains("状态: 已连接");
+    }
+
+    #[test]
+    fn egui_kittest_overview_reacts_to_warn_and_manual_mode() {
+        let state = sample_viewer_state(
+            crate::ConnectionStatus::Connected,
+            vec![sample_rejected_event(1, 1)],
+        );
+        let selection = crate::ViewerSelection::default();
+        let timeline = TimelineUiState {
+            manual_override: true,
+            ..Default::default()
+        };
+
+        let mut harness = Harness::new_ui(move |ui| {
+            render_overview_section(
+                ui,
+                crate::i18n::UiLocale::EnUs,
+                &state,
+                &selection,
+                &timeline,
+            );
+        });
+
+        harness.fit_contents();
+        harness.get_by_label_contains("Health: Warn 1");
+        harness.get_by_label_contains("View: Manual");
+        harness.get_by_label_contains("Status: connected");
+    }
+
+    #[derive(Default)]
+    struct TimelineFilterHarnessState {
+        viewer_state: crate::ViewerState,
+        timeline: TimelineUiState,
+        filters: TimelineMarkFilterState,
+    }
+
+    #[test]
+    fn egui_kittest_timeline_filter_button_toggles_state() {
+        let mut harness = Harness::new_ui_state(
+            |ui, state: &mut TimelineFilterHarnessState| {
+                render_timeline_section(
+                    ui,
+                    crate::i18n::UiLocale::ZhCn,
+                    &state.viewer_state,
+                    &mut state.timeline,
+                    &mut state.filters,
+                    None,
+                );
+            },
+            TimelineFilterHarnessState::default(),
+        );
+
+        harness.fit_contents();
+        harness.get_by_label("错误:开").click();
+        harness.run();
+        assert!(!harness.state().filters.show_error);
+
+        harness.get_by_label("错误:关").click();
+        harness.run();
+        assert!(harness.state().filters.show_error);
+    }
+
+    #[test]
     fn rejection_event_count_only_counts_rejected_events() {
         use agent_world::geometry::GeoPos;
-        use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
 
         let events = vec![
             WorldEvent {
