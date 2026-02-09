@@ -58,6 +58,92 @@ detect_platform() {
   esac
 }
 
+
+VALID_SCENARIOS=(
+  minimal
+  two_bases
+  llm_bootstrap
+  power_bootstrap
+  resource_bootstrap
+  twin_region_bootstrap
+  triad_region_bootstrap
+  triad_p2p_bootstrap
+  asteroid_fragment_bootstrap
+  asteroid_fragment_twin_region_bootstrap
+  asteroid_fragment_triad_region_bootstrap
+)
+
+normalize_scenario_alias() {
+  case "$1" in
+    triad)
+      echo "triad_region_bootstrap"
+      ;;
+    triad_p2p)
+      echo "triad_p2p_bootstrap"
+      ;;
+    twin|twin_region)
+      echo "twin_region_bootstrap"
+      ;;
+    asteroid_fragment)
+      echo "asteroid_fragment_bootstrap"
+      ;;
+    asteroid_fragment_twin)
+      echo "asteroid_fragment_twin_region_bootstrap"
+      ;;
+    asteroid_fragment_triad)
+      echo "asteroid_fragment_triad_region_bootstrap"
+      ;;
+    *)
+      echo "$1"
+      ;;
+  esac
+}
+
+is_valid_scenario() {
+  local target=$1
+  local item
+  for item in "${VALID_SCENARIOS[@]}"; do
+    if [[ "$item" == "$target" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+scenario_list_csv() {
+  local first=1
+  local item
+  for item in "${VALID_SCENARIOS[@]}"; do
+    if [[ $first -eq 1 ]]; then
+      printf "%s" "$item"
+      first=0
+    else
+      printf ", %s" "$item"
+    fi
+  done
+  printf "\n"
+}
+
+validate_scenario_or_exit() {
+  local raw=$1
+  local normalized
+  normalized=$(normalize_scenario_alias "$raw")
+
+  if [[ "$normalized" != "$raw" ]]; then
+    echo "scenario alias mapped: $raw -> $normalized" >&2
+  fi
+
+  if is_valid_scenario "$normalized"; then
+    echo "$normalized"
+    return 0
+  fi
+
+  echo "invalid scenario: $raw" >&2
+  echo "supported scenarios: $(scenario_list_csv)" >&2
+  echo "common aliases: triad, triad_p2p, twin, asteroid_fragment" >&2
+  exit 2
+}
+
 wait_linux_window_line() {
   local display=$1
   local line=""
@@ -231,6 +317,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+scenario=$(validate_scenario_or_exit "$scenario")
 
 platform=$(detect_platform)
 if [[ "$platform" == "unsupported" ]]; then

@@ -18,17 +18,17 @@ impl Default for CopyableTextPanelState {
 
 pub(super) fn copy_panel_title(locale: crate::i18n::UiLocale) -> &'static str {
     if locale.is_zh() {
-        "可复制信息"
+        "状态明细"
     } else {
-        "Copyable Text"
+        "State Details"
     }
 }
 
 pub(super) fn copy_panel_hint(locale: crate::i18n::UiLocale) -> &'static str {
     if locale.is_zh() {
-        "可拖选文本，并使用 Cmd/Ctrl+C 复制"
+        "用于界面内观察与对比，避免外部复制分析"
     } else {
-        "Select text and use Cmd/Ctrl+C to copy"
+        "For in-app observability; avoid external copy-heavy analysis"
     }
 }
 
@@ -91,10 +91,10 @@ mod tests {
 
     #[test]
     fn copy_panel_title_is_localized() {
-        assert_eq!(copy_panel_title(crate::i18n::UiLocale::ZhCn), "可复制信息");
+        assert_eq!(copy_panel_title(crate::i18n::UiLocale::ZhCn), "状态明细");
         assert_eq!(
             copy_panel_title(crate::i18n::UiLocale::EnUs),
-            "Copyable Text"
+            "State Details"
         );
     }
 }

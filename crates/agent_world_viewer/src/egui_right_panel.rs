@@ -21,8 +21,8 @@ use crate::timeline_controls::{
 use crate::ui_locale_text::{
     localize_agent_activity_block, localize_details_block, localize_events_summary_block,
     localize_world_summary_block, map_link_message_for_locale, overlay_button_label,
-    overlay_loading, seek_button_label, selection_line, status_line, timeline_insights,
-    timeline_jump_label, timeline_mode_label, timeline_status_line,
+    overlay_loading, seek_button_label, status_line, timeline_insights, timeline_jump_label,
+    timeline_mode_label, timeline_status_line,
 };
 use crate::ui_text::{
     agent_activity_summary, events_summary, selection_details_summary, world_summary,
@@ -39,6 +39,15 @@ const MIN_PANEL_WIDTH: f32 = 320.0;
 const MAX_PANEL_WIDTH: f32 = 620.0;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
+
+fn adaptive_panel_default_width(available_width: f32) -> f32 {
+    let width = if available_width.is_finite() {
+        available_width
+    } else {
+        DEFAULT_PANEL_WIDTH
+    };
+    (width * 0.34).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
+}
 
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
@@ -91,9 +100,10 @@ pub(super) fn render_right_side_panel_egui(
     };
     ensure_egui_cjk_font(context, &mut cjk_font_initialized);
 
+    let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
         .resizable(true)
-        .default_width(DEFAULT_PANEL_WIDTH)
+        .default_width(default_panel_width)
         .width_range(MIN_PANEL_WIDTH..=MAX_PANEL_WIDTH)
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
@@ -134,8 +144,7 @@ pub(super) fn render_right_side_panel_egui(
 
             ui.separator();
             render_control_buttons(ui, locale, &state, loading.as_mut(), client.as_deref());
-            ui.add(egui::Label::new(status_line(&state.status, locale)).selectable(true));
-            ui.add(egui::Label::new(selection_line(&selection, locale)).selectable(true));
+            render_overview_section(ui, locale, &state, &selection, timeline.as_ref());
 
             ui.separator();
             render_overlay_section(
@@ -147,85 +156,74 @@ pub(super) fn render_right_side_panel_egui(
             );
 
             ui.separator();
-            ui.collapsing(
-                if locale.is_zh() {
-                    "诊断"
-                } else {
-                    "Diagnosis"
-                },
-                |ui| {
-                    ui.add(
-                        egui::Label::new(diagnosis_state.text.as_str())
-                            .wrap()
-                            .selectable(true),
-                    );
-                },
+            ui.strong(if locale.is_zh() {
+                "诊断"
+            } else {
+                "Diagnosis"
+            });
+            ui.add(
+                egui::Label::new(diagnosis_state.text.as_str())
+                    .wrap()
+                    .selectable(true),
             );
 
-            ui.collapsing(
-                if locale.is_zh() {
-                    "事件联动"
-                } else {
-                    "Event Link"
-                },
-                |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        if ui
-                            .button(crate::ui_locale_text::locate_focus_label(locale))
-                            .clicked()
-                        {
-                            if let Some(config) = viewer_3d_config.as_deref() {
-                                locate_focus_event_action(
-                                    &state,
-                                    &scene,
-                                    config,
-                                    selection.as_mut(),
-                                    link_state.as_mut(),
-                                    &mut transforms,
-                                    Some(timeline.as_mut()),
-                                );
-                            } else {
-                                link_state.message = "Link: viewer config unavailable".to_string();
-                            }
-                        }
+            ui.separator();
+            ui.strong(if locale.is_zh() {
+                "事件联动"
+            } else {
+                "Event Link"
+            });
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(crate::ui_locale_text::locate_focus_label(locale))
+                    .clicked()
+                {
+                    if let Some(config) = viewer_3d_config.as_deref() {
+                        locate_focus_event_action(
+                            &state,
+                            &scene,
+                            config,
+                            selection.as_mut(),
+                            link_state.as_mut(),
+                            &mut transforms,
+                            Some(timeline.as_mut()),
+                        );
+                    } else {
+                        link_state.message = "Link: viewer config unavailable".to_string();
+                    }
+                }
 
-                        if ui
-                            .button(crate::ui_locale_text::jump_selection_label(locale))
-                            .clicked()
-                        {
-                            jump_selection_events_action(
-                                &state,
-                                &selection,
-                                link_state.as_mut(),
-                                Some(timeline.as_mut()),
-                            );
-                        }
-                    });
-
-                    ui.add(
-                        egui::Label::new(map_link_message_for_locale(&link_state.message, locale))
-                            .wrap()
-                            .selectable(true),
-                    );
-                },
-            );
-
-            ui.collapsing(
-                if locale.is_zh() {
-                    "时间轴"
-                } else {
-                    "Timeline"
-                },
-                |ui| {
-                    render_timeline_section(
-                        ui,
-                        locale,
+                if ui
+                    .button(crate::ui_locale_text::jump_selection_label(locale))
+                    .clicked()
+                {
+                    jump_selection_events_action(
                         &state,
-                        timeline.as_mut(),
-                        timeline_filters.as_mut(),
-                        client.as_deref(),
+                        &selection,
+                        link_state.as_mut(),
+                        Some(timeline.as_mut()),
                     );
-                },
+                }
+            });
+            ui.add(
+                egui::Label::new(map_link_message_for_locale(&link_state.message, locale))
+                    .wrap()
+                    .selectable(true),
+            );
+
+            ui.separator();
+            ui.strong(if locale.is_zh() {
+                "时间轴"
+            } else {
+                "Timeline"
+            });
+            render_timeline_section(
+                ui,
+                locale,
+                &state,
+                timeline.as_mut(),
+                timeline_filters.as_mut(),
+                client.as_deref(),
             );
 
             if copyable_panel_state.visible {
@@ -241,52 +239,44 @@ pub(super) fn render_right_side_panel_egui(
                         &selection,
                         timeline.as_ref(),
                         &viewer_3d_config,
-                        &diagnosis_state,
-                        &link_state,
                     );
 
-                    ui.collapsing(
-                        if locale.is_zh() {
-                            "事件行"
-                        } else {
-                            "Event Rows"
-                        },
-                        |ui| {
-                            let focus = focus_tick(&state, Some(timeline.as_ref()));
-                            let (rows, focused_event_id) =
-                                event_window(&state.events, focus, EVENT_ROW_LIMIT);
+                    ui.separator();
+                    ui.strong(if locale.is_zh() {
+                        "事件行"
+                    } else {
+                        "Event Rows"
+                    });
 
-                            if rows.is_empty() {
-                                ui.label(crate::ui_locale_text::event_links_empty(locale));
-                                return;
-                            }
+                    let focus = focus_tick(&state, Some(timeline.as_ref()));
+                    let (rows, focused_event_id) =
+                        event_window(&state.events, focus, EVENT_ROW_LIMIT);
 
-                            for event in rows {
-                                let line = event_row_label(
-                                    event,
-                                    focused_event_id == Some(event.id),
-                                    locale,
+                    if rows.is_empty() {
+                        ui.label(crate::ui_locale_text::event_links_empty(locale));
+                        return;
+                    }
+
+                    for event in rows {
+                        let line =
+                            event_row_label(event, focused_event_id == Some(event.id), locale);
+                        if ui.add(egui::Button::new(line.as_str())).clicked() {
+                            if let Some(config) = viewer_3d_config.as_deref() {
+                                apply_event_click_action(
+                                    event.id,
+                                    &state,
+                                    &scene,
+                                    config,
+                                    selection.as_mut(),
+                                    &mut transforms,
+                                    link_state.as_mut(),
+                                    Some(timeline.as_mut()),
                                 );
-                                if ui.add(egui::Button::new(line.as_str())).clicked() {
-                                    if let Some(config) = viewer_3d_config.as_deref() {
-                                        apply_event_click_action(
-                                            event.id,
-                                            &state,
-                                            &scene,
-                                            config,
-                                            selection.as_mut(),
-                                            &mut transforms,
-                                            link_state.as_mut(),
-                                            Some(timeline.as_mut()),
-                                        );
-                                    } else {
-                                        link_state.message =
-                                            "Link: viewer config unavailable".to_string();
-                                    }
-                                }
+                            } else {
+                                link_state.message = "Link: viewer config unavailable".to_string();
                             }
-                        },
-                    );
+                        }
+                    }
                 });
             }
         });
@@ -336,6 +326,100 @@ fn render_control_buttons(
             }
         }
     });
+}
+
+fn render_overview_section(
+    ui: &mut egui::Ui,
+    locale: crate::i18n::UiLocale,
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    timeline: &TimelineUiState,
+) {
+    let current_tick = state
+        .snapshot
+        .as_ref()
+        .map(|snapshot| snapshot.time)
+        .or_else(|| state.metrics.as_ref().map(|metrics| metrics.total_ticks))
+        .unwrap_or(0);
+
+    let selection_value = selection
+        .current
+        .as_ref()
+        .map(|current| format!("{} {}", selection_kind_label(current.kind), current.id))
+        .unwrap_or_else(|| {
+            if locale.is_zh() {
+                "(无)".to_string()
+            } else {
+                "(none)".to_string()
+            }
+        });
+
+    let mode = if timeline.manual_override || timeline.drag_active {
+        if locale.is_zh() {
+            "手动观察"
+        } else {
+            "manual"
+        }
+    } else if locale.is_zh() {
+        "跟随实时"
+    } else {
+        "live"
+    };
+
+    let chips = [
+        (
+            if locale.is_zh() { "Tick" } else { "Tick" },
+            current_tick.to_string(),
+        ),
+        (
+            if locale.is_zh() {
+                "事件数"
+            } else {
+                "Events"
+            },
+            state.events.len().to_string(),
+        ),
+        (
+            if locale.is_zh() {
+                "轨迹数"
+            } else {
+                "Traces"
+            },
+            state.decision_traces.len().to_string(),
+        ),
+        (
+            if locale.is_zh() {
+                "观察模式"
+            } else {
+                "Mode"
+            },
+            mode.to_string(),
+        ),
+    ];
+
+    ui.horizontal_wrapped(|ui| {
+        for (label, value) in chips {
+            egui::Frame::group(ui.style()).show(ui, |ui| {
+                ui.small(label);
+                ui.label(value);
+            });
+        }
+    });
+
+    ui.add(
+        egui::Label::new(format!(
+            "{} {}",
+            if locale.is_zh() {
+                "当前选择:"
+            } else {
+                "Selection:"
+            },
+            selection_value,
+        ))
+        .wrap()
+        .selectable(true),
+    );
+    ui.add(egui::Label::new(status_line(&state.status, locale)).selectable(true));
 }
 
 fn render_overlay_section(
@@ -504,8 +588,6 @@ fn render_text_sections(
     selection: &ViewerSelection,
     timeline: &TimelineUiState,
     viewer_3d_config: &Option<Res<Viewer3dConfig>>,
-    diagnosis_state: &DiagnosisState,
-    link_state: &EventObjectLinkState,
 ) {
     let focus = if timeline.manual_override || timeline.drag_active {
         Some(timeline.target_tick)
@@ -544,18 +626,6 @@ fn render_text_sections(
 
     let sections = [
         (
-            if locale.is_zh() { "状态" } else { "Status" },
-            status_line(&state.status, locale),
-        ),
-        (
-            if locale.is_zh() {
-                "当前选择"
-            } else {
-                "Selection"
-            },
-            selection_line(selection, locale),
-        ),
-        (
             if locale.is_zh() {
                 "世界摘要"
             } else {
@@ -580,61 +650,62 @@ fn render_text_sections(
             details,
         ),
         (if locale.is_zh() { "事件" } else { "Events" }, events),
-        (
-            if locale.is_zh() {
-                "诊断"
-            } else {
-                "Diagnosis"
-            },
-            diagnosis_state.text.clone(),
-        ),
-        (
-            if locale.is_zh() {
-                "事件联动"
-            } else {
-                "Event Link"
-            },
-            map_link_message_for_locale(&link_state.message, locale),
-        ),
     ];
 
     for (title, content) in sections {
-        ui.collapsing(title, |ui| {
+        ui.group(|ui| {
+            ui.strong(title);
             ui.add(egui::Label::new(content).wrap().selectable(true));
         });
     }
 
     if let Some(current) = selection.current.as_ref() {
-        ui.collapsing(
-            if locale.is_zh() {
-                "选中类型"
-            } else {
-                "Selection Kind"
-            },
-            |ui| {
-                ui.label(format!(
-                    "{} {}",
-                    selection_kind_label(current.kind),
-                    current.id
-                ));
-            },
+        ui.add(
+            egui::Label::new(format!(
+                "{} {} {}",
+                if locale.is_zh() {
+                    "选中类型:"
+                } else {
+                    "Selection kind:"
+                },
+                selection_kind_label(current.kind),
+                current.id
+            ))
+            .wrap()
+            .selectable(true),
         );
     }
 
-    ui.collapsing(
-        if locale.is_zh() {
-            "Tick 标签"
-        } else {
-            "Tick Labels"
-        },
-        |ui| {
-            let ticks = vec![timeline.target_tick, focus.unwrap_or(timeline.target_tick)];
-            let shown: Vec<String> = ticks
-                .into_iter()
-                .take(MAX_TICK_LABELS)
-                .map(|tick| tick.to_string())
-                .collect();
-            ui.label(shown.join(","));
-        },
+    let ticks = vec![timeline.target_tick, focus.unwrap_or(timeline.target_tick)];
+    let shown: Vec<String> = ticks
+        .into_iter()
+        .take(MAX_TICK_LABELS)
+        .map(|tick| tick.to_string())
+        .collect();
+
+    ui.add(
+        egui::Label::new(format!(
+            "{} {}",
+            if locale.is_zh() {
+                "Tick 标签:"
+            } else {
+                "Tick labels:"
+            },
+            shown.join(", ")
+        ))
+        .wrap()
+        .selectable(true),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adaptive_panel_width_clamps_to_bounds() {
+        assert_eq!(adaptive_panel_default_width(200.0), MIN_PANEL_WIDTH);
+        assert_eq!(adaptive_panel_default_width(10_000.0), MAX_PANEL_WIDTH);
+        assert!(adaptive_panel_default_width(1200.0) >= MIN_PANEL_WIDTH);
+    }
 }

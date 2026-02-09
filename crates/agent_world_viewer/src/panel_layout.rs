@@ -291,11 +291,11 @@ mod tests {
         assert_eq!(top_panel_toggle_label(true, UiLocale::ZhCn), "显示顶部");
         assert_eq!(
             copyable_panel_toggle_label(true, UiLocale::EnUs),
-            "Hide Copy Panel"
+            "Hide Details"
         );
         assert_eq!(
             copyable_panel_toggle_label(false, UiLocale::EnUs),
-            "Show Copy Panel"
+            "Show Details"
         );
     }
 
@@ -381,7 +381,7 @@ mod tests {
             .id();
         let copy_label = app
             .world_mut()
-            .spawn((Text::new("隐藏复制窗"), CopyablePanelToggleLabel))
+            .spawn((Text::new("隐藏明细"), CopyablePanelToggleLabel))
             .id();
 
         app.world_mut()
@@ -418,7 +418,7 @@ mod tests {
             .entity(copy_label)
             .get::<Text>()
             .expect("copy label text");
-        assert_eq!(copy_text.0, "Hide Copy Panel");
+        assert_eq!(copy_text.0, "Hide Details");
     }
 
     #[test]
@@ -433,7 +433,7 @@ mod tests {
 
         let label = app
             .world_mut()
-            .spawn((Text::new("隐藏复制窗"), CopyablePanelToggleLabel))
+            .spawn((Text::new("隐藏明细"), CopyablePanelToggleLabel))
             .id();
         let button = app
             .world_mut()
@@ -445,7 +445,7 @@ mod tests {
         let state = app.world().resource::<CopyableTextPanelState>();
         assert!(!state.visible);
         let label_text = app.world().entity(label).get::<Text>().expect("copy label");
-        assert_eq!(label_text.0, "显示复制窗");
+        assert_eq!(label_text.0, "显示明细");
 
         app.world_mut().entity_mut(button).insert(Interaction::None);
         app.update();
@@ -457,6 +457,6 @@ mod tests {
         let state = app.world().resource::<CopyableTextPanelState>();
         assert!(state.visible);
         let label_text = app.world().entity(label).get::<Text>().expect("copy label");
-        assert_eq!(label_text.0, "隐藏复制窗");
+        assert_eq!(label_text.0, "隐藏明细");
     }
 }

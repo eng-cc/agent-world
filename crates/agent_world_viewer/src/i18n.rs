@@ -65,10 +65,10 @@ pub(super) fn language_toggle_label(locale: UiLocale) -> &'static str {
 
 pub(super) fn copyable_panel_toggle_label(visible: bool, locale: UiLocale) -> &'static str {
     match (locale, visible) {
-        (UiLocale::ZhCn, true) => "隐藏复制窗",
-        (UiLocale::ZhCn, false) => "显示复制窗",
-        (UiLocale::EnUs, true) => "Hide Copy Panel",
-        (UiLocale::EnUs, false) => "Show Copy Panel",
+        (UiLocale::ZhCn, true) => "隐藏明细",
+        (UiLocale::ZhCn, false) => "显示明细",
+        (UiLocale::EnUs, true) => "Hide Details",
+        (UiLocale::EnUs, false) => "Show Details",
     }
 }
 
@@ -199,19 +199,19 @@ mod tests {
     fn copyable_toggle_label_is_localized() {
         assert_eq!(
             copyable_panel_toggle_label(true, UiLocale::ZhCn),
-            "隐藏复制窗"
+            "隐藏明细"
         );
         assert_eq!(
             copyable_panel_toggle_label(false, UiLocale::ZhCn),
-            "显示复制窗"
+            "显示明细"
         );
         assert_eq!(
             copyable_panel_toggle_label(true, UiLocale::EnUs),
-            "Hide Copy Panel"
+            "Hide Details"
         );
         assert_eq!(
             copyable_panel_toggle_label(false, UiLocale::EnUs),
-            "Show Copy Panel"
+            "Show Details"
         );
     }
 }
