@@ -1,3 +1,4 @@
+use agent_world::simulator::WorldEventKind;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -354,17 +355,16 @@ fn render_overview_section(
             }
         });
 
-    let mode = if timeline.manual_override || timeline.drag_active {
-        if locale.is_zh() {
-            "手动观察"
-        } else {
-            "manual"
-        }
-    } else if locale.is_zh() {
-        "跟随实时"
-    } else {
-        "live"
-    };
+    let rejected_events = rejection_event_count(&state.events);
+    let (connection_text, connection_color) = connection_signal(&state.status, locale);
+    let (health_text, health_color) = health_signal(rejected_events, locale);
+    let (mode_text, mode_color) = mode_signal(timeline, locale);
+
+    ui.horizontal_wrapped(|ui| {
+        render_status_badge(ui, &connection_text, connection_color);
+        render_status_badge(ui, &health_text, health_color);
+        render_status_badge(ui, &mode_text, mode_color);
+    });
 
     let chips = [
         (
@@ -372,28 +372,20 @@ fn render_overview_section(
             current_tick.to_string(),
         ),
         (
-            if locale.is_zh() {
-                "事件数"
-            } else {
-                "Events"
-            },
+            if locale.is_zh() { "事件" } else { "Events" },
             state.events.len().to_string(),
         ),
         (
-            if locale.is_zh() {
-                "轨迹数"
-            } else {
-                "Traces"
-            },
+            if locale.is_zh() { "轨迹" } else { "Traces" },
             state.decision_traces.len().to_string(),
         ),
         (
             if locale.is_zh() {
-                "观察模式"
+                "选择"
             } else {
-                "Mode"
+                "Selection"
             },
-            mode.to_string(),
+            truncate_observe_text(&selection_value, 18),
         ),
     ];
 
@@ -406,20 +398,128 @@ fn render_overview_section(
         }
     });
 
-    ui.add(
-        egui::Label::new(format!(
-            "{} {}",
-            if locale.is_zh() {
-                "当前选择:"
-            } else {
-                "Selection:"
-            },
-            selection_value,
-        ))
-        .wrap()
-        .selectable(true),
-    );
     ui.add(egui::Label::new(status_line(&state.status, locale)).selectable(true));
+}
+
+fn render_status_badge(ui: &mut egui::Ui, text: &str, fill: egui::Color32) {
+    ui.add(egui::Label::new(
+        egui::RichText::new(format!("  {text}  "))
+            .color(egui::Color32::WHITE)
+            .background_color(fill),
+    ));
+}
+
+fn connection_signal(
+    status: &crate::ConnectionStatus,
+    locale: crate::i18n::UiLocale,
+) -> (String, egui::Color32) {
+    match status {
+        crate::ConnectionStatus::Connected => (
+            if locale.is_zh() {
+                "连接正常"
+            } else {
+                "Conn OK"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(36, 130, 72),
+        ),
+        crate::ConnectionStatus::Connecting => (
+            if locale.is_zh() {
+                "连接中"
+            } else {
+                "Connecting"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(144, 108, 36),
+        ),
+        crate::ConnectionStatus::Error(_) => (
+            if locale.is_zh() {
+                "连接异常"
+            } else {
+                "Conn Error"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(160, 52, 52),
+        ),
+    }
+}
+
+fn health_signal(rejected_events: usize, locale: crate::i18n::UiLocale) -> (String, egui::Color32) {
+    if rejected_events == 0 {
+        (
+            if locale.is_zh() {
+                "健康:正常"
+            } else {
+                "Health: OK"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(32, 112, 64),
+        )
+    } else if rejected_events <= 2 {
+        (
+            if locale.is_zh() {
+                format!("健康:告警{}", rejected_events)
+            } else {
+                format!("Health: Warn {rejected_events}")
+            },
+            egui::Color32::from_rgb(150, 110, 32),
+        )
+    } else {
+        (
+            if locale.is_zh() {
+                format!("健康:高风险{}", rejected_events)
+            } else {
+                format!("Health: High {rejected_events}")
+            },
+            egui::Color32::from_rgb(154, 48, 48),
+        )
+    }
+}
+
+fn mode_signal(
+    timeline: &TimelineUiState,
+    locale: crate::i18n::UiLocale,
+) -> (String, egui::Color32) {
+    if timeline.manual_override || timeline.drag_active {
+        (
+            if locale.is_zh() {
+                "观察:手动"
+            } else {
+                "View: Manual"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(125, 96, 28),
+        )
+    } else {
+        (
+            if locale.is_zh() {
+                "观察:实时"
+            } else {
+                "View: Live"
+            }
+            .to_string(),
+            egui::Color32::from_rgb(38, 94, 148),
+        )
+    }
+}
+
+fn rejection_event_count(events: &[agent_world::simulator::WorldEvent]) -> usize {
+    events
+        .iter()
+        .filter(|event| matches!(event.kind, WorldEventKind::ActionRejected { .. }))
+        .count()
+}
+
+fn truncate_observe_text(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let mut out = String::new();
+    for ch in text.chars().take(max_chars.saturating_sub(1)) {
+        out.push(ch);
+    }
+    out.push('…');
+    out
 }
 
 fn render_overlay_section(
@@ -707,5 +807,54 @@ mod tests {
         assert_eq!(adaptive_panel_default_width(200.0), MIN_PANEL_WIDTH);
         assert_eq!(adaptive_panel_default_width(10_000.0), MAX_PANEL_WIDTH);
         assert!(adaptive_panel_default_width(1200.0) >= MIN_PANEL_WIDTH);
+    }
+
+    #[test]
+    fn connection_signal_matches_status() {
+        let (text, _) = connection_signal(
+            &crate::ConnectionStatus::Connected,
+            crate::i18n::UiLocale::ZhCn,
+        );
+        assert_eq!(text, "连接正常");
+        let (text, _) = connection_signal(
+            &crate::ConnectionStatus::Connecting,
+            crate::i18n::UiLocale::EnUs,
+        );
+        assert_eq!(text, "Connecting");
+        let (text, _) = connection_signal(
+            &crate::ConnectionStatus::Error("x".to_string()),
+            crate::i18n::UiLocale::EnUs,
+        );
+        assert_eq!(text, "Conn Error");
+    }
+
+    #[test]
+    fn rejection_event_count_only_counts_rejected_events() {
+        use agent_world::geometry::GeoPos;
+        use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
+
+        let events = vec![
+            WorldEvent {
+                id: 1,
+                time: 1,
+                kind: WorldEventKind::LocationRegistered {
+                    location_id: "loc-1".to_string(),
+                    name: "Alpha".to_string(),
+                    pos: GeoPos::new(0.0, 0.0, 0.0),
+                    profile: Default::default(),
+                },
+            },
+            WorldEvent {
+                id: 2,
+                time: 2,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::AgentNotFound {
+                        agent_id: "a-1".to_string(),
+                    },
+                },
+            },
+        ];
+
+        assert_eq!(rejection_event_count(&events), 1);
     }
 }
