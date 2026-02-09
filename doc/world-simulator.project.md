@@ -127,6 +127,8 @@
 - [x] 新增可运行 LLM demo：`world_llm_agent_demo`（`AgentRunner + LlmAgentBehavior`）
 - [x] 在线 viewer 支持 LLM 决策驱动（`world_viewer_live --llm`）
 - [x] 修复 viewer 3D 相机拖拽输入兼容性（支持触控板/Shift+左键平移）
+- [x] 输出 LLM Prompt 组装重构与多步机制设计文档（`doc/world-simulator/llm-prompt-multi-step-orchestration.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/llm-prompt-multi-step-orchestration.project.md`）
 
 ### 9. 场景测试覆盖矩阵
 - [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵
