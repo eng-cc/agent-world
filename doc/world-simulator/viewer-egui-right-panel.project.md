@@ -9,6 +9,7 @@
 - [x] ER6：移除旧 Bevy UI 右侧面板启动与交互调度（清理遗留代码并收敛告警）
 - [x] ER7：补充/更新测试并完成截图闭环验证
 - [x] ER8：更新任务日志并完成阶段提交
+- [x] ER9：修复 Step 在 LLM 失败时 pending 卡住（恢复按钮可点击）
 
 ## 依赖
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
@@ -25,6 +26,6 @@
 - `crates/agent_world_viewer/src/panel_scroll.rs`
 
 ## 状态
-- 当前阶段：已完成 ER1~ER8（迁移主线完成）
+- 当前阶段：已完成 ER1~ER9（迁移主线完成 + 控制状态修复）
 - 下一阶段：按需继续做细节交互优化（非迁移阻塞项）
-- 最近更新：完成遗留文件 `control_labels.rs` 物理删除并通过 viewer 回归测试（2026-02-09）
+- 最近更新：修复 Step 在 LLM 失败后停留 “Step ...” 的状态卡死问题，并补充回归测试（2026-02-09）
