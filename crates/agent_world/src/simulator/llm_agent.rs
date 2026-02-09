@@ -21,7 +21,7 @@ use super::types::Action;
 mod prompt_assembly;
 
 pub use prompt_assembly::{
-    PromptAssembler, PromptAssemblyInput, PromptAssemblyOutput, PromptStepContext,
+    PromptAssembler, PromptAssemblyInput, PromptAssemblyOutput, PromptBudget, PromptStepContext,
 };
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
@@ -553,6 +553,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             module_history_json: "[]",
             memory_digest: None,
             step_context: PromptStepContext::default(),
+            prompt_budget: PromptBudget::default(),
         });
         prompt.system_prompt
     }
@@ -583,6 +584,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 module_calls_used: module_history.len(),
                 module_calls_max: self.config.max_module_calls,
             },
+            prompt_budget: PromptBudget::default(),
         });
         prompt.user_prompt
     }
