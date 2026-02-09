@@ -190,6 +190,11 @@
 - `decision_draft` 兼容简写：当 `decision` 为字符串时，可直接复用同层的 `to/max_amount/ticks` 字段。
 - LLM 输出解析改为优先提取“首个完整 JSON 对象/数组”，降低多段输出导致的 trailing-chars 失败率。
 
+### 运行日志体积治理（LMSO16）
+- `world_llm_agent_demo` 新增 `--llm-io-max-chars <n>`：对每 tick 的 `llm_input/llm_output` 打印做字符截断。
+- 截断策略：保留前 `n` 字符，并追加 `...(truncated, total_chars=..., max_chars=...)` 标记，便于审计与限流并存。
+- `scripts/llm-longrun-stress.sh` 新增同名参数并透传；`summary.txt` 追加 `llm_io_max_chars` 字段，便于跨版本对齐。
+
 ### 风险与约束
 - 风险：过强门控可能打断合理的重复动作。
 - 缓解：通过 `execute_until` 显式表达“重复直到事件”，并允许阈值配置化关闭门控。

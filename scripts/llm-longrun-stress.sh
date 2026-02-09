@@ -20,6 +20,7 @@ Options:
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
   --min-active-ticks <n>       Fail if active_ticks < n (default: ticks)
   --no-llm-io                  Disable LLM input/output logging in run.log
+  --llm-io-max-chars <n>       Truncate each LLM input/output block to n chars
   --keep-out-dir               Keep existing out dir content
   -h, --help                   Show help
 
@@ -66,6 +67,7 @@ max_parse_errors="0"
 max_repair_rounds_max="2"
 min_active_ticks=""
 print_llm_io=1
+llm_io_max_chars=""
 keep_out_dir=0
 
 while [[ $# -gt 0 ]]; do
@@ -114,6 +116,10 @@ while [[ $# -gt 0 ]]; do
       print_llm_io=0
       shift
       ;;
+    --llm-io-max-chars)
+      llm_io_max_chars=${2:-}
+      shift 2
+      ;;
     --keep-out-dir)
       keep_out_dir=1
       shift
@@ -134,6 +140,9 @@ ensure_positive_int "--ticks" "$ticks"
 ensure_positive_int "--max-llm-errors" "$max_llm_errors"
 ensure_positive_int "--max-parse-errors" "$max_parse_errors"
 ensure_positive_int "--max-repair-rounds-max" "$max_repair_rounds_max"
+if [[ -n "$llm_io_max_chars" ]]; then
+  ensure_positive_int "--llm-io-max-chars" "$llm_io_max_chars"
+fi
 
 if [[ -z "$min_active_ticks" ]]; then
   min_active_ticks="$ticks"
@@ -163,6 +172,9 @@ cmd=(
 )
 if [[ $print_llm_io -eq 1 ]]; then
   cmd+=(--print-llm-io)
+  if [[ -n "$llm_io_max_chars" ]]; then
+    cmd+=(--llm-io-max-chars "$llm_io_max_chars")
+  fi
 fi
 
 echo "+ ${cmd[*]} | tee $log_file"
@@ -227,6 +239,7 @@ fi
   echo "decision_wait_ticks=$decision_wait_ticks"
   echo "decision_act=$decision_act"
   echo "llm_io_logged=$print_llm_io"
+  echo "llm_io_max_chars=${llm_io_max_chars:-none}"
   echo "report_json=$report_json"
   echo "run_log=$log_file"
 } > "$summary_file"

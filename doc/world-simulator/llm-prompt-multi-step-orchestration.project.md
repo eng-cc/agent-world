@@ -19,6 +19,7 @@
 - [x] LMSO13 压测 run.log 增加 LLM 输入输出落盘（逐 tick）
 - [x] LMSO14 反重复门控 + execute_until 持续执行动作（防复读并保留连续动作能力）
 - [x] LMSO15 execute_until 多事件停止条件 + 输出容错解析（event_any_of / `a|b` / decision_draft 简写）
+- [x] LMSO16 真实运行态 LLM I/O 日志体积治理（`--llm-io-max-chars`）
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -31,6 +32,6 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO15（execute_until 多事件与输出容错已落地）
-- 下一步：给 `execute_until` 增加可配置日志截断与更多 until.event 语义（如库存阈值、能量阈值）
-- 最近更新：完成 LMSO15（event_any_of + `a|b` 多事件解析、decision_draft 简写兼容、首 JSON 提取容错，2026-02-09）
+- 当前阶段：LMSO16（LLM I/O 日志截断已落地）
+- 下一步：补充更多 `until.event` 语义（如库存阈值、能量阈值）
+- 最近更新：完成 LMSO16（`world_llm_agent_demo --llm-io-max-chars` + 压测脚本透传，2026-02-09）
