@@ -18,6 +18,7 @@
 - [x] LMSO12 真实 LLM 长跑脚本压测（指标落盘 + 阈值断言 + 结果汇总）
 - [x] LMSO13 压测 run.log 增加 LLM 输入输出落盘（逐 tick）
 - [x] LMSO14 反重复门控 + execute_until 持续执行动作（防复读并保留连续动作能力）
+- [x] LMSO15 execute_until 多事件停止条件 + 输出容错解析（event_any_of / `a|b` / decision_draft 简写）
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -30,6 +31,6 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO14（反重复门控与 execute_until 已落地）
+- 当前阶段：LMSO15（execute_until 多事件与输出容错已落地）
 - 下一步：给 `execute_until` 增加可配置日志截断与更多 until.event 语义（如库存阈值、能量阈值）
-- 最近更新：完成 LMSO14（连续动作阈值强制再规划 + execute_until 运行态闭环 + 回归测试，2026-02-09）
+- 最近更新：完成 LMSO15（event_any_of + `a|b` 多事件解析、decision_draft 简写兼容、首 JSON 提取容错，2026-02-09）

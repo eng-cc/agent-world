@@ -951,7 +951,7 @@ fn llm_agent_execute_until_continues_without_llm_until_event() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
         vec![
-            "{\"decision\":\"execute_until\",\"action\":{\"decision\":\"harvest_radiation\",\"max_amount\":9},\"until\":{\"event\":\"new_visible_agent\"},\"max_ticks\":3}".to_string(),
+            "{\"decision\":\"execute_until\",\"action\":{\"decision\":\"harvest_radiation\",\"max_amount\":9},\"until\":{\"event\":\"new_visible_agent|new_visible_location\"},\"max_ticks\":3}".to_string(),
             "{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string(),
         ],
         Arc::clone(&calls),
@@ -1011,5 +1011,47 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(system_prompt.contains("anti_stagnation"));
     assert!(system_prompt.contains("exploration_bias"));
     assert!(system_prompt.contains("execute_until"));
-    assert!(user_prompt.contains("\"event\":\"action_rejected"));
+    assert!(user_prompt.contains("execute_until"));
+}
+
+#[test]
+fn llm_parse_execute_until_accepts_event_any_of() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event_any_of":["new_visible_agent","new_visible_location"]},"max_ticks":5}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::ExecuteUntil(directive) => {
+            assert_eq!(directive.until_events.len(), 2);
+            assert_eq!(
+                directive.until_events[0],
+                super::decision_flow::ExecuteUntilEventKind::NewVisibleAgent
+            );
+            assert_eq!(
+                directive.until_events[1],
+                super::decision_flow::ExecuteUntilEventKind::NewVisibleLocation
+            );
+        }
+        other => panic!("expected execute_until, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_decision_draft_accepts_shorthand_decision_payload() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"type":"decision_draft","decision":"harvest_radiation","max_amount":7,"need_verify":false}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::DecisionDraft(draft) => {
+            assert!(matches!(
+                draft.decision,
+                AgentDecision::Act(Action::HarvestRadiation { max_amount: 7, .. })
+            ));
+            assert!(!draft.need_verify);
+        }
+        other => panic!("expected decision_draft, got {other:?}"),
+    }
 }

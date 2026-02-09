@@ -44,7 +44,7 @@ impl ActionReplanGuardState {
 #[derive(Debug, Clone)]
 pub(super) struct ActiveExecuteUntil {
     action: Action,
-    until_event: ExecuteUntilEventKind,
+    until_events: Vec<ExecuteUntilEventKind>,
     remaining_ticks: u64,
     baseline_visible_agents: usize,
     baseline_visible_locations: usize,
@@ -65,7 +65,7 @@ impl ActiveExecuteUntil {
 
         Self {
             action: directive.action,
-            until_event: directive.until_event,
+            until_events: directive.until_events,
             remaining_ticks: directive.max_ticks,
             baseline_visible_agents: observation.visible_agents.len(),
             baseline_visible_locations: observation.visible_locations.len(),
@@ -79,8 +79,12 @@ impl ActiveExecuteUntil {
         &self.action
     }
 
-    pub(super) fn until_event(&self) -> ExecuteUntilEventKind {
-        self.until_event
+    pub(super) fn until_events_summary(&self) -> String {
+        self.until_events
+            .iter()
+            .map(|event| event.as_str())
+            .collect::<Vec<_>>()
+            .join("|")
     }
 
     pub(super) fn remaining_ticks(&self) -> u64 {
@@ -102,11 +106,17 @@ impl ActiveExecuteUntil {
             return Err("until plan stop: previous action failed".to_string());
         }
 
-        if self.until_event == ExecuteUntilEventKind::ActionRejected && self.last_action_rejected {
+        if self
+            .until_events
+            .contains(&ExecuteUntilEventKind::ActionRejected)
+            && self.last_action_rejected
+        {
             return Err("until.event action_rejected matched".to_string());
         }
 
-        if self.until_event == ExecuteUntilEventKind::NewVisibleAgent
+        if self
+            .until_events
+            .contains(&ExecuteUntilEventKind::NewVisibleAgent)
             && observation.visible_agents.len() > self.baseline_visible_agents
         {
             return Err(format!(
@@ -116,7 +126,9 @@ impl ActiveExecuteUntil {
             ));
         }
 
-        if self.until_event == ExecuteUntilEventKind::NewVisibleLocation
+        if self
+            .until_events
+            .contains(&ExecuteUntilEventKind::NewVisibleLocation)
             && observation.visible_locations.len() > self.baseline_visible_locations
         {
             return Err(format!(
@@ -126,7 +138,10 @@ impl ActiveExecuteUntil {
             ));
         }
 
-        if self.until_event == ExecuteUntilEventKind::ArriveTarget {
+        if self
+            .until_events
+            .contains(&ExecuteUntilEventKind::ArriveTarget)
+        {
             if let Some(target_location_id) = self.target_location_id.as_ref() {
                 let arrived = observation.visible_locations.iter().any(|location| {
                     location.location_id == *target_location_id && location.distance_cm <= 0

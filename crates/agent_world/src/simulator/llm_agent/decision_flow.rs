@@ -158,7 +158,10 @@ struct RawLlmExecuteUntilPayload {
 
 #[derive(Debug, Deserialize)]
 struct RawLlmExecuteUntilUntil {
-    event: String,
+    #[serde(default)]
+    event: Option<String>,
+    #[serde(default)]
+    event_any_of: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -200,7 +203,7 @@ impl ExecuteUntilEventKind {
 #[derive(Debug, Clone)]
 pub(super) struct ExecuteUntilDirective {
     pub action: Action,
-    pub until_event: ExecuteUntilEventKind,
+    pub until_events: Vec<ExecuteUntilEventKind>,
     pub max_ticks: u64,
 }
 
@@ -274,10 +277,17 @@ fn parse_llm_decision_draft(
     value: serde_json::Value,
     agent_id: &str,
 ) -> Result<LlmDecisionDraft, String> {
+    let raw_value = value.clone();
     let payload = serde_json::from_value::<RawLlmDecisionDraftPayload>(value)
         .map_err(|err| format!("decision_draft parse failed: {err}"))?;
 
-    let decision_json = serde_json::to_string(&payload.decision)
+    let decision_value = if payload.decision.is_object() {
+        payload.decision
+    } else {
+        decision_draft_shorthand_value(&raw_value).unwrap_or(payload.decision)
+    };
+
+    let decision_json = serde_json::to_string(&decision_value)
         .map_err(|err| format!("decision_draft serialize failed: {err}"))?;
     let (decision, parse_error) = parse_llm_decision_with_error(decision_json.as_str(), agent_id);
     if let Some(err) = parse_error {
@@ -289,6 +299,21 @@ fn parse_llm_decision_draft(
         confidence: payload.confidence,
         need_verify: payload.need_verify.unwrap_or(true),
     })
+}
+
+fn decision_draft_shorthand_value(value: &serde_json::Value) -> Option<serde_json::Value> {
+    let mut decision_object = value.as_object()?.clone();
+    if !decision_object
+        .get("decision")
+        .is_some_and(|value| value.is_string())
+    {
+        return None;
+    }
+
+    decision_object.remove("type");
+    decision_object.remove("confidence");
+    decision_object.remove("need_verify");
+    Some(serde_json::Value::Object(decision_object))
 }
 
 fn parse_execute_until_decision(
@@ -321,13 +346,7 @@ fn parse_execute_until_decision(
         }
     };
 
-    let until_event =
-        ExecuteUntilEventKind::parse(payload.until.event.as_str()).ok_or_else(|| {
-            format!(
-                "execute_until unsupported until.event: {}",
-                payload.until.event.trim()
-            )
-        })?;
+    let until_events = parse_execute_until_events(&payload.until)?;
 
     let max_ticks = payload
         .max_ticks
@@ -336,9 +355,42 @@ fn parse_execute_until_decision(
 
     Ok(ExecuteUntilDirective {
         action,
-        until_event,
+        until_events,
         max_ticks,
     })
+}
+
+fn parse_execute_until_events(
+    until: &RawLlmExecuteUntilUntil,
+) -> Result<Vec<ExecuteUntilEventKind>, String> {
+    let mut values = Vec::new();
+    if let Some(event) = until.event.as_ref() {
+        values.push(event.as_str());
+    }
+    for event in until.event_any_of.iter() {
+        values.push(event.as_str());
+    }
+
+    let mut events = Vec::new();
+    for value in values {
+        for token in value.split(['|', ',']) {
+            let trimmed = token.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let event = ExecuteUntilEventKind::parse(trimmed)
+                .ok_or_else(|| format!("execute_until unsupported until.event: {trimmed}"))?;
+            if !events.contains(&event) {
+                events.push(event);
+            }
+        }
+    }
+
+    if events.is_empty() {
+        return Err("execute_until missing until.event/event_any_of".to_string());
+    }
+
+    Ok(events)
 }
 
 fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
@@ -411,10 +463,43 @@ fn parse_llm_decision_value_with_error(
 }
 
 fn extract_json_block(raw: &str) -> Option<&str> {
-    let start = raw.find('{')?;
-    let end = raw.rfind('}')?;
-    if end < start {
-        return None;
+    let (start, open_char) = raw.char_indices().find_map(|(index, ch)| match ch {
+        '{' | '[' => Some((index, ch)),
+        _ => None,
+    })?;
+    let close_char = if open_char == '{' { '}' } else { ']' };
+
+    let mut depth: u32 = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (offset, ch) in raw[start..].char_indices() {
+        let index = start + offset;
+        if in_string {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            c if c == open_char => depth = depth.saturating_add(1),
+            c if c == close_char => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return raw.get(start..=index);
+                }
+            }
+            _ => {}
+        }
     }
-    raw.get(start..=end)
+
+    None
 }

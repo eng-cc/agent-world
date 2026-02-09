@@ -169,10 +169,12 @@
 
 ### 新增决策协议
 - `execute_until`（终态决策的一种）：
-  - `{"decision":"execute_until","action":{<decision_json>},"until":{"event":"action_rejected|new_visible_agent|new_visible_location|arrive_target"},"max_ticks":<u64>}`
+  - 单事件：`{"decision":"execute_until","action":{<decision_json>},"until":{"event":"action_rejected"},"max_ticks":<u64>}`
+  - 多事件（任一命中即停止）：`{"decision":"execute_until","action":{<decision_json>},"until":{"event_any_of":["action_rejected","new_visible_agent"]},"max_ticks":<u64>}`
+  - 兼容写法：`until.event` 支持 `"a|b"`（按多事件解析）
 - 语义：
   - `action`：需要重复执行的动作（当前支持 `move_agent` / `harvest_radiation`）。
-  - `until.event`：停止条件。
+  - `until.event` / `until.event_any_of`：停止条件。
   - `max_ticks`：硬上限，避免无限循环。
 
 ### 运行时行为
@@ -181,6 +183,12 @@
   - 记录 `execute_until_continue` trace，保持可观测性。
 - 停止条件命中后：
   - 清理持续计划并恢复正常 LLM 决策流。
+
+### 协议容错（LMSO15）
+- `until.event` 除单值外，兼容 `"a|b"` 与 `"a,b"`，按“任一事件命中即停止”解释。
+- 新增 `until.event_any_of`（数组）作为首选多事件表达。
+- `decision_draft` 兼容简写：当 `decision` 为字符串时，可直接复用同层的 `to/max_amount/ticks` 字段。
+- LLM 输出解析改为优先提取“首个完整 JSON 对象/数组”，降低多段输出导致的 trailing-chars 失败率。
 
 ### 风险与约束
 - 风险：过强门控可能打断合理的重复动作。

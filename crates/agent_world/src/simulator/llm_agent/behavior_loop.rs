@@ -15,8 +15,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 Ok(()) => {
                     let decision = AgentDecision::Act(active_execute_until.action().clone());
                     let output_summary = format!(
-                        "execute_until continue: event={} remaining_ticks={}",
-                        active_execute_until.until_event().as_str(),
+                        "execute_until continue: events={} remaining_ticks={}",
+                        active_execute_until.until_events_summary(),
                         active_execute_until.remaining_ticks(),
                     );
                     self.replan_guard_state.record_decision(&decision);
@@ -258,8 +258,13 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                             phase = DecisionPhase::Finalize;
                             resolved = true;
                             step_output_summary = format!(
-                                "execute_until event={} max_ticks={}",
-                                directive.until_event.as_str(),
+                                "execute_until events={} max_ticks={}",
+                                directive
+                                    .until_events
+                                    .iter()
+                                    .map(|event| event.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join("|"),
                                 directive.max_ticks
                             );
                         }
