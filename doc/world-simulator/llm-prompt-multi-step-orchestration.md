@@ -190,6 +190,36 @@
 - `decision_draft` 兼容简写：当 `decision` 为字符串时，可直接复用同层的 `to/max_amount/ticks` 字段。
 - LLM 输出解析改为优先提取“首个完整 JSON 对象/数组”，降低多段输出导致的 trailing-chars 失败率。
 
+### 运行日志体积治理（LMSO16）
+- `world_llm_agent_demo` 新增 `--llm-io-max-chars <n>`：对每 tick 的 `llm_input/llm_output` 打印做字符截断。
+- 截断策略：保留前 `n` 字符，并追加 `...(truncated, total_chars=..., max_chars=...)` 标记，便于审计与限流并存。
+- `scripts/llm-longrun-stress.sh` 新增同名参数并透传；`summary.txt` 追加 `llm_io_max_chars` 字段，便于跨版本对齐。
+
+### LLM 超时策略（LMSO17）
+- 将默认 `AGENT_WORLD_LLM_TIMEOUT_MS` 提升到 `180000`（3 分钟），适配真实运行态中“几分钟响应”的模型调用。
+- 保留短超时自动回退机制：当显式配置小于默认值时，首次用短超时请求，超时后自动用默认超时重试一次。
+- 目标：减少正常慢响应被误判为错误，同时保留低延迟偏好下的快速失败能力。
+
+### until.event 扩展语义（LMSO18）
+- 在 `execute_until` 中新增停止事件：`insufficient_electricity`、`thermal_overload`、`harvest_yield_below`、`harvest_available_below`。
+- 阈值事件约束：
+  - `harvest_yield_below` / `harvest_available_below` 必须提供 `until.value_lte`。
+  - `until.value_lte` 必须为非负整数。
+- 运行态语义绑定：
+  - `insufficient_electricity`：上一轮动作被拒绝，且拒绝原因为电力不足（`InsufficientResource(Electricity)`）或 `AgentShutdown`。
+  - `thermal_overload`：上一轮动作被拒绝，且拒绝原因为 `ThermalOverload`。
+  - `harvest_yield_below`：上一轮 `RadiationHarvested.amount <= until.value_lte`。
+  - `harvest_available_below`：上一轮 `RadiationHarvested.available <= until.value_lte`。
+- 协议兼容：保留 `until.event_any_of` 与 `until.event` 的 `"a|b"` / `"a,b"` 多事件写法，按“任一命中即停止”解释。
+
+### 上下文收敛与压测可观测性（LMSO19）
+- 问题：真实运行态中，`module_call` 返回大 payload（尤其记忆检索）会放大后续 Prompt 中 `Module History` 段，导致输入峰值抖动。
+- 方案：Prompt 注入前对 `ModuleCallExchange.result` 做软压缩：
+  - 小结果保持原结构。
+  - 大结果改写为 `{truncated, original_chars, preview}`，`preview` 使用字符级截断。
+- 预期：不影响模块可用性前提下，降低单轮极端 Prompt 峰值，减少 section 裁剪触发。
+- 压测脚本补强：`scripts/llm-longrun-stress.sh` 在无 `jq` 环境下改为 Python 解析 `report.json`，保证 `prompt_section_clipped` 等指标准确落盘。
+
 ### 风险与约束
 - 风险：过强门控可能打断合理的重复动作。
 - 缓解：通过 `execute_until` 显式表达“重复直到事件”，并允许阈值配置化关闭门控。

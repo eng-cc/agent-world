@@ -16,6 +16,7 @@ struct CliOptions {
     ticks: u64,
     report_json: Option<String>,
     print_llm_io: bool,
+    llm_io_max_chars: Option<usize>,
 }
 
 impl Default for CliOptions {
@@ -25,6 +26,7 @@ impl Default for CliOptions {
             ticks: 20,
             report_json: None,
             print_llm_io: false,
+            llm_io_max_chars: None,
         }
     }
 }
@@ -149,12 +151,43 @@ impl DemoRunReport {
     }
 }
 
-fn print_llm_io_trace(tick: u64, agent_id: &str, trace: &AgentDecisionTrace) {
+fn truncate_for_llm_io_log(text: &str, max_chars: Option<usize>) -> String {
+    let Some(max_chars) = max_chars else {
+        return text.to_string();
+    };
+    if max_chars == 0 {
+        return text.to_string();
+    }
+
+    let total_chars = text.chars().count();
+    if total_chars <= max_chars {
+        return text.to_string();
+    }
+
+    let mut truncated = String::new();
+    for (index, ch) in text.chars().enumerate() {
+        if index >= max_chars {
+            break;
+        }
+        truncated.push(ch);
+    }
+    truncated.push_str(&format!(
+        "\n...(truncated, total_chars={total_chars}, max_chars={max_chars})"
+    ));
+    truncated
+}
+
+fn print_llm_io_trace(
+    tick: u64,
+    agent_id: &str,
+    trace: &AgentDecisionTrace,
+    llm_io_max_chars: Option<usize>,
+) {
     println!("tick={} agent={} llm_io_begin", tick, agent_id);
 
     if let Some(input) = trace.llm_input.as_ref() {
         println!("tick={} agent={} llm_input_begin", tick, agent_id);
-        println!("{}", input);
+        println!("{}", truncate_for_llm_io_log(input, llm_io_max_chars));
         println!("tick={} agent={} llm_input_end", tick, agent_id);
     } else {
         println!("tick={} agent={} llm_input=<none>", tick, agent_id);
@@ -162,7 +195,7 @@ fn print_llm_io_trace(tick: u64, agent_id: &str, trace: &AgentDecisionTrace) {
 
     if let Some(output) = trace.llm_output.as_ref() {
         println!("tick={} agent={} llm_output_begin", tick, agent_id);
-        println!("{}", output);
+        println!("{}", truncate_for_llm_io_log(output, llm_io_max_chars));
         println!("tick={} agent={} llm_output_end", tick, agent_id);
     } else {
         println!("tick={} agent={} llm_output=<none>", tick, agent_id);
@@ -238,7 +271,12 @@ fn main() {
                 if let Some(trace) = result.decision_trace.as_ref() {
                     run_report.observe_trace(trace);
                     if options.print_llm_io {
-                        print_llm_io_trace(idx + 1, result.agent_id.as_str(), trace);
+                        print_llm_io_trace(
+                            idx + 1,
+                            result.agent_id.as_str(),
+                            trace,
+                            options.llm_io_max_chars,
+                        );
                     }
                 }
 
@@ -380,6 +418,19 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--print-llm-io" => {
                 options.print_llm_io = true;
             }
+            "--llm-io-max-chars" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--llm-io-max-chars requires a positive integer".to_string())?;
+                options.llm_io_max_chars = Some(
+                    raw.parse::<usize>()
+                        .ok()
+                        .filter(|value| *value > 0)
+                        .ok_or_else(|| {
+                            "--llm-io-max-chars requires a positive integer".to_string()
+                        })?,
+                );
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -404,13 +455,14 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
 fn print_help() {
     println!(
-        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io]"
+        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io] [--llm-io-max-chars <n>]"
     );
     println!("Options:");
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
     println!("  --ticks <n>        Max runner ticks (default: 20)");
     println!("  --report-json <path>  Persist run summary as JSON report");
     println!("  --print-llm-io     Print LLM input/output to stdout for each tick");
+    println!("  --llm-io-max-chars <n>  Truncate each LLM input/output block to n chars");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -427,6 +479,7 @@ mod tests {
         assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
         assert_eq!(options.ticks, 20);
         assert!(!options.print_llm_io);
+        assert_eq!(options.llm_io_max_chars, None);
     }
 
     #[test]
@@ -455,6 +508,13 @@ mod tests {
     }
 
     #[test]
+    fn parse_options_accepts_llm_io_max_chars() {
+        let options = parse_options(["--llm-io-max-chars", "256"].into_iter())
+            .expect("llm io max chars option");
+        assert_eq!(options.llm_io_max_chars, Some(256));
+    }
+
+    #[test]
     fn parse_options_rejects_missing_report_json_path() {
         let err = parse_options(["--report-json"].into_iter()).expect_err("missing report path");
         assert!(err.contains("file path"));
@@ -464,5 +524,19 @@ mod tests {
     fn parse_options_rejects_zero_ticks() {
         let err = parse_options(["--ticks", "0"].into_iter()).expect_err("reject zero");
         assert!(err.contains("positive integer"));
+    }
+
+    #[test]
+    fn parse_options_rejects_invalid_llm_io_max_chars() {
+        let err = parse_options(["--llm-io-max-chars", "0"].into_iter())
+            .expect_err("reject zero llm io max chars");
+        assert!(err.contains("positive integer"));
+    }
+
+    #[test]
+    fn truncate_for_llm_io_log_marks_truncation() {
+        let truncated = truncate_for_llm_io_log("abcdef", Some(3));
+        assert!(truncated.starts_with("abc"));
+        assert!(truncated.contains("truncated"));
     }
 }

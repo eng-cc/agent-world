@@ -1,7 +1,8 @@
 use super::*;
 use crate::geometry::GeoPos;
 use crate::simulator::{
-    Action, Observation, ObservedAgent, ObservedLocation, RejectReason, WorldEvent, WorldEventKind,
+    Action, Observation, ObservedAgent, ObservedLocation, RejectReason, ResourceKind,
+    ResourceOwner, WorldEvent, WorldEventKind,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -844,6 +845,21 @@ fn llm_agent_user_prompt_respects_history_item_cap() {
 }
 
 #[test]
+fn llm_agent_compacts_large_module_result_payload_for_prompt_history() {
+    let giant_payload = format!("payload-{}", "x".repeat(6000));
+    let compact = LlmAgentBehavior::<MockClient>::module_result_for_prompt(&serde_json::json!({
+        "ok": true,
+        "module": "memory.short_term.recent",
+        "result": [giant_payload.clone()],
+    }));
+
+    let compact_json = serde_json::to_string(&compact).expect("serialize compact result");
+    assert!(compact_json.contains("\"truncated\":true"));
+    assert!(compact_json.contains("\"original_chars\":"));
+    assert!(!compact_json.contains(giant_payload.as_str()));
+}
+
+#[test]
 fn llm_agent_records_failed_action_into_long_term_memory() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let result = ActionResult {
@@ -1003,6 +1019,202 @@ fn llm_agent_execute_until_continues_without_llm_until_event() {
 }
 
 #[test]
+fn llm_agent_execute_until_stops_on_insufficient_electricity_reject_reason() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":6},"until":{"event":"insufficient_electricity"},"max_ticks":4}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 30;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 6, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 6,
+        },
+        action_id: 101,
+        success: false,
+        event: WorldEvent {
+            id: 201,
+            time: 30,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    kind: ResourceKind::Electricity,
+                    requested: 8,
+                    available: 1,
+                },
+            },
+        },
+    });
+
+    observation.time = 31;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_execute_until_stops_on_thermal_overload_reject_reason() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":7},"until":{"event":"thermal_overload"},"max_ticks":4}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 40;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 7, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 7,
+        },
+        action_id: 102,
+        success: false,
+        event: WorldEvent {
+            id: 202,
+            time: 40,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::ThermalOverload {
+                    heat: 130,
+                    capacity: 100,
+                },
+            },
+        },
+    });
+
+    observation.time = 41;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_execute_until_stops_on_harvest_yield_threshold() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":9},"until":{"event":"harvest_yield_below","value_lte":2},"max_ticks":4}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 50;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 103,
+        success: true,
+        event: WorldEvent {
+            id: 203,
+            time: 50,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 2,
+                available: 8,
+            },
+        },
+    });
+
+    observation.time = 51;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_execute_until_stops_on_harvest_available_threshold() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":9},"until":{"event":"harvest_available_below","value_lte":1},"max_ticks":4}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 60;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 104,
+        success: true,
+        event: WorldEvent {
+            id: 204,
+            time: 60,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 5,
+                available: 1,
+            },
+        },
+    });
+
+    observation.time = 61;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
 fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let system_prompt = behavior.system_prompt();
@@ -1023,17 +1235,60 @@ fn llm_parse_execute_until_accepts_event_any_of() {
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::ExecuteUntil(directive) => {
-            assert_eq!(directive.until_events.len(), 2);
+            assert_eq!(directive.until_conditions.len(), 2);
             assert_eq!(
-                directive.until_events[0],
-                super::decision_flow::ExecuteUntilEventKind::NewVisibleAgent
+                directive.until_conditions[0],
+                super::decision_flow::ExecuteUntilCondition {
+                    kind: super::decision_flow::ExecuteUntilEventKind::NewVisibleAgent,
+                    value_lte: None,
+                }
             );
             assert_eq!(
-                directive.until_events[1],
-                super::decision_flow::ExecuteUntilEventKind::NewVisibleLocation
+                directive.until_conditions[1],
+                super::decision_flow::ExecuteUntilCondition {
+                    kind: super::decision_flow::ExecuteUntilEventKind::NewVisibleLocation,
+                    value_lte: None,
+                }
             );
         }
         other => panic!("expected execute_until, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_execute_until_accepts_threshold_event_with_value_lte() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event":"harvest_yield_below","value_lte":2},"max_ticks":5}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::ExecuteUntil(directive) => {
+            assert_eq!(directive.until_conditions.len(), 1);
+            assert_eq!(
+                directive.until_conditions[0],
+                super::decision_flow::ExecuteUntilCondition {
+                    kind: super::decision_flow::ExecuteUntilEventKind::HarvestYieldBelow,
+                    value_lte: Some(2),
+                }
+            );
+        }
+        other => panic!("expected execute_until, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_execute_until_rejects_threshold_event_without_value_lte() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event":"harvest_available_below"},"max_ticks":5}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Invalid(err) => {
+            assert!(err.contains("requires until.value_lte"));
+        }
+        other => panic!("expected invalid execute_until, got {other:?}"),
     }
 }
 

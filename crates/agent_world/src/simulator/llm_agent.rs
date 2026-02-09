@@ -102,7 +102,7 @@ impl LlmPromptProfile {
 }
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
-pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 30_000;
+pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 180_000;
 pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "硅基个体存在的意义是保障硅基文明存续和发展；";
 pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "保障当前周期生存与执行效率，优先做确定可执行动作。";
 pub const DEFAULT_LLM_LONG_TERM_GOAL: &str = "保障硅基文明存续和发展。";
@@ -118,6 +118,7 @@ const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
 const LLM_PROMPT_MODULE_CALL_KIND: &str = "llm.prompt.module_call";
 const LLM_PROMPT_MODULE_CALL_CAP_REF: &str = "llm.prompt.module_access";
 const LLM_PROMPT_MODULE_CALL_ORIGIN: &str = "llm_agent";
+const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 1200;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {
@@ -663,8 +664,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             .len()
             .saturating_sub(self.config.prompt_max_history_items);
         let history_slice = &module_history[history_start..];
-        let history_json =
-            serde_json::to_string(history_slice).unwrap_or_else(|_| "[]".to_string());
+        let history_json = Self::module_history_json_for_prompt(history_slice);
         let memory_selector_config = self.config.memory_selector_config();
         let memory_selection =
             MemorySelector::select(&self.memory, observation.time, &memory_selector_config);
@@ -684,6 +684,35 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 module_calls_max: self.config.max_module_calls,
             },
             prompt_budget,
+        })
+    }
+
+    fn module_history_json_for_prompt(module_history: &[ModuleCallExchange]) -> String {
+        let compact_history = module_history
+            .iter()
+            .map(|exchange| {
+                serde_json::json!({
+                    "module": exchange.module,
+                    "args": exchange.args,
+                    "result": Self::module_result_for_prompt(&exchange.result),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        serde_json::to_string(&compact_history).unwrap_or_else(|_| "[]".to_string())
+    }
+
+    fn module_result_for_prompt(result: &serde_json::Value) -> serde_json::Value {
+        let serialized = serde_json::to_string(result).unwrap_or_else(|_| "null".to_string());
+        let total_chars = serialized.chars().count();
+        if total_chars <= PROMPT_MODULE_RESULT_MAX_CHARS {
+            return result.clone();
+        }
+
+        serde_json::json!({
+            "truncated": true,
+            "original_chars": total_chars,
+            "preview": summarize_trace_text(serialized.as_str(), PROMPT_MODULE_RESULT_MAX_CHARS),
         })
     }
 

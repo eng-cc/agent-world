@@ -9,7 +9,8 @@
 - [x] T5 统一 CI/预提交测试清单脚本（`scripts/ci-tests.sh`）
 - [x] T6 CI 与 pre-commit 接入统一脚本
 - [x] T7 文档同步（ci-test-coverage/pre-commit/visualization）
-- [ ] 提交到 git
+- [x] T8 `egui` snapshot 测试在 `wgpu` 不可用时自动 skip
+- [x] 提交到 git
 
 ## 依赖
 - `ViewerServer` / `ViewerServerConfig`
@@ -17,4 +18,4 @@
 - CI workflow 配置
 
 ## 状态
-- 当前阶段：T7 完成
+- 当前阶段：T8 完成

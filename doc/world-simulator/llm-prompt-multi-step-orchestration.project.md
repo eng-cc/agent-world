@@ -19,6 +19,10 @@
 - [x] LMSO13 压测 run.log 增加 LLM 输入输出落盘（逐 tick）
 - [x] LMSO14 反重复门控 + execute_until 持续执行动作（防复读并保留连续动作能力）
 - [x] LMSO15 execute_until 多事件停止条件 + 输出容错解析（event_any_of / `a|b` / decision_draft 简写）
+- [x] LMSO16 真实运行态 LLM I/O 日志体积治理（`--llm-io-max-chars`）
+- [x] LMSO17 LLM 请求超时策略调优（默认分钟级超时，短超时自动回退）
+- [x] LMSO18 execute_until 的 until.event 扩展语义（能量/热状态/采集阈值事件 + until.value_lte）
+- [x] LMSO19 Prompt 上下文收敛（Module History 大结果压缩）+ 压测脚本无 jq 指标回退解析
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -31,6 +35,6 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO15（execute_until 多事件与输出容错已落地）
-- 下一步：给 `execute_until` 增加可配置日志截断与更多 until.event 语义（如库存阈值、能量阈值）
-- 最近更新：完成 LMSO15（event_any_of + `a|b` 多事件解析、decision_draft 简写兼容、首 JSON 提取容错，2026-02-09）
+- 当前阶段：LMSO19（上下文收敛与压测指标回退解析已完成）
+- 下一步：继续优化 Memory Digest 峰值（例如按类别限额、重复动作摘要折叠）
+- 最近更新：完成 LMSO19（Module History 大结果压缩，26 tick 真实压测 `llm_input_chars_max` 由 20550 降至 7462；压测脚本新增 Python 解析 report 回退，2026-02-09）
