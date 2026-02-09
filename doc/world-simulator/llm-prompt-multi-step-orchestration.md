@@ -89,6 +89,66 @@
     - `status`（ok/error/degraded）
   - `llm_prompt_section_trace`: `Vec<LlmPromptSectionTrace>`（段级裁剪和预算命中信息）
 
+
+## 上下文长度与记忆平衡策略（补充）
+
+### 设计原则
+- **预算先行**：先算可用输入预算，再决定注入多少观测/记忆，避免“先拼接再截断”。
+- **记忆不等于上下文**：`AgentMemory` 是候选池，Prompt 只注入“当前决策必需”的最小证据集。
+- **阶段化注入**：按 `plan/module_call/decision_draft/final_decision` 阶段动态分配上下文预算。
+- **可观测可调参**：每轮记录“候选数/入选数/裁剪比例/估算 token”，支持在线调参。
+
+### 预算模型
+- 定义：
+  - `context_window`：模型上下文窗口（来自 profile/model 配置）。
+  - `reserved_output_tokens`：为模型输出预留 token（按阶段动态设置）。
+  - `safety_margin_tokens`：安全边际（建议固定 10% 或最小 512）。
+  - `effective_input_budget = context_window - reserved_output_tokens - safety_margin_tokens`。
+- 预算分桶（默认 `balanced`）：
+  - `policy + output_schema`：硬保留，不参与裁剪。
+  - `observation_core`：硬保留（关键状态字段）。
+  - `memory_selected`：弹性区（可裁剪）。
+  - `module_history`：低优先级弹性区（优先裁剪）。
+  - `examples`：最低优先级（预算紧张时先移除）。
+
+### 记忆选择策略
+- 候选池：
+  - 短期记忆：最近 `N_st` 条（默认 12）。
+  - 长期记忆：检索 `N_lt` 条（默认 20，按 query 或重要度召回）。
+- 打分函数（建议）：
+  - `score = 0.45*relevance + 0.25*recency + 0.20*importance + 0.10*failure_bonus`。
+- 过滤与去重：
+  - 同类重复事件做语义归并（相同 action/reason 合并为摘要）。
+  - 相同 location/agent 的连续观测仅保留最新一条 + 统计摘要。
+- 打包策略：
+  - 先放高分短句摘要，再在有预算时补充原始条目。
+  - 默认目标：短期入选 `K_st=4`、长期入选 `K_lt=6`。
+
+### 分阶段预算分配（建议默认）
+- `StepPlan`：强调目标、观测核心、记忆摘要；不注入详细模块历史。
+- `StepModuleLoop`：仅注入当前模块请求所需最小上下文 + 最近 1~2 次模块结果。
+- `StepDecisionDraft`：强化动作约束、失败案例记忆、资源边界。
+- `StepFinalize`：仅保留决策 schema、关键证据、最终校验提示。
+
+### 裁剪顺序与降级策略
+1. 移除 `examples`。
+2. 压缩 `module_history`（保留最近 M 条）。
+3. 长期记忆从低分开始裁剪。
+4. 短期记忆从低分开始裁剪。
+5. 观测降维为核心字段（位置、资源、电力、热状态、可见目标）。
+6. 若仍超预算，切换 `compact` profile；再失败则降级 `Wait` 并记录 `degrade_reason=prompt_budget_exceeded`。
+
+### 可观测性与验收
+- 新增建议指标：
+  - `llm_prompt_estimated_tokens`、`llm_prompt_budget_used_ratio`
+  - `llm_memory_candidates_total`、`llm_memory_selected_total`
+  - `llm_prompt_truncation_count`、`llm_prompt_profile_switch_count`
+- 验收基线（建议）：
+  - 在固定场景下运行 1000 tick，不出现因超长上下文导致的连续解析失败风暴。
+  - 平均 `budget_used_ratio` 控制在 0.75~0.9。
+  - memory 注入条目中，高相关命中率（由诊断标签统计）高于 70%。
+
+
 ## 里程碑
 - M1：完成 Prompt 组装抽象（结构体、模板渲染、预算裁剪）与配置读取。
 - M2：完成多步状态机（plan/module/draft/finalize）与兼容分支。

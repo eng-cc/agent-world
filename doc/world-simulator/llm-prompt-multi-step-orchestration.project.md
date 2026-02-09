@@ -3,8 +3,11 @@
 ## 任务拆解
 - [x] LMSO1 输出设计文档（`doc/world-simulator/llm-prompt-multi-step-orchestration.md`）
 - [x] LMSO2 输出项目管理文档（本文件）
+- [x] LMSO2A 补充“上下文长度与记忆平衡”设计（预算模型/记忆打分/裁剪顺序）
 - [ ] LMSO3 抽象 Prompt 组装层（`PromptAssemblyInput/PromptSection/PromptAssemblyOutput`）
 - [ ] LMSO4 接入 Prompt 分段预算与历史裁剪（保留协议段，低优先级先裁剪）
+- [ ] LMSO4A 实现 PromptBudget 估算器（输入上限/输出预留/安全边际）
+- [ ] LMSO4B 实现 MemorySelector（候选打分/去重/Top-K 打包）
 - [ ] LMSO5 扩展配置模型与读取（`MAX_DECISION_STEPS/MAX_REPAIR_ROUNDS/PROMPT_MAX_HISTORY_ITEMS/PROMPT_PROFILE`）
 - [ ] LMSO6 实现多步状态机（`plan -> module_call* -> decision_draft -> final_decision`）
 - [ ] LMSO7 实现 repair 分支（解析失败后的格式修复轮次）
@@ -20,6 +23,6 @@
 - `doc/world-simulator/llm-prompt-system.md`
 
 ## 状态
-- 当前阶段：LMSO2（文档阶段完成）
+- 当前阶段：LMSO2A（文档补充完成）
 - 下一步：进入 LMSO3，先拆分 Prompt 组装层，解除硬编码拼接
-- 最近更新：完成“Prompt 组装重构 + 多步机制”设计与任务拆解（2026-02-09）
+- 最近更新：补充“上下文长度与记忆平衡”策略设计并细化预算/记忆任务（2026-02-09）
