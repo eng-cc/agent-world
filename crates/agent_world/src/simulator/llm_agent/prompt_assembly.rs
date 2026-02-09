@@ -161,7 +161,12 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::Tools,
                 priority: PromptSectionPriority::High,
-                content: "[Tool Protocol]\n- 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}\n- 可用模块由 `agent.modules.list` 返回；禁止虚构模块\n- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策。\n- 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件）。\n- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。".to_string(),
+                content: "[Tool Protocol]
+- 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}
+- 可用模块由 `agent.modules.list` 返回；禁止虚构模块
+- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策。
+- 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）。
+- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。".to_string(),
             },
             true,
         ));
@@ -216,7 +221,19 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::OutputSchema,
                 priority: PromptSectionPriority::High,
-                content: "[Decision JSON Schema]\n{\"decision\":\"wait\"}\n{\"decision\":\"wait_ticks\",\"ticks\":<u64>}\n{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}\n{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}\n{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"<event_name>\"},\"max_ticks\":<u64>}\n{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event_any_of\":[\"action_rejected\",\"new_visible_agent\"]},\"max_ticks\":<u64>}\n- event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target\n\n若你需要查询信息，请输出模块调用 JSON：\n{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}".to_string(),
+                content: "[Decision JSON Schema]
+{\"decision\":\"wait\"}
+{\"decision\":\"wait_ticks\",\"ticks\":<u64>}
+{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}
+{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}
+{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"<event_name>\"},\"max_ticks\":<u64>}
+{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event_any_of\":[\"action_rejected\",\"new_visible_agent\"]},\"max_ticks\":<u64>}
+{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"harvest_available_below\",\"value_lte\":<i64>},\"max_ticks\":<u64>}
+- event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target, insufficient_electricity, thermal_overload, harvest_yield_below, harvest_available_below
+- 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
+
+若你需要查询信息，请输出模块调用 JSON：
+{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}".to_string(),
             },
             true,
         ));

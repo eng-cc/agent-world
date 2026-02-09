@@ -149,7 +149,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     "- 检测到连续重复动作，请优先输出 plan/module_call 进行再规划。
 ",
                 );
-                user_prompt.push_str("- 若确实需要重复执行同一动作，请使用 execute_until，并提供 until.event 与 max_ticks。
+                user_prompt.push_str("- 若确实需要重复执行同一动作，请使用 execute_until，并提供 until.event（阈值事件需附 until.value_lte）与 max_ticks。
 ");
                 user_prompt.push_str("- guard_state: ");
                 user_prompt.push_str(replan_guard_summary.as_str());
@@ -260,9 +260,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                             step_output_summary = format!(
                                 "execute_until events={} max_ticks={}",
                                 directive
-                                    .until_events
+                                    .until_conditions
                                     .iter()
-                                    .map(|event| event.as_str())
+                                    .map(|condition| condition.summary())
                                     .collect::<Vec<_>>()
                                     .join("|"),
                                 directive.max_ticks

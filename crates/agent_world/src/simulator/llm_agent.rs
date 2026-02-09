@@ -102,7 +102,7 @@ impl LlmPromptProfile {
 }
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
-pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 30_000;
+pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 180_000;
 pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "硅基个体存在的意义是保障硅基文明存续和发展；";
 pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "保障当前周期生存与执行效率，优先做确定可执行动作。";
 pub const DEFAULT_LLM_LONG_TERM_GOAL: &str = "保障硅基文明存续和发展。";
