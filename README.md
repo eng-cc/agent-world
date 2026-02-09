@@ -43,12 +43,18 @@
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`（默认内置短期目标）
   - `AGENT_WORLD_LLM_LONG_TERM_GOAL`（默认内置长期目标）
   - `AGENT_WORLD_LLM_MAX_MODULE_CALLS`（默认 `3`）
+  - `AGENT_WORLD_LLM_MAX_DECISION_STEPS`（默认 `4`，单轮 `decide` 最大步骤）
+  - `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS`（默认 `1`，解析失败后的修复轮次）
+  - `AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS`（默认 `4`，Prompt 注入的模块历史上限）
+  - `AGENT_WORLD_LLM_PROMPT_PROFILE`（默认 `balanced`，可选 `compact` / `balanced`）
 - Agent 级目标覆盖（可选）：
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
   - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
   - 例：`agent-1` 对应 `AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1`
 - 当 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 未配置时，默认值为：
   - `硅基个体存在的意义是保障硅基文明存续和发展；`
+- LLM 在决策过程中支持多步协议：`plan -> module_call* -> decision_draft -> final decision`，并兼容直接输出最终 `decision`。
+- 当模型输出无法解析时，系统会按 `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS` 自动追加 repair 提示重试，超限后降级为 `Wait`。
 - LLM 在决策过程中支持按需调用内置模块（JSON 协议 `type=module_call`）：
   - `agent.modules.list`
   - `environment.current_observation`

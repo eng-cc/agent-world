@@ -84,6 +84,8 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
         }),
         llm_effect_intents: Vec::new(),
         llm_effect_receipts: Vec::new(),
+        llm_step_trace: Vec::new(),
+        llm_prompt_section_trace: Vec::new(),
     }];
 
     app.world_mut().insert_resource(ViewerState {

@@ -144,6 +144,8 @@ impl AgentBehavior for TraceEffectAgent {
                 }),
                 cost_cents: None,
             }],
+            llm_step_trace: vec![],
+            llm_prompt_section_trace: vec![],
         })
     }
 }

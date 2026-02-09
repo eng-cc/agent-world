@@ -958,6 +958,8 @@ mod tests {
                 llm_diagnostics: None,
                 llm_effect_intents: Vec::new(),
                 llm_effect_receipts: Vec::new(),
+                llm_step_trace: Vec::new(),
+                llm_prompt_section_trace: Vec::new(),
             },
             AgentDecisionTrace {
                 agent_id: "agent-2".to_string(),
@@ -970,6 +972,8 @@ mod tests {
                 llm_diagnostics: None,
                 llm_effect_intents: Vec::new(),
                 llm_effect_receipts: Vec::new(),
+                llm_step_trace: Vec::new(),
+                llm_prompt_section_trace: Vec::new(),
             },
         ];
 

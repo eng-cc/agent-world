@@ -11,18 +11,29 @@ use std::time::{Duration, Instant};
 
 use super::agent::{
     ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
-    LlmEffectIntentTrace, LlmEffectReceiptTrace,
+    LlmEffectIntentTrace, LlmEffectReceiptTrace, LlmPromptSectionTrace, LlmStepTrace,
 };
 use super::kernel::Observation;
 use super::kernel::WorldEvent;
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
-use super::types::Action;
 
+mod config_helpers;
+mod decision_flow;
+mod memory_selector;
 mod prompt_assembly;
 
+pub use memory_selector::{MemorySelector, MemorySelectorConfig};
 pub use prompt_assembly::{
     PromptAssembler, PromptAssemblyInput, PromptAssemblyOutput, PromptBudget, PromptStepContext,
 };
+
+use decision_flow::{
+    parse_limit_arg, parse_llm_turn_response, prompt_section_kind_name,
+    prompt_section_priority_name, serialize_decision_for_prompt, summarize_trace_text,
+    DecisionPhase, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
+};
+
+use config_helpers::{goal_value, parse_positive_usize, required_env, toml_value_to_string};
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
 pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
@@ -32,6 +43,56 @@ pub const ENV_LLM_SYSTEM_PROMPT: &str = "AGENT_WORLD_LLM_SYSTEM_PROMPT";
 pub const ENV_LLM_SHORT_TERM_GOAL: &str = "AGENT_WORLD_LLM_SHORT_TERM_GOAL";
 pub const ENV_LLM_LONG_TERM_GOAL: &str = "AGENT_WORLD_LLM_LONG_TERM_GOAL";
 pub const ENV_LLM_MAX_MODULE_CALLS: &str = "AGENT_WORLD_LLM_MAX_MODULE_CALLS";
+pub const ENV_LLM_MAX_DECISION_STEPS: &str = "AGENT_WORLD_LLM_MAX_DECISION_STEPS";
+pub const ENV_LLM_MAX_REPAIR_ROUNDS: &str = "AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS";
+pub const ENV_LLM_PROMPT_MAX_HISTORY_ITEMS: &str = "AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS";
+pub const ENV_LLM_PROMPT_PROFILE: &str = "AGENT_WORLD_LLM_PROMPT_PROFILE";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LlmPromptProfile {
+    Compact,
+    Balanced,
+}
+
+impl LlmPromptProfile {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "compact" => Some(Self::Compact),
+            "balanced" => Some(Self::Balanced),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Compact => "compact",
+            Self::Balanced => "balanced",
+        }
+    }
+
+    pub fn prompt_budget(self) -> PromptBudget {
+        match self {
+            Self::Compact => PromptBudget {
+                context_window_tokens: 4_096,
+                reserved_output_tokens: 768,
+                safety_margin_tokens: 384,
+            },
+            Self::Balanced => PromptBudget::default(),
+        }
+    }
+
+    pub fn memory_selector_config(self) -> MemorySelectorConfig {
+        match self {
+            Self::Compact => MemorySelectorConfig {
+                short_term_candidate_limit: 8,
+                long_term_candidate_limit: 12,
+                short_term_top_k: 3,
+                long_term_top_k: 4,
+            },
+            Self::Balanced => MemorySelectorConfig::default(),
+        }
+    }
+}
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 30_000;
@@ -39,6 +100,10 @@ pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "硅基个体存在的意义是保�
 pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "保障当前周期生存与执行效率，优先做确定可执行动作。";
 pub const DEFAULT_LLM_LONG_TERM_GOAL: &str = "保障硅基文明存续和发展。";
 pub const DEFAULT_LLM_MAX_MODULE_CALLS: usize = 3;
+pub const DEFAULT_LLM_MAX_DECISION_STEPS: usize = 4;
+pub const DEFAULT_LLM_MAX_REPAIR_ROUNDS: usize = 1;
+pub const DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS: usize = 4;
+pub const DEFAULT_LLM_PROMPT_PROFILE: LlmPromptProfile = LlmPromptProfile::Balanced;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -56,6 +121,10 @@ pub struct LlmAgentConfig {
     pub short_term_goal: String,
     pub long_term_goal: String,
     pub max_module_calls: usize,
+    pub max_decision_steps: usize,
+    pub max_repair_rounds: usize,
+    pub prompt_max_history_items: usize,
+    pub prompt_profile: LlmPromptProfile,
 }
 
 impl LlmAgentConfig {
@@ -131,13 +200,34 @@ impl LlmAgentConfig {
             .unwrap_or_else(|| DEFAULT_LLM_SHORT_TERM_GOAL.to_string());
         let long_term_goal = goal_value(&mut getter, ENV_LLM_LONG_TERM_GOAL, agent_id)
             .unwrap_or_else(|| DEFAULT_LLM_LONG_TERM_GOAL.to_string());
-        let max_module_calls = match getter(ENV_LLM_MAX_MODULE_CALLS) {
-            Some(value) => value
-                .parse::<usize>()
-                .ok()
-                .filter(|value| *value > 0)
-                .ok_or(LlmConfigError::InvalidMaxModuleCalls { value })?,
-            None => DEFAULT_LLM_MAX_MODULE_CALLS,
+        let max_module_calls = parse_positive_usize(
+            &mut getter,
+            ENV_LLM_MAX_MODULE_CALLS,
+            DEFAULT_LLM_MAX_MODULE_CALLS,
+            |value| LlmConfigError::InvalidMaxModuleCalls { value },
+        )?;
+        let max_decision_steps = parse_positive_usize(
+            &mut getter,
+            ENV_LLM_MAX_DECISION_STEPS,
+            DEFAULT_LLM_MAX_DECISION_STEPS,
+            |value| LlmConfigError::InvalidMaxDecisionSteps { value },
+        )?;
+        let max_repair_rounds = parse_positive_usize(
+            &mut getter,
+            ENV_LLM_MAX_REPAIR_ROUNDS,
+            DEFAULT_LLM_MAX_REPAIR_ROUNDS,
+            |value| LlmConfigError::InvalidMaxRepairRounds { value },
+        )?;
+        let prompt_max_history_items = parse_positive_usize(
+            &mut getter,
+            ENV_LLM_PROMPT_MAX_HISTORY_ITEMS,
+            DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS,
+            |value| LlmConfigError::InvalidPromptMaxHistoryItems { value },
+        )?;
+        let prompt_profile = match getter(ENV_LLM_PROMPT_PROFILE) {
+            Some(value) => LlmPromptProfile::parse(value.as_str())
+                .ok_or(LlmConfigError::InvalidPromptProfile { value })?,
+            None => DEFAULT_LLM_PROMPT_PROFILE,
         };
 
         Ok(Self {
@@ -149,72 +239,20 @@ impl LlmAgentConfig {
             short_term_goal,
             long_term_goal,
             max_module_calls,
+            max_decision_steps,
+            max_repair_rounds,
+            prompt_max_history_items,
+            prompt_profile,
         })
     }
-}
 
-fn goal_value<F>(getter: &mut F, key: &str, agent_id: &str) -> Option<String>
-where
-    F: FnMut(&str) -> Option<String>,
-{
-    agent_scoped_goal_key(key, agent_id)
-        .as_deref()
-        .and_then(|agent_key| getter(agent_key))
-        .or_else(|| getter(key))
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
-fn agent_scoped_goal_key(key: &str, agent_id: &str) -> Option<String> {
-    let normalized = normalize_agent_id_for_env(agent_id)?;
-    Some(format!("{key}_{normalized}"))
-}
-
-fn normalize_agent_id_for_env(agent_id: &str) -> Option<String> {
-    let trimmed = agent_id.trim();
-    if trimmed.is_empty() {
-        return None;
+    fn prompt_budget(&self) -> PromptBudget {
+        self.prompt_profile.prompt_budget()
     }
 
-    let mut normalized = String::with_capacity(trimmed.len());
-    let mut last_is_underscore = false;
-    for ch in trimmed.chars() {
-        if ch.is_ascii_alphanumeric() {
-            normalized.push(ch.to_ascii_uppercase());
-            last_is_underscore = false;
-        } else if !last_is_underscore {
-            normalized.push('_');
-            last_is_underscore = true;
-        }
+    fn memory_selector_config(&self) -> MemorySelectorConfig {
+        self.prompt_profile.memory_selector_config()
     }
-
-    let normalized = normalized.trim_matches('_').to_string();
-    if normalized.is_empty() {
-        None
-    } else {
-        Some(normalized)
-    }
-}
-
-fn toml_value_to_string(value: &toml::Value) -> Option<String> {
-    match value {
-        toml::Value::String(value) => Some(value.clone()),
-        toml::Value::Integer(value) => Some(value.to_string()),
-        toml::Value::Float(value) => Some(value.to_string()),
-        toml::Value::Boolean(value) => Some(value.to_string()),
-        _ => None,
-    }
-}
-
-fn required_env<F>(getter: &mut F, key: &'static str) -> Result<String, LlmConfigError>
-where
-    F: FnMut(&str) -> Option<String>,
-{
-    let value = getter(key).ok_or(LlmConfigError::MissingEnv { key })?;
-    if value.trim().is_empty() {
-        return Err(LlmConfigError::EmptyEnv { key });
-    }
-    Ok(value)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +261,10 @@ pub enum LlmConfigError {
     EmptyEnv { key: &'static str },
     InvalidTimeout { value: String },
     InvalidMaxModuleCalls { value: String },
+    InvalidMaxDecisionSteps { value: String },
+    InvalidMaxRepairRounds { value: String },
+    InvalidPromptMaxHistoryItems { value: String },
+    InvalidPromptProfile { value: String },
     ReadConfigFile { path: String, message: String },
     ParseConfigFile { path: String, message: String },
 }
@@ -237,6 +279,18 @@ impl fmt::Display for LlmConfigError {
             }
             LlmConfigError::InvalidMaxModuleCalls { value } => {
                 write!(f, "invalid max module calls value: {value}")
+            }
+            LlmConfigError::InvalidMaxDecisionSteps { value } => {
+                write!(f, "invalid max decision steps value: {value}")
+            }
+            LlmConfigError::InvalidMaxRepairRounds { value } => {
+                write!(f, "invalid max repair rounds value: {value}")
+            }
+            LlmConfigError::InvalidPromptMaxHistoryItems { value } => {
+                write!(f, "invalid prompt max history items value: {value}")
+            }
+            LlmConfigError::InvalidPromptProfile { value } => {
+                write!(f, "invalid prompt profile value: {value}")
             }
             LlmConfigError::ReadConfigFile { path, message } => {
                 write!(f, "read config file failed ({path}): {message}")
@@ -543,7 +597,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         }
     }
 
+    #[cfg(test)]
     fn system_prompt(&self) -> String {
+        let prompt_budget = self.config.prompt_budget();
         let prompt: PromptAssemblyOutput = PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
             base_system_prompt: self.config.system_prompt.as_str(),
@@ -553,11 +609,12 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             module_history_json: "[]",
             memory_digest: None,
             step_context: PromptStepContext::default(),
-            prompt_budget: PromptBudget::default(),
+            prompt_budget,
         });
         prompt.system_prompt
     }
 
+    #[cfg(test)]
     fn user_prompt(
         &self,
         observation: &Observation,
@@ -565,28 +622,45 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         step_index: usize,
         max_steps: usize,
     ) -> String {
+        self.assemble_prompt_output(observation, module_history, step_index, max_steps)
+            .user_prompt
+    }
+
+    fn assemble_prompt_output(
+        &self,
+        observation: &Observation,
+        module_history: &[ModuleCallExchange],
+        step_index: usize,
+        max_steps: usize,
+    ) -> PromptAssemblyOutput {
         let observation_json = serde_json::to_string(observation)
             .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string());
+        let history_start = module_history
+            .len()
+            .saturating_sub(self.config.prompt_max_history_items);
+        let history_slice = &module_history[history_start..];
         let history_json =
-            serde_json::to_string(module_history).unwrap_or_else(|_| "[]".to_string());
-        let memory_digest = self.memory.context_summary(6);
-        let prompt: PromptAssemblyOutput = PromptAssembler::assemble(PromptAssemblyInput {
+            serde_json::to_string(history_slice).unwrap_or_else(|_| "[]".to_string());
+        let memory_selector_config = self.config.memory_selector_config();
+        let memory_selection =
+            MemorySelector::select(&self.memory, observation.time, &memory_selector_config);
+        let prompt_budget = self.config.prompt_budget();
+        PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
             base_system_prompt: self.config.system_prompt.as_str(),
             short_term_goal: self.config.short_term_goal.as_str(),
             long_term_goal: self.config.long_term_goal.as_str(),
             observation_json: observation_json.as_str(),
             module_history_json: history_json.as_str(),
-            memory_digest: Some(memory_digest.as_str()),
+            memory_digest: Some(memory_selection.digest.as_str()),
             step_context: PromptStepContext {
                 step_index,
                 max_steps,
                 module_calls_used: module_history.len(),
                 module_calls_max: self.config.max_module_calls,
             },
-            prompt_budget: PromptBudget::default(),
-        });
-        prompt.user_prompt
+            prompt_budget,
+        })
     }
 
     fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
@@ -724,6 +798,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut llm_effect_receipts = Vec::new();
         let mut trace_inputs = Vec::new();
         let mut trace_outputs = Vec::new();
+        let mut llm_step_trace = Vec::new();
+        let mut llm_prompt_section_trace = Vec::new();
 
         let mut model = Some(self.config.model.clone());
         let mut latency_total_ms = 0_u64;
@@ -735,16 +811,61 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut has_total_tokens = false;
 
         let mut resolved = false;
-        let max_turns = self.config.max_module_calls.saturating_add(1);
+        let max_turns = self.config.max_decision_steps.max(1);
+        let mut phase = DecisionPhase::Plan;
+        let mut pending_draft: Option<AgentDecision> = None;
+        let mut repair_rounds_used = 0_u32;
+        let mut repair_context: Option<String> = None;
 
         for turn in 0..max_turns {
-            let system_prompt = self.system_prompt();
-            let user_prompt = self.user_prompt(observation, &module_history, turn, max_turns);
+            let active_phase = phase;
+            let is_repair_turn = repair_context.is_some();
+            let step_type = if is_repair_turn {
+                "repair"
+            } else {
+                active_phase.step_type()
+            };
+
+            let prompt_output =
+                self.assemble_prompt_output(observation, &module_history, turn, max_turns);
+            llm_prompt_section_trace.extend(prompt_output.section_trace.iter().map(|section| {
+                LlmPromptSectionTrace {
+                    step_index: turn,
+                    kind: prompt_section_kind_name(section.kind).to_string(),
+                    priority: prompt_section_priority_name(section.priority).to_string(),
+                    included: section.included,
+                    estimated_tokens: section.estimated_tokens,
+                    emitted_tokens: section.emitted_tokens,
+                }
+            }));
+
+            let mut user_prompt = prompt_output.user_prompt.clone();
+            user_prompt.push_str("\n\n[Step Orchestration]\n");
+            user_prompt.push_str(active_phase.prompt_instruction());
+            if let Some(draft) = pending_draft.as_ref() {
+                let draft_json = serialize_decision_for_prompt(draft);
+                user_prompt.push_str("\n- 已有 decision_draft，可直接输出最终 decision：");
+                user_prompt.push_str(draft_json.as_str());
+            }
+            if let Some(repair_reason) = repair_context.as_ref() {
+                user_prompt.push_str("\n\n[Repair]\n");
+                user_prompt.push_str("上一轮输出解析失败，请修复为合法 JSON：");
+                user_prompt.push_str(repair_reason.as_str());
+            }
+
             let request = LlmCompletionRequest {
                 model: self.config.model.clone(),
-                system_prompt,
+                system_prompt: prompt_output.system_prompt.clone(),
                 user_prompt,
             };
+            let input_summary = format!(
+                "phase={step_type}; module_calls={}/{}; repair_rounds={}/{}; prompt_profile={}",
+                module_history.len(),
+                self.config.max_module_calls,
+                repair_rounds_used,
+                self.config.max_repair_rounds,
+                self.config.prompt_profile.as_str(),
+            );
             trace_inputs.push(Self::trace_input(
                 request.system_prompt.as_str(),
                 request.user_prompt.as_str(),
@@ -774,6 +895,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
                     trace_outputs.push(completion.output.clone());
 
+                    let mut step_status = "ok".to_string();
+                    let mut step_output_summary =
+                        summarize_trace_text(completion.output.as_str(), 220);
+
                     match parse_llm_turn_response(
                         completion.output.as_str(),
                         self.agent_id.as_str(),
@@ -781,73 +906,152 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
                             decision = parsed_decision;
                             parse_error = decision_parse_error;
+                            pending_draft = None;
+                            repair_context = None;
+                            phase = DecisionPhase::Finalize;
                             resolved = true;
-                            break;
+                        }
+                        ParsedLlmTurn::Plan(plan) => {
+                            repair_context = None;
+                            let wants_module_call = plan
+                                .next
+                                .as_deref()
+                                .is_some_and(|next| next.eq_ignore_ascii_case("module_call"));
+                            phase = if wants_module_call || !plan.missing.is_empty() {
+                                DecisionPhase::ModuleLoop
+                            } else {
+                                DecisionPhase::DecisionDraft
+                            };
+
+                            let missing_summary = if plan.missing.is_empty() {
+                                "-".to_string()
+                            } else {
+                                plan.missing.join(",")
+                            };
+                            let next_summary = plan.next.unwrap_or_else(|| "-".to_string());
+                            step_output_summary =
+                                format!("plan missing={missing_summary}; next={next_summary}");
                         }
                         ParsedLlmTurn::ModuleCall(module_request) => {
+                            repair_context = None;
                             if module_history.len() >= self.config.max_module_calls {
                                 parse_error = Some(format!(
                                     "module call limit exceeded: max_module_calls={}",
                                     self.config.max_module_calls
                                 ));
                                 resolved = true;
-                                break;
-                            }
-
-                            let intent_id = self.next_prompt_intent_id();
-                            let intent = LlmEffectIntentTrace {
-                                intent_id: intent_id.clone(),
-                                kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
-                                params: serde_json::json!({
-                                    "module": module_request.module,
-                                    "args": module_request.args,
-                                }),
-                                cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
-                                origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
-                            };
-                            let module_result =
-                                self.run_prompt_module(&module_request, observation);
-                            let status = if module_result
-                                .get("ok")
-                                .and_then(|value| value.as_bool())
-                                .unwrap_or(false)
-                            {
-                                "ok"
+                                step_status = "degraded".to_string();
+                                step_output_summary = "module call limit exceeded".to_string();
                             } else {
-                                "error"
-                            };
-                            let receipt = LlmEffectReceiptTrace {
-                                intent_id: intent.intent_id.clone(),
-                                status: status.to_string(),
-                                payload: module_result.clone(),
-                                cost_cents: None,
-                            };
+                                let module_name = module_request.module.clone();
+                                let intent_id = self.next_prompt_intent_id();
+                                let intent = LlmEffectIntentTrace {
+                                    intent_id: intent_id.clone(),
+                                    kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
+                                    params: serde_json::json!({
+                                        "module": module_request.module,
+                                        "args": module_request.args,
+                                    }),
+                                    cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
+                                    origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
+                                };
+                                let module_result =
+                                    self.run_prompt_module(&module_request, observation);
+                                let status_label = if module_result
+                                    .get("ok")
+                                    .and_then(|value| value.as_bool())
+                                    .unwrap_or(false)
+                                {
+                                    "ok"
+                                } else {
+                                    "error"
+                                };
+                                let receipt = LlmEffectReceiptTrace {
+                                    intent_id: intent.intent_id.clone(),
+                                    status: status_label.to_string(),
+                                    payload: module_result.clone(),
+                                    cost_cents: None,
+                                };
 
-                            llm_effect_intents.push(intent);
-                            llm_effect_receipts.push(receipt);
-                            trace_inputs.push(format!(
-                                "[module_result:{}]\n{}",
-                                module_request.module,
-                                serde_json::to_string(&module_result)
-                                    .unwrap_or_else(|_| "{}".to_string())
-                            ));
-                            module_history.push(ModuleCallExchange {
-                                module: module_request.module,
-                                args: module_request.args,
-                                result: module_result,
-                            });
+                                llm_effect_intents.push(intent);
+                                llm_effect_receipts.push(receipt);
+                                trace_inputs.push(format!(
+                                    "[module_result:{}]
+{}",
+                                    module_name,
+                                    serde_json::to_string(&module_result)
+                                        .unwrap_or_else(|_| "{}".to_string())
+                                ));
+                                module_history.push(ModuleCallExchange {
+                                    module: module_request.module,
+                                    args: module_request.args,
+                                    result: module_result,
+                                });
+
+                                phase = if module_history.len() >= self.config.max_module_calls {
+                                    DecisionPhase::DecisionDraft
+                                } else {
+                                    DecisionPhase::ModuleLoop
+                                };
+                                step_output_summary =
+                                    format!("module_call {module_name} status={status_label}");
+                            }
+                        }
+                        ParsedLlmTurn::DecisionDraft(draft) => {
+                            let confidence = draft.confidence;
+                            let need_verify = draft.need_verify;
+                            pending_draft = Some(draft.decision);
+                            repair_context = None;
+                            phase = if need_verify
+                                && module_history.len() < self.config.max_module_calls
+                            {
+                                DecisionPhase::ModuleLoop
+                            } else {
+                                DecisionPhase::Finalize
+                            };
+                            step_output_summary = format!(
+                                "decision_draft confidence={:?}; need_verify={}",
+                                confidence, need_verify
+                            );
                         }
                         ParsedLlmTurn::Invalid(err) => {
-                            parse_error = Some(err);
-                            resolved = true;
-                            break;
+                            step_status = "error".to_string();
+                            step_output_summary =
+                                format!("parse_error: {}", summarize_trace_text(err.as_str(), 180));
+                            if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                repair_context = Some(err);
+                            } else {
+                                parse_error = Some(err);
+                                resolved = true;
+                                step_status = "degraded".to_string();
+                            }
                         }
+                    }
+
+                    llm_step_trace.push(LlmStepTrace {
+                        step_index: turn,
+                        step_type: step_type.to_string(),
+                        input_summary: input_summary.clone(),
+                        output_summary: step_output_summary,
+                        status: step_status,
+                    });
+
+                    if resolved {
+                        break;
                     }
                 }
                 Err(err) => {
                     llm_error = Some(err.to_string());
                     latency_total_ms = latency_total_ms
                         .saturating_add(request_started_at.elapsed().as_millis() as u64);
+                    llm_step_trace.push(LlmStepTrace {
+                        step_index: turn,
+                        step_type: step_type.to_string(),
+                        input_summary,
+                        output_summary: summarize_trace_text(err.to_string().as_str(), 220),
+                        status: "degraded".to_string(),
+                    });
                     resolved = true;
                     break;
                 }
@@ -855,7 +1059,15 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         }
 
         if !resolved {
-            parse_error = Some(format!("no terminal decision after {} turn(s)", max_turns));
+            if let Some(draft_decision) = pending_draft.take() {
+                decision = draft_decision;
+                parse_error = Some(format!(
+                    "no terminal decision after {} turn(s); fallback to decision_draft",
+                    max_turns
+                ));
+            } else {
+                parse_error = Some(format!("no terminal decision after {} turn(s)", max_turns));
+            }
         }
 
         self.memory
@@ -875,10 +1087,12 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 prompt_tokens: has_prompt_tokens.then_some(prompt_tokens_total),
                 completion_tokens: has_completion_tokens.then_some(completion_tokens_total),
                 total_tokens: has_total_tokens.then_some(total_tokens_total),
-                retry_count: 0,
+                retry_count: repair_rounds_used,
             }),
             llm_effect_intents,
             llm_effect_receipts,
+            llm_step_trace,
+            llm_prompt_section_trace,
         });
 
         decision
@@ -911,20 +1125,6 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     }
 }
 
-fn parse_limit_arg(value: Option<&serde_json::Value>, default: usize, max: usize) -> usize {
-    value
-        .and_then(|value| value.as_u64())
-        .map(|value| value.clamp(1, max as u64) as usize)
-        .unwrap_or(default)
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ModuleCallExchange {
-    module: String,
-    args: serde_json::Value,
-    result: serde_json::Value,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LlmAgentBuildError {
     Config(LlmConfigError),
@@ -941,123 +1141,6 @@ impl fmt::Display for LlmAgentBuildError {
 }
 
 impl Error for LlmAgentBuildError {}
-
-#[derive(Debug, Deserialize)]
-struct LlmDecisionPayload {
-    decision: String,
-    ticks: Option<u64>,
-    to: Option<String>,
-    max_amount: Option<i64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct LlmModuleCallRequest {
-    module: String,
-    #[serde(default)]
-    args: serde_json::Value,
-}
-
-#[derive(Debug)]
-enum ParsedLlmTurn {
-    Decision(AgentDecision, Option<String>),
-    ModuleCall(LlmModuleCallRequest),
-    Invalid(String),
-}
-
-fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlmTurn {
-    let json = extract_json_block(output).unwrap_or(output);
-    let value: serde_json::Value = match serde_json::from_str(json) {
-        Ok(value) => value,
-        Err(err) => {
-            return ParsedLlmTurn::Invalid(format!("json parse failed: {err}"));
-        }
-    };
-
-    if value
-        .get("type")
-        .and_then(|value| value.as_str())
-        .is_some_and(|type_name| type_name.eq_ignore_ascii_case("module_call"))
-    {
-        return match serde_json::from_value::<LlmModuleCallRequest>(value) {
-            Ok(request) => {
-                if request.module.trim().is_empty() {
-                    ParsedLlmTurn::Invalid("module_call missing `module`".to_string())
-                } else {
-                    ParsedLlmTurn::ModuleCall(request)
-                }
-            }
-            Err(err) => ParsedLlmTurn::Invalid(format!("module_call parse failed: {err}")),
-        };
-    }
-
-    let (decision, parse_error) = parse_llm_decision_with_error(json, agent_id);
-    if let Some(err) = parse_error {
-        ParsedLlmTurn::Invalid(err)
-    } else {
-        ParsedLlmTurn::Decision(decision, None)
-    }
-}
-
-fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
-    let json = extract_json_block(output).unwrap_or(output);
-    let parsed = match serde_json::from_str::<LlmDecisionPayload>(json) {
-        Ok(value) => value,
-        Err(err) => {
-            return (
-                AgentDecision::Wait,
-                Some(format!("json parse failed: {err}")),
-            )
-        }
-    };
-
-    let decision = match parsed.decision.trim().to_ascii_lowercase().as_str() {
-        "wait" => AgentDecision::Wait,
-        "wait_ticks" => AgentDecision::WaitTicks(parsed.ticks.unwrap_or(1).max(1)),
-        "move_agent" => {
-            let to = parsed.to.unwrap_or_default();
-            if to.trim().is_empty() {
-                return (
-                    AgentDecision::Wait,
-                    Some("move_agent missing `to`".to_string()),
-                );
-            }
-            AgentDecision::Act(Action::MoveAgent {
-                agent_id: agent_id.to_string(),
-                to,
-            })
-        }
-        "harvest_radiation" => {
-            let max_amount = parsed.max_amount.unwrap_or(1);
-            if max_amount <= 0 {
-                return (
-                    AgentDecision::Wait,
-                    Some("harvest_radiation requires positive max_amount".to_string()),
-                );
-            }
-            AgentDecision::Act(Action::HarvestRadiation {
-                agent_id: agent_id.to_string(),
-                max_amount,
-            })
-        }
-        other => {
-            return (
-                AgentDecision::Wait,
-                Some(format!("unsupported decision: {other}")),
-            )
-        }
-    };
-
-    (decision, None)
-}
-
-fn extract_json_block(raw: &str) -> Option<&str> {
-    let start = raw.find('{')?;
-    let end = raw.rfind('}')?;
-    if end < start {
-        return None;
-    }
-    raw.get(start..=end)
-}
 
 #[cfg(test)]
 mod tests;

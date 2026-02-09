@@ -92,6 +92,10 @@ pub struct AgentDecisionTrace {
     pub llm_effect_intents: Vec<LlmEffectIntentTrace>,
     #[serde(default)]
     pub llm_effect_receipts: Vec<LlmEffectReceiptTrace>,
+    #[serde(default)]
+    pub llm_step_trace: Vec<LlmStepTrace>,
+    #[serde(default)]
+    pub llm_prompt_section_trace: Vec<LlmPromptSectionTrace>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -109,6 +113,25 @@ pub struct LlmEffectReceiptTrace {
     pub status: String,
     pub payload: JsonValue,
     pub cost_cents: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LlmStepTrace {
+    pub step_index: usize,
+    pub step_type: String,
+    pub input_summary: String,
+    pub output_summary: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LlmPromptSectionTrace {
+    pub step_index: usize,
+    pub kind: String,
+    pub priority: String,
+    pub included: bool,
+    pub estimated_tokens: usize,
+    pub emitted_tokens: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
