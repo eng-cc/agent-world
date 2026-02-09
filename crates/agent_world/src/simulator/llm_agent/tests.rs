@@ -733,6 +733,72 @@ fn llm_agent_supports_module_call_then_decision() {
 }
 
 #[test]
+fn llm_agent_consumes_multi_json_output_in_single_turn() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"type":"module_call","module":"agent.modules.list","args":{}}
+
+---
+
+{"decision":"move_agent","to":"loc-2"}"#
+                .to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let decision = behavior.decide(&make_observation());
+    assert!(matches!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace.parse_error.is_none());
+    assert_eq!(trace.llm_effect_intents.len(), 1);
+    assert_eq!(trace.llm_effect_receipts.len(), 1);
+}
+
+#[test]
+fn llm_agent_skips_extra_module_calls_and_consumes_later_terminal_decision() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"type":"module_call","module":"agent.modules.list","args":{}}
+
+---
+
+{"type":"module_call","module":"environment.current_observation","args":{}}
+
+---
+
+{"type":"module_call","module":"agent.modules.list","args":{}}
+
+---
+
+{"decision":"wait"}"#
+                .to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+
+    let mut config = base_config();
+    config.max_module_calls = 2;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace.parse_error.is_none());
+    assert_eq!(trace.llm_effect_intents.len(), 2);
+    assert_eq!(trace.llm_effect_receipts.len(), 2);
+}
+
+#[test]
 fn llm_agent_supports_plan_module_draft_finalize_flow() {
     let client = SequenceMockClient::new(vec![
         r#"{"type":"plan","missing":["memory"],"next":"module_call"}"#.to_string(),
@@ -861,8 +927,8 @@ fn llm_agent_limits_module_call_rounds() {
     assert_eq!(decision, AgentDecision::Wait);
 
     let trace = behavior.take_decision_trace().expect("trace exists");
-    let parse_error = trace.parse_error.unwrap_or_default();
-    assert!(parse_error.contains("module call limit exceeded"));
+    assert_eq!(trace.llm_effect_intents.len(), 1);
+    assert_eq!(trace.llm_effect_receipts.len(), 1);
 }
 
 #[test]
@@ -1306,6 +1372,36 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(system_prompt.contains("exploration_bias"));
     assert!(system_prompt.contains("execute_until"));
     assert!(user_prompt.contains("execute_until"));
+}
+
+#[test]
+fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
+    let parsed = super::decision_flow::parse_llm_turn_responses(
+        r#"{"type":"module_call","module":"agent.modules.list","args":{}}
+
+---
+
+{"type":"decision_draft","decision":{"decision":"wait"},"need_verify":false}
+
+---
+
+{"decision":"wait"}"#,
+        "agent-1",
+    );
+
+    assert_eq!(parsed.len(), 3);
+    assert!(matches!(
+        parsed[0],
+        super::decision_flow::ParsedLlmTurn::ModuleCall(_)
+    ));
+    assert!(matches!(
+        parsed[1],
+        super::decision_flow::ParsedLlmTurn::DecisionDraft(_)
+    ));
+    assert!(matches!(
+        parsed[2],
+        super::decision_flow::ParsedLlmTurn::Decision(AgentDecision::Wait, _)
+    ));
 }
 
 #[test]

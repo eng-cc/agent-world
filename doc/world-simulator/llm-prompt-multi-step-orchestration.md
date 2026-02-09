@@ -221,6 +221,21 @@
 - 压测脚本补强：`scripts/llm-longrun-stress.sh` 在无 `jq` 环境下改为 Python 解析 `report.json`，保证 `prompt_section_clipped` 等指标准确落盘。
 
 ### OpenAI 兼容 Tool 注册与解析（LMSO20）
+### 单轮多段输出顺序消费（LMSO21）
+- 问题：真实长跑中，模型可能在一次回复里输出多段 JSON（例如连续 `module_call` 后再给 `decision_draft/final decision`），当前只消费首段会导致：
+  - 后续段被丢弃，额外增加回合与输入体积。
+  - 在模块调用上限附近更容易触发 `module call limit exceeded` 与 `Wait` 降级。
+- 方案：
+  - 在每次 LLM completion 后提取并顺序解析所有 JSON 块（支持 `---`、空行或自由文本夹杂）。
+  - 同一轮内按顺序执行状态迁移：`plan/module_call/decision_draft/final_decision/execute_until`。
+  - 若同轮先出现若干 `module_call`，后续出现 `decision_draft/final decision`，则继续消费直到产出终态决策或耗尽片段。
+- 兼容策略：
+  - 保留旧行为兼容：仅单段 JSON 的输出路径不变。
+  - 对超过 `max_module_calls` 的额外 `module_call` 采用“软拒绝并继续消费同轮后续片段”，避免过早终止整轮。
+- 预期：
+  - 降低 `no terminal decision` 与 `module call limit exceeded` 的连锁概率。
+  - 在不增加 LLM 请求次数的前提下提升多步协议收敛性。
+
 - 问题：当前模块调用主要依赖 `{"type":"module_call",...}` 文本协议，未充分利用 OpenAI `tools/tool_calls` 原生结构，跨模型兼容性与结构化约束不足。
 - 方案：将模块能力以 OpenAI `tools` 形态注册到 `chat/completions` 请求，并在响应侧优先解析 `tool_calls/function_call`：
   - 请求注册：每轮请求携带函数工具定义（name/description/parameters），`tool_choice=auto`。

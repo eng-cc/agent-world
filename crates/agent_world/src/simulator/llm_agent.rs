@@ -30,7 +30,7 @@ pub use prompt_assembly::{
 };
 
 use decision_flow::{
-    parse_limit_arg, parse_llm_turn_response, prompt_section_kind_name,
+    parse_limit_arg, parse_llm_turn_responses, prompt_section_kind_name,
     prompt_section_priority_name, serialize_decision_for_prompt, summarize_trace_text,
     DecisionPhase, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
 };
