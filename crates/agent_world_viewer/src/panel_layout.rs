@@ -1,8 +1,10 @@
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 
+use crate::copyable_text::CopyableTextPanelState;
 use crate::i18n::{
-    language_toggle_label, top_controls_label, top_panel_toggle_label, UiI18n, UiLocale,
+    copyable_panel_toggle_label, language_toggle_label, top_controls_label, top_panel_toggle_label,
+    UiI18n, UiLocale,
 };
 
 #[derive(Resource, Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,10 +30,17 @@ pub(super) struct LanguageToggleButton;
 #[derive(Component)]
 pub(super) struct LanguageToggleLabel;
 
+#[derive(Component)]
+pub(super) struct CopyablePanelToggleButton;
+
+#[derive(Component)]
+pub(super) struct CopyablePanelToggleLabel;
+
 pub(super) fn spawn_top_panel_toggle(
     parent: &mut ChildSpawnerCommands,
     font: Handle<Font>,
     locale: UiLocale,
+    copyable_panel_visible: bool,
 ) {
     parent
         .spawn((
@@ -102,6 +111,32 @@ pub(super) fn spawn_top_panel_toggle(
             });
 
             row.spawn((
+                Button,
+                Node {
+                    min_width: Val::Px(146.0),
+                    height: Val::Px(22.0),
+                    padding: UiRect::horizontal(Val::Px(10.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.25, 0.22, 0.29)),
+                CopyablePanelToggleButton,
+            ))
+            .with_children(|button| {
+                button.spawn((
+                    Text::new(copyable_panel_toggle_label(copyable_panel_visible, locale)),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 11.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.95, 0.9, 0.98)),
+                    CopyablePanelToggleLabel,
+                ));
+            });
+
+            row.spawn((
                 Text::new(top_controls_label(locale)),
                 TextFont {
                     font,
@@ -162,11 +197,13 @@ pub(super) fn handle_language_toggle_button(
         ),
     >,
     i18n: Option<ResMut<UiI18n>>,
+    copyable_panel_state: Option<Res<CopyableTextPanelState>>,
     layout_state: Res<RightPanelLayoutState>,
     mut labels: ParamSet<(
         Query<&mut Text, With<TopPanelToggleLabel>>,
         Query<&mut Text, With<LanguageToggleLabel>>,
         Query<&mut Text, With<TopPanelTitleLabel>>,
+        Query<&mut Text, With<CopyablePanelToggleLabel>>,
     )>,
 ) {
     let Some(mut i18n) = i18n else {
@@ -195,6 +232,44 @@ pub(super) fn handle_language_toggle_button(
     if let Ok(mut title) = labels.p2().single_mut() {
         title.0 = top_controls_label(locale).to_string();
     }
+    let copyable_visible = copyable_panel_state
+        .as_ref()
+        .map(|state| state.visible)
+        .unwrap_or(true);
+    if let Ok(mut label) = labels.p3().single_mut() {
+        label.0 = copyable_panel_toggle_label(copyable_visible, locale).to_string();
+    }
+}
+
+pub(super) fn handle_copyable_panel_toggle_button(
+    mut interactions: Query<
+        &Interaction,
+        (
+            Changed<Interaction>,
+            With<Button>,
+            With<CopyablePanelToggleButton>,
+        ),
+    >,
+    panel_state: Option<ResMut<CopyableTextPanelState>>,
+    i18n: Option<Res<UiI18n>>,
+    mut label_query: Query<&mut Text, With<CopyablePanelToggleLabel>>,
+) {
+    let Some(mut panel_state) = panel_state else {
+        return;
+    };
+
+    let locale = i18n.map(|value| value.locale).unwrap_or(UiLocale::EnUs);
+
+    for interaction in &mut interactions {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        panel_state.visible = !panel_state.visible;
+        if let Ok(mut label) = label_query.single_mut() {
+            label.0 = copyable_panel_toggle_label(panel_state.visible, locale).to_string();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -208,6 +283,14 @@ mod tests {
         assert_eq!(top_panel_toggle_label(true, UiLocale::EnUs), "Show Top");
         assert_eq!(top_panel_toggle_label(false, UiLocale::ZhCn), "隐藏顶部");
         assert_eq!(top_panel_toggle_label(true, UiLocale::ZhCn), "显示顶部");
+        assert_eq!(
+            copyable_panel_toggle_label(true, UiLocale::EnUs),
+            "Hide Copy Panel"
+        );
+        assert_eq!(
+            copyable_panel_toggle_label(false, UiLocale::EnUs),
+            "Show Copy Panel"
+        );
     }
 
     #[test]
@@ -272,6 +355,8 @@ mod tests {
         app.world_mut().insert_resource(RightPanelLayoutState {
             top_panel_collapsed: false,
         });
+        app.world_mut()
+            .insert_resource(CopyableTextPanelState { visible: true });
         app.world_mut().insert_resource(UiI18n {
             locale: UiLocale::ZhCn,
         });
@@ -287,6 +372,10 @@ mod tests {
         let title_label = app
             .world_mut()
             .spawn((Text::new("顶部控制区"), TopPanelTitleLabel))
+            .id();
+        let copy_label = app
+            .world_mut()
+            .spawn((Text::new("隐藏复制窗"), CopyablePanelToggleLabel))
             .id();
 
         app.world_mut()
@@ -317,5 +406,51 @@ mod tests {
             .get::<Text>()
             .expect("title label text");
         assert_eq!(title_text.0, "Top Controls");
+
+        let copy_text = app
+            .world()
+            .entity(copy_label)
+            .get::<Text>()
+            .expect("copy label text");
+        assert_eq!(copy_text.0, "Hide Copy Panel");
+    }
+
+    #[test]
+    fn copyable_panel_toggle_button_flips_state_and_label() {
+        let mut app = App::new();
+        app.add_systems(Update, handle_copyable_panel_toggle_button);
+        app.world_mut().insert_resource(UiI18n {
+            locale: UiLocale::ZhCn,
+        });
+        app.world_mut()
+            .insert_resource(CopyableTextPanelState { visible: true });
+
+        let label = app
+            .world_mut()
+            .spawn((Text::new("隐藏复制窗"), CopyablePanelToggleLabel))
+            .id();
+        let button = app
+            .world_mut()
+            .spawn((Button, Interaction::Pressed, CopyablePanelToggleButton))
+            .id();
+
+        app.update();
+
+        let state = app.world().resource::<CopyableTextPanelState>();
+        assert!(!state.visible);
+        let label_text = app.world().entity(label).get::<Text>().expect("copy label");
+        assert_eq!(label_text.0, "显示复制窗");
+
+        app.world_mut().entity_mut(button).insert(Interaction::None);
+        app.update();
+        app.world_mut()
+            .entity_mut(button)
+            .insert(Interaction::Pressed);
+        app.update();
+
+        let state = app.world().resource::<CopyableTextPanelState>();
+        assert!(state.visible);
+        let label_text = app.world().entity(label).get::<Text>().expect("copy label");
+        assert_eq!(label_text.0, "隐藏复制窗");
     }
 }

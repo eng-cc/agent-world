@@ -35,6 +35,7 @@ mod app_bootstrap;
 mod button_feedback;
 mod camera_controls;
 mod control_labels;
+mod copyable_text;
 mod diagnosis;
 mod event_click_list;
 mod floating_origin;
@@ -59,6 +60,7 @@ use button_feedback::{
 };
 use camera_controls::{orbit_camera_controls, OrbitDragState};
 use control_labels::{update_control_button_labels, ControlButtonLabel};
+use copyable_text::{render_copyable_text_panel, CopyableTextPanelState};
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
@@ -71,8 +73,9 @@ use internal_capture::{
 };
 use material_library::{build_location_material_handles, LocationMaterialHandles};
 use panel_layout::{
-    handle_language_toggle_button, handle_top_panel_toggle_button, spawn_top_panel_toggle,
-    RightPanelLayoutState, TopPanelContainer,
+    handle_copyable_panel_toggle_button, handle_language_toggle_button,
+    handle_top_panel_toggle_button, spawn_top_panel_toggle, RightPanelLayoutState,
+    TopPanelContainer,
 };
 use panel_scroll::{scroll_right_panel, RightPanelScroll, TopPanelScroll};
 use scene_helpers::*;
@@ -609,10 +612,18 @@ fn setup_3d_scene(
     ));
 }
 
-fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    copyable_panel_state: Option<Res<CopyableTextPanelState>>,
+) {
     let font = asset_server.load("fonts/ms-yahei.ttf");
     let i18n = UiI18n::default();
     let locale = i18n.locale;
+    let copyable_panel_visible = copyable_panel_state
+        .as_ref()
+        .map(|state| state.visible)
+        .unwrap_or(true);
 
     commands.spawn((
         Camera2d,
@@ -641,7 +652,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             BorderColor::all(Color::srgb(0.18, 0.2, 0.24)),
         ))
         .with_children(|root| {
-            spawn_top_panel_toggle(root, font.clone(), locale);
+            spawn_top_panel_toggle(root, font.clone(), locale, copyable_panel_visible);
 
             root.spawn((
                 Node {

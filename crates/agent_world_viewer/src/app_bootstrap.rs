@@ -1,4 +1,5 @@
 use super::*;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
@@ -17,6 +18,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(EventObjectLinkState::default())
         .insert_resource(TimelineUiState::default())
         .insert_resource(TimelineMarkFilterState::default())
+        .insert_resource(CopyableTextPanelState::default())
         .insert_resource(OrbitDragState::default())
         .insert_resource(UiI18n::default())
         .insert_resource(internal_capture_config_from_env())
@@ -31,6 +33,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             }),
             ..default()
         }))
+        .add_plugins(EguiPlugin::default())
         .insert_resource(OfflineConfig { offline })
         .add_systems(Startup, (setup_startup_state, setup_3d_scene, setup_ui))
         .add_systems(
@@ -73,6 +76,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             (
                 handle_top_panel_toggle_button,
                 handle_language_toggle_button,
+                handle_copyable_panel_toggle_button,
             ),
         )
         .add_systems(Update, init_button_visual_base)
@@ -100,6 +104,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             PostUpdate,
             pick_3d_selection.after(TransformSystems::Propagate),
         )
+        .add_systems(EguiPrimaryContextPass, render_copyable_text_panel)
         .run();
 }
 

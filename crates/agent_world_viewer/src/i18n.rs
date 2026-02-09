@@ -63,6 +63,15 @@ pub(super) fn language_toggle_label(locale: UiLocale) -> &'static str {
     }
 }
 
+pub(super) fn copyable_panel_toggle_label(visible: bool, locale: UiLocale) -> &'static str {
+    match (locale, visible) {
+        (UiLocale::ZhCn, true) => "隐藏复制窗",
+        (UiLocale::ZhCn, false) => "显示复制窗",
+        (UiLocale::EnUs, true) => "Hide Copy Panel",
+        (UiLocale::EnUs, false) => "Show Copy Panel",
+    }
+}
+
 pub(super) fn control_button_label(control: &ViewerControl, locale: UiLocale) -> &'static str {
     match control {
         ViewerControl::Play => {
@@ -184,5 +193,25 @@ mod tests {
     fn locale_toggle_round_trip() {
         assert_eq!(UiLocale::ZhCn.toggled(), UiLocale::EnUs);
         assert_eq!(UiLocale::EnUs.toggled(), UiLocale::ZhCn);
+    }
+
+    #[test]
+    fn copyable_toggle_label_is_localized() {
+        assert_eq!(
+            copyable_panel_toggle_label(true, UiLocale::ZhCn),
+            "隐藏复制窗"
+        );
+        assert_eq!(
+            copyable_panel_toggle_label(false, UiLocale::ZhCn),
+            "显示复制窗"
+        );
+        assert_eq!(
+            copyable_panel_toggle_label(true, UiLocale::EnUs),
+            "Hide Copy Panel"
+        );
+        assert_eq!(
+            copyable_panel_toggle_label(false, UiLocale::EnUs),
+            "Show Copy Panel"
+        );
     }
 }
