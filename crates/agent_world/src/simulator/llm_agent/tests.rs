@@ -76,6 +76,42 @@ impl LlmCompletionClient for SequenceMockClient {
     }
 }
 
+#[derive(Debug, Clone)]
+struct StressMockClient {
+    calls: Arc<AtomicUsize>,
+}
+
+impl StressMockClient {
+    fn new(calls: Arc<AtomicUsize>) -> Self {
+        Self { calls }
+    }
+}
+
+impl LlmCompletionClient for StressMockClient {
+    fn complete(
+        &self,
+        _request: &LlmCompletionRequest,
+    ) -> Result<LlmCompletionResult, LlmClientError> {
+        let call_index = self.calls.fetch_add(1, Ordering::SeqCst);
+        let output = match call_index % 5 {
+            0 => r#"{"type":"plan","missing":["memory"],"next":"module_call"}"#,
+            1 => r#"{"type":"module_call","module":"memory.short_term.recent","args":{"limit":4}}"#,
+            2 => r#"{"type":"decision_draft","decision":{"decision":"move_agent","to":"loc-2"},"confidence":0.64,"need_verify":true}"#,
+            3 => "not-json",
+            _ => r#"{"decision":"move_agent","to":"loc-2"}"#,
+        }
+        .to_string();
+
+        Ok(LlmCompletionResult {
+            output,
+            model: Some("gpt-stress".to_string()),
+            prompt_tokens: Some(16),
+            completion_tokens: Some(6),
+            total_tokens: Some(22),
+        })
+    }
+}
+
 fn make_observation() -> Observation {
     Observation {
         time: 7,
@@ -108,6 +144,37 @@ fn make_observation() -> Observation {
             distance_cm: 1,
         }],
     }
+}
+
+fn make_dense_observation(time: u64, extra: usize) -> Observation {
+    let mut observation = make_observation();
+    observation.time = time;
+
+    for index in 0..extra {
+        observation.visible_agents.push(ObservedAgent {
+            agent_id: format!("agent-extra-{index}"),
+            location_id: format!("loc-extra-{index}"),
+            pos: GeoPos {
+                x_cm: 100.0 + index as f64,
+                y_cm: (index as f64) * 0.5,
+                z_cm: 0.0,
+            },
+            distance_cm: 100 + index as i64,
+        });
+        observation.visible_locations.push(ObservedLocation {
+            location_id: format!("loc-extra-{index}"),
+            name: format!("outpost-extra-{index}"),
+            pos: GeoPos {
+                x_cm: 100.0 + index as f64,
+                y_cm: (index as f64) * 0.5,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 100 + index as i64,
+        });
+    }
+
+    observation
 }
 
 fn base_config() -> LlmAgentConfig {
@@ -590,6 +657,59 @@ fn llm_agent_repair_round_can_recover_invalid_output() {
         .llm_step_trace
         .iter()
         .any(|step| step.step_type == "repair"));
+}
+
+#[test]
+fn llm_agent_long_run_stress_keeps_pipeline_stable() {
+    const TICKS: usize = 240;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = StressMockClient::new(Arc::clone(&calls));
+
+    let mut config = base_config();
+    config.max_decision_steps = 6;
+    config.max_module_calls = 2;
+    config.max_repair_rounds = 1;
+    config.prompt_max_history_items = 2;
+    config.prompt_profile = LlmPromptProfile::Compact;
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    for tick in 0..TICKS {
+        let time = 10_000 + tick as u64;
+        behavior
+            .memory
+            .record_note(time, format!("stress-note-{tick}-{}", "x".repeat(180)));
+        let observation = make_dense_observation(time, 8);
+
+        let decision = behavior.decide(&observation);
+        assert!(matches!(
+            decision,
+            AgentDecision::Act(Action::MoveAgent { .. })
+        ));
+
+        let trace = behavior.take_decision_trace().expect("trace exists");
+        assert!(trace.parse_error.is_none());
+        assert_eq!(trace.llm_effect_intents.len(), 1);
+        assert_eq!(trace.llm_effect_receipts.len(), 1);
+        assert!(trace
+            .llm_step_trace
+            .iter()
+            .any(|step| step.step_type == "repair"));
+        assert!(!trace.llm_prompt_section_trace.is_empty());
+        let input_len = trace.llm_input.unwrap_or_default().len();
+        assert!(input_len < 120_000, "llm_input too large: {input_len}");
+        assert_eq!(
+            trace
+                .llm_diagnostics
+                .as_ref()
+                .map(|diagnostics| diagnostics.retry_count),
+            Some(1)
+        );
+    }
+
+    let total_calls = calls.load(Ordering::SeqCst);
+    assert!(total_calls >= TICKS * 5);
+    assert!(total_calls <= TICKS * 6);
 }
 
 #[test]

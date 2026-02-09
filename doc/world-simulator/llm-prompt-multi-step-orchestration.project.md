@@ -14,6 +14,7 @@
 - [x] LMSO8 扩展 trace（`llm_step_trace/llm_prompt_section_trace`）
 - [x] LMSO9 补充单元测试（组装、流转、上限、兼容）
 - [x] LMSO10 更新 README / config 示例 / 开发日志并收口
+- [x] LMSO11 长跑压测（多步+repair+记忆膨胀）并固化回归测试
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -23,6 +24,6 @@
 - `doc/world-simulator/llm-prompt-system.md`
 
 ## 状态
-- 当前阶段：LMSO10（README/config/trace 收口完成）
-- 下一步：进入长跑压测与参数调优（PromptProfile/预算阈值/repair 轮次）
-- 最近更新：完成 LMSO5~LMSO10（配置扩展、多步状态机、repair、trace 与测试补齐，2026-02-09）
+- 当前阶段：LMSO11（长跑压测已固化）
+- 下一步：补充真实场景脚本压测（viewer_live + llm_bootstrap）与指标落盘
+- 最近更新：完成 LMSO11 压测回归（240 tick、每 tick 5 次LLM阶段循环，2026-02-09）
