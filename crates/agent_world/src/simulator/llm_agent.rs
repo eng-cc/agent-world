@@ -9,8 +9,12 @@ use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use super::agent::{AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics};
+use super::agent::{
+    ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
+};
 use super::kernel::Observation;
+use super::kernel::WorldEvent;
+use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
 use super::types::Action;
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
@@ -18,10 +22,19 @@ pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
 pub const ENV_LLM_API_KEY: &str = "AGENT_WORLD_LLM_API_KEY";
 pub const ENV_LLM_TIMEOUT_MS: &str = "AGENT_WORLD_LLM_TIMEOUT_MS";
 pub const ENV_LLM_SYSTEM_PROMPT: &str = "AGENT_WORLD_LLM_SYSTEM_PROMPT";
+pub const ENV_LLM_SHORT_TERM_GOAL: &str = "AGENT_WORLD_LLM_SHORT_TERM_GOAL";
+pub const ENV_LLM_LONG_TERM_GOAL: &str = "AGENT_WORLD_LLM_LONG_TERM_GOAL";
+pub const ENV_LLM_MAX_MODULE_CALLS: &str = "AGENT_WORLD_LLM_MAX_MODULE_CALLS";
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 30_000;
 pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "硅基个体存在的意义是保障硅基文明存续和发展；";
+pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "保障当前周期生存与执行效率，优先做确定可执行动作。";
+pub const DEFAULT_LLM_LONG_TERM_GOAL: &str = "保障硅基文明存续和发展。";
+pub const DEFAULT_LLM_MAX_MODULE_CALLS: usize = 3;
+
+const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
+const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {
@@ -30,18 +43,29 @@ pub struct LlmAgentConfig {
     pub api_key: String,
     pub timeout_ms: u64,
     pub system_prompt: String,
+    pub short_term_goal: String,
+    pub long_term_goal: String,
+    pub max_module_calls: usize,
 }
 
 impl LlmAgentConfig {
     pub fn from_default_sources() -> Result<Self, LlmConfigError> {
+        Self::from_default_sources_for_agent("")
+    }
+
+    pub fn from_default_sources_for_agent(agent_id: &str) -> Result<Self, LlmConfigError> {
         let config_path = Path::new(DEFAULT_CONFIG_FILE_NAME);
         if config_path.exists() {
-            return Self::from_config_file(config_path);
+            return Self::from_config_file_for_agent(config_path, agent_id);
         }
-        Self::from_env()
+        Self::from_env_for_agent(agent_id)
     }
 
     pub fn from_config_file(path: &Path) -> Result<Self, LlmConfigError> {
+        Self::from_config_file_for_agent(path, "")
+    }
+
+    pub fn from_config_file_for_agent(path: &Path, agent_id: &str) -> Result<Self, LlmConfigError> {
         let content = fs::read_to_string(path).map_err(|err| LlmConfigError::ReadConfigFile {
             path: path.display().to_string(),
             message: err.to_string(),
@@ -58,19 +82,26 @@ impl LlmAgentConfig {
                 message: "root is not a TOML table".to_string(),
             })?;
 
-        Self::from_env_with(|key| {
-            table
-                .get(key)
-                .and_then(toml_value_to_string)
-                .or_else(|| std::env::var(key).ok())
-        })
+        Self::from_env_with(
+            |key| {
+                table
+                    .get(key)
+                    .and_then(toml_value_to_string)
+                    .or_else(|| std::env::var(key).ok())
+            },
+            agent_id,
+        )
     }
 
     pub fn from_env() -> Result<Self, LlmConfigError> {
-        Self::from_env_with(|key| std::env::var(key).ok())
+        Self::from_env_for_agent("")
     }
 
-    fn from_env_with<F>(mut getter: F) -> Result<Self, LlmConfigError>
+    pub fn from_env_for_agent(agent_id: &str) -> Result<Self, LlmConfigError> {
+        Self::from_env_with(|key| std::env::var(key).ok(), agent_id)
+    }
+
+    fn from_env_with<F>(mut getter: F, agent_id: &str) -> Result<Self, LlmConfigError>
     where
         F: FnMut(&str) -> Option<String>,
     {
@@ -86,6 +117,18 @@ impl LlmAgentConfig {
         let system_prompt = getter(ENV_LLM_SYSTEM_PROMPT)
             .filter(|value| !value.trim().is_empty())
             .unwrap_or_else(|| DEFAULT_LLM_SYSTEM_PROMPT.to_string());
+        let short_term_goal = goal_value(&mut getter, ENV_LLM_SHORT_TERM_GOAL, agent_id)
+            .unwrap_or_else(|| DEFAULT_LLM_SHORT_TERM_GOAL.to_string());
+        let long_term_goal = goal_value(&mut getter, ENV_LLM_LONG_TERM_GOAL, agent_id)
+            .unwrap_or_else(|| DEFAULT_LLM_LONG_TERM_GOAL.to_string());
+        let max_module_calls = match getter(ENV_LLM_MAX_MODULE_CALLS) {
+            Some(value) => value
+                .parse::<usize>()
+                .ok()
+                .filter(|value| *value > 0)
+                .ok_or(LlmConfigError::InvalidMaxModuleCalls { value })?,
+            None => DEFAULT_LLM_MAX_MODULE_CALLS,
+        };
 
         Ok(Self {
             model,
@@ -93,7 +136,53 @@ impl LlmAgentConfig {
             api_key,
             timeout_ms,
             system_prompt,
+            short_term_goal,
+            long_term_goal,
+            max_module_calls,
         })
+    }
+}
+
+fn goal_value<F>(getter: &mut F, key: &str, agent_id: &str) -> Option<String>
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    agent_scoped_goal_key(key, agent_id)
+        .as_deref()
+        .and_then(|agent_key| getter(agent_key))
+        .or_else(|| getter(key))
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn agent_scoped_goal_key(key: &str, agent_id: &str) -> Option<String> {
+    let normalized = normalize_agent_id_for_env(agent_id)?;
+    Some(format!("{key}_{normalized}"))
+}
+
+fn normalize_agent_id_for_env(agent_id: &str) -> Option<String> {
+    let trimmed = agent_id.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let mut normalized = String::with_capacity(trimmed.len());
+    let mut last_is_underscore = false;
+    for ch in trimmed.chars() {
+        if ch.is_ascii_alphanumeric() {
+            normalized.push(ch.to_ascii_uppercase());
+            last_is_underscore = false;
+        } else if !last_is_underscore {
+            normalized.push('_');
+            last_is_underscore = true;
+        }
+    }
+
+    let normalized = normalized.trim_matches('_').to_string();
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
     }
 }
 
@@ -123,6 +212,7 @@ pub enum LlmConfigError {
     MissingEnv { key: &'static str },
     EmptyEnv { key: &'static str },
     InvalidTimeout { value: String },
+    InvalidMaxModuleCalls { value: String },
     ReadConfigFile { path: String, message: String },
     ParseConfigFile { path: String, message: String },
 }
@@ -134,6 +224,9 @@ impl fmt::Display for LlmConfigError {
             LlmConfigError::EmptyEnv { key } => write!(f, "empty env variable: {key}"),
             LlmConfigError::InvalidTimeout { value } => {
                 write!(f, "invalid timeout value: {value}")
+            }
+            LlmConfigError::InvalidMaxModuleCalls { value } => {
+                write!(f, "invalid max module calls value: {value}")
             }
             LlmConfigError::ReadConfigFile { path, message } => {
                 write!(f, "read config file failed ({path}): {message}")
@@ -331,12 +424,15 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     agent_id: String,
     config: LlmAgentConfig,
     client: C,
+    memory: AgentMemory,
     pending_trace: Option<AgentDecisionTrace>,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
     pub fn from_env(agent_id: impl Into<String>) -> Result<Self, LlmAgentBuildError> {
-        let config = LlmAgentConfig::from_default_sources().map_err(LlmAgentBuildError::Config)?;
+        let agent_id = agent_id.into();
+        let config = LlmAgentConfig::from_default_sources_for_agent(agent_id.as_str())
+            .map_err(LlmAgentBuildError::Config)?;
         let client =
             OpenAiChatCompletionClient::from_config(&config).map_err(LlmAgentBuildError::Client)?;
         Ok(Self::new(agent_id, config, client))
@@ -345,32 +441,180 @@ impl LlmAgentBehavior<OpenAiChatCompletionClient> {
 
 impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
     pub fn new(agent_id: impl Into<String>, config: LlmAgentConfig, client: C) -> Self {
+        Self::new_with_memory(
+            agent_id,
+            config,
+            client,
+            AgentMemory::with_capacities(
+                DEFAULT_SHORT_TERM_MEMORY_CAPACITY,
+                DEFAULT_LONG_TERM_MEMORY_CAPACITY,
+            ),
+        )
+    }
+
+    pub fn new_with_memory(
+        agent_id: impl Into<String>,
+        config: LlmAgentConfig,
+        client: C,
+        memory: AgentMemory,
+    ) -> Self {
         Self {
             agent_id: agent_id.into(),
             config,
             client,
+            memory,
             pending_trace: None,
         }
     }
 
-    fn user_prompt(&self, observation: &Observation) -> String {
+    fn system_prompt(&self) -> String {
+        format!(
+            "{base}\n\n[Agent Goals]\n- short_term_goal: {short_term}\n- long_term_goal: {long_term}\n\n[Tool Protocol]\n- 如果需要更多信息，可输出模块调用 JSON：{{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{{...}}}}\n- 可用模块由 `agent.modules.list` 返回；禁止虚构模块\n- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。",
+            base = self.config.system_prompt,
+            short_term = self.config.short_term_goal,
+            long_term = self.config.long_term_goal,
+        )
+    }
+
+    fn user_prompt(
+        &self,
+        observation: &Observation,
+        module_history: &[ModuleCallExchange],
+    ) -> String {
         let observation_json = serde_json::to_string(observation)
             .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string());
+        let history_json =
+            serde_json::to_string(module_history).unwrap_or_else(|_| "[]".to_string());
         format!(
-            "你是一个硅基文明 Agent。请根据观测，严格只输出 JSON，不要输出额外文字。\n\
-支持格式：\n\
+            "你是一个硅基文明 Agent。请严格输出 JSON，不要输出额外文字。\n\
+当前 agent_id: {agent_id}\n\
+当前观测(JSON): {observation_json}\n\
+\n\
+可用模块调用记录(JSON): {history_json}\n\
+\n\
+决策输出支持：\n\
 {{\"decision\":\"wait\"}}\n\
 {{\"decision\":\"wait_ticks\",\"ticks\":<u64>}}\n\
 {{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}}\n\
 {{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}}\n\
-当前 agent_id: {}\n\
-观测(JSON): {}",
-            self.agent_id, observation_json
+\n\
+若你需要查询信息，请输出模块调用 JSON：\n\
+{{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{{...}}}}",
+            agent_id = self.agent_id,
+            observation_json = observation_json,
+            history_json = history_json,
         )
     }
 
     fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
         format!("[system]\n{}\n\n[user]\n{}", system_prompt, user_prompt)
+    }
+
+    fn observe_memory_summary(observation: &Observation) -> String {
+        format!(
+            "obs@T{} agents={} locations={} visibility_cm={}",
+            observation.time,
+            observation.visible_agents.len(),
+            observation.visible_locations.len(),
+            observation.visibility_range_cm,
+        )
+    }
+
+    fn run_prompt_module(
+        &self,
+        request: &LlmModuleCallRequest,
+        observation: &Observation,
+    ) -> serde_json::Value {
+        let result = match request.module.as_str() {
+            "agent.modules.list" => Ok(serde_json::json!({
+                "modules": [
+                    {
+                        "name": "agent.modules.list",
+                        "description": "列出 Agent 可调用的模块能力与参数。",
+                        "args": {}
+                    },
+                    {
+                        "name": "environment.current_observation",
+                        "description": "读取当前 tick 的环境观测。",
+                        "args": {}
+                    },
+                    {
+                        "name": "memory.short_term.recent",
+                        "description": "读取最近短期记忆。",
+                        "args": { "limit": "u64, optional, default=5, max=32" }
+                    },
+                    {
+                        "name": "memory.long_term.search",
+                        "description": "按关键词检索长期记忆（query 为空时按重要度返回）。",
+                        "args": {
+                            "query": "string, optional",
+                            "limit": "u64, optional, default=5, max=32"
+                        }
+                    }
+                ]
+            })),
+            "environment.current_observation" => serde_json::to_value(observation)
+                .map_err(|err| format!("serialize observation failed: {err}")),
+            "memory.short_term.recent" => {
+                let limit = parse_limit_arg(request.args.get("limit"), 5, 32);
+                let mut entries: Vec<MemoryEntry> =
+                    self.memory.short_term.recent(limit).cloned().collect();
+                entries.reverse();
+                serde_json::to_value(entries)
+                    .map_err(|err| format!("serialize short-term memory failed: {err}"))
+            }
+            "memory.long_term.search" => {
+                let limit = parse_limit_arg(request.args.get("limit"), 5, 32);
+                let query = request
+                    .args
+                    .get("query")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.trim())
+                    .filter(|value| !value.is_empty());
+
+                let mut entries: Vec<LongTermMemoryEntry> = match query {
+                    Some(query) => self
+                        .memory
+                        .long_term
+                        .search_by_content(query)
+                        .into_iter()
+                        .cloned()
+                        .collect(),
+                    None => self
+                        .memory
+                        .long_term
+                        .top_by_importance(limit)
+                        .into_iter()
+                        .cloned()
+                        .collect(),
+                };
+
+                entries.sort_by(|left, right| {
+                    right
+                        .importance
+                        .partial_cmp(&left.importance)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+                entries.truncate(limit);
+
+                serde_json::to_value(entries)
+                    .map_err(|err| format!("serialize long-term memory failed: {err}"))
+            }
+            other => Err(format!("unsupported module: {other}")),
+        };
+
+        match result {
+            Ok(data) => serde_json::json!({
+                "ok": true,
+                "module": request.module,
+                "result": data,
+            }),
+            Err(err) => serde_json::json!({
+                "ok": false,
+                "module": request.module,
+                "error": err,
+            }),
+        }
     }
 }
 
@@ -380,68 +624,183 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     }
 
     fn decide(&mut self, observation: &Observation) -> AgentDecision {
-        let user_prompt = self.user_prompt(observation);
-        let request = LlmCompletionRequest {
-            model: self.config.model.clone(),
-            system_prompt: self.config.system_prompt.clone(),
-            user_prompt,
-        };
-        let trace_input = Self::trace_input(&request.system_prompt, &request.user_prompt);
+        self.memory
+            .record_observation(observation.time, Self::observe_memory_summary(observation));
 
-        let request_started_at = Instant::now();
-        match self.client.complete(&request) {
-            Ok(completion) => {
-                let latency_ms = request_started_at.elapsed().as_millis() as u64;
-                let (decision, parse_error) = parse_llm_decision_with_error(
-                    completion.output.as_str(),
-                    self.agent_id.as_str(),
-                );
-                self.pending_trace = Some(AgentDecisionTrace {
-                    agent_id: self.agent_id.clone(),
-                    time: observation.time,
-                    decision: decision.clone(),
-                    llm_input: Some(trace_input),
-                    llm_output: Some(completion.output),
-                    llm_error: None,
-                    parse_error,
-                    llm_diagnostics: Some(LlmDecisionDiagnostics {
-                        model: completion.model.or(Some(request.model.clone())),
-                        latency_ms: Some(latency_ms),
-                        prompt_tokens: completion.prompt_tokens,
-                        completion_tokens: completion.completion_tokens,
-                        total_tokens: completion.total_tokens,
-                        retry_count: 0,
-                    }),
-                });
-                decision
-            }
-            Err(err) => {
-                let latency_ms = request_started_at.elapsed().as_millis() as u64;
-                self.pending_trace = Some(AgentDecisionTrace {
-                    agent_id: self.agent_id.clone(),
-                    time: observation.time,
-                    decision: AgentDecision::Wait,
-                    llm_input: Some(trace_input),
-                    llm_output: None,
-                    llm_error: Some(err.to_string()),
-                    parse_error: None,
-                    llm_diagnostics: Some(LlmDecisionDiagnostics {
-                        model: Some(request.model.clone()),
-                        latency_ms: Some(latency_ms),
-                        prompt_tokens: None,
-                        completion_tokens: None,
-                        total_tokens: None,
-                        retry_count: 0,
-                    }),
-                });
-                AgentDecision::Wait
+        let mut decision = AgentDecision::Wait;
+        let mut parse_error: Option<String> = None;
+        let mut llm_error: Option<String> = None;
+        let mut module_history = Vec::new();
+        let mut trace_inputs = Vec::new();
+        let mut trace_outputs = Vec::new();
+
+        let mut model = Some(self.config.model.clone());
+        let mut latency_total_ms = 0_u64;
+        let mut prompt_tokens_total = 0_u64;
+        let mut completion_tokens_total = 0_u64;
+        let mut total_tokens_total = 0_u64;
+        let mut has_prompt_tokens = false;
+        let mut has_completion_tokens = false;
+        let mut has_total_tokens = false;
+
+        let system_prompt = self.system_prompt();
+        let mut resolved = false;
+        let max_turns = self.config.max_module_calls.saturating_add(1);
+
+        for _turn in 0..max_turns {
+            let user_prompt = self.user_prompt(observation, &module_history);
+            let request = LlmCompletionRequest {
+                model: self.config.model.clone(),
+                system_prompt: system_prompt.clone(),
+                user_prompt,
+            };
+            trace_inputs.push(Self::trace_input(
+                request.system_prompt.as_str(),
+                request.user_prompt.as_str(),
+            ));
+
+            let request_started_at = Instant::now();
+            match self.client.complete(&request) {
+                Ok(completion) => {
+                    let latency_ms = request_started_at.elapsed().as_millis() as u64;
+                    latency_total_ms = latency_total_ms.saturating_add(latency_ms);
+
+                    if let Some(returned_model) = completion.model.clone() {
+                        model = Some(returned_model);
+                    }
+                    if let Some(tokens) = completion.prompt_tokens {
+                        has_prompt_tokens = true;
+                        prompt_tokens_total = prompt_tokens_total.saturating_add(tokens);
+                    }
+                    if let Some(tokens) = completion.completion_tokens {
+                        has_completion_tokens = true;
+                        completion_tokens_total = completion_tokens_total.saturating_add(tokens);
+                    }
+                    if let Some(tokens) = completion.total_tokens {
+                        has_total_tokens = true;
+                        total_tokens_total = total_tokens_total.saturating_add(tokens);
+                    }
+
+                    trace_outputs.push(completion.output.clone());
+
+                    match parse_llm_turn_response(
+                        completion.output.as_str(),
+                        self.agent_id.as_str(),
+                    ) {
+                        ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
+                            decision = parsed_decision;
+                            parse_error = decision_parse_error;
+                            resolved = true;
+                            break;
+                        }
+                        ParsedLlmTurn::ModuleCall(module_request) => {
+                            if module_history.len() >= self.config.max_module_calls {
+                                parse_error = Some(format!(
+                                    "module call limit exceeded: max_module_calls={}",
+                                    self.config.max_module_calls
+                                ));
+                                resolved = true;
+                                break;
+                            }
+
+                            let module_result =
+                                self.run_prompt_module(&module_request, observation);
+                            trace_inputs.push(format!(
+                                "[module_result:{}]\n{}",
+                                module_request.module,
+                                serde_json::to_string(&module_result)
+                                    .unwrap_or_else(|_| "{}".to_string())
+                            ));
+                            module_history.push(ModuleCallExchange {
+                                module: module_request.module,
+                                args: module_request.args,
+                                result: module_result,
+                            });
+                        }
+                        ParsedLlmTurn::Invalid(err) => {
+                            parse_error = Some(err);
+                            resolved = true;
+                            break;
+                        }
+                    }
+                }
+                Err(err) => {
+                    llm_error = Some(err.to_string());
+                    latency_total_ms = latency_total_ms
+                        .saturating_add(request_started_at.elapsed().as_millis() as u64);
+                    resolved = true;
+                    break;
+                }
             }
         }
+
+        if !resolved {
+            parse_error = Some(format!("no terminal decision after {} turn(s)", max_turns));
+        }
+
+        self.memory
+            .record_decision(observation.time, decision.clone());
+
+        self.pending_trace = Some(AgentDecisionTrace {
+            agent_id: self.agent_id.clone(),
+            time: observation.time,
+            decision: decision.clone(),
+            llm_input: Some(trace_inputs.join("\n\n---\n\n")),
+            llm_output: (!trace_outputs.is_empty()).then(|| trace_outputs.join("\n\n---\n\n")),
+            llm_error,
+            parse_error,
+            llm_diagnostics: Some(LlmDecisionDiagnostics {
+                model,
+                latency_ms: Some(latency_total_ms),
+                prompt_tokens: has_prompt_tokens.then_some(prompt_tokens_total),
+                completion_tokens: has_completion_tokens.then_some(completion_tokens_total),
+                total_tokens: has_total_tokens.then_some(total_tokens_total),
+                retry_count: 0,
+            }),
+        });
+
+        decision
+    }
+
+    fn on_action_result(&mut self, result: &ActionResult) {
+        let time = result.event.time;
+        self.memory
+            .record_action_result(time, result.action.clone(), result.success);
+        if !result.success {
+            self.memory.long_term.store_with_tags(
+                format!(
+                    "action_failed: action={:?}; event={:?}",
+                    result.action, result.event.kind
+                ),
+                time,
+                vec!["action_result".to_string(), "failed".to_string()],
+            );
+        }
+        self.memory.consolidate(time, 0.9);
+    }
+
+    fn on_event(&mut self, event: &WorldEvent) {
+        self.memory
+            .record_event(event.time, format!("event: {:?}", event.kind));
     }
 
     fn take_decision_trace(&mut self) -> Option<AgentDecisionTrace> {
         self.pending_trace.take()
     }
+}
+
+fn parse_limit_arg(value: Option<&serde_json::Value>, default: usize, max: usize) -> usize {
+    value
+        .and_then(|value| value.as_u64())
+        .map(|value| value.clamp(1, max as u64) as usize)
+        .unwrap_or(default)
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ModuleCallExchange {
+    module: String,
+    args: serde_json::Value,
+    result: serde_json::Value,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -467,6 +826,54 @@ struct LlmDecisionPayload {
     ticks: Option<u64>,
     to: Option<String>,
     max_amount: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlmModuleCallRequest {
+    module: String,
+    #[serde(default)]
+    args: serde_json::Value,
+}
+
+#[derive(Debug)]
+enum ParsedLlmTurn {
+    Decision(AgentDecision, Option<String>),
+    ModuleCall(LlmModuleCallRequest),
+    Invalid(String),
+}
+
+fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlmTurn {
+    let json = extract_json_block(output).unwrap_or(output);
+    let value: serde_json::Value = match serde_json::from_str(json) {
+        Ok(value) => value,
+        Err(err) => {
+            return ParsedLlmTurn::Invalid(format!("json parse failed: {err}"));
+        }
+    };
+
+    if value
+        .get("type")
+        .and_then(|value| value.as_str())
+        .is_some_and(|type_name| type_name.eq_ignore_ascii_case("module_call"))
+    {
+        return match serde_json::from_value::<LlmModuleCallRequest>(value) {
+            Ok(request) => {
+                if request.module.trim().is_empty() {
+                    ParsedLlmTurn::Invalid("module_call missing `module`".to_string())
+                } else {
+                    ParsedLlmTurn::ModuleCall(request)
+                }
+            }
+            Err(err) => ParsedLlmTurn::Invalid(format!("module_call parse failed: {err}")),
+        };
+    }
+
+    let (decision, parse_error) = parse_llm_decision_with_error(json, agent_id);
+    if let Some(err) = parse_error {
+        ParsedLlmTurn::Invalid(err)
+    } else {
+        ParsedLlmTurn::Decision(decision, None)
+    }
 }
 
 fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
@@ -531,267 +938,4 @@ fn extract_json_block(raw: &str) -> Option<&str> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::geometry::GeoPos;
-    use crate::simulator::{Observation, ObservedAgent, ObservedLocation};
-    use std::collections::BTreeMap;
-    use std::path::Path;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[derive(Debug, Default, Clone)]
-    struct MockClient {
-        output: Option<String>,
-        err: Option<LlmClientError>,
-    }
-
-    impl LlmCompletionClient for MockClient {
-        fn complete(
-            &self,
-            request: &LlmCompletionRequest,
-        ) -> Result<LlmCompletionResult, LlmClientError> {
-            if let Some(err) = &self.err {
-                return Err(err.clone());
-            }
-            Ok(LlmCompletionResult {
-                output: self
-                    .output
-                    .clone()
-                    .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string()),
-                model: Some(request.model.clone()),
-                prompt_tokens: Some(12),
-                completion_tokens: Some(4),
-                total_tokens: Some(16),
-            })
-        }
-    }
-
-    fn make_observation() -> Observation {
-        Observation {
-            time: 7,
-            agent_id: "agent-1".to_string(),
-            pos: GeoPos {
-                x_cm: 0.0,
-                y_cm: 0.0,
-                z_cm: 0.0,
-            },
-            visibility_range_cm: 100,
-            visible_agents: vec![ObservedAgent {
-                agent_id: "agent-2".to_string(),
-                location_id: "loc-2".to_string(),
-                pos: GeoPos {
-                    x_cm: 1.0,
-                    y_cm: 0.0,
-                    z_cm: 0.0,
-                },
-                distance_cm: 1,
-            }],
-            visible_locations: vec![ObservedLocation {
-                location_id: "loc-2".to_string(),
-                name: "outpost".to_string(),
-                pos: GeoPos {
-                    x_cm: 1.0,
-                    y_cm: 0.0,
-                    z_cm: 0.0,
-                },
-                profile: Default::default(),
-                distance_cm: 1,
-            }],
-        }
-    }
-
-    fn base_config() -> LlmAgentConfig {
-        LlmAgentConfig {
-            model: "gpt-test".to_string(),
-            base_url: "https://example.invalid/v1".to_string(),
-            api_key: "test-key".to_string(),
-            timeout_ms: 1000,
-            system_prompt: "prompt".to_string(),
-        }
-    }
-
-    #[test]
-    fn llm_config_uses_default_system_prompt() {
-        let mut vars = BTreeMap::new();
-        vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
-        vars.insert(
-            ENV_LLM_BASE_URL.to_string(),
-            "https://api.example.com/v1".to_string(),
-        );
-        vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
-
-        let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned()).unwrap();
-        assert_eq!(config.system_prompt, DEFAULT_LLM_SYSTEM_PROMPT);
-        assert_eq!(config.timeout_ms, DEFAULT_LLM_TIMEOUT_MS);
-    }
-
-    #[test]
-    fn llm_config_reads_system_prompt_from_env() {
-        let mut vars = BTreeMap::new();
-        vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
-        vars.insert(
-            ENV_LLM_BASE_URL.to_string(),
-            "https://api.example.com/v1".to_string(),
-        );
-        vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
-        vars.insert(
-            ENV_LLM_SYSTEM_PROMPT.to_string(),
-            "自定义 system prompt".to_string(),
-        );
-        vars.insert(ENV_LLM_TIMEOUT_MS.to_string(), "2000".to_string());
-
-        let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned()).unwrap();
-        assert_eq!(config.system_prompt, "自定义 system prompt");
-        assert_eq!(config.timeout_ms, 2000);
-    }
-
-    #[test]
-    fn llm_config_reads_from_config_file() {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let path_buf = std::env::temp_dir().join(format!("agent-world-llm-config-{unique}.toml"));
-        let path = Path::new(&path_buf);
-        let content = r#"
-AGENT_WORLD_LLM_MODEL = "gpt-4o-mini"
-AGENT_WORLD_LLM_BASE_URL = "https://api.example.com/v1"
-AGENT_WORLD_LLM_API_KEY = "secret"
-AGENT_WORLD_LLM_TIMEOUT_MS = 4567
-"#;
-        std::fs::write(path, content).unwrap();
-
-        let config = LlmAgentConfig::from_config_file(path).unwrap();
-
-        std::fs::remove_file(path).ok();
-
-        assert_eq!(config.model, "gpt-4o-mini");
-        assert_eq!(config.base_url, "https://api.example.com/v1");
-        assert_eq!(config.api_key, "secret");
-        assert_eq!(config.timeout_ms, 4567);
-        assert_eq!(config.system_prompt, DEFAULT_LLM_SYSTEM_PROMPT);
-    }
-
-    #[test]
-    fn llm_agent_parse_move_action() {
-        let client = MockClient {
-            output: Some("{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string()),
-            err: None,
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-        let decision = behavior.decide(&make_observation());
-
-        assert_eq!(
-            decision,
-            AgentDecision::Act(Action::MoveAgent {
-                agent_id: "agent-1".to_string(),
-                to: "loc-2".to_string(),
-            })
-        );
-    }
-
-    #[test]
-    fn llm_agent_parse_json_in_markdown_block() {
-        let client = MockClient {
-            output: Some(
-                "```json\n{\"decision\":\"harvest_radiation\",\"max_amount\":5}\n```".to_string(),
-            ),
-            err: None,
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-        let decision = behavior.decide(&make_observation());
-
-        assert_eq!(
-            decision,
-            AgentDecision::Act(Action::HarvestRadiation {
-                agent_id: "agent-1".to_string(),
-                max_amount: 5,
-            })
-        );
-    }
-
-    #[test]
-    fn llm_agent_falls_back_to_wait_when_client_fails() {
-        let client = MockClient {
-            output: None,
-            err: Some(LlmClientError::Http {
-                message: "timeout".to_string(),
-            }),
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-        let decision = behavior.decide(&make_observation());
-        assert_eq!(decision, AgentDecision::Wait);
-    }
-
-    #[test]
-    fn llm_agent_falls_back_to_wait_when_output_invalid() {
-        let client = MockClient {
-            output: Some("not json".to_string()),
-            err: None,
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-        let decision = behavior.decide(&make_observation());
-        assert_eq!(decision, AgentDecision::Wait);
-    }
-
-    #[test]
-    fn llm_agent_emits_decision_trace_with_io() {
-        let client = MockClient {
-            output: Some("{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string()),
-            err: None,
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-
-        let decision = behavior.decide(&make_observation());
-        assert!(matches!(
-            decision,
-            AgentDecision::Act(Action::MoveAgent { .. })
-        ));
-
-        let trace = behavior.take_decision_trace().expect("trace should exist");
-        assert_eq!(trace.agent_id, "agent-1");
-        assert!(trace
-            .llm_input
-            .as_deref()
-            .unwrap_or_default()
-            .contains("[system]"));
-        assert!(trace
-            .llm_output
-            .as_deref()
-            .unwrap_or_default()
-            .contains("move_agent"));
-        assert_eq!(trace.llm_error, None);
-        assert_eq!(trace.parse_error, None);
-        let diagnostics = trace.llm_diagnostics.as_ref().expect("diagnostics");
-        assert_eq!(diagnostics.model.as_deref(), Some("gpt-test"));
-        assert_eq!(diagnostics.prompt_tokens, Some(12));
-        assert_eq!(diagnostics.completion_tokens, Some(4));
-        assert_eq!(diagnostics.total_tokens, Some(16));
-        assert_eq!(diagnostics.retry_count, 0);
-        assert!(diagnostics.latency_ms.is_some());
-        assert_eq!(behavior.take_decision_trace(), None);
-    }
-
-    #[test]
-    fn llm_agent_emits_parse_error_in_trace() {
-        let client = MockClient {
-            output: Some("not json".to_string()),
-            err: None,
-        };
-        let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-
-        let decision = behavior.decide(&make_observation());
-        assert_eq!(decision, AgentDecision::Wait);
-
-        let trace = behavior.take_decision_trace().expect("trace should exist");
-        assert!(trace.parse_error.is_some());
-        assert!(trace
-            .llm_output
-            .as_deref()
-            .unwrap_or_default()
-            .contains("not json"));
-        let diagnostics = trace.llm_diagnostics.as_ref().expect("diagnostics");
-        assert_eq!(diagnostics.model.as_deref(), Some("gpt-test"));
-        assert_eq!(diagnostics.retry_count, 0);
-    }
-}
+mod tests;

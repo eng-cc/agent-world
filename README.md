@@ -40,8 +40,20 @@
 - 配置项（可选）：
   - `AGENT_WORLD_LLM_TIMEOUT_MS`（默认 `30000`）
   - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
+  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`（默认内置短期目标）
+  - `AGENT_WORLD_LLM_LONG_TERM_GOAL`（默认内置长期目标）
+  - `AGENT_WORLD_LLM_MAX_MODULE_CALLS`（默认 `3`）
+- Agent 级目标覆盖（可选）：
+  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
+  - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
+  - 例：`agent-1` 对应 `AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1`
 - 当 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 未配置时，默认值为：
   - `硅基个体存在的意义是保障硅基文明存续和发展；`
+- LLM 在决策过程中支持按需调用内置模块（JSON 协议 `type=module_call`）：
+  - `agent.modules.list`
+  - `environment.current_observation`
+  - `memory.short_term.recent`
+  - `memory.long_term.search`
 
 ## 示例工具
 - `world_init_demo`：输出世界初始化场景的摘要信息  

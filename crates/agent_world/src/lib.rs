@@ -50,8 +50,10 @@ pub use simulator::{
     LlmAgentBuildError, LlmAgentConfig, LlmClientError, LongTermMemory, LongTermMemoryEntry,
     MemoryEntry, MemoryEntryKind, OpenAiChatCompletionClient, RateLimitPolicy, RateLimitState,
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, ShortTermMemory, SkippedReason,
-    DEFAULT_CONFIG_FILE_NAME, DEFAULT_LLM_SYSTEM_PROMPT, ENV_LLM_API_KEY, ENV_LLM_BASE_URL,
-    ENV_LLM_MODEL, ENV_LLM_SYSTEM_PROMPT, ENV_LLM_TIMEOUT_MS,
+    DEFAULT_CONFIG_FILE_NAME, DEFAULT_LLM_LONG_TERM_GOAL, DEFAULT_LLM_MAX_MODULE_CALLS,
+    DEFAULT_LLM_SHORT_TERM_GOAL, DEFAULT_LLM_SYSTEM_PROMPT, ENV_LLM_API_KEY, ENV_LLM_BASE_URL,
+    ENV_LLM_LONG_TERM_GOAL, ENV_LLM_MAX_MODULE_CALLS, ENV_LLM_MODEL, ENV_LLM_SHORT_TERM_GOAL,
+    ENV_LLM_SYSTEM_PROMPT, ENV_LLM_TIMEOUT_MS,
 };
 
 // World initialization
