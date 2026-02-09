@@ -149,6 +149,44 @@
   - memory 注入条目中，高相关命中率（由诊断标签统计）高于 70%。
 
 
+## 反重复门控与持续执行动作（LMSO14 补充）
+
+### 目标
+- 解决真实长跑中“模型持续输出同一动作”的复读风险。
+- 在强制再规划的同时，保留“确实需要连续执行同一动作”的表达能力。
+
+### 新增配置
+- `AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`：连续同动作阈值（默认 `4`，`0` 表示关闭）。
+  - 当连续动作达到阈值时，下一轮 `decide` 进入反重复门控，优先要求 `plan/module_call`。
+
+### Prompt 策略补充
+- 在 `Goals/Tool Protocol` 中加入反停滞与探索偏置：
+  - 无新证据时避免重复动作。
+  - 局部状态长期不变时优先探索。
+- 在门控触发时动态注入 `[Anti-Repetition Guard]`：
+  - 先补证据（`plan/module_call`），再输出最终决策。
+  - 若确需连续动作，要求输出 `execute_until`。
+
+### 新增决策协议
+- `execute_until`（终态决策的一种）：
+  - `{"decision":"execute_until","action":{<decision_json>},"until":{"event":"action_rejected|new_visible_agent|new_visible_location|arrive_target"},"max_ticks":<u64>}`
+- 语义：
+  - `action`：需要重复执行的动作（当前支持 `move_agent` / `harvest_radiation`）。
+  - `until.event`：停止条件。
+  - `max_ticks`：硬上限，避免无限循环。
+
+### 运行时行为
+- 当存在激活中的 `execute_until` 计划且停止条件未满足时：
+  - 跳过当轮 LLM 请求，直接复用计划动作执行。
+  - 记录 `execute_until_continue` trace，保持可观测性。
+- 停止条件命中后：
+  - 清理持续计划并恢复正常 LLM 决策流。
+
+### 风险与约束
+- 风险：过强门控可能打断合理的重复动作。
+- 缓解：通过 `execute_until` 显式表达“重复直到事件”，并允许阈值配置化关闭门控。
+
+
 ## 里程碑
 - M1：完成 Prompt 组装抽象（结构体、模板渲染、预算裁剪）与配置读取。
 - M2：完成多步状态机（plan/module/draft/finalize）与兼容分支。

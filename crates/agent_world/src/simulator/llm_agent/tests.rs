@@ -112,6 +112,42 @@ impl LlmCompletionClient for StressMockClient {
     }
 }
 
+#[derive(Debug, Clone)]
+struct CountingSequenceMockClient {
+    outputs: RefCell<VecDeque<String>>,
+    calls: Arc<AtomicUsize>,
+}
+
+impl CountingSequenceMockClient {
+    fn new(outputs: Vec<String>, calls: Arc<AtomicUsize>) -> Self {
+        Self {
+            outputs: RefCell::new(outputs.into()),
+            calls,
+        }
+    }
+}
+
+impl LlmCompletionClient for CountingSequenceMockClient {
+    fn complete(
+        &self,
+        _request: &LlmCompletionRequest,
+    ) -> Result<LlmCompletionResult, LlmClientError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        let output = self
+            .outputs
+            .borrow_mut()
+            .pop_front()
+            .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string());
+        Ok(LlmCompletionResult {
+            output,
+            model: Some("gpt-count".to_string()),
+            prompt_tokens: Some(12),
+            completion_tokens: Some(4),
+            total_tokens: Some(16),
+        })
+    }
+}
+
 fn make_observation() -> Observation {
     Observation {
         time: 7,
@@ -191,6 +227,7 @@ fn base_config() -> LlmAgentConfig {
         max_repair_rounds: 1,
         prompt_max_history_items: 4,
         prompt_profile: LlmPromptProfile::Balanced,
+        force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
     }
 }
 
@@ -225,6 +262,10 @@ fn llm_config_uses_default_system_prompt() {
         DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS
     );
     assert_eq!(config.prompt_profile, DEFAULT_LLM_PROMPT_PROFILE);
+    assert_eq!(
+        config.force_replan_after_same_action,
+        DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION
+    );
 }
 
 #[test]
@@ -288,12 +329,17 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
         "7".to_string(),
     );
     vars.insert(ENV_LLM_PROMPT_PROFILE.to_string(), "compact".to_string());
+    vars.insert(
+        ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION.to_string(),
+        "9".to_string(),
+    );
 
     let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap();
     assert_eq!(config.max_decision_steps, 6);
     assert_eq!(config.max_repair_rounds, 2);
     assert_eq!(config.prompt_max_history_items, 7);
     assert_eq!(config.prompt_profile, LlmPromptProfile::Compact);
+    assert_eq!(config.force_replan_after_same_action, 9);
 }
 
 #[test]
@@ -369,6 +415,10 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
         DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS
     );
     assert_eq!(config.prompt_profile, DEFAULT_LLM_PROMPT_PROFILE);
+    assert_eq!(
+        config.force_replan_after_same_action,
+        DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION
+    );
 }
 
 #[test]
@@ -444,6 +494,7 @@ fn openai_client_timeout_retry_can_recover_short_timeout_request() {
         max_repair_rounds: 1,
         prompt_max_history_items: 4,
         prompt_profile: LlmPromptProfile::Balanced,
+        force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
     };
     let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
 
@@ -841,4 +892,124 @@ fn llm_agent_emits_parse_error_in_trace() {
     let diagnostics = trace.llm_diagnostics.as_ref().expect("diagnostics");
     assert_eq!(diagnostics.model.as_deref(), Some("gpt-test"));
     assert_eq!(diagnostics.retry_count, 1);
+}
+
+#[test]
+fn llm_agent_force_replan_after_repeated_actions() {
+    let client = SequenceMockClient::new(vec![
+        "{\"decision\":\"harvest_radiation\",\"max_amount\":5}".to_string(),
+        "{\"decision\":\"harvest_radiation\",\"max_amount\":5}".to_string(),
+        "{\"decision\":\"harvest_radiation\",\"max_amount\":5}".to_string(),
+        "{\"type\":\"module_call\",\"module\":\"agent.modules.list\",\"args\":{}}".to_string(),
+        "{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string(),
+    ]);
+
+    let mut config = base_config();
+    config.max_decision_steps = 4;
+    config.max_repair_rounds = 1;
+    config.force_replan_after_same_action = 2;
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let mut observation = make_observation();
+    observation.time = 10;
+    let decision_1 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_1,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 11;
+    let decision_2 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_2,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 12;
+    let decision_3 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_3,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    let llm_input = trace.llm_input.unwrap_or_default();
+    assert!(llm_input.contains("[Anti-Repetition Guard]"));
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("replan guard requires")));
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("module_call")));
+}
+
+#[test]
+fn llm_agent_execute_until_continues_without_llm_until_event() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            "{\"decision\":\"execute_until\",\"action\":{\"decision\":\"harvest_radiation\",\"max_amount\":9},\"until\":{\"event\":\"new_visible_agent\"},\"max_ticks\":3}".to_string(),
+            "{\"decision\":\"move_agent\",\"to\":\"loc-2\"}".to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 20;
+
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 21;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+    let second_trace = behavior.take_decision_trace().expect("second trace");
+    assert!(second_trace.llm_input.is_none());
+    assert!(second_trace
+        .llm_output
+        .unwrap_or_default()
+        .contains("execute_until continue"));
+
+    observation.time = 22;
+    observation.visible_agents.push(ObservedAgent {
+        agent_id: "agent-new".to_string(),
+        location_id: "loc-new".to_string(),
+        pos: GeoPos {
+            x_cm: 5.0,
+            y_cm: 1.0,
+            z_cm: 0.0,
+        },
+        distance_cm: 5,
+    });
+
+    let third = behavior.decide(&observation);
+    assert!(matches!(
+        third,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let system_prompt = behavior.system_prompt();
+    let user_prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+
+    assert!(system_prompt.contains("anti_stagnation"));
+    assert!(system_prompt.contains("exploration_bias"));
+    assert!(system_prompt.contains("execute_until"));
+    assert!(user_prompt.contains("\"event\":\"action_rejected"));
 }

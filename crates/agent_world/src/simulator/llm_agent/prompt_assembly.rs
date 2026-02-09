@@ -151,7 +151,7 @@ impl PromptAssembler {
                 kind: PromptSectionKind::Goals,
                 priority: PromptSectionPriority::High,
                 content: format!(
-                    "[Agent Goals]\n- short_term_goal: {}\n- long_term_goal: {}",
+                    "[Agent Goals]\n- short_term_goal: {}\n- long_term_goal: {}\n- anti_stagnation: 避免在缺乏新证据时重复同一动作；连续重复动作前应先补充信息或解释触发条件。\n- exploration_bias: 当局部状态长期不变时，优先探索新地点、新对象或新线索。",
                     input.short_term_goal, input.long_term_goal,
                 ),
             },
@@ -161,7 +161,7 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::Tools,
                 priority: PromptSectionPriority::High,
-                content: "[Tool Protocol]\n- 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}\n- 可用模块由 `agent.modules.list` 返回；禁止虚构模块\n- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。".to_string(),
+                content: "[Tool Protocol]\n- 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}\n- 可用模块由 `agent.modules.list` 返回；禁止虚构模块\n- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策。\n- 若确定需要连续执行某动作，可输出 execute_until（含 until.event 与 max_ticks）\n- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。".to_string(),
             },
             true,
         ));
@@ -216,7 +216,7 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::OutputSchema,
                 priority: PromptSectionPriority::High,
-                content: "[Decision JSON Schema]\n{\"decision\":\"wait\"}\n{\"decision\":\"wait_ticks\",\"ticks\":<u64>}\n{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}\n{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}\n\n若你需要查询信息，请输出模块调用 JSON：\n{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}".to_string(),
+                content: "[Decision JSON Schema]\n{\"decision\":\"wait\"}\n{\"decision\":\"wait_ticks\",\"ticks\":<u64>}\n{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}\n{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}\n{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"action_rejected|new_visible_agent|new_visible_location|arrive_target\"},\"max_ticks\":<u64>}\n\n若你需要查询信息，请输出模块调用 JSON：\n{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}".to_string(),
             },
             true,
         ));

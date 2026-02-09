@@ -82,3 +82,18 @@ where
         None => Ok(default),
     }
 }
+
+pub(super) fn parse_non_negative_usize<F>(
+    getter: &mut F,
+    key: &'static str,
+    default: usize,
+    error: fn(String) -> LlmConfigError,
+) -> Result<usize, LlmConfigError>
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    match getter(key) {
+        Some(value) => value.parse::<usize>().map_err(|_| error(value.clone())),
+        None => Ok(default),
+    }
+}

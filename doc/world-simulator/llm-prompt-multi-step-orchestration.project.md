@@ -17,17 +17,19 @@
 - [x] LMSO11 长跑压测（多步+repair+记忆膨胀）并固化回归测试
 - [x] LMSO12 真实 LLM 长跑脚本压测（指标落盘 + 阈值断言 + 结果汇总）
 - [x] LMSO13 压测 run.log 增加 LLM 输入输出落盘（逐 tick）
+- [x] LMSO14 反重复门控 + execute_until 持续执行动作（防复读并保留连续动作能力）
 
 ## 依赖
-- `crates/agent_world/src/bin/world_llm_agent_demo.rs`
 - `crates/agent_world/src/simulator/llm_agent.rs`
+- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
+- `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
+- `crates/agent_world/src/simulator/llm_agent/execution_controls.rs`
+- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
 - `crates/agent_world/src/simulator/llm_agent/tests.rs`
-- `scripts/llm-longrun-stress.sh`
-- `README.md`
 - `config.example.toml`
-- `doc/world-simulator/llm-prompt-system.md`
+- `README.md`
 
 ## 状态
-- 当前阶段：LMSO13（压测 run.log 已支持逐 tick LLM I/O）
-- 下一步：为 `--print-llm-io` 增加可配置截断阈值（避免超长 prompt 导致日志膨胀）
-- 最近更新：完成 LMSO13（`world_llm_agent_demo --print-llm-io`，`llm-longrun-stress.sh` 默认开启并支持 `--no-llm-io`，2026-02-09）
+- 当前阶段：LMSO14（反重复门控与 execute_until 已落地）
+- 下一步：给 `execute_until` 增加可配置日志截断与更多 until.event 语义（如库存阈值、能量阈值）
+- 最近更新：完成 LMSO14（连续动作阈值强制再规划 + execute_until 运行态闭环 + 回归测试，2026-02-09）

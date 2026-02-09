@@ -147,6 +147,20 @@ struct RawLlmDecisionDraftPayload {
     need_verify: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+struct RawLlmExecuteUntilPayload {
+    decision: String,
+    action: serde_json::Value,
+    until: RawLlmExecuteUntilUntil,
+    #[serde(default)]
+    max_ticks: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawLlmExecuteUntilUntil {
+    event: String,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct LlmDecisionDraft {
     pub decision: AgentDecision,
@@ -154,11 +168,48 @@ pub(super) struct LlmDecisionDraft {
     pub need_verify: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ExecuteUntilEventKind {
+    ActionRejected,
+    NewVisibleAgent,
+    NewVisibleLocation,
+    ArriveTarget,
+}
+
+impl ExecuteUntilEventKind {
+    pub(super) fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "action_rejected" => Some(Self::ActionRejected),
+            "new_visible_agent" => Some(Self::NewVisibleAgent),
+            "new_visible_location" => Some(Self::NewVisibleLocation),
+            "arrive_target" => Some(Self::ArriveTarget),
+            _ => None,
+        }
+    }
+
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::ActionRejected => "action_rejected",
+            Self::NewVisibleAgent => "new_visible_agent",
+            Self::NewVisibleLocation => "new_visible_location",
+            Self::ArriveTarget => "arrive_target",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ExecuteUntilDirective {
+    pub action: Action,
+    pub until_event: ExecuteUntilEventKind,
+    pub max_ticks: u64,
+}
+
 #[derive(Debug)]
 pub(super) enum ParsedLlmTurn {
     Plan(LlmPlanPayload),
     DecisionDraft(LlmDecisionDraft),
     Decision(AgentDecision, Option<String>),
+    ExecuteUntil(ExecuteUntilDirective),
     ModuleCall(LlmModuleCallRequest),
     Invalid(String),
 }
@@ -200,7 +251,18 @@ pub(super) fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlm
         };
     }
 
-    let (decision, parse_error) = parse_llm_decision_with_error(json, agent_id);
+    if value
+        .get("decision")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("execute_until"))
+    {
+        return match parse_execute_until_decision(value, agent_id) {
+            Ok(directive) => ParsedLlmTurn::ExecuteUntil(directive),
+            Err(err) => ParsedLlmTurn::Invalid(err),
+        };
+    }
+
+    let (decision, parse_error) = parse_llm_decision_value_with_error(value, agent_id);
     if let Some(err) = parse_error {
         ParsedLlmTurn::Invalid(err)
     } else {
@@ -229,9 +291,76 @@ fn parse_llm_decision_draft(
     })
 }
 
+fn parse_execute_until_decision(
+    value: serde_json::Value,
+    agent_id: &str,
+) -> Result<ExecuteUntilDirective, String> {
+    const DEFAULT_MAX_TICKS: u64 = 6;
+    const MAX_TICKS_CAP: u64 = 256;
+
+    let payload = serde_json::from_value::<RawLlmExecuteUntilPayload>(value)
+        .map_err(|err| format!("execute_until parse failed: {err}"))?;
+
+    if !payload
+        .decision
+        .trim()
+        .eq_ignore_ascii_case("execute_until")
+    {
+        return Err("execute_until missing decision=execute_until".to_string());
+    }
+
+    let (action_decision, action_parse_error) =
+        parse_llm_decision_value_with_error(payload.action, agent_id);
+    if let Some(err) = action_parse_error {
+        return Err(format!("execute_until invalid action: {err}"));
+    }
+    let action = match action_decision {
+        AgentDecision::Act(action) => action,
+        _ => {
+            return Err("execute_until action must be actionable decision".to_string());
+        }
+    };
+
+    let until_event =
+        ExecuteUntilEventKind::parse(payload.until.event.as_str()).ok_or_else(|| {
+            format!(
+                "execute_until unsupported until.event: {}",
+                payload.until.event.trim()
+            )
+        })?;
+
+    let max_ticks = payload
+        .max_ticks
+        .unwrap_or(DEFAULT_MAX_TICKS)
+        .clamp(1, MAX_TICKS_CAP);
+
+    Ok(ExecuteUntilDirective {
+        action,
+        until_event,
+        max_ticks,
+    })
+}
+
 fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
     let json = extract_json_block(output).unwrap_or(output);
-    let parsed = match serde_json::from_str::<LlmDecisionPayload>(json) {
+    let value = match serde_json::from_str::<serde_json::Value>(json) {
+        Ok(value) => value,
+        Err(err) => {
+            return (
+                AgentDecision::Wait,
+                Some(format!("json parse failed: {err}")),
+            );
+        }
+    };
+
+    parse_llm_decision_value_with_error(value, agent_id)
+}
+
+fn parse_llm_decision_value_with_error(
+    value: serde_json::Value,
+    agent_id: &str,
+) -> (AgentDecision, Option<String>) {
+    let parsed = match serde_json::from_value::<LlmDecisionPayload>(value) {
         Ok(value) => value,
         Err(err) => {
             return (
