@@ -44,6 +44,7 @@ mod internal_capture;
 mod material_library;
 mod panel_layout;
 mod panel_scroll;
+mod right_panel_module_visibility;
 mod scene_helpers;
 mod selection_linking;
 mod timeline_controls;
@@ -73,6 +74,9 @@ use internal_capture::{
 use material_library::{build_location_material_handles, LocationMaterialHandles};
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
+use right_panel_module_visibility::{
+    persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,
+};
 use scene_helpers::*;
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,

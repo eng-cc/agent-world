@@ -3,6 +3,8 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
+    let (module_visibility_state, module_visibility_path) =
+        resolve_right_panel_module_visibility_resources();
 
     App::new()
         .insert_resource(ViewerConfig {
@@ -26,6 +28,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
         .insert_resource(RightPanelWidthState::default())
+        .insert_resource(module_visibility_state)
+        .insert_resource(module_visibility_path)
         .insert_resource(StepControlLoadingState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -58,6 +62,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_event_click_list_ui,
                 update_timeline_ui,
                 trigger_internal_capture,
+                persist_right_panel_module_visibility,
             )
                 .chain(),
         )

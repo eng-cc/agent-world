@@ -89,6 +89,45 @@ pub(super) fn copyable_panel_toggle_label(visible: bool, locale: UiLocale) -> &'
     }
 }
 
+pub(super) fn module_switches_title(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "模块开关"
+    } else {
+        "Modules"
+    }
+}
+
+pub(super) fn module_toggle_label(module_key: &str, visible: bool, locale: UiLocale) -> String {
+    let (zh, en) = match module_key {
+        "controls" => ("控制", "Controls"),
+        "overview" => ("总览", "Overview"),
+        "overlay" => ("覆盖层", "Overlay"),
+        "diagnosis" => ("诊断", "Diagnosis"),
+        "event_link" => ("事件联动", "Event Link"),
+        "timeline" => ("时间轴", "Timeline"),
+        "details" => ("明细", "Details"),
+        _ => ("模块", "Module"),
+    };
+
+    let state = if locale.is_zh() {
+        if visible {
+            "开"
+        } else {
+            "关"
+        }
+    } else if visible {
+        "on"
+    } else {
+        "off"
+    };
+
+    if locale.is_zh() {
+        format!("{zh}:{state}")
+    } else {
+        format!("{en}:{state}")
+    }
+}
+
 pub(super) fn control_button_label(control: &ViewerControl, locale: UiLocale) -> &'static str {
     match control {
         ViewerControl::Play => {
@@ -243,6 +282,20 @@ mod tests {
         assert_eq!(
             camera_mode_button_label(ViewerCameraMode::ThreeD, UiLocale::EnUs),
             "3D"
+        );
+    }
+
+    #[test]
+    fn module_toggle_label_is_localized_and_stateful() {
+        assert_eq!(module_switches_title(UiLocale::ZhCn), "模块开关");
+        assert_eq!(module_switches_title(UiLocale::EnUs), "Modules");
+        assert_eq!(
+            module_toggle_label("controls", true, UiLocale::ZhCn),
+            "控制:开"
+        );
+        assert_eq!(
+            module_toggle_label("timeline", false, UiLocale::EnUs),
+            "Timeline:off"
         );
     }
 }
