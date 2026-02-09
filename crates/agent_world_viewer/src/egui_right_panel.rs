@@ -35,11 +35,12 @@ use crate::{
     ViewerSelection, ViewerState, WorldOverlayConfig,
 };
 
-const DEFAULT_PANEL_WIDTH: f32 = 380.0;
-const MIN_PANEL_WIDTH: f32 = 320.0;
-const MAX_PANEL_WIDTH: f32 = 620.0;
+const DEFAULT_PANEL_WIDTH: f32 = 320.0;
+const MIN_PANEL_WIDTH: f32 = 240.0;
+const MAX_PANEL_WIDTH: f32 = 420.0;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
+const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 
 fn adaptive_panel_default_width(available_width: f32) -> f32 {
     let width = if available_width.is_finite() {
@@ -47,7 +48,7 @@ fn adaptive_panel_default_width(available_width: f32) -> f32 {
     } else {
         DEFAULT_PANEL_WIDTH
     };
-    (width * 0.34).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
+    (width * 0.22).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
 }
 
 #[derive(SystemParam)]
@@ -230,7 +231,7 @@ pub(super) fn render_right_side_panel_egui(
             if copyable_panel_state.visible {
                 ui.separator();
                 ui.heading(copy_panel_title(locale));
-                ui.label(copy_panel_hint(locale));
+                ui.add(egui::Label::new(copy_panel_hint(locale)).wrap());
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     render_text_sections(
@@ -261,7 +262,12 @@ pub(super) fn render_right_side_panel_egui(
                     for event in rows {
                         let line =
                             event_row_label(event, focused_event_id == Some(event.id), locale);
-                        if ui.add(egui::Button::new(line.as_str())).clicked() {
+                        let line_preview = truncate_observe_text(&line, EVENT_ROW_LABEL_MAX_CHARS);
+                        let mut response = ui.add(egui::Button::new(line_preview.as_str()));
+                        if line_preview != line {
+                            response = response.on_hover_text(line.as_str());
+                        }
+                        if response.clicked() {
                             if let Some(config) = viewer_3d_config.as_deref() {
                                 apply_event_click_action(
                                     event.id,
@@ -806,7 +812,8 @@ mod tests {
     fn adaptive_panel_width_clamps_to_bounds() {
         assert_eq!(adaptive_panel_default_width(200.0), MIN_PANEL_WIDTH);
         assert_eq!(adaptive_panel_default_width(10_000.0), MAX_PANEL_WIDTH);
-        assert!(adaptive_panel_default_width(1200.0) >= MIN_PANEL_WIDTH);
+        assert_eq!(adaptive_panel_default_width(1200.0), 264.0);
+        assert_eq!(adaptive_panel_default_width(1500.0), 330.0);
     }
 
     #[test]

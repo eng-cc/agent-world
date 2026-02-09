@@ -12,9 +12,7 @@ use agent_world::simulator::{
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
-use bevy::camera::Viewport;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
@@ -1075,32 +1073,12 @@ fn update_ui(
         );
     }
 }
-fn update_3d_viewport(
-    windows: Query<&Window, With<PrimaryWindow>>,
-    panel_width: Option<Res<RightPanelWidthState>>,
-    mut cameras: Query<&mut Camera, With<Viewer3dCamera>>,
-) {
-    let Ok(window) = windows.single() else {
-        return;
-    };
+fn update_3d_viewport(mut cameras: Query<&mut Camera, With<Viewer3dCamera>>) {
     let Ok(mut camera) = cameras.single_mut() else {
         return;
     };
 
-    let panel_width_logical = panel_width
-        .as_deref()
-        .map(|state| state.width_px)
-        .unwrap_or(UI_PANEL_WIDTH);
-    let panel_width_physical = (panel_width_logical * window.scale_factor()).round() as u32;
-    let window_width = window.physical_width();
-    let window_height = window.physical_height().max(1);
-    let render_width = window_width.saturating_sub(panel_width_physical).max(1);
-
-    camera.viewport = Some(Viewport {
-        physical_position: UVec2::ZERO,
-        physical_size: UVec2::new(render_width, window_height),
-        depth: 0.0..1.0,
-    });
+    camera.viewport = None;
 }
 #[cfg(test)]
 mod tests;
