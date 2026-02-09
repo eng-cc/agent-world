@@ -12,6 +12,8 @@
 - [x] LLM9 回顾并更新设计文档/项目管理文档状态，补任务日志，运行测试
 - [x] LLM10 新增 `world_llm_agent_demo`（AgentRunner + LlmAgentBehavior）
 - [x] LLM11 在线 viewer 支持 `--llm` 决策驱动（`world_viewer_live`）
+- [x] LLM12 修复 LLM 端点调用失败（端点规范化 + 超时回退重试）
+- [x] LLM13 补充端点与超时回退重试测试
 
 ## 依赖
 - `crates/agent_world/src/simulator/agent.rs`
@@ -20,6 +22,6 @@
 - `config.example.toml`
 
 ## 状态
-- 当前阶段：LLM11（viewer 在线模式已支持 LLM 驱动）
+- 当前阶段：LLM13（LLM 调用稳定性修复与回归测试已完成）
 - 下一步：按 runtime 路线补齐 LLM effect/receipt 审计闭环
-- 最近更新：world_viewer_live 支持 `--llm` 决策驱动（2026-02-07）
+- 最近更新：修复短超时导致的 LLM 误降级（2026-02-09）

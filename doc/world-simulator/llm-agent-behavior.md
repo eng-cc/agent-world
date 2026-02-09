@@ -28,11 +28,16 @@
 ### 配置文件项（`config.toml`）
 - `AGENT_WORLD_LLM_MODEL`
 - `AGENT_WORLD_LLM_BASE_URL`
+  - 支持两种写法：
+    - 根端点（推荐）：`https://ark.cn-beijing.volces.com/api/v3`
+    - 完整补全端点：`https://ark.cn-beijing.volces.com/api/v3/chat/completions`
 - `AGENT_WORLD_LLM_API_KEY`
 - `AGENT_WORLD_LLM_TIMEOUT_MS`（可选，默认 30_000）
 - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
   - 可选；缺省时使用默认 system prompt：
     - `硅基个体存在的意义是保障硅基文明存续和发展；`
+
+超时策略说明：当 `AGENT_WORLD_LLM_TIMEOUT_MS` 配置小于 `30_000` 且首次请求超时，会自动使用 `30_000ms` 进行一次重试，以降低弱网和冷启动导致的误降级概率。
 
 说明：键名沿用 `AGENT_WORLD_*` 前缀以保持兼容语义，但项目约定通过 `config.toml` 作为主配置入口。
 
@@ -76,5 +81,6 @@
 ## 风险
 - **输出不稳定风险**：LLM 可能输出非 JSON；通过“严格协议 + 解析失败降级”缓解。
 - **网络依赖风险**：在线调用可能超时或失败；通过超时配置与 `Wait` 降级缓解。
+- **端点与超时配置风险**：端点路径或短超时可能导致请求失败；通过端点规范化（兼容已包含 `/chat/completions` 的配置）和超时回退重试缓解。
 - **安全风险**：错误 prompt 可能诱导越权动作；当前通过动作白名单与解析协议收敛风险。
 - **一致性风险**：未接入 receipt 体系前，跨运行不可严格重放；后续在 runtime effect/receipt 中补齐。

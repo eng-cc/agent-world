@@ -269,25 +269,58 @@ pub struct LlmCompletionResult {
 
 #[derive(Debug, Clone)]
 pub struct OpenAiChatCompletionClient {
-    base_url: String,
+    chat_completions_url: String,
     api_key: String,
     client: Client,
+    request_timeout_ms: u64,
+    timeout_retry_client: Option<Client>,
+    timeout_retry_ms: Option<u64>,
 }
 
 impl OpenAiChatCompletionClient {
     pub fn from_config(config: &LlmAgentConfig) -> Result<Self, LlmClientError> {
-        let client = Client::builder()
-            .timeout(Duration::from_millis(config.timeout_ms.max(1)))
+        let request_timeout_ms = config.timeout_ms.max(1);
+        let client = Self::build_http_client(request_timeout_ms)?;
+        let (timeout_retry_client, timeout_retry_ms) =
+            if request_timeout_ms < DEFAULT_LLM_TIMEOUT_MS {
+                let retry_timeout_ms = DEFAULT_LLM_TIMEOUT_MS;
+                (
+                    Some(Self::build_http_client(retry_timeout_ms)?),
+                    Some(retry_timeout_ms),
+                )
+            } else {
+                (None, None)
+            };
+
+        Ok(Self {
+            chat_completions_url: build_chat_completions_url(config.base_url.as_str()),
+            api_key: config.api_key.clone(),
+            client,
+            request_timeout_ms,
+            timeout_retry_client,
+            timeout_retry_ms,
+        })
+    }
+
+    fn build_http_client(timeout_ms: u64) -> Result<Client, LlmClientError> {
+        Client::builder()
+            .timeout(Duration::from_millis(timeout_ms.max(1)))
             .build()
             .map_err(|err| LlmClientError::BuildClient {
                 message: err.to_string(),
-            })?;
+            })
+    }
 
-        Ok(Self {
-            base_url: config.base_url.trim_end_matches('/').to_string(),
-            api_key: config.api_key.clone(),
-            client,
-        })
+    fn send_chat_request(
+        &self,
+        client: &Client,
+        payload: &ChatCompletionRequest<'_>,
+    ) -> Result<reqwest::blocking::Response, reqwest::Error> {
+        client
+            .post(self.chat_completions_url.as_str())
+            .bearer_auth(&self.api_key)
+            .json(payload)
+            .send()
     }
 }
 
@@ -364,7 +397,6 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
         &self,
         request: &LlmCompletionRequest,
     ) -> Result<LlmCompletionResult, LlmClientError> {
-        let url = format!("{}/chat/completions", self.base_url);
         let payload = ChatCompletionRequest {
             model: request.model.as_str(),
             messages: [
@@ -379,15 +411,38 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
             ],
         };
 
-        let response = self
-            .client
-            .post(url)
-            .bearer_auth(&self.api_key)
-            .json(&payload)
-            .send()
-            .map_err(|err| LlmClientError::Http {
-                message: err.to_string(),
-            })?;
+        let response = match self.send_chat_request(&self.client, &payload) {
+            Ok(response) => response,
+            Err(err) if err.is_timeout() => {
+                if let (Some(retry_client), Some(retry_timeout_ms)) =
+                    (&self.timeout_retry_client, self.timeout_retry_ms)
+                {
+                    match self.send_chat_request(retry_client, &payload) {
+                        Ok(response) => response,
+                        Err(retry_err) => {
+                            return Err(LlmClientError::Http {
+                                message: format!(
+                                    "request timed out after {}ms; retry with {}ms failed: {}",
+                                    self.request_timeout_ms, retry_timeout_ms, retry_err
+                                ),
+                            });
+                        }
+                    }
+                } else {
+                    return Err(LlmClientError::Http {
+                        message: format!(
+                            "request timed out after {}ms: {}",
+                            self.request_timeout_ms, err
+                        ),
+                    });
+                }
+            }
+            Err(err) => {
+                return Err(LlmClientError::Http {
+                    message: err.to_string(),
+                });
+            }
+        };
 
         let status = response.status();
         if status != StatusCode::OK {
@@ -420,6 +475,15 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
             completion_tokens: usage.as_ref().and_then(|usage| usage.completion_tokens),
             total_tokens: usage.as_ref().and_then(|usage| usage.total_tokens),
         })
+    }
+}
+
+fn build_chat_completions_url(base_url: &str) -> String {
+    let normalized = base_url.trim().trim_end_matches('/');
+    if normalized.ends_with("/chat/completions") {
+        normalized.to_string()
+    } else {
+        format!("{normalized}/chat/completions")
     }
 }
 

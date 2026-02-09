@@ -6,8 +6,13 @@ use crate::simulator::{
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Default, Clone)]
 struct MockClient {
@@ -115,6 +120,14 @@ fn base_config() -> LlmAgentConfig {
         short_term_goal: "short-goal".to_string(),
         long_term_goal: "long-goal".to_string(),
         max_module_calls: 3,
+    }
+}
+
+fn sample_completion_request() -> LlmCompletionRequest {
+    LlmCompletionRequest {
+        model: "gpt-test".to_string(),
+        system_prompt: "system".to_string(),
+        user_prompt: "user".to_string(),
     }
 }
 
@@ -229,6 +242,88 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
     assert_eq!(config.api_key, "secret");
     assert_eq!(config.timeout_ms, 4567);
     assert_eq!(config.system_prompt, DEFAULT_LLM_SYSTEM_PROMPT);
+}
+
+#[test]
+fn build_chat_completions_url_handles_suffix_variants() {
+    assert_eq!(
+        build_chat_completions_url("https://api.example.com/v1"),
+        "https://api.example.com/v1/chat/completions"
+    );
+    assert_eq!(
+        build_chat_completions_url("https://api.example.com/v1/"),
+        "https://api.example.com/v1/chat/completions"
+    );
+    assert_eq!(
+        build_chat_completions_url("https://api.example.com/v1/chat/completions"),
+        "https://api.example.com/v1/chat/completions"
+    );
+}
+
+#[test]
+fn openai_client_enables_timeout_retry_when_timeout_below_default() {
+    let mut config = base_config();
+    config.timeout_ms = 8000;
+    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
+
+    assert_eq!(client.request_timeout_ms, 8000);
+    assert_eq!(client.timeout_retry_ms, Some(DEFAULT_LLM_TIMEOUT_MS));
+    assert!(client.timeout_retry_client.is_some());
+}
+
+#[test]
+fn openai_client_timeout_retry_can_recover_short_timeout_request() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let addr = listener.local_addr().expect("local addr");
+    let accepted = Arc::new(AtomicUsize::new(0));
+    let accepted_clone = Arc::clone(&accepted);
+
+    let response_body = r#"{"model":"gpt-test","usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2},"choices":[{"message":{"content":"{\"decision\":\"wait\"}"}}]}"#;
+    let handle = thread::spawn(move || {
+        for incoming in listener.incoming().take(2) {
+            let mut stream = match incoming {
+                Ok(stream) => stream,
+                Err(_) => break,
+            };
+            let request_index = accepted_clone.fetch_add(1, Ordering::SeqCst);
+
+            let mut request_buf = [0_u8; 1024];
+            let _ = stream.read(&mut request_buf);
+
+            if request_index == 0 {
+                thread::sleep(Duration::from_millis(80));
+            }
+
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                response_body.len(),
+                response_body
+            );
+            let _ = stream.write_all(response.as_bytes());
+            let _ = stream.flush();
+        }
+    });
+
+    let config = LlmAgentConfig {
+        model: "gpt-test".to_string(),
+        base_url: format!("http://{}/v1", addr),
+        api_key: "test-key".to_string(),
+        timeout_ms: 10,
+        system_prompt: "prompt".to_string(),
+        short_term_goal: "short-goal".to_string(),
+        long_term_goal: "long-goal".to_string(),
+        max_module_calls: 3,
+    };
+    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
+
+    let completion = client
+        .complete(&sample_completion_request())
+        .expect("retry should recover timeout");
+
+    assert_eq!(completion.output, "{\"decision\":\"wait\"}");
+    assert_eq!(accepted.load(Ordering::SeqCst), 2);
+
+    handle.join().expect("server thread");
 }
 
 #[test]
