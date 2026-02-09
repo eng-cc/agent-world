@@ -15,7 +15,7 @@ struct SnapshotRenderer {
 }
 
 impl SnapshotRenderer {
-    fn new() -> Self {
+    fn try_new() -> Result<Self, String> {
         let setup = egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew::default());
         let instance = pollster::block_on(setup.new_instance());
         let render_state = pollster::block_on(egui_wgpu::RenderState::create(
@@ -27,9 +27,19 @@ impl SnapshotRenderer {
             None,
             egui_wgpu::RendererOptions::PREDICTABLE,
         ))
-        .expect("failed to create wgpu render state for snapshots");
+        .map_err(|err| format!("failed to create wgpu render state for snapshots: {err}"))?;
 
-        Self { render_state }
+        Ok(Self { render_state })
+    }
+}
+
+fn snapshot_renderer_or_skip() -> Option<SnapshotRenderer> {
+    match SnapshotRenderer::try_new() {
+        Ok(renderer) => Some(renderer),
+        Err(err) => {
+            eprintln!("skip egui snapshot tests because wgpu is unavailable: {err}");
+            None
+        }
     }
 }
 
@@ -480,13 +490,17 @@ fn egui_kittest_camera_mode_toggle_switches_state() {
 
 #[test]
 fn egui_kittest_snapshot_overview_live() {
+    let Some(renderer) = snapshot_renderer_or_skip() else {
+        return;
+    };
+
     let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
     let selection = crate::ViewerSelection::default();
     let timeline = TimelineUiState::default();
 
     let mut harness = Harness::builder()
         .with_size(egui::vec2(380.0, 150.0))
-        .renderer(SnapshotRenderer::new())
+        .renderer(renderer)
         .build_ui(move |ui| {
             render_overview_section(
                 ui,
@@ -503,6 +517,10 @@ fn egui_kittest_snapshot_overview_live() {
 
 #[test]
 fn egui_kittest_snapshot_overview_manual_high_risk() {
+    let Some(renderer) = snapshot_renderer_or_skip() else {
+        return;
+    };
+
     let state = sample_viewer_state(
         crate::ConnectionStatus::Connected,
         vec![
@@ -519,7 +537,7 @@ fn egui_kittest_snapshot_overview_manual_high_risk() {
 
     let mut harness = Harness::builder()
         .with_size(egui::vec2(420.0, 160.0))
-        .renderer(SnapshotRenderer::new())
+        .renderer(renderer)
         .build_ui(move |ui| {
             render_overview_section(
                 ui,
