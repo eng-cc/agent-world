@@ -19,12 +19,13 @@ Options:
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
   --min-active-ticks <n>       Fail if active_ticks < n (default: ticks)
+  --no-llm-io                  Disable LLM input/output logging in run.log
   --keep-out-dir               Keep existing out dir content
   -h, --help                   Show help
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
-  - run log: cargo run stdout/stderr output
+  - run log: cargo run stdout/stderr output (includes LLM I/O by default)
   - summary: flattened key metrics for quick comparison
 USAGE
 }
@@ -64,6 +65,7 @@ max_llm_errors="0"
 max_parse_errors="0"
 max_repair_rounds_max="2"
 min_active_ticks=""
+print_llm_io=1
 keep_out_dir=0
 
 while [[ $# -gt 0 ]]; do
@@ -107,6 +109,10 @@ while [[ $# -gt 0 ]]; do
     --min-active-ticks)
       min_active_ticks=${2:-}
       shift 2
+      ;;
+    --no-llm-io)
+      print_llm_io=0
+      shift
       ;;
     --keep-out-dir)
       keep_out_dir=1
@@ -155,6 +161,9 @@ cmd=(
   --ticks "$ticks"
   --report-json "$report_json"
 )
+if [[ $print_llm_io -eq 1 ]]; then
+  cmd+=(--print-llm-io)
+fi
 
 echo "+ ${cmd[*]} | tee $log_file"
 set +e
@@ -217,6 +226,7 @@ fi
   echo "decision_wait=$decision_wait"
   echo "decision_wait_ticks=$decision_wait_ticks"
   echo "decision_act=$decision_act"
+  echo "llm_io_logged=$print_llm_io"
   echo "report_json=$report_json"
   echo "run_log=$log_file"
 } > "$summary_file"

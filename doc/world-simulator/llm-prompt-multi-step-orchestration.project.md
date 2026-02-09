@@ -16,6 +16,7 @@
 - [x] LMSO10 更新 README / config 示例 / 开发日志并收口
 - [x] LMSO11 长跑压测（多步+repair+记忆膨胀）并固化回归测试
 - [x] LMSO12 真实 LLM 长跑脚本压测（指标落盘 + 阈值断言 + 结果汇总）
+- [x] LMSO13 压测 run.log 增加 LLM 输入输出落盘（逐 tick）
 
 ## 依赖
 - `crates/agent_world/src/bin/world_llm_agent_demo.rs`
@@ -27,6 +28,6 @@
 - `doc/world-simulator/llm-prompt-system.md`
 
 ## 状态
-- 当前阶段：LMSO12（真实 LLM 长跑脚本压测已完成）
-- 下一步：将 `summary.txt/report.json` 纳入跨版本对比基线，并按 profile（`compact/balanced`）形成双档压力基准
-- 最近更新：完成 LMSO12（`world_llm_agent_demo --report-json` + `scripts/llm-longrun-stress.sh`，并实跑 `llm_bootstrap` 40 tick，2026-02-09）
+- 当前阶段：LMSO13（压测 run.log 已支持逐 tick LLM I/O）
+- 下一步：为 `--print-llm-io` 增加可配置截断阈值（避免超长 prompt 导致日志膨胀）
+- 最近更新：完成 LMSO13（`world_llm_agent_demo --print-llm-io`，`llm-longrun-stress.sh` 默认开启并支持 `--no-llm-io`，2026-02-09）

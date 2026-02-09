@@ -15,6 +15,7 @@ struct CliOptions {
     scenario: WorldScenario,
     ticks: u64,
     report_json: Option<String>,
+    print_llm_io: bool,
 }
 
 impl Default for CliOptions {
@@ -23,6 +24,7 @@ impl Default for CliOptions {
             scenario: WorldScenario::LlmBootstrap,
             ticks: 20,
             report_json: None,
+            print_llm_io: false,
         }
     }
 }
@@ -147,6 +149,38 @@ impl DemoRunReport {
     }
 }
 
+fn print_llm_io_trace(tick: u64, agent_id: &str, trace: &AgentDecisionTrace) {
+    println!("tick={} agent={} llm_io_begin", tick, agent_id);
+
+    if let Some(input) = trace.llm_input.as_ref() {
+        println!("tick={} agent={} llm_input_begin", tick, agent_id);
+        println!("{}", input);
+        println!("tick={} agent={} llm_input_end", tick, agent_id);
+    } else {
+        println!("tick={} agent={} llm_input=<none>", tick, agent_id);
+    }
+
+    if let Some(output) = trace.llm_output.as_ref() {
+        println!("tick={} agent={} llm_output_begin", tick, agent_id);
+        println!("{}", output);
+        println!("tick={} agent={} llm_output_end", tick, agent_id);
+    } else {
+        println!("tick={} agent={} llm_output=<none>", tick, agent_id);
+    }
+
+    if let Some(error) = trace.llm_error.as_ref() {
+        println!("tick={} agent={} llm_error={}", tick, agent_id, error);
+    }
+    if let Some(parse_error) = trace.parse_error.as_ref() {
+        println!(
+            "tick={} agent={} parse_error={}",
+            tick, agent_id, parse_error
+        );
+    }
+
+    println!("tick={} agent={} llm_io_end", tick, agent_id);
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let options = match parse_options(args.iter().skip(1).map(|arg| arg.as_str())) {
@@ -203,6 +237,9 @@ fn main() {
 
                 if let Some(trace) = result.decision_trace.as_ref() {
                     run_report.observe_trace(trace);
+                    if options.print_llm_io {
+                        print_llm_io_trace(idx + 1, result.agent_id.as_str(), trace);
+                    }
                 }
 
                 if let Some(action_result) = result.action_result.as_ref() {
@@ -340,6 +377,9 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         .to_string(),
                 );
             }
+            "--print-llm-io" => {
+                options.print_llm_io = true;
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -363,11 +403,14 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 }
 
 fn print_help() {
-    println!("Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>]");
+    println!(
+        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io]"
+    );
     println!("Options:");
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
     println!("  --ticks <n>        Max runner ticks (default: 20)");
     println!("  --report-json <path>  Persist run summary as JSON report");
+    println!("  --print-llm-io     Print LLM input/output to stdout for each tick");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -383,6 +426,7 @@ mod tests {
         let options = parse_options([].into_iter()).expect("defaults");
         assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
         assert_eq!(options.ticks, 20);
+        assert!(!options.print_llm_io);
     }
 
     #[test]
@@ -402,6 +446,12 @@ mod tests {
         let options = parse_options(["--report-json", ".tmp/report.json"].into_iter())
             .expect("report json path");
         assert_eq!(options.report_json.as_deref(), Some(".tmp/report.json"));
+    }
+
+    #[test]
+    fn parse_options_enables_print_llm_io() {
+        let options = parse_options(["--print-llm-io"].into_iter()).expect("llm io option");
+        assert!(options.print_llm_io);
     }
 
     #[test]
