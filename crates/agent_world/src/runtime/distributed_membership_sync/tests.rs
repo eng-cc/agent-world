@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use super::super::distributed::{topic_membership, TOPIC_MEMBERSHIP_SUFFIX};
+use super::super::distributed::{
+    topic_membership, topic_membership_revocation, TOPIC_MEMBERSHIP_REVOKE_SUFFIX,
+    TOPIC_MEMBERSHIP_SUFFIX,
+};
 use super::super::distributed_dht::{DistributedDht, InMemoryDht};
 use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
 use super::*;
@@ -63,7 +66,9 @@ fn sample_keyring_with_rotation() -> MembershipDirectorySignerKeyring {
 #[test]
 fn membership_topic_suffix_matches_topic_name() {
     assert_eq!(TOPIC_MEMBERSHIP_SUFFIX, "membership");
+    assert_eq!(TOPIC_MEMBERSHIP_REVOKE_SUFFIX, "membership.revoke");
     assert_eq!(topic_membership("w1"), "aw.w1.membership");
+    assert_eq!(topic_membership_revocation("w1"), "aw.w1.membership.revoke");
 }
 
 #[test]
@@ -136,6 +141,39 @@ fn membership_keyring_verifies_snapshot_signed_before_rotation() {
 }
 
 #[test]
+fn membership_keyring_revoke_key_blocks_sign_and_verify() {
+    let signer = MembershipDirectorySigner::hmac_sha256("membership-secret-v1");
+    let mut snapshot = sample_snapshot();
+    snapshot.signature_key_id = Some("k1".to_string());
+    snapshot.signature = Some(signer.sign_snapshot(&snapshot).expect("sign snapshot"));
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key");
+    keyring.set_active_key("k1").expect("set active key");
+
+    assert!(keyring.revoke_key("k1").expect("revoke key"));
+    assert!(keyring.is_key_revoked("k1"));
+
+    let sign_err = keyring
+        .sign_snapshot_with_key_id("k1", &sample_snapshot())
+        .expect_err("revoked key should fail sign");
+    assert!(matches!(
+        sign_err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+
+    let verify_err = keyring
+        .verify_snapshot(&snapshot)
+        .expect_err("revoked key should fail verify");
+    assert!(matches!(
+        verify_err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+}
+
+#[test]
 fn publish_and_drain_membership_change_announcement() {
     let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let sync_client = MembershipSyncClient::new(Arc::clone(&network));
@@ -170,6 +208,53 @@ fn publish_and_drain_membership_change_announcement() {
         .expect("drain announcements");
     assert_eq!(drained.len(), 1);
     assert_eq!(drained[0], published);
+}
+
+#[test]
+fn publish_and_drain_membership_key_revocation_announcement() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let published = sync_client
+        .publish_key_revocation(
+            "w1",
+            "seq-1",
+            300,
+            "k1",
+            Some("key compromised".to_string()),
+        )
+        .expect("publish revocation");
+
+    assert_eq!(published.world_id, "w1");
+    assert_eq!(published.requester_id, "seq-1");
+    assert_eq!(published.key_id, "k1");
+
+    let drained = sync_client
+        .drain_key_revocations(&subscription)
+        .expect("drain revocations");
+    assert_eq!(drained, vec![published]);
+}
+
+#[test]
+fn sync_key_revocations_updates_keyring() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    sync_client
+        .publish_key_revocation("w1", "seq-1", 300, "k1", Some("rotate".to_string()))
+        .expect("publish revocation");
+    sync_client
+        .publish_key_revocation("w1", "seq-2", 301, "k1", Some("duplicate".to_string()))
+        .expect("publish duplicate revocation");
+
+    let mut keyring = sample_keyring_with_rotation();
+    let applied = sync_client
+        .sync_key_revocations(&subscription, &mut keyring)
+        .expect("sync revocations");
+    assert_eq!(applied, 1);
+    assert!(keyring.is_key_revoked("k1"));
 }
 
 #[test]
@@ -376,6 +461,7 @@ fn restore_membership_from_dht_verified_rejects_untrusted_requester() {
         require_signature: false,
         require_signature_key_id: false,
         accepted_signature_key_ids: Vec::new(),
+        revoked_signature_key_ids: Vec::new(),
     };
     let err = sync_client
         .restore_membership_from_dht_verified("w1", &mut consensus, dht.as_ref(), None, &policy)
@@ -402,6 +488,7 @@ fn restore_membership_from_dht_verified_requires_signature_when_enabled() {
         require_signature: true,
         require_signature_key_id: false,
         accepted_signature_key_ids: Vec::new(),
+        revoked_signature_key_ids: Vec::new(),
     };
     let err = sync_client
         .restore_membership_from_dht_verified(
@@ -436,6 +523,7 @@ fn restore_membership_from_dht_verified_accepts_signed_trusted_snapshot() {
         require_signature: true,
         require_signature_key_id: false,
         accepted_signature_key_ids: Vec::new(),
+        revoked_signature_key_ids: Vec::new(),
     };
     let restored = sync_client
         .restore_membership_from_dht_verified(
@@ -470,6 +558,7 @@ fn restore_membership_from_dht_verified_with_keyring_accepts_rotated_key() {
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k1".to_string(), "k2".to_string()],
+        revoked_signature_key_ids: Vec::new(),
     };
     let restored = sync_client
         .restore_membership_from_dht_verified_with_keyring(
@@ -504,6 +593,7 @@ fn restore_membership_from_dht_verified_with_keyring_rejects_unaccepted_key() {
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k2".to_string()],
+        revoked_signature_key_ids: Vec::new(),
     };
     let err = sync_client
         .restore_membership_from_dht_verified_with_keyring(
@@ -536,6 +626,7 @@ fn restore_membership_from_dht_verified_with_audit_reports_rejection() {
         require_signature: false,
         require_signature_key_id: false,
         accepted_signature_key_ids: Vec::new(),
+        revoked_signature_key_ids: Vec::new(),
     };
     let report = sync_client
         .restore_membership_from_dht_verified_with_audit(
@@ -553,6 +644,128 @@ fn restore_membership_from_dht_verified_with_audit_reports_rejection() {
         MembershipSnapshotAuditOutcome::Rejected
     );
     assert!(report.audit.reason.contains("not trusted"));
+}
+
+#[test]
+fn restore_membership_from_dht_verified_with_audit_store_persists_record() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+    let snapshot = sample_snapshot();
+    dht.put_membership_directory("w1", &snapshot)
+        .expect("put membership");
+
+    let audit_store = InMemoryMembershipAuditStore::new();
+    let mut consensus = sample_consensus();
+    let report = sync_client
+        .restore_membership_from_dht_verified_with_audit_store(
+            "w1",
+            &mut consensus,
+            dht.as_ref(),
+            None,
+            None,
+            &MembershipSnapshotRestorePolicy::default(),
+            &audit_store,
+        )
+        .expect("audit restore with store");
+
+    assert_eq!(
+        report.audit.outcome,
+        MembershipSnapshotAuditOutcome::Applied
+    );
+    let records = audit_store.list("w1").expect("list audit records");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0], report.audit);
+}
+
+#[test]
+fn restore_membership_from_dht_verified_rejects_revoked_key_id() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+    let signer = MembershipDirectorySigner::hmac_sha256("membership-secret-v1");
+    let mut snapshot = sample_snapshot();
+    snapshot.signature_key_id = Some("k1".to_string());
+    snapshot.signature = Some(signer.sign_snapshot(&snapshot).expect("sign snapshot"));
+    dht.put_membership_directory("w1", &snapshot)
+        .expect("put membership");
+
+    let mut consensus = sample_consensus();
+    let policy = MembershipSnapshotRestorePolicy {
+        trusted_requesters: vec!["seq-1".to_string()],
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["k1".to_string()],
+        revoked_signature_key_ids: vec!["k1".to_string()],
+    };
+
+    let err = sync_client
+        .restore_membership_from_dht_verified(
+            "w1",
+            &mut consensus,
+            dht.as_ref(),
+            Some(&signer),
+            &policy,
+        )
+        .expect_err("revoked key should be rejected");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+}
+
+#[test]
+fn restore_membership_from_dht_verified_with_keyring_rejects_revoked_key_after_sync() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let signer = MembershipDirectorySigner::hmac_sha256("membership-secret-v1");
+    let mut snapshot = sample_snapshot();
+    snapshot.signature_key_id = Some("k1".to_string());
+    snapshot.signature = Some(signer.sign_snapshot(&snapshot).expect("sign snapshot"));
+    dht.put_membership_directory("w1", &snapshot)
+        .expect("put membership");
+
+    sync_client
+        .publish_key_revocation("w1", "seq-1", 700, "k1", Some("compromised".to_string()))
+        .expect("publish key revocation");
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key");
+    keyring.set_active_key("k1").expect("set active key");
+
+    let revoked = sync_client
+        .sync_key_revocations(&subscription, &mut keyring)
+        .expect("sync revocations");
+    assert_eq!(revoked, 1);
+
+    let mut consensus = sample_consensus();
+    let policy = MembershipSnapshotRestorePolicy {
+        trusted_requesters: vec!["seq-1".to_string()],
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["k1".to_string()],
+        revoked_signature_key_ids: Vec::new(),
+    };
+    let err = sync_client
+        .restore_membership_from_dht_verified_with_keyring(
+            "w1",
+            &mut consensus,
+            dht.as_ref(),
+            Some(&keyring),
+            &policy,
+        )
+        .expect_err("restore should fail after key revocation sync");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
 }
 
 #[test]

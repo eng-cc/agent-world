@@ -203,7 +203,7 @@
 - **治理闭环**：治理 shadow/apply 可使用 `shadow_proposal_with_fetch` / `apply_proposal_with_fetch` 自动拉取缺失工件。
 
 ### 协议命名约定（草案）
-- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`）。
+- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`、`aw.w1.membership.revoke`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
 - **DHT Key**：`/aw/world/<world_id>/<key>`，例如 `head`、`providers/<content_hash>`。
 - **成员目录快照 Key**：`/aw/world/<world_id>/membership`。
@@ -215,6 +215,7 @@
 - `aw.<world_id>.head`：WorldHeadAnnounce 广播（头指针更新）。
 - `aw.<world_id>.event`：EventAnnounce 广播（轻量事件摘要）。
 - `aw.<world_id>.membership`：成员目录广播（validator 集合与 quorum 阈值）。
+- `aw.<world_id>.membership.revoke`：成员目录签名 key 吊销广播（key_id、requester、reason）。
 
 ### Request/Response 协议（草案）
 - `/aw/rr/1.0.0/get_world_head`
@@ -395,3 +396,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **发布入口**：提供 keyring 版本发布接口，默认使用 active key 生成签名并写入 `signature_key_id`。
 - **审计结果**：恢复流程输出 `MembershipSnapshotAuditRecord`，统一记录 `missing/applied/ignored/rejected`。
 - **兼容模式**：对历史无 key_id 快照仍可验签；生产环境建议开启 key_id 强制策略。
+
+## 成员目录审计持久化与吊销传播（草案）
+- **审计持久化**：新增 `MembershipAuditStore` 抽象与 `InMemoryMembershipAuditStore` 参考实现。
+- **恢复入口**：新增 `restore_membership_from_dht_verified_with_audit_store`，在恢复后自动写入审计记录。
+- **吊销通道**：新增 gossipsub topic `aw.<world_id>.membership.revoke`，传播 key_id 吊销事件。
+- **吊销同步**：`MembershipSyncClient` 新增发布/订阅/同步吊销消息能力，支持批量消费。
+- **验签拦截**：`MembershipDirectorySignerKeyring` 增加 revoked key 集，吊销 key 不可签名且不可验签。
+- **策略兜底**：恢复策略新增 `revoked_signature_key_ids`，即使未同步吊销广播也可拒绝失效 key_id。

@@ -169,6 +169,14 @@
 - [x] DHT 恢复 key_id 策略（require/allow list）
 - [x] 恢复审计报告结构与单元测试、分布式回归
 
+### 32. P3.15 成员目录审计持久化与吊销传播
+- [x] 新增 MembershipAuditStore 抽象与 InMemoryMembershipAuditStore
+- [x] 新增 restore_membership_from_dht_verified_with_audit_store 持久化入口
+- [x] 新增 membership.revoke topic 与发布/订阅/同步能力
+- [x] MembershipDirectorySignerKeyring 增加 revoked key 管理与验签拦截
+- [x] 恢复策略增加 revoked_signature_key_ids，拒绝吊销 key_id
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -176,6 +184,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.14 完成（成员目录快照密钥轮换与审计）
-- 下一步：P3.15（成员目录审计持久化与吊销传播）
-- 最近更新：成员目录快照密钥轮换与审计（2026-02-10）
+- 当前阶段：P3.15 完成（成员目录审计持久化与吊销传播）
+- 下一步：P3.16（成员目录吊销来源鉴权与落盘归档）
+- 最近更新：成员目录审计持久化与吊销传播（2026-02-10）
