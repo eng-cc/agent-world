@@ -93,7 +93,11 @@ impl LlmPromptProfile {
                 reserved_output_tokens: 768,
                 safety_margin_tokens: 384,
             },
-            Self::Balanced => PromptBudget::default(),
+            Self::Balanced => PromptBudget {
+                context_window_tokens: 4_608,
+                reserved_output_tokens: 896,
+                safety_margin_tokens: 512,
+            },
         }
     }
 
@@ -105,7 +109,12 @@ impl LlmPromptProfile {
                 short_term_top_k: 3,
                 long_term_top_k: 4,
             },
-            Self::Balanced => MemorySelectorConfig::default(),
+            Self::Balanced => MemorySelectorConfig {
+                short_term_candidate_limit: 8,
+                long_term_candidate_limit: 12,
+                short_term_top_k: 2,
+                long_term_top_k: 3,
+            },
         }
     }
 }
@@ -129,7 +138,11 @@ const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
 const LLM_PROMPT_MODULE_CALL_KIND: &str = "llm.prompt.module_call";
 const LLM_PROMPT_MODULE_CALL_CAP_REF: &str = "llm.prompt.module_access";
 const LLM_PROMPT_MODULE_CALL_ORIGIN: &str = "llm_agent";
-const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 1200;
+const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 640;
+const PROMPT_MODULE_ARGS_MAX_CHARS: usize = 240;
+const PROMPT_MEMORY_DIGEST_MAX_CHARS: usize = 480;
+const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 6;
+const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {
@@ -889,8 +902,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         step_index: usize,
         max_steps: usize,
     ) -> PromptAssemblyOutput {
-        let observation_json = serde_json::to_string(observation)
-            .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string());
+        let observation_json = Self::observation_json_for_prompt(observation);
         let history_start = module_history
             .len()
             .saturating_sub(self.config.prompt_max_history_items);
@@ -899,6 +911,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         let memory_selector_config = self.config.memory_selector_config();
         let memory_selection =
             MemorySelector::select(&self.memory, observation.time, &memory_selector_config);
+        let memory_digest = Self::memory_digest_for_prompt(memory_selection.digest.as_str());
         let prompt_budget = self.config.prompt_budget();
         PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
@@ -907,7 +920,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             long_term_goal: self.config.long_term_goal.as_str(),
             observation_json: observation_json.as_str(),
             module_history_json: history_json.as_str(),
-            memory_digest: Some(memory_selection.digest.as_str()),
+            memory_digest: Some(memory_digest.as_str()),
             step_context: PromptStepContext {
                 step_index,
                 max_steps,
@@ -919,13 +932,68 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         })
     }
 
+    fn observation_json_for_prompt(observation: &Observation) -> String {
+        let mut visible_agents = observation.visible_agents.iter().collect::<Vec<_>>();
+        visible_agents.sort_by_key(|agent| agent.distance_cm);
+        let visible_agents = visible_agents
+            .into_iter()
+            .take(PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX)
+            .map(|agent| {
+                serde_json::json!({
+                    "agent_id": agent.agent_id,
+                    "distance_cm": agent.distance_cm,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut visible_locations = observation.visible_locations.iter().collect::<Vec<_>>();
+        visible_locations.sort_by_key(|location| location.distance_cm);
+        let visible_locations = visible_locations
+            .into_iter()
+            .take(PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX)
+            .map(|location| {
+                serde_json::json!({
+                    "location_id": location.location_id,
+                    "distance_cm": location.distance_cm,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        serde_json::to_string(&serde_json::json!({
+            "time": observation.time,
+            "agent_id": observation.agent_id,
+            "pos": observation.pos,
+            "visibility_range_cm": observation.visibility_range_cm,
+            "visible_agents_total": observation.visible_agents.len(),
+            "visible_agents_omitted": observation
+                .visible_agents
+                .len()
+                .saturating_sub(visible_agents.len()),
+            "visible_agents": visible_agents,
+            "visible_locations_total": observation.visible_locations.len(),
+            "visible_locations_omitted": observation
+                .visible_locations
+                .len()
+                .saturating_sub(visible_locations.len()),
+            "visible_locations": visible_locations,
+        }))
+        .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string())
+    }
+
+    fn memory_digest_for_prompt(digest: &str) -> String {
+        summarize_trace_text(digest, PROMPT_MEMORY_DIGEST_MAX_CHARS)
+    }
+
     fn module_history_json_for_prompt(module_history: &[ModuleCallExchange]) -> String {
         let compact_history = module_history
             .iter()
             .map(|exchange| {
                 serde_json::json!({
                     "module": exchange.module,
-                    "args": exchange.args,
+                    "args": Self::compact_json_value_for_prompt(
+                        &exchange.args,
+                        PROMPT_MODULE_ARGS_MAX_CHARS,
+                    ),
                     "result": Self::module_result_for_prompt(&exchange.result),
                 })
             })
@@ -934,18 +1002,25 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         serde_json::to_string(&compact_history).unwrap_or_else(|_| "[]".to_string())
     }
 
-    fn module_result_for_prompt(result: &serde_json::Value) -> serde_json::Value {
-        let serialized = serde_json::to_string(result).unwrap_or_else(|_| "null".to_string());
+    fn compact_json_value_for_prompt(
+        value: &serde_json::Value,
+        max_chars: usize,
+    ) -> serde_json::Value {
+        let serialized = serde_json::to_string(value).unwrap_or_else(|_| "null".to_string());
         let total_chars = serialized.chars().count();
-        if total_chars <= PROMPT_MODULE_RESULT_MAX_CHARS {
-            return result.clone();
+        if total_chars <= max_chars {
+            return value.clone();
         }
 
         serde_json::json!({
             "truncated": true,
             "original_chars": total_chars,
-            "preview": summarize_trace_text(serialized.as_str(), PROMPT_MODULE_RESULT_MAX_CHARS),
+            "preview": summarize_trace_text(serialized.as_str(), max_chars),
         })
+    }
+
+    fn module_result_for_prompt(result: &serde_json::Value) -> serde_json::Value {
+        Self::compact_json_value_for_prompt(result, PROMPT_MODULE_RESULT_MAX_CHARS)
     }
 
     fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
@@ -1018,14 +1093,14 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     {
                         "name": "memory.short_term.recent",
                         "description": "读取最近短期记忆。",
-                        "args": { "limit": "u64, optional, default=5, max=32" }
+                        "args": { "limit": "u64, optional, default=3, max=8" }
                     },
                     {
                         "name": "memory.long_term.search",
                         "description": "按关键词检索长期记忆（query 为空时按重要度返回）。",
                         "args": {
                             "query": "string, optional",
-                            "limit": "u64, optional, default=5, max=32"
+                            "limit": "u64, optional, default=3, max=8"
                         }
                     }
                 ]
@@ -1033,7 +1108,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "environment.current_observation" => serde_json::to_value(observation)
                 .map_err(|err| format!("serialize observation failed: {err}")),
             "memory.short_term.recent" => {
-                let limit = parse_limit_arg(request.args.get("limit"), 5, 32);
+                let limit = parse_limit_arg(request.args.get("limit"), 3, 8);
                 let mut entries: Vec<MemoryEntry> =
                     self.memory.short_term.recent(limit).cloned().collect();
                 entries.reverse();
@@ -1041,7 +1116,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     .map_err(|err| format!("serialize short-term memory failed: {err}"))
             }
             "memory.long_term.search" => {
-                let limit = parse_limit_arg(request.args.get("limit"), 5, 32);
+                let limit = parse_limit_arg(request.args.get("limit"), 3, 8);
                 let query = request
                     .args
                     .get("query")

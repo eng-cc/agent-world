@@ -6,6 +6,8 @@ const DEFAULT_SAFETY_MARGIN_TOKENS: usize = 512;
 const MIN_EFFECTIVE_INPUT_BUDGET_TOKENS: usize = 256;
 const HISTORY_SOFT_CAP_TOKENS: usize = 256;
 const MEMORY_SOFT_CAP_TOKENS: usize = 192;
+const FINALIZE_HISTORY_SOFT_CAP_TOKENS: usize = 192;
+const FINALIZE_MEMORY_SOFT_CAP_TOKENS: usize = 128;
 const CONTEXT_MIN_TOKENS: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,7 +154,7 @@ impl PromptAssembler {
                 kind: PromptSectionKind::Goals,
                 priority: PromptSectionPriority::High,
                 content: format!(
-                    "[Agent Goals]\n- short_term_goal: {}\n- long_term_goal: {}\n- anti_stagnation: 避免在缺乏新证据时重复同一动作；连续重复动作前应先补充信息或解释触发条件。\n- exploration_bias: 当局部状态长期不变时，优先探索新地点、新对象或新线索。",
+                    "[Agent Goals]\n- short_term_goal: {}\n- long_term_goal: {}\n- anti_stagnation: 缺少新证据时避免重复同一动作。\n- exploration_bias: 局部状态不变时优先探索新线索。",
                     input.short_term_goal, input.long_term_goal,
                 ),
             },
@@ -164,7 +166,6 @@ impl PromptAssembler {
                 priority: PromptSectionPriority::High,
                 content: r#"[Tool Protocol]
 - 如果需要更多信息，可输出模块调用 JSON：{"type":"module_call","module":"<module_name>","args":{...}}
-- 在支持 OpenAI tool_calls 的模型上，优先调用已注册工具（function/tool call），不要编造工具名
 - 仅允许模块名：agent.modules.list / environment.current_observation / memory.short_term.recent / memory.long_term.search
 - 每轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔多段 JSON，禁止代码块包裹 JSON
 - 若本轮输出 module_call，则只能输出 1 个 module_call；不要在同一回复混合 module_call 与 decision*
@@ -249,11 +250,9 @@ impl PromptAssembler {
 {{"decision":"move_agent","to":"<location_id>"}}
 {{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
-{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event_any_of":["action_rejected","new_visible_agent"]}},"max_ticks":<u64>}}
-{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"harvest_available_below","value_lte":<i64>}},"max_ticks":<u64>}}
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
-- event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target, insufficient_electricity, thermal_overload, harvest_yield_below, harvest_available_below
+- event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
@@ -274,7 +273,13 @@ impl PromptAssembler {
         ));
 
         let budget_tokens = input.prompt_budget.effective_input_budget_tokens();
-        Self::apply_budget(&mut sections, budget_tokens);
+        let (history_soft_cap, memory_soft_cap) = Self::soft_section_caps(input.step_context);
+        Self::apply_budget(
+            &mut sections,
+            budget_tokens,
+            history_soft_cap,
+            memory_soft_cap,
+        );
 
         let section_trace = sections
             .iter()
@@ -334,13 +339,43 @@ impl PromptAssembler {
         }
     }
 
-    fn apply_budget(sections: &mut [SectionState], budget_tokens: usize) {
-        Self::truncate_soft_section(
-            sections,
-            PromptSectionKind::History,
-            HISTORY_SOFT_CAP_TOKENS,
-        );
-        Self::truncate_soft_section(sections, PromptSectionKind::Memory, MEMORY_SOFT_CAP_TOKENS);
+    fn soft_section_caps(step_context: PromptStepContext) -> (usize, usize) {
+        let turns_remaining = step_context
+            .max_steps
+            .saturating_sub(step_context.step_index.saturating_add(1));
+        let module_calls_remaining = step_context
+            .module_calls_max
+            .saturating_sub(step_context.module_calls_used);
+        if turns_remaining <= 1 || module_calls_remaining <= 1 {
+            (
+                FINALIZE_HISTORY_SOFT_CAP_TOKENS,
+                FINALIZE_MEMORY_SOFT_CAP_TOKENS,
+            )
+        } else {
+            (HISTORY_SOFT_CAP_TOKENS, MEMORY_SOFT_CAP_TOKENS)
+        }
+    }
+
+    fn apply_budget(
+        sections: &mut [SectionState],
+        budget_tokens: usize,
+        history_soft_cap_tokens: usize,
+        memory_soft_cap_tokens: usize,
+    ) {
+        if Self::included_tokens(sections) > budget_tokens {
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::History,
+                history_soft_cap_tokens,
+            );
+        }
+        if Self::included_tokens(sections) > budget_tokens {
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::Memory,
+                memory_soft_cap_tokens,
+            );
+        }
 
         let removable_order = [
             PromptSectionKind::StepMeta,
@@ -588,6 +623,38 @@ mod tests {
         assert!(history.included);
         assert!(history.emitted_tokens < history.estimated_tokens);
     }
+
+    #[test]
+    fn prompt_budget_keeps_soft_sections_when_budget_is_sufficient() {
+        let history = "x".repeat(3_000);
+        let input = PromptAssemblyInput {
+            agent_id: "agent-1",
+            base_system_prompt: "base prompt",
+            short_term_goal: "short goal",
+            long_term_goal: "long goal",
+            observation_json: "{\"time\":1}",
+            module_history_json: history.as_str(),
+            memory_digest: Some("obs@T1 ..."),
+            step_context: PromptStepContext {
+                step_index: 0,
+                max_steps: 4,
+                module_calls_used: 0,
+                module_calls_max: 3,
+            },
+            harvest_max_amount_cap: 100,
+            prompt_budget: PromptBudget::default(),
+        };
+
+        let output = PromptAssembler::assemble(input);
+        let history = output
+            .section_trace
+            .iter()
+            .find(|trace| trace.kind == PromptSectionKind::History)
+            .expect("history trace");
+        assert!(history.included);
+        assert_eq!(history.emitted_tokens, history.estimated_tokens);
+    }
+
     #[test]
     fn prompt_assembly_includes_single_json_constraints() {
         let output = PromptAssembler::assemble(sample_input());
