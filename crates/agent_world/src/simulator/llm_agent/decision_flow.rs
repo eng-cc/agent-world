@@ -42,16 +42,16 @@ impl DecisionPhase {
     pub(super) fn prompt_instruction(self) -> &'static str {
         match self {
             Self::Plan => {
-                "本轮是 plan 阶段：优先输出 {\"type\":\"plan\",...}；若信息充足可直接输出最终 decision JSON。"
+                "本轮是 plan 阶段：只输出一个 JSON 对象（禁止 `---`/代码块）；优先输出 {\"type\":\"plan\",...}，若信息充足可直接输出最终 decision JSON。"
             }
             Self::ModuleLoop => {
-                "本轮是 module_call 阶段：优先输出 module_call；若信息充分可输出 decision_draft 或最终 decision JSON。"
+                "本轮是 module_call 阶段：只输出一个 JSON 对象；若需要查询仅允许一个 module_call，若信息充分请直接输出最终 decision JSON。"
             }
             Self::DecisionDraft => {
-                "本轮是 decision_draft 阶段：请优先输出 {\"type\":\"decision_draft\",...}，随后进入最终决策。"
+                "本轮是 decision_draft 阶段：只输出一个 JSON 对象；decision_draft.decision 必须是完整 decision 对象，不要在 decision_draft 中输出 execute_until。"
             }
             Self::Finalize => {
-                "本轮是 final_decision 阶段：请只输出最终 decision JSON，不要输出额外文本。"
+                "本轮是 final_decision 阶段：只输出最终 decision JSON（可 execute_until），不要输出 plan/module_call/decision_draft 或额外文本。"
             }
         }
     }

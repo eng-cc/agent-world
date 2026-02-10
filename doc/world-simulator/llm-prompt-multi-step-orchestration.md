@@ -280,3 +280,38 @@
 2. 增加动作参数安全护栏（尤其是 `harvest_radiation.max_amount` 上限控制）。
 3. 优化 `execute_until` 的事件模板与重入策略，进一步降低 `Wait` 占比。
 4. 继续收敛 Prompt 体积：加大 history/memory 摘要折叠与优先级裁剪力度。
+
+
+## LMSO23 输入侧收敛优化（2026-02-10）
+
+### 触发问题（输入侧）
+- 部分实跑日志出现“单轮输出多个 JSON 块 + 连续 module_call”模式，导致 `no terminal decision` 或 `module call limit exceeded`。
+- 典型样本见：
+  - `.tmp/llm_stress_lmso21_2tick_smoke/run.log`
+  - `.tmp/llm_stress_lmso20_10_closure/run.log`
+
+### 已实施优化
+1. Prompt 工具协议增加硬约束：
+   - 每轮仅允许一个 JSON 对象（禁止 `---` 多段与代码块包裹）。
+   - 每轮若输出 `module_call`，只允许一个，且不与 `decision*` 混合。
+   - 显式模块白名单（4 个内置模块），抑制幻觉模块名。
+2. Step 元信息增加收敛指标：
+   - `module_calls_remaining` / `turns_remaining` / `must_finalize_hint`。
+3. 输出 Schema 增加强约束：
+   - `decision_draft.decision` 必须是完整对象（非字符串）。
+   - `execute_until` 仅允许作为最终 `decision` 输出。
+4. Step orchestration 增加动态门槛：
+   - 当 `module_calls_remaining <= 1` 或 `turns_remaining <= 1`，强制本轮输出最终 `decision`。
+
+### 验证结果
+- 历史对照（同类 smoke 场景）：`.tmp/llm_stress_lmso21_2tick_smoke/report.json` 为 `parse_errors=1`。
+- 优化后 smoke 复测：
+  - `.tmp/lmso23_prompt_2_smoke/report.json`：`parse_errors=0`，`llm_errors=0`。
+  - `.tmp/lmso23_prompt_4/report.json`：`parse_errors=0`，`llm_errors=0`。
+- 优化后 30 tick 全量回归：
+  - 基线（优化前）`.tmp/llm_multi_round_30/report.json`：`parse_errors=4`、`repair_rounds_total=3`、`decision.wait=4`、`prompt_section_clipped=8`。
+  - 当前（优化后）`.tmp/lmso23_prompt_30_final/report.json`：`parse_errors=0`、`repair_rounds_total=0`、`decision.wait=0`、`prompt_section_clipped=0`。
+  - 附加收益：`llm_input_chars_avg` 从 `3205` 降到 `1542`，`llm_input_chars_max` 从 `18175` 降到 `14056`。
+
+### 后续
+- LMSO24 将处理动作参数护栏（如 `harvest_radiation.max_amount` 上限）与更长轮次稳定性验证。

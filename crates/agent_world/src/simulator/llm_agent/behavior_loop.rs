@@ -132,6 +132,13 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             }));
 
             let mut user_prompt = prompt_output.user_prompt.clone();
+            let module_calls_remaining = self
+                .config
+                .max_module_calls
+                .saturating_sub(module_history.len());
+            let turns_remaining = max_turns.saturating_sub(turn.saturating_add(1));
+            let must_finalize_due_budget = turns_remaining <= 1 || module_calls_remaining <= 1;
+
             user_prompt.push_str(
                 "
 
@@ -139,6 +146,29 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 ",
             );
             user_prompt.push_str(active_phase.prompt_instruction());
+            user_prompt.push_str(
+                "
+
+[Output Constraints]
+- 本轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔与代码块包裹 JSON。
+",
+            );
+            user_prompt.push_str(
+                format!(
+                    "- module_calls_remaining={} turns_remaining={}
+",
+                    module_calls_remaining, turns_remaining
+                )
+                .as_str(),
+            );
+            if must_finalize_due_budget {
+                user_prompt.push_str("- 预算接近上限：本轮必须直接输出最终 decision（可 execute_until），禁止 plan/module_call/decision_draft。
+");
+            } else {
+                user_prompt.push_str("- 若输出 module_call，本轮仅允许一个 module_call；不要在同一回复混合 module_call 与 decision*。
+");
+            }
+
             if should_force_replan {
                 user_prompt.push_str(
                     "
@@ -162,6 +192,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 - 已有 decision_draft，可直接输出最终 decision：",
                 );
                 user_prompt.push_str(draft_json.as_str());
+                user_prompt.push_str(
+                    "
+- 已存在 decision_draft，本轮禁止再次输出 decision_draft，必须输出最终 decision。
+",
+                );
             }
             if let Some(repair_reason) = repair_context.as_ref() {
                 user_prompt.push_str(
@@ -172,6 +207,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 );
                 user_prompt.push_str("上一轮输出解析失败，请修复为合法 JSON：");
                 user_prompt.push_str(repair_reason.as_str());
+                user_prompt.push_str(
+                    "
+仅返回一个合法 JSON 对象，不要追加其他 JSON 块。
+",
+                );
             }
 
             let request = LlmCompletionRequest {
