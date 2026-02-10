@@ -15,10 +15,44 @@ const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
 const AGENT_HEIGHT_MAX_M: f32 = 4.0;
+const AGENT_BODY_RADIUS_RATIO: f32 = 0.22;
+const AGENT_BODY_LENGTH_RATIO: f32 = 0.56;
+const AGENT_MODULE_MARKER_MAX: usize = 16;
+const AGENT_MODULE_MARKERS_PER_RING: usize = 8;
+const AGENT_MODULE_RING_BASE_MULTIPLIER: f32 = 3.05;
+const AGENT_MODULE_RING_GAP_RATIO: f32 = 1.36;
+const AGENT_MODULE_MARKER_WIDTH_RATIO: f32 = 0.96;
+const AGENT_MODULE_MARKER_HEIGHT_RATIO: f32 = 1.08;
+const AGENT_MODULE_MARKER_DEPTH_RATIO: f32 = 0.82;
+const AGENT_MODULE_MARKER_MIN_WIDTH: f32 = 0.28;
+const AGENT_MODULE_MARKER_MIN_HEIGHT: f32 = 0.34;
+const AGENT_MODULE_MARKER_MIN_DEPTH: f32 = 0.24;
+const AGENT_MODULE_MARKER_WORLD_MIN_WIDTH: f32 = 0.36;
+const AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT: f32 = 0.44;
+const AGENT_MODULE_MARKER_WORLD_MIN_DEPTH: f32 = 0.32;
+const AGENT_MODULE_LAYOUT_PRIMARY_SLOTS: [(i32, i32, i32); 16] = [
+    (0, 4, 2),
+    (0, 3, 2),
+    (-1, 3, 2),
+    (1, 3, 2),
+    (-1, 2, 2),
+    (1, 2, 2),
+    (-2, 2, 1),
+    (2, 2, 1),
+    (-2, 1, 1),
+    (2, 1, 1),
+    (-1, 1, 1),
+    (1, 1, 1),
+    (-1, 0, 1),
+    (1, 0, 1),
+    (-1, -1, 1),
+    (1, -1, 1),
+];
 
 #[derive(Component)]
 pub(super) struct AgentMarker {
     pub id: String,
+    pub module_count: usize,
 }
 
 #[derive(Component)]
@@ -91,6 +125,8 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.agent_entities.clear();
     scene.agent_positions.clear();
     scene.agent_heights_cm.clear();
+    scene.agent_location_ids.clear();
+    scene.agent_module_counts.clear();
     scene.location_entities.clear();
     scene.asset_entities.clear();
     scene.module_visual_entities.clear();
@@ -99,6 +135,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     scene.chunk_entities.clear();
     scene.chunk_line_entities.clear();
     scene.location_positions.clear();
+    scene.location_radii_cm.clear();
     scene.background_entities.clear();
     scene.heat_overlay_entities.clear();
     scene.flow_overlay_entities.clear();
@@ -124,7 +161,12 @@ pub(super) fn rebuild_scene_from_snapshot(
         );
     }
 
+    let module_counts = agent_module_counts_in_snapshot(snapshot);
     for (agent_id, agent) in snapshot.model.agents.iter() {
+        let module_count = module_counts
+            .get(agent_id.as_str())
+            .copied()
+            .unwrap_or_else(default_agent_module_count_estimate);
         spawn_agent_entity(
             commands,
             config,
@@ -132,8 +174,10 @@ pub(super) fn rebuild_scene_from_snapshot(
             scene,
             origin,
             agent_id,
+            Some(agent.location_id.as_str()),
             agent.pos,
             agent.body.height_cm,
+            module_count,
         );
     }
 
@@ -262,8 +306,22 @@ pub(super) fn apply_events_to_scene(
                     .get(agent_id)
                     .copied()
                     .unwrap_or(agent_height_cm(None));
+                let location_id = scene.agent_location_ids.get(agent_id.as_str()).cloned();
                 spawn_agent_entity(
-                    commands, config, assets, scene, origin, agent_id, *pos, height_cm,
+                    commands,
+                    config,
+                    assets,
+                    scene,
+                    origin,
+                    agent_id,
+                    location_id.as_deref(),
+                    *pos,
+                    height_cm,
+                    scene
+                        .agent_module_counts
+                        .get(agent_id.as_str())
+                        .copied()
+                        .unwrap_or(0),
                 );
             }
             WorldEventKind::AgentMoved { agent_id, to, .. } => {
@@ -273,8 +331,24 @@ pub(super) fn apply_events_to_scene(
                         .get(agent_id)
                         .copied()
                         .unwrap_or(agent_height_cm(None));
+                    scene
+                        .agent_location_ids
+                        .insert(agent_id.to_string(), to.to_string());
                     spawn_agent_entity(
-                        commands, config, assets, scene, origin, agent_id, *pos, height_cm,
+                        commands,
+                        config,
+                        assets,
+                        scene,
+                        origin,
+                        agent_id,
+                        Some(to.as_str()),
+                        *pos,
+                        height_cm,
+                        scene
+                            .agent_module_counts
+                            .get(agent_id.as_str())
+                            .copied()
+                            .unwrap_or(0),
                     );
                 }
             }
@@ -516,6 +590,9 @@ pub(super) fn spawn_location_entity(
     scene
         .location_positions
         .insert(location_id.to_string(), pos);
+    scene
+        .location_radii_cm
+        .insert(location_id.to_string(), radius_cm.max(1));
 
     if !config.show_locations {
         return;
@@ -574,42 +651,91 @@ pub(super) fn spawn_agent_entity(
     scene: &mut Viewer3dScene,
     origin: GeoPos,
     agent_id: &str,
+    location_id: Option<&str>,
     pos: GeoPos,
     height_cm: i64,
+    module_count: usize,
 ) {
     scene.agent_positions.insert(agent_id.to_string(), pos);
     scene
         .agent_heights_cm
         .insert(agent_id.to_string(), height_cm.max(1));
+    scene
+        .agent_module_counts
+        .insert(agent_id.to_string(), module_count);
+    if let Some(location_id) = location_id {
+        scene
+            .agent_location_ids
+            .insert(agent_id.to_string(), location_id.to_string());
+    }
 
     if !config.show_agents {
         return;
     }
 
-    let marker_scale = Vec3::splat(agent_radius_m(height_cm));
-    let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
+    let body_scale = agent_body_scale(height_cm);
+    let marker_scale = agent_module_marker_scale(height_cm);
+    let marker_world_scale =
+        agent_module_marker_world_scale(marker_scale, config.effective_cm_to_unit(), height_cm);
+    let module_markers = agent_module_marker_transforms(height_cm, module_count);
+    let translation = agent_translation_for_render(scene, config, origin, agent_id, pos, height_cm);
     if let Some(entity) = scene.agent_entities.get(agent_id) {
         commands.entity(*entity).insert((
-            Transform::from_translation(translation).with_scale(marker_scale),
-            BaseScale(marker_scale),
+            Transform::from_translation(translation),
+            Visibility::Visible,
+            AgentMarker {
+                id: agent_id.to_string(),
+                module_count,
+            },
+            BaseScale(Vec3::ONE),
         ));
+        commands.entity(*entity).despawn_children();
+        commands.entity(*entity).with_children(|parent| {
+            parent.spawn((
+                Mesh3d(assets.agent_mesh.clone()),
+                MeshMaterial3d(assets.agent_material.clone()),
+                Transform::from_scale(body_scale),
+                Name::new(format!("agent:body:{agent_id}")),
+            ));
+            spawn_label(
+                parent,
+                assets,
+                agent_id.to_string(),
+                agent_label_offset(height_cm),
+                format!("label:agent:{agent_id}"),
+            );
+            for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
+                parent.spawn((
+                    Mesh3d(assets.agent_module_marker_mesh.clone()),
+                    MeshMaterial3d(assets.agent_module_marker_material.clone()),
+                    Transform::from_translation(*marker_translation).with_scale(marker_world_scale),
+                    Name::new(format!("agent:module_marker:{agent_id}:{marker_idx}")),
+                ));
+            }
+        });
         return;
     }
 
     let entity = commands
         .spawn((
-            Mesh3d(assets.agent_mesh.clone()),
-            MeshMaterial3d(assets.agent_material.clone()),
-            Transform::from_translation(translation).with_scale(marker_scale),
+            Transform::from_translation(translation),
+            Visibility::Visible,
             Name::new(format!("agent:{agent_id}")),
             AgentMarker {
                 id: agent_id.to_string(),
+                module_count,
             },
-            BaseScale(marker_scale),
+            BaseScale(Vec3::ONE),
         ))
         .id();
     attach_to_scene_root(commands, scene, entity);
     commands.entity(entity).with_children(|parent| {
+        parent.spawn((
+            Mesh3d(assets.agent_mesh.clone()),
+            MeshMaterial3d(assets.agent_material.clone()),
+            Transform::from_scale(body_scale),
+            Name::new(format!("agent:body:{agent_id}")),
+        ));
         spawn_label(
             parent,
             assets,
@@ -617,6 +743,14 @@ pub(super) fn spawn_agent_entity(
             agent_label_offset(height_cm),
             format!("label:agent:{agent_id}"),
         );
+        for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
+            parent.spawn((
+                Mesh3d(assets.agent_module_marker_mesh.clone()),
+                MeshMaterial3d(assets.agent_module_marker_material.clone()),
+                Transform::from_translation(*marker_translation).with_scale(marker_world_scale),
+                Name::new(format!("agent:module_marker:{agent_id}:{marker_idx}")),
+            ));
+        }
     });
     scene.agent_entities.insert(agent_id.to_string(), entity);
 }
@@ -646,10 +780,174 @@ fn agent_height_cm(height_cm: Option<i64>) -> i64 {
     height_cm.unwrap_or(agent_world::models::DEFAULT_AGENT_HEIGHT_CM)
 }
 
-fn agent_radius_m(height_cm: i64) -> f32 {
+fn agent_body_scale(height_cm: i64) -> Vec3 {
     let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
         .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
-    (height_m * 0.35).clamp(0.08, 1.5)
+    let radius_m = (height_m * AGENT_BODY_RADIUS_RATIO).clamp(0.06, 0.9);
+    let body_length_m = (height_m * AGENT_BODY_LENGTH_RATIO).max(radius_m * 0.1);
+    Vec3::new(radius_m * 2.0, body_length_m, radius_m * 2.0)
+}
+
+fn body_half_height_m(height_cm: i64) -> f32 {
+    let scale = agent_body_scale(height_cm);
+    scale.y * 0.5 + scale.x * 0.5
+}
+
+fn agent_translation_for_render(
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    origin: GeoPos,
+    agent_id: &str,
+    pos: GeoPos,
+    height_cm: i64,
+) -> Vec3 {
+    let base = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
+    let body_half_height = body_half_height_m(height_cm);
+    let Some(location_id) = scene.agent_location_ids.get(agent_id) else {
+        return base + Vec3::Y * body_half_height;
+    };
+    let Some(location_radius_cm) = scene.location_radii_cm.get(location_id.as_str()).copied()
+    else {
+        return base + Vec3::Y * body_half_height;
+    };
+
+    let Some(location_pos) = scene.location_positions.get(location_id.as_str()).copied() else {
+        return base + Vec3::Y * body_half_height;
+    };
+
+    let location_center = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
+    let location_radius = location_radius_m(location_radius_cm);
+    let radial_offset = base - location_center;
+    let surface_normal = if radial_offset.length_squared() > 1e-6 {
+        radial_offset.normalize()
+    } else {
+        let angle = id_hash_fraction(agent_id) * std::f32::consts::TAU;
+        Vec3::new(angle.cos(), 0.24, angle.sin()).normalize()
+    };
+    let surface_gap = (body_half_height * 0.01).max(0.006);
+    location_center + surface_normal * (location_radius + body_half_height + surface_gap)
+}
+
+fn agent_body_radius_m(height_cm: i64) -> f32 {
+    let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
+        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
+    (height_m * AGENT_BODY_RADIUS_RATIO).clamp(0.06, 0.9)
+}
+
+fn capped_module_marker_count(module_count: usize) -> usize {
+    module_count.min(AGENT_MODULE_MARKER_MAX)
+}
+
+fn agent_module_marker_scale(height_cm: i64) -> Vec3 {
+    let radius = agent_body_radius_m(height_cm);
+    Vec3::new(
+        (radius * AGENT_MODULE_MARKER_WIDTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_WIDTH, 0.62),
+        (radius * AGENT_MODULE_MARKER_HEIGHT_RATIO).clamp(AGENT_MODULE_MARKER_MIN_HEIGHT, 0.78),
+        (radius * AGENT_MODULE_MARKER_DEPTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_DEPTH, 0.42),
+    )
+}
+
+fn agent_module_marker_world_scale(
+    marker_scale: Vec3,
+    cm_to_unit: f32,
+    base_height_cm: i64,
+) -> Vec3 {
+    let base_height_m = (base_height_cm.max(1) as f32 / 100.0).max(f32::EPSILON);
+    let marker_height_cm = marker_scale.y / cm_to_unit.max(f32::EPSILON);
+    let min_height_cm = ((AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT / base_height_m)
+        * base_height_cm as f32)
+        .max(base_height_cm as f32 * 0.16);
+    let factor = if marker_height_cm >= min_height_cm {
+        1.0
+    } else {
+        (min_height_cm / marker_height_cm).clamp(1.0, 3.4)
+    };
+
+    Vec3::new(
+        (marker_scale.x * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_WIDTH),
+        (marker_scale.y * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT),
+        (marker_scale.z * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_DEPTH),
+    )
+}
+
+fn agent_module_ring_radius(height_cm: i64, ring_idx: usize) -> f32 {
+    let radius = agent_body_radius_m(height_cm);
+    let base = radius * AGENT_MODULE_RING_BASE_MULTIPLIER;
+    let ring_gap = radius * AGENT_MODULE_RING_GAP_RATIO;
+    (base + ring_gap * ring_idx as f32).clamp(0.25, 4.2)
+}
+
+fn agent_module_marker_transforms(height_cm: i64, module_count: usize) -> Vec<Vec3> {
+    let marker_count = capped_module_marker_count(module_count);
+    if marker_count == 0 {
+        return Vec::new();
+    }
+
+    let body_scale = agent_body_scale(height_cm);
+    let marker_scale = agent_module_marker_scale(height_cm);
+    let body_half_height = body_half_height_m(height_cm);
+    let module_gap_x = marker_scale.x * 2.05;
+    let module_gap_z = marker_scale.z * 2.35;
+    let module_layer_gap_z = marker_scale.z * 0.95;
+    let shell_offset_x = body_scale.x * 0.98 + marker_scale.x * 1.05;
+    let base_y = body_half_height * 0.2;
+    let mut transforms = Vec::with_capacity(marker_count);
+
+    for slot in AGENT_MODULE_LAYOUT_PRIMARY_SLOTS
+        .iter()
+        .take(marker_count)
+        .copied()
+    {
+        transforms.push(Vec3::new(
+            shell_offset_x + slot.0 as f32 * module_gap_x,
+            base_y + slot.2 as f32 * (marker_scale.y * 0.32),
+            slot.1 as f32 * module_gap_z + slot.2 as f32 * module_layer_gap_z,
+        ));
+    }
+
+    if transforms.len() >= marker_count {
+        return transforms;
+    }
+
+    let mut extra_idx = 0usize;
+    while transforms.len() < marker_count {
+        let ring_idx = extra_idx / AGENT_MODULE_MARKERS_PER_RING;
+        let within_ring = extra_idx % AGENT_MODULE_MARKERS_PER_RING;
+        let remaining = marker_count - transforms.len();
+        let markers_in_ring = remaining.min(AGENT_MODULE_MARKERS_PER_RING);
+        let angle_step = std::f32::consts::TAU / markers_in_ring as f32;
+        let angle = angle_step * within_ring as f32;
+        let ring_radius = agent_module_ring_radius(height_cm, ring_idx);
+        let vertical = base_y + marker_scale.y * (0.28 + ring_idx as f32 * 0.24);
+        transforms.push(Vec3::new(
+            shell_offset_x + angle.cos() * ring_radius,
+            vertical,
+            angle.sin() * ring_radius,
+        ));
+        extra_idx += 1;
+    }
+
+    transforms
+}
+
+fn agent_module_counts_in_snapshot(
+    snapshot: &WorldSnapshot,
+) -> std::collections::HashMap<String, usize> {
+    let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for module_entity in snapshot.model.module_visual_entities.values() {
+        if let ModuleVisualAnchor::Agent { agent_id } = &module_entity.anchor {
+            *counts.entry(agent_id.clone()).or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn default_agent_module_count_estimate() -> usize {
+    agent_world::models::AgentBodyState::default()
+        .slots
+        .iter()
+        .filter(|slot| slot.installed_module.is_some())
+        .count()
 }
 
 fn agent_label_offset(height_cm: i64) -> f32 {

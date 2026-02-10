@@ -666,6 +666,8 @@ fn spawn_location_entity_adds_label_text() {
     app.insert_resource(Viewer3dAssets {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
@@ -705,6 +707,8 @@ fn spawn_location_entity_uses_physical_radius_scale() {
     app.insert_resource(Viewer3dAssets {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
@@ -749,6 +753,8 @@ fn spawn_agent_entity_uses_body_height_scale() {
     app.insert_resource(Viewer3dAssets {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),
@@ -776,11 +782,278 @@ fn spawn_agent_entity_uses_body_height_scale() {
 
     let world = app.world_mut();
     let mut query = world.query::<(&AgentMarker, &BaseScale)>();
-    let (_, base) = query
+    let (marker, base) = query
         .iter(world)
         .find(|(marker, _)| marker.id == "agent-scale")
         .expect("agent marker exists");
-    assert!((base.0.x - 0.7).abs() < 1e-3);
+    assert_eq!(marker.module_count, 5);
+    assert!((base.0.y - 1.0).abs() < 1e-3);
+    assert!((base.0.x - 1.0).abs() < 1e-3);
+
+    let mut body_query = world.query::<(&Name, &Transform)>();
+    let (_, body_transform) = body_query
+        .iter(world)
+        .find(|(name, _)| name.as_str() == "agent:body:agent-scale")
+        .expect("agent body exists");
+    assert!((body_transform.scale.y - 1.12).abs() < 1e-3);
+    assert!((body_transform.scale.x - 0.88).abs() < 1e-3);
+}
+
+#[test]
+fn spawn_agent_entity_attaches_to_location_surface() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_surface_attachment_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut location_query = world.query::<(&LocationMarker, &Transform, &BaseScale)>();
+    let (location_translation, location_radius) = location_query
+        .iter(world)
+        .find(|(marker, _, _)| marker.id == "loc-surface")
+        .map(|(_, transform, scale)| (transform.translation, scale.0.x))
+        .expect("location marker exists");
+
+    let mut agent_query = world.query::<(&AgentMarker, &Transform)>();
+    let agent_translation = agent_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "agent-surface")
+        .map(|(_, transform)| transform.translation)
+        .expect("agent marker exists");
+
+    let mut body_query = world.query::<(&Name, &Transform)>();
+    let body_scale = body_query
+        .iter(world)
+        .find(|(name, _)| name.as_str() == "agent:body:agent-surface")
+        .map(|(_, transform)| transform.scale)
+        .expect("agent body exists");
+
+    let body_half_height = body_scale.y * 0.5 + body_scale.x * 0.5;
+    let center_distance = agent_translation.distance(location_translation);
+    let surface_offset = center_distance - (location_radius + body_half_height);
+    assert!(surface_offset >= 0.005);
+    assert!(surface_offset <= 0.03);
+}
+
+#[test]
+fn spawn_agent_entity_renders_module_markers_up_to_cap() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_module_marker_count_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let marker_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("agent:module_marker:agent-module-cap:")
+        })
+        .count();
+    assert_eq!(marker_count, 16);
+}
+
+#[test]
+fn spawn_agent_entity_robot_layout_places_head_slot_first() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_robot_layout_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<(&Name, &Transform)>();
+    let marker_transform = query
+        .iter(world)
+        .find(|(name, _)| name.as_str() == "agent:module_marker:agent-robot-layout:0")
+        .map(|(_, transform)| *transform)
+        .expect("first module marker exists");
+
+    assert!(marker_transform.translation.x > 0.55);
+    assert!(marker_transform.translation.z > 0.65);
+}
+
+#[test]
+fn rebuild_scene_maps_agent_module_count_from_module_visual_entities() {
+    let mut app = App::new();
+    app.add_systems(Update, rebuild_scene_module_count_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&AgentMarker>();
+    let marker = query
+        .iter(world)
+        .find(|marker| marker.id == "agent-modules")
+        .expect("agent marker exists");
+    assert_eq!(marker.module_count, 2);
+}
+
+#[test]
+fn rebuild_scene_uses_default_module_count_when_no_module_visual_entities() {
+    let mut app = App::new();
+    app.add_systems(Update, rebuild_scene_default_module_count_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let expected_default_count = agent_world::models::AgentBodyState::default()
+        .slots
+        .iter()
+        .filter(|slot| slot.installed_module.is_some())
+        .count();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&AgentMarker>();
+    let marker = query
+        .iter(world)
+        .find(|marker| marker.id == "agent-default-modules")
+        .expect("agent marker exists");
+    assert_eq!(marker.module_count, expected_default_count);
 }
 
 #[test]
@@ -1116,7 +1389,176 @@ fn spawn_agent_scale_test_system(
         &mut scene,
         origin,
         "agent-scale",
+        None,
         GeoPos::new(0.0, 0.0, 0.0),
         200,
+        5,
     );
+}
+
+fn spawn_agent_surface_attachment_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-surface",
+        "Surface",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
+        240,
+    );
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-surface",
+        Some("loc-surface"),
+        GeoPos::new(0.0, 0.0, 0.0),
+        100,
+        6,
+    );
+}
+
+fn spawn_agent_module_marker_count_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-module-cap",
+        None,
+        GeoPos::new(0.0, 0.0, 0.0),
+        180,
+        24,
+    );
+}
+
+fn spawn_agent_robot_layout_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-robot-layout",
+        None,
+        GeoPos::new(0.0, 0.0, 0.0),
+        180,
+        8,
+    );
+}
+
+fn rebuild_scene_module_count_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.agents.insert(
+        "agent-modules".to_string(),
+        agent_world::simulator::Agent::new("agent-modules", "loc-1", GeoPos::new(0.0, 0.0, 0.0)),
+    );
+    model.locations.insert(
+        "loc-1".to_string(),
+        agent_world::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
+    );
+    model.module_visual_entities.insert(
+        "mv-1".to_string(),
+        agent_world::simulator::ModuleVisualEntity {
+            entity_id: "mv-1".to_string(),
+            module_id: "m.power".to_string(),
+            kind: "artifact".to_string(),
+            label: None,
+            anchor: agent_world::simulator::ModuleVisualAnchor::Agent {
+                agent_id: "agent-modules".to_string(),
+            },
+        },
+    );
+    model.module_visual_entities.insert(
+        "mv-2".to_string(),
+        agent_world::simulator::ModuleVisualEntity {
+            entity_id: "mv-2".to_string(),
+            module_id: "m.sensor".to_string(),
+            kind: "artifact".to_string(),
+            label: None,
+            anchor: agent_world::simulator::ModuleVisualAnchor::Agent {
+                agent_id: "agent-modules".to_string(),
+            },
+        },
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 1,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 1,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+}
+
+fn rebuild_scene_default_module_count_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.agents.insert(
+        "agent-default-modules".to_string(),
+        agent_world::simulator::Agent::new(
+            "agent-default-modules",
+            "loc-1",
+            GeoPos::new(0.0, 0.0, 0.0),
+        ),
+    );
+    model.locations.insert(
+        "loc-1".to_string(),
+        agent_world::simulator::Location::new("loc-1", "Loc", GeoPos::new(0.0, 0.0, 0.0)),
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 1,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 1,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
 }

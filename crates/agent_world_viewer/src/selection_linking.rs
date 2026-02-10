@@ -413,7 +413,7 @@ pub(super) fn pick_3d_selection(
                     entity,
                     SelectionKind::Agent,
                     marker.id.clone(),
-                    None,
+                    Some(format!("modules={}", marker.module_count)),
                     distance,
                 ));
             }

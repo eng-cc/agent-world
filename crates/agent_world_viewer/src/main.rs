@@ -16,7 +16,8 @@ use bevy::prelude::*;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
 const DEFAULT_MAX_EVENTS: usize = 100;
-const DEFAULT_AGENT_RADIUS: f32 = 0.35;
+const AGENT_BODY_MESH_RADIUS: f32 = 0.5;
+const AGENT_BODY_MESH_LENGTH: f32 = 1.0;
 const DEFAULT_2D_CAMERA_RADIUS: f32 = 90.0;
 const DEFAULT_3D_CAMERA_RADIUS: f32 = 48.0;
 const ORBIT_ROTATE_SENSITIVITY: f32 = 0.005;
@@ -168,6 +169,8 @@ struct Viewer3dScene {
     agent_entities: HashMap<String, Entity>,
     agent_positions: HashMap<String, GeoPos>,
     agent_heights_cm: HashMap<String, i64>,
+    agent_location_ids: HashMap<String, String>,
+    agent_module_counts: HashMap<String, usize>,
     location_entities: HashMap<String, Entity>,
     asset_entities: HashMap<String, Entity>,
     module_visual_entities: HashMap<String, Entity>,
@@ -176,6 +179,7 @@ struct Viewer3dScene {
     chunk_entities: HashMap<String, Entity>,
     chunk_line_entities: HashMap<String, Vec<Entity>>,
     location_positions: HashMap<String, GeoPos>,
+    location_radii_cm: HashMap<String, i64>,
     background_entities: Vec<Entity>,
     heat_overlay_entities: Vec<Entity>,
     flow_overlay_entities: Vec<Entity>,
@@ -197,6 +201,8 @@ impl Default for ViewerCameraMode {
 struct Viewer3dAssets {
     agent_mesh: Handle<Mesh>,
     agent_material: Handle<StandardMaterial>,
+    agent_module_marker_mesh: Handle<Mesh>,
+    agent_module_marker_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
     location_material_library: LocationMaterialHandles,
     asset_mesh: Handle<Mesh>,
@@ -511,15 +517,25 @@ fn setup_3d_scene(
     scene.root_entity = Some(root_entity);
 
     let label_font = asset_server.load("fonts/ms-yahei.ttf");
-    let agent_mesh = meshes.add(Sphere::new(DEFAULT_AGENT_RADIUS));
+    let agent_mesh = meshes.add(Capsule3d::new(
+        AGENT_BODY_MESH_RADIUS,
+        AGENT_BODY_MESH_LENGTH,
+    ));
+    let agent_module_marker_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let location_mesh = meshes.add(Sphere::new(1.0));
     let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
     let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
     let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.34, 0.2),
-        perceptual_roughness: 0.45,
+        base_color: Color::srgb(1.0, 0.42, 0.22),
+        perceptual_roughness: 0.38,
+        metallic: 0.08,
+        ..default()
+    });
+    let agent_module_marker_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.16, 0.92, 0.98),
+        unlit: true,
         ..default()
     });
     let location_material_library = build_location_material_handles(&mut materials);
@@ -568,7 +584,7 @@ fn setup_3d_scene(
         ..default()
     });
     let world_grid_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.30, 0.34, 0.38, 0.55),
+        base_color: Color::srgba(0.29, 0.36, 0.48, 0.42),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
@@ -607,6 +623,8 @@ fn setup_3d_scene(
     commands.insert_resource(Viewer3dAssets {
         agent_mesh,
         agent_material,
+        agent_module_marker_mesh,
+        agent_module_marker_material,
         location_mesh,
         location_material_library,
         asset_mesh,
@@ -647,15 +665,31 @@ fn setup_3d_scene(
         orbit,
     ));
 
+    commands.insert_resource(GlobalAmbientLight {
+        color: Color::srgb(0.94, 0.97, 1.0),
+        brightness: config.lighting.ambient_brightness,
+        affects_lightmapped_meshes: true,
+    });
+
     let illuminance = config.physical.exposed_illuminance_lux();
 
     commands.spawn((
         DirectionalLight {
             illuminance,
-            shadows_enabled: true,
+            shadows_enabled: config.lighting.shadows_enabled,
             ..default()
         },
-        Transform::from_xyz(20.0, 30.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(24.0, 36.0, 22.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
+    commands.spawn((
+        DirectionalLight {
+            illuminance: (illuminance * config.lighting.fill_light_ratio.max(0.0)).max(800.0),
+            color: Color::srgb(0.74, 0.82, 0.92),
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(-18.0, 20.0, -28.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
