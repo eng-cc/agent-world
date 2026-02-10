@@ -1,4 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +110,215 @@ pub struct MembershipRevocationScheduledRunReport {
     pub checkpoint_published: bool,
     pub reconcile_executed: bool,
     pub reconcile_report: Option<MembershipRevocationReconcileReport>,
+}
+
+pub trait MembershipRevocationAlertSink {
+    fn emit(&self, alert: &MembershipRevocationAnomalyAlert) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationAlertSink {
+    alerts: Arc<Mutex<Vec<MembershipRevocationAnomalyAlert>>>,
+}
+
+impl InMemoryMembershipRevocationAlertSink {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn list(&self) -> Result<Vec<MembershipRevocationAnomalyAlert>, WorldError> {
+        let guard = self
+            .alerts
+            .lock()
+            .map_err(|_| WorldError::Io("membership revocation alert sink lock poisoned".into()))?;
+        Ok(guard.clone())
+    }
+}
+
+impl MembershipRevocationAlertSink for InMemoryMembershipRevocationAlertSink {
+    fn emit(&self, alert: &MembershipRevocationAnomalyAlert) -> Result<(), WorldError> {
+        let mut guard = self
+            .alerts
+            .lock()
+            .map_err(|_| WorldError::Io("membership revocation alert sink lock poisoned".into()))?;
+        guard.push(alert.clone());
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationAlertSink {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationAlertSink {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn world_log_path(&self, world_id: &str) -> Result<PathBuf, WorldError> {
+        let world_id = logic::normalized_world_id(world_id)?;
+        Ok(self
+            .root_dir
+            .join(format!("{world_id}.revocation-alerts.jsonl")))
+    }
+
+    pub fn list(
+        &self,
+        world_id: &str,
+    ) -> Result<Vec<MembershipRevocationAnomalyAlert>, WorldError> {
+        let path = self.world_log_path(world_id)?;
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let file = OpenOptions::new().read(true).open(path)?;
+        let reader = BufReader::new(file);
+        let mut alerts = Vec::new();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            alerts.push(serde_json::from_str(&line)?);
+        }
+        Ok(alerts)
+    }
+}
+
+impl MembershipRevocationAlertSink for FileMembershipRevocationAlertSink {
+    fn emit(&self, alert: &MembershipRevocationAnomalyAlert) -> Result<(), WorldError> {
+        let path = self.world_log_path(&alert.world_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let line = serde_json::to_string(alert)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        file.write_all(line.as_bytes())?;
+        file.write_all(b"\n")?;
+        Ok(())
+    }
+}
+
+pub trait MembershipRevocationScheduleStateStore {
+    fn load(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationReconcileScheduleState, WorldError>;
+
+    fn save(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationReconcileScheduleState,
+    ) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationScheduleStateStore {
+    states: Arc<Mutex<BTreeMap<(String, String), MembershipRevocationReconcileScheduleState>>>,
+}
+
+impl InMemoryMembershipRevocationScheduleStateStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MembershipRevocationScheduleStateStore for InMemoryMembershipRevocationScheduleStateStore {
+    fn load(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationReconcileScheduleState, WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let guard = self.states.lock().map_err(|_| {
+            WorldError::Io("membership revocation schedule store lock poisoned".into())
+        })?;
+        Ok(guard.get(&key).cloned().unwrap_or_default())
+    }
+
+    fn save(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationReconcileScheduleState,
+    ) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let mut guard = self.states.lock().map_err(|_| {
+            WorldError::Io("membership revocation schedule store lock poisoned".into())
+        })?;
+        guard.insert(key, state.clone());
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationScheduleStateStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationScheduleStateStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn state_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-schedule-state.json"
+        )))
+    }
+}
+
+impl MembershipRevocationScheduleStateStore for FileMembershipRevocationScheduleStateStore {
+    fn load(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationReconcileScheduleState, WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if !path.exists() {
+            return Ok(MembershipRevocationReconcileScheduleState::default());
+        }
+
+        let bytes = fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    fn save(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationReconcileScheduleState,
+    ) -> Result<(), WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let bytes = serde_json::to_vec(state)?;
+        fs::write(path, bytes)?;
+        Ok(())
+    }
 }
 
 impl MembershipSyncClient {
@@ -235,6 +448,17 @@ impl MembershipSyncClient {
         Ok(alerts)
     }
 
+    pub fn emit_revocation_reconcile_alerts(
+        &self,
+        sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+        alerts: &[MembershipRevocationAnomalyAlert],
+    ) -> Result<usize, WorldError> {
+        for alert in alerts {
+            sink.emit(alert)?;
+        }
+        Ok(alerts.len())
+    }
+
     pub fn run_revocation_reconcile_schedule(
         &self,
         world_id: &str,
@@ -278,6 +502,47 @@ impl MembershipSyncClient {
             schedule_state.last_reconcile_at_ms = Some(now_ms);
             report.reconcile_executed = true;
             report.reconcile_report = Some(reconcile_report);
+        }
+
+        Ok(report)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_reconcile_schedule_with_store_and_alerts(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        reconcile_policy: &MembershipRevocationReconcilePolicy,
+        schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+        alert_policy: &MembershipRevocationAlertPolicy,
+        schedule_store: &(dyn MembershipRevocationScheduleStateStore + Send + Sync),
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+    ) -> Result<MembershipRevocationScheduledRunReport, WorldError> {
+        let mut schedule_state = schedule_store.load(world_id, node_id)?;
+        let report = self.run_revocation_reconcile_schedule(
+            world_id,
+            node_id,
+            now_ms,
+            subscription,
+            keyring,
+            reconcile_policy,
+            schedule_policy,
+            &mut schedule_state,
+        )?;
+        schedule_store.save(world_id, node_id, &schedule_state)?;
+
+        if let Some(reconcile_report) = report.reconcile_report.as_ref() {
+            let alerts = self.evaluate_revocation_reconcile_alerts(
+                world_id,
+                node_id,
+                now_ms,
+                reconcile_report,
+                alert_policy,
+            )?;
+            self.emit_revocation_reconcile_alerts(alert_sink, &alerts)?;
         }
 
         Ok(report)
@@ -347,6 +612,11 @@ fn normalized_node_id(raw: &str) -> Result<String, WorldError> {
             reason: "membership revocation checkpoint node_id cannot be empty".to_string(),
         });
     }
+    if normalized.contains('/') || normalized.contains('\\') || normalized.contains("..") {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("membership revocation checkpoint node_id is invalid: {normalized}"),
+        });
+    }
     Ok(normalized.to_string())
 }
 
@@ -377,4 +647,11 @@ fn schedule_due(last_run_ms: Option<i64>, now_ms: i64, interval_ms: i64) -> bool
         None => true,
         Some(last_run_ms) => now_ms.saturating_sub(last_run_ms) >= interval_ms,
     }
+}
+
+fn normalized_schedule_key(world_id: &str, node_id: &str) -> Result<(String, String), WorldError> {
+    Ok((
+        logic::normalized_world_id(world_id)?,
+        normalized_node_id(node_id)?,
+    ))
 }
