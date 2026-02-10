@@ -125,6 +125,12 @@
 - [x] ObserverClient 循环跟随 helper（follow_heads/follow_heads_with_dht）
 - [x] Observer 循环跟随单元测试
 
+
+### 25. P3.8 Head 共识层
+- [x] 新增 QuorumConsensus 与投票状态机
+- [x] 共识提交门控 DHT head 发布
+- [x] 共识单元测试与导出接口
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -132,6 +138,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.7 完成（Observer 循环跟随）
-- 下一步：P3.8（后续协议/实现迭代）
-- 最近更新：Observer 循环跟随（2026-02-05）
+- 当前阶段：P3.8 完成（Head 共识层）
+- 下一步：P3.9（共识持久化与成员治理迭代）
+- 最近更新：Head 共识层（2026-02-10）

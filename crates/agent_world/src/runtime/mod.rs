@@ -15,6 +15,7 @@ mod builtin_modules;
 pub mod distributed;
 mod distributed_bootstrap;
 mod distributed_client;
+mod distributed_consensus;
 mod distributed_dht;
 mod distributed_dht_cache;
 mod distributed_gateway;
@@ -129,6 +130,11 @@ pub use distributed_client::DistributedClient;
 
 // Distributed DHT adapter
 pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
+// Quorum consensus helpers for head commits
+pub use distributed_consensus::{
+    propose_world_head_with_quorum, vote_world_head_with_quorum, ConsensusConfig,
+    ConsensusDecision, ConsensusStatus, ConsensusVote, HeadConsensusRecord, QuorumConsensus,
+};
 // Cached DHT wrapper
 pub use distributed_dht_cache::{CachedDht, DhtCacheConfig};
 // Distributed index publishing

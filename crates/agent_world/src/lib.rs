@@ -12,9 +12,10 @@ pub use geometry::{
 pub use models::{AgentState, BodyKernelView, RobotBodySpec, DEFAULT_AGENT_HEIGHT_CM};
 pub use runtime::{
     Action, ActionEnvelope, ActionId, AgentCell, AgentSchedule, AuditCausedBy, AuditEventKind,
-    AuditFilter, BlobStore, CapabilityGrant, CausedBy, ConflictKind, DistributedClient,
-    DistributedDht, DistributedNetwork, DomainEvent, EffectIntent, EffectOrigin, EffectReceipt,
-    GovernanceEvent, InMemoryDht, InMemoryNetwork, IntentSeq, Journal, JournalSegmentRef,
+    AuditFilter, BlobStore, CapabilityGrant, CausedBy, ConflictKind, ConsensusConfig,
+    ConsensusDecision, ConsensusStatus, ConsensusVote, DistributedClient, DistributedDht,
+    DistributedNetwork, DomainEvent, EffectIntent, EffectOrigin, EffectReceipt, GovernanceEvent,
+    HeadConsensusRecord, InMemoryDht, InMemoryNetwork, IntentSeq, Journal, JournalSegmentRef,
     LocalCasStore, Manifest, ManifestPatch, ManifestPatchOp, ManifestUpdate, ModuleActivation,
     ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind,
     ModuleKind, ModuleLimits, ModuleManifest, ModuleRecord, ModuleRegistry, ModuleRole,
@@ -22,11 +23,11 @@ pub use runtime::{
     NetworkRequest, NetworkResponse, NetworkSubscription, OriginKind, PatchConflict,
     PatchMergeResult, PatchOpKind, PatchOpSummary, PatchPath, PolicyDecision, PolicyDecisionRecord,
     PolicyRule, PolicySet, PolicyWhen, Proposal, ProposalDecision, ProposalId, ProposalStatus,
-    ProviderRecord, ReceiptSignature, ReceiptSigner, RejectReason, ResourceBalanceError,
-    ResourceDelta, RollbackEvent, RuleDecision, RuleDecisionMergeError, RuleVerdict, SegmentConfig,
-    SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta, SnapshotRecord,
-    SnapshotRetentionPolicy, World, WorldError, WorldEvent, WorldEventBody, WorldEventId,
-    WorldState, WorldTime,
+    ProviderRecord, QuorumConsensus, ReceiptSignature, ReceiptSigner, RejectReason,
+    ResourceBalanceError, ResourceDelta, RollbackEvent, RuleDecision, RuleDecisionMergeError,
+    RuleVerdict, SegmentConfig, SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta,
+    SnapshotRecord, SnapshotRetentionPolicy, World, WorldError, WorldEvent, WorldEventBody,
+    WorldEventId, WorldState, WorldTime,
 };
 
 #[cfg(feature = "libp2p")]
@@ -34,7 +35,8 @@ pub use runtime::{Libp2pNetwork, Libp2pNetworkConfig};
 
 pub use runtime::{
     apply_manifest_patch, blake3_hex, diff_manifest, merge_manifest_patches,
-    merge_manifest_patches_with_conflicts, merge_rule_decisions, segment_journal, segment_snapshot,
+    merge_manifest_patches_with_conflicts, merge_rule_decisions, propose_world_head_with_quorum,
+    segment_journal, segment_snapshot, vote_world_head_with_quorum,
 };
 
 pub use runtime::{
