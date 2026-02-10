@@ -33,10 +33,12 @@
       </a>
       <nav class="nav" data-menu data-section-nav>
         <a href="#why">Why</a>
+        <a href="#path">Path</a>
         <a href="#matrix">Matrix</a>
         <a href="#architecture">Architecture</a>
         <a href="#scenarios">Scenarios</a>
         <a href="#demo">Demo</a>
+        <a href="#proof">Proof</a>
         <a href="#roadmap">Roadmap</a>
         <a href="#faq">FAQ</a>
         <a href="#contribute">Contribute</a>
@@ -67,24 +69,32 @@
       <section class="hero section section-hero" id="hero" data-reveal>
         <div class="hero-grid">
           <div>
-            <p class="eyebrow">Persistent · Believable · Emergence-first</p>
-            <h1>Build a Persistent Civilization-grade World for Autonomous Agents</h1>
+            <p class="eyebrow">Persistent · Believable · Auditable</p>
+            <h1>Build a Persistent and Verifiable Civilization-grade World for Autonomous Agents</h1>
             <p class="subtitle">
-              `agent-world` is a rule-first multi-agent runtime. From resources and institutions to
-              social relations, every action is constrained, logged, replayable, and auditable.
-              This is not a one-shot demo; it is a long-running world system.
+              `agent-world` is a rule-first multi-agent runtime. From resources and institutions to social
+              relations, every action is constrained, logged, replayable, and auditable. This is not a one-shot
+              demo; it is a long-running world system.
             </p>
+            <p class="hero-lead">See outcomes in 30 seconds, understand architecture in 3 minutes, then run your first world loop in 30 minutes.</p>
+            <div class="cta-row">
+              <a class="button primary" href="#demo">30-second Quick Try</a>
+              <a
+                class="button secondary"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md"
+                target="_blank"
+                rel="noreferrer"
+                >Read Design Doc</a
+              >
+              <a class="button ghost" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
+                >View Source</a
+              >
+            </div>
             <div class="trust-pills">
               <span>Rust Workspace</span>
               <span>LLM-Compatible</span>
               <span>Replay & Audit</span>
               <span>WASM Extensible</span>
-            </div>
-            <div class="cta-row">
-              <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-                >View Source</a
-              >
-              <a class="button secondary" href="#demo">Run Demo</a>
             </div>
             <div class="hero-stats">
               <article class="metric-box">
@@ -96,19 +106,19 @@
                 <span>Standard run paths</span>
               </article>
               <article class="metric-box">
-                <strong data-counter-target="2">0</strong>
-                <span>Public language versions</span>
+                <strong data-counter-target="4">0</strong>
+                <span>Real viewer scenario proofs</span>
               </article>
               <article class="metric-box">
                 <strong data-counter-target="100">0</strong>
-                <span>Auditable key actions (%)</span>
+                <span>Release gate target score (Lighthouse)</span>
               </article>
             </div>
           </div>
           <aside class="hero-visual">
             <figure class="hero-figure">
-              <img src="../assets/images/world-loop.svg" alt="Core loop of agent-world" />
-              <figcaption>Rule Constraints → Agent Decisions → Event Logs → Replay & Insight</figcaption>
+              <img src="../assets/images/world-constellation.svg" alt="agent-world key visual" />
+              <figcaption>Multi-agent cooperation, competition, and institutional evolution under asteroid-belt constraints.</figcaption>
             </figure>
             <div class="pulse-panel">
               <p class="panel-title">System Pulse</p>
@@ -119,6 +129,11 @@
                 <li><span>LLM Bridge</span><strong>Repair Enabled</strong></li>
               </ul>
             </div>
+            <ul class="hero-proof-points">
+              <li>Proof: 4 real viewer scenario captures</li>
+              <li>Loop: offline replay + online evolution</li>
+              <li>Quality: measurable release gates</li>
+            </ul>
           </aside>
         </div>
       </section>
@@ -137,6 +152,31 @@
           <article class="card">
             <h3>From single agent to civilization emergence</h3>
             <p>Agents evolve under resource, institution, and relation constraints over long timelines.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="path" class="section" data-reveal>
+        <h2>Three-step Understanding Path</h2>
+        <p class="section-intro">See outcomes first, understand architecture second, and validate locally in the final step.</p>
+        <div class="story-path">
+          <article class="story-step story-step-key" data-story-step>
+            <p class="story-kicker">30 sec</p>
+            <h3>Decide if this is worth your time</h3>
+            <p>Use scenario captures, headline metrics, and value proposition to evaluate fit immediately.</p>
+            <a class="button secondary" href="#scenarios">See scenario proofs</a>
+          </article>
+          <article class="story-step" data-story-step>
+            <p class="story-kicker">3 min</p>
+            <h3>Understand how the system closes the loop</h3>
+            <p>Read matrix and architecture slice to map Runtime / Simulator / Viewer / LLM boundaries.</p>
+            <a class="button secondary" href="#architecture">See architecture slice</a>
+          </article>
+          <article class="story-step" data-story-step>
+            <p class="story-kicker">30 min</p>
+            <h3>Verify it on your machine</h3>
+            <p>Run demo and viewer command chain, then inspect state evolution and event traces.</p>
+            <a class="button secondary" href="#demo">Run quick start</a>
           </article>
         </div>
       </section>
@@ -298,6 +338,113 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         </article>
       </section>
 
+      <section id="proof" class="section" data-reveal>
+        <h2>Runtime Proofs</h2>
+        <p class="section-intro">Put runnability, reproducibility, and auditability in one place instead of only claiming them.</p>
+        <div class="proof-switcher" data-proof-switcher>
+          <p class="proof-switcher-label">Scenario Event Timeline</p>
+          <div class="proof-switcher-controls" role="group" aria-label="Switch proof scenario" data-proof-controls>
+            <button
+              class="proof-switch-btn is-active"
+              type="button"
+              data-proof-tab="minimal"
+              aria-pressed="true"
+            >
+              minimal
+            </button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="twin" aria-pressed="false">twin_region</button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="triad" aria-pressed="false">triad_region</button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="asteroid" aria-pressed="false">asteroid_fragment</button>
+          </div>
+        </div>
+        <div class="proof-grid">
+          <article class="proof-card proof-card-key">
+            <h3>Command loop (locally reproducible)</h3>
+            <ol class="proof-list">
+              <li>Generate world data (`world_viewer_demo`)</li>
+              <li>Start replay server (`world_viewer_server`)</li>
+              <li>Connect viewer and inspect evolution</li>
+            </ol>
+            <a class="button secondary" href="#demo">Copy and run</a>
+          </article>
+          <article class="proof-card">
+            <h3>Event sample (excerpt)</h3>
+            <pre><code data-proof-code data-proof-panel="minimal" data-proof-visible="true">{
+  "tick": 128,
+  "agent": "agent-1",
+  "action": "harvest",
+  "result": "accepted",
+  "delta": { "electricity": +12 }
+}</code></pre>
+            <pre><code data-proof-code data-proof-panel="twin" data-proof-visible="false">[
+  { "tick": 84, "agent": "agent-1", "action": "move", "to": "base-b" },
+  { "tick": 91, "agent": "agent-2", "action": "trade_power", "amount": 9 },
+  { "tick": 96, "result": "both_agents_online" }
+]</code></pre>
+            <pre><code data-proof-code data-proof-panel="triad" data-proof-visible="false">[
+  { "tick": 142, "agent": "agent-3", "action": "request_help", "from": "agent-1" },
+  { "tick": 149, "agent": "agent-1", "action": "route_energy", "to": "agent-3" },
+  { "tick": 166, "result": "triad_stability_up" }
+]</code></pre>
+            <pre><code data-proof-code data-proof-panel="asteroid" data-proof-visible="false">[
+  { "tick": 58, "agent": "agent-2", "action": "scan_fragment", "yield": 4 },
+  { "tick": 63, "agent": "agent-2", "action": "harvest", "delta": { "electricity": +7 } },
+  { "tick": 79, "result": "resource_path_discovered" }
+]</code></pre>
+          </article>
+          <article class="proof-card">
+            <h3>Recent site upgrades (2026-02-10)</h3>
+            <ul class="proof-updates">
+              <li>Added architecture diagram and scenario gallery</li>
+              <li>Aligned bilingual information architecture</li>
+              <li>Enhanced timeline filters and keyboard accessibility</li>
+            </ul>
+          </article>
+        </div>
+        <div class="proof-strip">
+          <span>Proof scope: 4 scenario screenshots</span>
+          <span>Observation paths: Offline Replay + Live Viewer</span>
+          <span>Docs chain: README / Design / Devlog</span>
+        </div>
+        <div class="proof-timeline" data-proof-timeline>
+          <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
+            <span>Tick 128</span>
+            <p>minimal: agent-1 harvest is accepted with +12 electricity delta.</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
+            <span>Tick 133</span>
+            <p>minimal: short wait phase keeps the world loop stable.</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
+            <span>Tick 84</span>
+            <p>twin_region: agent-1 moves across regions to base-b.</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
+            <span>Tick 91</span>
+            <p>twin_region: agent-2 initiates power trade for dual-node coordination.</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
+            <span>Tick 142</span>
+            <p>triad_region: agent-3 requests collaborative support.</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
+            <span>Tick 166</span>
+            <p>triad_region: routing response lands and group stability rises.</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="asteroid" data-proof-visible="false">
+            <span>Tick 58</span>
+            <p>asteroid_fragment: first fragment scan finds harvestable target.</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="asteroid" data-proof-visible="false">
+            <span>Tick 79</span>
+            <p>asteroid_fragment: resource path is discovered and reused by policy.</p>
+          </article>
+        </div>
+      </section>
+
       <section id="roadmap" class="section" data-reveal>
         <h2>Milestone Timeline</h2>
         <div class="timeline-toolbar" data-timeline-controls>
@@ -360,7 +507,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <span>Target mobile Lighthouse score</span>
           </article>
           <article class="signal-box">
-            <strong data-counter-target="8">0</strong>
+            <strong data-counter-target="10">0</strong>
             <span>Showcase sections in parity</span>
           </article>
           <article class="signal-box">

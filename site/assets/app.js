@@ -288,6 +288,104 @@
     applyFilter("all");
   };
 
+  const bindStoryPathHighlight = () => {
+    const steps = Array.from(document.querySelectorAll("[data-story-step]"));
+    if (!steps.length) {
+      return;
+    }
+
+    const setActiveStep = (active) => {
+      steps.forEach((step) => {
+        step.classList.toggle("is-active", step === active);
+      });
+    };
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (steps[0]) {
+        setActiveStep(steps[0]);
+      }
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio);
+        if (!visible.length) {
+          return;
+        }
+        setActiveStep(visible[0].target);
+      },
+      {
+        threshold: [0.35, 0.5, 0.7],
+        rootMargin: "-10% 0px -18% 0px",
+      },
+    );
+
+    steps.forEach((step) => observer.observe(step));
+
+    if (steps[0]) {
+      setActiveStep(steps[0]);
+    }
+  };
+
+  const bindProofSwitcher = () => {
+    const controls = document.querySelector("[data-proof-controls]");
+    if (!controls) {
+      return;
+    }
+
+    const buttons = Array.from(controls.querySelectorAll("[data-proof-tab]"));
+    const panels = Array.from(document.querySelectorAll("[data-proof-code][data-proof-panel]"));
+    const events = Array.from(document.querySelectorAll("[data-proof-event]"));
+
+    if (!buttons.length || !panels.length || !events.length) {
+      return;
+    }
+
+    const applyTab = (tab) => {
+      buttons.forEach((button) => {
+        const isActive = button.getAttribute("data-proof-tab") === tab;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      panels.forEach((panel) => {
+        const visible = panel.getAttribute("data-proof-panel") === tab;
+        panel.setAttribute("data-proof-visible", visible ? "true" : "false");
+      });
+
+      events.forEach((item) => {
+        const visible = item.getAttribute("data-proof-event") === tab;
+        item.setAttribute("data-proof-visible", visible ? "true" : "false");
+      });
+    };
+
+    buttons.forEach((button, index) => {
+      button.addEventListener("click", () => {
+        const tab = button.getAttribute("data-proof-tab") || "minimal";
+        applyTab(tab);
+      });
+
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
+          return;
+        }
+
+        event.preventDefault();
+        const delta = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex = (index + delta + buttons.length) % buttons.length;
+        const nextButton = buttons[nextIndex];
+        nextButton.focus();
+        const tab = nextButton.getAttribute("data-proof-tab") || "minimal";
+        applyTab(tab);
+      });
+    });
+
+    applyTab("minimal");
+  };
+
   maybeRedirectByLanguageOnFirstVisit();
   bindLanguageChoicePersistence();
 
@@ -397,4 +495,6 @@
   bindCounters();
   bindActiveNav();
   bindTimelineFilters();
+  bindStoryPathHighlight();
+  bindProofSwitcher();
 })();
