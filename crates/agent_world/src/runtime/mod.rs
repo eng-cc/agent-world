@@ -15,6 +15,7 @@ mod builtin_modules;
 pub mod distributed;
 mod distributed_bootstrap;
 mod distributed_client;
+mod distributed_consensus;
 mod distributed_dht;
 mod distributed_dht_cache;
 mod distributed_gateway;
@@ -22,6 +23,7 @@ mod distributed_head_follow;
 mod distributed_index;
 mod distributed_index_store;
 mod distributed_lease;
+mod distributed_membership_sync;
 mod distributed_mempool;
 mod distributed_net;
 mod distributed_observer;
@@ -128,7 +130,16 @@ pub use distributed_lease::{LeaseDecision, LeaseManager, LeaseState};
 pub use distributed_client::DistributedClient;
 
 // Distributed DHT adapter
-pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
+pub use distributed_dht::{
+    DistributedDht, InMemoryDht, MembershipDirectorySnapshot, ProviderRecord,
+};
+// Quorum consensus helpers for head commits
+pub use distributed_consensus::{
+    ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
+    ConsensusConfig, ConsensusDecision, ConsensusMembershipChange,
+    ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult, ConsensusStatus,
+    ConsensusVote, HeadConsensusRecord, QuorumConsensus, CONSENSUS_SNAPSHOT_VERSION,
+};
 // Cached DHT wrapper
 pub use distributed_dht_cache::{CachedDht, DhtCacheConfig};
 // Distributed index publishing
@@ -145,6 +156,19 @@ pub use distributed_gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt
 // Distributed observer
 pub use distributed_observer::{
     HeadFollowReport, HeadSyncReport, HeadSyncResult, ObserverClient, ObserverSubscription,
+};
+// Distributed membership directory sync
+pub use distributed_membership_sync::{
+    FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,
+    MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,
+    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport, MembershipRevocationAlertPolicy,
+    MembershipRevocationAlertSeverity, MembershipRevocationAnomalyAlert,
+    MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileReport, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduledRunReport,
+    MembershipRevocationSyncPolicy, MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome,
+    MembershipSnapshotAuditRecord, MembershipSnapshotRestorePolicy, MembershipSyncClient,
+    MembershipSyncReport, MembershipSyncSubscription,
 };
 // Distributed observer replay validation
 pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};

@@ -14,6 +14,20 @@ pub struct ProviderRecord {
     pub last_seen_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipDirectorySnapshot {
+    pub world_id: String,
+    pub requester_id: String,
+    pub requested_at_ms: i64,
+    pub reason: Option<String>,
+    pub validators: Vec<String>,
+    pub quorum_threshold: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_key_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+}
+
 pub trait DistributedDht {
     fn publish_provider(
         &self,
@@ -31,12 +45,24 @@ pub trait DistributedDht {
     fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError>;
 
     fn get_world_head(&self, world_id: &str) -> Result<Option<WorldHeadAnnounce>, WorldError>;
+
+    fn put_membership_directory(
+        &self,
+        world_id: &str,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError>;
+
+    fn get_membership_directory(
+        &self,
+        world_id: &str,
+    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError>;
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct InMemoryDht {
     providers: Arc<Mutex<BTreeMap<(String, String), BTreeMap<String, ProviderRecord>>>>,
     heads: Arc<Mutex<BTreeMap<String, WorldHeadAnnounce>>>,
+    memberships: Arc<Mutex<BTreeMap<String, MembershipDirectorySnapshot>>>,
 }
 
 impl InMemoryDht {
@@ -88,6 +114,24 @@ impl DistributedDht for InMemoryDht {
         let heads = self.heads.lock().expect("lock heads");
         Ok(heads.get(world_id).cloned())
     }
+
+    fn put_membership_directory(
+        &self,
+        world_id: &str,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError> {
+        let mut memberships = self.memberships.lock().expect("lock memberships");
+        memberships.insert(world_id.to_string(), snapshot.clone());
+        Ok(())
+    }
+
+    fn get_membership_directory(
+        &self,
+        world_id: &str,
+    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError> {
+        let memberships = self.memberships.lock().expect("lock memberships");
+        Ok(memberships.get(world_id).cloned())
+    }
 }
 
 fn now_ms() -> i64 {
@@ -128,5 +172,29 @@ mod tests {
 
         let loaded = dht.get_world_head("w1").expect("get head");
         assert_eq!(loaded, Some(head));
+    }
+
+    #[test]
+    fn in_memory_dht_tracks_membership_directory_snapshot() {
+        let dht = InMemoryDht::new();
+        let snapshot = MembershipDirectorySnapshot {
+            world_id: "w1".to_string(),
+            requester_id: "seq-1".to_string(),
+            requested_at_ms: 1,
+            reason: Some("bootstrap".to_string()),
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+            ],
+            quorum_threshold: 2,
+            signature_key_id: Some("k1".to_string()),
+            signature: Some("deadbeef".to_string()),
+        };
+        dht.put_membership_directory("w1", &snapshot)
+            .expect("put membership");
+
+        let loaded = dht.get_membership_directory("w1").expect("get membership");
+        assert_eq!(loaded, Some(snapshot));
     }
 }

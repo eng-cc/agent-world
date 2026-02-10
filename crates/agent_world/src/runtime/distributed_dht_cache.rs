@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::distributed::WorldHeadAnnounce;
-use super::distributed_dht::{DistributedDht, ProviderRecord};
+use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
 use super::distributed_index_store::DistributedIndexStore;
 use super::error::WorldError;
 
@@ -151,6 +151,21 @@ impl DistributedDht for CachedDht {
             self.cache_head(head)?;
         }
         Ok(head)
+    }
+
+    fn put_membership_directory(
+        &self,
+        world_id: &str,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError> {
+        self.inner.put_membership_directory(world_id, snapshot)
+    }
+
+    fn get_membership_directory(
+        &self,
+        world_id: &str,
+    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError> {
+        self.inner.get_membership_directory(world_id)
     }
 }
 

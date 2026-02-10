@@ -91,6 +91,13 @@
 - **冲突处理**：未过期时拒绝并返回当前 lease 信息。
 - **幂等要求**：基于 `lease_id` 续约/释放，避免重复操作。
 
+## 成员目录广播与同步（草案）
+- **广播主题**：`aw.<world_id>.membership`，用于传播最新 validator 目录与 quorum 阈值。
+- **广播载荷**：`MembershipDirectoryAnnounce { requester_id, requested_at_ms, validators, quorum_threshold }`。
+- **同步策略**：订阅节点将广播目录转换为 `ReplaceValidators` 并尝试应用到本地 `QuorumConsensus`。
+- **幂等语义**：若目录未变化则记为 ignored；目录变化成功则记为 applied。
+- **安全约束**：若本地存在 pending 提案，沿用共识层保护策略，阻断目录切换。
+
 ## 数据分类与存放策略
 
 ### 1. WASM 代码与模块元信息
@@ -196,9 +203,10 @@
 - **治理闭环**：治理 shadow/apply 可使用 `shadow_proposal_with_fetch` / `apply_proposal_with_fetch` 自动拉取缺失工件。
 
 ### 协议命名约定（草案）
-- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
+- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`、`aw.w1.membership.revoke`、`aw.w1.membership.reconcile`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
 - **DHT Key**：`/aw/world/<world_id>/<key>`，例如 `head`、`providers/<content_hash>`。
+- **成员目录快照 Key**：`/aw/world/<world_id>/membership`。
 - **内容哈希**：V1 使用 `blake3` 十六进制字符串；后续可升级为 CIDv1（保留兼容层）。
 
 ### Gossipsub Topics（草案）
@@ -206,6 +214,9 @@
 - `aw.<world_id>.block`：WorldBlock/BlockAnnounce 广播（高度与 hash）。
 - `aw.<world_id>.head`：WorldHeadAnnounce 广播（头指针更新）。
 - `aw.<world_id>.event`：EventAnnounce 广播（轻量事件摘要）。
+- `aw.<world_id>.membership`：成员目录广播（validator 集合与 quorum 阈值）。
+- `aw.<world_id>.membership.revoke`：成员目录签名 key 吊销广播（key_id、requester、reason）。
+- `aw.<world_id>.membership.reconcile`：成员目录吊销状态对账广播（node_id、revoked_key_ids、hash）。
 
 ### Request/Response 协议（草案）
 - `/aw/rr/1.0.0/get_world_head`
@@ -362,3 +373,57 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **存储膨胀**：日志与对象增长快，需要 GC/pinning 策略。
 - **网络复杂度**：libp2p 叠加多协议后调试成本升高。
 - **一致性压力**：缺乏 BFT 共识时，节点间可能出现短暂分叉。
+
+## 成员目录 DHT 快照与恢复（草案）
+- **DHT Key**：`/aw/world/<world_id>/membership`，保存最近一次成员目录快照。
+- **快照结构**：`MembershipDirectorySnapshot { requester_id, requested_at_ms, validators, quorum_threshold }`。
+- **发布联动**：成员变更广播后，调用 `publish_membership_change_with_dht` 同步写入 DHT。
+- **恢复入口**：启动/重启时可调用 `restore_membership_from_dht`，读取快照并以 `ReplaceValidators` 恢复本地目录。
+- **缺省行为**：DHT 无快照时返回 `None`，不强制变更本地目录。
+- **一致性约束**：恢复仍受共识层 pending 保护，避免在进行中提案期间切换 validator 集合。
+
+## 成员目录快照签名与来源校验（草案）
+- **签名字段**：成员目录广播与 DHT 快照增加可选 `signature`（hex），兼容旧数据。
+- **签名算法**：当前实现 `MembershipDirectorySigner::hmac_sha256`，基于快照核心字段做 canonical CBOR 签名。
+- **发布入口**：`publish_membership_change_with_dht_signed` 同步发布带签名广播并写入 DHT。
+- **恢复策略**：`restore_membership_from_dht_verified` 支持 `trusted_requesters` 与 `require_signature` 策略。
+- **来源约束**：恢复前校验 `requester_id` 必须在快照 validator 集合内；若配置白名单则必须命中。
+- **兼容模式**：未启用策略时仍保留旧恢复入口，便于渐进迁移。
+
+## 成员目录快照密钥轮换与审计（草案）
+- **key_id 扩展**：成员目录广播与 DHT 快照增加可选 `signature_key_id`，用于标识签名密钥版本。
+- **多密钥验签**：`MembershipDirectorySignerKeyring` 支持 active key 签名和多 key 验签，兼容轮换窗口。
+- **策略控制**：恢复策略新增 `require_signature_key_id` 与 `accepted_signature_key_ids`，可限定只接受指定 key_id。
+- **发布入口**：提供 keyring 版本发布接口，默认使用 active key 生成签名并写入 `signature_key_id`。
+- **审计结果**：恢复流程输出 `MembershipSnapshotAuditRecord`，统一记录 `missing/applied/ignored/rejected`。
+- **兼容模式**：对历史无 key_id 快照仍可验签；生产环境建议开启 key_id 强制策略。
+
+## 成员目录审计持久化与吊销传播（草案）
+- **审计持久化**：新增 `MembershipAuditStore` 抽象与 `InMemoryMembershipAuditStore` 参考实现。
+- **恢复入口**：新增 `restore_membership_from_dht_verified_with_audit_store`，在恢复后自动写入审计记录。
+- **吊销通道**：新增 gossipsub topic `aw.<world_id>.membership.revoke`，传播 key_id 吊销事件。
+- **吊销同步**：`MembershipSyncClient` 新增发布/订阅/同步吊销消息能力，支持批量消费。
+- **验签拦截**：`MembershipDirectorySignerKeyring` 增加 revoked key 集，吊销 key 不可签名且不可验签。
+- **策略兜底**：恢复策略新增 `revoked_signature_key_ids`，即使未同步吊销广播也可拒绝失效 key_id。
+
+## 成员目录吊销来源鉴权与审计落盘归档（草案）
+- **授权校验**：吊销同步策略支持 requester 信任与签名策略组合校验，拒绝伪造来源。
+- **落盘实现**：新增 `FileMembershipAuditStore`（JSONL），支持按 world_id 的 append/list 归档查询。
+- **接口扩展**：支持 `publish_key_revocation_signed(_by_key_id/_with_keyring)` 多签发入口。
+- **可维护性**：成员目录校验辅助逻辑拆分到 `distributed_membership_sync/logic.rs`，保持主文件规模可维护。
+
+## 成员目录吊销授权治理与跨节点对账（草案）
+- **授权治理**：`MembershipRevocationSyncPolicy` 新增 `authorized_requesters`，在 trusted 之外提供治理授权白名单。
+- **对账通道**：新增 gossipsub topic `aw.<world_id>.membership.reconcile`，用于广播 revoked key 集 checkpoint。
+- **对账结构**：`MembershipRevocationCheckpointAnnounce { node_id, revoked_key_ids, revoked_set_hash }`。
+- **对账策略**：新增 `MembershipRevocationReconcilePolicy`（trusted_nodes + auto_revoke_missing_keys）。
+- **对账报告**：新增 `MembershipRevocationReconcileReport`，记录 `in_sync/diverged/merged/rejected`。
+- **收敛机制**：`reconcile_revocations_with_policy` 可在 divergence 时自动补齐本地缺失吊销 key，实现跨节点状态收敛。
+
+## 成员目录吊销异常告警与对账调度自动化（草案）
+- **告警策略**：新增 `MembershipRevocationAlertPolicy`（`warn_diverged_threshold`、`critical_rejected_threshold`）。
+- **告警结构**：新增 `MembershipRevocationAnomalyAlert` 与 `MembershipRevocationAlertSeverity`，统一表达 warn/critical 异常。
+- **告警评估**：新增 `evaluate_revocation_reconcile_alerts(...)`，将对账报告映射为结构化告警列表。
+- **调度策略**：新增 `MembershipRevocationReconcileSchedulePolicy`（checkpoint/reconcile 间隔）。
+- **调度状态**：新增 `MembershipRevocationReconcileScheduleState`，记录最近 checkpoint/reconcile 执行时间。
+- **调度执行**：新增 `run_revocation_reconcile_schedule(...)`，自动判定到期任务并输出 `MembershipRevocationScheduledRunReport`。

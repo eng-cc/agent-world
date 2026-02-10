@@ -9,6 +9,9 @@ pub const TOPIC_ACTION_SUFFIX: &str = "action";
 pub const TOPIC_BLOCK_SUFFIX: &str = "block";
 pub const TOPIC_HEAD_SUFFIX: &str = "head";
 pub const TOPIC_EVENT_SUFFIX: &str = "event";
+pub const TOPIC_MEMBERSHIP_SUFFIX: &str = "membership";
+pub const TOPIC_MEMBERSHIP_REVOKE_SUFFIX: &str = "membership.revoke";
+pub const TOPIC_MEMBERSHIP_RECONCILE_SUFFIX: &str = "membership.reconcile";
 
 pub const RR_PROTOCOL_PREFIX: &str = "/aw/rr/1.0.0";
 pub const RR_GET_WORLD_HEAD: &str = "/aw/rr/1.0.0/get_world_head";
@@ -21,6 +24,7 @@ pub const RR_GET_MODULE_MANIFEST: &str = "/aw/rr/1.0.0/get_module_manifest";
 pub const RR_GET_MODULE_ARTIFACT: &str = "/aw/rr/1.0.0/get_module_artifact";
 
 pub const DHT_WORLD_PREFIX: &str = "/aw/world";
+pub const DHT_MEMBERSHIP_SUFFIX: &str = "membership";
 
 pub fn gossipsub_topic(world_id: &str, suffix: &str) -> String {
     format!("{GOSSIPSUB_PREFIX}.{world_id}.{suffix}")
@@ -42,12 +46,28 @@ pub fn topic_event(world_id: &str) -> String {
     gossipsub_topic(world_id, TOPIC_EVENT_SUFFIX)
 }
 
+pub fn topic_membership(world_id: &str) -> String {
+    gossipsub_topic(world_id, TOPIC_MEMBERSHIP_SUFFIX)
+}
+
+pub fn topic_membership_revocation(world_id: &str) -> String {
+    gossipsub_topic(world_id, TOPIC_MEMBERSHIP_REVOKE_SUFFIX)
+}
+
+pub fn topic_membership_reconcile(world_id: &str) -> String {
+    gossipsub_topic(world_id, TOPIC_MEMBERSHIP_RECONCILE_SUFFIX)
+}
+
 pub fn dht_world_head_key(world_id: &str) -> String {
     format!("{DHT_WORLD_PREFIX}/{world_id}/head")
 }
 
 pub fn dht_provider_key(world_id: &str, content_hash: &str) -> String {
     format!("{DHT_WORLD_PREFIX}/{world_id}/providers/{content_hash}")
+}
+
+pub fn dht_membership_key(world_id: &str) -> String {
+    format!("{DHT_WORLD_PREFIX}/{world_id}/{DHT_MEMBERSHIP_SUFFIX}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -278,6 +298,22 @@ mod tests {
         assert_eq!(topic_block("w1"), "aw.w1.block");
         assert_eq!(topic_head("w1"), "aw.w1.head");
         assert_eq!(topic_event("w1"), "aw.w1.event");
+        assert_eq!(topic_membership("w1"), "aw.w1.membership");
+        assert_eq!(topic_membership_revocation("w1"), "aw.w1.membership.revoke");
+        assert_eq!(
+            topic_membership_reconcile("w1"),
+            "aw.w1.membership.reconcile"
+        );
+    }
+
+    #[test]
+    fn dht_key_helpers_match_expected_format() {
+        assert_eq!(dht_world_head_key("w1"), "/aw/world/w1/head");
+        assert_eq!(
+            dht_provider_key("w1", "hash"),
+            "/aw/world/w1/providers/hash"
+        );
+        assert_eq!(dht_membership_key("w1"), "/aw/world/w1/membership");
     }
 
     #[test]

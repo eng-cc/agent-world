@@ -125,6 +125,85 @@
 - [x] ObserverClient 循环跟随 helper（follow_heads/follow_heads_with_dht）
 - [x] Observer 循环跟随单元测试
 
+
+### 25. P3.8 Head 共识层
+- [x] 新增 QuorumConsensus 与投票状态机
+- [x] 共识提交门控 DHT head 发布
+- [x] 共识单元测试与导出接口
+
+
+### 26. P3.9 Head 共识持久化
+- [x] 共识快照文件结构与版本定义
+- [x] QuorumConsensus 快照保存/加载能力
+- [x] 共识快照单元测试与分布式回归
+
+
+### 27. P3.10 成员治理与租约联动
+- [x] 共识成员变更接口（add/remove/replace）
+- [x] 租约授权校验（holder + 时效）
+- [x] lease holder 自动补齐 validator helper
+- [x] 单元测试与分布式回归
+
+
+### 28. P3.11 成员目录同步与变更广播
+- [x] 新增 membership topic 与消息结构
+- [x] MembershipSyncClient 发布/订阅/同步能力
+- [x] 幂等同步处理与单元测试
+- [x] 分布式回归测试
+
+### 29. P3.12 成员目录 DHT 快照与恢复策略
+- [x] 扩展 DistributedDht 成员目录快照 put/get 接口
+- [x] MembershipSyncClient 发布联动 DHT 快照写入
+- [x] MembershipSyncClient DHT 快照恢复接口
+- [x] 单元测试与分布式回归
+
+### 30. P3.13 成员目录快照签名与来源校验
+- [x] 成员目录快照/广播增加可选 signature 字段
+- [x] MembershipDirectorySigner 签名与验签能力
+- [x] DHT 恢复入口来源校验（trusted requester）
+- [x] 校验策略与单元测试、分布式回归
+
+### 31. P3.14 成员目录快照密钥轮换与审计
+- [x] 成员目录快照/广播增加可选 signature_key_id 字段
+- [x] MembershipDirectorySignerKeyring 多密钥签名与验签
+- [x] DHT 恢复 key_id 策略（require/allow list）
+- [x] 恢复审计报告结构与单元测试、分布式回归
+
+### 32. P3.15 成员目录审计持久化与吊销传播
+- [x] 新增 MembershipAuditStore 抽象与 InMemoryMembershipAuditStore
+- [x] 新增 restore_membership_from_dht_verified_with_audit_store 持久化入口
+- [x] 新增 membership.revoke topic 与发布/订阅/同步能力
+- [x] MembershipDirectorySignerKeyring 增加 revoked key 管理与验签拦截
+- [x] 恢复策略增加 revoked_signature_key_ids，拒绝吊销 key_id
+- [x] 单元测试与分布式回归
+
+### 33. P3.16 成员目录吊销来源鉴权与审计落盘归档
+- [x] 吊销广播结构扩展 signature/signature_key_id（向后兼容）
+- [x] signer/keyring 支持吊销消息签名与验签
+- [x] 新增吊销同步策略 `MembershipRevocationSyncPolicy`
+- [x] 新增吊销同步报告 `MembershipRevocationSyncReport`
+- [x] 新增 `sync_key_revocations_with_policy` 来源校验入口
+- [x] 新增 `FileMembershipAuditStore` JSONL 落盘实现
+- [x] 单元测试与分布式回归
+
+### 34. P3.17 成员目录吊销授权治理与跨节点对账
+- [x] 扩展 `MembershipRevocationSyncPolicy.authorized_requesters`
+- [x] 吊销同步增加 authorized requester 校验
+- [x] 新增 `membership.reconcile` topic 与 checkpoint 消息
+- [x] 新增 `MembershipRevocationReconcilePolicy/Report`
+- [x] 新增 `publish_revocation_checkpoint/drain_revocation_checkpoints/reconcile_revocations_with_policy`
+- [x] 对账支持可选自动收敛（auto revoke missing keys）
+- [x] 单元测试与分布式回归
+
+### 35. P3.18 成员目录吊销异常告警与对账调度自动化
+- [x] 新增 `MembershipRevocationAlertPolicy/Severity/AnomalyAlert`
+- [x] 新增 `evaluate_revocation_reconcile_alerts`
+- [x] 新增 `MembershipRevocationReconcileSchedulePolicy/State`
+- [x] 新增 `MembershipRevocationScheduledRunReport`
+- [x] 新增 `run_revocation_reconcile_schedule` 调度入口
+- [x] 调度策略 interval 参数校验（必须为正）
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -132,6 +211,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.7 完成（Observer 循环跟随）
-- 下一步：P3.8（后续协议/实现迭代）
-- 最近更新：Observer 循环跟随（2026-02-05）
+- 当前阶段：P3.18 完成（成员目录吊销异常告警与对账调度自动化）
+- 下一步：P3.19（成员目录吊销告警上报与调度状态持久化）
+- 最近更新：成员目录吊销异常告警与对账调度自动化（2026-02-10）

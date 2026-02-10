@@ -15,9 +15,10 @@ use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, StreamProtocol, SwarmBuilder};
 
 use super::distributed::{
-    dht_provider_key, dht_world_head_key, ErrorResponse, WorldHeadAnnounce, RR_PROTOCOL_PREFIX,
+    dht_membership_key, dht_provider_key, dht_world_head_key, ErrorResponse, WorldHeadAnnounce,
+    RR_PROTOCOL_PREFIX,
 };
-use super::distributed_dht::{DistributedDht, ProviderRecord};
+use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
 use super::distributed_net::{
     DistributedNetwork, NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription,
 };
@@ -89,6 +90,15 @@ enum Command {
         key: String,
         response: oneshot::Sender<Result<Option<WorldHeadAnnounce>, WorldError>>,
     },
+    PutMembershipDirectory {
+        key: String,
+        payload: Vec<u8>,
+        response: oneshot::Sender<Result<(), WorldError>>,
+    },
+    GetMembershipDirectory {
+        key: String,
+        response: oneshot::Sender<Result<Option<MembershipDirectorySnapshot>, WorldError>>,
+    },
     RepublishProviders,
     Shutdown,
 }
@@ -108,6 +118,14 @@ enum PendingDhtQuery {
     GetWorldHead {
         response: Option<oneshot::Sender<Result<Option<WorldHeadAnnounce>, WorldError>>>,
         head: Option<WorldHeadAnnounce>,
+        error: Option<WorldError>,
+    },
+    PutMembershipDirectory {
+        response: Option<oneshot::Sender<Result<(), WorldError>>>,
+    },
+    GetMembershipDirectory {
+        response: Option<oneshot::Sender<Result<Option<MembershipDirectorySnapshot>, WorldError>>>,
+        snapshot: Option<MembershipDirectorySnapshot>,
         error: Option<WorldError>,
     },
 }
@@ -281,6 +299,42 @@ impl Libp2pNetwork {
                                         PendingDhtQuery::GetWorldHead {
                                             response: Some(response),
                                             head: None,
+                                            error: None,
+                                        },
+                                    );
+                                }
+                                Some(Command::PutMembershipDirectory { key, payload, response }) => {
+                                    let dht_key = RecordKey::new(&key);
+                                    let record = kad::Record {
+                                        key: dht_key,
+                                        value: payload,
+                                        publisher: None,
+                                        expires: None,
+                                    };
+                                    match swarm.behaviour_mut().kademlia.put_record(record, Quorum::One) {
+                                        Ok(query_id) => {
+                                            pending_dht.insert(
+                                                query_id,
+                                                PendingDhtQuery::PutMembershipDirectory {
+                                                    response: Some(response),
+                                                },
+                                            );
+                                        }
+                                        Err(err) => {
+                                            let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
+                                                protocol: format!("kad put_record failed: {err}"),
+                                            }));
+                                        }
+                                    }
+                                }
+                                Some(Command::GetMembershipDirectory { key, response }) => {
+                                    let dht_key = RecordKey::new(&key);
+                                    let query_id = swarm.behaviour_mut().kademlia.get_record(dht_key);
+                                    pending_dht.insert(
+                                        query_id,
+                                        PendingDhtQuery::GetMembershipDirectory {
+                                            response: Some(response),
+                                            snapshot: None,
                                             error: None,
                                         },
                                     );
@@ -583,6 +637,51 @@ impl DistributedDht for Libp2pNetwork {
             }
         })?
     }
+
+    fn put_membership_directory(
+        &self,
+        world_id: &str,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError> {
+        let key = dht_membership_key(world_id);
+        let payload = to_canonical_cbor(snapshot)?;
+        let (sender, receiver) = oneshot::channel();
+        self.command_tx
+            .unbounded_send(Command::PutMembershipDirectory {
+                key,
+                payload,
+                response: sender,
+            })
+            .map_err(|_| WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            })?;
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
+        })?
+    }
+
+    fn get_membership_directory(
+        &self,
+        world_id: &str,
+    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError> {
+        let key = dht_membership_key(world_id);
+        let (sender, receiver) = oneshot::channel();
+        self.command_tx
+            .unbounded_send(Command::GetMembershipDirectory {
+                key,
+                response: sender,
+            })
+            .map_err(|_| WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            })?;
+        futures::executor::block_on(receiver).map_err(|_| {
+            WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            }
+        })?
+    }
 }
 
 #[derive(NetworkBehaviour)]
@@ -693,6 +792,24 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                 }
             }
         }
+        PendingDhtQuery::PutMembershipDirectory { response } => {
+            if is_last {
+                let outcome = match result {
+                    kad::QueryResult::PutRecord(Ok(_))
+                    | kad::QueryResult::RepublishRecord(Ok(_)) => Ok(()),
+                    kad::QueryResult::PutRecord(Err(err))
+                    | kad::QueryResult::RepublishRecord(Err(err)) => {
+                        Err(WorldError::NetworkProtocolUnavailable {
+                            protocol: format!("kad put_record failed: {err}"),
+                        })
+                    }
+                    _ => Ok(()),
+                };
+                if let Some(response) = response.take() {
+                    let _ = response.send(outcome);
+                }
+            }
+        }
         PendingDhtQuery::GetProviders {
             response,
             providers,
@@ -785,10 +902,65 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                 }
             }
         }
+        PendingDhtQuery::GetMembershipDirectory {
+            response,
+            snapshot,
+            error,
+        } => {
+            match result {
+                kad::QueryResult::GetRecord(Ok(kad::GetRecordOk::FoundRecord(record))) => {
+                    if let Ok(decoded) = decode_membership_directory(&record.record.value) {
+                        *snapshot = Some(decoded);
+                    }
+                }
+                kad::QueryResult::GetRecord(Ok(
+                    kad::GetRecordOk::FinishedWithNoAdditionalRecord { .. },
+                )) => {}
+                kad::QueryResult::GetRecord(Err(kad::GetRecordError::NotFound { .. })) => {
+                    *error = None;
+                }
+                kad::QueryResult::GetRecord(Err(kad::GetRecordError::QuorumFailed {
+                    records,
+                    ..
+                })) => {
+                    if let Some(record) = records.first() {
+                        if let Ok(decoded) = decode_membership_directory(&record.record.value) {
+                            *snapshot = Some(decoded);
+                        }
+                    } else {
+                        *error = Some(WorldError::NetworkProtocolUnavailable {
+                            protocol: "kad get_record quorum failed".to_string(),
+                        });
+                    }
+                }
+                kad::QueryResult::GetRecord(Err(err)) => {
+                    *error = Some(WorldError::NetworkProtocolUnavailable {
+                        protocol: format!("kad get_record failed: {err}"),
+                    });
+                }
+                _ => {}
+            }
+            if is_last {
+                let outcome = if snapshot.is_some() {
+                    Ok(snapshot.clone())
+                } else if let Some(err) = error.take() {
+                    Err(err)
+                } else {
+                    Ok(None)
+                };
+                if let Some(response) = response.take() {
+                    let _ = response.send(outcome);
+                }
+            }
+        }
     }
 }
 
 fn decode_world_head(bytes: &[u8]) -> Result<WorldHeadAnnounce, WorldError> {
+    Ok(serde_cbor::from_slice(bytes)?)
+}
+
+fn decode_membership_directory(bytes: &[u8]) -> Result<MembershipDirectorySnapshot, WorldError> {
     Ok(serde_cbor::from_slice(bytes)?)
 }
 
@@ -876,6 +1048,42 @@ mod tests {
             .expect("oneshot")
             .expect("get head");
         assert_eq!(loaded, Some(head));
+    }
+
+    #[test]
+    fn dht_get_membership_directory_decodes_record() {
+        let snapshot = MembershipDirectorySnapshot {
+            world_id: "w1".to_string(),
+            requester_id: "seq-1".to_string(),
+            requested_at_ms: 99,
+            reason: Some("sync".to_string()),
+            validators: vec!["seq-1".to_string(), "seq-2".to_string()],
+            quorum_threshold: 2,
+            signature_key_id: None,
+            signature: None,
+        };
+        let payload = to_canonical_cbor(&snapshot).expect("encode snapshot");
+        let key_label = "membership".to_string();
+        let record = kad::Record {
+            key: RecordKey::new(&key_label),
+            value: payload,
+            publisher: None,
+            expires: None,
+        };
+        let peer_record = kad::PeerRecord { peer: None, record };
+        let (sender, receiver) = oneshot::channel();
+        let mut pending = PendingDhtQuery::GetMembershipDirectory {
+            response: Some(sender),
+            snapshot: None,
+            error: None,
+        };
+        let result = kad::QueryResult::GetRecord(Ok(kad::GetRecordOk::FoundRecord(peer_record)));
+        handle_dht_progress(&mut pending, result, true);
+
+        let loaded = futures::executor::block_on(receiver)
+            .expect("oneshot")
+            .expect("get membership");
+        assert_eq!(loaded, Some(snapshot));
     }
 
     #[test]
