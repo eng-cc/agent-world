@@ -251,6 +251,23 @@ pub(super) enum ParsedLlmTurn {
     Invalid(String),
 }
 
+pub(super) fn parse_llm_turn_responses(output: &str, agent_id: &str) -> Vec<ParsedLlmTurn> {
+    let blocks = extract_json_blocks(output);
+    if blocks.is_empty() {
+        return vec![parse_llm_turn_response(output, agent_id)];
+    }
+
+    blocks
+        .into_iter()
+        .map(
+            |json| match serde_json::from_str::<serde_json::Value>(json) {
+                Ok(value) => parse_llm_turn_value(value, agent_id),
+                Err(err) => ParsedLlmTurn::Invalid(format!("json parse failed: {err}")),
+            },
+        )
+        .collect()
+}
+
 pub(super) fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlmTurn {
     let json = extract_json_block(output).unwrap_or(output);
     let value: serde_json::Value = match serde_json::from_str(json) {
@@ -260,6 +277,10 @@ pub(super) fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlm
         }
     };
 
+    parse_llm_turn_value(value, agent_id)
+}
+
+fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTurn {
     if let Some(turn_type) = value
         .get("type")
         .and_then(|value| value.as_str())
@@ -515,10 +536,42 @@ fn parse_llm_decision_value_with_error(
 }
 
 fn extract_json_block(raw: &str) -> Option<&str> {
-    let (start, open_char) = raw.char_indices().find_map(|(index, ch)| match ch {
-        '{' | '[' => Some((index, ch)),
-        _ => None,
-    })?;
+    let start = next_json_start(raw, 0)?;
+    let (_, end) = extract_json_block_from(raw, start)?;
+    raw.get(start..=end)
+}
+
+fn extract_json_blocks(raw: &str) -> Vec<&str> {
+    let mut blocks = Vec::new();
+    let mut cursor = 0_usize;
+
+    while let Some(start) = next_json_start(raw, cursor) {
+        let Some((_, end)) = extract_json_block_from(raw, start) else {
+            break;
+        };
+        if let Some(block) = raw.get(start..=end) {
+            blocks.push(block);
+        }
+        cursor = end.saturating_add(1);
+    }
+
+    blocks
+}
+
+fn next_json_start(raw: &str, from: usize) -> Option<usize> {
+    raw.get(from..)?
+        .char_indices()
+        .find_map(|(offset, ch)| match ch {
+            '{' | '[' => Some(from + offset),
+            _ => None,
+        })
+}
+
+fn extract_json_block_from(raw: &str, start: usize) -> Option<(usize, usize)> {
+    let open_char = raw.get(start..)?.chars().next()?;
+    if open_char != '{' && open_char != '[' {
+        return None;
+    }
     let close_char = if open_char == '{' { '}' } else { ']' };
 
     let mut depth: u32 = 0;
@@ -546,7 +599,7 @@ fn extract_json_block(raw: &str) -> Option<&str> {
             c if c == close_char => {
                 depth = depth.saturating_sub(1);
                 if depth == 0 {
-                    return raw.get(start..=index);
+                    return Some((start, index));
                 }
             }
             _ => {}

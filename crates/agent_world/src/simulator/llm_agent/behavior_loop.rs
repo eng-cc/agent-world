@@ -107,6 +107,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut pending_draft: Option<AgentDecision> = None;
         let mut repair_rounds_used = 0_u32;
         let mut repair_context: Option<String> = None;
+        let mut deferred_parse_error: Option<String> = None;
 
         for turn in 0..max_turns {
             let active_phase = phase;
@@ -220,152 +221,191 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     let mut step_output_summary =
                         summarize_trace_text(completion.output.as_str(), 220);
 
-                    match parse_llm_turn_response(
+                    let parsed_turns = parse_llm_turn_responses(
                         completion.output.as_str(),
                         self.agent_id.as_str(),
-                    ) {
-                        ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
-                            if should_force_replan && module_history.is_empty() {
-                                let err = "replan guard requires plan/module_call before terminal decision"
-                                    .to_string();
-                                step_status = "error".to_string();
-                                step_output_summary = err.clone();
-                                if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                    repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                    repair_context = Some(err);
+                    );
+
+                    for parsed_turn in parsed_turns {
+                        match parsed_turn {
+                            ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
+                                if should_force_replan && module_history.is_empty() {
+                                    let err = "replan guard requires plan/module_call before terminal decision"
+                                        .to_string();
+                                    step_status = "error".to_string();
+                                    step_output_summary = err.clone();
+                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                        repair_context = Some(err);
+                                    } else {
+                                        parse_error = Some(err);
+                                        resolved = true;
+                                        step_status = "degraded".to_string();
+                                    }
                                 } else {
-                                    parse_error = Some(err);
+                                    decision = parsed_decision;
+                                    parse_error = decision_parse_error;
+                                    pending_draft = None;
+                                    repair_context = None;
+                                    phase = DecisionPhase::Finalize;
                                     resolved = true;
-                                    step_status = "degraded".to_string();
                                 }
-                            } else {
-                                decision = parsed_decision;
-                                parse_error = decision_parse_error;
+                            }
+                            ParsedLlmTurn::ExecuteUntil(directive) => {
+                                decision = AgentDecision::Act(directive.action.clone());
+                                self.active_execute_until =
+                                    Some(ActiveExecuteUntil::from_directive(
+                                        directive.clone(),
+                                        observation,
+                                    ));
                                 pending_draft = None;
                                 repair_context = None;
                                 phase = DecisionPhase::Finalize;
                                 resolved = true;
+                                step_output_summary = format!(
+                                    "execute_until events={} max_ticks={}",
+                                    directive
+                                        .until_conditions
+                                        .iter()
+                                        .map(|condition| condition.summary())
+                                        .collect::<Vec<_>>()
+                                        .join("|"),
+                                    directive.max_ticks
+                                );
                             }
-                        }
-                        ParsedLlmTurn::ExecuteUntil(directive) => {
-                            decision = AgentDecision::Act(directive.action.clone());
-                            self.active_execute_until = Some(ActiveExecuteUntil::from_directive(
-                                directive.clone(),
-                                observation,
-                            ));
-                            pending_draft = None;
-                            repair_context = None;
-                            phase = DecisionPhase::Finalize;
-                            resolved = true;
-                            step_output_summary = format!(
-                                "execute_until events={} max_ticks={}",
-                                directive
-                                    .until_conditions
-                                    .iter()
-                                    .map(|condition| condition.summary())
-                                    .collect::<Vec<_>>()
-                                    .join("|"),
-                                directive.max_ticks
-                            );
-                        }
-                        ParsedLlmTurn::Plan(plan) => {
-                            repair_context = None;
-                            let wants_module_call = plan
-                                .next
-                                .as_deref()
-                                .is_some_and(|next| next.eq_ignore_ascii_case("module_call"));
-                            let must_keep_module_loop =
-                                should_force_replan && module_history.is_empty();
-                            phase = if must_keep_module_loop
-                                || wants_module_call
-                                || !plan.missing.is_empty()
-                            {
-                                DecisionPhase::ModuleLoop
-                            } else {
-                                DecisionPhase::DecisionDraft
-                            };
-
-                            let missing_summary = if plan.missing.is_empty() {
-                                "-".to_string()
-                            } else {
-                                plan.missing.join(",")
-                            };
-                            let next_summary = plan.next.unwrap_or_else(|| "-".to_string());
-                            step_output_summary = format!(
-                                "plan missing={missing_summary}; next={next_summary}; force_module_loop={must_keep_module_loop}"
-                            );
-                        }
-                        ParsedLlmTurn::ModuleCall(module_request) => {
-                            repair_context = None;
-                            if module_history.len() >= self.config.max_module_calls {
-                                parse_error = Some(format!(
-                                    "module call limit exceeded: max_module_calls={}",
-                                    self.config.max_module_calls
-                                ));
-                                resolved = true;
-                                step_status = "degraded".to_string();
-                                step_output_summary = "module call limit exceeded".to_string();
-                            } else {
-                                let module_name = module_request.module.clone();
-                                let intent_id = self.next_prompt_intent_id();
-                                let intent = LlmEffectIntentTrace {
-                                    intent_id: intent_id.clone(),
-                                    kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
-                                    params: serde_json::json!({
-                                        "module": module_request.module,
-                                        "args": module_request.args,
-                                    }),
-                                    cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
-                                    origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
-                                };
-                                let module_result =
-                                    self.run_prompt_module(&module_request, observation);
-                                let status_label = if module_result
-                                    .get("ok")
-                                    .and_then(|value| value.as_bool())
-                                    .unwrap_or(false)
+                            ParsedLlmTurn::Plan(plan) => {
+                                repair_context = None;
+                                let wants_module_call = plan
+                                    .next
+                                    .as_deref()
+                                    .is_some_and(|next| next.eq_ignore_ascii_case("module_call"));
+                                let must_keep_module_loop =
+                                    should_force_replan && module_history.is_empty();
+                                phase = if must_keep_module_loop
+                                    || wants_module_call
+                                    || !plan.missing.is_empty()
                                 {
-                                    "ok"
-                                } else {
-                                    "error"
-                                };
-                                let receipt = LlmEffectReceiptTrace {
-                                    intent_id: intent.intent_id.clone(),
-                                    status: status_label.to_string(),
-                                    payload: module_result.clone(),
-                                    cost_cents: None,
-                                };
-
-                                llm_effect_intents.push(intent);
-                                llm_effect_receipts.push(receipt);
-                                trace_inputs.push(format!(
-                                    "[module_result:{}]
-{}",
-                                    module_name,
-                                    serde_json::to_string(&module_result)
-                                        .unwrap_or_else(|_| "{}".to_string())
-                                ));
-                                module_history.push(ModuleCallExchange {
-                                    module: module_request.module,
-                                    args: module_request.args,
-                                    result: module_result,
-                                });
-
-                                phase = if module_history.len() >= self.config.max_module_calls {
-                                    DecisionPhase::DecisionDraft
-                                } else {
                                     DecisionPhase::ModuleLoop
+                                } else {
+                                    DecisionPhase::DecisionDraft
                                 };
-                                step_output_summary =
-                                    format!("module_call {module_name} status={status_label}");
+
+                                let missing_summary = if plan.missing.is_empty() {
+                                    "-".to_string()
+                                } else {
+                                    plan.missing.join(",")
+                                };
+                                let next_summary = plan.next.unwrap_or_else(|| "-".to_string());
+                                step_output_summary = format!(
+                                    "plan missing={missing_summary}; next={next_summary}; force_module_loop={must_keep_module_loop}"
+                                );
                             }
-                        }
-                        ParsedLlmTurn::DecisionDraft(draft) => {
-                            if should_force_replan && module_history.is_empty() {
-                                let err = "replan guard requires module_call before decision_draft"
-                                    .to_string();
+                            ParsedLlmTurn::ModuleCall(module_request) => {
+                                repair_context = None;
+                                if module_history.len() >= self.config.max_module_calls {
+                                    deferred_parse_error = Some(format!(
+                                        "module call limit exceeded: max_module_calls={}",
+                                        self.config.max_module_calls
+                                    ));
+                                    step_status = "error".to_string();
+                                    step_output_summary =
+                                        "module_call skipped: limit exceeded".to_string();
+                                    phase = DecisionPhase::DecisionDraft;
+                                } else {
+                                    let module_name = module_request.module.clone();
+                                    let intent_id = self.next_prompt_intent_id();
+                                    let intent = LlmEffectIntentTrace {
+                                        intent_id: intent_id.clone(),
+                                        kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
+                                        params: serde_json::json!({
+                                            "module": module_request.module,
+                                            "args": module_request.args,
+                                        }),
+                                        cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
+                                        origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
+                                    };
+                                    let module_result =
+                                        self.run_prompt_module(&module_request, observation);
+                                    let status_label = if module_result
+                                        .get("ok")
+                                        .and_then(|value| value.as_bool())
+                                        .unwrap_or(false)
+                                    {
+                                        "ok"
+                                    } else {
+                                        "error"
+                                    };
+                                    let receipt = LlmEffectReceiptTrace {
+                                        intent_id: intent.intent_id.clone(),
+                                        status: status_label.to_string(),
+                                        payload: module_result.clone(),
+                                        cost_cents: None,
+                                    };
+
+                                    llm_effect_intents.push(intent);
+                                    llm_effect_receipts.push(receipt);
+                                    trace_inputs.push(format!(
+                                        "[module_result:{}]
+{}",
+                                        module_name,
+                                        serde_json::to_string(&module_result)
+                                            .unwrap_or_else(|_| "{}".to_string())
+                                    ));
+                                    module_history.push(ModuleCallExchange {
+                                        module: module_request.module,
+                                        args: module_request.args,
+                                        result: module_result,
+                                    });
+
+                                    phase = if module_history.len() >= self.config.max_module_calls
+                                    {
+                                        DecisionPhase::DecisionDraft
+                                    } else {
+                                        DecisionPhase::ModuleLoop
+                                    };
+                                    step_output_summary =
+                                        format!("module_call {module_name} status={status_label}");
+                                }
+                            }
+                            ParsedLlmTurn::DecisionDraft(draft) => {
+                                if should_force_replan && module_history.is_empty() {
+                                    let err =
+                                        "replan guard requires module_call before decision_draft"
+                                            .to_string();
+                                    step_status = "error".to_string();
+                                    step_output_summary = err.clone();
+                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                        repair_context = Some(err);
+                                    } else {
+                                        parse_error = Some(err);
+                                        resolved = true;
+                                        step_status = "degraded".to_string();
+                                    }
+                                } else {
+                                    let confidence = draft.confidence;
+                                    let need_verify = draft.need_verify;
+                                    pending_draft = Some(draft.decision);
+                                    repair_context = None;
+                                    phase = if need_verify
+                                        && module_history.len() < self.config.max_module_calls
+                                    {
+                                        DecisionPhase::ModuleLoop
+                                    } else {
+                                        DecisionPhase::Finalize
+                                    };
+                                    step_output_summary = format!(
+                                        "decision_draft confidence={:?}; need_verify={}",
+                                        confidence, need_verify
+                                    );
+                                }
+                            }
+                            ParsedLlmTurn::Invalid(err) => {
                                 step_status = "error".to_string();
-                                step_output_summary = err.clone();
+                                step_output_summary = format!(
+                                    "parse_error: {}",
+                                    summarize_trace_text(err.as_str(), 180)
+                                );
                                 if repair_rounds_used < self.config.max_repair_rounds as u32 {
                                     repair_rounds_used = repair_rounds_used.saturating_add(1);
                                     repair_context = Some(err);
@@ -374,36 +414,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     resolved = true;
                                     step_status = "degraded".to_string();
                                 }
-                            } else {
-                                let confidence = draft.confidence;
-                                let need_verify = draft.need_verify;
-                                pending_draft = Some(draft.decision);
-                                repair_context = None;
-                                phase = if need_verify
-                                    && module_history.len() < self.config.max_module_calls
-                                {
-                                    DecisionPhase::ModuleLoop
-                                } else {
-                                    DecisionPhase::Finalize
-                                };
-                                step_output_summary = format!(
-                                    "decision_draft confidence={:?}; need_verify={}",
-                                    confidence, need_verify
-                                );
                             }
                         }
-                        ParsedLlmTurn::Invalid(err) => {
-                            step_status = "error".to_string();
-                            step_output_summary =
-                                format!("parse_error: {}", summarize_trace_text(err.as_str(), 180));
-                            if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                repair_context = Some(err);
-                            } else {
-                                parse_error = Some(err);
-                                resolved = true;
-                                step_status = "degraded".to_string();
-                            }
+
+                        if resolved || repair_context.is_some() {
+                            break;
                         }
                     }
 
@@ -444,7 +459,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     max_turns
                 ));
             } else {
-                parse_error = Some(format!("no terminal decision after {} turn(s)", max_turns));
+                parse_error = deferred_parse_error
+                    .take()
+                    .or_else(|| Some(format!("no terminal decision after {} turn(s)", max_turns)));
             }
         }
 

@@ -23,6 +23,8 @@
 - [x] LMSO17 LLM 请求超时策略调优（默认分钟级超时，短超时自动回退）
 - [x] LMSO18 execute_until 的 until.event 扩展语义（能量/热状态/采集阈值事件 + until.value_lte）
 - [x] LMSO19 Prompt 上下文收敛（Module History 大结果压缩）+ 压测脚本无 jq 指标回退解析
+- [x] LMSO20 OpenAI 兼容 tools 注册与 tool_calls/function_call 解析（保留 module_call 文本协议兼容）
+- [x] LMSO21 单轮多段输出顺序消费（同次 completion 解析并消费多个 JSON 片段）
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -35,6 +37,6 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO19（上下文收敛与压测指标回退解析已完成）
+- 当前阶段：LMSO21（多段输出顺序消费已完成）
 - 下一步：继续优化 Memory Digest 峰值（例如按类别限额、重复动作摘要折叠）
-- 最近更新：完成 LMSO19（Module History 大结果压缩，26 tick 真实压测 `llm_input_chars_max` 由 20550 降至 7462；压测脚本新增 Python 解析 report 回退，2026-02-09）
+- 最近更新：完成 LMSO21（单轮多段 JSON 顺序消费 + module_call 超限软跳过并继续消费后续终态，2026-02-09）
