@@ -27,7 +27,7 @@ pub use runtime::{
     ResourceBalanceError, ResourceDelta, RollbackEvent, RuleDecision, RuleDecisionMergeError,
     RuleVerdict, SegmentConfig, SignatureAlgorithm, Snapshot, SnapshotCatalog, SnapshotMeta,
     SnapshotRecord, SnapshotRetentionPolicy, World, WorldError, WorldEvent, WorldEventBody,
-    WorldEventId, WorldState, WorldTime,
+    WorldEventId, WorldState, WorldTime, CONSENSUS_SNAPSHOT_VERSION,
 };
 
 #[cfg(feature = "libp2p")]

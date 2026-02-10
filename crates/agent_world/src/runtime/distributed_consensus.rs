@@ -1,14 +1,19 @@
 //! Quorum-based consensus helpers for distributed head commits.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
+use super::util::{read_json_from_path, write_json_to_path};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+pub const CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConsensusConfig {
     pub validators: Vec<String>,
     pub quorum_threshold: usize,
@@ -39,7 +44,7 @@ pub struct ConsensusVote {
     pub voted_at_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeadConsensusRecord {
     pub head: WorldHeadAnnounce,
     pub proposer_id: String,
@@ -58,6 +63,14 @@ pub struct ConsensusDecision {
     pub approvals: usize,
     pub rejections: usize,
     pub quorum_threshold: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ConsensusSnapshotFile {
+    version: u64,
+    validators: Vec<String>,
+    quorum_threshold: usize,
+    records: Vec<HeadConsensusRecord>,
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +134,50 @@ impl QuorumConsensus {
 
     pub fn record(&self, world_id: &str, height: u64) -> Option<&HeadConsensusRecord> {
         self.records.get(&(world_id.to_string(), height))
+    }
+
+    pub fn export_records(&self) -> Vec<HeadConsensusRecord> {
+        self.records.values().cloned().collect()
+    }
+
+    pub fn import_records(&mut self, records: Vec<HeadConsensusRecord>) -> Result<(), WorldError> {
+        self.restore_records(records)
+    }
+
+    pub fn save_snapshot_to_path(&self, path: impl AsRef<Path>) -> Result<(), WorldError> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let snapshot = ConsensusSnapshotFile {
+            version: CONSENSUS_SNAPSHOT_VERSION,
+            validators: self.validators(),
+            quorum_threshold: self.quorum_threshold,
+            records: self.export_records(),
+        };
+        write_json_atomic(&snapshot, path)
+    }
+
+    pub fn load_snapshot_from_path(path: impl AsRef<Path>) -> Result<Self, WorldError> {
+        let snapshot: ConsensusSnapshotFile = read_json_from_path(path.as_ref())?;
+        if snapshot.version != CONSENSUS_SNAPSHOT_VERSION {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "unsupported consensus snapshot version {} (expected {})",
+                    snapshot.version, CONSENSUS_SNAPSHOT_VERSION
+                ),
+            });
+        }
+
+        let mut consensus = Self::new(ConsensusConfig {
+            validators: snapshot.validators,
+            quorum_threshold: snapshot.quorum_threshold,
+        })?;
+        consensus.restore_records(snapshot.records)?;
+        Ok(consensus)
     }
 
     pub fn propose_head(
@@ -223,6 +280,79 @@ impl QuorumConsensus {
         })
     }
 
+    fn restore_records(&mut self, records: Vec<HeadConsensusRecord>) -> Result<(), WorldError> {
+        let mut restored: BTreeMap<(String, u64), HeadConsensusRecord> = BTreeMap::new();
+        for mut record in records {
+            if record.head.world_id.trim().is_empty() {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: "consensus record world_id cannot be empty".to_string(),
+                });
+            }
+            self.ensure_validator(&record.proposer_id)?;
+
+            if record.quorum_threshold == 0 {
+                record.quorum_threshold = self.quorum_threshold;
+            }
+            if record.quorum_threshold != self.quorum_threshold {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "record quorum threshold mismatch for {}@{}: expected={}, got={}",
+                        record.head.world_id,
+                        record.head.height,
+                        self.quorum_threshold,
+                        record.quorum_threshold
+                    ),
+                });
+            }
+
+            for (validator_id, vote) in &record.votes {
+                self.validate_record_vote(
+                    validator_id,
+                    vote,
+                    &record.head.world_id,
+                    record.head.height,
+                )?;
+            }
+
+            record.status =
+                decide_status(self.validators.len(), self.quorum_threshold, &record.votes);
+            let key = (record.head.world_id.clone(), record.head.height);
+            if let Some(existing) = restored.get(&key) {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "duplicate consensus record for {}@{}: existing={}, new={}",
+                        record.head.world_id,
+                        record.head.height,
+                        existing.head.block_hash,
+                        record.head.block_hash
+                    ),
+                });
+            }
+            restored.insert(key, record);
+        }
+        self.records = restored;
+        Ok(())
+    }
+
+    fn validate_record_vote(
+        &self,
+        validator_id: &str,
+        vote: &ConsensusVote,
+        world_id: &str,
+        height: u64,
+    ) -> Result<(), WorldError> {
+        self.ensure_validator(validator_id)?;
+        if vote.validator_id != validator_id {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "invalid vote payload for {world_id}@{height}: key={validator_id}, payload={}",
+                    vote.validator_id
+                ),
+            });
+        }
+        Ok(())
+    }
+
     fn apply_vote(
         record: &mut HeadConsensusRecord,
         validator_count: usize,
@@ -263,17 +393,7 @@ impl QuorumConsensus {
             },
         );
 
-        let approvals = record.votes.values().filter(|vote| vote.approve).count();
-        let rejections = record.votes.values().filter(|vote| !vote.approve).count();
-        if approvals >= quorum_threshold {
-            record.status = ConsensusStatus::Committed;
-        } else {
-            let max_rejections_without_losing_quorum = validator_count - quorum_threshold;
-            if rejections > max_rejections_without_losing_quorum {
-                record.status = ConsensusStatus::Rejected;
-            }
-        }
-
+        record.status = decide_status(validator_count, quorum_threshold, &record.votes);
         Ok(decision_from_record(record))
     }
 
@@ -334,6 +454,25 @@ pub fn vote_world_head_with_quorum(
     Ok(decision)
 }
 
+fn decide_status(
+    validator_count: usize,
+    quorum_threshold: usize,
+    votes: &BTreeMap<String, ConsensusVote>,
+) -> ConsensusStatus {
+    let approvals = votes.values().filter(|vote| vote.approve).count();
+    if approvals >= quorum_threshold {
+        return ConsensusStatus::Committed;
+    }
+
+    let rejections = votes.values().filter(|vote| !vote.approve).count();
+    let max_rejections_without_losing_quorum = validator_count.saturating_sub(quorum_threshold);
+    if rejections > max_rejections_without_losing_quorum {
+        ConsensusStatus::Rejected
+    } else {
+        ConsensusStatus::Pending
+    }
+}
+
 fn decision_from_record(record: &HeadConsensusRecord) -> ConsensusDecision {
     let approvals = record.votes.values().filter(|vote| vote.approve).count();
     let rejections = record.votes.values().filter(|vote| !vote.approve).count();
@@ -348,8 +487,19 @@ fn decision_from_record(record: &HeadConsensusRecord) -> ConsensusDecision {
     }
 }
 
+fn write_json_atomic<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
+    let tmp = path.with_extension("tmp");
+    write_json_to_path(value, &tmp)?;
+    fs::rename(tmp, path)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use super::super::distributed_dht::InMemoryDht;
     use super::*;
 
@@ -374,6 +524,14 @@ mod tests {
             quorum_threshold: 0,
         })
         .expect("consensus")
+    }
+
+    fn temp_dir(prefix: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
     }
 
     #[test]
@@ -500,5 +658,82 @@ mod tests {
             err,
             WorldError::DistributedValidationFailed { .. }
         ));
+    }
+
+    #[test]
+    fn snapshot_round_trip_restores_consensus_records() {
+        let dir = temp_dir("consensus-snapshot");
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("consensus_snapshot.json");
+
+        let mut consensus = sample_consensus();
+        let head = sample_head(6, "b6");
+        consensus
+            .propose_head(&head, "seq-1", 600)
+            .expect("propose");
+        consensus
+            .vote_head("w1", 6, "b6", "seq-2", true, 601, None)
+            .expect("commit");
+
+        consensus
+            .save_snapshot_to_path(&path)
+            .expect("save snapshot");
+        let restored = QuorumConsensus::load_snapshot_from_path(&path).expect("load snapshot");
+
+        assert_eq!(restored.quorum_threshold(), 2);
+        assert_eq!(
+            restored.record("w1", 6).map(|record| record.status),
+            Some(ConsensusStatus::Committed)
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_snapshot_rejects_unknown_validator_vote() {
+        let dir = temp_dir("consensus-invalid-snapshot");
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("consensus_snapshot.json");
+
+        let mut votes = BTreeMap::new();
+        votes.insert(
+            "unknown-seq".to_string(),
+            ConsensusVote {
+                validator_id: "unknown-seq".to_string(),
+                approve: true,
+                reason: None,
+                voted_at_ms: 700,
+            },
+        );
+        let snapshot = ConsensusSnapshotFile {
+            version: CONSENSUS_SNAPSHOT_VERSION,
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+            ],
+            quorum_threshold: 2,
+            records: vec![HeadConsensusRecord {
+                head: sample_head(7, "b7"),
+                proposer_id: "seq-1".to_string(),
+                proposed_at_ms: 700,
+                quorum_threshold: 2,
+                status: ConsensusStatus::Pending,
+                votes,
+            }],
+        };
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&snapshot).expect("serialize snapshot"),
+        )
+        .expect("write snapshot");
+
+        let err = QuorumConsensus::load_snapshot_from_path(&path).expect_err("reject snapshot");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }
