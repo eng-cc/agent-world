@@ -55,6 +55,7 @@
   - `AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS`（默认 `4`，Prompt 注入的模块历史上限）
   - `AGENT_WORLD_LLM_PROMPT_PROFILE`（默认 `balanced`，可选 `compact` / `balanced`）
   - `AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`（默认 `4`，连续同动作达到阈值后强制先 plan/module_call；设为 `0` 可关闭）
+  - `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，`harvest_radiation.max_amount` 上限；超限将自动裁剪）
 - Agent 级目标覆盖（可选）：
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
   - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
@@ -64,6 +65,7 @@
 - `AGENT_WORLD_LLM_BASE_URL` 支持 `/v1`、`/v1/responses`、`/v1/chat/completions`，运行时会自动归一到 API Base。
 - LLM 在决策过程中支持多步协议：`plan -> module_call* -> decision_draft -> final decision`，并兼容直接输出最终 `decision`。
 - 当模型在同一轮输出多段 JSON（例如多个 `module_call` + `decision`）时，系统会按顺序消费片段并继续收敛。
+- 当模型输出 `harvest_radiation.max_amount` 超过上限时，系统会按 `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP` 自动裁剪并记录 trace 备注。
 - 为避免长期运行陷入“动作复读”，系统会在连续同动作达到阈值后触发反重复门控（优先要求 plan/module_call 先补证据）。
 - 当模型输出无法解析时，系统会按 `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS` 自动追加 repair 提示重试，超限后降级为 `Wait`。
 - LLM 在决策过程中按 Responses API `tools/function_call` 注册并解析内置模块调用，同时兼容文本 JSON `type=module_call`：

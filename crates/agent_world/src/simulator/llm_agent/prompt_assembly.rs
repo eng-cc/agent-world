@@ -44,6 +44,7 @@ pub struct PromptAssemblyInput<'a> {
     pub module_history_json: &'a str,
     pub memory_digest: Option<&'a str>,
     pub step_context: PromptStepContext,
+    pub harvest_max_amount_cap: i64,
     pub prompt_budget: PromptBudget,
 }
 
@@ -241,16 +242,18 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::OutputSchema,
                 priority: PromptSectionPriority::High,
-                content: r#"[Decision JSON Schema]
-{"decision":"wait"}
-{"decision":"wait_ticks","ticks":<u64>}
-{"decision":"move_agent","to":"<location_id>"}
-{"decision":"harvest_radiation","max_amount":<i64>}
-{"decision":"execute_until","action":{<decision_json>},"until":{"event":"<event_name>"},"max_ticks":<u64>}
-{"decision":"execute_until","action":{<decision_json>},"until":{"event_any_of":["action_rejected","new_visible_agent"]},"max_ticks":<u64>}
-{"decision":"execute_until","action":{<decision_json>},"until":{"event":"harvest_available_below","value_lte":<i64>},"max_ticks":<u64>}
+                content: format!(
+                    r#"[Decision JSON Schema]
+{{"decision":"wait"}}
+{{"decision":"wait_ticks","ticks":<u64>}}
+{{"decision":"move_agent","to":"<location_id>"}}
+{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event_any_of":["action_rejected","new_visible_agent"]}},"max_ticks":<u64>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"harvest_available_below","value_lte":<i64>}},"max_ticks":<u64>}}
 - event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target, insufficient_electricity, thermal_overload, harvest_yield_below, harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
+- harvest_radiation.max_amount 必须是正整数，且不超过 {}
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
@@ -259,7 +262,10 @@ impl PromptAssembler {
 - 当 Step 中 `module_calls_remaining <= 1` 或 `turns_remaining <= 1` 时，必须直接输出最终 decision（可 execute_until）
 
 若你需要查询信息，请输出模块调用 JSON：
-{"type":"module_call","module":"<module_name>","args":{...}}"#.to_string(),
+{{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
+                    input.harvest_max_amount_cap,
+                    input.harvest_max_amount_cap,
+                ),
             },
             true,
         ));
@@ -447,6 +453,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget::default(),
         }
     }
@@ -518,6 +525,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
                 context_window_tokens: 512,
                 reserved_output_tokens: 320,
@@ -560,6 +568,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
                 context_window_tokens: 2_048,
                 reserved_output_tokens: 256,
@@ -600,5 +609,15 @@ mod tests {
         assert!(output.user_prompt.contains("module_calls_remaining: 1"));
         assert!(output.user_prompt.contains("turns_remaining: 1"));
         assert!(output.user_prompt.contains("must_finalize_hint: yes"));
+    }
+
+    #[test]
+    fn prompt_assembly_includes_harvest_max_amount_cap() {
+        let mut input = sample_input();
+        input.harvest_max_amount_cap = 42;
+
+        let output = PromptAssembler::assemble(input);
+        assert!(output.user_prompt.contains("<i64 1..=42>"));
+        assert!(output.user_prompt.contains("不超过 42"));
     }
 }

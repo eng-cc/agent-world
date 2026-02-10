@@ -314,4 +314,35 @@
   - 附加收益：`llm_input_chars_avg` 从 `3205` 降到 `1542`，`llm_input_chars_max` 从 `18175` 降到 `14056`。
 
 ### 后续
-- LMSO24 将处理动作参数护栏（如 `harvest_radiation.max_amount` 上限）与更长轮次稳定性验证。
+- LMSO25 将优化 `execute_until` 模板与重入策略，继续提升决策效率。
+
+## LMSO24 动作参数护栏（2026-02-10）
+
+### 触发问题
+- LMSO23 后的 30 tick 实跑中，模型仍倾向输出极端参数（例如 `harvest_radiation.max_amount=1000000`）。
+- 该类输出虽然可解析，但会导致动作语义失真，并影响后续效率优化与指标对齐。
+
+### 已实施优化
+1. 配置层新增可调上限：
+   - `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，要求正整数）。
+2. Prompt 协议补充参数硬约束：
+   - 在 `Decision JSON Schema` 中标注 `max_amount` 范围（`1..=cap`）。
+   - 在每轮 `Output Constraints` 中显式提醒上限规则。
+3. 运行时参数护栏：
+   - 对 `decision`、`decision_draft`、`execute_until.action` 三条路径统一执行上限裁剪。
+   - 发生裁剪时写入 trace 摘要（`max_amount clamped`），便于回溯。
+
+### 验证结果
+- 关键单测通过：
+  - `llm_config_rejects_invalid_harvest_max_amount_cap`
+  - `llm_agent_clamps_harvest_max_amount_to_configured_cap`
+  - `llm_agent_clamps_execute_until_harvest_action_to_configured_cap`
+  - `prompt_assembly_includes_harvest_max_amount_cap`
+- 30 tick 全量回归：`.tmp/lmso24_guard_30/report.json`
+  - 稳定性：`parse_errors=0`、`llm_errors=0`、`repair_rounds_total=0`。
+  - 动作执行：`action_success=30`、`action_failure=0`。
+  - 参数效果：运行日志中 `HarvestRadiation.max_amount` 稳定为 `100`（未再出现百万级参数）。
+  - 与 LMSO23 对比（`.tmp/lmso23_prompt_30_final/report.json`）：`action_success 29 -> 30`，`llm_input_chars_max 14056 -> 10094`。
+
+### 后续
+- LMSO25 将在保持参数安全护栏的前提下，继续优化 `execute_until` 重入策略与 `wait` 下降空间。

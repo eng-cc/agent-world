@@ -226,6 +226,7 @@ fn base_config() -> LlmAgentConfig {
         prompt_max_history_items: 4,
         prompt_profile: LlmPromptProfile::Balanced,
         force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
+        harvest_max_amount_cap: DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
     }
 }
 
@@ -255,6 +256,10 @@ fn llm_config_uses_default_system_prompt() {
     assert_eq!(
         config.force_replan_after_same_action,
         DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION
+    );
+    assert_eq!(
+        config.harvest_max_amount_cap,
+        DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP
     );
 }
 
@@ -323,6 +328,7 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
         ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION.to_string(),
         "9".to_string(),
     );
+    vars.insert(ENV_LLM_HARVEST_MAX_AMOUNT_CAP.to_string(), "88".to_string());
 
     let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap();
     assert_eq!(config.max_decision_steps, 6);
@@ -330,6 +336,25 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
     assert_eq!(config.prompt_max_history_items, 7);
     assert_eq!(config.prompt_profile, LlmPromptProfile::Compact);
     assert_eq!(config.force_replan_after_same_action, 9);
+    assert_eq!(config.harvest_max_amount_cap, 88);
+}
+
+#[test]
+fn llm_config_rejects_invalid_harvest_max_amount_cap() {
+    let mut vars = BTreeMap::new();
+    vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
+    vars.insert(
+        ENV_LLM_BASE_URL.to_string(),
+        "https://api.example.com/v1".to_string(),
+    );
+    vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
+    vars.insert(ENV_LLM_HARVEST_MAX_AMOUNT_CAP.to_string(), "0".to_string());
+
+    let err = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap_err();
+    assert!(matches!(
+        err,
+        LlmConfigError::InvalidHarvestMaxAmountCap { .. }
+    ));
 }
 
 #[test]
@@ -408,6 +433,10 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
     assert_eq!(
         config.force_replan_after_same_action,
         DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION
+    );
+    assert_eq!(
+        config.harvest_max_amount_cap,
+        DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP
     );
 }
 
@@ -981,6 +1010,9 @@ fn llm_agent_user_prompt_contains_step_context_metadata() {
     assert!(prompt.contains("max_steps: 5"));
     assert!(prompt.contains("module_calls_used: 0"));
     assert!(prompt.contains("module_calls_max: 3"));
+    assert!(prompt.contains("harvest_radiation"));
+    assert!(prompt.contains("max_amount"));
+    assert!(prompt.contains(format!("不超过 {}", DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP).as_str()));
 }
 
 #[test]
@@ -1345,6 +1377,60 @@ fn llm_agent_execute_until_stops_on_harvest_yield_threshold() {
         AgentDecision::Act(Action::MoveAgent { .. })
     ));
     assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_clamps_harvest_max_amount_to_configured_cap() {
+    let client = MockClient {
+        output: Some(r#"{"decision":"harvest_radiation","max_amount":1000000}"#.to_string()),
+        err: None,
+    };
+    let mut config = base_config();
+    config.harvest_max_amount_cap = 42;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 42,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("max_amount clamped")));
+}
+
+#[test]
+fn llm_agent_clamps_execute_until_harvest_action_to_configured_cap() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":1000},"until":{"event":"new_visible_agent"},"max_ticks":4}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut config = base_config();
+    config.harvest_max_amount_cap = 25;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 25,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("max_amount clamped")));
 }
 
 #[test]

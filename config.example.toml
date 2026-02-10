@@ -17,6 +17,7 @@ AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS = "1"
 AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS = "4"
 AGENT_WORLD_LLM_PROMPT_PROFILE = "balanced" # compact / balanced
 AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION = "4" # 0=disable
+AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP = "100" # harvest_radiation.max_amount 上限
 
 # Optional per-agent goal overrides (agent id normalized to uppercase snake case)
 # AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_0 = "优先占领 llm-outpost"

@@ -161,6 +161,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 )
                 .as_str(),
             );
+            user_prompt.push_str(
+                format!(
+                    "- harvest_radiation.max_amount 必须在 [1, {}]；超限将被运行时裁剪。
+",
+                    self.config.harvest_max_amount_cap
+                )
+                .as_str(),
+            );
             if must_finalize_due_budget {
                 user_prompt.push_str("- 预算接近上限：本轮必须直接输出最终 decision（可 execute_until），禁止 plan/module_call/decision_draft。
 ");
@@ -283,19 +291,33 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         step_status = "degraded".to_string();
                                     }
                                 } else {
-                                    decision = parsed_decision;
+                                    let (guarded_decision, guardrail_note) =
+                                        self.apply_decision_guardrails(parsed_decision);
+                                    decision = guarded_decision;
                                     parse_error = decision_parse_error;
                                     pending_draft = None;
                                     repair_context = None;
                                     phase = DecisionPhase::Finalize;
                                     resolved = true;
+                                    if let Some(note) = guardrail_note {
+                                        self.memory.record_note(observation.time, note.clone());
+                                        step_output_summary = format!(
+                                            "{}; {}",
+                                            step_output_summary,
+                                            summarize_trace_text(note.as_str(), 160)
+                                        );
+                                    }
                                 }
                             }
                             ParsedLlmTurn::ExecuteUntil(directive) => {
-                                decision = AgentDecision::Act(directive.action.clone());
+                                let mut guarded_directive = directive;
+                                let (guarded_action, guardrail_note) =
+                                    self.apply_action_guardrails(guarded_directive.action);
+                                guarded_directive.action = guarded_action.clone();
+                                decision = AgentDecision::Act(guarded_action);
                                 self.active_execute_until =
                                     Some(ActiveExecuteUntil::from_directive(
-                                        directive.clone(),
+                                        guarded_directive.clone(),
                                         observation,
                                     ));
                                 pending_draft = None;
@@ -304,14 +326,22 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 resolved = true;
                                 step_output_summary = format!(
                                     "execute_until events={} max_ticks={}",
-                                    directive
+                                    guarded_directive
                                         .until_conditions
                                         .iter()
                                         .map(|condition| condition.summary())
                                         .collect::<Vec<_>>()
                                         .join("|"),
-                                    directive.max_ticks
+                                    guarded_directive.max_ticks
                                 );
+                                if let Some(note) = guardrail_note {
+                                    self.memory.record_note(observation.time, note.clone());
+                                    step_output_summary = format!(
+                                        "{}; {}",
+                                        step_output_summary,
+                                        summarize_trace_text(note.as_str(), 160)
+                                    );
+                                }
                             }
                             ParsedLlmTurn::Plan(plan) => {
                                 repair_context = None;
@@ -425,7 +455,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 } else {
                                     let confidence = draft.confidence;
                                     let need_verify = draft.need_verify;
-                                    pending_draft = Some(draft.decision);
+                                    let (guarded_decision, guardrail_note) =
+                                        self.apply_decision_guardrails(draft.decision);
+                                    pending_draft = Some(guarded_decision);
                                     repair_context = None;
                                     phase = if need_verify
                                         && module_history.len() < self.config.max_module_calls
@@ -438,6 +470,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         "decision_draft confidence={:?}; need_verify={}",
                                         confidence, need_verify
                                     );
+                                    if let Some(note) = guardrail_note {
+                                        self.memory.record_note(observation.time, note.clone());
+                                        step_output_summary = format!(
+                                            "{}; {}",
+                                            step_output_summary,
+                                            summarize_trace_text(note.as_str(), 160)
+                                        );
+                                    }
                                 }
                             }
                             ParsedLlmTurn::Invalid(err) => {
