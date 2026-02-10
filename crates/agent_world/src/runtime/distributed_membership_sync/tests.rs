@@ -1,4 +1,7 @@
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::super::distributed::{
     topic_membership, topic_membership_revocation, TOPIC_MEMBERSHIP_REVOKE_SUFFIX,
@@ -61,6 +64,14 @@ fn sample_keyring_with_rotation() -> MembershipDirectorySignerKeyring {
         .expect("add k2");
     keyring.set_active_key("k2").expect("active k2");
     keyring
+}
+
+fn temp_membership_dir(prefix: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    std::env::temp_dir().join(format!("agent_world-{prefix}-{nanos}"))
 }
 
 #[test]
@@ -174,6 +185,54 @@ fn membership_keyring_revoke_key_blocks_sign_and_verify() {
 }
 
 #[test]
+fn membership_revocation_signer_round_trip() {
+    let signer = MembershipDirectorySigner::hmac_sha256("membership-secret-v1");
+    let mut announce = MembershipKeyRevocationAnnounce {
+        world_id: "w1".to_string(),
+        requester_id: "seq-1".to_string(),
+        requested_at_ms: 800,
+        key_id: "k1".to_string(),
+        reason: Some("rotate".to_string()),
+        signature_key_id: Some("k1".to_string()),
+        signature: None,
+    };
+    announce.signature = Some(signer.sign_revocation(&announce).expect("sign revocation"));
+
+    signer
+        .verify_revocation(&announce)
+        .expect("verify revocation signature");
+}
+
+#[test]
+fn membership_keyring_sign_and_verify_revocation_round_trip() {
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key");
+    keyring.set_active_key("k1").expect("set active key");
+
+    let mut announce = MembershipKeyRevocationAnnounce {
+        world_id: "w1".to_string(),
+        requester_id: "seq-1".to_string(),
+        requested_at_ms: 801,
+        key_id: "k1".to_string(),
+        reason: Some("compromised".to_string()),
+        signature_key_id: None,
+        signature: None,
+    };
+
+    let (key_id, signature) = keyring
+        .sign_revocation_with_active_key(&announce)
+        .expect("sign revocation with active key");
+    announce.signature_key_id = Some(key_id);
+    announce.signature = Some(signature);
+
+    keyring
+        .verify_revocation(&announce)
+        .expect("verify keyring revocation signature");
+}
+
+#[test]
 fn publish_and_drain_membership_change_announcement() {
     let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let sync_client = MembershipSyncClient::new(Arc::clone(&network));
@@ -255,6 +314,110 @@ fn sync_key_revocations_updates_keyring() {
         .expect("sync revocations");
     assert_eq!(applied, 1);
     assert!(keyring.is_key_revoked("k1"));
+}
+
+#[test]
+fn sync_key_revocations_with_policy_accepts_signed_trusted_announce() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let mut signer_keyring = MembershipDirectorySignerKeyring::new();
+    signer_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add signer key");
+    signer_keyring.set_active_key("kr").expect("set active key");
+
+    sync_client
+        .publish_key_revocation_signed_with_keyring(
+            "w1",
+            "seq-1",
+            320,
+            "k1",
+            Some("security incident".to_string()),
+            &signer_keyring,
+        )
+        .expect("publish signed revocation");
+
+    let mut apply_keyring = MembershipDirectorySignerKeyring::new();
+    apply_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add verify key");
+    apply_keyring
+        .set_active_key("kr")
+        .expect("set verify key active");
+    apply_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add revoked target key");
+
+    let policy = MembershipRevocationSyncPolicy {
+        trusted_requesters: vec!["seq-1".to_string()],
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["kr".to_string()],
+        revoked_signature_key_ids: Vec::new(),
+    };
+    let report = sync_client
+        .sync_key_revocations_with_policy("w1", &subscription, &mut apply_keyring, None, &policy)
+        .expect("sync with policy");
+
+    assert_eq!(report.drained, 1);
+    assert_eq!(report.applied, 1);
+    assert_eq!(report.ignored, 0);
+    assert_eq!(report.rejected, 0);
+    assert!(apply_keyring.is_key_revoked("k1"));
+}
+
+#[test]
+fn sync_key_revocations_with_policy_rejects_untrusted_requester() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let mut signer_keyring = MembershipDirectorySignerKeyring::new();
+    signer_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add signer key");
+    signer_keyring.set_active_key("kr").expect("set active key");
+
+    sync_client
+        .publish_key_revocation_signed_with_keyring(
+            "w1",
+            "seq-9",
+            321,
+            "k1",
+            Some("untrusted requester".to_string()),
+            &signer_keyring,
+        )
+        .expect("publish signed revocation");
+
+    let mut apply_keyring = MembershipDirectorySignerKeyring::new();
+    apply_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add verify key");
+    apply_keyring
+        .set_active_key("kr")
+        .expect("set verify key active");
+    apply_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add revoked target key");
+
+    let policy = MembershipRevocationSyncPolicy {
+        trusted_requesters: vec!["seq-1".to_string()],
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["kr".to_string()],
+        revoked_signature_key_ids: Vec::new(),
+    };
+    let report = sync_client
+        .sync_key_revocations_with_policy("w1", &subscription, &mut apply_keyring, None, &policy)
+        .expect("sync with policy");
+
+    assert_eq!(report.drained, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.ignored, 0);
+    assert_eq!(report.rejected, 1);
+    assert!(!apply_keyring.is_key_revoked("k1"));
 }
 
 #[test]
@@ -677,6 +840,46 @@ fn restore_membership_from_dht_verified_with_audit_store_persists_record() {
     let records = audit_store.list("w1").expect("list audit records");
     assert_eq!(records.len(), 1);
     assert_eq!(records[0], report.audit);
+}
+
+#[test]
+fn file_membership_audit_store_appends_and_lists_by_world() {
+    let dir = temp_membership_dir("membership-audit-file-store");
+    fs::create_dir_all(&dir).expect("create temp audit dir");
+
+    let store = FileMembershipAuditStore::new(&dir);
+    assert_eq!(store.root_dir(), dir.as_path());
+
+    let record_w1 = MembershipSnapshotAuditRecord {
+        world_id: "w1".to_string(),
+        requester_id: Some("seq-1".to_string()),
+        requested_at_ms: Some(100),
+        signature_key_id: Some("k1".to_string()),
+        outcome: MembershipSnapshotAuditOutcome::Applied,
+        reason: "ok".to_string(),
+    };
+    let record_w2 = MembershipSnapshotAuditRecord {
+        world_id: "w2".to_string(),
+        requester_id: Some("seq-2".to_string()),
+        requested_at_ms: Some(101),
+        signature_key_id: None,
+        outcome: MembershipSnapshotAuditOutcome::Rejected,
+        reason: "bad signature".to_string(),
+    };
+
+    store.append(&record_w1).expect("append w1");
+    store.append(&record_w2).expect("append w2");
+
+    let w1_records = store.list("w1").expect("list w1");
+    assert_eq!(w1_records, vec![record_w1]);
+
+    let w2_records = store.list("w2").expect("list w2");
+    assert_eq!(w2_records, vec![record_w2]);
+
+    let missing = store.list("missing").expect("list missing");
+    assert!(missing.is_empty());
+
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]

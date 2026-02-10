@@ -1,6 +1,9 @@
 //! Distributed membership directory broadcast and sync helpers.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use hmac::{Hmac, Mac};
@@ -87,6 +90,10 @@ pub struct MembershipKeyRevocationAnnounce {
     pub requested_at_ms: i64,
     pub key_id: String,
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_key_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +110,7 @@ impl MembershipDirectorySigner {
         &self,
         snapshot: &MembershipDirectorySnapshot,
     ) -> Result<String, WorldError> {
-        let payload = snapshot_signing_bytes(snapshot)?;
+        let payload = logic::snapshot_signing_bytes(snapshot)?;
         let mut mac =
             HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
         mac.update(&payload);
@@ -129,7 +136,7 @@ impl MembershipDirectorySigner {
                     snapshot.requester_id
                 ),
             })?;
-        let payload = snapshot_signing_bytes(snapshot)?;
+        let payload = logic::snapshot_signing_bytes(snapshot)?;
         let mut mac =
             HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
         mac.update(&payload);
@@ -138,6 +145,49 @@ impl MembershipDirectorySigner {
                 reason: format!(
                     "membership snapshot signature mismatch for requester {}",
                     snapshot.requester_id
+                ),
+            })
+    }
+
+    pub fn sign_revocation(
+        &self,
+        announce: &MembershipKeyRevocationAnnounce,
+    ) -> Result<String, WorldError> {
+        let payload = logic::revocation_signing_bytes(announce)?;
+        let mut mac =
+            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+        mac.update(&payload);
+        Ok(hex::encode(mac.finalize().into_bytes()))
+    }
+
+    pub fn verify_revocation(
+        &self,
+        announce: &MembershipKeyRevocationAnnounce,
+    ) -> Result<(), WorldError> {
+        let Some(signature_hex) = announce.signature.as_deref() else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation missing signature for requester {}",
+                    announce.requester_id
+                ),
+            });
+        };
+        let signature =
+            hex::decode(signature_hex).map_err(|_| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation signature is not valid hex for requester {}",
+                    announce.requester_id
+                ),
+            })?;
+        let payload = logic::revocation_signing_bytes(announce)?;
+        let mut mac =
+            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+        mac.update(&payload);
+        mac.verify_slice(&signature)
+            .map_err(|_| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation signature mismatch for requester {}",
+                    announce.requester_id
                 ),
             })
     }
@@ -160,7 +210,7 @@ impl MembershipDirectorySignerKeyring {
         key_id: impl Into<String>,
         key: impl Into<Vec<u8>>,
     ) -> Result<(), WorldError> {
-        let key_id = normalized_key_id(key_id.into())?;
+        let key_id = logic::normalized_key_id(key_id.into())?;
         if self.signers.contains_key(&key_id) {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!("membership signing key already exists: {key_id}"),
@@ -172,7 +222,7 @@ impl MembershipDirectorySignerKeyring {
     }
 
     pub fn set_active_key(&mut self, key_id: &str) -> Result<(), WorldError> {
-        let key_id = normalized_key_id(key_id.to_string())?;
+        let key_id = logic::normalized_key_id(key_id.to_string())?;
         if !self.signers.contains_key(&key_id) {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!("membership signing key not found: {key_id}"),
@@ -192,7 +242,7 @@ impl MembershipDirectorySignerKeyring {
     }
 
     pub fn revoke_key(&mut self, key_id: &str) -> Result<bool, WorldError> {
-        let key_id = normalized_key_id(key_id.to_string())?;
+        let key_id = logic::normalized_key_id(key_id.to_string())?;
         let inserted = self.revoked_key_ids.insert(key_id.clone());
         if self.active_key_id.as_deref() == Some(key_id.as_str()) {
             self.active_key_id = None;
@@ -230,7 +280,7 @@ impl MembershipDirectorySignerKeyring {
         key_id: &str,
         snapshot: &MembershipDirectorySnapshot,
     ) -> Result<String, WorldError> {
-        let key_id = normalized_key_id(key_id.to_string())?;
+        let key_id = logic::normalized_key_id(key_id.to_string())?;
         if self.revoked_key_ids.contains(&key_id) {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!("membership signing key is revoked: {key_id}"),
@@ -246,6 +296,42 @@ impl MembershipDirectorySignerKeyring {
         signable.signature_key_id = Some(key_id);
         signable.signature = None;
         signer.sign_snapshot(&signable)
+    }
+
+    pub fn sign_revocation_with_active_key(
+        &self,
+        announce: &MembershipKeyRevocationAnnounce,
+    ) -> Result<(String, String), WorldError> {
+        let active_key_id = self.active_key_id.as_deref().ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: "membership signing keyring has no active key".to_string(),
+            }
+        })?;
+        let signature = self.sign_revocation_with_key_id(active_key_id, announce)?;
+        Ok((active_key_id.to_string(), signature))
+    }
+
+    pub fn sign_revocation_with_key_id(
+        &self,
+        key_id: &str,
+        announce: &MembershipKeyRevocationAnnounce,
+    ) -> Result<String, WorldError> {
+        let key_id = logic::normalized_key_id(key_id.to_string())?;
+        if self.revoked_key_ids.contains(&key_id) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!("membership signing key is revoked: {key_id}"),
+            });
+        }
+        let signer =
+            self.signers
+                .get(&key_id)
+                .ok_or_else(|| WorldError::DistributedValidationFailed {
+                    reason: format!("membership signing key not found: {key_id}"),
+                })?;
+        let mut signable = announce.clone();
+        signable.signature_key_id = Some(key_id);
+        signable.signature = None;
+        signer.sign_revocation(&signable)
     }
 
     pub fn verify_snapshot(
@@ -270,7 +356,7 @@ impl MembershipDirectorySignerKeyring {
         }
 
         if let Some(key_id) = snapshot.signature_key_id.as_deref() {
-            let key_id = normalized_key_id(key_id.to_string())?;
+            let key_id = logic::normalized_key_id(key_id.to_string())?;
             if self.revoked_key_ids.contains(&key_id) {
                 return Err(WorldError::DistributedValidationFailed {
                     reason: format!("membership signature key_id is revoked: {key_id}"),
@@ -311,10 +397,83 @@ impl MembershipDirectorySignerKeyring {
                 .to_string(),
         })
     }
+
+    pub fn verify_revocation(
+        &self,
+        announce: &MembershipKeyRevocationAnnounce,
+    ) -> Result<(), WorldError> {
+        let Some(signature_hex) = announce.signature.as_deref() else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation missing signature for requester {}",
+                    announce.requester_id
+                ),
+            });
+        };
+        if signature_hex.is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation signature is empty for requester {}",
+                    announce.requester_id
+                ),
+            });
+        }
+
+        if let Some(key_id) = announce.signature_key_id.as_deref() {
+            let key_id = logic::normalized_key_id(key_id.to_string())?;
+            if self.revoked_key_ids.contains(&key_id) {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!("membership revocation signature key_id is revoked: {key_id}"),
+                });
+            }
+            let signer = self.signers.get(&key_id).ok_or_else(|| {
+                WorldError::DistributedValidationFailed {
+                    reason: format!("membership revocation signature key_id is unknown: {key_id}"),
+                }
+            })?;
+            return signer.verify_revocation(announce);
+        }
+
+        let mut try_order: Vec<&MembershipDirectorySigner> = Vec::new();
+        if let Some(active_key_id) = self.active_key_id.as_deref() {
+            if let Some(active_signer) = self.signers.get(active_key_id) {
+                if !self.revoked_key_ids.contains(active_key_id) {
+                    try_order.push(active_signer);
+                }
+            }
+        }
+        for (key_id, signer) in &self.signers {
+            if self.active_key_id.as_deref() != Some(key_id.as_str())
+                && !self.revoked_key_ids.contains(key_id)
+            {
+                try_order.push(signer);
+            }
+        }
+
+        for signer in try_order {
+            if signer.verify_revocation(announce).is_ok() {
+                return Ok(());
+            }
+        }
+
+        Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation verification failed for all non-revoked keys in keyring"
+                .to_string(),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MembershipSnapshotRestorePolicy {
+    pub trusted_requesters: Vec<String>,
+    pub require_signature: bool,
+    pub require_signature_key_id: bool,
+    pub accepted_signature_key_ids: Vec<String>,
+    pub revoked_signature_key_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MembershipRevocationSyncPolicy {
     pub trusted_requesters: Vec<String>,
     pub require_signature: bool,
     pub require_signature_key_id: bool,
@@ -381,6 +540,67 @@ impl MembershipAuditStore for InMemoryMembershipAuditStore {
 }
 
 #[derive(Debug, Clone)]
+pub struct FileMembershipAuditStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipAuditStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            root_dir: root_dir.into(),
+        }
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn world_log_path(&self, world_id: &str) -> Result<PathBuf, WorldError> {
+        let world_id = logic::normalized_world_id(world_id)?;
+        Ok(self.root_dir.join(format!("{world_id}.jsonl")))
+    }
+}
+
+impl MembershipAuditStore for FileMembershipAuditStore {
+    fn append(&self, record: &MembershipSnapshotAuditRecord) -> Result<(), WorldError> {
+        let path = self.world_log_path(&record.world_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let line = serde_json::to_string(record)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        file.write_all(line.as_bytes())?;
+        file.write_all(
+            b"
+",
+        )?;
+        Ok(())
+    }
+
+    fn list(&self, world_id: &str) -> Result<Vec<MembershipSnapshotAuditRecord>, WorldError> {
+        let path = self.world_log_path(world_id)?;
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let file = OpenOptions::new().read(true).open(path)?;
+        let reader = BufReader::new(file);
+        let mut records = Vec::new();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            records.push(serde_json::from_str(&line)?);
+        }
+        Ok(records)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct MembershipSyncSubscription {
     pub membership_sub: NetworkSubscription,
     pub revocation_sub: NetworkSubscription,
@@ -391,6 +611,14 @@ pub struct MembershipSyncReport {
     pub drained: usize,
     pub applied: usize,
     pub ignored: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationSyncReport {
+    pub drained: usize,
+    pub applied: usize,
+    pub ignored: usize,
+    pub rejected: usize,
 }
 
 #[derive(Clone)]
@@ -464,7 +692,7 @@ impl MembershipSyncClient {
             MembershipDirectoryAnnounce::from_membership_change(world_id, request, result);
         let mut snapshot = announce.clone().into_snapshot();
         if let Some(key_id) = signature_key_id {
-            let key_id = normalized_key_id(key_id.to_string())?;
+            let key_id = logic::normalized_key_id(key_id.to_string())?;
             announce.signature_key_id = Some(key_id.clone());
             snapshot.signature_key_id = Some(key_id);
         }
@@ -507,16 +735,103 @@ impl MembershipSyncClient {
         key_id: &str,
         reason: Option<String>,
     ) -> Result<MembershipKeyRevocationAnnounce, WorldError> {
-        let key_id = normalized_key_id(key_id.to_string())?;
-        let announce = MembershipKeyRevocationAnnounce {
+        let announce = Self::build_key_revocation_announce(
+            world_id,
+            requester_id,
+            requested_at_ms,
+            key_id,
+            reason,
+        )?;
+        self.publish_revocation(world_id, &announce)?;
+        Ok(announce)
+    }
+
+    pub fn publish_key_revocation_signed(
+        &self,
+        world_id: &str,
+        requester_id: &str,
+        requested_at_ms: i64,
+        key_id: &str,
+        reason: Option<String>,
+        signer: &MembershipDirectorySigner,
+    ) -> Result<MembershipKeyRevocationAnnounce, WorldError> {
+        self.publish_key_revocation_signed_by_key_id(
+            world_id,
+            requester_id,
+            requested_at_ms,
+            key_id,
+            reason,
+            signer,
+            None,
+        )
+    }
+
+    pub fn publish_key_revocation_signed_by_key_id(
+        &self,
+        world_id: &str,
+        requester_id: &str,
+        requested_at_ms: i64,
+        key_id: &str,
+        reason: Option<String>,
+        signer: &MembershipDirectorySigner,
+        signature_key_id: Option<&str>,
+    ) -> Result<MembershipKeyRevocationAnnounce, WorldError> {
+        let mut announce = Self::build_key_revocation_announce(
+            world_id,
+            requester_id,
+            requested_at_ms,
+            key_id,
+            reason,
+        )?;
+        if let Some(key_id) = signature_key_id {
+            announce.signature_key_id = Some(logic::normalized_key_id(key_id.to_string())?);
+        }
+        let signature = signer.sign_revocation(&announce)?;
+        announce.signature = Some(signature);
+        self.publish_revocation(world_id, &announce)?;
+        Ok(announce)
+    }
+
+    pub fn publish_key_revocation_signed_with_keyring(
+        &self,
+        world_id: &str,
+        requester_id: &str,
+        requested_at_ms: i64,
+        key_id: &str,
+        reason: Option<String>,
+        keyring: &MembershipDirectorySignerKeyring,
+    ) -> Result<MembershipKeyRevocationAnnounce, WorldError> {
+        let mut announce = Self::build_key_revocation_announce(
+            world_id,
+            requester_id,
+            requested_at_ms,
+            key_id,
+            reason,
+        )?;
+        let (signature_key_id, signature) = keyring.sign_revocation_with_active_key(&announce)?;
+        announce.signature_key_id = Some(signature_key_id);
+        announce.signature = Some(signature);
+        self.publish_revocation(world_id, &announce)?;
+        Ok(announce)
+    }
+
+    fn build_key_revocation_announce(
+        world_id: &str,
+        requester_id: &str,
+        requested_at_ms: i64,
+        key_id: &str,
+        reason: Option<String>,
+    ) -> Result<MembershipKeyRevocationAnnounce, WorldError> {
+        let key_id = logic::normalized_key_id(key_id.to_string())?;
+        Ok(MembershipKeyRevocationAnnounce {
             world_id: world_id.to_string(),
             requester_id: requester_id.to_string(),
             requested_at_ms,
             key_id,
             reason,
-        };
-        self.publish_revocation(world_id, &announce)?;
-        Ok(announce)
+            signature_key_id: None,
+            signature: None,
+        })
     }
 
     fn publish_announcement(
@@ -575,6 +890,50 @@ impl MembershipSyncClient {
             }
         }
         Ok(applied)
+    }
+
+    pub fn sync_key_revocations_with_policy(
+        &self,
+        world_id: &str,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        signer: Option<&MembershipDirectorySigner>,
+        policy: &MembershipRevocationSyncPolicy,
+    ) -> Result<MembershipRevocationSyncReport, WorldError> {
+        let revocations = self.drain_key_revocations(subscription)?;
+        let mut report = MembershipRevocationSyncReport {
+            drained: revocations.len(),
+            applied: 0,
+            ignored: 0,
+            rejected: 0,
+        };
+
+        let mut verification_keyring = if signer.is_none() {
+            Some(keyring.clone())
+        } else {
+            None
+        };
+
+        for revocation in revocations {
+            let keyring_ref = verification_keyring.as_ref();
+            if let Err(_err) =
+                logic::validate_key_revocation(world_id, &revocation, signer, keyring_ref, policy)
+            {
+                report.rejected = report.rejected.saturating_add(1);
+                continue;
+            }
+
+            if keyring.revoke_key(&revocation.key_id)? {
+                report.applied = report.applied.saturating_add(1);
+                if let Some(verifier) = verification_keyring.as_mut() {
+                    let _ = verifier.revoke_key(&revocation.key_id);
+                }
+            } else {
+                report.ignored = report.ignored.saturating_add(1);
+            }
+        }
+
+        Ok(report)
     }
 
     pub fn sync_membership_directory(
@@ -679,7 +1038,8 @@ impl MembershipSyncClient {
             });
         };
 
-        if let Err(err) = validate_membership_snapshot(world_id, &snapshot, signer, keyring, policy)
+        if let Err(err) =
+            logic::validate_membership_snapshot(world_id, &snapshot, signer, keyring, policy)
         {
             return Ok(MembershipRestoreAuditReport {
                 restored: None,
@@ -760,30 +1120,6 @@ impl MembershipSyncClient {
     }
 }
 
-#[derive(Serialize)]
-struct MembershipDirectorySigningPayload<'a> {
-    world_id: &'a str,
-    requester_id: &'a str,
-    requested_at_ms: i64,
-    reason: &'a Option<String>,
-    validators: &'a [String],
-    quorum_threshold: usize,
-    signature_key_id: &'a Option<String>,
-}
-
-fn snapshot_signing_bytes(snapshot: &MembershipDirectorySnapshot) -> Result<Vec<u8>, WorldError> {
-    let payload = MembershipDirectorySigningPayload {
-        world_id: &snapshot.world_id,
-        requester_id: &snapshot.requester_id,
-        requested_at_ms: snapshot.requested_at_ms,
-        reason: &snapshot.reason,
-        validators: &snapshot.validators,
-        quorum_threshold: snapshot.quorum_threshold,
-        signature_key_id: &snapshot.signature_key_id,
-    };
-    to_canonical_cbor(&payload)
-}
-
 fn restore_result_from_audit(
     report: MembershipRestoreAuditReport,
 ) -> Result<Option<ConsensusMembershipChangeResult>, WorldError> {
@@ -805,144 +1141,7 @@ fn world_error_reason(error: &WorldError) -> String {
     }
 }
 
-fn normalized_key_id(raw: String) -> Result<String, WorldError> {
-    let normalized = raw.trim();
-    if normalized.is_empty() {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: "membership signature key_id cannot be empty".to_string(),
-        });
-    }
-    Ok(normalized.to_string())
-}
-
-fn validate_membership_snapshot(
-    world_id: &str,
-    snapshot: &MembershipDirectorySnapshot,
-    signer: Option<&MembershipDirectorySigner>,
-    keyring: Option<&MembershipDirectorySignerKeyring>,
-    policy: &MembershipSnapshotRestorePolicy,
-) -> Result<(), WorldError> {
-    if snapshot.world_id != world_id {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "membership snapshot world mismatch: expected={world_id}, got={}",
-                snapshot.world_id
-            ),
-        });
-    }
-
-    if !snapshot
-        .validators
-        .iter()
-        .any(|validator| validator == &snapshot.requester_id)
-    {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "membership snapshot requester {} is not in validator set",
-                snapshot.requester_id
-            ),
-        });
-    }
-
-    if !policy.trusted_requesters.is_empty()
-        && !policy
-            .trusted_requesters
-            .iter()
-            .any(|requester| requester == &snapshot.requester_id)
-    {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "membership snapshot requester {} is not trusted",
-                snapshot.requester_id
-            ),
-        });
-    }
-
-    let has_signature = snapshot.signature.is_some();
-    if !has_signature && snapshot.signature_key_id.is_some() {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: "membership snapshot contains signature_key_id without signature".to_string(),
-        });
-    }
-
-    if policy.require_signature && !has_signature {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "membership snapshot missing signature for requester {}",
-                snapshot.requester_id
-            ),
-        });
-    }
-
-    if policy.require_signature_key_id
-        && has_signature
-        && snapshot.signature_key_id.as_deref().is_none()
-    {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "membership snapshot missing signature_key_id for requester {}",
-                snapshot.requester_id
-            ),
-        });
-    }
-
-    if !policy.revoked_signature_key_ids.is_empty() {
-        if let Some(signature_key_id) = snapshot.signature_key_id.as_deref() {
-            if policy
-                .revoked_signature_key_ids
-                .iter()
-                .any(|key_id| key_id == signature_key_id)
-            {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "membership snapshot signature_key_id {} is revoked",
-                        signature_key_id
-                    ),
-                });
-            }
-        }
-    }
-
-    if !policy.accepted_signature_key_ids.is_empty() {
-        let Some(signature_key_id) = snapshot.signature_key_id.as_deref() else {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership snapshot signature_key_id is required for requester {}",
-                    snapshot.requester_id
-                ),
-            });
-        };
-        if !policy
-            .accepted_signature_key_ids
-            .iter()
-            .any(|key_id| key_id == signature_key_id)
-        {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership snapshot signature_key_id {} is not accepted",
-                    signature_key_id
-                ),
-            });
-        }
-    }
-
-    if has_signature {
-        if let Some(keyring) = keyring {
-            keyring.verify_snapshot(snapshot)?;
-        } else if let Some(signer) = signer {
-            signer.verify_snapshot(snapshot)?;
-        } else if policy.require_signature
-            || policy.require_signature_key_id
-            || !policy.accepted_signature_key_ids.is_empty()
-        {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: "membership snapshot verification requires signer or keyring".to_string(),
-            });
-        }
-    }
-
-    Ok(())
-}
+mod logic;
 
 #[cfg(test)]
 mod tests;

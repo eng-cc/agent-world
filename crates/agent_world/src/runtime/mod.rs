@@ -159,9 +159,10 @@ pub use distributed_observer::{
 };
 // Distributed membership directory sync
 pub use distributed_membership_sync::{
-    InMemoryMembershipAuditStore, MembershipAuditStore, MembershipDirectoryAnnounce,
-    MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,
-    MembershipRestoreAuditReport, MembershipSnapshotAuditOutcome, MembershipSnapshotAuditRecord,
+    FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,
+    MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,
+    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport, MembershipRevocationSyncPolicy,
+    MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome, MembershipSnapshotAuditRecord,
     MembershipSnapshotRestorePolicy, MembershipSyncClient, MembershipSyncReport,
     MembershipSyncSubscription,
 };

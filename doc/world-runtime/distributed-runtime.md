@@ -404,3 +404,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **吊销同步**：`MembershipSyncClient` 新增发布/订阅/同步吊销消息能力，支持批量消费。
 - **验签拦截**：`MembershipDirectorySignerKeyring` 增加 revoked key 集，吊销 key 不可签名且不可验签。
 - **策略兜底**：恢复策略新增 `revoked_signature_key_ids`，即使未同步吊销广播也可拒绝失效 key_id。
+
+## 成员目录吊销来源鉴权与审计落盘归档（草案）
+- **吊销签名扩展**：`MembershipKeyRevocationAnnounce` 增加可选 `signature_key_id/signature`，兼容未签名历史消息。
+- **发布入口**：新增 `publish_key_revocation_signed(_by_key_id/_with_keyring)`，支持单签名器和 keyring 签发。
+- **同步策略**：新增 `MembershipRevocationSyncPolicy` 与 `sync_key_revocations_with_policy`，支持 trusted requester 与签名策略校验。
+- **同步报告**：新增 `MembershipRevocationSyncReport`，记录 `drained/applied/ignored/rejected`。
+- **落盘归档**：新增 `FileMembershipAuditStore`（JSONL），按 `world_id` 维度落盘审计记录。
+- **实现拆分**：成员同步辅助校验逻辑拆分到 `distributed_membership_sync/logic.rs`，保持单文件规模可维护。

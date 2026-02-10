@@ -177,6 +177,15 @@
 - [x] 恢复策略增加 revoked_signature_key_ids，拒绝吊销 key_id
 - [x] 单元测试与分布式回归
 
+### 33. P3.16 成员目录吊销来源鉴权与审计落盘归档
+- [x] 吊销广播结构扩展 signature/signature_key_id（向后兼容）
+- [x] signer/keyring 支持吊销消息签名与验签
+- [x] 新增吊销同步策略 `MembershipRevocationSyncPolicy`
+- [x] 新增吊销同步报告 `MembershipRevocationSyncReport`
+- [x] 新增 `sync_key_revocations_with_policy` 来源校验入口
+- [x] 新增 `FileMembershipAuditStore` JSONL 落盘实现
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -184,6 +193,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.15 完成（成员目录审计持久化与吊销传播）
-- 下一步：P3.16（成员目录吊销来源鉴权与落盘归档）
-- 最近更新：成员目录审计持久化与吊销传播（2026-02-10）
+- 当前阶段：P3.16 完成（成员目录吊销来源鉴权与审计落盘归档）
+- 下一步：P3.17（成员目录吊销授权治理与跨节点对账）
+- 最近更新：成员目录吊销来源鉴权与审计落盘归档（2026-02-10）
