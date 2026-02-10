@@ -214,6 +214,7 @@ fn scenario_templates_build_models() {
         WorldScenario::TriadRegionBootstrap,
         WorldScenario::TriadP2pBootstrap,
         WorldScenario::AsteroidFragmentBootstrap,
+        WorldScenario::AsteroidFragmentDetailBootstrap,
         WorldScenario::AsteroidFragmentTwinRegionBootstrap,
         WorldScenario::AsteroidFragmentTriadRegionBootstrap,
     ];
@@ -455,6 +456,31 @@ fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
 }
 
 #[test]
+fn asteroid_fragment_detail_bootstrap_seeds_dense_fragments_for_viewer() {
+    let config = WorldConfig::default();
+    let init =
+        WorldInitConfig::from_scenario(WorldScenario::AsteroidFragmentDetailBootstrap, &config);
+    let (model, report) = build_world_model(&config, &init).expect("scenario init");
+
+    assert!(report.asteroid_fragment_seed.is_some());
+    assert!(model.agents.is_empty());
+    assert!(!model.locations.contains_key("origin"));
+    assert!(model
+        .locations
+        .values()
+        .any(|loc| loc.id.starts_with("frag-")));
+    assert!(init.asteroid_fragment.min_fragment_spacing_cm.is_some());
+    assert!(!init.asteroid_fragment.bootstrap_chunks.is_empty());
+    for coord in &init.asteroid_fragment.bootstrap_chunks {
+        assert!(model
+            .chunks
+            .get(coord)
+            .is_some_and(|state| matches!(state, ChunkState::Generated | ChunkState::Exhausted)));
+        assert!(model.chunk_resource_budgets.contains_key(coord));
+    }
+}
+
+#[test]
 fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(
@@ -495,6 +521,10 @@ fn scenario_aliases_parse() {
         (
             "asteroid_fragment",
             WorldScenario::AsteroidFragmentBootstrap,
+        ),
+        (
+            "asteroid_fragment_detail",
+            WorldScenario::AsteroidFragmentDetailBootstrap,
         ),
         (
             "asteroid-fragment-regions",
@@ -602,6 +632,15 @@ fn scenarios_are_stable() {
             expected_agents: 1,
             expect_origin: true,
             required_locations: &["origin"],
+            required_plants: &[],
+            required_storages: &[],
+            expect_asteroid_fragment: true,
+        },
+        ScenarioExpectation {
+            scenario: WorldScenario::AsteroidFragmentDetailBootstrap,
+            expected_agents: 0,
+            expect_origin: false,
+            required_locations: &[],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: true,

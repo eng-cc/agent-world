@@ -26,6 +26,7 @@ pub enum WorldScenario {
     TriadRegionBootstrap,
     TriadP2pBootstrap,
     AsteroidFragmentBootstrap,
+    AsteroidFragmentDetailBootstrap,
     AsteroidFragmentTwinRegionBootstrap,
     AsteroidFragmentTriadRegionBootstrap,
 }
@@ -42,6 +43,7 @@ impl WorldScenario {
             WorldScenario::TriadRegionBootstrap => "triad_region_bootstrap",
             WorldScenario::TriadP2pBootstrap => "triad_p2p_bootstrap",
             WorldScenario::AsteroidFragmentBootstrap => "asteroid_fragment_bootstrap",
+            WorldScenario::AsteroidFragmentDetailBootstrap => "asteroid_fragment_detail_bootstrap",
             WorldScenario::AsteroidFragmentTwinRegionBootstrap => {
                 "asteroid_fragment_twin_region_bootstrap"
             }
@@ -78,6 +80,10 @@ impl WorldScenario {
             | "asteroid-fragment-bootstrap"
             | "asteroid_fragment"
             | "asteroid-fragment" => Some(WorldScenario::AsteroidFragmentBootstrap),
+            "asteroid_fragment_detail_bootstrap"
+            | "asteroid-fragment-detail-bootstrap"
+            | "asteroid_fragment_detail"
+            | "asteroid-fragment-detail" => Some(WorldScenario::AsteroidFragmentDetailBootstrap),
             "asteroid_fragment_twin_region_bootstrap"
             | "asteroid-fragment-twin-region-bootstrap"
             | "asteroid-fragment-twin-regions"
@@ -105,6 +111,7 @@ impl WorldScenario {
             "triad_region_bootstrap",
             "triad_p2p_bootstrap",
             "asteroid_fragment_bootstrap",
+            "asteroid_fragment_detail_bootstrap",
             "asteroid_fragment_twin_region_bootstrap",
             "asteroid_fragment_triad_region_bootstrap",
         ]
@@ -430,6 +437,10 @@ fn scenario_spec_json(scenario: WorldScenario) -> &'static str {
             env!("CARGO_MANIFEST_DIR"),
             "/scenarios/asteroid_fragment_bootstrap.json"
         )),
+        WorldScenario::AsteroidFragmentDetailBootstrap => include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/scenarios/asteroid_fragment_detail_bootstrap.json"
+        )),
         WorldScenario::AsteroidFragmentTwinRegionBootstrap => include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/scenarios/asteroid_fragment_twin_region_bootstrap.json"
@@ -457,6 +468,7 @@ mod tests {
             WorldScenario::TriadRegionBootstrap,
             WorldScenario::TriadP2pBootstrap,
             WorldScenario::AsteroidFragmentBootstrap,
+            WorldScenario::AsteroidFragmentDetailBootstrap,
             WorldScenario::AsteroidFragmentTwinRegionBootstrap,
             WorldScenario::AsteroidFragmentTriadRegionBootstrap,
         ];

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::{
-    grid_line_scale, grid_line_thickness, BaseScale, GridLineVisual, OrbitCamera,
+    grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, GridLineVisual, OrbitCamera,
     RightPanelWidthState, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface,
     WorldFloorSurface, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS,
     ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY,
@@ -209,12 +209,20 @@ fn world_view_ortho_scale(cm_to_unit: f32) -> f32 {
 pub(super) fn sync_camera_mode(
     camera_mode: Res<ViewerCameraMode>,
     config: Res<Viewer3dConfig>,
+    auto_focus_state: Option<ResMut<AutoFocusState>>,
     mut cameras: Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
     mut grid_lines: Query<
         (&GridLineVisual, &mut Transform, &mut BaseScale),
         Without<Viewer3dCamera>,
     >,
 ) {
+    if let Some(mut state) = auto_focus_state {
+        if state.skip_next_mode_sync {
+            state.skip_next_mode_sync = false;
+            return;
+        }
+    }
+
     let mode_changed = camera_mode.is_changed();
 
     if mode_changed {

@@ -13,6 +13,11 @@ const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
 const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
 const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
+const LOCATION_DETAIL_RING_RADIUS_BASE: f32 = 1.05;
+const LOCATION_DETAIL_RING_RADIUS_ALT: f32 = 1.12;
+const LOCATION_DETAIL_RING_Y_BAND: f32 = 0.22;
+const LOCATION_DETAIL_HALO_RADIUS_JITTER: f32 = 0.04;
+const LOCATION_DETAIL_HALO_Y_OFFSET: f32 = 0.08;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
 const AGENT_HEIGHT_MAX_M: f32 = 4.0;
 const AGENT_BODY_RADIUS_RATIO: f32 = 0.22;
@@ -60,6 +65,7 @@ pub(super) struct LocationMarker {
     pub id: String,
     pub name: String,
     pub material: MaterialKind,
+    pub radiation_emission_per_tick: i64,
 }
 
 #[derive(Component)]
@@ -147,7 +153,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     spawn_world_background(commands, config, assets, scene, snapshot);
 
     for (location_id, location) in snapshot.model.locations.iter() {
-        spawn_location_entity(
+        spawn_location_entity_with_radiation(
             commands,
             config,
             assets,
@@ -158,6 +164,7 @@ pub(super) fn rebuild_scene_from_snapshot(
             location.pos,
             location.profile.material,
             location.profile.radius_cm,
+            location.profile.radiation_emission_per_tick,
         );
     }
 
@@ -287,7 +294,7 @@ pub(super) fn apply_events_to_scene(
                 pos,
                 profile,
             } => {
-                spawn_location_entity(
+                spawn_location_entity_with_radiation(
                     commands,
                     config,
                     assets,
@@ -298,6 +305,7 @@ pub(super) fn apply_events_to_scene(
                     *pos,
                     profile.material,
                     profile.radius_cm,
+                    profile.radiation_emission_per_tick,
                 );
             }
             WorldEventKind::AgentRegistered { agent_id, pos, .. } => {
@@ -575,7 +583,7 @@ enum ChunkAxis {
     Z,
 }
 
-pub(super) fn spawn_location_entity(
+pub(super) fn spawn_location_entity_with_radiation(
     commands: &mut Commands,
     config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
@@ -586,6 +594,7 @@ pub(super) fn spawn_location_entity(
     pos: GeoPos,
     material: MaterialKind,
     radius_cm: i64,
+    radiation_emission_per_tick: i64,
 ) {
     scene
         .location_positions
@@ -603,15 +612,35 @@ pub(super) fn spawn_location_entity(
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
-            Transform::from_translation(translation),
+            Transform::from_translation(translation).with_scale(marker_scale),
+            Visibility::Visible,
             MeshMaterial3d(assets.location_material_library.handle_for(material)),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
                 material,
+                radiation_emission_per_tick,
             },
             BaseScale(marker_scale),
         ));
+        commands.entity(*entity).despawn_children();
+        commands.entity(*entity).with_children(|parent| {
+            spawn_label(
+                parent,
+                assets,
+                name.to_string(),
+                location_label_offset(radius_m),
+                format!("label:location:{location_id}"),
+            );
+            spawn_location_detail_children(
+                parent,
+                assets,
+                location_id,
+                material,
+                radius_cm,
+                radiation_emission_per_tick,
+            );
+        });
         return;
     }
 
@@ -625,6 +654,7 @@ pub(super) fn spawn_location_entity(
                 id: location_id.to_string(),
                 name: name.to_string(),
                 material,
+                radiation_emission_per_tick,
             },
             BaseScale(marker_scale),
         ))
@@ -637,6 +667,14 @@ pub(super) fn spawn_location_entity(
             name.to_string(),
             location_label_offset(radius_m),
             format!("label:location:{location_id}"),
+        );
+        spawn_location_detail_children(
+            parent,
+            assets,
+            location_id,
+            material,
+            radius_cm,
+            radiation_emission_per_tick,
         );
     });
     scene
@@ -770,6 +808,138 @@ fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<G
 
 fn location_radius_m(radius_cm: i64) -> f32 {
     (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
+}
+
+fn location_radiation_ratio(radiation_emission_per_tick: i64) -> f32 {
+    if radiation_emission_per_tick <= 0 {
+        return 0.0;
+    }
+    let log10 = (radiation_emission_per_tick.max(1) as f32).log10();
+    (log10 / 6.0).clamp(0.0, 1.0)
+}
+
+#[derive(Clone, Copy)]
+struct LocationDetailProfile {
+    ring_segments: usize,
+    halo_segments: usize,
+    halo_radius_local: f32,
+    halo_scale_local: f32,
+}
+
+fn location_detail_profile(
+    radius_cm: i64,
+    radiation_emission_per_tick: i64,
+) -> LocationDetailProfile {
+    let radius_m = location_radius_m(radius_cm);
+    let ring_segments = if radius_m < 20.0 {
+        3
+    } else if radius_m < 120.0 {
+        4
+    } else if radius_m < 500.0 {
+        5
+    } else {
+        6
+    };
+
+    let radiation_ratio = location_radiation_ratio(radiation_emission_per_tick);
+    let halo_segments = if radiation_emission_per_tick <= 0 {
+        0
+    } else {
+        (3 + (radiation_ratio * 4.0).round() as usize).clamp(3, 7)
+    };
+
+    LocationDetailProfile {
+        ring_segments,
+        halo_segments,
+        halo_radius_local: 1.24 + radiation_ratio * 0.36,
+        halo_scale_local: 0.03 + radiation_ratio * 0.03,
+    }
+}
+
+fn location_ring_local_scale(radius_cm: i64) -> Vec3 {
+    let radius_m = location_radius_m(radius_cm);
+    let width = if radius_m < 10.0 {
+        0.18
+    } else if radius_m < 80.0 {
+        0.12
+    } else if radius_m < 400.0 {
+        0.09
+    } else {
+        0.06
+    };
+    Vec3::new(width, width * 0.6, width * 0.8)
+}
+
+fn spawn_location_detail_children(
+    parent: &mut ChildSpawnerCommands,
+    assets: &Viewer3dAssets,
+    location_id: &str,
+    material: MaterialKind,
+    radius_cm: i64,
+    radiation_emission_per_tick: i64,
+) {
+    let detail = location_detail_profile(radius_cm, radiation_emission_per_tick);
+    let phase = id_hash_fraction(location_id) * std::f32::consts::TAU;
+    let ring_scale = location_ring_local_scale(radius_cm);
+    let ring_material = assets.location_material_library.handle_for(material);
+
+    for idx in 0..detail.ring_segments {
+        let angle = phase + (idx as f32 / detail.ring_segments as f32) * std::f32::consts::TAU;
+        let local_radius = if idx % 2 == 0 {
+            LOCATION_DETAIL_RING_RADIUS_BASE
+        } else {
+            LOCATION_DETAIL_RING_RADIUS_ALT
+        };
+        let y_band = match idx % 3 {
+            0 => -LOCATION_DETAIL_RING_Y_BAND,
+            1 => 0.0,
+            _ => LOCATION_DETAIL_RING_Y_BAND,
+        };
+        parent.spawn((
+            Mesh3d(assets.agent_module_marker_mesh.clone()),
+            MeshMaterial3d(ring_material.clone()),
+            Transform::from_translation(Vec3::new(
+                angle.cos() * local_radius,
+                y_band,
+                angle.sin() * local_radius,
+            ))
+            .with_rotation(Quat::from_rotation_y(angle))
+            .with_scale(ring_scale),
+            Name::new(format!("location:detail:ring:{location_id}:{idx}")),
+        ));
+    }
+
+    if detail.halo_segments == 0 {
+        return;
+    }
+
+    for idx in 0..detail.halo_segments {
+        let angle =
+            phase * 0.5 + (idx as f32 / detail.halo_segments as f32) * std::f32::consts::TAU;
+        let radius = detail.halo_radius_local
+            + if idx % 2 == 0 {
+                0.0
+            } else {
+                LOCATION_DETAIL_HALO_RADIUS_JITTER
+            };
+        let y_offset = if idx % 2 == 0 {
+            LOCATION_DETAIL_HALO_Y_OFFSET
+        } else {
+            -LOCATION_DETAIL_HALO_Y_OFFSET
+        };
+        let scale = Vec3::splat(detail.halo_scale_local * if idx % 2 == 0 { 1.0 } else { 0.82 });
+        parent.spawn((
+            Mesh3d(assets.location_mesh.clone()),
+            MeshMaterial3d(assets.agent_module_marker_material.clone()),
+            Transform::from_translation(Vec3::new(
+                angle.cos() * radius,
+                y_offset,
+                angle.sin() * radius,
+            ))
+            .with_scale(scale),
+            Name::new(format!("location:detail:halo:{location_id}:{idx}")),
+        ));
+    }
 }
 
 fn location_label_offset(radius_m: f32) -> f32 {

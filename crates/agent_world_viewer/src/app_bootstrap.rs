@@ -3,6 +3,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
+    let auto_focus_config = auto_focus_config_from_env();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
 
@@ -24,6 +25,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(CopyableTextPanelState::default())
         .insert_resource(OrbitDragState::default())
         .insert_resource(UiI18n::default())
+        .insert_resource(auto_focus_config)
+        .insert_resource(AutoFocusState::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
@@ -71,9 +74,13 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             Update,
             (
                 update_3d_scene,
+                apply_startup_auto_focus.after(update_3d_scene),
                 update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
-                sync_camera_mode.after(orbit_camera_controls),
+                handle_focus_selection_hotkey.after(orbit_camera_controls),
+                sync_camera_mode
+                    .after(orbit_camera_controls)
+                    .after(handle_focus_selection_hotkey),
                 sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),
                 update_3d_viewport,
