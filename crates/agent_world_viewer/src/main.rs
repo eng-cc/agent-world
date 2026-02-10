@@ -518,8 +518,9 @@ fn setup_3d_scene(
     let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.34, 0.2),
-        perceptual_roughness: 0.45,
+        base_color: Color::srgb(1.0, 0.42, 0.22),
+        perceptual_roughness: 0.38,
+        metallic: 0.08,
         ..default()
     });
     let location_material_library = build_location_material_handles(&mut materials);
@@ -568,7 +569,7 @@ fn setup_3d_scene(
         ..default()
     });
     let world_grid_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.30, 0.34, 0.38, 0.55),
+        base_color: Color::srgba(0.29, 0.36, 0.48, 0.42),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
@@ -647,15 +648,31 @@ fn setup_3d_scene(
         orbit,
     ));
 
+    commands.insert_resource(GlobalAmbientLight {
+        color: Color::srgb(0.94, 0.97, 1.0),
+        brightness: config.lighting.ambient_brightness,
+        affects_lightmapped_meshes: true,
+    });
+
     let illuminance = config.physical.exposed_illuminance_lux();
 
     commands.spawn((
         DirectionalLight {
             illuminance,
-            shadows_enabled: true,
+            shadows_enabled: config.lighting.shadows_enabled,
             ..default()
         },
-        Transform::from_xyz(20.0, 30.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(24.0, 36.0, 22.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
+    commands.spawn((
+        DirectionalLight {
+            illuminance: (illuminance * config.lighting.fill_light_ratio.max(0.0)).max(800.0),
+            color: Color::srgb(0.74, 0.82, 0.92),
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(-18.0, 20.0, -28.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 

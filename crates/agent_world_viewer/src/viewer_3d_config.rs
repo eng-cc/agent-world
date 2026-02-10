@@ -14,6 +14,9 @@ const SOLAR_CONSTANT_W_M2_AT_1_AU: f32 = 1361.0;
 const BASELINE_EXPOSURE_EV100: f32 = 13.5;
 const MIN_LIGHT_ILLUMINANCE_LUX: f32 = 2_500.0;
 const MAX_LIGHT_ILLUMINANCE_LUX: f32 = 120_000.0;
+const DEFAULT_SHADOWS_ENABLED: bool = false;
+const DEFAULT_AMBIENT_BRIGHTNESS: f32 = 110.0;
+const DEFAULT_FILL_LIGHT_RATIO: f32 = 0.28;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -21,6 +24,7 @@ pub(super) struct Viewer3dConfig {
     pub show_agents: bool,
     pub show_locations: bool,
     pub highlight_selected: bool,
+    pub lighting: ViewerLightingConfig,
     pub physical: ViewerPhysicalRenderConfig,
 }
 
@@ -41,7 +45,25 @@ impl Default for Viewer3dConfig {
             show_agents: true,
             show_locations: true,
             highlight_selected: true,
+            lighting: ViewerLightingConfig::default(),
             physical: ViewerPhysicalRenderConfig::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerLightingConfig {
+    pub shadows_enabled: bool,
+    pub ambient_brightness: f32,
+    pub fill_light_ratio: f32,
+}
+
+impl Default for ViewerLightingConfig {
+    fn default() -> Self {
+        Self {
+            shadows_enabled: DEFAULT_SHADOWS_ENABLED,
+            ambient_brightness: DEFAULT_AMBIENT_BRIGHTNESS,
+            fill_light_ratio: DEFAULT_FILL_LIGHT_RATIO,
         }
     }
 }
@@ -117,6 +139,19 @@ where
     }
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED") {
         config.highlight_selected = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHADOWS_ENABLED") {
+        config.lighting.shadows_enabled = value;
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS") {
+        if value.is_finite() && value > 0.0 {
+            config.lighting.ambient_brightness = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO") {
+        if value.is_finite() && value >= 0.0 {
+            config.lighting.fill_light_ratio = value;
+        }
     }
 
     let mut physical = ViewerPhysicalRenderConfig::default();
@@ -212,6 +247,9 @@ mod tests {
         assert!(config.show_agents);
         assert!(config.show_locations);
         assert!(config.highlight_selected);
+        assert!(!config.lighting.shadows_enabled);
+        assert!((config.lighting.ambient_brightness - 110.0).abs() < f32::EPSILON);
+        assert!((config.lighting.fill_light_ratio - 0.28).abs() < f32::EPSILON);
         assert!(!config.physical.enabled);
         assert!((config.physical.meters_per_unit - 1.0).abs() < f32::EPSILON);
         assert!((config.physical.floating_origin_step_m - 1000.0).abs() < f64::EPSILON);
@@ -230,6 +268,9 @@ mod tests {
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
             ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
             ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
+            ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "1"),
+            ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "145"),
+            ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "0.42"),
             ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "true"),
             ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "2.5"),
             ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "1500"),
@@ -247,6 +288,9 @@ mod tests {
         assert!(!config.show_agents);
         assert!(!config.show_locations);
         assert!(!config.highlight_selected);
+        assert!(config.lighting.shadows_enabled);
+        assert!((config.lighting.ambient_brightness - 145.0).abs() < f32::EPSILON);
+        assert!((config.lighting.fill_light_ratio - 0.42).abs() < f32::EPSILON);
         assert!(config.physical.enabled);
         assert!((config.physical.meters_per_unit - 2.5).abs() < f32::EPSILON);
         assert!((config.physical.floating_origin_step_m - 1500.0).abs() < f64::EPSILON);
@@ -263,6 +307,9 @@ mod tests {
         let env = HashMap::from([
             ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
+            ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "invalid"),
+            ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "0"),
+            ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "-1"),
             ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "1"),
             ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "-1"),
             ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "nan"),
@@ -277,6 +324,11 @@ mod tests {
 
         assert!((config.cm_to_unit - DEFAULT_CM_TO_UNIT).abs() < f32::EPSILON);
         assert!(config.show_agents);
+        assert_eq!(config.lighting.shadows_enabled, DEFAULT_SHADOWS_ENABLED);
+        assert!(
+            (config.lighting.ambient_brightness - DEFAULT_AMBIENT_BRIGHTNESS).abs() < f32::EPSILON
+        );
+        assert!((config.lighting.fill_light_ratio - DEFAULT_FILL_LIGHT_RATIO).abs() < f32::EPSILON);
         assert!(config.physical.enabled);
         assert!((config.physical.meters_per_unit - DEFAULT_METERS_PER_UNIT).abs() < f32::EPSILON);
         assert!(config.physical.floating_origin_step_m.is_finite());

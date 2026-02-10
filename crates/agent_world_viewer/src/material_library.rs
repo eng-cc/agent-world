@@ -97,12 +97,28 @@ pub(super) fn material_render_preset(material: MaterialKind) -> MaterialRenderPr
 
 fn location_standard_material(material: MaterialKind) -> StandardMaterial {
     let preset = material_render_preset(material);
+    let (tint_r, tint_g, tint_b) = material_base_tint(material);
+    let intensity = (0.34 + preset.albedo * 1.05).clamp(0.08, 1.0);
     StandardMaterial {
-        base_color: Color::srgb(preset.albedo, preset.albedo, preset.albedo),
+        base_color: Color::srgb(
+            (tint_r * intensity).min(1.0),
+            (tint_g * intensity).min(1.0),
+            (tint_b * intensity).min(1.0),
+        ),
         perceptual_roughness: preset.roughness,
         metallic: preset.metallic,
         reflectance: (1.0 - preset.emissivity).clamp(0.02, 0.9),
         ..default()
+    }
+}
+
+fn material_base_tint(material: MaterialKind) -> (f32, f32, f32) {
+    match material {
+        MaterialKind::Silicate => (0.82, 0.79, 0.74),
+        MaterialKind::Metal => (0.77, 0.84, 0.93),
+        MaterialKind::Ice => (0.62, 0.81, 1.0),
+        MaterialKind::Carbon => (0.48, 0.44, 0.41),
+        MaterialKind::Composite => (0.92, 0.75, 0.55),
     }
 }
 
@@ -145,5 +161,19 @@ mod tests {
             handles.handle_for(MaterialKind::Composite),
         ];
         assert!(mapped.iter().all(|handle| materials.get(handle).is_some()));
+    }
+
+    #[test]
+    fn tint_palette_keeps_materials_visually_distinct() {
+        let silicate = material_base_tint(MaterialKind::Silicate);
+        let metal = material_base_tint(MaterialKind::Metal);
+        let ice = material_base_tint(MaterialKind::Ice);
+        let carbon = material_base_tint(MaterialKind::Carbon);
+        let composite = material_base_tint(MaterialKind::Composite);
+
+        assert_ne!(silicate, metal);
+        assert_ne!(ice, carbon);
+        assert_ne!(composite, silicate);
+        assert!(ice.2 > carbon.2);
     }
 }
