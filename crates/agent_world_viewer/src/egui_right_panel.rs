@@ -10,9 +10,10 @@ use crate::event_click_list::{
 };
 use crate::i18n::{
     camera_mode_button_label, camera_mode_section_label, control_button_label,
-    copyable_panel_toggle_label, language_toggle_label, locale_or_default, step_button_label,
-    top_controls_label, top_panel_toggle_label, UiI18n,
+    copyable_panel_toggle_label, language_toggle_label, locale_or_default, module_switches_title,
+    module_toggle_label, step_button_label, top_controls_label, top_panel_toggle_label, UiI18n,
 };
+use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
     jump_selection_events_action, locate_focus_event_action, selection_kind_label,
 };
@@ -61,6 +62,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     camera_mode: ResMut<'w, ViewerCameraMode>,
     i18n: Option<ResMut<'w, UiI18n>>,
     copyable_panel_state: ResMut<'w, CopyableTextPanelState>,
+    module_visibility: ResMut<'w, RightPanelModuleVisibilityState>,
     overlay_config: ResMut<'w, WorldOverlayConfig>,
     state: Res<'w, ViewerState>,
     selection: ResMut<'w, ViewerSelection>,
@@ -86,6 +88,7 @@ pub(super) fn render_right_side_panel_egui(
         mut camera_mode,
         mut i18n,
         mut copyable_panel_state,
+        mut module_visibility,
         mut overlay_config,
         state,
         mut selection,
@@ -106,6 +109,10 @@ pub(super) fn render_right_side_panel_egui(
         return;
     };
     ensure_egui_cjk_font(context, &mut cjk_font_initialized);
+
+    if copyable_panel_state.visible != module_visibility.show_details {
+        copyable_panel_state.visible = module_visibility.show_details;
+    }
 
     let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
@@ -164,6 +171,7 @@ pub(super) fn render_right_side_panel_egui(
                     .clicked()
                 {
                     copyable_panel_state.visible = !copyable_panel_state.visible;
+                    module_visibility.show_details = copyable_panel_state.visible;
                 }
 
                 ui.label(top_controls_label(locale));
@@ -174,91 +182,151 @@ pub(super) fn render_right_side_panel_egui(
             }
 
             ui.separator();
-            render_control_buttons(ui, locale, &state, loading.as_mut(), client.as_deref());
-            render_overview_section(ui, locale, &state, &selection, timeline.as_ref());
-
-            ui.separator();
-            render_overlay_section(
-                ui,
-                locale,
-                *camera_mode,
-                &state,
-                &viewer_3d_config,
-                overlay_config.as_mut(),
-            );
-
-            ui.separator();
-            ui.strong(if locale.is_zh() {
-                "诊断"
-            } else {
-                "Diagnosis"
-            });
-            ui.add(
-                egui::Label::new(diagnosis_state.text.as_str())
-                    .wrap()
-                    .selectable(true),
-            );
-
-            ui.separator();
-            ui.strong(if locale.is_zh() {
-                "事件联动"
-            } else {
-                "Event Link"
-            });
+            ui.strong(module_switches_title(locale));
             ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(crate::ui_locale_text::locate_focus_label(locale))
-                    .clicked()
-                {
-                    if let Some(config) = viewer_3d_config.as_deref() {
-                        locate_focus_event_action(
+                render_module_toggle_button(
+                    ui,
+                    "controls",
+                    &mut module_visibility.show_controls,
+                    locale,
+                );
+                render_module_toggle_button(
+                    ui,
+                    "overview",
+                    &mut module_visibility.show_overview,
+                    locale,
+                );
+                render_module_toggle_button(
+                    ui,
+                    "overlay",
+                    &mut module_visibility.show_overlay,
+                    locale,
+                );
+                render_module_toggle_button(
+                    ui,
+                    "diagnosis",
+                    &mut module_visibility.show_diagnosis,
+                    locale,
+                );
+                render_module_toggle_button(
+                    ui,
+                    "event_link",
+                    &mut module_visibility.show_event_link,
+                    locale,
+                );
+                render_module_toggle_button(
+                    ui,
+                    "timeline",
+                    &mut module_visibility.show_timeline,
+                    locale,
+                );
+
+                let mut details_visible = module_visibility.show_details;
+                render_module_toggle_button(ui, "details", &mut details_visible, locale);
+                module_visibility.show_details = details_visible;
+                copyable_panel_state.visible = details_visible;
+            });
+
+            if module_visibility.show_controls {
+                ui.separator();
+                render_control_buttons(ui, locale, &state, loading.as_mut(), client.as_deref());
+            }
+
+            if module_visibility.show_overview {
+                ui.separator();
+                render_overview_section(ui, locale, &state, &selection, timeline.as_ref());
+            }
+
+            if module_visibility.show_overlay {
+                ui.separator();
+                render_overlay_section(
+                    ui,
+                    locale,
+                    *camera_mode,
+                    &state,
+                    &viewer_3d_config,
+                    overlay_config.as_mut(),
+                );
+            }
+
+            if module_visibility.show_diagnosis {
+                ui.separator();
+                ui.strong(if locale.is_zh() {
+                    "诊断"
+                } else {
+                    "Diagnosis"
+                });
+                ui.add(
+                    egui::Label::new(diagnosis_state.text.as_str())
+                        .wrap()
+                        .selectable(true),
+                );
+            }
+
+            if module_visibility.show_event_link {
+                ui.separator();
+                ui.strong(if locale.is_zh() {
+                    "事件联动"
+                } else {
+                    "Event Link"
+                });
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(crate::ui_locale_text::locate_focus_label(locale))
+                        .clicked()
+                    {
+                        if let Some(config) = viewer_3d_config.as_deref() {
+                            locate_focus_event_action(
+                                &state,
+                                &scene,
+                                config,
+                                selection.as_mut(),
+                                link_state.as_mut(),
+                                &mut transforms,
+                                Some(timeline.as_mut()),
+                            );
+                        } else {
+                            link_state.message = "Link: viewer config unavailable".to_string();
+                        }
+                    }
+
+                    if ui
+                        .button(crate::ui_locale_text::jump_selection_label(locale))
+                        .clicked()
+                    {
+                        jump_selection_events_action(
                             &state,
-                            &scene,
-                            config,
-                            selection.as_mut(),
+                            &selection,
                             link_state.as_mut(),
-                            &mut transforms,
                             Some(timeline.as_mut()),
                         );
-                    } else {
-                        link_state.message = "Link: viewer config unavailable".to_string();
                     }
-                }
+                });
+                ui.add(
+                    egui::Label::new(map_link_message_for_locale(&link_state.message, locale))
+                        .wrap()
+                        .selectable(true),
+                );
+            }
 
-                if ui
-                    .button(crate::ui_locale_text::jump_selection_label(locale))
-                    .clicked()
-                {
-                    jump_selection_events_action(
-                        &state,
-                        &selection,
-                        link_state.as_mut(),
-                        Some(timeline.as_mut()),
-                    );
-                }
-            });
-            ui.add(
-                egui::Label::new(map_link_message_for_locale(&link_state.message, locale))
-                    .wrap()
-                    .selectable(true),
-            );
+            if module_visibility.show_timeline {
+                ui.separator();
+                ui.strong(if locale.is_zh() {
+                    "时间轴"
+                } else {
+                    "Timeline"
+                });
+                render_timeline_section(
+                    ui,
+                    locale,
+                    &state,
+                    timeline.as_mut(),
+                    timeline_filters.as_mut(),
+                    client.as_deref(),
+                );
+            }
 
-            ui.separator();
-            ui.strong(if locale.is_zh() {
-                "时间轴"
-            } else {
-                "Timeline"
-            });
-            render_timeline_section(
-                ui,
-                locale,
-                &state,
-                timeline.as_mut(),
-                timeline_filters.as_mut(),
-                client.as_deref(),
-            );
-
-            if copyable_panel_state.visible {
+            if module_visibility.show_details {
                 ui.separator();
                 ui.heading(copy_panel_title(locale));
                 ui.add(egui::Label::new(copy_panel_hint(locale)).wrap());
@@ -319,6 +387,20 @@ pub(super) fn render_right_side_panel_egui(
         });
 
     panel_width.width_px = panel_response.response.rect.width();
+}
+
+fn render_module_toggle_button(
+    ui: &mut egui::Ui,
+    module_key: &str,
+    visible: &mut bool,
+    locale: crate::i18n::UiLocale,
+) {
+    if ui
+        .button(module_toggle_label(module_key, *visible, locale))
+        .clicked()
+    {
+        *visible = !*visible;
+    }
 }
 
 fn render_control_buttons(

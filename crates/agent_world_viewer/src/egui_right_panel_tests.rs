@@ -1,4 +1,5 @@
 use super::*;
+use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
 use egui_kittest::{kittest::Queryable as _, Harness};
 use egui_wgpu::wgpu;
@@ -512,6 +513,57 @@ fn egui_kittest_camera_mode_toggle_switches_state() {
     harness.get_by_label("2D").click();
     harness.run();
     assert_eq!(harness.state().camera_mode, crate::ViewerCameraMode::TwoD);
+}
+
+#[derive(Default)]
+struct ModuleToggleHarnessState {
+    visibility: RightPanelModuleVisibilityState,
+    copyable_visible: bool,
+}
+
+#[test]
+fn egui_kittest_module_toggle_switches_visibility() {
+    let mut harness = Harness::new_ui_state(
+        |ui, state: &mut ModuleToggleHarnessState| {
+            ui.horizontal_wrapped(|ui| {
+                render_module_toggle_button(
+                    ui,
+                    "controls",
+                    &mut state.visibility.show_controls,
+                    crate::i18n::UiLocale::ZhCn,
+                );
+
+                let mut details_visible = state.visibility.show_details;
+                render_module_toggle_button(
+                    ui,
+                    "details",
+                    &mut details_visible,
+                    crate::i18n::UiLocale::ZhCn,
+                );
+                state.visibility.show_details = details_visible;
+                state.copyable_visible = details_visible;
+            });
+        },
+        ModuleToggleHarnessState {
+            visibility: RightPanelModuleVisibilityState::default(),
+            copyable_visible: true,
+        },
+    );
+
+    harness.fit_contents();
+    harness.get_by_label("控制:开").click();
+    harness.run();
+    assert!(!harness.state().visibility.show_controls);
+
+    harness.get_by_label("明细:开").click();
+    harness.run();
+    assert!(!harness.state().visibility.show_details);
+    assert!(!harness.state().copyable_visible);
+
+    harness.get_by_label("明细:关").click();
+    harness.run();
+    assert!(harness.state().visibility.show_details);
+    assert!(harness.state().copyable_visible);
 }
 
 #[test]
