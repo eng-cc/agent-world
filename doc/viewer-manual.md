@@ -81,6 +81,11 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - 常规联调：`llm_bootstrap`
 - 双区域对比：`twin_region_bootstrap`
 
+## 开采损耗可视化
+- 当 location 含有 `fragment_budget` 时，Viewer 会按剩余质量比例缩放体量（体积比例映射到半径立方根）。
+- 剩余越少，location 视觉半径越小；为避免完全不可见，存在最小可视半径保护。
+- 详情面板会显示：`Fragment Depletion: mined=<x>% remaining=<a>/<b>`。
+
 ## 常见问题排查
 - 截图全黑：适当增大 `--viewer-wait`（如 12~15 秒），确认首帧已渲染。
 - 看不到细节：切换 3D，放大并移动视角；必要时使用 `F` 聚焦目标。

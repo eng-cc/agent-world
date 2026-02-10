@@ -1,8 +1,9 @@
 use super::*;
 use agent_world::simulator::MaterialKind;
 use agent_world::simulator::{
-    chunk_bounds, chunk_coords, ChunkCoord, ChunkState, ModuleVisualAnchor, ModuleVisualEntity,
-    PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind, CHUNK_SIZE_X_CM, CHUNK_SIZE_Y_CM,
+    chunk_bounds, chunk_coords, ChunkCoord, ChunkState, FragmentResourceBudget, ModuleVisualAnchor,
+    ModuleVisualEntity, PowerEvent, ResourceOwner, SpaceConfig, WorldEventKind, CHUNK_SIZE_X_CM,
+    CHUNK_SIZE_Y_CM,
 };
 
 const FACILITY_MARKER_LATERAL_OFFSET: f32 = 0.9;
@@ -18,6 +19,7 @@ const LOCATION_DETAIL_RING_RADIUS_ALT: f32 = 1.12;
 const LOCATION_DETAIL_RING_Y_BAND: f32 = 0.22;
 const LOCATION_DETAIL_HALO_RADIUS_JITTER: f32 = 0.04;
 const LOCATION_DETAIL_HALO_Y_OFFSET: f32 = 0.08;
+const LOCATION_DEPLETION_MIN_RADIUS_FACTOR: f32 = 0.24;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
 const AGENT_HEIGHT_MAX_M: f32 = 4.0;
 const AGENT_BODY_RADIUS_RATIO: f32 = 0.22;
@@ -153,6 +155,10 @@ pub(super) fn rebuild_scene_from_snapshot(
     spawn_world_background(commands, config, assets, scene, snapshot);
 
     for (location_id, location) in snapshot.model.locations.iter() {
+        let visual_radius_cm = location_visual_radius_cm(
+            location.profile.radius_cm,
+            location.fragment_budget.as_ref(),
+        );
         spawn_location_entity_with_radiation(
             commands,
             config,
@@ -163,7 +169,7 @@ pub(super) fn rebuild_scene_from_snapshot(
             &location.name,
             location.pos,
             location.profile.material,
-            location.profile.radius_cm,
+            visual_radius_cm,
             location.profile.radiation_emission_per_tick,
         );
     }
@@ -808,6 +814,46 @@ fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<G
 
 fn location_radius_m(radius_cm: i64) -> f32 {
     (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
+}
+
+fn location_visual_radius_cm(
+    radius_cm: i64,
+    fragment_budget: Option<&FragmentResourceBudget>,
+) -> i64 {
+    let base_radius = radius_cm.max(1);
+    let Some(fragment_budget) = fragment_budget else {
+        return base_radius;
+    };
+    let Some(remaining_ratio) = location_remaining_mass_ratio(fragment_budget) else {
+        return base_radius;
+    };
+
+    let radius_factor = remaining_ratio
+        .clamp(0.0, 1.0)
+        .cbrt()
+        .max(LOCATION_DEPLETION_MIN_RADIUS_FACTOR);
+    ((base_radius as f32) * radius_factor).round().max(1.0) as i64
+}
+
+fn location_remaining_mass_ratio(fragment_budget: &FragmentResourceBudget) -> Option<f32> {
+    let total_mass = fragment_budget
+        .total_by_element_g
+        .values()
+        .copied()
+        .filter(|amount| *amount > 0)
+        .fold(0_i64, |acc, amount| acc.saturating_add(amount));
+    if total_mass <= 0 {
+        return None;
+    }
+
+    let remaining_mass = fragment_budget
+        .remaining_by_element_g
+        .values()
+        .copied()
+        .filter(|amount| *amount > 0)
+        .fold(0_i64, |acc, amount| acc.saturating_add(amount));
+    let clamped_remaining = remaining_mass.clamp(0, total_mass);
+    Some((clamped_remaining as f32 / total_mass as f32).clamp(0.0, 1.0))
 }
 
 fn location_radiation_ratio(radiation_emission_per_tick: i64) -> f32 {
@@ -1608,5 +1654,35 @@ pub(super) fn reset_entity_scale(
     if let Ok((mut transform, base)) = transforms.get_mut(entity) {
         let base_scale = base.map(|scale| scale.0).unwrap_or(Vec3::ONE);
         transform.scale = base_scale;
+    }
+}
+
+#[cfg(test)]
+mod depletion_tests {
+    use super::*;
+    use agent_world::simulator::FragmentElementKind;
+
+    #[test]
+    fn location_visual_radius_cm_keeps_base_when_budget_missing() {
+        assert_eq!(location_visual_radius_cm(900, None), 900);
+    }
+
+    #[test]
+    fn location_visual_radius_cm_tracks_remaining_mass_ratio() {
+        let mut budget = FragmentResourceBudget::default();
+        budget
+            .total_by_element_g
+            .insert(FragmentElementKind::Iron, 1_000);
+        budget
+            .remaining_by_element_g
+            .insert(FragmentElementKind::Iron, 125);
+
+        assert_eq!(location_visual_radius_cm(800, Some(&budget)), 400);
+
+        budget
+            .remaining_by_element_g
+            .insert(FragmentElementKind::Iron, 0);
+        let min_radius = location_visual_radius_cm(800, Some(&budget));
+        assert_eq!(min_radius, 192);
     }
 }

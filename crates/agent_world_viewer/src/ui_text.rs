@@ -1,8 +1,8 @@
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
     chunk_bounds, AgentDecisionTrace, Asset, AssetKind, ChunkCoord, ChunkState,
-    FragmentElementKind, ModuleVisualAnchor, PowerEvent, PowerPlant, ResourceKind, ResourceOwner,
-    RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
+    FragmentElementKind, FragmentResourceBudget, ModuleVisualAnchor, PowerEvent, PowerPlant,
+    ResourceKind, ResourceOwner, RunnerMetrics, WorldEvent, WorldEventKind, WorldSnapshot,
 };
 
 use super::viewer_3d_config::ViewerPhysicalRenderConfig;
@@ -341,6 +341,14 @@ fn location_details_summary(
     }
 
     if let Some(budget) = location.fragment_budget.as_ref() {
+        if let Some((remaining_total, total_total)) = fragment_budget_totals_g(budget) {
+            let mined_pct =
+                (1.0 - remaining_total as f64 / total_total as f64).clamp(0.0, 1.0) * 100.0;
+            lines.push(format!(
+                "Fragment Depletion: mined={mined_pct:.1}% remaining={remaining_total}g/{total_total}g"
+            ));
+        }
+
         lines.push("Fragment Budget (remaining top):".to_string());
         let mut remaining: Vec<_> = budget.remaining_by_element_g.iter().collect();
         remaining.sort_by(|a, b| b.1.cmp(a.1));
@@ -544,6 +552,28 @@ fn chunk_state_name(state: ChunkState) -> &'static str {
         ChunkState::Generated => "generated",
         ChunkState::Exhausted => "exhausted",
     }
+}
+
+fn fragment_budget_totals_g(budget: &FragmentResourceBudget) -> Option<(i64, i64)> {
+    let total = budget
+        .total_by_element_g
+        .values()
+        .copied()
+        .filter(|amount| *amount > 0)
+        .fold(0_i64, |acc, amount| acc.saturating_add(amount));
+    if total <= 0 {
+        return None;
+    }
+
+    let remaining = budget
+        .remaining_by_element_g
+        .values()
+        .copied()
+        .filter(|amount| *amount > 0)
+        .fold(0_i64, |acc, amount| acc.saturating_add(amount))
+        .clamp(0, total);
+
+    Some((remaining, total))
 }
 
 fn format_element_budget(

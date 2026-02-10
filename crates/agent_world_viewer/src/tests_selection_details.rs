@@ -145,19 +145,26 @@ fn update_ui_populates_location_selection_details() {
     });
 
     let mut model = agent_world::simulator::WorldModel::default();
-    model.locations.insert(
-        "loc-1".to_string(),
-        agent_world::simulator::Location::new_with_profile(
-            "loc-1",
-            "Alpha",
-            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
-            agent_world::simulator::LocationProfile {
-                material: agent_world::simulator::MaterialKind::Silicate,
-                radius_cm: 320,
-                radiation_emission_per_tick: 9,
-            },
-        ),
+    let mut location = agent_world::simulator::Location::new_with_profile(
+        "loc-1",
+        "Alpha",
+        agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        agent_world::simulator::LocationProfile {
+            material: agent_world::simulator::MaterialKind::Silicate,
+            radius_cm: 320,
+            radiation_emission_per_tick: 9,
+        },
     );
+    let mut fragment_budget = agent_world::simulator::FragmentResourceBudget::default();
+    fragment_budget
+        .total_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 1_000);
+    fragment_budget
+        .remaining_by_element_g
+        .insert(agent_world::simulator::FragmentElementKind::Iron, 125);
+    location.fragment_budget = Some(fragment_budget);
+
+    model.locations.insert("loc-1".to_string(), location);
 
     let snapshot = agent_world::simulator::WorldSnapshot {
         version: agent_world::simulator::SNAPSHOT_VERSION,
@@ -193,4 +200,7 @@ fn update_ui_populates_location_selection_details() {
     assert!(details_text
         .0
         .contains("Radiation Visual: power=900.00W flux=450.00W/m2 area=2.00m2"));
+    assert!(details_text
+        .0
+        .contains("Fragment Depletion: mined=87.5% remaining=125g/1000g"));
 }
