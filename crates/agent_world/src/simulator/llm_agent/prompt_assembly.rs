@@ -44,6 +44,7 @@ pub struct PromptAssemblyInput<'a> {
     pub module_history_json: &'a str,
     pub memory_digest: Option<&'a str>,
     pub step_context: PromptStepContext,
+    pub harvest_max_amount_cap: i64,
     pub prompt_budget: PromptBudget,
 }
 
@@ -161,13 +162,15 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::Tools,
                 priority: PromptSectionPriority::High,
-                content: "[Tool Protocol]
-- 如果需要更多信息，可输出模块调用 JSON：{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}
+                content: r#"[Tool Protocol]
+- 如果需要更多信息，可输出模块调用 JSON：{"type":"module_call","module":"<module_name>","args":{...}}
 - 在支持 OpenAI tool_calls 的模型上，优先调用已注册工具（function/tool call），不要编造工具名
-- 可用模块由 `agent.modules.list` 返回；禁止虚构模块
-- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策。
-- 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）。
-- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。".to_string(),
+- 仅允许模块名：agent.modules.list / environment.current_observation / memory.short_term.recent / memory.long_term.search
+- 每轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔多段 JSON，禁止代码块包裹 JSON
+- 若本轮输出 module_call，则只能输出 1 个 module_call；不要在同一回复混合 module_call 与 decision*
+- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策
+- 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）
+- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。"#.to_string(),
             },
             true,
         ));
@@ -204,16 +207,33 @@ impl PromptAssembler {
             }
         }
 
+        let turns_remaining = input
+            .step_context
+            .max_steps
+            .saturating_sub(input.step_context.step_index.saturating_add(1));
+        let module_calls_remaining = input
+            .step_context
+            .module_calls_max
+            .saturating_sub(input.step_context.module_calls_used);
+        let must_finalize_hint = if turns_remaining <= 1 || module_calls_remaining <= 1 {
+            "yes"
+        } else {
+            "no"
+        };
+
         sections.push(SectionState::new(
             PromptSection {
                 kind: PromptSectionKind::StepMeta,
                 priority: PromptSectionPriority::Low,
                 content: format!(
-                    "[Step]\n- step_index: {}\n- max_steps: {}\n- module_calls_used: {}\n- module_calls_max: {}",
+                    "[Step]\n- step_index: {}\n- max_steps: {}\n- module_calls_used: {}\n- module_calls_max: {}\n- module_calls_remaining: {}\n- turns_remaining: {}\n- must_finalize_hint: {}",
                     input.step_context.step_index,
                     input.step_context.max_steps,
                     input.step_context.module_calls_used,
                     input.step_context.module_calls_max,
+                    module_calls_remaining,
+                    turns_remaining,
+                    must_finalize_hint,
                 ),
             },
             false,
@@ -222,19 +242,30 @@ impl PromptAssembler {
             PromptSection {
                 kind: PromptSectionKind::OutputSchema,
                 priority: PromptSectionPriority::High,
-                content: "[Decision JSON Schema]
-{\"decision\":\"wait\"}
-{\"decision\":\"wait_ticks\",\"ticks\":<u64>}
-{\"decision\":\"move_agent\",\"to\":\"<location_id>\"}
-{\"decision\":\"harvest_radiation\",\"max_amount\":<i64>}
-{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"<event_name>\"},\"max_ticks\":<u64>}
-{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event_any_of\":[\"action_rejected\",\"new_visible_agent\"]},\"max_ticks\":<u64>}
-{\"decision\":\"execute_until\",\"action\":{<decision_json>},\"until\":{\"event\":\"harvest_available_below\",\"value_lte\":<i64>},\"max_ticks\":<u64>}
+                content: format!(
+                    r#"[Decision JSON Schema]
+{{"decision":"wait"}}
+{{"decision":"wait_ticks","ticks":<u64>}}
+{{"decision":"move_agent","to":"<location_id>"}}
+{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event_any_of":["action_rejected","new_visible_agent"]}},"max_ticks":<u64>}}
+{{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"harvest_available_below","value_lte":<i64>}},"max_ticks":<u64>}}
 - event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target, insufficient_electricity, thermal_overload, harvest_yield_below, harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
+- harvest_radiation.max_amount 必须是正整数，且不超过 {}
+- 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
+- execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
+
+[Output Hard Rules]
+- 每轮只输出一个 JSON 对象（非数组），不要输出多个 JSON 块，不要使用 `---` 分隔
+- 当 Step 中 `module_calls_remaining <= 1` 或 `turns_remaining <= 1` 时，必须直接输出最终 decision（可 execute_until）
 
 若你需要查询信息，请输出模块调用 JSON：
-{\"type\":\"module_call\",\"module\":\"<module_name>\",\"args\":{...}}".to_string(),
+{{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
+                    input.harvest_max_amount_cap,
+                    input.harvest_max_amount_cap,
+                ),
             },
             true,
         ));
@@ -422,6 +453,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget::default(),
         }
     }
@@ -493,6 +525,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
                 context_window_tokens: 512,
                 reserved_output_tokens: 320,
@@ -535,6 +568,7 @@ mod tests {
                 module_calls_used: 0,
                 module_calls_max: 3,
             },
+            harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
                 context_window_tokens: 2_048,
                 reserved_output_tokens: 256,
@@ -550,5 +584,40 @@ mod tests {
             .expect("history trace");
         assert!(history.included);
         assert!(history.emitted_tokens < history.estimated_tokens);
+    }
+    #[test]
+    fn prompt_assembly_includes_single_json_constraints() {
+        let output = PromptAssembler::assemble(sample_input());
+        assert!(output
+            .system_prompt
+            .contains("每轮只允许输出一个 JSON 对象"));
+        assert!(output.user_prompt.contains("[Output Hard Rules]"));
+        assert!(output
+            .user_prompt
+            .contains("decision_draft.decision 必须是完整 decision 对象"));
+    }
+
+    #[test]
+    fn prompt_assembly_step_meta_contains_remaining_budget_hints() {
+        let mut input = sample_input();
+        input.step_context.step_index = 2;
+        input.step_context.max_steps = 4;
+        input.step_context.module_calls_used = 2;
+        input.step_context.module_calls_max = 3;
+
+        let output = PromptAssembler::assemble(input);
+        assert!(output.user_prompt.contains("module_calls_remaining: 1"));
+        assert!(output.user_prompt.contains("turns_remaining: 1"));
+        assert!(output.user_prompt.contains("must_finalize_hint: yes"));
+    }
+
+    #[test]
+    fn prompt_assembly_includes_harvest_max_amount_cap() {
+        let mut input = sample_input();
+        input.harvest_max_amount_cap = 42;
+
+        let output = PromptAssembler::assemble(input);
+        assert!(output.user_prompt.contains("<i64 1..=42>"));
+        assert!(output.user_prompt.contains("不超过 42"));
     }
 }

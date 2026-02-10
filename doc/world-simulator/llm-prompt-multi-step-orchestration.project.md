@@ -38,17 +38,17 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO22（Responses API 迁移已完成）
-- 下一步：继续优化 Memory Digest 峰值（例如按类别限额、重复动作摘要折叠）
-- 最近更新：完成 LMSO22（迁移到 `async-openai` Responses API，并保持 tool function_call -> module_call 兼容链路，2026-02-10）
+- 当前阶段：LMSO24（动作参数护栏已完成并通过 30 tick 回归）
+- 下一步：启动 LMSO25 决策效率优化（`execute_until` 模板与重入策略）
+- 最近更新：完成 LMSO24 全量验证（`.tmp/lmso24_guard_30/report.json`，`action_success: 29 -> 30`，2026-02-10）
 
 ## 增量优化任务（30 tick 观察）
-- [ ] LMSO23 解析噪声收敛：针对 `.tmp/llm_multi_round_30/report.json` 的 `parse_errors=4`，补充真实响应样本并扩展宽松解析分支单测。
-- [ ] LMSO24 动作参数护栏：为 `harvest_radiation.max_amount` 增加可配置上限与提示词约束，避免异常放大参数。
+- [x] LMSO23 解析噪声收敛（输入侧优先）：强化 prompt 单 JSON 约束、阶段收敛门槛与模块白名单，先降低多段输出/超限 module_call 导致的 parse_error。
+- [x] LMSO24 动作参数护栏：为 `harvest_radiation.max_amount` 增加可配置上限与提示词约束，并在运行时统一裁剪超限值。
 - [ ] LMSO25 决策效率优化：优化 `execute_until` 模板与重入策略，目标是将 `wait` 占比持续降低。
 - [ ] LMSO26 Prompt 预算收敛：继续压缩 memory/history，降低 `llm_input_chars_max` 与 `prompt_section_clipped`。
 
 ## 状态（增量）
-- 当前增量阶段：LMSO23（待启动）
-- 增量目标：在保持 `llm_errors=0` 的同时，显著降低解析噪声与空转比例。
-- 最近更新：新增 30 tick 观察对应的后续优化任务（2026-02-10）。
+- 当前增量阶段：LMSO25（待启动）
+- 增量目标：在保持 `llm_errors=0` 与参数护栏生效的前提下，继续提升动作决策效率。
+- 最近更新：完成 LMSO24 动作参数护栏并通过 30 tick 回归（`action_success=30`、`action_failure=0`、`parse_errors=0`，2026-02-10）。

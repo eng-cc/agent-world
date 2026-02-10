@@ -83,6 +83,25 @@ where
     }
 }
 
+pub(super) fn parse_positive_i64<F>(
+    getter: &mut F,
+    key: &'static str,
+    default: i64,
+    error: fn(String) -> LlmConfigError,
+) -> Result<i64, LlmConfigError>
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    match getter(key) {
+        Some(value) => value
+            .parse::<i64>()
+            .ok()
+            .filter(|parsed| *parsed > 0)
+            .ok_or_else(|| error(value)),
+        None => Ok(default),
+    }
+}
+
 pub(super) fn parse_non_negative_usize<F>(
     getter: &mut F,
     key: &'static str,

@@ -20,6 +20,7 @@ use super::agent::{
 use super::kernel::Observation;
 use super::kernel::WorldEvent;
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
+use super::types::Action;
 
 mod behavior_loop;
 mod config_helpers;
@@ -41,7 +42,8 @@ use decision_flow::{
 use execution_controls::{ActionReplanGuardState, ActiveExecuteUntil};
 
 use config_helpers::{
-    goal_value, parse_non_negative_usize, parse_positive_usize, required_env, toml_value_to_string,
+    goal_value, parse_non_negative_usize, parse_positive_i64, parse_positive_usize, required_env,
+    toml_value_to_string,
 };
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
@@ -58,6 +60,7 @@ pub const ENV_LLM_PROMPT_MAX_HISTORY_ITEMS: &str = "AGENT_WORLD_LLM_PROMPT_MAX_H
 pub const ENV_LLM_PROMPT_PROFILE: &str = "AGENT_WORLD_LLM_PROMPT_PROFILE";
 pub const ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: &str =
     "AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION";
+pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmPromptProfile {
@@ -116,6 +119,7 @@ pub const DEFAULT_LLM_MAX_REPAIR_ROUNDS: usize = 1;
 pub const DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS: usize = 4;
 pub const DEFAULT_LLM_PROMPT_PROFILE: LlmPromptProfile = LlmPromptProfile::Balanced;
 pub const DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: usize = 4;
+pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -139,6 +143,7 @@ pub struct LlmAgentConfig {
     pub prompt_max_history_items: usize,
     pub prompt_profile: LlmPromptProfile,
     pub force_replan_after_same_action: usize,
+    pub harvest_max_amount_cap: i64,
 }
 
 impl LlmAgentConfig {
@@ -249,6 +254,12 @@ impl LlmAgentConfig {
             DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
             |value| LlmConfigError::InvalidForceReplanAfterSameAction { value },
         )?;
+        let harvest_max_amount_cap = parse_positive_i64(
+            &mut getter,
+            ENV_LLM_HARVEST_MAX_AMOUNT_CAP,
+            DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
+            |value| LlmConfigError::InvalidHarvestMaxAmountCap { value },
+        )?;
 
         Ok(Self {
             model,
@@ -264,6 +275,7 @@ impl LlmAgentConfig {
             prompt_max_history_items,
             prompt_profile,
             force_replan_after_same_action,
+            harvest_max_amount_cap,
         })
     }
 
@@ -287,6 +299,7 @@ pub enum LlmConfigError {
     InvalidPromptMaxHistoryItems { value: String },
     InvalidPromptProfile { value: String },
     InvalidForceReplanAfterSameAction { value: String },
+    InvalidHarvestMaxAmountCap { value: String },
     ReadConfigFile { path: String, message: String },
     ParseConfigFile { path: String, message: String },
 }
@@ -316,6 +329,9 @@ impl fmt::Display for LlmConfigError {
             }
             LlmConfigError::InvalidForceReplanAfterSameAction { value } => {
                 write!(f, "invalid force replan after same action value: {value}")
+            }
+            LlmConfigError::InvalidHarvestMaxAmountCap { value } => {
+                write!(f, "invalid harvest max amount cap value: {value}")
             }
             LlmConfigError::ReadConfigFile { path, message } => {
                 write!(f, "read config file failed ({path}): {message}")
@@ -833,6 +849,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             module_history_json: "[]",
             memory_digest: None,
             step_context: PromptStepContext::default(),
+            harvest_max_amount_cap: self.config.harvest_max_amount_cap,
             prompt_budget,
         });
         prompt.system_prompt
@@ -882,6 +899,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 module_calls_used: module_history.len(),
                 module_calls_max: self.config.max_module_calls,
             },
+            harvest_max_amount_cap: self.config.harvest_max_amount_cap,
             prompt_budget,
         })
     }
@@ -917,6 +935,41 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
     fn trace_input(system_prompt: &str, user_prompt: &str) -> String {
         format!("[system]\n{}\n\n[user]\n{}", system_prompt, user_prompt)
+    }
+
+    fn apply_decision_guardrails(
+        &self,
+        decision: AgentDecision,
+    ) -> (AgentDecision, Option<String>) {
+        match decision {
+            AgentDecision::Act(action) => {
+                let (guarded_action, note) = self.apply_action_guardrails(action);
+                (AgentDecision::Act(guarded_action), note)
+            }
+            other => (other, None),
+        }
+    }
+
+    fn apply_action_guardrails(&self, action: Action) -> (Action, Option<String>) {
+        match action {
+            Action::HarvestRadiation {
+                agent_id,
+                max_amount,
+            } if max_amount > self.config.harvest_max_amount_cap => {
+                let capped = self.config.harvest_max_amount_cap;
+                (
+                    Action::HarvestRadiation {
+                        agent_id,
+                        max_amount: capped,
+                    },
+                    Some(format!(
+                        "harvest_radiation.max_amount clamped: {} -> {}",
+                        max_amount, capped
+                    )),
+                )
+            }
+            other => (other, None),
+        }
     }
 
     fn observe_memory_summary(observation: &Observation) -> String {
