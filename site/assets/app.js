@@ -85,6 +85,209 @@
     });
   };
 
+  const bindSectionReveal = () => {
+    const revealNodes = Array.from(document.querySelectorAll("[data-reveal]"));
+    if (!revealNodes.length) {
+      return;
+    }
+
+    const revealAll = () => {
+      revealNodes.forEach((node) => node.classList.add("revealed"));
+    };
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      revealAll();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          entry.target.classList.add("revealed");
+          obs.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.18,
+      },
+    );
+
+    revealNodes.forEach((node) => observer.observe(node));
+
+    window.setTimeout(() => {
+      revealAll();
+      observer.disconnect();
+    }, 1800);
+  };
+
+  const bindCounters = () => {
+    const counters = Array.from(document.querySelectorAll("[data-counter-target]"));
+    if (!counters.length) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const renderFinal = (node) => {
+      const target = Number(node.getAttribute("data-counter-target") || "0");
+      node.textContent = String(Math.max(0, Math.round(target)));
+    };
+
+    if (prefersReducedMotion) {
+      counters.forEach(renderFinal);
+      return;
+    }
+
+    const animate = (node) => {
+      const target = Number(node.getAttribute("data-counter-target") || "0");
+      const safeTarget = Math.max(0, Math.round(target));
+      const startedAt = performance.now();
+      const duration = Math.min(1400, 520 + safeTarget * 20);
+
+      const tick = (now) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        node.textContent = String(Math.round(safeTarget * eased));
+        if (progress < 1) {
+          window.requestAnimationFrame(tick);
+        }
+      };
+
+      window.requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          animate(entry.target);
+          obs.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.4,
+      },
+    );
+
+    counters.forEach((node) => observer.observe(node));
+
+    window.setTimeout(() => {
+      counters.forEach((node) => {
+        if (node.textContent === "0") {
+          const target = Number(node.getAttribute("data-counter-target") || "0");
+          node.textContent = String(Math.max(0, Math.round(target)));
+        }
+      });
+      observer.disconnect();
+    }, 2200);
+  };
+
+  const bindActiveNav = () => {
+    const nav = document.querySelector("[data-section-nav]");
+    if (!nav) {
+      return;
+    }
+
+    const links = Array.from(nav.querySelectorAll("a[href^='#']"));
+    if (!links.length) {
+      return;
+    }
+
+    const linkMap = new Map();
+    const sections = [];
+
+    links.forEach((link) => {
+      const id = link.getAttribute("href")?.slice(1);
+      if (!id) {
+        return;
+      }
+      const section = document.getElementById(id);
+      if (!section) {
+        return;
+      }
+      linkMap.set(section, link);
+      sections.push(section);
+    });
+
+    const setActiveLink = (link) => {
+      links.forEach((node) => {
+        if (node === link) {
+          node.classList.add("active");
+        } else {
+          node.classList.remove("active");
+        }
+      });
+    };
+
+    if (links[0]) {
+      setActiveLink(links[0]);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio);
+        if (!visible.length) {
+          return;
+        }
+        const current = visible[0].target;
+        const link = linkMap.get(current);
+        if (link) {
+          setActiveLink(link);
+        }
+      },
+      {
+        rootMargin: "-28% 0px -54% 0px",
+        threshold: [0.2, 0.35, 0.5],
+      },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+  };
+
+  const bindTimelineFilters = () => {
+    const controls = document.querySelector("[data-timeline-controls]");
+    const timeline = document.querySelector("[data-timeline-group]");
+    if (!controls || !timeline) {
+      return;
+    }
+
+    const buttons = Array.from(controls.querySelectorAll("[data-timeline-filter]"));
+    const items = Array.from(timeline.querySelectorAll("[data-timeline-state]"));
+    if (!buttons.length || !items.length) {
+      return;
+    }
+
+    const applyFilter = (filter) => {
+      items.forEach((item) => {
+        const state = item.getAttribute("data-timeline-state") || "";
+        const visible = filter === "all" || state === filter;
+        item.setAttribute("data-hidden", visible ? "false" : "true");
+      });
+
+      buttons.forEach((button) => {
+        const isActive = button.getAttribute("data-timeline-filter") === filter;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.getAttribute("data-timeline-filter") || "all";
+        applyFilter(filter);
+      });
+    });
+
+    applyFilter("all");
+  };
+
   maybeRedirectByLanguageOnFirstVisit();
   bindLanguageChoicePersistence();
 
@@ -92,6 +295,7 @@
   const toggle = document.querySelector("[data-menu-toggle]");
   const langToggle = document.querySelector("[data-lang-toggle]");
   const langPopover = document.querySelector("[data-lang-popover]");
+  const langItems = Array.from(document.querySelectorAll("[data-lang-item]"));
   const yearNode = document.querySelector("[data-year]");
 
   if (yearNode) {
@@ -131,6 +335,40 @@
       }
     });
 
+    langToggle.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openPopover();
+        if (langItems[0]) {
+          langItems[0].focus();
+        }
+      }
+    });
+
+    langItems.forEach((item, index) => {
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closePopover();
+          langToggle.focus();
+          return;
+        }
+
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          const next = langItems[index + 1] || langItems[0];
+          next.focus();
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          const previous = langItems[index - 1] || langItems[langItems.length - 1];
+          previous.focus();
+        }
+      });
+    });
+
     document.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Node)) {
@@ -154,4 +392,9 @@
       });
     });
   }
+
+  bindSectionReveal();
+  bindCounters();
+  bindActiveNav();
+  bindTimelineFilters();
 })();
