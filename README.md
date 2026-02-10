@@ -26,6 +26,10 @@
 - 对外展示站点（GitHub Pages）：`https://eng-cc.github.io/agent-world/`
   - 中文：`https://eng-cc.github.io/agent-world/`
   - English: `https://eng-cc.github.io/agent-world/en/`
+  - 三期优化亮点（2026-02-10）：
+    - 首屏改为“体验优先”双 CTA（30 秒快速体验 / 设计文档）
+    - 新增“三段式理解路径”（30 秒 / 3 分钟 / 30 分钟）
+    - 新增“真实运行证据”模块（命令闭环、事件样例、近期更新）
 - 设计文档：`doc/world-simulator.md`
 - 项目管理文档：`doc/world-simulator.project.md`
 - 任务日志：`doc/devlog/`

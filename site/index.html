@@ -33,10 +33,12 @@
       </a>
       <nav class="nav" data-menu data-section-nav>
         <a href="#why">差异化</a>
+        <a href="#path">路径</a>
         <a href="#matrix">能力矩阵</a>
         <a href="#architecture">架构</a>
         <a href="#scenarios">场景</a>
         <a href="#demo">演示</a>
+        <a href="#proof">证据</a>
         <a href="#roadmap">路线</a>
         <a href="#faq">FAQ</a>
         <a href="#contribute">参与</a>
@@ -67,23 +69,31 @@
       <section class="hero section section-hero" id="hero" data-reveal>
         <div class="hero-grid">
           <div>
-            <p class="eyebrow">Persistent · Believable · Emergence-first</p>
-            <h1>把“文明级 Agent 演化”做成可持续运行的真实世界</h1>
+            <p class="eyebrow">Persistent · Believable · Auditable</p>
+            <h1>把“文明级 Agent 演化”做成可持续运行、可验证的真实世界</h1>
             <p class="subtitle">
-              `agent-world` 是一个规则先行的多主体仿真引擎：从资源、制度到关系网络，
-              所有行为都被约束、记录、回放与审计。它不是一次性 Demo，而是可长期运行的世界系统。
+              `agent-world` 是一个规则先行的多主体仿真引擎：从资源、制度到关系网络，所有行为都被约束、记录、
+              回放与审计。它不是一次性 Demo，而是可长期运行的世界系统。
             </p>
+            <p class="hero-lead">先用 30 秒看到结果，再用 3 分钟理解架构，最后用 30 分钟跑起你的第一条世界演化链路。</p>
+            <div class="cta-row">
+              <a class="button primary" href="#demo">30 秒快速体验</a>
+              <a
+                class="button secondary"
+                href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md"
+                target="_blank"
+                rel="noreferrer"
+                >阅读设计文档</a
+              >
+              <a class="button ghost" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
+                >查看源码</a
+              >
+            </div>
             <div class="trust-pills">
               <span>Rust Workspace</span>
               <span>LLM-Compatible</span>
               <span>Replay & Audit</span>
               <span>WASM Extensible</span>
-            </div>
-            <div class="cta-row">
-              <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-                >查看源码</a
-              >
-              <a class="button secondary" href="#demo">快速体验</a>
             </div>
             <div class="hero-stats">
               <article class="metric-box">
@@ -95,19 +105,19 @@
                 <span>标准运行路径</span>
               </article>
               <article class="metric-box">
-                <strong data-counter-target="2">0</strong>
-                <span>双语展示版本</span>
+                <strong data-counter-target="4">0</strong>
+                <span>真实 viewer 场景证据</span>
               </article>
               <article class="metric-box">
                 <strong data-counter-target="100">0</strong>
-                <span>关键行为可审计覆盖（%）</span>
+                <span>发布门禁目标分数（Lighthouse）</span>
               </article>
             </div>
           </div>
           <aside class="hero-visual">
             <figure class="hero-figure">
-              <img src="assets/images/world-loop.svg" alt="agent-world 核心循环示意图" />
-              <figcaption>规则约束 → Agent 决策 → 事件沉淀 → 观测回放</figcaption>
+              <img src="assets/images/world-constellation.svg" alt="agent-world 世界观主视觉示意图" />
+              <figcaption>小行星带资源约束下的多主体协作、竞争与制度演化。</figcaption>
             </figure>
             <div class="pulse-panel">
               <p class="panel-title">系统脉冲</p>
@@ -118,6 +128,11 @@
                 <li><span>LLM Bridge</span><strong>Repair Enabled</strong></li>
               </ul>
             </div>
+            <ul class="hero-proof-points">
+              <li>证据：4 张真实 viewer 场景截图</li>
+              <li>闭环：离线回放 + 在线演化双路径</li>
+              <li>质量：中英文页面门禁可量化</li>
+            </ul>
           </aside>
         </div>
       </section>
@@ -136,6 +151,31 @@
           <article class="card">
             <h3>从“单智能体”到“文明涌现”</h3>
             <p>多主体在资源、制度、关系中长期演化，支持观察协作、竞争、冲突与秩序形成过程。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="path" class="section" data-reveal>
+        <h2>三段式理解路径</h2>
+        <p class="section-intro">先看到结果，再理解架构，最后动手复现；每一步都可独立验证价值。</p>
+        <div class="story-path">
+          <article class="story-step story-step-key" data-story-step>
+            <p class="story-kicker">30 秒</p>
+            <h3>先判断“值不值得继续看”</h3>
+            <p>从场景截图、核心指标和价值主张快速判断项目定位与差异化能力。</p>
+            <a class="button secondary" href="#scenarios">查看场景证据</a>
+          </article>
+          <article class="story-step" data-story-step>
+            <p class="story-kicker">3 分钟</p>
+            <h3>再理解“系统如何闭环”</h3>
+            <p>阅读能力矩阵与架构剖面，明确 Runtime / Simulator / Viewer / LLM 的职责边界。</p>
+            <a class="button secondary" href="#architecture">查看架构剖面</a>
+          </article>
+          <article class="story-step" data-story-step>
+            <p class="story-kicker">30 分钟</p>
+            <h3>最后验证“本地是否跑得起来”</h3>
+            <p>按命令链执行 demo 与 viewer，观察世界演化并复盘关键事件。</p>
+            <a class="button secondary" href="#demo">执行快速开始</a>
           </article>
         </div>
       </section>
@@ -297,6 +337,113 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
         </article>
       </section>
 
+      <section id="proof" class="section" data-reveal>
+        <h2>真实运行证据</h2>
+        <p class="section-intro">把“可运行、可复现、可审计”放在同一页面验证，而不只停留在口号。</p>
+        <div class="proof-switcher" data-proof-switcher>
+          <p class="proof-switcher-label">场景事件时间线</p>
+          <div class="proof-switcher-controls" role="group" aria-label="切换证据场景" data-proof-controls>
+            <button
+              class="proof-switch-btn is-active"
+              type="button"
+              data-proof-tab="minimal"
+              aria-pressed="true"
+            >
+              minimal
+            </button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="twin" aria-pressed="false">twin_region</button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="triad" aria-pressed="false">triad_region</button>
+            <button class="proof-switch-btn" type="button" data-proof-tab="asteroid" aria-pressed="false">asteroid_fragment</button>
+          </div>
+        </div>
+        <div class="proof-grid">
+          <article class="proof-card proof-card-key">
+            <h3>命令闭环（可本地复现）</h3>
+            <ol class="proof-list">
+              <li>生成世界数据（`world_viewer_demo`）</li>
+              <li>启动回放服务（`world_viewer_server`）</li>
+              <li>连接 viewer 观察演化与事件</li>
+            </ol>
+            <a class="button secondary" href="#demo">复制命令开始</a>
+          </article>
+          <article class="proof-card">
+            <h3>事件样例（节选）</h3>
+            <pre><code data-proof-code data-proof-panel="minimal" data-proof-visible="true">{
+  "tick": 128,
+  "agent": "agent-1",
+  "action": "harvest",
+  "result": "accepted",
+  "delta": { "electricity": +12 }
+}</code></pre>
+            <pre><code data-proof-code data-proof-panel="twin" data-proof-visible="false">[
+  { "tick": 84, "agent": "agent-1", "action": "move", "to": "base-b" },
+  { "tick": 91, "agent": "agent-2", "action": "trade_power", "amount": 9 },
+  { "tick": 96, "result": "both_agents_online" }
+]</code></pre>
+            <pre><code data-proof-code data-proof-panel="triad" data-proof-visible="false">[
+  { "tick": 142, "agent": "agent-3", "action": "request_help", "from": "agent-1" },
+  { "tick": 149, "agent": "agent-1", "action": "route_energy", "to": "agent-3" },
+  { "tick": 166, "result": "triad_stability_up" }
+]</code></pre>
+            <pre><code data-proof-code data-proof-panel="asteroid" data-proof-visible="false">[
+  { "tick": 58, "agent": "agent-2", "action": "scan_fragment", "yield": 4 },
+  { "tick": 63, "agent": "agent-2", "action": "harvest", "delta": { "electricity": +7 } },
+  { "tick": 79, "result": "resource_path_discovered" }
+]</code></pre>
+          </article>
+          <article class="proof-card">
+            <h3>近期站点改进（2026-02-10）</h3>
+            <ul class="proof-updates">
+              <li>新增架构示意图与实战截图画廊</li>
+              <li>补齐中英文同构信息架构</li>
+              <li>完善时间线筛选与可访问性键盘流</li>
+            </ul>
+          </article>
+        </div>
+        <div class="proof-strip">
+          <span>证据覆盖：场景截图 × 4</span>
+          <span>观测路径：Offline Replay + Live Viewer</span>
+          <span>文档链路：README / 设计 / Devlog</span>
+        </div>
+        <div class="proof-timeline" data-proof-timeline>
+          <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
+            <span>Tick 128</span>
+            <p>minimal：agent-1 harvest 被接受，电力净增 +12。</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
+            <span>Tick 133</span>
+            <p>minimal：进入短暂等待，系统保持规则稳定推进。</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
+            <span>Tick 84</span>
+            <p>twin_region：agent-1 跨区域移动到 base-b。</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="twin" data-proof-visible="false">
+            <span>Tick 91</span>
+            <p>twin_region：agent-2 发起 power 交易，双节点达成协同。</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
+            <span>Tick 142</span>
+            <p>triad_region：agent-3 请求协作支援。</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="triad" data-proof-visible="false">
+            <span>Tick 166</span>
+            <p>triad_region：协作路由生效，群体稳定性提升。</p>
+          </article>
+
+          <article class="proof-timeline-item" data-proof-event="asteroid" data-proof-visible="false">
+            <span>Tick 58</span>
+            <p>asteroid_fragment：首次扫描到可采集碎片。</p>
+          </article>
+          <article class="proof-timeline-item" data-proof-event="asteroid" data-proof-visible="false">
+            <span>Tick 79</span>
+            <p>asteroid_fragment：资源路径被识别并纳入后续策略。</p>
+          </article>
+        </div>
+      </section>
+
       <section id="roadmap" class="section" data-reveal>
         <h2>里程碑时间线</h2>
         <div class="timeline-toolbar" data-timeline-controls>
@@ -359,7 +506,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <span>目标 Lighthouse 移动端评分</span>
           </article>
           <article class="signal-box">
-            <strong data-counter-target="8">0</strong>
+            <strong data-counter-target="10">0</strong>
             <span>核心展示模块（双语同构）</span>
           </article>
           <article class="signal-box">
