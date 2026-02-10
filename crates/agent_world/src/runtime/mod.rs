@@ -161,12 +161,14 @@ pub use distributed_observer::{
 pub use distributed_membership_sync::{
     FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,
     MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,
-    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport,
+    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport, MembershipRevocationAlertPolicy,
+    MembershipRevocationAlertSeverity, MembershipRevocationAnomalyAlert,
     MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
-    MembershipRevocationReconcileReport, MembershipRevocationSyncPolicy,
-    MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome, MembershipSnapshotAuditRecord,
-    MembershipSnapshotRestorePolicy, MembershipSyncClient, MembershipSyncReport,
-    MembershipSyncSubscription,
+    MembershipRevocationReconcileReport, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduledRunReport,
+    MembershipRevocationSyncPolicy, MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome,
+    MembershipSnapshotAuditRecord, MembershipSnapshotRestorePolicy, MembershipSyncClient,
+    MembershipSyncReport, MembershipSyncSubscription,
 };
 // Distributed observer replay validation
 pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};

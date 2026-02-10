@@ -419,3 +419,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **对账策略**：新增 `MembershipRevocationReconcilePolicy`（trusted_nodes + auto_revoke_missing_keys）。
 - **对账报告**：新增 `MembershipRevocationReconcileReport`，记录 `in_sync/diverged/merged/rejected`。
 - **收敛机制**：`reconcile_revocations_with_policy` 可在 divergence 时自动补齐本地缺失吊销 key，实现跨节点状态收敛。
+
+## 成员目录吊销异常告警与对账调度自动化（草案）
+- **告警策略**：新增 `MembershipRevocationAlertPolicy`（`warn_diverged_threshold`、`critical_rejected_threshold`）。
+- **告警结构**：新增 `MembershipRevocationAnomalyAlert` 与 `MembershipRevocationAlertSeverity`，统一表达 warn/critical 异常。
+- **告警评估**：新增 `evaluate_revocation_reconcile_alerts(...)`，将对账报告映射为结构化告警列表。
+- **调度策略**：新增 `MembershipRevocationReconcileSchedulePolicy`（checkpoint/reconcile 间隔）。
+- **调度状态**：新增 `MembershipRevocationReconcileScheduleState`，记录最近 checkpoint/reconcile 执行时间。
+- **调度执行**：新增 `run_revocation_reconcile_schedule(...)`，自动判定到期任务并输出 `MembershipRevocationScheduledRunReport`。

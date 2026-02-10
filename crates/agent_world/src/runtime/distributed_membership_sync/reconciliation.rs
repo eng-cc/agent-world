@@ -54,6 +54,60 @@ pub struct MembershipRevocationReconcileReport {
     pub rejected: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationAlertPolicy {
+    pub warn_diverged_threshold: usize,
+    pub critical_rejected_threshold: usize,
+}
+
+impl Default for MembershipRevocationAlertPolicy {
+    fn default() -> Self {
+        Self {
+            warn_diverged_threshold: 1,
+            critical_rejected_threshold: 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MembershipRevocationAlertSeverity {
+    Warn,
+    Critical,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationAnomalyAlert {
+    pub world_id: String,
+    pub node_id: String,
+    pub detected_at_ms: i64,
+    pub severity: MembershipRevocationAlertSeverity,
+    pub code: String,
+    pub message: String,
+    pub drained: usize,
+    pub diverged: usize,
+    pub rejected: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationReconcileSchedulePolicy {
+    pub checkpoint_interval_ms: i64,
+    pub reconcile_interval_ms: i64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationReconcileScheduleState {
+    pub last_checkpoint_at_ms: Option<i64>,
+    pub last_reconcile_at_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationScheduledRunReport {
+    pub checkpoint_published: bool,
+    pub reconcile_executed: bool,
+    pub reconcile_report: Option<MembershipRevocationReconcileReport>,
+}
+
 impl MembershipSyncClient {
     pub fn publish_revocation_checkpoint(
         &self,
@@ -129,6 +183,105 @@ impl MembershipSyncClient {
 
         Ok(report)
     }
+
+    pub fn evaluate_revocation_reconcile_alerts(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        detected_at_ms: i64,
+        report: &MembershipRevocationReconcileReport,
+        policy: &MembershipRevocationAlertPolicy,
+    ) -> Result<Vec<MembershipRevocationAnomalyAlert>, WorldError> {
+        let world_id = logic::normalized_world_id(world_id)?;
+        let node_id = normalized_node_id(node_id)?;
+        let mut alerts = Vec::new();
+
+        if policy.critical_rejected_threshold > 0
+            && report.rejected >= policy.critical_rejected_threshold
+        {
+            alerts.push(MembershipRevocationAnomalyAlert {
+                world_id: world_id.clone(),
+                node_id: node_id.clone(),
+                detected_at_ms,
+                severity: MembershipRevocationAlertSeverity::Critical,
+                code: "reconcile_rejected".to_string(),
+                message: format!(
+                    "membership revocation reconcile rejected {} checkpoint(s)",
+                    report.rejected
+                ),
+                drained: report.drained,
+                diverged: report.diverged,
+                rejected: report.rejected,
+            });
+        }
+
+        if policy.warn_diverged_threshold > 0 && report.diverged >= policy.warn_diverged_threshold {
+            alerts.push(MembershipRevocationAnomalyAlert {
+                world_id,
+                node_id,
+                detected_at_ms,
+                severity: MembershipRevocationAlertSeverity::Warn,
+                code: "reconcile_diverged".to_string(),
+                message: format!(
+                    "membership revocation reconcile diverged on {} checkpoint(s)",
+                    report.diverged
+                ),
+                drained: report.drained,
+                diverged: report.diverged,
+                rejected: report.rejected,
+            });
+        }
+
+        Ok(alerts)
+    }
+
+    pub fn run_revocation_reconcile_schedule(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        reconcile_policy: &MembershipRevocationReconcilePolicy,
+        schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+        schedule_state: &mut MembershipRevocationReconcileScheduleState,
+    ) -> Result<MembershipRevocationScheduledRunReport, WorldError> {
+        validate_schedule_policy(schedule_policy)?;
+
+        let mut report = MembershipRevocationScheduledRunReport {
+            checkpoint_published: false,
+            reconcile_executed: false,
+            reconcile_report: None,
+        };
+
+        if schedule_due(
+            schedule_state.last_checkpoint_at_ms,
+            now_ms,
+            schedule_policy.checkpoint_interval_ms,
+        ) {
+            self.publish_revocation_checkpoint(world_id, node_id, now_ms, keyring)?;
+            schedule_state.last_checkpoint_at_ms = Some(now_ms);
+            report.checkpoint_published = true;
+        }
+
+        if schedule_due(
+            schedule_state.last_reconcile_at_ms,
+            now_ms,
+            schedule_policy.reconcile_interval_ms,
+        ) {
+            let reconcile_report = self.reconcile_revocations_with_policy(
+                world_id,
+                subscription,
+                keyring,
+                reconcile_policy,
+            )?;
+            schedule_state.last_reconcile_at_ms = Some(now_ms);
+            report.reconcile_executed = true;
+            report.reconcile_report = Some(reconcile_report);
+        }
+
+        Ok(report)
+    }
 }
 
 fn validate_revocation_checkpoint(
@@ -195,4 +348,33 @@ fn normalized_node_id(raw: &str) -> Result<String, WorldError> {
         });
     }
     Ok(normalized.to_string())
+}
+
+fn validate_schedule_policy(
+    schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+) -> Result<(), WorldError> {
+    if schedule_policy.checkpoint_interval_ms <= 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation checkpoint_interval_ms must be positive, got {}",
+                schedule_policy.checkpoint_interval_ms
+            ),
+        });
+    }
+    if schedule_policy.reconcile_interval_ms <= 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation reconcile_interval_ms must be positive, got {}",
+                schedule_policy.reconcile_interval_ms
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn schedule_due(last_run_ms: Option<i64>, now_ms: i64, interval_ms: i64) -> bool {
+    match last_run_ms {
+        None => true,
+        Some(last_run_ms) => now_ms.saturating_sub(last_run_ms) >= interval_ms,
+    }
 }

@@ -195,6 +195,15 @@
 - [x] 对账支持可选自动收敛（auto revoke missing keys）
 - [x] 单元测试与分布式回归
 
+### 35. P3.18 成员目录吊销异常告警与对账调度自动化
+- [x] 新增 `MembershipRevocationAlertPolicy/Severity/AnomalyAlert`
+- [x] 新增 `evaluate_revocation_reconcile_alerts`
+- [x] 新增 `MembershipRevocationReconcileSchedulePolicy/State`
+- [x] 新增 `MembershipRevocationScheduledRunReport`
+- [x] 新增 `run_revocation_reconcile_schedule` 调度入口
+- [x] 调度策略 interval 参数校验（必须为正）
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -202,6 +211,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.17 完成（成员目录吊销授权治理与跨节点对账）
-- 下一步：P3.18（成员目录吊销异常告警与对账调度自动化）
-- 最近更新：成员目录吊销授权治理与跨节点对账（2026-02-10）
+- 当前阶段：P3.18 完成（成员目录吊销异常告警与对账调度自动化）
+- 下一步：P3.19（成员目录吊销告警上报与调度状态持久化）
+- 最近更新：成员目录吊销异常告警与对账调度自动化（2026-02-10）
