@@ -130,7 +130,9 @@ pub use distributed_lease::{LeaseDecision, LeaseManager, LeaseState};
 pub use distributed_client::DistributedClient;
 
 // Distributed DHT adapter
-pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
+pub use distributed_dht::{
+    DistributedDht, InMemoryDht, MembershipDirectorySnapshot, ProviderRecord,
+};
 // Quorum consensus helpers for head commits
 pub use distributed_consensus::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,

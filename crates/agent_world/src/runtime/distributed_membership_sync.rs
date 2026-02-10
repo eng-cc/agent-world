@@ -9,6 +9,7 @@ use super::distributed_consensus::{
     ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
     QuorumConsensus,
 };
+use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
@@ -36,6 +37,30 @@ impl MembershipDirectoryAnnounce {
             reason: request.reason.clone(),
             validators: result.validators.clone(),
             quorum_threshold: result.quorum_threshold,
+        }
+    }
+
+    pub fn into_snapshot(self) -> MembershipDirectorySnapshot {
+        MembershipDirectorySnapshot {
+            world_id: self.world_id,
+            requester_id: self.requester_id,
+            requested_at_ms: self.requested_at_ms,
+            reason: self.reason,
+            validators: self.validators,
+            quorum_threshold: self.quorum_threshold,
+        }
+    }
+}
+
+impl From<MembershipDirectorySnapshot> for MembershipDirectoryAnnounce {
+    fn from(value: MembershipDirectorySnapshot) -> Self {
+        Self {
+            world_id: value.world_id,
+            requester_id: value.requester_id,
+            requested_at_ms: value.requested_at_ms,
+            reason: value.reason,
+            validators: value.validators,
+            quorum_threshold: value.quorum_threshold,
         }
     }
 }
@@ -78,6 +103,18 @@ impl MembershipSyncClient {
         let payload = to_canonical_cbor(&announce)?;
         self.network
             .publish(&topic_membership(world_id), &payload)?;
+        Ok(announce)
+    }
+
+    pub fn publish_membership_change_with_dht(
+        &self,
+        world_id: &str,
+        request: &ConsensusMembershipChangeRequest,
+        result: &ConsensusMembershipChangeResult,
+        dht: &(dyn DistributedDht + Send + Sync),
+    ) -> Result<MembershipDirectoryAnnounce, WorldError> {
+        let announce = self.publish_membership_change(world_id, request, result)?;
+        dht.put_membership_directory(world_id, &announce.clone().into_snapshot())?;
         Ok(announce)
     }
 
@@ -125,6 +162,30 @@ impl MembershipSyncClient {
 
         Ok(report)
     }
+
+    pub fn restore_membership_from_dht(
+        &self,
+        world_id: &str,
+        consensus: &mut QuorumConsensus,
+        dht: &(dyn DistributedDht + Send + Sync),
+    ) -> Result<Option<ConsensusMembershipChangeResult>, WorldError> {
+        let snapshot = dht.get_membership_directory(world_id)?;
+        let Some(snapshot) = snapshot else {
+            return Ok(None);
+        };
+        let announce = MembershipDirectoryAnnounce::from(snapshot);
+        let request = ConsensusMembershipChangeRequest {
+            requester_id: announce.requester_id,
+            requested_at_ms: announce.requested_at_ms,
+            reason: announce.reason,
+            change: ConsensusMembershipChange::ReplaceValidators {
+                validators: announce.validators,
+                quorum_threshold: announce.quorum_threshold,
+            },
+        };
+        let result = consensus.apply_membership_change(&request)?;
+        Ok(Some(result))
+    }
 }
 
 #[cfg(test)]
@@ -132,6 +193,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::super::distributed::{topic_membership, TOPIC_MEMBERSHIP_SUFFIX};
+    use super::super::distributed_dht::{DistributedDht, InMemoryDht};
     use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
     use super::*;
 
@@ -242,5 +304,86 @@ mod tests {
         assert_eq!(report.ignored, 1);
         assert_eq!(consensus.validators().len(), 4);
         assert_eq!(consensus.quorum_threshold(), 3);
+    }
+
+    #[test]
+    fn publish_membership_change_with_dht_persists_snapshot() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+        let request = membership_request(
+            "seq-1",
+            300,
+            ConsensusMembershipChange::AddValidator {
+                validator_id: "seq-4".to_string(),
+            },
+        );
+        let result = ConsensusMembershipChangeResult {
+            applied: true,
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+                "seq-4".to_string(),
+            ],
+            quorum_threshold: 3,
+        };
+
+        let announce = sync_client
+            .publish_membership_change_with_dht("w1", &request, &result, dht.as_ref())
+            .expect("publish with dht");
+        let snapshot = dht
+            .get_membership_directory("w1")
+            .expect("get membership")
+            .expect("snapshot exists");
+        assert_eq!(MembershipDirectoryAnnounce::from(snapshot), announce);
+    }
+
+    #[test]
+    fn restore_membership_from_dht_applies_replace_snapshot() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+        let snapshot = MembershipDirectorySnapshot {
+            world_id: "w1".to_string(),
+            requester_id: "seq-1".to_string(),
+            requested_at_ms: 400,
+            reason: Some("restart".to_string()),
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+                "seq-4".to_string(),
+            ],
+            quorum_threshold: 3,
+        };
+        dht.put_membership_directory("w1", &snapshot)
+            .expect("put membership");
+
+        let mut consensus = sample_consensus();
+        let restored = sync_client
+            .restore_membership_from_dht("w1", &mut consensus, dht.as_ref())
+            .expect("restore")
+            .expect("restored");
+        assert!(restored.applied);
+        assert_eq!(consensus.validators().len(), 4);
+        assert_eq!(consensus.quorum_threshold(), 3);
+    }
+
+    #[test]
+    fn restore_membership_from_dht_returns_none_when_missing() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+        let mut consensus = sample_consensus();
+
+        let restored = sync_client
+            .restore_membership_from_dht("w1", &mut consensus, dht.as_ref())
+            .expect("restore result");
+        assert!(restored.is_none());
+        assert_eq!(consensus.validators().len(), 3);
+        assert_eq!(consensus.quorum_threshold(), 2);
     }
 }

@@ -151,6 +151,12 @@
 - [x] 幂等同步处理与单元测试
 - [x] 分布式回归测试
 
+### 29. P3.12 成员目录 DHT 快照与恢复策略
+- [x] 扩展 DistributedDht 成员目录快照 put/get 接口
+- [x] MembershipSyncClient 发布联动 DHT 快照写入
+- [x] MembershipSyncClient DHT 快照恢复接口
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -158,6 +164,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.11 完成（成员目录同步与变更广播）
-- 下一步：P3.12（成员目录 DHT 快照与恢复策略）
-- 最近更新：成员目录同步与变更广播（2026-02-10）
+- 当前阶段：P3.12 完成（成员目录 DHT 快照与恢复策略）
+- 下一步：P3.13（成员目录快照签名与来源校验）
+- 最近更新：成员目录 DHT 快照与恢复策略（2026-02-10）

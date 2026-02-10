@@ -22,6 +22,7 @@ pub const RR_GET_MODULE_MANIFEST: &str = "/aw/rr/1.0.0/get_module_manifest";
 pub const RR_GET_MODULE_ARTIFACT: &str = "/aw/rr/1.0.0/get_module_artifact";
 
 pub const DHT_WORLD_PREFIX: &str = "/aw/world";
+pub const DHT_MEMBERSHIP_SUFFIX: &str = "membership";
 
 pub fn gossipsub_topic(world_id: &str, suffix: &str) -> String {
     format!("{GOSSIPSUB_PREFIX}.{world_id}.{suffix}")
@@ -53,6 +54,10 @@ pub fn dht_world_head_key(world_id: &str) -> String {
 
 pub fn dht_provider_key(world_id: &str, content_hash: &str) -> String {
     format!("{DHT_WORLD_PREFIX}/{world_id}/providers/{content_hash}")
+}
+
+pub fn dht_membership_key(world_id: &str) -> String {
+    format!("{DHT_WORLD_PREFIX}/{world_id}/{DHT_MEMBERSHIP_SUFFIX}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -284,6 +289,16 @@ mod tests {
         assert_eq!(topic_head("w1"), "aw.w1.head");
         assert_eq!(topic_event("w1"), "aw.w1.event");
         assert_eq!(topic_membership("w1"), "aw.w1.membership");
+    }
+
+    #[test]
+    fn dht_key_helpers_match_expected_format() {
+        assert_eq!(dht_world_head_key("w1"), "/aw/world/w1/head");
+        assert_eq!(
+            dht_provider_key("w1", "hash"),
+            "/aw/world/w1/providers/hash"
+        );
+        assert_eq!(dht_membership_key("w1"), "/aw/world/w1/membership");
     }
 
     #[test]
