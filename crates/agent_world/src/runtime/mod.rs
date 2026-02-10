@@ -23,6 +23,7 @@ mod distributed_head_follow;
 mod distributed_index;
 mod distributed_index_store;
 mod distributed_lease;
+mod distributed_membership_sync;
 mod distributed_mempool;
 mod distributed_net;
 mod distributed_observer;
@@ -153,6 +154,11 @@ pub use distributed_gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt
 // Distributed observer
 pub use distributed_observer::{
     HeadFollowReport, HeadSyncReport, HeadSyncResult, ObserverClient, ObserverSubscription,
+};
+// Distributed membership directory sync
+pub use distributed_membership_sync::{
+    MembershipDirectoryAnnounce, MembershipSyncClient, MembershipSyncReport,
+    MembershipSyncSubscription,
 };
 // Distributed observer replay validation
 pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};

@@ -9,6 +9,7 @@ pub const TOPIC_ACTION_SUFFIX: &str = "action";
 pub const TOPIC_BLOCK_SUFFIX: &str = "block";
 pub const TOPIC_HEAD_SUFFIX: &str = "head";
 pub const TOPIC_EVENT_SUFFIX: &str = "event";
+pub const TOPIC_MEMBERSHIP_SUFFIX: &str = "membership";
 
 pub const RR_PROTOCOL_PREFIX: &str = "/aw/rr/1.0.0";
 pub const RR_GET_WORLD_HEAD: &str = "/aw/rr/1.0.0/get_world_head";
@@ -40,6 +41,10 @@ pub fn topic_head(world_id: &str) -> String {
 
 pub fn topic_event(world_id: &str) -> String {
     gossipsub_topic(world_id, TOPIC_EVENT_SUFFIX)
+}
+
+pub fn topic_membership(world_id: &str) -> String {
+    gossipsub_topic(world_id, TOPIC_MEMBERSHIP_SUFFIX)
 }
 
 pub fn dht_world_head_key(world_id: &str) -> String {
@@ -278,6 +283,7 @@ mod tests {
         assert_eq!(topic_block("w1"), "aw.w1.block");
         assert_eq!(topic_head("w1"), "aw.w1.head");
         assert_eq!(topic_event("w1"), "aw.w1.event");
+        assert_eq!(topic_membership("w1"), "aw.w1.membership");
     }
 
     #[test]

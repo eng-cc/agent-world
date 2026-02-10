@@ -91,6 +91,13 @@
 - **冲突处理**：未过期时拒绝并返回当前 lease 信息。
 - **幂等要求**：基于 `lease_id` 续约/释放，避免重复操作。
 
+## 成员目录广播与同步（草案）
+- **广播主题**：`aw.<world_id>.membership`，用于传播最新 validator 目录与 quorum 阈值。
+- **广播载荷**：`MembershipDirectoryAnnounce { requester_id, requested_at_ms, validators, quorum_threshold }`。
+- **同步策略**：订阅节点将广播目录转换为 `ReplaceValidators` 并尝试应用到本地 `QuorumConsensus`。
+- **幂等语义**：若目录未变化则记为 ignored；目录变化成功则记为 applied。
+- **安全约束**：若本地存在 pending 提案，沿用共识层保护策略，阻断目录切换。
+
 ## 数据分类与存放策略
 
 ### 1. WASM 代码与模块元信息
@@ -196,7 +203,7 @@
 - **治理闭环**：治理 shadow/apply 可使用 `shadow_proposal_with_fetch` / `apply_proposal_with_fetch` 自动拉取缺失工件。
 
 ### 协议命名约定（草案）
-- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`）。
+- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
 - **DHT Key**：`/aw/world/<world_id>/<key>`，例如 `head`、`providers/<content_hash>`。
 - **内容哈希**：V1 使用 `blake3` 十六进制字符串；后续可升级为 CIDv1（保留兼容层）。
@@ -206,6 +213,7 @@
 - `aw.<world_id>.block`：WorldBlock/BlockAnnounce 广播（高度与 hash）。
 - `aw.<world_id>.head`：WorldHeadAnnounce 广播（头指针更新）。
 - `aw.<world_id>.event`：EventAnnounce 广播（轻量事件摘要）。
+- `aw.<world_id>.membership`：成员目录广播（validator 集合与 quorum 阈值）。
 
 ### Request/Response 协议（草案）
 - `/aw/rr/1.0.0/get_world_head`
