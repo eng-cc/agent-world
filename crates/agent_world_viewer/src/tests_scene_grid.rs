@@ -110,6 +110,8 @@ fn sample_assets() -> Viewer3dAssets {
     Viewer3dAssets {
         agent_mesh: Handle::default(),
         agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
         asset_mesh: Handle::default(),

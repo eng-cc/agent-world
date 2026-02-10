@@ -3,13 +3,14 @@
 ## 目标
 - 将 Agent 从“单球体”改为更接近机器人形态的渲染方式，提升 3D 场景可读性。
 - 尽量直接体现 Agent 的模块数量，让观察者无需展开右侧详情即可判断“模块密度”。
+- 将模块渲染升级为“多个小立方体拼接”的机器人式表达，做到“一眼可见模块数量与分布”。
 - 保持 Agent 体积与 `height_cm` 真实尺寸口径一致（至少高度严格对齐），避免视觉尺寸误导。
 
 ## 范围
 
 ### 范围内
 - 将 Agent 主体 mesh 从球体改为纵向机体（胶囊体）渲染。
-- 基于 Agent 模块数量渲染“模块环带”层，直观看出模块数量差异。
+- 基于 Agent 模块数量渲染“模块立方体拼接体”（robot-like），直观看出模块数量差异。
 - 模块数量优先读取 `Agent.body_state.slots` 中 `installed_module` 数量。
 - 统一 Agent 尺寸映射：`height_cm -> body_height_m`，并按固定宽高比推导机体半径。
 - 保持现有选择/高亮/标签机制兼容。
@@ -32,21 +33,23 @@
 - 主数据源：`Agent.body_state.slots[*].installed_module`
 - 计算：`module_count = count(installed_module.is_some())`
 - 渲染：
-  - 每个 Agent 主体外圈叠加 `module_count` 条环带（设置上限，避免极端遮挡）。
-  - 环带按高度均匀分布，便于在 2D/3D 视角都能快速读数。
+  - 每个 Agent 渲染 `module_count` 个模块立方体（设置上限，避免极端 draw call）。
+  - 立方体按预定义“机器人骨架槽位”优先放置（头/躯干/肩/臂/腿），超出后按环层补位。
+  - 单个立方体对应一个模块，保证数量可解释性。
 
 ### 3) Viewer 侧结构调整
-- `Viewer3dAssets` 新增 Agent 模块环带 mesh/material 句柄。
+- `Viewer3dAssets` 新增 Agent 模块立方体 mesh/material 句柄。
 - `AgentMarker` 扩展 `module_count` 字段，便于调试和测试断言。
-- `spawn_agent_entity` 入参增加 `module_count`，并在更新路径中同步刷新环带。
+- `spawn_agent_entity` 入参增加 `module_count`，并在更新路径中同步刷新模块立方体布局。
 
 ## 里程碑
 - **AMR-1**：设计与项目文档完成。
 - **AMR-2**：Agent 主体渲染从球体替换为胶囊体，尺寸映射落地。
-- **AMR-3**：模块数量环带渲染接入并与 Snapshot 数据联动。
-- **AMR-4**：补齐测试、截图闭环验证、文档收口。
+- **AMR-3**：模块数量渲染接入并与 Snapshot 数据联动。
+- **AMR-4**：模块渲染升级为“立方体拼接机器人”布局。
+- **AMR-5**：补齐测试、截图闭环验证、文档收口。
 
 ## 风险
-- 环带数量过高导致遮挡：通过上限与间距控制缓解。
+- 立方体数量过高导致遮挡/性能抖动：通过上限与分层布局控制缓解。
 - 非常小/非常大的 Agent 宽高比失真：通过尺寸 clamp 保底。
 - 事件增量场景中模块数不同步：首版先以快照数据为准，后续再补事件级精细同步。
