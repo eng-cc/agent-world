@@ -1109,6 +1109,34 @@ fn llm_agent_compacts_large_module_result_payload_for_prompt_history() {
 }
 
 #[test]
+fn llm_agent_compacts_dense_observation_for_prompt_context() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let observation = make_dense_observation(42, 40);
+
+    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
+    assert!(prompt.contains("\"visible_agents_total\":41"));
+    assert!(prompt.contains("\"visible_agents_omitted\":"));
+    assert!(prompt.contains("\"visible_locations_total\":41"));
+    assert!(prompt.contains("\"visible_locations_omitted\":"));
+    assert!(!prompt.contains("agent-extra-39"));
+    assert!(!prompt.contains("loc-extra-39"));
+}
+
+#[test]
+fn llm_agent_compacts_large_module_args_payload_for_prompt_history() {
+    let giant_query = format!("query-{}", "x".repeat(4_000));
+    let history = vec![ModuleCallExchange {
+        module: "memory.long_term.search".to_string(),
+        args: serde_json::json!({"query": giant_query.clone()}),
+        result: serde_json::json!({"ok": true}),
+    }];
+
+    let history_json = LlmAgentBehavior::<MockClient>::module_history_json_for_prompt(&history);
+    assert!(history_json.contains("\"truncated\":true"));
+    assert!(!history_json.contains(giant_query.as_str()));
+}
+
+#[test]
 fn llm_agent_records_failed_action_into_long_term_memory() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let result = ActionResult {
