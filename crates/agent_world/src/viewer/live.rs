@@ -748,10 +748,18 @@ mod tests {
         let mut config = WorldConfig::default();
         config.physics.max_move_distance_cm_per_tick = i64::MAX;
         config.physics.max_move_speed_cm_per_s = i64::MAX;
+        config.move_cost_per_km_electricity = 0;
         let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
         let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
 
         let mut script = LiveScript::new(&kernel);
+        let initial_location = kernel
+            .model()
+            .agents
+            .get("agent-0")
+            .expect("agent exists")
+            .location_id
+            .clone();
         let mut moved = false;
         for _ in 0..2 {
             let action = script.next_action(&kernel).expect("action");
@@ -759,7 +767,7 @@ mod tests {
             kernel.step_until_empty();
 
             let agent = kernel.model().agents.get("agent-0").expect("agent exists");
-            if agent.location_id == "region-b" {
+            if agent.location_id != initial_location {
                 moved = true;
                 break;
             }

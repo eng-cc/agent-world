@@ -166,8 +166,17 @@ mod tests {
         let mut config = WorldConfig::default();
         config.physics.max_move_distance_cm_per_tick = i64::MAX;
         config.physics.max_move_speed_cm_per_s = i64::MAX;
+        config.move_cost_per_km_electricity = 0;
         let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
         let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
+
+        let initial_location = kernel
+            .model()
+            .agents
+            .get("agent-0")
+            .expect("agent exists")
+            .location_id
+            .clone();
 
         let actions = plan_demo_actions(&kernel);
         assert!(actions
@@ -181,7 +190,7 @@ mod tests {
         assert!(!events.is_empty());
 
         let agent = kernel.model().agents.get("agent-0").expect("agent exists");
-        assert_eq!(agent.location_id, "region-b");
+        assert_ne!(agent.location_id, initial_location);
     }
 
     #[test]

@@ -1,31 +1,12 @@
 {
   "id": "asteroid_fragment_triad_region_bootstrap",
   "name": "Asteroid Fragment Triad Region Bootstrap",
+  "seed": 11,
   "asteroid_fragment": { "enabled": true, "seed_offset": 131, "min_fragment_spacing_cm": 50000, "bootstrap_chunks": [{"x": 1, "y": 2, "z": 0}, {"x": 3, "y": 2, "z": 0}, {"x": 2, "y": 3, "z": 0}] },
   "origin": { "enabled": false },
   "agents": {
     "count": 3,
-    "location_id": "region-a",
     "resources": { "amounts": { "electricity": 20 } }
   },
-  "locations": [
-    {
-      "location_id": "region-a",
-      "name": "Region A",
-      "pos": { "type": "center_offset", "dx_pct": -0.2 },
-      "resources": { "amounts": { "electricity": 220, "hardware": 50 } }
-    },
-    {
-      "location_id": "region-b",
-      "name": "Region B",
-      "pos": { "type": "center_offset", "dx_pct": 0.2 },
-      "resources": { "amounts": { "electricity": 170, "hardware": 35 } }
-    },
-    {
-      "location_id": "region-c",
-      "name": "Region C",
-      "pos": { "type": "center_offset", "dx_pct": 0.0, "dy_pct": 0.2 },
-      "resources": { "amounts": { "electricity": 130, "hardware": 25 } }
-    }
-  ]
+  "location_generator": { "count": 3, "id_prefix": "region-", "name_prefix": "Region" }
 }

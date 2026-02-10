@@ -1,5 +1,6 @@
 {
   "id": "minimal",
   "name": "Minimal",
+  "seed": 1,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 }
 }

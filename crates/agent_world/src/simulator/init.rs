@@ -189,8 +189,6 @@ pub struct AgentSpawnConfig {
     pub count: usize,
     pub id_prefix: String,
     pub start_index: u32,
-    pub location_id: Option<LocationId>,
-    pub spawn_locations: Vec<LocationId>,
     pub resources: ResourceStock,
 }
 
@@ -200,8 +198,6 @@ impl Default for AgentSpawnConfig {
             count: 1,
             id_prefix: "agent-".to_string(),
             start_index: 0,
-            location_id: None,
-            spawn_locations: Vec::new(),
             resources: ResourceStock::default(),
         }
     }
@@ -440,37 +436,39 @@ pub fn build_world_model(
         )?;
     }
 
-    let spawn_locations = if !init.agents.spawn_locations.is_empty() {
-        init.agents.spawn_locations.clone()
-    } else if init.agents.count > 0 {
-        let spawn_location_id = match init.agents.location_id.clone() {
-            Some(location_id) => location_id,
-            None => {
-                if init.origin.enabled {
-                    init.origin.location_id.clone()
-                } else {
-                    return Err(WorldInitError::SpawnLocationMissing);
-                }
-            }
-        };
-        vec![spawn_location_id; init.agents.count]
-    } else {
-        Vec::new()
-    };
+    if init.agents.count > 0 {
+        let mut spawn_candidates: Vec<LocationId> = model
+            .locations
+            .keys()
+            .filter(|location_id| !location_id.starts_with("frag-"))
+            .cloned()
+            .collect();
+        if spawn_candidates.is_empty() {
+            spawn_candidates = model.locations.keys().cloned().collect();
+        }
+        if spawn_candidates.is_empty() {
+            return Err(WorldInitError::SpawnLocationMissing);
+        }
+        spawn_candidates.sort();
 
-    if !spawn_locations.is_empty() {
         ensure_valid_stock(&init.agents.resources)?;
-        for (offset, location_id) in spawn_locations.iter().enumerate() {
-            let (spawn_location_id, spawn_pos) = match model.locations.get(location_id) {
-                Some(location) => (location.id.clone(), location.pos),
-                None => {
-                    return Err(WorldInitError::SpawnLocationNotFound {
-                        location_id: location_id.clone(),
-                    })
-                }
-            };
-
+        for offset in 0..init.agents.count {
             let idx = init.agents.start_index as u64 + offset as u64;
+            let spawn_pick = splitmix64(
+                init.seed
+                    .wrapping_add(0xA2E4_4B5D_1974_3377)
+                    .wrapping_add(idx),
+            ) as usize
+                % spawn_candidates.len();
+            let spawn_location_id = spawn_candidates[spawn_pick].clone();
+            let spawn_pos = model
+                .locations
+                .get(&spawn_location_id)
+                .map(|location| location.pos)
+                .ok_or_else(|| WorldInitError::SpawnLocationNotFound {
+                    location_id: spawn_location_id.clone(),
+                })?;
+
             let agent_id = format!("{}{}", init.agents.id_prefix, idx);
             let mut agent = Agent::new_with_power(
                 agent_id.clone(),
@@ -1142,6 +1140,13 @@ fn ensure_valid_ratio(field: &str, value: f64) -> Result<(), WorldInitError> {
         });
     }
     Ok(())
+}
+
+fn splitmix64(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^ (x >> 31)
 }
 
 fn insert_power_plant(model: &mut WorldModel, plant: PowerPlant) -> Result<(), WorldInitError> {

@@ -1,27 +1,9 @@
 {
   "id": "triad_region_bootstrap",
   "name": "Triad Region Bootstrap",
+  "seed": 7,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
-  "agents": { "count": 3, "location_id": "region-a" },
-  "locations": [
-    {
-      "location_id": "region-a",
-      "name": "Region A",
-      "pos": { "type": "center_offset", "dx_pct": -0.2 },
-      "resources": { "amounts": { "electricity": 250, "hardware": 60 } }
-    },
-    {
-      "location_id": "region-b",
-      "name": "Region B",
-      "pos": { "type": "center_offset", "dx_pct": 0.2 },
-      "resources": { "amounts": { "electricity": 180, "hardware": 40 } }
-    },
-    {
-      "location_id": "region-c",
-      "name": "Region C",
-      "pos": { "type": "center_offset", "dx_pct": 0.0, "dy_pct": 0.2 },
-      "resources": { "amounts": { "electricity": 120, "hardware": 20 } }
-    }
-  ]
+  "agents": { "count": 3 },
+  "location_generator": { "count": 3, "id_prefix": "region-", "name_prefix": "Region" }
 }
