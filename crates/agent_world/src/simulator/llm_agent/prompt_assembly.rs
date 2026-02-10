@@ -251,6 +251,8 @@ impl PromptAssembler {
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event_any_of":["action_rejected","new_visible_agent"]}},"max_ticks":<u64>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"harvest_available_below","value_lte":<i64>}},"max_ticks":<u64>}}
+- 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
+- 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - event_name 可选: action_rejected, new_visible_agent, new_visible_location, arrive_target, insufficient_electricity, thermal_overload, harvest_yield_below, harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
@@ -263,6 +265,7 @@ impl PromptAssembler {
 
 若你需要查询信息，请输出模块调用 JSON：
 {{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
+                    input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
                 ),
@@ -619,5 +622,7 @@ mod tests {
         let output = PromptAssembler::assemble(input);
         assert!(output.user_prompt.contains("<i64 1..=42>"));
         assert!(output.user_prompt.contains("不超过 42"));
+        assert!(output.user_prompt.contains("推荐 harvest 模板"));
+        assert!(output.user_prompt.contains("推荐 move 模板"));
     }
 }

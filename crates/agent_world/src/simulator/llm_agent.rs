@@ -61,6 +61,8 @@ pub const ENV_LLM_PROMPT_PROFILE: &str = "AGENT_WORLD_LLM_PROMPT_PROFILE";
 pub const ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: &str =
     "AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION";
 pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP";
+pub const ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: &str =
+    "AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmPromptProfile {
@@ -120,6 +122,7 @@ pub const DEFAULT_LLM_PROMPT_MAX_HISTORY_ITEMS: usize = 4;
 pub const DEFAULT_LLM_PROMPT_PROFILE: LlmPromptProfile = LlmPromptProfile::Balanced;
 pub const DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: usize = 4;
 pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
+pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -144,6 +147,7 @@ pub struct LlmAgentConfig {
     pub prompt_profile: LlmPromptProfile,
     pub force_replan_after_same_action: usize,
     pub harvest_max_amount_cap: i64,
+    pub execute_until_auto_reenter_ticks: usize,
 }
 
 impl LlmAgentConfig {
@@ -260,6 +264,12 @@ impl LlmAgentConfig {
             DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
             |value| LlmConfigError::InvalidHarvestMaxAmountCap { value },
         )?;
+        let execute_until_auto_reenter_ticks = parse_non_negative_usize(
+            &mut getter,
+            ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS,
+            DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS,
+            |value| LlmConfigError::InvalidExecuteUntilAutoReenterTicks { value },
+        )?;
 
         Ok(Self {
             model,
@@ -276,6 +286,7 @@ impl LlmAgentConfig {
             prompt_profile,
             force_replan_after_same_action,
             harvest_max_amount_cap,
+            execute_until_auto_reenter_ticks,
         })
     }
 
@@ -300,6 +311,7 @@ pub enum LlmConfigError {
     InvalidPromptProfile { value: String },
     InvalidForceReplanAfterSameAction { value: String },
     InvalidHarvestMaxAmountCap { value: String },
+    InvalidExecuteUntilAutoReenterTicks { value: String },
     ReadConfigFile { path: String, message: String },
     ParseConfigFile { path: String, message: String },
 }
@@ -332,6 +344,9 @@ impl fmt::Display for LlmConfigError {
             }
             LlmConfigError::InvalidHarvestMaxAmountCap { value } => {
                 write!(f, "invalid harvest max amount cap value: {value}")
+            }
+            LlmConfigError::InvalidExecuteUntilAutoReenterTicks { value } => {
+                write!(f, "invalid execute_until auto reenter ticks value: {value}")
             }
             LlmConfigError::ReadConfigFile { path, message } => {
                 write!(f, "read config file failed ({path}): {message}")

@@ -39,6 +39,19 @@ impl ActionReplanGuardState {
             self.consecutive_same_action, threshold,
         ))
     }
+
+    pub(super) fn is_same_action_as_last(&self, action: &Action) -> bool {
+        let signature = action_signature(action);
+        self.last_action_signature.as_deref() == Some(signature.as_str())
+    }
+
+    pub(super) fn projected_consecutive_same_action(&self, action: &Action) -> usize {
+        if self.is_same_action_as_last(action) {
+            self.consecutive_same_action.saturating_add(1)
+        } else {
+            1
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +70,22 @@ pub(super) struct ActiveExecuteUntil {
 }
 
 impl ActiveExecuteUntil {
+    pub(super) fn from_auto_reentry(
+        action: Action,
+        observation: &Observation,
+        max_ticks: u64,
+    ) -> Self {
+        let until_conditions = auto_reentry_until_conditions(&action);
+        Self::from_directive(
+            ExecuteUntilDirective {
+                action,
+                until_conditions,
+                max_ticks: max_ticks.max(1),
+            },
+            observation,
+        )
+    }
+
     pub(super) fn from_directive(
         directive: ExecuteUntilDirective,
         observation: &Observation,
@@ -221,6 +250,65 @@ impl ActiveExecuteUntil {
         self.last_harvest_amount = None;
         self.last_harvest_available = None;
         Ok(())
+    }
+}
+
+fn auto_reentry_until_conditions(action: &Action) -> Vec<ExecuteUntilCondition> {
+    match action {
+        Action::MoveAgent { .. } => vec![
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::ArriveTarget,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::ActionRejected,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleAgent,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleLocation,
+                value_lte: None,
+            },
+        ],
+        Action::HarvestRadiation { .. } => vec![
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::ActionRejected,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::InsufficientElectricity,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::ThermalOverload,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleAgent,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleLocation,
+                value_lte: None,
+            },
+        ],
+        _ => vec![
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::ActionRejected,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleAgent,
+                value_lte: None,
+            },
+            ExecuteUntilCondition {
+                kind: ExecuteUntilEventKind::NewVisibleLocation,
+                value_lte: None,
+            },
+        ],
     }
 }
 

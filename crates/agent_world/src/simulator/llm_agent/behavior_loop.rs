@@ -108,6 +108,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut repair_rounds_used = 0_u32;
         let mut repair_context: Option<String> = None;
         let mut deferred_parse_error: Option<String> = None;
+        let mut resolved_via_execute_until = false;
 
         for turn in 0..max_turns {
             let active_phase = phase;
@@ -166,6 +167,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     "- harvest_radiation.max_amount 必须在 [1, {}]；超限将被运行时裁剪。
 ",
                     self.config.harvest_max_amount_cap
+                )
+                .as_str(),
+            );
+            user_prompt.push_str(
+                format!(
+                    "- 若连续两轮输出同一可执行动作，优先使用 execute_until（参考 schema 推荐模板）减少重复决策；auto_reenter_ticks={}。
+",
+                    self.config.execute_until_auto_reenter_ticks
                 )
                 .as_str(),
             );
@@ -299,6 +308,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     repair_context = None;
                                     phase = DecisionPhase::Finalize;
                                     resolved = true;
+                                    resolved_via_execute_until = false;
                                     if let Some(note) = guardrail_note {
                                         self.memory.record_note(observation.time, note.clone());
                                         step_output_summary = format!(
@@ -324,6 +334,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 repair_context = None;
                                 phase = DecisionPhase::Finalize;
                                 resolved = true;
+                                resolved_via_execute_until = true;
                                 step_output_summary = format!(
                                     "execute_until events={} max_ticks={}",
                                     guarded_directive
@@ -542,6 +553,43 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 parse_error = deferred_parse_error
                     .take()
                     .or_else(|| Some(format!("no terminal decision after {} turn(s)", max_turns)));
+            }
+        }
+
+        if self.config.execute_until_auto_reenter_ticks > 0
+            && self.active_execute_until.is_none()
+            && !resolved_via_execute_until
+        {
+            if let AgentDecision::Act(action) = &decision {
+                if self.replan_guard_state.is_same_action_as_last(action) {
+                    let projected_repeat = self
+                        .replan_guard_state
+                        .projected_consecutive_same_action(action);
+                    let will_force_replan_next = self.config.force_replan_after_same_action > 0
+                        && projected_repeat >= self.config.force_replan_after_same_action;
+                    if !will_force_replan_next {
+                        let max_ticks = self.config.execute_until_auto_reenter_ticks as u64;
+                        let active_execute_until = ActiveExecuteUntil::from_auto_reentry(
+                            action.clone(),
+                            observation,
+                            max_ticks,
+                        );
+                        let until_summary = active_execute_until.until_events_summary();
+                        self.active_execute_until = Some(active_execute_until);
+                        let note = format!(
+                            "execute_until auto reentry armed: max_ticks={} until={}",
+                            max_ticks, until_summary
+                        );
+                        self.memory.record_note(observation.time, note.clone());
+                        llm_step_trace.push(LlmStepTrace {
+                            step_index: max_turns,
+                            step_type: "execute_until_auto_reentry".to_string(),
+                            input_summary: "post_decision_same_action_detected".to_string(),
+                            output_summary: summarize_trace_text(note.as_str(), 220),
+                            status: "ok".to_string(),
+                        });
+                    }
+                }
             }
         }
 
