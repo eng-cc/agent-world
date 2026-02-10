@@ -23,6 +23,8 @@ pub struct MembershipDirectorySnapshot {
     pub validators: Vec<String>,
     pub quorum_threshold: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_key_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
 }
 
@@ -186,6 +188,7 @@ mod tests {
                 "seq-3".to_string(),
             ],
             quorum_threshold: 2,
+            signature_key_id: Some("k1".to_string()),
             signature: Some("deadbeef".to_string()),
         };
         dht.put_membership_directory("w1", &snapshot)

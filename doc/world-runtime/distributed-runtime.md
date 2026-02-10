@@ -387,3 +387,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **恢复策略**：`restore_membership_from_dht_verified` 支持 `trusted_requesters` 与 `require_signature` 策略。
 - **来源约束**：恢复前校验 `requester_id` 必须在快照 validator 集合内；若配置白名单则必须命中。
 - **兼容模式**：未启用策略时仍保留旧恢复入口，便于渐进迁移。
+
+## 成员目录快照密钥轮换与审计（草案）
+- **key_id 扩展**：成员目录广播与 DHT 快照增加可选 `signature_key_id`，用于标识签名密钥版本。
+- **多密钥验签**：`MembershipDirectorySignerKeyring` 支持 active key 签名和多 key 验签，兼容轮换窗口。
+- **策略控制**：恢复策略新增 `require_signature_key_id` 与 `accepted_signature_key_ids`，可限定只接受指定 key_id。
+- **发布入口**：提供 keyring 版本发布接口，默认使用 active key 生成签名并写入 `signature_key_id`。
+- **审计结果**：恢复流程输出 `MembershipSnapshotAuditRecord`，统一记录 `missing/applied/ignored/rejected`。
+- **兼容模式**：对历史无 key_id 快照仍可验签；生产环境建议开启 key_id 强制策略。

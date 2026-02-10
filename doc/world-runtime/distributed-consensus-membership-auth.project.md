@@ -15,5 +15,5 @@
 
 ## 状态
 - 当前阶段：MA4 完成（签名与来源校验已落地）
-- 下一步：评估非对称签名与密钥轮换策略
+- 后续关联：P3.14 已补齐 key_id 轮换与恢复审计（见 `distributed-consensus-membership-rotation-audit.md`）
 - 最近更新：2026-02-10

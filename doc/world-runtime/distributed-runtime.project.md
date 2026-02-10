@@ -163,6 +163,12 @@
 - [x] DHT 恢复入口来源校验（trusted requester）
 - [x] 校验策略与单元测试、分布式回归
 
+### 31. P3.14 成员目录快照密钥轮换与审计
+- [x] 成员目录快照/广播增加可选 signature_key_id 字段
+- [x] MembershipDirectorySignerKeyring 多密钥签名与验签
+- [x] DHT 恢复 key_id 策略（require/allow list）
+- [x] 恢复审计报告结构与单元测试、分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -170,6 +176,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.13 完成（成员目录快照签名与来源校验）
-- 下一步：P3.14（成员目录快照密钥轮换与审计）
-- 最近更新：成员目录快照签名与来源校验（2026-02-10）
+- 当前阶段：P3.14 完成（成员目录快照密钥轮换与审计）
+- 下一步：P3.15（成员目录审计持久化与吊销传播）
+- 最近更新：成员目录快照密钥轮换与审计（2026-02-10）
