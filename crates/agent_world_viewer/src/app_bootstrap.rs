@@ -16,7 +16,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerCameraMode::default())
         .insert_resource(ViewerSelection::default())
-        .insert_resource(WorldOverlayConfig::default())
+        .insert_resource(world_overlay_config_from_env())
         .insert_resource(WorldOverlayUiState::default())
         .insert_resource(DiagnosisState::default())
         .insert_resource(EventObjectLinkState::default())

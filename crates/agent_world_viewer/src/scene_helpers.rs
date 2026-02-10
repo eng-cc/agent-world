@@ -108,6 +108,7 @@ pub(super) fn rebuild_scene_from_snapshot(
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
     snapshot: &WorldSnapshot,
+    show_fragment_elements: bool,
 ) {
     for entity in scene
         .agent_entities
@@ -172,6 +173,23 @@ pub(super) fn rebuild_scene_from_snapshot(
             visual_radius_cm,
             location.profile.radiation_emission_per_tick,
         );
+
+        if show_fragment_elements {
+            if let (Some(fragment_profile), Some(entity)) = (
+                location.fragment_profile.as_ref(),
+                scene.location_entities.get(location_id).copied(),
+            ) {
+                commands.entity(entity).with_children(|parent| {
+                    location_fragment_render::spawn_location_fragment_elements(
+                        parent,
+                        assets,
+                        location_id,
+                        visual_radius_cm,
+                        fragment_profile,
+                    );
+                });
+            }
+        }
     }
 
     let module_counts = agent_module_counts_in_snapshot(snapshot);

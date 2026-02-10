@@ -670,6 +670,7 @@ fn spawn_location_entity_adds_label_text() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -711,6 +712,7 @@ fn spawn_location_entity_uses_physical_radius_scale() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -758,6 +760,7 @@ fn spawn_location_entity_renders_fine_grained_ring_details() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -814,6 +817,7 @@ fn spawn_location_entity_renders_radiation_halo_details() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -871,6 +875,7 @@ fn spawn_agent_entity_uses_body_height_scale() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -926,6 +931,7 @@ fn spawn_agent_entity_attaches_to_location_surface() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -991,6 +997,7 @@ fn spawn_agent_entity_renders_module_markers_up_to_cap() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1039,6 +1046,7 @@ fn spawn_agent_entity_robot_layout_places_head_slot_first() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1087,6 +1095,7 @@ fn rebuild_scene_maps_agent_module_count_from_module_visual_entities() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1132,6 +1141,7 @@ fn rebuild_scene_uses_default_module_count_when_no_module_visual_entities() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1685,7 +1695,14 @@ fn rebuild_scene_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+    rebuild_scene_from_snapshot(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        &snapshot,
+        false,
+    );
 }
 
 fn rebuild_scene_default_module_count_test_system(
@@ -1721,5 +1738,12 @@ fn rebuild_scene_default_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+    rebuild_scene_from_snapshot(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        &snapshot,
+        false,
+    );
 }
