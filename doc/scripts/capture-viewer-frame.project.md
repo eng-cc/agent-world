@@ -19,6 +19,11 @@
 - [x] M5：新增/更新测试（内置截图配置解析与触发条件）
 - [x] M5：验证脚本在 macOS 下可产出有效 `window.png` 并可用于 UI 评审
 - [x] M6：新增 `--auto-focus-*` 参数，支持截图闭环自动聚焦目标
+- [x] M7：默认预热编译（`world_viewer_live` + `agent_world_viewer`）减少运行时构建阻塞
+- [x] M7：新增 `--capture-max-wait`，支持覆盖 macOS 内置截图最大等待秒数
+- [x] M7：当 `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS=1` 时自动提高默认最大等待
+- [x] M7：截图超时时输出 `viewer.log` tail，提升闭环排障效率
+- [x] M7：完成帮助信息、脚本语法与实跑截图回归
 
 ## 依赖
 - Linux：`Xvfb`、`ffmpeg`、`xwininfo`
@@ -26,6 +31,6 @@
 - Rust/Cargo（`world_viewer_live` + `agent_world_viewer`）
 
 ## 状态
-- 当前阶段：M6（自动聚焦参数完成）
+- 当前阶段：M7（预热编译 + 可调超时 + 失败日志完成）
 - 下一阶段：按需补充“多帧抓图”或“自动交互注入”
-- 最近更新：脚本支持自动聚焦目标/半径/2D保持参数，便于稳定截图（2026-02-10）
+- 最近更新：脚本默认预热并支持 `--capture-max-wait`，碎片重场景截图稳定性提升（2026-02-10）

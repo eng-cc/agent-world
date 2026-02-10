@@ -6,6 +6,7 @@
 - 默认在每次新调试开始前清空 `.tmp/`，避免历史残留影响判断。
 - 增加平台识别与分支实现，使脚本在 Linux 与 macOS 都能完成最小截图闭环。
 - 在 macOS 录屏权限受限时，使用 Bevy 内置截图能力完成窗口截图，避免依赖系统录屏授权。
+- 增加预热编译与可调超时，降低首次运行或重场景下的截图超时概率。
 
 ## 范围
 - **范围内**：
@@ -30,10 +31,12 @@
   - `--auto-focus-target`：启动 viewer 后自动聚焦目标（如 `first_fragment`、`location:frag-1`、`agent:agent-0`）
   - `--auto-focus-radius`：自动聚焦半径覆盖值
   - `--auto-focus-keep-2d`：自动聚焦时保持 2D（默认切换 3D）
+  - `--capture-max-wait`：覆盖 macOS 内置截图最大等待秒数（默认自动推导）
+  - `--no-prewarm`：跳过预热编译（默认会预热 `world_viewer_live` 与 `agent_world_viewer`）
 - viewer 内置截图环境变量：
   - `AGENT_WORLD_VIEWER_CAPTURE_PATH`：截图输出文件路径（PNG）。
   - `AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS`：最短等待秒数（默认 2 秒）。
-  - `AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS`：无快照时的最大等待秒数（默认 15 秒）。
+  - `AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS`：无快照时的最大等待秒数（由脚本按 `viewer_wait` 自动推导，可被 `--capture-max-wait` 覆盖）。
   - （可选）`AGENT_WORLD_VIEWER_AUTO_FOCUS*`：脚本在传入 `--auto-focus-*` 时自动注入。
 - 输出目录：`.tmp/screens/`
   - `root.png`：整屏截图（macOS 内置截图模式下与 `window.png` 相同）
@@ -47,9 +50,12 @@
 - **M3**：更新 AGENTS/README/任务日志并完成运行验证。
 - **M4**：补充 Linux/macOS 平台分支逻辑与依赖检查。
 - **M5**：接入 viewer 内置自动截图并在 macOS 默认启用，绕过录屏权限约束。
+- **M6**：接入自动聚焦参数，保证目标区域更易复现。
+- **M7**：增加预热编译、可调超时与失败日志，降低截图超时风险。
 
 ## 风险
 - **依赖差异**：Linux 与 macOS 命令能力不同，需要分别校验命令可用性。
 - **截图时机**：若触发过早可能抓到“连接中”界面，需配合 `--viewer-wait` 与内置延迟参数。
 - **渲染链路**：viewer 内置截图依赖 Bevy 渲染完成回调，若渲染异常可能导致截图未落盘。
 - **资源占用**：脚本会启动 viewer/server，调试完成后必须清理后台进程（脚本已 trap 清理）。
+- **启动时延**：默认预热编译会增加启动前等待；可通过 `--no-prewarm` 跳过。

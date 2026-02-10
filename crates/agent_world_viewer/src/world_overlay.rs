@@ -16,12 +16,14 @@ const HEAT_OFFSET_Y: f32 = 0.2;
 const FLOW_OFFSET_Y: f32 = 0.18;
 const FLOW_MIN_THICKNESS: f32 = 0.03;
 const FLOW_MAX_THICKNESS: f32 = 0.12;
+const SHOW_FRAGMENT_ELEMENTS_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS";
 
 #[derive(Resource, Clone, Copy)]
 pub(super) struct WorldOverlayConfig {
     pub show_chunk_overlay: bool,
     pub show_resource_heatmap: bool,
     pub show_flow_overlay: bool,
+    pub show_fragment_elements: bool,
 }
 
 impl Default for WorldOverlayConfig {
@@ -30,8 +32,28 @@ impl Default for WorldOverlayConfig {
             show_chunk_overlay: true,
             show_resource_heatmap: true,
             show_flow_overlay: true,
+            show_fragment_elements: false,
         }
     }
+}
+
+pub(super) fn world_overlay_config_from_env() -> WorldOverlayConfig {
+    let mut config = WorldOverlayConfig::default();
+    if let Some(show_fragment_elements) = parse_bool_env(SHOW_FRAGMENT_ELEMENTS_ENV) {
+        config.show_fragment_elements = show_fragment_elements;
+    }
+    config
+}
+
+fn parse_bool_env(key: &str) -> Option<bool> {
+    std::env::var(key).ok().and_then(|raw| {
+        let normalized = raw.trim().to_ascii_lowercase();
+        match normalized.as_str() {
+            "1" | "true" | "yes" | "on" => Some(true),
+            "0" | "false" | "no" | "off" => Some(false),
+            _ => None,
+        }
+    })
 }
 
 #[derive(Resource, Default)]
@@ -685,5 +707,15 @@ mod tests {
         assert!(!config.show_resource_heatmap);
         assert!(config.show_chunk_overlay);
         assert!(config.show_flow_overlay);
+        assert!(!config.show_fragment_elements);
+    }
+
+    #[test]
+    fn overlay_config_from_env_parses_fragment_toggle() {
+        std::env::set_var(SHOW_FRAGMENT_ELEMENTS_ENV, "on");
+        let config = world_overlay_config_from_env();
+        std::env::remove_var(SHOW_FRAGMENT_ELEMENTS_ENV);
+
+        assert!(config.show_fragment_elements);
     }
 }
