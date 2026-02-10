@@ -53,3 +53,11 @@
 - 当前增量阶段：LMSO27（待启动）
 - 增量目标：在保持 `llm_input_chars_max` 与 `prompt_section_clipped` 已收敛的前提下，回收平均输入与模块调用轮次。
 - 最近更新：完成 LMSO26 Prompt 预算收敛并通过 30 tick 回归（`parse_errors=0`、`prompt_section_clipped=0`、`llm_input_chars_max=14094`，2026-02-10）。
+
+## LMSO27 任务进展（2026-02-10）
+- [x] LMSO27A 重规划门控收敛：仅对“重复上一动作”的终态 decision 触发强制重规划，允许无 module_call 直接切换到新动作。
+- [ ] LMSO27B 30 tick 回归对比：确认门控收敛后 `module_call` 与 `llm_input_chars_avg/total` 进一步下降。
+
+## 状态（LMSO27A 后）
+- 当前增量阶段：LMSO27B（待执行）
+- 最近更新：完成 LMSO27A（重规划门控细化 + 协同阈值调整 + 单测补齐，2026-02-10）。

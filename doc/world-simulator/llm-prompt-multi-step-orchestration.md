@@ -410,3 +410,24 @@
 
 ### 后续
 - LMSO27 在保持峰值受控前提下，回收 `llm_input_chars_avg/total` 与 `module_call` 轮次波动。
+
+## LMSO27A 重规划门控收敛（2026-02-10）
+
+### 触发问题
+- 在 `force_replan_after_same_action` 门控生效时，若模型输出“切换到新动作”的终态 decision，仍可能被“必须先 module_call”规则误拦截，导致不必要的回合消耗。
+
+### 已实施优化
+1. 门控触发条件细化：
+   - 仅当终态 `decision/decision_draft` 仍与“上一动作”重复时，才触发强制重规划拦截。
+   - 若已切换为新动作，不再要求先走 `plan/module_call`。
+2. 阈值与自动重入协同：
+   - 当 `execute_until_auto_reenter_ticks > 0` 时，对 `force_replan_after_same_action` 增加缓冲阈值，减少“自动重入与重规划门控”之间的早触发冲突。
+3. Prompt 约束文案收敛：
+   - 将“必须先 plan/module_call”调整为“避免原样重复动作；可重规划或直接切换新动作/execute_until”。
+
+### 验证结果
+- 新增单测通过：
+  - `llm_agent_force_replan_allows_switch_to_new_terminal_action_without_module_call`
+
+### 后续
+- 继续推进 LMSO27，结合 30 tick 指标回收 `module_call` 与 `llm_input_chars_avg/total`。

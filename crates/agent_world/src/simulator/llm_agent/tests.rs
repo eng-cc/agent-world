@@ -1240,6 +1240,53 @@ fn llm_agent_force_replan_after_repeated_actions() {
 }
 
 #[test]
+fn llm_agent_force_replan_allows_switch_to_new_terminal_action_without_module_call() {
+    let client = SequenceMockClient::new(vec![
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+    ]);
+
+    let mut config = base_config();
+    config.max_decision_steps = 4;
+    config.max_repair_rounds = 1;
+    config.force_replan_after_same_action = 2;
+    config.execute_until_auto_reenter_ticks = 0;
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let mut observation = make_observation();
+    observation.time = 40;
+    let decision_1 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_1,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 41;
+    let decision_2 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_2,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 42;
+    let decision_3 = behavior.decide(&observation);
+    assert!(matches!(
+        decision_3,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace.parse_error.is_none());
+    assert!(trace.llm_effect_intents.is_empty());
+    assert!(!trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("replan guard requires")));
+}
+
+#[test]
 fn llm_agent_execute_until_continues_without_llm_until_event() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(

@@ -83,16 +83,23 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
         let mut resolved = false;
         let max_turns = self.config.max_decision_steps.max(1);
+        let force_replan_threshold = if self.config.execute_until_auto_reenter_ticks > 0
+            && self.config.force_replan_after_same_action >= 4
+        {
+            self.config.force_replan_after_same_action.saturating_add(2)
+        } else {
+            self.config.force_replan_after_same_action
+        };
         let should_force_replan = self
             .replan_guard_state
-            .should_force_replan(self.config.force_replan_after_same_action);
+            .should_force_replan(force_replan_threshold);
         let replan_guard_summary = if should_force_replan {
             self.replan_guard_state
-                .guard_summary(self.config.force_replan_after_same_action)
+                .guard_summary(force_replan_threshold)
                 .unwrap_or_else(|| {
                     format!(
                         "consecutive_same_action>=threshold({})",
-                        self.config.force_replan_after_same_action
+                        force_replan_threshold
                     )
                 })
         } else {
@@ -182,6 +189,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 user_prompt.push_str("- 预算接近上限：本轮必须直接输出最终 decision（可 execute_until），禁止 plan/module_call/decision_draft。
 ");
             } else {
+                user_prompt.push_str(
+                    "- observation/context 已覆盖当前动作判断时，优先直接输出最终 decision，不要先输出 plan/module_call。
+",
+                );
                 user_prompt.push_str("- 若输出 module_call，本轮仅允许一个 module_call；不要在同一回复混合 module_call 与 decision*。
 ");
             }
@@ -194,7 +205,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 ",
                 );
                 user_prompt.push_str(
-                    "- 检测到连续重复动作，请优先输出 plan/module_call 进行再规划。
+                    "- 检测到连续重复动作，请避免原样重复动作；可通过 plan/module_call 重新取数，或直接切换为新动作/execute_until。
 ",
                 );
                 user_prompt.push_str("- 若确实需要重复执行同一动作，请使用 execute_until，并提供 until.event（阈值事件需附 until.value_lte）与 max_ticks。
@@ -286,8 +297,16 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     for parsed_turn in parsed_turns {
                         match parsed_turn {
                             ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
-                                if should_force_replan && module_history.is_empty() {
-                                    let err = "replan guard requires plan/module_call before terminal decision"
+                                let repeats_last_action = matches!(
+                                    &parsed_decision,
+                                    AgentDecision::Act(action)
+                                        if self.replan_guard_state.is_same_action_as_last(action)
+                                );
+                                if should_force_replan
+                                    && module_history.is_empty()
+                                    && repeats_last_action
+                                {
+                                    let err = "replan guard requires module_call or execute_until before repeating same terminal action"
                                         .to_string();
                                     step_status = "error".to_string();
                                     step_output_summary = err.clone();
@@ -449,9 +468,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 }
                             }
                             ParsedLlmTurn::DecisionDraft(draft) => {
-                                if should_force_replan && module_history.is_empty() {
+                                let repeats_last_action = matches!(
+                                    &draft.decision,
+                                    AgentDecision::Act(action)
+                                        if self.replan_guard_state.is_same_action_as_last(action)
+                                );
+                                if should_force_replan
+                                    && module_history.is_empty()
+                                    && repeats_last_action
+                                {
                                     let err =
-                                        "replan guard requires module_call before decision_draft"
+                                        "replan guard requires module_call or execute_until before repeating same decision_draft"
                                             .to_string();
                                     step_status = "error".to_string();
                                     step_output_summary = err.clone();
@@ -565,8 +592,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     let projected_repeat = self
                         .replan_guard_state
                         .projected_consecutive_same_action(action);
-                    let will_force_replan_next = self.config.force_replan_after_same_action > 0
-                        && projected_repeat >= self.config.force_replan_after_same_action;
+                    let will_force_replan_next =
+                        force_replan_threshold > 0 && projected_repeat >= force_replan_threshold;
                     if !will_force_replan_next {
                         let max_ticks = self.config.execute_until_auto_reenter_ticks as u64;
                         let active_execute_until = ActiveExecuteUntil::from_auto_reentry(
