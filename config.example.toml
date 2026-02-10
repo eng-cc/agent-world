@@ -3,7 +3,7 @@ model = "your-model-id"
 model_provider = "ark"
 profile = "default"
 
-# Agent World LLM agent behavior (OpenAI-compatible)
+# Agent World LLM agent behavior (async-openai + Responses API)
 AGENT_WORLD_LLM_MODEL = "your-model-id"
 AGENT_WORLD_LLM_BASE_URL = "https://api.openai.com/v1"
 AGENT_WORLD_LLM_API_KEY = "replace-me"

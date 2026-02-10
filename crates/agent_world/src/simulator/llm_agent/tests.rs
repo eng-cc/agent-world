@@ -7,14 +7,10 @@ use crate::simulator::{
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
-use std::io::{Read, Write};
-use std::net::TcpListener;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Default, Clone)]
 struct MockClient {
@@ -233,14 +229,6 @@ fn base_config() -> LlmAgentConfig {
     }
 }
 
-fn sample_completion_request() -> LlmCompletionRequest {
-    LlmCompletionRequest {
-        model: "gpt-test".to_string(),
-        system_prompt: "system".to_string(),
-        user_prompt: "user".to_string(),
-    }
-}
-
 #[test]
 fn llm_config_uses_default_system_prompt() {
     let mut vars = BTreeMap::new();
@@ -424,18 +412,22 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
 }
 
 #[test]
-fn build_chat_completions_url_handles_suffix_variants() {
+fn normalize_openai_api_base_url_handles_suffix_variants() {
     assert_eq!(
-        build_chat_completions_url("https://api.example.com/v1"),
-        "https://api.example.com/v1/chat/completions"
+        normalize_openai_api_base_url("https://api.example.com/v1"),
+        "https://api.example.com/v1"
     );
     assert_eq!(
-        build_chat_completions_url("https://api.example.com/v1/"),
-        "https://api.example.com/v1/chat/completions"
+        normalize_openai_api_base_url("https://api.example.com/v1/"),
+        "https://api.example.com/v1"
     );
     assert_eq!(
-        build_chat_completions_url("https://api.example.com/v1/chat/completions"),
-        "https://api.example.com/v1/chat/completions"
+        normalize_openai_api_base_url("https://api.example.com/v1/chat/completions"),
+        "https://api.example.com/v1"
+    );
+    assert_eq!(
+        normalize_openai_api_base_url("https://api.example.com/v1/responses"),
+        "https://api.example.com/v1"
     );
 }
 
@@ -451,131 +443,154 @@ fn openai_client_enables_timeout_retry_when_timeout_below_default() {
 }
 
 #[test]
-fn openai_client_timeout_retry_can_recover_short_timeout_request() {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
-    let addr = listener.local_addr().expect("local addr");
-    let accepted = Arc::new(AtomicUsize::new(0));
-    let accepted_clone = Arc::clone(&accepted);
-    let request_bodies = Arc::new(Mutex::new(Vec::new()));
-    let request_bodies_clone = Arc::clone(&request_bodies);
+fn responses_tools_register_expected_function_names() {
+    let tools = responses_tools();
+    assert_eq!(tools.len(), 4);
 
-    let response_body = r#"{"model":"gpt-test","usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2},"choices":[{"message":{"content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"agent_modules_list","arguments":"{}"}}]}}]}"#;
-    let handle = thread::spawn(move || {
-        for incoming in listener.incoming().take(2) {
-            let mut stream = match incoming {
-                Ok(stream) => stream,
-                Err(_) => break,
-            };
-            let request_index = accepted_clone.fetch_add(1, Ordering::SeqCst);
+    let names = tools
+        .into_iter()
+        .filter_map(|tool| match tool {
+            Tool::Function(function_tool) => Some(function_tool.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
-            let mut request_buf = [0_u8; 4096];
-            let read = stream.read(&mut request_buf).unwrap_or(0);
-            let request_text = String::from_utf8_lossy(&request_buf[..read]).to_string();
-            request_bodies_clone
-                .lock()
-                .expect("request bodies lock")
-                .push(request_text);
-
-            if request_index == 0 {
-                thread::sleep(Duration::from_millis(80));
-            }
-
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            let _ = stream.write_all(response.as_bytes());
-            let _ = stream.flush();
-        }
-    });
-
-    let config = LlmAgentConfig {
-        model: "gpt-test".to_string(),
-        base_url: format!("http://{}/v1", addr),
-        api_key: "test-key".to_string(),
-        timeout_ms: 10,
-        system_prompt: "prompt".to_string(),
-        short_term_goal: "short-goal".to_string(),
-        long_term_goal: "long-goal".to_string(),
-        max_module_calls: 3,
-        max_decision_steps: 4,
-        max_repair_rounds: 1,
-        prompt_max_history_items: 4,
-        prompt_profile: LlmPromptProfile::Balanced,
-        force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
-    };
-    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
-
-    let completion = client
-        .complete(&sample_completion_request())
-        .expect("retry should recover timeout");
-
-    let output: serde_json::Value =
-        serde_json::from_str(completion.output.as_str()).expect("output json");
     assert_eq!(
-        output.get("type").and_then(|value| value.as_str()),
-        Some("module_call")
+        names,
+        vec![
+            OPENAI_TOOL_AGENT_MODULES_LIST.to_string(),
+            OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION.to_string(),
+            OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT.to_string(),
+            OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH.to_string(),
+        ]
     );
-    assert_eq!(
-        output.get("module").and_then(|value| value.as_str()),
-        Some("agent.modules.list")
-    );
-    assert_eq!(accepted.load(Ordering::SeqCst), 2);
-
-    let request_bodies = request_bodies.lock().expect("request bodies lock");
-    assert!(!request_bodies.is_empty());
-    let latest_request = &request_bodies[request_bodies.len() - 1];
-    assert!(latest_request.contains("\"tools\""));
-    assert!(latest_request.contains("\"tool_choice\":\"auto\""));
-    assert!(latest_request.contains("agent_modules_list"));
-
-    handle.join().expect("server thread");
 }
 
 #[test]
-fn openai_client_parses_legacy_function_call_payload() {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
-    let addr = listener.local_addr().expect("local addr");
-
-    let response_body = r#"{"model":"gpt-test","choices":[{"message":{"content":null,"function_call":{"name":"memory_short_term_recent","arguments":"{\"limit\":5}"}}}]}"#;
-    let handle = thread::spawn(move || {
-        if let Some(Ok(mut stream)) = listener.incoming().next() {
-            let mut request_buf = [0_u8; 1024];
-            let _ = stream.read(&mut request_buf);
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            let _ = stream.write_all(response.as_bytes());
-            let _ = stream.flush();
-        }
+fn response_function_call_maps_to_module_call_json() {
+    let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
+        arguments: "{\"limit\":5}".to_string(),
+        call_id: "call_1".to_string(),
+        name: OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT.to_string(),
+        id: None,
+        status: None,
     });
 
-    let config = LlmAgentConfig {
+    let output_json = output_item_to_module_call_json(&output_item).expect("module_call json");
+    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
+
+    assert_eq!(
+        value.get("type").and_then(|v| v.as_str()),
+        Some("module_call")
+    );
+    assert_eq!(
+        value.get("module").and_then(|v| v.as_str()),
+        Some("memory.short_term.recent")
+    );
+    assert_eq!(
+        value
+            .get("args")
+            .and_then(|args| args.get("limit"))
+            .and_then(|v| v.as_i64()),
+        Some(5)
+    );
+}
+
+#[test]
+fn response_function_call_invalid_json_arguments_are_preserved_as_raw() {
+    let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
+        arguments: "not-json".to_string(),
+        call_id: "call_2".to_string(),
+        name: OPENAI_TOOL_AGENT_MODULES_LIST.to_string(),
+        id: None,
+        status: None,
+    });
+
+    let output_json = output_item_to_module_call_json(&output_item).expect("module_call json");
+    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
+
+    assert_eq!(
+        value
+            .get("args")
+            .and_then(|args| args.get("_raw"))
+            .and_then(|v| v.as_str()),
+        Some("not-json")
+    );
+}
+
+#[test]
+fn build_responses_request_payload_includes_tools_and_auto_choice() {
+    let request = LlmCompletionRequest {
         model: "gpt-test".to_string(),
-        base_url: format!("http://{}/v1", addr),
-        api_key: "test-key".to_string(),
-        timeout_ms: 1000,
-        system_prompt: "prompt".to_string(),
-        short_term_goal: "short-goal".to_string(),
-        long_term_goal: "long-goal".to_string(),
-        max_module_calls: 3,
-        max_decision_steps: 4,
-        max_repair_rounds: 1,
-        prompt_max_history_items: 4,
-        prompt_profile: LlmPromptProfile::Balanced,
-        force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
+        system_prompt: "system".to_string(),
+        user_prompt: "user".to_string(),
     };
-    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
 
-    let completion = client
-        .complete(&sample_completion_request())
-        .expect("legacy function_call should parse");
+    let payload = build_responses_request_payload(&request).expect("payload");
+    let payload_json = serde_json::to_value(payload).expect("payload json");
 
-    let output: serde_json::Value =
-        serde_json::from_str(completion.output.as_str()).expect("output json");
+    assert_eq!(
+        payload_json.get("instructions").and_then(|v| v.as_str()),
+        Some("system")
+    );
+    assert_eq!(
+        payload_json.get("input").and_then(|v| v.as_str()),
+        Some("user")
+    );
+
+    let tool_choice = payload_json
+        .get("tool_choice")
+        .expect("tool choice exists")
+        .as_str()
+        .expect("tool choice string");
+    assert_eq!(tool_choice, "auto");
+
+    let tools = payload_json
+        .get("tools")
+        .and_then(|v| v.as_array())
+        .expect("tools array");
+    assert_eq!(tools.len(), 4);
+
+    let function_names = tools
+        .iter()
+        .filter_map(|tool| tool.get("name").and_then(|v| v.as_str()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        function_names,
+        vec![
+            OPENAI_TOOL_AGENT_MODULES_LIST,
+            OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
+            OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
+            OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
+        ]
+    );
+}
+
+#[test]
+fn completion_result_from_raw_response_json_parses_function_call_without_annotations() {
+    let raw = r#"{
+      "model":"gpt-test",
+      "output":[
+        {
+          "type":"function_call",
+          "name":"memory_short_term_recent",
+          "arguments":"{\"limit\":3}"
+        }
+      ],
+      "usage":{
+        "input_tokens":11,
+        "output_tokens":7,
+        "total_tokens":18
+      }
+    }"#;
+
+    let result = completion_result_from_raw_response_json(raw).expect("result");
+    let output: serde_json::Value = serde_json::from_str(result.output.as_str()).expect("json");
+
+    assert_eq!(result.model.as_deref(), Some("gpt-test"));
+    assert_eq!(result.prompt_tokens, Some(11));
+    assert_eq!(result.completion_tokens, Some(7));
+    assert_eq!(result.total_tokens, Some(18));
     assert_eq!(
         output.get("module").and_then(|value| value.as_str()),
         Some("memory.short_term.recent")
@@ -583,12 +598,30 @@ fn openai_client_parses_legacy_function_call_payload() {
     assert_eq!(
         output
             .get("args")
-            .and_then(|args| args.get("limit"))
+            .and_then(|value| value.get("limit"))
             .and_then(|value| value.as_i64()),
-        Some(5)
+        Some(3)
     );
+}
 
-    handle.join().expect("server thread");
+#[test]
+fn completion_result_from_raw_response_json_parses_output_text_without_annotations() {
+    let raw = r#"{
+      "model":"gpt-test",
+      "output":[
+        {
+          "type":"message",
+          "role":"assistant",
+          "content":[
+            {"type":"output_text","text":"{\"decision\":\"wait\"}"}
+          ]
+        }
+      ]
+    }"#;
+
+    let result = completion_result_from_raw_response_json(raw).expect("result");
+    assert_eq!(result.model.as_deref(), Some("gpt-test"));
+    assert_eq!(result.output, "{\"decision\":\"wait\"}");
 }
 
 #[test]
