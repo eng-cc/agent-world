@@ -32,6 +32,7 @@ const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod app_bootstrap;
+mod auto_focus;
 mod button_feedback;
 mod camera_controls;
 mod copyable_text;
@@ -55,6 +56,10 @@ mod viewer_3d_config;
 mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
+use auto_focus::{
+    apply_startup_auto_focus, auto_focus_config_from_env, handle_focus_selection_hotkey,
+    AutoFocusState,
+};
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{
     camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,

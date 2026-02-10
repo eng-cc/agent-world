@@ -13,7 +13,7 @@
 - `crates/agent_world/scenarios/*.json` 作为默认场景文件集合。
 - `WorldScenario` 从场景文件加载配置（include_str 嵌入编译产物）。
 - 地点生成表达 `location_generator`：由 `seed` 决定地点数量与命名。
-- 场景文件覆盖所有现有场景：minimal/two_bases/.../asteroid_fragment_triad_region_bootstrap。
+- 场景文件覆盖所有现有场景：minimal/two_bases/.../asteroid_fragment_detail_bootstrap/asteroid_fragment_triad_region_bootstrap。
 - 单元测试验证场景文件可加载与稳定性。
 - `world_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
 
@@ -75,8 +75,13 @@
 | `triad_region_bootstrap` | 三区域结构（location/agents/resource） | `triad_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(triad-regions)`、`world_init_demo_runs_triad_summary` |
 | `triad_p2p_bootstrap` | P2P 节点化分布（seed 生成节点 + 随机出生） | `triad_p2p_bootstrap_seeds_nodes_and_agents`、`scenarios_are_stable`、`scenario_aliases_parse(p2p-triad)` |
 | `asteroid_fragment_bootstrap` | 碎片分块生成 + bootstrap chunk + 预算账本（无默认设施） | `asteroid_fragment_bootstrap_seeds_fragments_and_resources`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_summary` |
+| `asteroid_fragment_detail_bootstrap` | 细粒度渲染调试场景（高密度碎片，无 origin/agent） | `asteroid_fragment_detail_bootstrap_seeds_dense_fragments_for_viewer`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_detail_summary` |
 | `asteroid_fragment_twin_region_bootstrap` | 碎片分块 + 双区域结构联动（无默认设施） | `asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_twin_summary` |
 | `asteroid_fragment_triad_region_bootstrap` | 碎片分块 + 三区域结构联动（无默认设施） | `asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_triad_summary` |
+
+场景说明补充：
+- `asteroid_fragment_detail_bootstrap` 设计用于 viewer 细粒度 location 渲染回归，默认关闭 origin 与 agents，避免干扰观察。
+- 建议在截图闭环中配合 `scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap` 使用。
 
 说明：
 - 自 2026-02-07 起，除 `power_bootstrap` 外，内置场景不再默认注入 `power_plants`/`power_storages`；如需设施，需在场景 JSON 中显式声明。

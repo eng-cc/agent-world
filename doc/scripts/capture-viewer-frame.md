@@ -27,10 +27,14 @@
   - `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
 - 可选参数：
   - `--scenario` / `--addr` / `--tick-ms` / `--display` / `--width` / `--height` / `--viewer-wait` / `--llm` / `--keep-tmp`
+  - `--auto-focus-target`：启动 viewer 后自动聚焦目标（如 `first_fragment`、`location:frag-1`、`agent:agent-0`）
+  - `--auto-focus-radius`：自动聚焦半径覆盖值
+  - `--auto-focus-keep-2d`：自动聚焦时保持 2D（默认切换 3D）
 - viewer 内置截图环境变量：
   - `AGENT_WORLD_VIEWER_CAPTURE_PATH`：截图输出文件路径（PNG）。
   - `AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS`：最短等待秒数（默认 2 秒）。
   - `AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS`：无快照时的最大等待秒数（默认 15 秒）。
+  - （可选）`AGENT_WORLD_VIEWER_AUTO_FOCUS*`：脚本在传入 `--auto-focus-*` 时自动注入。
 - 输出目录：`.tmp/screens/`
   - `root.png`：整屏截图（macOS 内置截图模式下与 `window.png` 相同）
   - `window.png`：viewer 窗口截图
