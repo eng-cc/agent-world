@@ -74,7 +74,14 @@ fn rebuild_scene_chunks_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let snapshot = sample_snapshot();
-    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+    rebuild_scene_from_snapshot(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        &snapshot,
+        false,
+    );
 }
 
 fn sample_snapshot() -> WorldSnapshot {
@@ -114,6 +121,7 @@ fn sample_assets() -> Viewer3dAssets {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),

@@ -158,6 +158,7 @@ pub(super) fn overlay_button_label(kind: &str, locale: UiLocale) -> &'static str
             "chunk" => "分块",
             "heat" => "热力",
             "flow" => "流向",
+            "fragment" => "碎片",
             _ => "-",
         }
     } else {
@@ -165,6 +166,7 @@ pub(super) fn overlay_button_label(kind: &str, locale: UiLocale) -> &'static str
             "chunk" => "Chunk",
             "heat" => "Heat",
             "flow" => "Flow",
+            "fragment" => "Fragment",
             _ => "-",
         }
     }

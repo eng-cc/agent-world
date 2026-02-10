@@ -16,13 +16,21 @@ Options:
   --width <px>            virtual screen width (default: 1280)
   --height <px>           virtual screen height (default: 800)
   --viewer-wait <sec>     wait before capture (default: 8)
+  --capture-max-wait <s>  max wait for internal capture (macOS only)
+  --auto-focus-target <target>
+                          viewer auto-focus target (e.g. first_fragment, location:frag-1)
+  --auto-focus-radius <n> viewer auto-focus radius override
+  --auto-focus-keep-2d    keep 2D mode during auto-focus (default: switch to 3D)
   --llm                   enable --llm on world_viewer_live
+  --no-prewarm            skip prewarm cargo build step
   --keep-tmp              do not clear .tmp at start
   -h, --help              show help
 
 Behavior:
   - Linux: uses Xvfb + xwininfo + ffmpeg
   - macOS: uses Bevy internal screenshot (no system screen-recording permission)
+  - default prewarm: builds `world_viewer_live` + `agent_world_viewer` first to reduce
+    run-time compile wait and screenshot timeout risk
 
 Output:
   .tmp/screens/
@@ -69,6 +77,7 @@ VALID_SCENARIOS=(
   triad_region_bootstrap
   triad_p2p_bootstrap
   asteroid_fragment_bootstrap
+  asteroid_fragment_detail_bootstrap
   asteroid_fragment_twin_region_bootstrap
   asteroid_fragment_triad_region_bootstrap
 )
@@ -86,6 +95,9 @@ normalize_scenario_alias() {
       ;;
     asteroid_fragment)
       echo "asteroid_fragment_bootstrap"
+      ;;
+    asteroid_fragment_detail)
+      echo "asteroid_fragment_detail_bootstrap"
       ;;
     asteroid_fragment_twin)
       echo "asteroid_fragment_twin_region_bootstrap"
@@ -140,7 +152,7 @@ validate_scenario_or_exit() {
 
   echo "invalid scenario: $raw" >&2
   echo "supported scenarios: $(scenario_list_csv)" >&2
-  echo "common aliases: triad, triad_p2p, twin, asteroid_fragment" >&2
+  echo "common aliases: triad, triad_p2p, twin, asteroid_fragment, asteroid_fragment_detail" >&2
   exit 2
 }
 
@@ -174,6 +186,51 @@ wait_for_file() {
   return 1
 }
 
+parse_truthy_flag() {
+  local raw=${1:-}
+  local normalized
+  normalized=$(echo "$raw" | tr '[:upper:]' '[:lower:]')
+  case "$normalized" in
+    1|true|yes|on)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+resolve_capture_max_wait() {
+  local viewer_wait=$1
+  local capture_max_wait_override=$2
+
+  local viewer_wait_int=${viewer_wait%.*}
+  if [[ -z "$viewer_wait_int" ]]; then
+    viewer_wait_int=8
+  fi
+
+  local extra_wait=20
+  if parse_truthy_flag "${AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS:-}"; then
+    extra_wait=60
+  fi
+
+  local capture_max_wait=$((viewer_wait_int + extra_wait))
+  if [[ -n "$capture_max_wait_override" ]]; then
+    if [[ ! "$capture_max_wait_override" =~ ^[0-9]+$ ]]; then
+      echo "invalid --capture-max-wait: $capture_max_wait_override" >&2
+      exit 1
+    fi
+    capture_max_wait=$capture_max_wait_override
+  fi
+
+  echo "$capture_max_wait"
+}
+
+prewarm_viewer_binaries() {
+  run env -u RUSTC_WRAPPER cargo build -p agent_world --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p agent_world_viewer
+}
+
 capture_linux() {
   local display=$1
   local width=$2
@@ -186,6 +243,10 @@ capture_linux() {
   local window_png=$9
   local window_line_txt=${10}
   local window_geom_txt=${11}
+  local auto_focus_enabled=${12:-0}
+  local auto_focus_target=${13:-}
+  local auto_focus_radius=${14:-}
+  local auto_focus_force_3d=${15:-1}
 
   echo "+ Xvfb $display -screen 0 ${width}x${height}x24 > $xvfb_log"
   Xvfb "$display" -screen 0 "${width}x${height}x24" >"$xvfb_log" 2>&1 &
@@ -193,8 +254,18 @@ capture_linux() {
 
   sleep 2
 
-  echo "+ DISPLAY=$display env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
-  DISPLAY="$display" env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+  if [[ "$auto_focus_enabled" == "1" ]]; then
+    echo "+ DISPLAY=$display AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    DISPLAY="$display" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+  else
+    echo "+ DISPLAY=$display env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    DISPLAY="$display" env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+  fi
   VIEWER_PID=$!
 
   local window_line
@@ -222,33 +293,54 @@ capture_linux() {
 
 capture_macos() {
   local viewer_wait=$1
-  local addr=$2
-  local viewer_log=$3
-  local xvfb_log=$4
-  local root_png=$5
-  local window_png=$6
-  local window_line_txt=$7
-  local window_geom_txt=$8
+  local capture_max_wait_override=$2
+  local addr=$3
+  local viewer_log=$4
+  local xvfb_log=$5
+  local root_png=$6
+  local window_png=$7
+  local window_line_txt=$8
+  local window_geom_txt=$9
+  local auto_focus_target=${10:-}
+  local auto_focus_radius=${11:-}
+  local auto_focus_force_3d=${12:-1}
+  local auto_focus_enabled=${13:-0}
 
-  local viewer_wait_int=${viewer_wait%.*}
-  if [[ -z "$viewer_wait_int" ]]; then
-    viewer_wait_int=8
-  fi
-  local capture_max_wait=$((viewer_wait_int + 20))
+  local capture_max_wait
+  capture_max_wait=$(resolve_capture_max_wait "$viewer_wait" "$capture_max_wait_override")
 
   echo "macOS mode: Bevy internal screenshot (no Xvfb)" > "$xvfb_log"
   echo "bevy_internal_capture Agent World Viewer" > "$window_line_txt"
   echo "internal" > "$window_geom_txt"
 
-  echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
-  AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
-  AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
-  AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
-  env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+  local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")
+  if [[ "$auto_focus_enabled" == "1" ]]; then
+    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${viewer_cmd[*]} > $viewer_log"
+    AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
+    AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
+    AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
+    AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
+  else
+    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png ${viewer_cmd[*]} > $viewer_log"
+    AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
+    AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
+    AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
+    "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
+  fi
   VIEWER_PID=$!
 
   if ! wait_for_file "$window_png" "$capture_max_wait"; then
     echo "failed to generate internal viewer capture: $window_png" >&2
+    echo "capture timeout: wait=${capture_max_wait}s (viewer-wait=${viewer_wait}s)" >&2
+    if [[ -s "$viewer_log" ]]; then
+      echo "---- viewer.log tail ----" >&2
+      tail -n 60 "$viewer_log" >&2 || true
+      echo "-------------------------" >&2
+    fi
     exit 3
   fi
 
@@ -265,7 +357,13 @@ display=":100"
 width="1280"
 height="800"
 viewer_wait="8"
+auto_focus_target=""
+auto_focus_radius=""
+auto_focus_force_3d="1"
+auto_focus_enabled="0"
+capture_max_wait=""
 enable_llm=0
+prewarm=1
 keep_tmp=0
 
 while [[ $# -gt 0 ]]; do
@@ -298,8 +396,31 @@ while [[ $# -gt 0 ]]; do
       viewer_wait=${2:-}
       shift 2
       ;;
+    --capture-max-wait)
+      capture_max_wait=${2:-}
+      shift 2
+      ;;
+    --auto-focus-target)
+      auto_focus_target=${2:-}
+      auto_focus_enabled="1"
+      shift 2
+      ;;
+    --auto-focus-radius)
+      auto_focus_radius=${2:-}
+      auto_focus_enabled="1"
+      shift 2
+      ;;
+    --auto-focus-keep-2d)
+      auto_focus_force_3d="0"
+      auto_focus_enabled="1"
+      shift
+      ;;
     --llm)
       enable_llm=1
+      shift
+      ;;
+    --no-prewarm)
+      prewarm=0
       shift
       ;;
     --keep-tmp)
@@ -331,6 +452,10 @@ if [[ "$platform" == "linux" ]]; then
   require_cmd Xvfb
   require_cmd xwininfo
   require_cmd ffmpeg
+fi
+
+if [[ $prewarm -eq 1 ]]; then
+  prewarm_viewer_binaries
 fi
 
 if [[ $keep_tmp -eq 0 ]]; then
@@ -369,9 +494,9 @@ echo "+ ${server_cmd[*]} > $server_log"
 SERVER_PID=$!
 
 if [[ "$platform" == "linux" ]]; then
-  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt"
+  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_enabled" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d"
 else
-  capture_macos "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt"
+  capture_macos "$viewer_wait" "$capture_max_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_focus_enabled"
 fi
 
 echo "capture complete"

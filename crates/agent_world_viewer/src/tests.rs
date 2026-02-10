@@ -670,6 +670,7 @@ fn spawn_location_entity_adds_label_text() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -711,6 +712,7 @@ fn spawn_location_entity_uses_physical_radius_scale() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -742,6 +744,122 @@ fn spawn_location_entity_uses_physical_radius_scale() {
         .expect("location marker exists");
     assert!((base.0.x - 200.0).abs() < 1e-3);
     assert_eq!(marker.material, MaterialKind::Silicate);
+    assert_eq!(marker.radiation_emission_per_tick, 0);
+}
+
+#[test]
+fn spawn_location_entity_renders_fine_grained_ring_details() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_detail_ring_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let ring_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:ring:loc-detail-ring:")
+        })
+        .count();
+    let halo_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:halo:loc-detail-ring:")
+        })
+        .count();
+    assert_eq!(ring_count, 5);
+    assert_eq!(halo_count, 0);
+}
+
+#[test]
+fn spawn_location_entity_renders_radiation_halo_details() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_detail_halo_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let ring_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:ring:loc-detail-halo:")
+        })
+        .count();
+    let halo_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:halo:loc-detail-halo:")
+        })
+        .count();
+
+    assert_eq!(ring_count, 4);
+    assert_eq!(halo_count, 6);
 }
 
 #[test]
@@ -757,6 +875,7 @@ fn spawn_agent_entity_uses_body_height_scale() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -812,6 +931,7 @@ fn spawn_agent_entity_attaches_to_location_surface() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -877,6 +997,7 @@ fn spawn_agent_entity_renders_module_markers_up_to_cap() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -925,6 +1046,7 @@ fn spawn_agent_entity_robot_layout_places_head_slot_first() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -973,6 +1095,7 @@ fn rebuild_scene_maps_agent_module_count_from_module_visual_entities() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1018,6 +1141,7 @@ fn rebuild_scene_uses_default_module_count_when_no_module_visual_entities() {
         agent_module_marker_material: Handle::default(),
         location_mesh: Handle::default(),
         location_material_library: LocationMaterialHandles::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
         asset_mesh: Handle::default(),
         asset_material: Handle::default(),
         power_plant_mesh: Handle::default(),
@@ -1340,7 +1464,7 @@ fn spawn_label_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let origin = GeoPos::new(0.0, 0.0, 0.0);
-    spawn_location_entity(
+    spawn_location_entity_with_radiation(
         &mut commands,
         &config,
         &assets,
@@ -1351,6 +1475,7 @@ fn spawn_label_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         MaterialKind::Silicate,
         100,
+        0,
     );
 }
 
@@ -1361,7 +1486,7 @@ fn spawn_location_scale_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let origin = GeoPos::new(0.0, 0.0, 0.0);
-    spawn_location_entity(
+    spawn_location_entity_with_radiation(
         &mut commands,
         &config,
         &assets,
@@ -1372,6 +1497,51 @@ fn spawn_location_scale_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         MaterialKind::Silicate,
         20_000,
+        0,
+    );
+}
+
+fn spawn_location_detail_ring_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-detail-ring",
+        "DetailRing",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
+        20_000,
+        0,
+    );
+}
+
+fn spawn_location_detail_halo_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-detail-halo",
+        "DetailHalo",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Metal,
+        6_000,
+        10_000,
     );
 }
 
@@ -1403,7 +1573,7 @@ fn spawn_agent_surface_attachment_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let origin = GeoPos::new(0.0, 0.0, 0.0);
-    spawn_location_entity(
+    spawn_location_entity_with_radiation(
         &mut commands,
         &config,
         &assets,
@@ -1414,6 +1584,7 @@ fn spawn_agent_surface_attachment_test_system(
         GeoPos::new(0.0, 0.0, 0.0),
         MaterialKind::Silicate,
         240,
+        0,
     );
     spawn_agent_entity(
         &mut commands,
@@ -1524,7 +1695,14 @@ fn rebuild_scene_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+    rebuild_scene_from_snapshot(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        &snapshot,
+        false,
+    );
 }
 
 fn rebuild_scene_default_module_count_test_system(
@@ -1560,5 +1738,12 @@ fn rebuild_scene_default_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+    rebuild_scene_from_snapshot(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        &snapshot,
+        false,
+    );
 }

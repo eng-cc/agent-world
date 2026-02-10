@@ -1,0 +1,22 @@
+{
+  "id": "asteroid_fragment_detail_bootstrap",
+  "name": "Asteroid Fragment Detail Bootstrap",
+  "seed": 42,
+  "origin": {
+    "enabled": false
+  },
+  "asteroid_fragment": {
+    "enabled": true,
+    "seed_offset": 111,
+    "min_fragment_spacing_cm": 0,
+    "bootstrap_chunks": [
+      { "x": 1, "y": 1, "z": 0 },
+      { "x": 1, "y": 2, "z": 0 },
+      { "x": 2, "y": 1, "z": 0 },
+      { "x": 2, "y": 2, "z": 0 }
+    ]
+  },
+  "agents": {
+    "count": 0
+  }
+}

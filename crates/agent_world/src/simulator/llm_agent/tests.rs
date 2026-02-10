@@ -227,6 +227,7 @@ fn base_config() -> LlmAgentConfig {
         prompt_profile: LlmPromptProfile::Balanced,
         force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
         harvest_max_amount_cap: DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
+        execute_until_auto_reenter_ticks: DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS,
     }
 }
 
@@ -260,6 +261,10 @@ fn llm_config_uses_default_system_prompt() {
     assert_eq!(
         config.harvest_max_amount_cap,
         DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP
+    );
+    assert_eq!(
+        config.execute_until_auto_reenter_ticks,
+        DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
     );
 }
 
@@ -329,6 +334,10 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
         "9".to_string(),
     );
     vars.insert(ENV_LLM_HARVEST_MAX_AMOUNT_CAP.to_string(), "88".to_string());
+    vars.insert(
+        ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS.to_string(),
+        "5".to_string(),
+    );
 
     let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap();
     assert_eq!(config.max_decision_steps, 6);
@@ -337,6 +346,7 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
     assert_eq!(config.prompt_profile, LlmPromptProfile::Compact);
     assert_eq!(config.force_replan_after_same_action, 9);
     assert_eq!(config.harvest_max_amount_cap, 88);
+    assert_eq!(config.execute_until_auto_reenter_ticks, 5);
 }
 
 #[test]
@@ -354,6 +364,27 @@ fn llm_config_rejects_invalid_harvest_max_amount_cap() {
     assert!(matches!(
         err,
         LlmConfigError::InvalidHarvestMaxAmountCap { .. }
+    ));
+}
+
+#[test]
+fn llm_config_rejects_invalid_execute_until_auto_reenter_ticks() {
+    let mut vars = BTreeMap::new();
+    vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
+    vars.insert(
+        ENV_LLM_BASE_URL.to_string(),
+        "https://api.example.com/v1".to_string(),
+    );
+    vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
+    vars.insert(
+        ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS.to_string(),
+        "-1".to_string(),
+    );
+
+    let err = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap_err();
+    assert!(matches!(
+        err,
+        LlmConfigError::InvalidExecuteUntilAutoReenterTicks { .. }
     ));
 }
 
@@ -437,6 +468,10 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
     assert_eq!(
         config.harvest_max_amount_cap,
         DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP
+    );
+    assert_eq!(
+        config.execute_until_auto_reenter_ticks,
+        DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
     );
 }
 
@@ -933,6 +968,7 @@ fn llm_agent_long_run_stress_keeps_pipeline_stable() {
     config.max_repair_rounds = 1;
     config.prompt_max_history_items = 2;
     config.prompt_profile = LlmPromptProfile::Compact;
+    config.execute_until_auto_reenter_ticks = 0;
 
     let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
 
@@ -1070,6 +1106,34 @@ fn llm_agent_compacts_large_module_result_payload_for_prompt_history() {
     assert!(compact_json.contains("\"truncated\":true"));
     assert!(compact_json.contains("\"original_chars\":"));
     assert!(!compact_json.contains(giant_payload.as_str()));
+}
+
+#[test]
+fn llm_agent_compacts_dense_observation_for_prompt_context() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let observation = make_dense_observation(42, 40);
+
+    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
+    assert!(prompt.contains("\"visible_agents_total\":41"));
+    assert!(prompt.contains("\"visible_agents_omitted\":"));
+    assert!(prompt.contains("\"visible_locations_total\":41"));
+    assert!(prompt.contains("\"visible_locations_omitted\":"));
+    assert!(!prompt.contains("agent-extra-39"));
+    assert!(!prompt.contains("loc-extra-39"));
+}
+
+#[test]
+fn llm_agent_compacts_large_module_args_payload_for_prompt_history() {
+    let giant_query = format!("query-{}", "x".repeat(4_000));
+    let history = vec![ModuleCallExchange {
+        module: "memory.long_term.search".to_string(),
+        args: serde_json::json!({"query": giant_query.clone()}),
+        result: serde_json::json!({"ok": true}),
+    }];
+
+    let history_json = LlmAgentBehavior::<MockClient>::module_history_json_for_prompt(&history);
+    assert!(history_json.contains("\"truncated\":true"));
+    assert!(!history_json.contains(giant_query.as_str()));
 }
 
 #[test]
@@ -1229,6 +1293,177 @@ fn llm_agent_execute_until_continues_without_llm_until_event() {
     ));
 
     assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_auto_reentry_arms_execute_until_for_repeated_actions() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"harvest_radiation","max_amount":9}"#.to_string(),
+            r#"{"decision":"harvest_radiation","max_amount":9}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+
+    let mut config = base_config();
+    config.execute_until_auto_reenter_ticks = 3;
+    config.force_replan_after_same_action = 6;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let mut observation = make_observation();
+    observation.time = 26;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 301,
+        success: true,
+        event: WorldEvent {
+            id: 401,
+            time: 26,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 9,
+                available: 90,
+            },
+        },
+    });
+
+    observation.time = 27;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+    let second_trace = behavior.take_decision_trace().expect("second trace");
+    assert!(second_trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.step_type == "execute_until_auto_reentry"));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 302,
+        success: true,
+        event: WorldEvent {
+            id: 402,
+            time: 27,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 8,
+                available: 82,
+            },
+        },
+    });
+
+    observation.time = 28;
+    let third = behavior.decide(&observation);
+    assert!(matches!(
+        third,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+    let third_trace = behavior.take_decision_trace().expect("third trace");
+    assert!(third_trace.llm_input.is_none());
+    assert!(third_trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.step_type == "execute_until_continue"));
+
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn llm_agent_auto_reentry_can_be_disabled() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"harvest_radiation","max_amount":9}"#.to_string(),
+            r#"{"decision":"harvest_radiation","max_amount":9}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+
+    let mut config = base_config();
+    config.execute_until_auto_reenter_ticks = 0;
+    config.force_replan_after_same_action = 6;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let mut observation = make_observation();
+    observation.time = 29;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 303,
+        success: true,
+        event: WorldEvent {
+            id: 403,
+            time: 29,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 9,
+                available: 90,
+            },
+        },
+    });
+
+    observation.time = 30;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 9, .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 9,
+        },
+        action_id: 304,
+        success: true,
+        event: WorldEvent {
+            id: 404,
+            time: 30,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 8,
+                available: 82,
+            },
+        },
+    });
+
+    observation.time = 31;
+    let third = behavior.decide(&observation);
+    assert!(matches!(
+        third,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
 }
 
 #[test]

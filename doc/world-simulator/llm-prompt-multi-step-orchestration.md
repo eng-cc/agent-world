@@ -345,4 +345,68 @@
   - 与 LMSO23 对比（`.tmp/lmso23_prompt_30_final/report.json`）：`action_success 29 -> 30`，`llm_input_chars_max 14056 -> 10094`。
 
 ### 后续
-- LMSO25 将在保持参数安全护栏的前提下，继续优化 `execute_until` 重入策略与 `wait` 下降空间。
+- LMSO26 将继续收敛 Prompt 预算，重点压低 `llm_input_chars_max` 并减少 `prompt_section_clipped`。
+
+## LMSO25 决策效率优化（2026-02-10）
+
+### 触发问题
+- 在 LMSO24 后，稳定性与参数安全已收敛，但连续动作场景仍存在重复 LLM 往返。
+- 具体表现为 `plan/module_call` 轮次仍偏多，`execute_until` 的模板和重入策略仍有优化空间。
+
+### 已实施优化
+1. `execute_until` 模板增强（输入侧）：
+   - 在 `Decision JSON Schema` 中新增 move/harvest 推荐模板，明确事件组合。
+2. 自动重入策略（运行时）：
+   - 新增配置 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`（默认 `4`，`0` 关闭）。
+   - 当检测到“连续同动作”且模型本轮未显式输出 `execute_until` 时，自动挂载短周期 `execute_until`，减少重复 LLM 调用。
+3. 可观测性增强：
+   - 新增 `execute_until_auto_reentry` step trace，记录自动重入是否触发。
+
+### 验证结果
+- 新增/更新单测通过：
+  - `llm_config_rejects_invalid_execute_until_auto_reenter_ticks`
+  - `llm_agent_auto_reentry_arms_execute_until_for_repeated_actions`
+  - `llm_agent_auto_reentry_can_be_disabled`
+- 30 tick 回归：`.tmp/lmso25_efficiency_30/report.json`
+  - 稳定性：`parse_errors=0`、`llm_errors=0`、`repair_rounds_total=0`。
+  - 与 LMSO24 对比（`.tmp/lmso24_guard_30/report.json`）：
+    - `module_call: 8 -> 6`
+    - `plan: 2 -> 1`
+    - `llm_input_chars_total: 43829 -> 35333`
+    - `llm_input_chars_avg: 1460 -> 1177`
+  - 观察：`llm_input_chars_max` 在该次样本中出现 `10094 -> 16967` 波动，并触发 `prompt_section_clipped=1`，后续由 LMSO26 处理峰值预算收敛。
+
+### 后续
+- LMSO26 继续优化 Prompt 预算与历史折叠，优先压低输入峰值并稳定裁剪行为。
+
+
+## LMSO26 Prompt 预算收敛（2026-02-10）
+
+### 触发问题
+- LMSO25 后虽然稳定性保持，但出现 `llm_input_chars_max=16967` 与 `prompt_section_clipped=1`，峰值输入与裁剪触发仍需收敛。
+
+### 已实施优化
+1. 输入源压缩（context/history/memory）：
+   - observation 注入改为近邻采样摘要（可见 agent/location 各保留上限，附 `*_total/*_omitted`）。
+   - `module_history` 的 `args/result` 统一走字符上限摘要压缩（保留 `truncated/original_chars/preview`）。
+   - `memory_digest` 注入增加字符上限收敛。
+2. 工具回包收敛：
+   - `memory.short_term.recent` / `memory.long_term.search` 的 `limit` 收紧为默认 `3`、上限 `8`，降低单次 module payload 放大效应。
+3. Prompt 预算与模板收敛：
+   - `balanced` profile 的预算与 memory selector 调整为更保守配置，降低峰值输入放大概率。
+   - `PromptAssembler` 改为“仅在超预算时”触发 soft section 裁剪；finalize 阶段使用更紧 soft cap。
+   - 精简 `Agent Goals` / `Tool Protocol` / `Output Schema` 冗余文案，减少固定提示词体积。
+
+### 验证结果
+- 新增/更新单测通过：
+  - `prompt_budget_keeps_soft_sections_when_budget_is_sufficient`
+  - `llm_agent_compacts_dense_observation_for_prompt_context`
+  - `llm_agent_compacts_large_module_args_payload_for_prompt_history`
+- 30 tick 回归：`.tmp/lmso26_budget_30/report.json`
+  - 稳定性：`parse_errors=0`、`llm_errors=0`、`repair_rounds_total=0`。
+  - 峰值/裁剪（对比 LMSO25：`.tmp/lmso25_efficiency_30/report.json`）：
+    - `llm_input_chars_max: 16967 -> 14094`
+    - `prompt_section_clipped: 1 -> 0`
+
+### 后续
+- LMSO27 在保持峰值受控前提下，回收 `llm_input_chars_avg/total` 与 `module_call` 轮次波动。

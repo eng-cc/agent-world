@@ -41,6 +41,20 @@ fn world_init_demo_runs_asteroid_fragment_summary() {
 }
 
 #[test]
+fn world_init_demo_runs_asteroid_fragment_detail_summary() {
+    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+    let output = Command::new(bin)
+        .args(["--summary-only", "asteroid_fragment_detail_bootstrap"])
+        .output()
+        .expect("run world_init_demo");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("scenario: asteroid_fragment_detail_bootstrap"));
+    assert!(stdout.contains("asteroid_fragment_fragments:"));
+}
+
+#[test]
 fn world_init_demo_runs_asteroid_fragment_twin_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
     let output = Command::new(bin)

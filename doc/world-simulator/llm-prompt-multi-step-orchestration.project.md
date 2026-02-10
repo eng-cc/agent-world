@@ -38,17 +38,18 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO24（动作参数护栏已完成并通过 30 tick 回归）
-- 下一步：启动 LMSO25 决策效率优化（`execute_until` 模板与重入策略）
-- 最近更新：完成 LMSO24 全量验证（`.tmp/lmso24_guard_30/report.json`，`action_success: 29 -> 30`，2026-02-10）
+- 当前阶段：LMSO26（Prompt 预算收敛已完成并通过 30 tick 回归）
+- 下一步：启动 LMSO27（在峰值受控前提下回收 module_call 与平均输入开销）
+- 最近更新：完成 LMSO26 回归验证（`.tmp/lmso26_budget_30/report.json`，`llm_input_chars_max: 16967 -> 14094`，`prompt_section_clipped: 1 -> 0`，2026-02-10）
 
 ## 增量优化任务（30 tick 观察）
 - [x] LMSO23 解析噪声收敛（输入侧优先）：强化 prompt 单 JSON 约束、阶段收敛门槛与模块白名单，先降低多段输出/超限 module_call 导致的 parse_error。
 - [x] LMSO24 动作参数护栏：为 `harvest_radiation.max_amount` 增加可配置上限与提示词约束，并在运行时统一裁剪超限值。
-- [ ] LMSO25 决策效率优化：优化 `execute_until` 模板与重入策略，目标是将 `wait` 占比持续降低。
-- [ ] LMSO26 Prompt 预算收敛：继续压缩 memory/history，降低 `llm_input_chars_max` 与 `prompt_section_clipped`。
+- [x] LMSO25 决策效率优化：优化 `execute_until` 模板与重入策略，引入连续动作自动重入，降低无效 plan/module_call 轮次。
+- [x] LMSO26 Prompt 预算收敛：继续压缩 memory/history，降低 `llm_input_chars_max` 与 `prompt_section_clipped`。
+- [ ] LMSO27 效率回收：在保持峰值受控下，回收 `module_call` 与 `llm_input_chars_avg/total`。
 
 ## 状态（增量）
-- 当前增量阶段：LMSO25（待启动）
-- 增量目标：在保持 `llm_errors=0` 与参数护栏生效的前提下，继续提升动作决策效率。
-- 最近更新：完成 LMSO24 动作参数护栏并通过 30 tick 回归（`action_success=30`、`action_failure=0`、`parse_errors=0`，2026-02-10）。
+- 当前增量阶段：LMSO27（待启动）
+- 增量目标：在保持 `llm_input_chars_max` 与 `prompt_section_clipped` 已收敛的前提下，回收平均输入与模块调用轮次。
+- 最近更新：完成 LMSO26 Prompt 预算收敛并通过 30 tick 回归（`parse_errors=0`、`prompt_section_clipped=0`、`llm_input_chars_max=14094`，2026-02-10）。

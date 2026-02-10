@@ -32,6 +32,7 @@ const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod app_bootstrap;
+mod auto_focus;
 mod button_feedback;
 mod camera_controls;
 mod copyable_text;
@@ -42,6 +43,7 @@ mod floating_origin;
 mod headless;
 mod i18n;
 mod internal_capture;
+mod location_fragment_render;
 mod material_library;
 mod panel_layout;
 mod panel_scroll;
@@ -55,6 +57,10 @@ mod viewer_3d_config;
 mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
+use auto_focus::{
+    apply_startup_auto_focus, auto_focus_config_from_env, handle_focus_selection_hotkey,
+    AutoFocusState,
+};
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{
     camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,
@@ -72,7 +78,10 @@ use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
-use material_library::{build_location_material_handles, LocationMaterialHandles};
+use material_library::{
+    build_fragment_element_material_handles, build_location_material_handles,
+    FragmentElementMaterialHandles, LocationMaterialHandles,
+};
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
 use right_panel_module_visibility::{
@@ -97,8 +106,8 @@ use ui_text::{agent_activity_summary, events_summary, selection_details_summary,
 use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
-    update_world_overlay_status_text, update_world_overlays_3d, WorldOverlayConfig,
-    WorldOverlayUiState,
+    update_world_overlay_status_text, update_world_overlays_3d, world_overlay_config_from_env,
+    WorldOverlayConfig, WorldOverlayUiState,
 };
 
 const WORLD_MIN_AXIS: f32 = 0.1;
@@ -166,6 +175,7 @@ struct Viewer3dScene {
     space: Option<SpaceConfig>,
     last_snapshot_time: Option<u64>,
     last_event_id: Option<u64>,
+    fragment_elements_visible: bool,
     agent_entities: HashMap<String, Entity>,
     agent_positions: HashMap<String, GeoPos>,
     agent_heights_cm: HashMap<String, i64>,
@@ -205,6 +215,7 @@ struct Viewer3dAssets {
     agent_module_marker_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
     location_material_library: LocationMaterialHandles,
+    fragment_element_material_library: FragmentElementMaterialHandles,
     asset_mesh: Handle<Mesh>,
     asset_material: Handle<StandardMaterial>,
     power_plant_mesh: Handle<Mesh>,
@@ -539,6 +550,7 @@ fn setup_3d_scene(
         ..default()
     });
     let location_material_library = build_location_material_handles(&mut materials);
+    let fragment_element_material_library = build_fragment_element_material_handles(&mut materials);
     let asset_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.82, 0.76, 0.34),
         perceptual_roughness: 0.55,
@@ -627,6 +639,7 @@ fn setup_3d_scene(
         agent_module_marker_material,
         location_mesh,
         location_material_library,
+        fragment_element_material_library,
         asset_mesh,
         asset_material,
         power_plant_mesh,
@@ -1021,6 +1034,7 @@ fn update_3d_scene(
     mut scene: ResMut<Viewer3dScene>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
+    overlay_config: Res<WorldOverlayConfig>,
     state: Res<ViewerState>,
 ) {
     let Some(snapshot) = state.snapshot.as_ref() else {
@@ -1029,10 +1043,20 @@ fn update_3d_scene(
 
     let snapshot_time = snapshot.time;
     let snapshot_changed = scene.last_snapshot_time != Some(snapshot_time);
-    if snapshot_changed {
-        rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, snapshot);
+    let fragment_visibility_changed =
+        scene.fragment_elements_visible != overlay_config.show_fragment_elements;
+    if snapshot_changed || fragment_visibility_changed {
+        rebuild_scene_from_snapshot(
+            &mut commands,
+            &config,
+            &assets,
+            &mut scene,
+            snapshot,
+            overlay_config.show_fragment_elements,
+        );
         scene.last_snapshot_time = Some(snapshot_time);
         scene.last_event_id = None;
+        scene.fragment_elements_visible = overlay_config.show_fragment_elements;
         selection.clear();
     }
 

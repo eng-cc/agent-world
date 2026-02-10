@@ -56,6 +56,7 @@
   - `AGENT_WORLD_LLM_PROMPT_PROFILE`（默认 `balanced`，可选 `compact` / `balanced`）
   - `AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`（默认 `4`，连续同动作达到阈值后强制先 plan/module_call；设为 `0` 可关闭）
   - `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，`harvest_radiation.max_amount` 上限；超限将自动裁剪）
+  - `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`（默认 `4`，检测到连续同动作时自动挂载短周期 execute_until；设为 `0` 可关闭）
 - Agent 级目标覆盖（可选）：
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
   - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
@@ -67,6 +68,8 @@
 - 当模型在同一轮输出多段 JSON（例如多个 `module_call` + `decision`）时，系统会按顺序消费片段并继续收敛。
 - 当模型输出 `harvest_radiation.max_amount` 超过上限时，系统会按 `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP` 自动裁剪并记录 trace 备注。
 - 为避免长期运行陷入“动作复读”，系统会在连续同动作达到阈值后触发反重复门控（优先要求 plan/module_call 先补证据）。
+- 在连续同动作场景下，系统可按 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS` 自动挂载短周期 `execute_until`，减少不必要的重复 LLM 调用。
+- 为抑制 Prompt 峰值输入，系统会对 observation 的可见对象做近邻采样，并对 memory digest 与 module history（args/result）做摘要压缩。
 - 当模型输出无法解析时，系统会按 `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS` 自动追加 repair 提示重试，超限后降级为 `Wait`。
 - LLM 在决策过程中按 Responses API `tools/function_call` 注册并解析内置模块调用，同时兼容文本 JSON `type=module_call`：
   - `agent.modules.list`（tool 名：`agent_modules_list`）
