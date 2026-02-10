@@ -34,7 +34,7 @@
 - Rust workspace（Cargo），核心库：`crates/agent_world`
 
 ## LLM Agent 行为配置
-- 代码侧已提供 `LlmAgentBehavior`（OpenAI 兼容 `chat/completions`）。
+- 代码侧已提供 `LlmAgentBehavior`（基于 `async-openai`，使用 Responses API）。
 - 默认从仓库根目录 `config.toml` 读取配置（可由 `config.example.toml` 复制）。
 - 配置项（必填）：
   - `AGENT_WORLD_LLM_MODEL`
@@ -57,11 +57,12 @@
   - 例：`agent-1` 对应 `AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1`
 - 当 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 未配置时，默认值为：
   - `硅基个体存在的意义是保障硅基文明存续和发展；`
+- `AGENT_WORLD_LLM_BASE_URL` 支持 `/v1`、`/v1/responses`、`/v1/chat/completions`，运行时会自动归一到 API Base。
 - LLM 在决策过程中支持多步协议：`plan -> module_call* -> decision_draft -> final decision`，并兼容直接输出最终 `decision`。
 - 当模型在同一轮输出多段 JSON（例如多个 `module_call` + `decision`）时，系统会按顺序消费片段并继续收敛。
 - 为避免长期运行陷入“动作复读”，系统会在连续同动作达到阈值后触发反重复门控（优先要求 plan/module_call 先补证据）。
 - 当模型输出无法解析时，系统会按 `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS` 自动追加 repair 提示重试，超限后降级为 `Wait`。
-- LLM 在决策过程中按 OpenAI 兼容 `tools/tool_calls` 注册并解析内置模块调用，同时兼容文本 JSON `type=module_call`：
+- LLM 在决策过程中按 Responses API `tools/function_call` 注册并解析内置模块调用，同时兼容文本 JSON `type=module_call`：
   - `agent.modules.list`（tool 名：`agent_modules_list`）
   - `environment.current_observation`（tool 名：`environment_current_observation`）
   - `memory.short_term.recent`（tool 名：`memory_short_term_recent`）

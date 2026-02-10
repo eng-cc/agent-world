@@ -5,166 +5,446 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world：一个持久、多主体、可审计的硅基文明世界模拟器。"
+      content="agent-world：一个持久、多主体、可审计、可回放的硅基文明世界模拟器。"
     />
+    <meta property="og:title" content="agent-world | 硅基文明持久世界模拟器" />
+    <meta
+      property="og:description"
+      content="规则先行、多主体演化、事件审计与可视化观测，一站式理解 agent-world。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/images/og-cover.png" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>agent-world | Persistent Multi-agent World</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://eng-cc.github.io/agent-world/" />
     <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg" />
     <link rel="stylesheet" href="assets/styles.css" />
     <script defer src="assets/app.js"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top">agent-world</a>
-      <nav class="nav" data-menu>
-        <a href="#features">能力</a>
+      <a class="brand" href="#top">
+        <span class="brand-mark"></span>
+        <span>agent-world</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#why">差异化</a>
+        <a href="#matrix">能力矩阵</a>
+        <a href="#architecture">架构</a>
+        <a href="#scenarios">场景</a>
         <a href="#demo">演示</a>
-        <a href="#quickstart">快速开始</a>
-        <a href="#docs">文档</a>
-        <a href="#roadmap">路线图</a>
+        <a href="#roadmap">路线</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contribute">参与</a>
       </nav>
       <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>
         ☰
       </button>
       <div class="lang-switch" aria-label="语言切换">
-        <button class="lang-icon-button" type="button" aria-label="切换语言" aria-expanded="false" data-lang-toggle>
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="切换语言"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
           <img src="assets/images/globe.svg" alt="" aria-hidden="true" />
         </button>
-        <div class="lang-popover" data-lang-popover>
-          <a class="active" href="index.html" aria-current="page" data-lang-choice="zh">中文</a>
-          <a href="en/index.html" data-lang-choice="en">English</a>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a class="active" href="index.html" aria-current="page" data-lang-choice="zh" data-lang-item>中文</a>
+          <a href="en/index.html" data-lang-choice="en" data-lang-item>English</a>
         </div>
       </div>
     </header>
 
     <main id="top">
-      <section class="hero section">
-        <div>
-          <p class="eyebrow">Persistent · Believable · Emergence-first</p>
-          <h1>面向硅基文明的持久世界模拟器</h1>
-          <p class="subtitle">
-            `agent-world` 是一个“规则先行”的多主体仿真系统。Agent 在资源、制度与关系约束下持续演化，
-            世界状态可落盘、可恢复、可回放、可审计。
-          </p>
-          <div class="cta-row">
-            <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-              >查看源码</a
-            >
-            <a class="button secondary" href="#quickstart">快速体验</a>
+      <section class="hero section section-hero" id="hero" data-reveal>
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Persistent · Believable · Emergence-first</p>
+            <h1>把“文明级 Agent 演化”做成可持续运行的真实世界</h1>
+            <p class="subtitle">
+              `agent-world` 是一个规则先行的多主体仿真引擎：从资源、制度到关系网络，
+              所有行为都被约束、记录、回放与审计。它不是一次性 Demo，而是可长期运行的世界系统。
+            </p>
+            <div class="trust-pills">
+              <span>Rust Workspace</span>
+              <span>LLM-Compatible</span>
+              <span>Replay & Audit</span>
+              <span>WASM Extensible</span>
+            </div>
+            <div class="cta-row">
+              <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
+                >查看源码</a
+              >
+              <a class="button secondary" href="#demo">快速体验</a>
+            </div>
+            <div class="hero-stats">
+              <article class="metric-box">
+                <strong data-counter-target="4">0</strong>
+                <span>核心子系统</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="3">0</strong>
+                <span>标准运行路径</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="2">0</strong>
+                <span>双语展示版本</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="100">0</strong>
+                <span>关键行为可审计覆盖（%）</span>
+              </article>
+            </div>
           </div>
-          <ul class="hero-metrics">
-            <li><strong>Persistent</strong><span>状态可持久化与恢复</span></li>
-            <li><strong>Multi-agent</strong><span>独立个体持续协作/竞争</span></li>
-            <li><strong>WASM Sandbox</strong><span>开放模块扩展能力</span></li>
-          </ul>
+          <aside class="hero-visual">
+            <figure class="hero-figure">
+              <img src="assets/images/world-loop.svg" alt="agent-world 核心循环示意图" />
+              <figcaption>规则约束 → Agent 决策 → 事件沉淀 → 观测回放</figcaption>
+            </figure>
+            <div class="pulse-panel">
+              <p class="panel-title">系统脉冲</p>
+              <ul>
+                <li><span>Runtime</span><strong>Rule Gate Active</strong></li>
+                <li><span>Simulator</span><strong>State Evolving</strong></li>
+                <li><span>Viewer</span><strong>Replay Ready</strong></li>
+                <li><span>LLM Bridge</span><strong>Repair Enabled</strong></li>
+              </ul>
+            </div>
+          </aside>
         </div>
-        <figure class="hero-figure">
-          <img src="assets/images/world-loop.svg" alt="agent-world 核心循环示意图" />
-          <figcaption>世界规则 → Agent 决策 → 事件沉淀 → 可观测与回放</figcaption>
-        </figure>
       </section>
 
-      <section id="features" class="section">
-        <h2>核心能力</h2>
+      <section id="why" class="section" data-reveal>
+        <h2>为什么是 agent-world</h2>
         <div class="grid cards-3">
           <article class="card">
-            <h3>持久世界</h3>
-            <p>世界快照与事件日志可落盘，支持长时演化与实验复现实验结果。</p>
+            <h3>从“会说话”到“可治理”</h3>
+            <p>Agent 行为不是黑箱对话，而是必须通过规则约束与状态校验，结果可追责、可解释。</p>
           </article>
           <article class="card">
-            <h3>多主体行为</h3>
-            <p>每个 Agent 拥有独立状态、记忆与目标，在约束下形成涌现行为。</p>
+            <h3>从“一次运行”到“持久世界”</h3>
+            <p>快照与事件日志让仿真实验可恢复、可回放、可比较，形成稳定的研究与工程基线。</p>
           </article>
           <article class="card">
-            <h3>规则优先</h3>
-            <p>Agent 行动必须通过世界规则校验，行为后果可追踪到资源与关系层。</p>
-          </article>
-          <article class="card">
-            <h3>LLM 行为接入</h3>
-            <p>内置 OpenAI 兼容 `chat/completions` 决策接口，支持多步与 repair 机制。</p>
-          </article>
-          <article class="card">
-            <h3>可视化观测</h3>
-            <p>提供 viewer 与 live server，支持离线回放、在线观测与诊断信息展示。</p>
-          </article>
-          <article class="card">
-            <h3>开放扩展</h3>
-            <p>通过 Rust + WASM 模块接入新能力，持续拓展社会与经济系统模拟深度。</p>
+            <h3>从“单智能体”到“文明涌现”</h3>
+            <p>多主体在资源、制度、关系中长期演化，支持观察协作、竞争、冲突与秩序形成过程。</p>
           </article>
         </div>
       </section>
 
-      <section id="demo" class="section">
-        <h2>演示路径</h2>
+      <section id="matrix" class="section" data-reveal>
+        <h2>核心能力矩阵</h2>
+        <div class="matrix-grid">
+          <article class="matrix-item">
+            <h3>规则引擎</h3>
+            <p>能力：行为校验、后果落地、冲突裁决</p>
+            <span>价值：保证世界一致性与可治理性</span>
+          </article>
+          <article class="matrix-item">
+            <h3>持久化链路</h3>
+            <p>能力：快照、日志、恢复、对比回放</p>
+            <span>价值：支撑长期实验与复现分析</span>
+          </article>
+          <article class="matrix-item">
+            <h3>多主体建模</h3>
+            <p>能力：记忆、目标、资源与关系网络</p>
+            <span>价值：观察真实社会化涌现行为</span>
+          </article>
+          <article class="matrix-item">
+            <h3>LLM 决策接口</h3>
+            <p>能力：OpenAI 兼容、多步决策、repair 机制</p>
+            <span>价值：在稳定框架中接入更强智能策略</span>
+          </article>
+          <article class="matrix-item">
+            <h3>可视化观测</h3>
+            <p>能力：离线回放、在线订阅、状态诊断</p>
+            <span>价值：降低系统理解与调试门槛</span>
+          </article>
+          <article class="matrix-item">
+            <h3>WASM 扩展</h3>
+            <p>能力：模块化注入新规则与行为</p>
+            <span>价值：低耦合演进世界经济与制度系统</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="section" data-reveal>
+        <h2>架构剖面</h2>
+        <figure class="architecture-figure">
+          <img src="assets/images/architecture-flow.svg" alt="agent-world 架构流示意图" loading="lazy" />
+          <figcaption>Runtime → Simulator → Viewer → LLM/Modules，与持久化证据链形成闭环。</figcaption>
+        </figure>
+        <div class="architecture-flow">
+          <article class="arch-node">
+            <h3>Runtime Layer</h3>
+            <p>统一规则入口，管理 agent 行为执行与合法性检查。</p>
+          </article>
+          <article class="arch-node">
+            <h3>Simulator Layer</h3>
+            <p>推进世界状态演化，沉淀 snapshot/journal 数据资产。</p>
+          </article>
+          <article class="arch-node">
+            <h3>Viewer Layer</h3>
+            <p>提供在线订阅与离线回放视图，支持诊断和演化追踪。</p>
+          </article>
+          <article class="arch-node">
+            <h3>LLM / Module Layer</h3>
+            <p>兼容 LLM 决策与 WASM 扩展，逐步增强世界复杂度。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scenarios" class="section" data-reveal>
+        <h2>实战场景</h2>
+        <div class="grid cards-3">
+          <article class="card">
+            <h3>社会协作策略实验</h3>
+            <p>对比不同制度约束下的资源分配效率、群体稳定性与冲突演化速度。</p>
+          </article>
+          <article class="card">
+            <h3>LLM 行为安全沙盒</h3>
+            <p>在受控规则内评估智能体策略，快速发现越权行为与修复路径。</p>
+          </article>
+          <article class="card">
+            <h3>可视化教学与演示</h3>
+            <p>通过回放链路展示“规则→行为→后果”的完整闭环，提升解释力与信任度。</p>
+          </article>
+        </div>
+        <div class="screens-grid">
+          <figure class="screen-card">
+            <img
+              src="assets/images/screenshots/minimal.webp"
+              alt="viewer 截图：minimal 场景"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>minimal：单主体最小闭环</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="assets/images/screenshots/twin_region_bootstrap.webp"
+              alt="viewer 截图：twin_region_bootstrap 场景"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>twin_region：双节点协作</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="assets/images/screenshots/triad_region_bootstrap.webp"
+              alt="viewer 截图：triad_region_bootstrap 场景"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>triad_region：三节点涌现</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="assets/images/screenshots/asteroid_fragment_bootstrap.webp"
+              alt="viewer 截图：asteroid_fragment_bootstrap 场景"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>asteroid_fragment：碎片场景初始化</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="demo" class="section" data-reveal>
+        <h2>演示与快速开始</h2>
         <div class="grid cards-2">
           <article class="card">
-            <h3>离线回放</h3>
-            <p>先生成 `snapshot.json` 与 `journal.json`，再启动 viewer server + UI 进行回放。</p>
+            <h3>离线回放（推荐首看）</h3>
+            <p>生成世界数据后启动 viewer server + UI，适合复盘与分析。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>在线模式（可选 LLM）</h3>
-            <p>直接运行 live server 推动世界演化，viewer 实时订阅并渲染。</p>
+            <h3>在线演化（可选 LLM）</h3>
+            <p>live server 持续推进世界状态，viewer 实时订阅演化过程。</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
         </div>
+        <article class="quickstart card">
+          <h3>3 步上手</h3>
+          <ol class="steps">
+            <li>克隆仓库并进入项目目录。</li>
+            <li>执行 `env -u RUSTC_WRAPPER cargo test` 验证环境。</li>
+            <li>运行 demo / live 命令观察世界演化与回放。</li>
+          </ol>
+          <p>
+            若需 LLM 驱动，复制 `config.example.toml` 为 `config.toml`，并配置
+            `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`。
+          </p>
+        </article>
       </section>
 
-      <section id="quickstart" class="section">
-        <h2>快速开始</h2>
-        <ol class="steps">
-          <li>克隆仓库并进入项目根目录。</li>
-          <li>执行 `env -u RUSTC_WRAPPER cargo test` 验证环境。</li>
-          <li>运行 demo 工具或 viewer 体验世界初始化与演化。</li>
-        </ol>
-        <p>
-          需要 LLM 驱动时，先从 `config.example.toml` 复制到 `config.toml`，并配置
-          `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`。
-        </p>
+      <section id="roadmap" class="section" data-reveal>
+        <h2>里程碑时间线</h2>
+        <div class="timeline-toolbar" data-timeline-controls>
+          <button class="timeline-filter is-active" type="button" data-timeline-filter="all" aria-pressed="true">
+            全部
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="done" aria-pressed="false">
+            已完成
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="active" aria-pressed="false">
+            进行中
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="next" aria-pressed="false">
+            下一阶段
+          </button>
+        </div>
+        <div class="timeline" data-timeline-group>
+          <article class="timeline-item" data-timeline-state="done">
+            <span class="status-tag done">已完成</span>
+            <h3>M1 · 世界最小闭环</h3>
+            <p>完成核心规则循环，验证可执行的多主体世界基础。</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="done">
+            <span class="status-tag done">已完成</span>
+            <h3>M2 · 持久化与回放</h3>
+            <p>实现 snapshot + journal 路径，建立可复现实验能力。</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="active">
+            <span class="status-tag active">进行中</span>
+            <h3>M3 · Agent Runtime & SDK</h3>
+            <p>增强 Agent 运行时能力与扩展接口，推进可组合模块生态。</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="next">
+            <span class="status-tag next">下一阶段</span>
+            <h3>M4/M5 · 社会经济建模与观测增强</h3>
+            <p>补齐制度、经济与可视化工具链，支撑更复杂文明级实验。</p>
+          </article>
+        </div>
       </section>
 
-      <section id="docs" class="section">
-        <h2>文档入口</h2>
-        <ul class="doc-links">
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
-              >README（项目总览）</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
-              >世界设计文档</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
-              >开发日志</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/tree/main/doc" target="_blank" rel="noreferrer"
-              >全部文档目录</a
-            >
-          </li>
-        </ul>
+      <section id="quality" class="section" data-reveal>
+        <h2>质量与可信度</h2>
+        <div class="grid cards-3">
+          <article class="card">
+            <h3>可复现</h3>
+            <p>基于快照/日志重建世界状态，方便比对策略差异与结果偏移。</p>
+          </article>
+          <article class="card">
+            <h3>可观测</h3>
+            <p>viewer + live server 双路径观测，支持在线诊断与离线证据回放。</p>
+          </article>
+          <article class="card">
+            <h3>可扩展</h3>
+            <p>Rust + WASM 模块化扩展，在不破坏主干稳定性的前提下快速演进。</p>
+          </article>
+        </div>
+        <div class="signal-grid">
+          <article class="signal-box">
+            <strong data-counter-target="90">0</strong>
+            <span>目标 Lighthouse 移动端评分</span>
+          </article>
+          <article class="signal-box">
+            <strong data-counter-target="8">0</strong>
+            <span>核心展示模块（双语同构）</span>
+          </article>
+          <article class="signal-box">
+            <strong data-counter-target="6">0</strong>
+            <span>FAQ 关键问题覆盖</span>
+          </article>
+        </div>
       </section>
 
-      <section id="roadmap" class="section">
-        <h2>路线图摘要</h2>
-        <div class="timeline">
-          <p><strong>M1</strong> 世界内核最小闭环</p>
-          <p><strong>M2</strong> 持久化与回放</p>
-          <p><strong>M3</strong> Agent 运行时与 SDK</p>
-          <p><strong>M4</strong> 最小社会与经济</p>
-          <p><strong>M5</strong> 可视化与调试工具</p>
+      <section id="faq" class="section" data-reveal>
+        <h2>FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>这个项目和普通 Agent Demo 最大区别是什么？</summary>
+            <p>核心差异是“世界约束 + 持久回放 + 可审计证据链”，关注长期演化而非短时对话表现。</p>
+          </details>
+          <details>
+            <summary>不接入 LLM 可以运行吗？</summary>
+            <p>可以。系统支持无 LLM 的规则驱动模式，可先验证世界机制再逐步接入模型。</p>
+          </details>
+          <details>
+            <summary>最低上手路径是什么？</summary>
+            <p>执行 demo 生成世界数据，再启动 viewer server 与 viewer 客户端即可看到完整演化轨迹。</p>
+          </details>
+          <details>
+            <summary>为什么强调 replay 与 audit？</summary>
+            <p>因为“可复现 + 可解释”是多主体系统进入工程化与研究化的前提。</p>
+          </details>
+          <details>
+            <summary>是否支持自定义模块？</summary>
+            <p>支持，当前采用 Rust + WASM 的模块扩展策略，便于逐步接入新规则与新能力。</p>
+          </details>
+          <details>
+            <summary>怎么快速了解项目进展？</summary>
+            <p>优先看 README、设计文档与开发日志，路线图和里程碑会持续更新。</p>
+          </details>
+        </div>
+      </section>
+
+      <section id="contribute" class="section" data-reveal>
+        <h2>参与与贡献</h2>
+        <div class="grid cards-2">
+          <article class="card">
+            <h3>文档入口</h3>
+            <ul class="doc-links">
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
+                  >README（项目总览）</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
+                  >世界设计文档</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
+                  >开发日志</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/tree/main/doc" target="_blank" rel="noreferrer"
+                  >全部文档目录</a
+                >
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>贡献路径</h3>
+            <p>欢迎通过 Issue/PR 参与 world rule、agent behavior、viewer observability 三条主线。</p>
+            <div class="cta-row">
+              <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
+                >提交 Issue</a
+              >
+              <a class="button secondary" href="https://github.com/eng-cc/agent-world/pulls" target="_blank" rel="noreferrer"
+                >发起 PR</a
+              >
+            </div>
+          </article>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world · Built with Rust workspace</p>
+      <p>© <span data-year></span> agent-world · Build believable digital civilization</p>
     </footer>
   </body>
 </html>

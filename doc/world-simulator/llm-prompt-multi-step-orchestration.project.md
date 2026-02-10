@@ -25,6 +25,7 @@
 - [x] LMSO19 Prompt 上下文收敛（Module History 大结果压缩）+ 压测脚本无 jq 指标回退解析
 - [x] LMSO20 OpenAI 兼容 tools 注册与 tool_calls/function_call 解析（保留 module_call 文本协议兼容）
 - [x] LMSO21 单轮多段输出顺序消费（同次 completion 解析并消费多个 JSON 片段）
+- [x] LMSO22 LLM 请求层迁移至 `async-openai` Responses API（工具注册/调用解析适配）
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
@@ -37,6 +38,17 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO21（多段输出顺序消费已完成）
+- 当前阶段：LMSO22（Responses API 迁移已完成）
 - 下一步：继续优化 Memory Digest 峰值（例如按类别限额、重复动作摘要折叠）
-- 最近更新：完成 LMSO21（单轮多段 JSON 顺序消费 + module_call 超限软跳过并继续消费后续终态，2026-02-09）
+- 最近更新：完成 LMSO22（迁移到 `async-openai` Responses API，并保持 tool function_call -> module_call 兼容链路，2026-02-10）
+
+## 增量优化任务（30 tick 观察）
+- [ ] LMSO23 解析噪声收敛：针对 `.tmp/llm_multi_round_30/report.json` 的 `parse_errors=4`，补充真实响应样本并扩展宽松解析分支单测。
+- [ ] LMSO24 动作参数护栏：为 `harvest_radiation.max_amount` 增加可配置上限与提示词约束，避免异常放大参数。
+- [ ] LMSO25 决策效率优化：优化 `execute_until` 模板与重入策略，目标是将 `wait` 占比持续降低。
+- [ ] LMSO26 Prompt 预算收敛：继续压缩 memory/history，降低 `llm_input_chars_max` 与 `prompt_section_clipped`。
+
+## 状态（增量）
+- 当前增量阶段：LMSO23（待启动）
+- 增量目标：在保持 `llm_errors=0` 的同时，显著降低解析噪声与空转比例。
+- 最近更新：新增 30 tick 观察对应的后续优化任务（2026-02-10）。

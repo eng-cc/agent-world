@@ -13,7 +13,7 @@
 - 新增 `LlmAgentBehavior`，实现 `AgentBehavior` trait。
 - 新增 `LlmAgentConfig`（模型、端点、鉴权、超时、system prompt）。
 - 新增 system prompt 配置读取与默认值回退。
-- 新增 OpenAI 兼容 Chat Completions 客户端（同步调用）。
+- 新增基于 `async-openai` 的 Responses API 客户端（同步封装调用）。
 - 新增 LLM 输出到 `AgentDecision` 的最小解析协议（`wait / wait_ticks / move_agent / harvest_radiation`）。
 - 新增单元测试（配置读取、默认 prompt、决策解析、失败降级）。
 
@@ -28,9 +28,10 @@
 ### 配置文件项（`config.toml`）
 - `AGENT_WORLD_LLM_MODEL`
 - `AGENT_WORLD_LLM_BASE_URL`
-  - 支持两种写法：
+  - 支持三种写法：
     - 根端点（推荐）：`https://ark.cn-beijing.volces.com/api/v3`
     - 完整补全端点：`https://ark.cn-beijing.volces.com/api/v3/chat/completions`
+    - Responses 端点：`https://ark.cn-beijing.volces.com/api/v3/responses`
 - `AGENT_WORLD_LLM_API_KEY`
 - `AGENT_WORLD_LLM_TIMEOUT_MS`（可选，默认 30_000）
 - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
@@ -52,7 +53,7 @@
 - `LlmCompletionClient` trait
   - `complete(request) -> Result<String, LlmClientError>`
 - `OpenAiChatCompletionClient`
-  - 对接 OpenAI 兼容 `/chat/completions`
+  - 对接 OpenAI 兼容 `/responses`（通过 `async-openai`）
 - `LlmAgentBehavior<C: LlmCompletionClient>`
   - 在 `decide` 中调用 LLM 并解析为 `AgentDecision`
 
@@ -81,6 +82,6 @@
 ## 风险
 - **输出不稳定风险**：LLM 可能输出非 JSON；通过“严格协议 + 解析失败降级”缓解。
 - **网络依赖风险**：在线调用可能超时或失败；通过超时配置与 `Wait` 降级缓解。
-- **端点与超时配置风险**：端点路径或短超时可能导致请求失败；通过端点规范化（兼容已包含 `/chat/completions` 的配置）和超时回退重试缓解。
+- **端点与超时配置风险**：端点路径或短超时可能导致请求失败；通过端点规范化（兼容已包含 `/chat/completions` 或 `/responses` 的配置）和超时回退重试缓解。
 - **安全风险**：错误 prompt 可能诱导越权动作；当前通过动作白名单与解析协议收敛风险。
 - **一致性风险**：未接入 receipt 体系前，跨运行不可严格重放；后续在 runtime effect/receipt 中补齐。

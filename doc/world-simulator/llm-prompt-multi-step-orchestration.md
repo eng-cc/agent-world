@@ -237,10 +237,10 @@
   - 在不增加 LLM 请求次数的前提下提升多步协议收敛性。
 
 - 问题：当前模块调用主要依赖 `{"type":"module_call",...}` 文本协议，未充分利用 OpenAI `tools/tool_calls` 原生结构，跨模型兼容性与结构化约束不足。
-- 方案：将模块能力以 OpenAI `tools` 形态注册到 `chat/completions` 请求，并在响应侧优先解析 `tool_calls/function_call`：
+- 方案：将模块能力以 OpenAI `tools` 形态注册到请求层（现已迁移至 `async-openai` Responses API），并在响应侧优先解析函数调用：
   - 请求注册：每轮请求携带函数工具定义（name/description/parameters），`tool_choice=auto`。
   - 名称兼容：对外使用 OpenAI 友好命名（`agent_modules_list` 等），内部映射回既有模块名（`agent.modules.list` 等）。
-  - 响应解析优先级：`tool_calls/function_call` > 旧 `type=module_call` 文本 JSON > 其他决策协议。
+  - 响应解析优先级：`responses.output.function_call` > 旧 `type=module_call` 文本 JSON > 其他决策协议。
   - 回退策略：保留旧协议兼容，不强制要求所有模型必须走 tool_call。
 - 预期：
   - 减少“自然语言夹带 JSON”导致的解析抖动。
@@ -261,3 +261,22 @@
 - **token 开销上升**：多步可能增加调用轮次；通过历史裁剪、上限配置与 `compact` profile 控制。
 - **模型协议不稳定**：部分模型不按新类型输出；通过旧协议兼容与 repair 轮次缓冲。
 - **调试成本增加**：多段 Prompt 难排查；通过 `section_trace/step_trace` 可观测字段缓解。
+
+## 场景测试观察与后续优化点（2026-02-10）
+
+### 测试样本
+- 场景：`llm_bootstrap`
+- 运行：`--ticks 30`
+- 报告：`.tmp/llm_multi_round_30/report.json`
+
+### 观察结论
+- 稳定性：`llm_errors=0`，说明迁移到 Responses API 后主链路可持续运行。
+- 解析质量：`parse_errors=4`、`repair_rounds_total=3`，说明输出格式兼容仍需增强。
+- 效率：`total_actions=26/30`、`wait=4`，存在一定空转。
+- 上下文：`llm_input_chars_max=18175` 且 `prompt_section_clipped=8`，提示上下文预算压力仍在。
+
+### 后续优化点（建议纳入下一轮任务）
+1. 扩展多段输出解析兼容（包含文本夹杂 JSON、字段缺省与顺序漂移）。
+2. 增加动作参数安全护栏（尤其是 `harvest_radiation.max_amount` 上限控制）。
+3. 优化 `execute_until` 的事件模板与重入策略，进一步降低 `Wait` 占比。
+4. 继续收敛 Prompt 体积：加大 history/memory 摘要折叠与优先级裁剪力度。

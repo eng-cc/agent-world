@@ -5,167 +5,447 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="agent-world: a persistent, multi-agent, auditable world simulation for silicon-based civilization."
+      content="agent-world: a persistent, multi-agent, auditable and replayable simulator for silicon-based civilization."
     />
+    <meta property="og:title" content="agent-world | Persistent Civilization Simulator" />
+    <meta
+      property="og:description"
+      content="Rule-first runtime, multi-agent evolution, replayable evidence chain and visual observability."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="../assets/images/og-cover.png" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>agent-world | Persistent Multi-agent World</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/en/" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/en/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/" />
+    <link rel="alternate" hreflang="x-default" href="https://eng-cc.github.io/agent-world/" />
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg" />
     <link rel="stylesheet" href="../assets/styles.css" />
     <script defer src="../assets/app.js"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top">agent-world</a>
-      <nav class="nav" data-menu>
-        <a href="#features">Features</a>
+      <a class="brand" href="#top">
+        <span class="brand-mark"></span>
+        <span>agent-world</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#why">Why</a>
+        <a href="#matrix">Matrix</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#scenarios">Scenarios</a>
         <a href="#demo">Demo</a>
-        <a href="#quickstart">Quick Start</a>
-        <a href="#docs">Docs</a>
         <a href="#roadmap">Roadmap</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contribute">Contribute</a>
       </nav>
       <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>
         ☰
       </button>
       <div class="lang-switch" aria-label="language switch">
-        <button class="lang-icon-button" type="button" aria-label="Switch language" aria-expanded="false" data-lang-toggle>
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="Switch language"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
           <img src="../assets/images/globe.svg" alt="" aria-hidden="true" />
         </button>
-        <div class="lang-popover" data-lang-popover>
-          <a href="../index.html" data-lang-choice="zh">中文</a>
-          <a class="active" href="index.html" aria-current="page" data-lang-choice="en">English</a>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a href="../index.html" data-lang-choice="zh" data-lang-item>中文</a>
+          <a class="active" href="index.html" aria-current="page" data-lang-choice="en" data-lang-item>English</a>
         </div>
       </div>
     </header>
 
     <main id="top">
-      <section class="hero section">
-        <div>
-          <p class="eyebrow">Persistent · Believable · Emergence-first</p>
-          <h1>A Persistent World Simulator for Silicon-based Civilization</h1>
-          <p class="subtitle">
-            `agent-world` is a rule-first multi-agent simulation system. Agents evolve under
-            constraints of resources, institutions, and relationships, while world states are
-            persistable, restorable, replayable, and auditable.
-          </p>
-          <div class="cta-row">
-            <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
-              >View Source</a
-            >
-            <a class="button secondary" href="#quickstart">Get Started</a>
+      <section class="hero section section-hero" id="hero" data-reveal>
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Persistent · Believable · Emergence-first</p>
+            <h1>Build a Persistent Civilization-grade World for Autonomous Agents</h1>
+            <p class="subtitle">
+              `agent-world` is a rule-first multi-agent runtime. From resources and institutions to
+              social relations, every action is constrained, logged, replayable, and auditable.
+              This is not a one-shot demo; it is a long-running world system.
+            </p>
+            <div class="trust-pills">
+              <span>Rust Workspace</span>
+              <span>LLM-Compatible</span>
+              <span>Replay & Audit</span>
+              <span>WASM Extensible</span>
+            </div>
+            <div class="cta-row">
+              <a class="button primary" href="https://github.com/eng-cc/agent-world" target="_blank" rel="noreferrer"
+                >View Source</a
+              >
+              <a class="button secondary" href="#demo">Run Demo</a>
+            </div>
+            <div class="hero-stats">
+              <article class="metric-box">
+                <strong data-counter-target="4">0</strong>
+                <span>Core subsystems</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="3">0</strong>
+                <span>Standard run paths</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="2">0</strong>
+                <span>Public language versions</span>
+              </article>
+              <article class="metric-box">
+                <strong data-counter-target="100">0</strong>
+                <span>Auditable key actions (%)</span>
+              </article>
+            </div>
           </div>
-          <ul class="hero-metrics">
-            <li><strong>Persistent</strong><span>State can be stored and restored</span></li>
-            <li><strong>Multi-agent</strong><span>Independent agents collaborate and compete</span></li>
-            <li><strong>WASM Sandbox</strong><span>Open extension capability for modules</span></li>
-          </ul>
+          <aside class="hero-visual">
+            <figure class="hero-figure">
+              <img src="../assets/images/world-loop.svg" alt="Core loop of agent-world" />
+              <figcaption>Rule Constraints → Agent Decisions → Event Logs → Replay & Insight</figcaption>
+            </figure>
+            <div class="pulse-panel">
+              <p class="panel-title">System Pulse</p>
+              <ul>
+                <li><span>Runtime</span><strong>Rule Gate Active</strong></li>
+                <li><span>Simulator</span><strong>State Evolving</strong></li>
+                <li><span>Viewer</span><strong>Replay Ready</strong></li>
+                <li><span>LLM Bridge</span><strong>Repair Enabled</strong></li>
+              </ul>
+            </div>
+          </aside>
         </div>
-        <figure class="hero-figure">
-          <img src="../assets/images/world-loop.svg" alt="Core loop of agent-world" />
-          <figcaption>World Rules → Agent Decisions → Event Log → Observability & Replay</figcaption>
-        </figure>
       </section>
 
-      <section id="features" class="section">
-        <h2>Core Features</h2>
+      <section id="why" class="section" data-reveal>
+        <h2>Why agent-world</h2>
         <div class="grid cards-3">
           <article class="card">
-            <h3>Persistent World</h3>
-            <p>Snapshots and event journals support long-running simulations and reproducibility.</p>
+            <h3>From “chatting” to “governable”</h3>
+            <p>Agent actions must pass rule checks, with explicit consequences and traceable evidence.</p>
           </article>
           <article class="card">
-            <h3>Multi-agent Behaviors</h3>
-            <p>Each agent has independent states, memories, and goals with emergent outcomes.</p>
+            <h3>From one-shot run to persistent world</h3>
+            <p>Snapshots and journals enable restoration, replay, and reproducible comparisons.</p>
           </article>
           <article class="card">
-            <h3>Rule-first Runtime</h3>
-            <p>All actions are validated by world rules and traced back to resource/social impact.</p>
-          </article>
-          <article class="card">
-            <h3>LLM Integration</h3>
-            <p>OpenAI-compatible `chat/completions` pipeline with multi-step and repair loops.</p>
-          </article>
-          <article class="card">
-            <h3>Visual Observability</h3>
-            <p>Viewer + live server for offline replay, online inspection, and diagnostics.</p>
-          </article>
-          <article class="card">
-            <h3>Open Extensibility</h3>
-            <p>Extend capabilities via Rust + WASM modules and evolve social/economic systems.</p>
+            <h3>From single agent to civilization emergence</h3>
+            <p>Agents evolve under resource, institution, and relation constraints over long timelines.</p>
           </article>
         </div>
       </section>
 
-      <section id="demo" class="section">
-        <h2>Demo Paths</h2>
+      <section id="matrix" class="section" data-reveal>
+        <h2>Capability Matrix</h2>
+        <div class="matrix-grid">
+          <article class="matrix-item">
+            <h3>Rule Engine</h3>
+            <p>Capability: action validation, consequence settlement, conflict arbitration</p>
+            <span>Value: consistency and governance for world behavior</span>
+          </article>
+          <article class="matrix-item">
+            <h3>Persistence Pipeline</h3>
+            <p>Capability: snapshots, journals, restore and replay comparisons</p>
+            <span>Value: long-horizon experiments with reproducibility</span>
+          </article>
+          <article class="matrix-item">
+            <h3>Multi-agent Modeling</h3>
+            <p>Capability: memory, goals, resources, and relation network</p>
+            <span>Value: observable social emergence under constraints</span>
+          </article>
+          <article class="matrix-item">
+            <h3>LLM Decision Bridge</h3>
+            <p>Capability: OpenAI-compatible APIs, multi-step planning, repair loops</p>
+            <span>Value: stronger intelligence plugged into stable runtime</span>
+          </article>
+          <article class="matrix-item">
+            <h3>Visual Observability</h3>
+            <p>Capability: offline replay, online subscription, runtime diagnostics</p>
+            <span>Value: faster understanding, debugging, and trust building</span>
+          </article>
+          <article class="matrix-item">
+            <h3>WASM Extensions</h3>
+            <p>Capability: inject domain modules and custom rule sets</p>
+            <span>Value: evolve economy/social systems with low coupling</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="section" data-reveal>
+        <h2>Architecture Slice</h2>
+        <figure class="architecture-figure">
+          <img src="../assets/images/architecture-flow.svg" alt="agent-world architecture flow diagram" loading="lazy" />
+          <figcaption>Runtime → Simulator → Viewer → LLM/Modules with a persistent evidence loop.</figcaption>
+        </figure>
+        <div class="architecture-flow">
+          <article class="arch-node">
+            <h3>Runtime Layer</h3>
+            <p>Unified rule gate for agent actions and legality checks.</p>
+          </article>
+          <article class="arch-node">
+            <h3>Simulator Layer</h3>
+            <p>Advances world state and outputs snapshot/journal assets.</p>
+          </article>
+          <article class="arch-node">
+            <h3>Viewer Layer</h3>
+            <p>Supports both real-time inspection and deterministic replay.</p>
+          </article>
+          <article class="arch-node">
+            <h3>LLM / Module Layer</h3>
+            <p>Connects decision models and WASM modules for extensibility.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scenarios" class="section" data-reveal>
+        <h2>Applied Scenarios</h2>
+        <div class="grid cards-3">
+          <article class="card">
+            <h3>Coordination Policy Experiments</h3>
+            <p>Compare resource efficiency, stability, and conflict curves under different institutions.</p>
+          </article>
+          <article class="card">
+            <h3>LLM Safety Sandbox</h3>
+            <p>Evaluate model strategies under hard rules and detect risky behaviors early.</p>
+          </article>
+          <article class="card">
+            <h3>Visual Teaching & Storytelling</h3>
+            <p>Replay complete chains from “rule → action → consequence” for better explainability.</p>
+          </article>
+        </div>
+        <div class="screens-grid">
+          <figure class="screen-card">
+            <img
+              src="../assets/images/screenshots/minimal.webp"
+              alt="viewer screenshot: minimal scenario"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>minimal: single-agent baseline loop</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="../assets/images/screenshots/twin_region_bootstrap.webp"
+              alt="viewer screenshot: twin_region_bootstrap scenario"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>twin_region: two-node cooperation</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="../assets/images/screenshots/triad_region_bootstrap.webp"
+              alt="viewer screenshot: triad_region_bootstrap scenario"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>triad_region: three-node emergence</figcaption>
+          </figure>
+          <figure class="screen-card">
+            <img
+              src="../assets/images/screenshots/asteroid_fragment_bootstrap.webp"
+              alt="viewer screenshot: asteroid_fragment_bootstrap scenario"
+              loading="lazy"
+              decoding="async"
+              width="2400"
+              height="1600"
+            />
+            <figcaption>asteroid_fragment: fragmented bootstrap scene</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="demo" class="section" data-reveal>
+        <h2>Demo & Quick Start</h2>
         <div class="grid cards-2">
           <article class="card">
-            <h3>Offline Replay</h3>
-            <p>Generate `snapshot.json` + `journal.json`, then run viewer server + UI.</p>
+            <h3>Offline Replay (recommended first)</h3>
+            <p>Generate world data then launch viewer server + UI for replay and analysis.</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
           <article class="card">
-            <h3>Online Mode (optional LLM)</h3>
-            <p>Run live server to evolve world state while viewer subscribes in real time.</p>
+            <h3>Online Evolution (optional LLM)</h3>
+            <p>Run live server continuously while viewer subscribes to state updates in real time.</p>
             <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></pre>
           </article>
         </div>
+        <article class="quickstart card">
+          <h3>3-step start</h3>
+          <ol class="steps">
+            <li>Clone this repository and enter the project root.</li>
+            <li>Run `env -u RUSTC_WRAPPER cargo test` to verify environment.</li>
+            <li>Execute demo/live commands and inspect world evolution in viewer.</li>
+          </ol>
+          <p>
+            To enable LLM-driven behaviors, copy `config.example.toml` to `config.toml`, then set
+            `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`.
+          </p>
+        </article>
       </section>
 
-      <section id="quickstart" class="section">
-        <h2>Quick Start</h2>
-        <ol class="steps">
-          <li>Clone the repository and enter the project root.</li>
-          <li>Run `env -u RUSTC_WRAPPER cargo test` to verify your environment.</li>
-          <li>Run demos/viewer to inspect initialization and world evolution.</li>
-        </ol>
-        <p>
-          For LLM-driven behaviors, copy `config.example.toml` to `config.toml` and set
-          `AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY`.
-        </p>
+      <section id="roadmap" class="section" data-reveal>
+        <h2>Milestone Timeline</h2>
+        <div class="timeline-toolbar" data-timeline-controls>
+          <button class="timeline-filter is-active" type="button" data-timeline-filter="all" aria-pressed="true">
+            All
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="done" aria-pressed="false">
+            Done
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="active" aria-pressed="false">
+            In Progress
+          </button>
+          <button class="timeline-filter" type="button" data-timeline-filter="next" aria-pressed="false">
+            Next
+          </button>
+        </div>
+        <div class="timeline" data-timeline-group>
+          <article class="timeline-item" data-timeline-state="done">
+            <span class="status-tag done">Done</span>
+            <h3>M1 · Minimal world loop</h3>
+            <p>Established executable rule loops for a multi-agent world baseline.</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="done">
+            <span class="status-tag done">Done</span>
+            <h3>M2 · Persistence & replay</h3>
+            <p>Enabled snapshot/journal path for reproducible experiments.</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="active">
+            <span class="status-tag active">In Progress</span>
+            <h3>M3 · Agent runtime & SDK</h3>
+            <p>Expanding runtime abstractions and extension interfaces.</p>
+          </article>
+          <article class="timeline-item" data-timeline-state="next">
+            <span class="status-tag next">Next</span>
+            <h3>M4/M5 · Society-economy modeling & observability</h3>
+            <p>Strengthen institutions/economy models and visualization tooling.</p>
+          </article>
+        </div>
       </section>
 
-      <section id="docs" class="section">
-        <h2>Documentation</h2>
-        <ul class="doc-links">
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
-              >README (Project Overview)</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
-              >World Design Document</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
-              >Development Logs</a
-            >
-          </li>
-          <li>
-            <a href="https://github.com/eng-cc/agent-world/tree/main/doc" target="_blank" rel="noreferrer"
-              >All Docs</a
-            >
-          </li>
-        </ul>
+      <section id="quality" class="section" data-reveal>
+        <h2>Quality & Trust Signals</h2>
+        <div class="grid cards-3">
+          <article class="card">
+            <h3>Reproducibility</h3>
+            <p>Rebuild world states via snapshots/journals and compare strategy outcomes deterministically.</p>
+          </article>
+          <article class="card">
+            <h3>Observability</h3>
+            <p>Viewer + live server covers both online diagnostics and offline evidence replay.</p>
+          </article>
+          <article class="card">
+            <h3>Extensibility</h3>
+            <p>Rust + WASM modules evolve capabilities without breaking runtime stability.</p>
+          </article>
+        </div>
+        <div class="signal-grid">
+          <article class="signal-box">
+            <strong data-counter-target="90">0</strong>
+            <span>Target mobile Lighthouse score</span>
+          </article>
+          <article class="signal-box">
+            <strong data-counter-target="8">0</strong>
+            <span>Showcase sections in parity</span>
+          </article>
+          <article class="signal-box">
+            <strong data-counter-target="6">0</strong>
+            <span>High-frequency FAQ topics</span>
+          </article>
+        </div>
       </section>
 
-      <section id="roadmap" class="section">
-        <h2>Roadmap Snapshot</h2>
-        <div class="timeline">
-          <p><strong>M1</strong> Minimal world kernel loop</p>
-          <p><strong>M2</strong> Persistence and replay</p>
-          <p><strong>M3</strong> Agent runtime and SDK</p>
-          <p><strong>M4</strong> Minimal society and economy</p>
-          <p><strong>M5</strong> Visualization and tooling</p>
+      <section id="faq" class="section" data-reveal>
+        <h2>FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>How is this different from typical agent demos?</summary>
+            <p>It combines rule constraints, persistence, replay, and auditable evidence for long-horizon worlds.</p>
+          </details>
+          <details>
+            <summary>Can I run it without LLM integration?</summary>
+            <p>Yes. Rule-driven mode works without LLM, which is ideal for validating baseline mechanics first.</p>
+          </details>
+          <details>
+            <summary>What is the fastest way to try it?</summary>
+            <p>Run the demo to generate data, start viewer server, then open the viewer client.</p>
+          </details>
+          <details>
+            <summary>Why are replay and audit emphasized?</summary>
+            <p>Because reproducibility and explainability are prerequisites for serious simulation engineering.</p>
+          </details>
+          <details>
+            <summary>Can I add custom modules?</summary>
+            <p>Yes. The project follows a Rust + WASM extension strategy for progressive feature growth.</p>
+          </details>
+          <details>
+            <summary>Where should I track project progress?</summary>
+            <p>Start with README, design docs, and development logs for the latest milestones.</p>
+          </details>
+        </div>
+      </section>
+
+      <section id="contribute" class="section" data-reveal>
+        <h2>Contribute</h2>
+        <div class="grid cards-2">
+          <article class="card">
+            <h3>Documentation</h3>
+            <ul class="doc-links">
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/blob/main/README.md" target="_blank" rel="noreferrer"
+                  >README (Project Overview)</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator.md" target="_blank" rel="noreferrer"
+                  >World Design Document</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/tree/main/doc/devlog" target="_blank" rel="noreferrer"
+                  >Development Logs</a
+                >
+              </li>
+              <li>
+                <a href="https://github.com/eng-cc/agent-world/tree/main/doc" target="_blank" rel="noreferrer"
+                  >All Docs</a
+                >
+              </li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Contribution Paths</h3>
+            <p>Issue and PR contributions are welcome across rules, behaviors, and viewer observability.</p>
+            <div class="cta-row">
+              <a class="button secondary" href="https://github.com/eng-cc/agent-world/issues" target="_blank" rel="noreferrer"
+                >Open Issue</a
+              >
+              <a class="button secondary" href="https://github.com/eng-cc/agent-world/pulls" target="_blank" rel="noreferrer"
+                >Create PR</a
+              >
+            </div>
+          </article>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <p>© <span data-year></span> agent-world · Built with Rust workspace</p>
+      <p>© <span data-year></span> agent-world · Build believable digital civilization</p>
     </footer>
   </body>
 </html>

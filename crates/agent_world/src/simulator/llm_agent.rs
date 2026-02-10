@@ -1,8 +1,12 @@
 //! LLM-powered agent behavior and OpenAI-compatible completion client.
 
-use reqwest::blocking::Client;
-use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use async_openai::config::OpenAIConfig;
+use async_openai::error::OpenAIError;
+use async_openai::types::responses::{
+    CreateResponse, CreateResponseArgs, FunctionTool, InputParam, OutputItem, Response, Tool,
+    ToolChoiceOptions, ToolChoiceParam,
+};
+use async_openai::Client as AsyncOpenAiClient;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -350,23 +354,30 @@ pub struct LlmCompletionResult {
 
 #[derive(Debug, Clone)]
 pub struct OpenAiChatCompletionClient {
-    chat_completions_url: String,
-    api_key: String,
-    client: Client,
+    client: AsyncOpenAiClient<OpenAIConfig>,
     request_timeout_ms: u64,
-    timeout_retry_client: Option<Client>,
+    timeout_retry_client: Option<AsyncOpenAiClient<OpenAIConfig>>,
     timeout_retry_ms: Option<u64>,
 }
 
 impl OpenAiChatCompletionClient {
     pub fn from_config(config: &LlmAgentConfig) -> Result<Self, LlmClientError> {
         let request_timeout_ms = config.timeout_ms.max(1);
-        let client = Self::build_http_client(request_timeout_ms)?;
+        let api_base = normalize_openai_api_base_url(config.base_url.as_str());
+        let client = Self::build_client(
+            api_base.as_str(),
+            config.api_key.as_str(),
+            request_timeout_ms,
+        )?;
         let (timeout_retry_client, timeout_retry_ms) =
             if request_timeout_ms < DEFAULT_LLM_TIMEOUT_MS {
                 let retry_timeout_ms = DEFAULT_LLM_TIMEOUT_MS;
                 (
-                    Some(Self::build_http_client(retry_timeout_ms)?),
+                    Some(Self::build_client(
+                        api_base.as_str(),
+                        config.api_key.as_str(),
+                        retry_timeout_ms,
+                    )?),
                     Some(retry_timeout_ms),
                 )
             } else {
@@ -374,8 +385,6 @@ impl OpenAiChatCompletionClient {
             };
 
         Ok(Self {
-            chat_completions_url: build_chat_completions_url(config.base_url.as_str()),
-            api_key: config.api_key.clone(),
             client,
             request_timeout_ms,
             timeout_retry_client,
@@ -383,8 +392,8 @@ impl OpenAiChatCompletionClient {
         })
     }
 
-    fn build_http_client(timeout_ms: u64) -> Result<Client, LlmClientError> {
-        Client::builder()
+    fn build_http_client(timeout_ms: u64) -> Result<reqwest::Client, LlmClientError> {
+        reqwest::Client::builder()
             .timeout(Duration::from_millis(timeout_ms.max(1)))
             .build()
             .map_err(|err| LlmClientError::BuildClient {
@@ -392,16 +401,49 @@ impl OpenAiChatCompletionClient {
             })
     }
 
-    fn send_chat_request(
+    fn build_client(
+        api_base: &str,
+        api_key: &str,
+        timeout_ms: u64,
+    ) -> Result<AsyncOpenAiClient<OpenAIConfig>, LlmClientError> {
+        let config = OpenAIConfig::new()
+            .with_api_base(api_base.to_string())
+            .with_api_key(api_key.to_string());
+
+        let http_client = Self::build_http_client(timeout_ms)?;
+        Ok(AsyncOpenAiClient::with_config(config).with_http_client(http_client))
+    }
+
+    fn send_responses_request(
         &self,
-        client: &Client,
-        payload: &ChatCompletionRequest<'_>,
-    ) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        client
-            .post(self.chat_completions_url.as_str())
-            .bearer_auth(&self.api_key)
-            .json(payload)
-            .send()
+        client: &AsyncOpenAiClient<OpenAIConfig>,
+        payload: CreateResponse,
+    ) -> Result<Response, OpenAiRequestError> {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|err| OpenAiRequestError::Other(err.to_string()))?;
+
+        runtime
+            .block_on(client.responses().create(payload))
+            .map_err(OpenAiRequestError::from)
+    }
+}
+
+#[derive(Debug)]
+enum OpenAiRequestError {
+    Timeout(String),
+    ParseBody(String),
+    Other(String),
+}
+
+impl From<OpenAIError> for OpenAiRequestError {
+    fn from(value: OpenAIError) -> Self {
+        match value {
+            OpenAIError::Reqwest(err) if err.is_timeout() => Self::Timeout(err.to_string()),
+            OpenAIError::JSONDeserialize(_, raw_body) => Self::ParseBody(raw_body),
+            other => Self::Other(other.to_string()),
+        }
     }
 }
 
@@ -432,161 +474,68 @@ impl fmt::Display for LlmClientError {
 
 impl Error for LlmClientError {}
 
-#[derive(Debug, Serialize)]
-struct ChatCompletionRequest<'a> {
-    model: &'a str,
-    messages: [ChatMessage<'a>; 2],
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    tools: Vec<ChatCompletionTool<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_choice: Option<&'a str>,
-}
-
-#[derive(Debug, Serialize)]
-struct ChatMessage<'a> {
-    role: &'a str,
-    content: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct ChatCompletionTool<'a> {
-    #[serde(rename = "type")]
-    kind: &'a str,
-    function: ChatCompletionToolFunction<'a>,
-}
-
-#[derive(Debug, Serialize)]
-struct ChatCompletionToolFunction<'a> {
-    name: &'a str,
-    description: &'a str,
-    parameters: serde_json::Value,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatCompletionResponse {
-    #[serde(default)]
-    model: Option<String>,
-    #[serde(default)]
-    usage: Option<ChatUsage>,
-    choices: Vec<ChatChoice>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ChatUsage {
-    #[serde(default)]
-    prompt_tokens: Option<u64>,
-    #[serde(default)]
-    completion_tokens: Option<u64>,
-    #[serde(default)]
-    total_tokens: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoice {
-    message: ChatChoiceMessage,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoiceMessage {
-    #[serde(default)]
-    content: Option<String>,
-    #[serde(default)]
-    tool_calls: Vec<ChatChoiceToolCall>,
-    #[serde(default)]
-    function_call: Option<ChatChoiceFunctionCall>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoiceToolCall {
-    function: ChatChoiceFunctionCall,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatChoiceFunctionCall {
-    name: String,
-    #[serde(default)]
-    arguments: Option<ChatFunctionArguments>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum ChatFunctionArguments {
-    Text(String),
-    Json(serde_json::Value),
-}
-
-const OPENAI_TOOL_KIND_FUNCTION: &str = "function";
-const OPENAI_TOOL_CHOICE_AUTO: &str = "auto";
 const OPENAI_TOOL_AGENT_MODULES_LIST: &str = "agent_modules_list";
 const OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION: &str = "environment_current_observation";
 const OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT: &str = "memory_short_term_recent";
 const OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH: &str = "memory_long_term_search";
 
-fn openai_chat_tools() -> Vec<ChatCompletionTool<'static>> {
+fn responses_tools() -> Vec<Tool> {
     vec![
-        ChatCompletionTool {
-            kind: OPENAI_TOOL_KIND_FUNCTION,
-            function: ChatCompletionToolFunction {
-                name: OPENAI_TOOL_AGENT_MODULES_LIST,
-                description: "列出 Agent 可调用的模块能力与参数。",
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": false,
-                }),
-            },
-        },
-        ChatCompletionTool {
-            kind: OPENAI_TOOL_KIND_FUNCTION,
-            function: ChatCompletionToolFunction {
-                name: OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
-                description: "读取当前 tick 的环境观测。",
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": false,
-                }),
-            },
-        },
-        ChatCompletionTool {
-            kind: OPENAI_TOOL_KIND_FUNCTION,
-            function: ChatCompletionToolFunction {
-                name: OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
-                description: "读取最近短期记忆。",
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "limit": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 32
-                        }
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_AGENT_MODULES_LIST.to_string(),
+            description: Some("列出 Agent 可调用的模块能力与参数。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION.to_string(),
+            description: Some("读取当前 tick 的环境观测。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT.to_string(),
+            description: Some("读取最近短期记忆。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 32
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH.to_string(),
+            description: Some("按关键词检索长期记忆（query 为空时按重要度返回）。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string"
                     },
-                    "additionalProperties": false,
-                }),
-            },
-        },
-        ChatCompletionTool {
-            kind: OPENAI_TOOL_KIND_FUNCTION,
-            function: ChatCompletionToolFunction {
-                name: OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
-                description: "按关键词检索长期记忆（query 为空时按重要度返回）。",
-                parameters: serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 32
-                        }
-                    },
-                    "additionalProperties": false,
-                }),
-            },
-        },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 32
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
     ]
 }
 
@@ -600,28 +549,22 @@ fn module_name_from_tool_name(name: &str) -> &str {
     }
 }
 
-fn decode_tool_arguments(arguments: Option<ChatFunctionArguments>) -> serde_json::Value {
-    match arguments {
-        Some(ChatFunctionArguments::Json(value)) => value,
-        Some(ChatFunctionArguments::Text(raw)) => {
-            let trimmed = raw.trim();
-            if trimmed.is_empty() {
-                serde_json::json!({})
-            } else {
-                serde_json::from_str(trimmed).unwrap_or_else(|_| {
-                    serde_json::json!({
-                        "_raw": trimmed,
-                    })
-                })
-            }
-        }
-        None => serde_json::json!({}),
+fn decode_tool_arguments(arguments: &str) -> serde_json::Value {
+    let trimmed = arguments.trim();
+    if trimmed.is_empty() {
+        serde_json::json!({})
+    } else {
+        serde_json::from_str(trimmed).unwrap_or_else(|_| {
+            serde_json::json!({
+                "_raw": trimmed,
+            })
+        })
     }
 }
 
-fn function_call_to_module_call_json(function: ChatChoiceFunctionCall) -> String {
-    let module = module_name_from_tool_name(function.name.as_str());
-    let args = decode_tool_arguments(function.arguments);
+fn function_call_to_module_call_json(name: &str, arguments: &str) -> String {
+    let module = module_name_from_tool_name(name);
+    let args = decode_tool_arguments(arguments);
     serde_json::json!({
         "type": "module_call",
         "module": module,
@@ -630,41 +573,180 @@ fn function_call_to_module_call_json(function: ChatChoiceFunctionCall) -> String
     .to_string()
 }
 
+fn output_item_to_module_call_json(item: &OutputItem) -> Option<String> {
+    match item {
+        OutputItem::FunctionCall(function_call) => Some(function_call_to_module_call_json(
+            function_call.name.as_str(),
+            function_call.arguments.as_str(),
+        )),
+        _ => None,
+    }
+}
+
+fn extract_module_call_from_raw_response(value: &serde_json::Value) -> Option<String> {
+    let output_items = value.get("output")?.as_array()?;
+    for item in output_items {
+        if item.get("type").and_then(|kind| kind.as_str()) != Some("function_call") {
+            continue;
+        }
+        let name = item.get("name").and_then(|name| name.as_str())?;
+        let arguments = item
+            .get("arguments")
+            .and_then(|arguments| arguments.as_str())
+            .unwrap_or("{}");
+        return Some(function_call_to_module_call_json(name, arguments));
+    }
+    None
+}
+
+fn extract_output_text_from_raw_response(value: &serde_json::Value) -> Option<String> {
+    let output_items = value.get("output")?.as_array()?;
+    let mut parts = Vec::new();
+
+    for item in output_items {
+        if item.get("type").and_then(|kind| kind.as_str()) != Some("message") {
+            continue;
+        }
+        let content_items = match item.get("content").and_then(|content| content.as_array()) {
+            Some(content_items) => content_items,
+            None => continue,
+        };
+        for content_item in content_items {
+            if content_item.get("type").and_then(|kind| kind.as_str()) != Some("output_text") {
+                continue;
+            }
+            if let Some(text) = content_item.get("text").and_then(|text| text.as_str()) {
+                parts.push(text);
+            }
+        }
+    }
+
+    if parts.is_empty() {
+        value
+            .get("output_text")
+            .and_then(|text| text.as_str())
+            .map(|text| text.to_string())
+    } else {
+        Some(parts.join(""))
+    }
+}
+
+fn completion_result_from_raw_response_json(
+    raw: &str,
+) -> Result<LlmCompletionResult, LlmClientError> {
+    let value: serde_json::Value =
+        serde_json::from_str(raw).map_err(|err| LlmClientError::DecodeResponse {
+            message: format!("compat parse failed: {err}"),
+        })?;
+
+    let output = extract_module_call_from_raw_response(&value)
+        .or_else(|| extract_output_text_from_raw_response(&value))
+        .unwrap_or_default();
+
+    if output.trim().is_empty() {
+        return Err(LlmClientError::EmptyChoice);
+    }
+
+    let usage = value.get("usage");
+    Ok(LlmCompletionResult {
+        output,
+        model: value
+            .get("model")
+            .and_then(|model| model.as_str())
+            .map(|model| model.to_string()),
+        prompt_tokens: usage
+            .and_then(|usage| usage.get("input_tokens"))
+            .and_then(|value| value.as_u64()),
+        completion_tokens: usage
+            .and_then(|usage| usage.get("output_tokens"))
+            .and_then(|value| value.as_u64()),
+        total_tokens: usage
+            .and_then(|usage| usage.get("total_tokens"))
+            .and_then(|value| value.as_u64()),
+    })
+}
+
+fn completion_result_from_sdk_response(
+    response: Response,
+) -> Result<LlmCompletionResult, LlmClientError> {
+    let output = response
+        .output
+        .iter()
+        .find_map(output_item_to_module_call_json)
+        .or_else(|| response.output_text())
+        .unwrap_or_default();
+
+    if output.trim().is_empty() {
+        return Err(LlmClientError::EmptyChoice);
+    }
+
+    let usage = response.usage.as_ref();
+    Ok(LlmCompletionResult {
+        output,
+        model: Some(response.model),
+        prompt_tokens: usage.map(|usage| usage.input_tokens as u64),
+        completion_tokens: usage.map(|usage| usage.output_tokens as u64),
+        total_tokens: usage.map(|usage| usage.total_tokens as u64),
+    })
+}
+
+fn normalize_openai_api_base_url(base_url: &str) -> String {
+    let normalized = base_url.trim().trim_end_matches('/');
+    if let Some(stripped) = normalized.strip_suffix("/chat/completions") {
+        stripped.to_string()
+    } else if let Some(stripped) = normalized.strip_suffix("/responses") {
+        stripped.to_string()
+    } else {
+        normalized.to_string()
+    }
+}
+
+fn build_responses_request_payload(
+    request: &LlmCompletionRequest,
+) -> Result<CreateResponse, LlmClientError> {
+    CreateResponseArgs::default()
+        .model(request.model.clone())
+        .instructions(request.system_prompt.clone())
+        .input(InputParam::Text(request.user_prompt.clone()))
+        .tools(responses_tools())
+        .tool_choice(ToolChoiceParam::Mode(ToolChoiceOptions::Auto))
+        .build()
+        .map_err(|err| LlmClientError::DecodeResponse {
+            message: err.to_string(),
+        })
+}
+
 impl LlmCompletionClient for OpenAiChatCompletionClient {
     fn complete(
         &self,
         request: &LlmCompletionRequest,
     ) -> Result<LlmCompletionResult, LlmClientError> {
-        let tools = openai_chat_tools();
-        let payload = ChatCompletionRequest {
-            model: request.model.as_str(),
-            messages: [
-                ChatMessage {
-                    role: "system",
-                    content: request.system_prompt.as_str(),
-                },
-                ChatMessage {
-                    role: "user",
-                    content: request.user_prompt.as_str(),
-                },
-            ],
-            tool_choice: Some(OPENAI_TOOL_CHOICE_AUTO),
-            tools,
-        };
+        let payload = build_responses_request_payload(request)?;
 
-        let response = match self.send_chat_request(&self.client, &payload) {
-            Ok(response) => response,
-            Err(err) if err.is_timeout() => {
+        match self.send_responses_request(&self.client, payload.clone()) {
+            Ok(response) => return completion_result_from_sdk_response(response),
+            Err(OpenAiRequestError::ParseBody(raw_body)) => {
+                return completion_result_from_raw_response_json(raw_body.as_str());
+            }
+            Err(OpenAiRequestError::Timeout(err)) => {
                 if let (Some(retry_client), Some(retry_timeout_ms)) =
                     (&self.timeout_retry_client, self.timeout_retry_ms)
                 {
-                    match self.send_chat_request(retry_client, &payload) {
-                        Ok(response) => response,
+                    match self.send_responses_request(retry_client, payload) {
+                        Ok(response) => return completion_result_from_sdk_response(response),
+                        Err(OpenAiRequestError::ParseBody(raw_body)) => {
+                            return completion_result_from_raw_response_json(raw_body.as_str());
+                        }
                         Err(retry_err) => {
+                            let retry_message = match retry_err {
+                                OpenAiRequestError::Timeout(message) => message,
+                                OpenAiRequestError::ParseBody(message) => message,
+                                OpenAiRequestError::Other(message) => message,
+                            };
                             return Err(LlmClientError::Http {
                                 message: format!(
                                     "request timed out after {}ms; retry with {}ms failed: {}",
-                                    self.request_timeout_ms, retry_timeout_ms, retry_err
+                                    self.request_timeout_ms, retry_timeout_ms, retry_message
                                 ),
                             });
                         }
@@ -678,65 +760,10 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
                     });
                 }
             }
-            Err(err) => {
-                return Err(LlmClientError::Http {
-                    message: err.to_string(),
-                });
+            Err(OpenAiRequestError::Other(err)) => {
+                return Err(LlmClientError::Http { message: err });
             }
-        };
-
-        let status = response.status();
-        if status != StatusCode::OK {
-            let message = response.text().unwrap_or_else(|_| "<no body>".to_string());
-            return Err(LlmClientError::HttpStatus {
-                code: status.as_u16(),
-                message,
-            });
         }
-
-        let response: ChatCompletionResponse =
-            response
-                .json()
-                .map_err(|err| LlmClientError::DecodeResponse {
-                    message: err.to_string(),
-                })?;
-
-        let model = response.model;
-        let usage = response.usage;
-        let first = response
-            .choices
-            .into_iter()
-            .next()
-            .ok_or(LlmClientError::EmptyChoice)?;
-
-        let output = if let Some(tool_call) = first.message.tool_calls.into_iter().next() {
-            function_call_to_module_call_json(tool_call.function)
-        } else if let Some(function_call) = first.message.function_call {
-            function_call_to_module_call_json(function_call)
-        } else {
-            first.message.content.unwrap_or_default()
-        };
-
-        if output.trim().is_empty() {
-            return Err(LlmClientError::EmptyChoice);
-        }
-
-        Ok(LlmCompletionResult {
-            output,
-            model,
-            prompt_tokens: usage.as_ref().and_then(|usage| usage.prompt_tokens),
-            completion_tokens: usage.as_ref().and_then(|usage| usage.completion_tokens),
-            total_tokens: usage.as_ref().and_then(|usage| usage.total_tokens),
-        })
-    }
-}
-
-fn build_chat_completions_url(base_url: &str) -> String {
-    let normalized = base_url.trim().trim_end_matches('/');
-    if normalized.ends_with("/chat/completions") {
-        normalized.to_string()
-    } else {
-        format!("{normalized}/chat/completions")
     }
 }
 
