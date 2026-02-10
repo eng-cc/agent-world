@@ -11,6 +11,7 @@ pub const TOPIC_HEAD_SUFFIX: &str = "head";
 pub const TOPIC_EVENT_SUFFIX: &str = "event";
 pub const TOPIC_MEMBERSHIP_SUFFIX: &str = "membership";
 pub const TOPIC_MEMBERSHIP_REVOKE_SUFFIX: &str = "membership.revoke";
+pub const TOPIC_MEMBERSHIP_RECONCILE_SUFFIX: &str = "membership.reconcile";
 
 pub const RR_PROTOCOL_PREFIX: &str = "/aw/rr/1.0.0";
 pub const RR_GET_WORLD_HEAD: &str = "/aw/rr/1.0.0/get_world_head";
@@ -51,6 +52,10 @@ pub fn topic_membership(world_id: &str) -> String {
 
 pub fn topic_membership_revocation(world_id: &str) -> String {
     gossipsub_topic(world_id, TOPIC_MEMBERSHIP_REVOKE_SUFFIX)
+}
+
+pub fn topic_membership_reconcile(world_id: &str) -> String {
+    gossipsub_topic(world_id, TOPIC_MEMBERSHIP_RECONCILE_SUFFIX)
 }
 
 pub fn dht_world_head_key(world_id: &str) -> String {
@@ -294,6 +299,11 @@ mod tests {
         assert_eq!(topic_head("w1"), "aw.w1.head");
         assert_eq!(topic_event("w1"), "aw.w1.event");
         assert_eq!(topic_membership("w1"), "aw.w1.membership");
+        assert_eq!(topic_membership_revocation("w1"), "aw.w1.membership.revoke");
+        assert_eq!(
+            topic_membership_reconcile("w1"),
+            "aw.w1.membership.reconcile"
+        );
     }
 
     #[test]

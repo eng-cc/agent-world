@@ -203,7 +203,7 @@
 - **治理闭环**：治理 shadow/apply 可使用 `shadow_proposal_with_fetch` / `apply_proposal_with_fetch` 自动拉取缺失工件。
 
 ### 协议命名约定（草案）
-- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`、`aw.w1.membership.revoke`）。
+- **Topic 命名**：`aw.<world_id>.<kind>`（例如 `aw.w1.action`、`aw.w1.block`、`aw.w1.head`、`aw.w1.membership`、`aw.w1.membership.revoke`、`aw.w1.membership.reconcile`）。
 - **Request/Response 协议**：`/aw/rr/1.0.0/<method>`。
 - **DHT Key**：`/aw/world/<world_id>/<key>`，例如 `head`、`providers/<content_hash>`。
 - **成员目录快照 Key**：`/aw/world/<world_id>/membership`。
@@ -216,6 +216,7 @@
 - `aw.<world_id>.event`：EventAnnounce 广播（轻量事件摘要）。
 - `aw.<world_id>.membership`：成员目录广播（validator 集合与 quorum 阈值）。
 - `aw.<world_id>.membership.revoke`：成员目录签名 key 吊销广播（key_id、requester、reason）。
+- `aw.<world_id>.membership.reconcile`：成员目录吊销状态对账广播（node_id、revoked_key_ids、hash）。
 
 ### Request/Response 协议（草案）
 - `/aw/rr/1.0.0/get_world_head`
@@ -406,9 +407,15 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **策略兜底**：恢复策略新增 `revoked_signature_key_ids`，即使未同步吊销广播也可拒绝失效 key_id。
 
 ## 成员目录吊销来源鉴权与审计落盘归档（草案）
-- **吊销签名扩展**：`MembershipKeyRevocationAnnounce` 增加可选 `signature_key_id/signature`，兼容未签名历史消息。
-- **发布入口**：新增 `publish_key_revocation_signed(_by_key_id/_with_keyring)`，支持单签名器和 keyring 签发。
-- **同步策略**：新增 `MembershipRevocationSyncPolicy` 与 `sync_key_revocations_with_policy`，支持 trusted requester 与签名策略校验。
-- **同步报告**：新增 `MembershipRevocationSyncReport`，记录 `drained/applied/ignored/rejected`。
-- **落盘归档**：新增 `FileMembershipAuditStore`（JSONL），按 `world_id` 维度落盘审计记录。
-- **实现拆分**：成员同步辅助校验逻辑拆分到 `distributed_membership_sync/logic.rs`，保持单文件规模可维护。
+- **授权校验**：吊销同步策略支持 requester 信任与签名策略组合校验，拒绝伪造来源。
+- **落盘实现**：新增 `FileMembershipAuditStore`（JSONL），支持按 world_id 的 append/list 归档查询。
+- **接口扩展**：支持 `publish_key_revocation_signed(_by_key_id/_with_keyring)` 多签发入口。
+- **可维护性**：成员目录校验辅助逻辑拆分到 `distributed_membership_sync/logic.rs`，保持主文件规模可维护。
+
+## 成员目录吊销授权治理与跨节点对账（草案）
+- **授权治理**：`MembershipRevocationSyncPolicy` 新增 `authorized_requesters`，在 trusted 之外提供治理授权白名单。
+- **对账通道**：新增 gossipsub topic `aw.<world_id>.membership.reconcile`，用于广播 revoked key 集 checkpoint。
+- **对账结构**：`MembershipRevocationCheckpointAnnounce { node_id, revoked_key_ids, revoked_set_hash }`。
+- **对账策略**：新增 `MembershipRevocationReconcilePolicy`（trusted_nodes + auto_revoke_missing_keys）。
+- **对账报告**：新增 `MembershipRevocationReconcileReport`，记录 `in_sync/diverged/merged/rejected`。
+- **收敛机制**：`reconcile_revocations_with_policy` 可在 divergence 时自动补齐本地缺失吊销 key，实现跨节点状态收敛。

@@ -161,7 +161,9 @@ pub use distributed_observer::{
 pub use distributed_membership_sync::{
     FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,
     MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,
-    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport, MembershipRevocationSyncPolicy,
+    MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport,
+    MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileReport, MembershipRevocationSyncPolicy,
     MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome, MembershipSnapshotAuditRecord,
     MembershipSnapshotRestorePolicy, MembershipSyncClient, MembershipSyncReport,
     MembershipSyncSubscription,

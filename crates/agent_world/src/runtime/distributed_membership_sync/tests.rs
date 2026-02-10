@@ -4,8 +4,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::super::distributed::{
-    topic_membership, topic_membership_revocation, TOPIC_MEMBERSHIP_REVOKE_SUFFIX,
-    TOPIC_MEMBERSHIP_SUFFIX,
+    topic_membership, topic_membership_reconcile, topic_membership_revocation,
+    TOPIC_MEMBERSHIP_RECONCILE_SUFFIX, TOPIC_MEMBERSHIP_REVOKE_SUFFIX, TOPIC_MEMBERSHIP_SUFFIX,
 };
 use super::super::distributed_dht::{DistributedDht, InMemoryDht};
 use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
@@ -78,8 +78,13 @@ fn temp_membership_dir(prefix: &str) -> PathBuf {
 fn membership_topic_suffix_matches_topic_name() {
     assert_eq!(TOPIC_MEMBERSHIP_SUFFIX, "membership");
     assert_eq!(TOPIC_MEMBERSHIP_REVOKE_SUFFIX, "membership.revoke");
+    assert_eq!(TOPIC_MEMBERSHIP_RECONCILE_SUFFIX, "membership.reconcile");
     assert_eq!(topic_membership("w1"), "aw.w1.membership");
     assert_eq!(topic_membership_revocation("w1"), "aw.w1.membership.revoke");
+    assert_eq!(
+        topic_membership_reconcile("w1"),
+        "aw.w1.membership.reconcile"
+    );
 }
 
 #[test]
@@ -352,6 +357,7 @@ fn sync_key_revocations_with_policy_accepts_signed_trusted_announce() {
 
     let policy = MembershipRevocationSyncPolicy {
         trusted_requesters: vec!["seq-1".to_string()],
+        authorized_requesters: Vec::new(),
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["kr".to_string()],
@@ -404,6 +410,7 @@ fn sync_key_revocations_with_policy_rejects_untrusted_requester() {
 
     let policy = MembershipRevocationSyncPolicy {
         trusted_requesters: vec!["seq-1".to_string()],
+        authorized_requesters: Vec::new(),
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["kr".to_string()],
@@ -418,6 +425,182 @@ fn sync_key_revocations_with_policy_rejects_untrusted_requester() {
     assert_eq!(report.ignored, 0);
     assert_eq!(report.rejected, 1);
     assert!(!apply_keyring.is_key_revoked("k1"));
+}
+
+#[test]
+fn sync_key_revocations_with_policy_rejects_unauthorized_requester() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let mut signer_keyring = MembershipDirectorySignerKeyring::new();
+    signer_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add signer key");
+    signer_keyring.set_active_key("kr").expect("set active key");
+
+    sync_client
+        .publish_key_revocation_signed_with_keyring(
+            "w1",
+            "seq-1",
+            322,
+            "k1",
+            Some("unauthorized requester".to_string()),
+            &signer_keyring,
+        )
+        .expect("publish signed revocation");
+
+    let mut apply_keyring = MembershipDirectorySignerKeyring::new();
+    apply_keyring
+        .add_hmac_sha256_key("kr", "membership-secret-revoke")
+        .expect("add verify key");
+    apply_keyring
+        .set_active_key("kr")
+        .expect("set verify key active");
+    apply_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add revoked target key");
+
+    let policy = MembershipRevocationSyncPolicy {
+        trusted_requesters: vec!["seq-1".to_string()],
+        authorized_requesters: vec!["seq-2".to_string()],
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["kr".to_string()],
+        revoked_signature_key_ids: Vec::new(),
+    };
+    let report = sync_client
+        .sync_key_revocations_with_policy("w1", &subscription, &mut apply_keyring, None, &policy)
+        .expect("sync with policy");
+
+    assert_eq!(report.drained, 1);
+    assert_eq!(report.applied, 0);
+    assert_eq!(report.ignored, 0);
+    assert_eq!(report.rejected, 1);
+    assert!(!apply_keyring.is_key_revoked("k1"));
+}
+
+#[test]
+fn publish_and_drain_membership_revocation_checkpoint() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key");
+    keyring.set_active_key("k1").expect("set active key");
+    keyring.revoke_key("k1").expect("revoke key");
+
+    let published = sync_client
+        .publish_revocation_checkpoint("w1", "node-a", 900, &keyring)
+        .expect("publish checkpoint");
+    assert_eq!(published.world_id, "w1");
+    assert_eq!(published.node_id, "node-a");
+    assert_eq!(published.revoked_key_ids, vec!["k1".to_string()]);
+    assert!(!published.revoked_set_hash.is_empty());
+
+    let drained = sync_client
+        .drain_revocation_checkpoints(&subscription)
+        .expect("drain checkpoints");
+    assert_eq!(drained, vec![published]);
+}
+
+#[test]
+fn reconcile_revocations_with_policy_merges_missing_keys() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let publisher = MembershipSyncClient::new(Arc::clone(&network));
+    let consumer = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = consumer.subscribe("w1").expect("subscribe");
+
+    let mut publisher_keyring = MembershipDirectorySignerKeyring::new();
+    publisher_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key1");
+    publisher_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add key2");
+    publisher_keyring
+        .set_active_key("k2")
+        .expect("set active key");
+    publisher_keyring.revoke_key("k1").expect("revoke k1");
+    publisher_keyring.revoke_key("k2").expect("revoke k2");
+
+    publisher
+        .publish_revocation_checkpoint("w1", "node-a", 901, &publisher_keyring)
+        .expect("publish checkpoint");
+
+    let mut consumer_keyring = MembershipDirectorySignerKeyring::new();
+    consumer_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key1");
+    consumer_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add key2");
+    consumer_keyring
+        .set_active_key("k2")
+        .expect("set active key");
+    consumer_keyring.revoke_key("k1").expect("revoke k1");
+
+    let policy = MembershipRevocationReconcilePolicy {
+        trusted_nodes: vec!["node-a".to_string()],
+        auto_revoke_missing_keys: true,
+    };
+    let report = consumer
+        .reconcile_revocations_with_policy("w1", &subscription, &mut consumer_keyring, &policy)
+        .expect("reconcile revocations");
+
+    assert_eq!(report.drained, 1);
+    assert_eq!(report.in_sync, 0);
+    assert_eq!(report.diverged, 1);
+    assert_eq!(report.merged, 1);
+    assert_eq!(report.rejected, 0);
+    assert!(consumer_keyring.is_key_revoked("k2"));
+}
+
+#[test]
+fn reconcile_revocations_with_policy_rejects_untrusted_node() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let publisher = MembershipSyncClient::new(Arc::clone(&network));
+    let consumer = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = consumer.subscribe("w1").expect("subscribe");
+
+    let mut publisher_keyring = MembershipDirectorySignerKeyring::new();
+    publisher_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key1");
+    publisher_keyring
+        .set_active_key("k1")
+        .expect("set active key");
+    publisher_keyring.revoke_key("k1").expect("revoke k1");
+
+    publisher
+        .publish_revocation_checkpoint("w1", "node-z", 902, &publisher_keyring)
+        .expect("publish checkpoint");
+
+    let mut consumer_keyring = MembershipDirectorySignerKeyring::new();
+    consumer_keyring
+        .add_hmac_sha256_key("k1", "membership-secret-v1")
+        .expect("add key1");
+    consumer_keyring
+        .set_active_key("k1")
+        .expect("set active key");
+
+    let policy = MembershipRevocationReconcilePolicy {
+        trusted_nodes: vec!["node-a".to_string()],
+        auto_revoke_missing_keys: true,
+    };
+    let report = consumer
+        .reconcile_revocations_with_policy("w1", &subscription, &mut consumer_keyring, &policy)
+        .expect("reconcile revocations");
+
+    assert_eq!(report.drained, 1);
+    assert_eq!(report.in_sync, 0);
+    assert_eq!(report.diverged, 0);
+    assert_eq!(report.merged, 0);
+    assert_eq!(report.rejected, 1);
+    assert!(!consumer_keyring.is_key_revoked("k1"));
 }
 
 #[test]

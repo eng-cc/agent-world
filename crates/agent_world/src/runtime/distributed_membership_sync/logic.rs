@@ -115,6 +115,20 @@ pub(super) fn validate_key_revocation(
         });
     }
 
+    if !policy.authorized_requesters.is_empty()
+        && !policy
+            .authorized_requesters
+            .iter()
+            .any(|requester| requester == &announce.requester_id)
+    {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation requester {} is not authorized",
+                announce.requester_id
+            ),
+        });
+    }
+
     let has_signature = announce.signature.is_some();
     if !has_signature && announce.signature_key_id.is_some() {
         return Err(WorldError::DistributedValidationFailed {

@@ -186,6 +186,15 @@
 - [x] 新增 `FileMembershipAuditStore` JSONL 落盘实现
 - [x] 单元测试与分布式回归
 
+### 34. P3.17 成员目录吊销授权治理与跨节点对账
+- [x] 扩展 `MembershipRevocationSyncPolicy.authorized_requesters`
+- [x] 吊销同步增加 authorized requester 校验
+- [x] 新增 `membership.reconcile` topic 与 checkpoint 消息
+- [x] 新增 `MembershipRevocationReconcilePolicy/Report`
+- [x] 新增 `publish_revocation_checkpoint/drain_revocation_checkpoints/reconcile_revocations_with_policy`
+- [x] 对账支持可选自动收敛（auto revoke missing keys）
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -193,6 +202,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.16 完成（成员目录吊销来源鉴权与审计落盘归档）
-- 下一步：P3.17（成员目录吊销授权治理与跨节点对账）
-- 最近更新：成员目录吊销来源鉴权与审计落盘归档（2026-02-10）
+- 当前阶段：P3.17 完成（成员目录吊销授权治理与跨节点对账）
+- 下一步：P3.18（成员目录吊销异常告警与对账调度自动化）
+- 最近更新：成员目录吊销授权治理与跨节点对账（2026-02-10）

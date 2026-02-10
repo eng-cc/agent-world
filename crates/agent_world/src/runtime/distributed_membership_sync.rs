@@ -10,7 +10,9 @@ use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-use super::distributed::{topic_membership, topic_membership_revocation};
+use super::distributed::{
+    topic_membership, topic_membership_reconcile, topic_membership_revocation,
+};
 use super::distributed_consensus::{
     ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
     QuorumConsensus,
@@ -21,6 +23,11 @@ use super::error::WorldError;
 use super::util::to_canonical_cbor;
 
 type HmacSha256 = Hmac<Sha256>;
+
+pub use reconciliation::{
+    MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileReport,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipDirectoryAnnounce {
@@ -475,6 +482,7 @@ pub struct MembershipSnapshotRestorePolicy {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MembershipRevocationSyncPolicy {
     pub trusted_requesters: Vec<String>,
+    pub authorized_requesters: Vec<String>,
     pub require_signature: bool,
     pub require_signature_key_id: bool,
     pub accepted_signature_key_ids: Vec<String>,
@@ -604,6 +612,7 @@ impl MembershipAuditStore for FileMembershipAuditStore {
 pub struct MembershipSyncSubscription {
     pub membership_sub: NetworkSubscription,
     pub revocation_sub: NetworkSubscription,
+    pub reconcile_sub: NetworkSubscription,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -636,9 +645,13 @@ impl MembershipSyncClient {
         let revocation_sub = self
             .network
             .subscribe(&topic_membership_revocation(world_id))?;
+        let reconcile_sub = self
+            .network
+            .subscribe(&topic_membership_reconcile(world_id))?;
         Ok(MembershipSyncSubscription {
             membership_sub,
             revocation_sub,
+            reconcile_sub,
         })
     }
 
@@ -1142,6 +1155,7 @@ fn world_error_reason(error: &WorldError) -> String {
 }
 
 mod logic;
+mod reconciliation;
 
 #[cfg(test)]
 mod tests;
