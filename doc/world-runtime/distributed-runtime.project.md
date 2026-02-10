@@ -204,6 +204,14 @@
 - [x] 调度策略 interval 参数校验（必须为正）
 - [x] 单元测试与分布式回归
 
+### 36. P3.19 成员目录吊销告警上报与调度状态持久化
+- [x] 新增 `MembershipRevocationAlertSink` 与内存/文件实现
+- [x] 新增 `MembershipRevocationScheduleStateStore` 与内存/文件实现
+- [x] 新增 `emit_revocation_reconcile_alerts`
+- [x] 新增 `run_revocation_reconcile_schedule_with_store_and_alerts`
+- [x] 文件落盘按 world/node 维度分片
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -211,6 +219,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.18 完成（成员目录吊销异常告警与对账调度自动化）
-- 下一步：P3.19（成员目录吊销告警上报与调度状态持久化）
-- 最近更新：成员目录吊销异常告警与对账调度自动化（2026-02-10）
+- 当前阶段：P3.19 完成（成员目录吊销告警上报与调度状态持久化）
+- 下一步：P3.20（成员目录吊销告警抑制去重与调度多节点协同）
+- 最近更新：成员目录吊销告警上报与调度状态持久化（2026-02-10）

@@ -25,10 +25,13 @@ use super::util::to_canonical_cbor;
 type HmacSha256 = Hmac<Sha256>;
 
 pub use reconciliation::{
+    FileMembershipRevocationAlertSink, FileMembershipRevocationScheduleStateStore,
+    InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleStateStore,
     MembershipRevocationAlertPolicy, MembershipRevocationAlertSeverity,
-    MembershipRevocationAnomalyAlert, MembershipRevocationCheckpointAnnounce,
-    MembershipRevocationReconcilePolicy, MembershipRevocationReconcileReport,
-    MembershipRevocationReconcileSchedulePolicy, MembershipRevocationReconcileScheduleState,
+    MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
+    MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileReport, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleStateStore,
     MembershipRevocationScheduledRunReport,
 };
 
@@ -1165,3 +1168,6 @@ mod tests;
 
 #[cfg(test)]
 mod scheduler_tests;
+
+#[cfg(test)]
+mod persistence_tests;

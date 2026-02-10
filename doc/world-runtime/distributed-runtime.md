@@ -427,3 +427,10 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **调度策略**：新增 `MembershipRevocationReconcileSchedulePolicy`（checkpoint/reconcile 间隔）。
 - **调度状态**：新增 `MembershipRevocationReconcileScheduleState`，记录最近 checkpoint/reconcile 执行时间。
 - **调度执行**：新增 `run_revocation_reconcile_schedule(...)`，自动判定到期任务并输出 `MembershipRevocationScheduledRunReport`。
+
+## 成员目录吊销告警上报与调度状态持久化（草案）
+- **告警上报**：新增 `MembershipRevocationAlertSink` 抽象，提供内存与 JSONL 文件实现。
+- **状态存储**：新增 `MembershipRevocationScheduleStateStore` 抽象，提供内存与 JSON 文件实现。
+- **编排入口**：新增 `run_revocation_reconcile_schedule_with_store_and_alerts(...)`，打通 load → run → save → emit。
+- **上报接口**：新增 `emit_revocation_reconcile_alerts(...)`，统一批量告警写入 sink。
+- **持久化维度**：文件落盘按 `world_id/node_id` 切分，便于节点级恢复与诊断。
