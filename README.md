@@ -23,6 +23,9 @@
 - 世界不需要“主线任务”也能持续产生活动：供需变化、劳动分工、组织形成、规则演化。
 
 ## 文档入口
+- 对外展示站点（GitHub Pages）：`https://eng-cc.github.io/agent-world/`
+  - 中文：`https://eng-cc.github.io/agent-world/`
+  - English: `https://eng-cc.github.io/agent-world/en/`
 - 设计文档：`doc/world-simulator.md`
 - 项目管理文档：`doc/world-simulator.project.md`
 - 任务日志：`doc/devlog/`
