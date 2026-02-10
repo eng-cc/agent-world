@@ -1,21 +1,9 @@
 {
   "id": "twin_region_bootstrap",
   "name": "Twin Region Bootstrap",
+  "seed": 6,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "origin": { "enabled": false },
-  "agents": { "count": 2, "location_id": "region-a" },
-  "locations": [
-    {
-      "location_id": "region-a",
-      "name": "Region A",
-      "pos": { "type": "center_offset", "dx_pct": -0.25 },
-      "resources": { "amounts": { "electricity": 200, "hardware": 50 } }
-    },
-    {
-      "location_id": "region-b",
-      "name": "Region B",
-      "pos": { "type": "center_offset", "dx_pct": 0.25 },
-      "resources": { "amounts": { "electricity": 150, "hardware": 30 } }
-    }
-  ]
+  "agents": { "count": 2 },
+  "location_generator": { "count": 2, "id_prefix": "region-", "name_prefix": "Region" }
 }

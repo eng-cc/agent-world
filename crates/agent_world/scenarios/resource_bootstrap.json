@@ -1,6 +1,7 @@
 {
   "id": "resource_bootstrap",
   "name": "Resource Bootstrap",
+  "seed": 4,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": {
     "count": 1,

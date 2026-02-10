@@ -80,7 +80,6 @@ fn init_requires_spawn_location() {
     let mut init = WorldInitConfig::default();
     init.origin.enabled = false;
     init.agents.count = 1;
-    init.agents.location_id = None;
 
     let err = build_world_model(&config, &init).expect_err("should fail");
     assert!(matches!(err, WorldInitError::SpawnLocationMissing));
@@ -93,7 +92,6 @@ fn init_seeds_locations_and_resources() {
     init.origin.enabled = false;
     init.asteroid_fragment.enabled = false;
     init.agents.count = 1;
-    init.agents.location_id = Some("base".to_string());
     init.agents
         .resources
         .add(ResourceKind::Data, 5)
@@ -235,7 +233,7 @@ fn scenario_asteroid_fragment_min_spacing_overrides_world_config() {
         "seed": 7,
         "asteroid_fragment": { "enabled": true, "seed_offset": 0, "min_fragment_spacing_cm": 50000 },
         "agents": { "count": 0 },
-        "locations": []
+        "location_generator": { "count": 0 }
     }"#;
     let spec: WorldScenarioSpec = serde_json::from_str(spec_json).expect("parse spec");
 
@@ -368,8 +366,8 @@ fn twin_region_bootstrap_seeds_regions() {
     let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(model.locations.contains_key("region-a"));
-    assert!(model.locations.contains_key("region-b"));
+    assert!(model.locations.contains_key("region-0"));
+    assert!(model.locations.contains_key("region-1"));
     assert!(model.power_plants.is_empty());
     assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
@@ -382,9 +380,9 @@ fn triad_region_bootstrap_seeds_regions() {
     let init = WorldInitConfig::from_scenario(WorldScenario::TriadRegionBootstrap, &config);
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(model.locations.contains_key("region-a"));
-    assert!(model.locations.contains_key("region-b"));
-    assert!(model.locations.contains_key("region-c"));
+    assert!(model.locations.contains_key("region-0"));
+    assert!(model.locations.contains_key("region-1"));
+    assert!(model.locations.contains_key("region-2"));
     assert!(model.power_plants.is_empty());
     assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
@@ -398,17 +396,17 @@ fn triad_p2p_bootstrap_seeds_nodes_and_agents() {
     let init = WorldInitConfig::from_scenario(WorldScenario::TriadP2pBootstrap, &config);
     let (model, _) = build_world_model(&config, &init).expect("scenario init");
 
-    assert!(model.locations.contains_key("node-a"));
-    assert!(model.locations.contains_key("node-b"));
-    assert!(model.locations.contains_key("node-c"));
+    assert!(model.locations.contains_key("node-0"));
+    assert!(model.locations.contains_key("node-1"));
+    assert!(model.locations.contains_key("node-2"));
 
     let agent_a = model.agents.get("agent-0").expect("agent-0 exists");
     let agent_b = model.agents.get("agent-1").expect("agent-1 exists");
     let agent_c = model.agents.get("agent-2").expect("agent-2 exists");
 
-    assert_eq!(agent_a.location_id, "node-a");
-    assert_eq!(agent_b.location_id, "node-b");
-    assert_eq!(agent_c.location_id, "node-c");
+    assert!(model.locations.contains_key(&agent_a.location_id));
+    assert!(model.locations.contains_key(&agent_b.location_id));
+    assert!(model.locations.contains_key(&agent_c.location_id));
 }
 
 #[test]
@@ -440,8 +438,8 @@ fn asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions() {
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
     assert!(report.asteroid_fragment_seed.is_some());
-    assert!(model.locations.contains_key("region-a"));
-    assert!(model.locations.contains_key("region-b"));
+    assert!(model.locations.contains_key("region-0"));
+    assert!(model.locations.contains_key("region-1"));
     assert!(model.power_plants.is_empty());
     assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
@@ -466,9 +464,9 @@ fn asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions() {
     let (model, report) = build_world_model(&config, &init).expect("scenario init");
 
     assert!(report.asteroid_fragment_seed.is_some());
-    assert!(model.locations.contains_key("region-a"));
-    assert!(model.locations.contains_key("region-b"));
-    assert!(model.locations.contains_key("region-c"));
+    assert!(model.locations.contains_key("region-0"));
+    assert!(model.locations.contains_key("region-1"));
+    assert!(model.locations.contains_key("region-2"));
     assert!(model.power_plants.is_empty());
     assert!(model.power_storages.is_empty());
     assert!(model.agents.contains_key("agent-0"));
@@ -540,7 +538,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::TwoBases,
             expected_agents: 2,
             expect_origin: true,
-            required_locations: &["origin", "base-a", "base-b"],
+            required_locations: &["origin", "base-0", "base-1"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: false,
@@ -549,7 +547,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::LlmBootstrap,
             expected_agents: 1,
             expect_origin: true,
-            required_locations: &["origin", "llm-hub", "llm-outpost"],
+            required_locations: &["origin", "llm-site-0", "llm-site-1"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: false,
@@ -576,7 +574,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::TwinRegionBootstrap,
             expected_agents: 2,
             expect_origin: false,
-            required_locations: &["region-a", "region-b"],
+            required_locations: &["region-0", "region-1"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: false,
@@ -585,7 +583,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::TriadRegionBootstrap,
             expected_agents: 3,
             expect_origin: false,
-            required_locations: &["region-a", "region-b", "region-c"],
+            required_locations: &["region-0", "region-1", "region-2"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: false,
@@ -594,7 +592,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::TriadP2pBootstrap,
             expected_agents: 3,
             expect_origin: false,
-            required_locations: &["node-a", "node-b", "node-c"],
+            required_locations: &["node-0", "node-1", "node-2"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: false,
@@ -612,7 +610,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::AsteroidFragmentTwinRegionBootstrap,
             expected_agents: 2,
             expect_origin: false,
-            required_locations: &["region-a", "region-b"],
+            required_locations: &["region-0", "region-1"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: true,
@@ -621,7 +619,7 @@ fn scenarios_are_stable() {
             scenario: WorldScenario::AsteroidFragmentTriadRegionBootstrap,
             expected_agents: 3,
             expect_origin: false,
-            required_locations: &["region-a", "region-b", "region-c"],
+            required_locations: &["region-0", "region-1", "region-2"],
             required_plants: &[],
             required_storages: &[],
             expect_asteroid_fragment: true,
@@ -949,6 +947,7 @@ fn scenario_asteroid_fragment_bootstrap_chunks_generate_without_seed_locations()
     let spec_json = r#"{
         "id": "chunk_bootstrap_only",
         "name": "Chunk Bootstrap Only",
+        "seed": 91,
         "origin": { "enabled": false },
         "asteroid_fragment": {
             "enabled": true,
@@ -959,7 +958,7 @@ fn scenario_asteroid_fragment_bootstrap_chunks_generate_without_seed_locations()
             ]
         },
         "agents": { "count": 0 },
-        "locations": []
+        "location_generator": { "count": 0 }
     }"#;
 
     let spec: WorldScenarioSpec = serde_json::from_str(spec_json).expect("parse spec");

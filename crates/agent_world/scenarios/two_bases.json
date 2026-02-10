@@ -1,18 +1,8 @@
 {
   "id": "two_bases",
   "name": "Two Bases",
+  "seed": 2,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
-  "agents": { "count": 2, "location_id": "base-a" },
-  "locations": [
-    {
-      "location_id": "base-a",
-      "name": "Base A",
-      "pos": { "type": "center_offset", "dx_pct": -0.2 }
-    },
-    {
-      "location_id": "base-b",
-      "name": "Base B",
-      "pos": { "type": "center_offset", "dx_pct": 0.2 }
-    }
-  ]
+  "agents": { "count": 2 },
+  "location_generator": { "count": 2, "id_prefix": "base-", "name_prefix": "Base" }
 }

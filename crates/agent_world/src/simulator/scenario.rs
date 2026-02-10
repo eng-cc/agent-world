@@ -174,13 +174,13 @@ impl fmt::Display for ScenarioSpecError {
 impl std::error::Error for ScenarioSpecError {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct WorldScenarioSpec {
     pub id: String,
     pub name: String,
     pub seed: u64,
     pub origin: ScenarioOriginConfig,
-    pub locations: Vec<ScenarioLocationSeedConfig>,
+    pub location_generator: ScenarioLocationGeneratorConfig,
     pub asteroid_fragment: AsteroidFragmentInitConfig,
     pub agents: AgentSpawnConfig,
     pub power_plants: Vec<PowerPlantSeedConfig>,
@@ -195,7 +195,7 @@ impl Default for WorldScenarioSpec {
             name: String::new(),
             seed: 0,
             origin: ScenarioOriginConfig::default(),
-            locations: Vec::new(),
+            location_generator: ScenarioLocationGeneratorConfig::default(),
             asteroid_fragment: AsteroidFragmentInitConfig::default(),
             agents: AgentSpawnConfig::default(),
             power_plants: Vec::new(),
@@ -207,14 +207,13 @@ impl Default for WorldScenarioSpec {
 
 impl WorldScenarioSpec {
     pub fn into_init_config(self, config: &WorldConfig) -> WorldInitConfig {
+        let locations = self
+            .location_generator
+            .generate_locations(self.seed, &config.space);
         WorldInitConfig {
             seed: self.seed,
             origin: self.origin.into_origin(&config.space),
-            locations: self
-                .locations
-                .into_iter()
-                .map(|location| location.into_location(&config.space))
-                .collect(),
+            locations,
             asteroid_fragment: self.asteroid_fragment,
             agents: self.agents,
             power_plants: self.power_plants,
@@ -275,36 +274,63 @@ impl ScenarioOriginConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ScenarioLocationSeedConfig {
-    pub location_id: LocationId,
-    pub name: String,
-    pub pos: Option<ScenarioPos>,
-    pub profile: LocationProfile,
-    pub resources: ResourceStock,
+pub struct ScenarioLocationGeneratorConfig {
+    pub count: usize,
+    pub id_prefix: String,
+    pub name_prefix: String,
 }
 
-impl Default for ScenarioLocationSeedConfig {
+impl Default for ScenarioLocationGeneratorConfig {
     fn default() -> Self {
         Self {
-            location_id: String::new(),
-            name: String::new(),
-            pos: None,
-            profile: LocationProfile::default(),
-            resources: ResourceStock::default(),
+            count: 0,
+            id_prefix: "location-".to_string(),
+            name_prefix: "Location".to_string(),
         }
     }
 }
 
-impl ScenarioLocationSeedConfig {
-    fn into_location(self, space: &SpaceConfig) -> LocationSeedConfig {
-        LocationSeedConfig {
-            location_id: self.location_id,
-            name: self.name,
-            pos: self.pos.map(|pos| pos.to_geo(space)),
-            profile: self.profile,
-            resources: self.resources,
+impl ScenarioLocationGeneratorConfig {
+    fn generate_locations(&self, seed: u64, space: &SpaceConfig) -> Vec<LocationSeedConfig> {
+        let mut out = Vec::with_capacity(self.count);
+        for index in 0..self.count {
+            let seq = splitmix64(
+                seed.wrapping_add(index as u64)
+                    .wrapping_add(0xD6E8_FEB8_6659_FD93),
+            );
+            let x = coord_from_hash(seq, space.width_cm);
+            let y = coord_from_hash(splitmix64(seq), space.depth_cm);
+            let z = coord_from_hash(splitmix64(splitmix64(seq)), space.height_cm);
+
+            out.push(LocationSeedConfig {
+                location_id: format!("{}{}", self.id_prefix, index),
+                name: format!("{} {}", self.name_prefix, index),
+                pos: Some(GeoPos {
+                    x_cm: x,
+                    y_cm: y,
+                    z_cm: z,
+                }),
+                profile: LocationProfile::default(),
+                resources: ResourceStock::default(),
+            });
         }
+        out
     }
+}
+
+fn coord_from_hash(hash: u64, max_cm: i64) -> f64 {
+    if max_cm <= 0 {
+        return 0.0;
+    }
+    let ratio = (hash as f64) / (u64::MAX as f64);
+    (ratio * max_cm as f64).clamp(0.0, max_cm as f64)
+}
+
+fn splitmix64(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^ (x >> 31)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

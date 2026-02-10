@@ -5,14 +5,14 @@
 ## 目标
 - 将现有所有 `WorldScenario` 定义迁移为**场景文件**（JSON），作为单一来源。
 - 保持现有 API（`WorldInitConfig::from_scenario` / `WorldScenario::parse` 等）可用。
-- 提供最小位置表达（center/center_offset/absolute），在文件中表达相对位置。
+- 通过 `seed + location_generator` 生成地点，保证同场景配置可复现。
 
 ## 范围
 
 ### In Scope
 - `crates/agent_world/scenarios/*.json` 作为默认场景文件集合。
 - `WorldScenario` 从场景文件加载配置（include_str 嵌入编译产物）。
-- 位置表达 `ScenarioPos`：`center` / `center_offset` / `absolute`。
+- 地点生成表达 `location_generator`：由 `seed` 决定地点数量与命名。
 - 场景文件覆盖所有现有场景：minimal/two_bases/.../asteroid_fragment_triad_region_bootstrap。
 - 单元测试验证场景文件可加载与稳定性。
 - `world_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
@@ -29,21 +29,22 @@
 {
   "id": "two_bases",
   "name": "Two Bases",
+  "seed": 2,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
-  "agents": { "count": 2, "location_id": "base-a" },
-  "locations": [
-    { "location_id": "base-a", "name": "Base A", "pos": { "type": "center_offset", "dx_pct": -0.2 } },
-    { "location_id": "base-b", "name": "Base B", "pos": { "type": "center_offset", "dx_pct": 0.2 } }
-  ]
+  "agents": { "count": 2 },
+  "location_generator": { "count": 2, "id_prefix": "base-", "name_prefix": "Base" }
 }
 ```
 
 `asteroid_fragment.min_fragment_spacing_cm` 为可选字段，用于覆盖小行星碎片最小间距（cm）；未设置则沿用 `WorldConfig.asteroid_fragment`。
 
-### 位置表达
-- `center`：空间中心点。
-- `center_offset`：以中心为基准按比例偏移（`dx_pct/dy_pct/dz_pct`）。
-- `absolute`：直接给出 `x_cm/y_cm/z_cm`。
+### 地点生成表达
+- `seed`：场景随机根种子。
+- `location_generator.count`：生成地点数量。
+- `location_generator.id_prefix`：地点 ID 前缀（最终形如 `prefix + index`）。
+- `location_generator.name_prefix`：地点名称前缀（最终形如 `prefix + 空格 + index`）。
+
+> `origin.pos` 仍支持 `center` / `center_offset` / `absolute`，仅用于 origin 的显式定位。
 
 ### 加载策略
 - 场景文件通过 `include_str!` 嵌入编译产物，避免运行时 I/O。
@@ -72,7 +73,7 @@
 | `resource_bootstrap` | 资源初值注入（origin/agent） | `resource_bootstrap_seeds_stock`、`scenario_specs_match_ids`、`scenarios_are_stable`、`scenario_aliases_parse(resources)` |
 | `twin_region_bootstrap` | 双区域结构（location/agents） | `twin_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(twin-regions)`、`plan_demo_actions_includes_move_for_multi_location_scenario` |
 | `triad_region_bootstrap` | 三区域结构（location/agents/resource） | `triad_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(triad-regions)`、`world_init_demo_runs_triad_summary` |
-| `triad_p2p_bootstrap` | P2P 节点化分布（spawn_locations） | `triad_p2p_bootstrap_seeds_nodes_and_agents`、`scenarios_are_stable`、`scenario_aliases_parse(p2p-triad)` |
+| `triad_p2p_bootstrap` | P2P 节点化分布（seed 生成节点 + 随机出生） | `triad_p2p_bootstrap_seeds_nodes_and_agents`、`scenarios_are_stable`、`scenario_aliases_parse(p2p-triad)` |
 | `asteroid_fragment_bootstrap` | 碎片分块生成 + bootstrap chunk + 预算账本（无默认设施） | `asteroid_fragment_bootstrap_seeds_fragments_and_resources`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_summary` |
 | `asteroid_fragment_twin_region_bootstrap` | 碎片分块 + 双区域结构联动（无默认设施） | `asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_twin_summary` |
 | `asteroid_fragment_triad_region_bootstrap` | 碎片分块 + 三区域结构联动（无默认设施） | `asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_triad_summary` |

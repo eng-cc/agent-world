@@ -1,6 +1,7 @@
 {
   "id": "power_bootstrap",
   "name": "Power Bootstrap",
+  "seed": 3,
   "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
   "agents": { "count": 1 },
   "power_plants": [
