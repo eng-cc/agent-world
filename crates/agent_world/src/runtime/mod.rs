@@ -132,9 +132,10 @@ pub use distributed_client::DistributedClient;
 pub use distributed_dht::{DistributedDht, InMemoryDht, ProviderRecord};
 // Quorum consensus helpers for head commits
 pub use distributed_consensus::{
-    propose_world_head_with_quorum, vote_world_head_with_quorum, ConsensusConfig,
-    ConsensusDecision, ConsensusStatus, ConsensusVote, HeadConsensusRecord, QuorumConsensus,
-    CONSENSUS_SNAPSHOT_VERSION,
+    ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
+    ConsensusConfig, ConsensusDecision, ConsensusMembershipChange,
+    ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult, ConsensusStatus,
+    ConsensusVote, HeadConsensusRecord, QuorumConsensus, CONSENSUS_SNAPSHOT_VERSION,
 };
 // Cached DHT wrapper
 pub use distributed_dht_cache::{CachedDht, DhtCacheConfig};

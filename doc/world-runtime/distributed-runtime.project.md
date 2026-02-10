@@ -137,6 +137,13 @@
 - [x] QuorumConsensus 快照保存/加载能力
 - [x] 共识快照单元测试与分布式回归
 
+
+### 27. P3.10 成员治理与租约联动
+- [x] 共识成员变更接口（add/remove/replace）
+- [x] 租约授权校验（holder + 时效）
+- [x] lease holder 自动补齐 validator helper
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -144,6 +151,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.9 完成（Head 共识快照持久化）
-- 下一步：P3.10（验证者成员治理与租约联动）
-- 最近更新：Head 共识快照持久化（2026-02-10）
+- 当前阶段：P3.10 完成（成员治理与租约联动）
+- 下一步：P3.11（跨节点成员目录同步）
+- 最近更新：成员治理与租约联动（2026-02-10）
