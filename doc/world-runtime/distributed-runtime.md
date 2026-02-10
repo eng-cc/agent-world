@@ -379,3 +379,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **恢复入口**：启动/重启时可调用 `restore_membership_from_dht`，读取快照并以 `ReplaceValidators` 恢复本地目录。
 - **缺省行为**：DHT 无快照时返回 `None`，不强制变更本地目录。
 - **一致性约束**：恢复仍受共识层 pending 保护，避免在进行中提案期间切换 validator 集合。
+
+## 成员目录快照签名与来源校验（草案）
+- **签名字段**：成员目录广播与 DHT 快照增加可选 `signature`（hex），兼容旧数据。
+- **签名算法**：当前实现 `MembershipDirectorySigner::hmac_sha256`，基于快照核心字段做 canonical CBOR 签名。
+- **发布入口**：`publish_membership_change_with_dht_signed` 同步发布带签名广播并写入 DHT。
+- **恢复策略**：`restore_membership_from_dht_verified` 支持 `trusted_requesters` 与 `require_signature` 策略。
+- **来源约束**：恢复前校验 `requester_id` 必须在快照 validator 集合内；若配置白名单则必须命中。
+- **兼容模式**：未启用策略时仍保留旧恢复入口，便于渐进迁移。

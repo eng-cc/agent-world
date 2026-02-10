@@ -159,8 +159,8 @@ pub use distributed_observer::{
 };
 // Distributed membership directory sync
 pub use distributed_membership_sync::{
-    MembershipDirectoryAnnounce, MembershipSyncClient, MembershipSyncReport,
-    MembershipSyncSubscription,
+    MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipSnapshotRestorePolicy,
+    MembershipSyncClient, MembershipSyncReport, MembershipSyncSubscription,
 };
 // Distributed observer replay validation
 pub use distributed_observer_replay::{replay_validate_head, replay_validate_with_head};

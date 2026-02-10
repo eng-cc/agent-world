@@ -22,6 +22,8 @@ pub struct MembershipDirectorySnapshot {
     pub reason: Option<String>,
     pub validators: Vec<String>,
     pub quorum_threshold: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
 }
 
 pub trait DistributedDht {
@@ -184,6 +186,7 @@ mod tests {
                 "seq-3".to_string(),
             ],
             quorum_threshold: 2,
+            signature: Some("deadbeef".to_string()),
         };
         dht.put_membership_directory("w1", &snapshot)
             .expect("put membership");

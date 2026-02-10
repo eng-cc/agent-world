@@ -1059,6 +1059,7 @@ mod tests {
             reason: Some("sync".to_string()),
             validators: vec!["seq-1".to_string(), "seq-2".to_string()],
             quorum_threshold: 2,
+            signature: None,
         };
         let payload = to_canonical_cbor(&snapshot).expect("encode snapshot");
         let key_label = "membership".to_string();

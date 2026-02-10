@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 use super::distributed::topic_membership;
 use super::distributed_consensus::{
@@ -14,6 +16,8 @@ use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
 
+type HmacSha256 = Hmac<Sha256>;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipDirectoryAnnounce {
     pub world_id: String,
@@ -22,6 +26,8 @@ pub struct MembershipDirectoryAnnounce {
     pub reason: Option<String>,
     pub validators: Vec<String>,
     pub quorum_threshold: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
 }
 
 impl MembershipDirectoryAnnounce {
@@ -37,6 +43,7 @@ impl MembershipDirectoryAnnounce {
             reason: request.reason.clone(),
             validators: result.validators.clone(),
             quorum_threshold: result.quorum_threshold,
+            signature: None,
         }
     }
 
@@ -48,6 +55,7 @@ impl MembershipDirectoryAnnounce {
             reason: self.reason,
             validators: self.validators,
             quorum_threshold: self.quorum_threshold,
+            signature: self.signature,
         }
     }
 }
@@ -61,8 +69,69 @@ impl From<MembershipDirectorySnapshot> for MembershipDirectoryAnnounce {
             reason: value.reason,
             validators: value.validators,
             quorum_threshold: value.quorum_threshold,
+            signature: value.signature,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MembershipDirectorySigner {
+    key: Vec<u8>,
+}
+
+impl MembershipDirectorySigner {
+    pub fn hmac_sha256(key: impl Into<Vec<u8>>) -> Self {
+        Self { key: key.into() }
+    }
+
+    pub fn sign_snapshot(
+        &self,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<String, WorldError> {
+        let payload = snapshot_signing_bytes(snapshot)?;
+        let mut mac =
+            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+        mac.update(&payload);
+        Ok(hex::encode(mac.finalize().into_bytes()))
+    }
+
+    pub fn verify_snapshot(
+        &self,
+        snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError> {
+        let Some(signature_hex) = snapshot.signature.as_deref() else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot missing signature for requester {}",
+                    snapshot.requester_id
+                ),
+            });
+        };
+        let signature =
+            hex::decode(signature_hex).map_err(|_| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot signature is not valid hex for requester {}",
+                    snapshot.requester_id
+                ),
+            })?;
+        let payload = snapshot_signing_bytes(snapshot)?;
+        let mut mac =
+            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+        mac.update(&payload);
+        mac.verify_slice(&signature)
+            .map_err(|_| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot signature mismatch for requester {}",
+                    snapshot.requester_id
+                ),
+            })
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MembershipSnapshotRestorePolicy {
+    pub trusted_requesters: Vec<String>,
+    pub require_signature: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -100,9 +169,7 @@ impl MembershipSyncClient {
     ) -> Result<MembershipDirectoryAnnounce, WorldError> {
         let announce =
             MembershipDirectoryAnnounce::from_membership_change(world_id, request, result);
-        let payload = to_canonical_cbor(&announce)?;
-        self.network
-            .publish(&topic_membership(world_id), &payload)?;
+        self.publish_announcement(world_id, &announce)?;
         Ok(announce)
     }
 
@@ -116,6 +183,35 @@ impl MembershipSyncClient {
         let announce = self.publish_membership_change(world_id, request, result)?;
         dht.put_membership_directory(world_id, &announce.clone().into_snapshot())?;
         Ok(announce)
+    }
+
+    pub fn publish_membership_change_with_dht_signed(
+        &self,
+        world_id: &str,
+        request: &ConsensusMembershipChangeRequest,
+        result: &ConsensusMembershipChangeResult,
+        dht: &(dyn DistributedDht + Send + Sync),
+        signer: &MembershipDirectorySigner,
+    ) -> Result<MembershipDirectoryAnnounce, WorldError> {
+        let mut announce =
+            MembershipDirectoryAnnounce::from_membership_change(world_id, request, result);
+        let mut snapshot = announce.clone().into_snapshot();
+        let signature = signer.sign_snapshot(&snapshot)?;
+        snapshot.signature = Some(signature.clone());
+        announce.signature = Some(signature);
+
+        self.publish_announcement(world_id, &announce)?;
+        dht.put_membership_directory(world_id, &snapshot)?;
+        Ok(announce)
+    }
+
+    fn publish_announcement(
+        &self,
+        world_id: &str,
+        announce: &MembershipDirectoryAnnounce,
+    ) -> Result<(), WorldError> {
+        let payload = to_canonical_cbor(announce)?;
+        self.network.publish(&topic_membership(world_id), &payload)
     }
 
     pub fn drain_announcements(
@@ -169,10 +265,29 @@ impl MembershipSyncClient {
         consensus: &mut QuorumConsensus,
         dht: &(dyn DistributedDht + Send + Sync),
     ) -> Result<Option<ConsensusMembershipChangeResult>, WorldError> {
+        self.restore_membership_from_dht_verified(
+            world_id,
+            consensus,
+            dht,
+            None,
+            &MembershipSnapshotRestorePolicy::default(),
+        )
+    }
+
+    pub fn restore_membership_from_dht_verified(
+        &self,
+        world_id: &str,
+        consensus: &mut QuorumConsensus,
+        dht: &(dyn DistributedDht + Send + Sync),
+        signer: Option<&MembershipDirectorySigner>,
+        policy: &MembershipSnapshotRestorePolicy,
+    ) -> Result<Option<ConsensusMembershipChangeResult>, WorldError> {
         let snapshot = dht.get_membership_directory(world_id)?;
         let Some(snapshot) = snapshot else {
             return Ok(None);
         };
+        validate_membership_snapshot(world_id, &snapshot, signer, policy)?;
+
         let announce = MembershipDirectoryAnnounce::from(snapshot);
         let request = ConsensusMembershipChangeRequest {
             requester_id: announce.requester_id,
@@ -186,6 +301,85 @@ impl MembershipSyncClient {
         let result = consensus.apply_membership_change(&request)?;
         Ok(Some(result))
     }
+}
+
+#[derive(Serialize)]
+struct MembershipDirectorySigningPayload<'a> {
+    world_id: &'a str,
+    requester_id: &'a str,
+    requested_at_ms: i64,
+    reason: &'a Option<String>,
+    validators: &'a [String],
+    quorum_threshold: usize,
+}
+
+fn snapshot_signing_bytes(snapshot: &MembershipDirectorySnapshot) -> Result<Vec<u8>, WorldError> {
+    let payload = MembershipDirectorySigningPayload {
+        world_id: &snapshot.world_id,
+        requester_id: &snapshot.requester_id,
+        requested_at_ms: snapshot.requested_at_ms,
+        reason: &snapshot.reason,
+        validators: &snapshot.validators,
+        quorum_threshold: snapshot.quorum_threshold,
+    };
+    to_canonical_cbor(&payload)
+}
+
+fn validate_membership_snapshot(
+    world_id: &str,
+    snapshot: &MembershipDirectorySnapshot,
+    signer: Option<&MembershipDirectorySigner>,
+    policy: &MembershipSnapshotRestorePolicy,
+) -> Result<(), WorldError> {
+    if snapshot.world_id != world_id {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership snapshot world mismatch: expected={world_id}, got={}",
+                snapshot.world_id
+            ),
+        });
+    }
+
+    if !snapshot
+        .validators
+        .iter()
+        .any(|validator| validator == &snapshot.requester_id)
+    {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership snapshot requester {} is not in validator set",
+                snapshot.requester_id
+            ),
+        });
+    }
+
+    if !policy.trusted_requesters.is_empty()
+        && !policy
+            .trusted_requesters
+            .iter()
+            .any(|requester| requester == &snapshot.requester_id)
+    {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership snapshot requester {} is not trusted",
+                snapshot.requester_id
+            ),
+        });
+    }
+
+    if policy.require_signature && signer.is_none() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership snapshot verification requires signer".to_string(),
+        });
+    }
+
+    if let Some(signer) = signer {
+        if policy.require_signature || snapshot.signature.is_some() {
+            signer.verify_snapshot(snapshot)?;
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -222,10 +416,53 @@ mod tests {
         .expect("consensus")
     }
 
+    fn sample_snapshot() -> MembershipDirectorySnapshot {
+        MembershipDirectorySnapshot {
+            world_id: "w1".to_string(),
+            requester_id: "seq-1".to_string(),
+            requested_at_ms: 400,
+            reason: Some("restart".to_string()),
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+                "seq-4".to_string(),
+            ],
+            quorum_threshold: 3,
+            signature: None,
+        }
+    }
+
     #[test]
     fn membership_topic_suffix_matches_topic_name() {
         assert_eq!(TOPIC_MEMBERSHIP_SUFFIX, "membership");
         assert_eq!(topic_membership("w1"), "aw.w1.membership");
+    }
+
+    #[test]
+    fn membership_snapshot_signer_round_trip() {
+        let signer = MembershipDirectorySigner::hmac_sha256("membership-secret");
+        let mut snapshot = sample_snapshot();
+        let signature = signer.sign_snapshot(&snapshot).expect("sign snapshot");
+        snapshot.signature = Some(signature);
+        signer.verify_snapshot(&snapshot).expect("verify snapshot");
+    }
+
+    #[test]
+    fn membership_snapshot_signer_rejects_tampered_snapshot() {
+        let signer = MembershipDirectorySigner::hmac_sha256("membership-secret");
+        let mut snapshot = sample_snapshot();
+        let signature = signer.sign_snapshot(&snapshot).expect("sign snapshot");
+        snapshot.signature = Some(signature);
+        snapshot.validators.push("seq-5".to_string());
+
+        let err = signer
+            .verify_snapshot(&snapshot)
+            .expect_err("verify should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
     }
 
     #[test]
@@ -256,6 +493,7 @@ mod tests {
             .publish_membership_change("w1", &request, &result)
             .expect("publish");
         assert_eq!(published.world_id, "w1");
+        assert!(published.signature.is_none());
 
         let drained = sync_client
             .drain_announcements(&subscription)
@@ -341,16 +579,22 @@ mod tests {
     }
 
     #[test]
-    fn restore_membership_from_dht_applies_replace_snapshot() {
+    fn publish_membership_change_with_dht_signed_persists_signed_snapshot() {
         let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
         let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
         let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+        let signer = MembershipDirectorySigner::hmac_sha256("membership-secret");
+        let subscription = sync_client.subscribe("w1").expect("subscribe");
 
-        let snapshot = MembershipDirectorySnapshot {
-            world_id: "w1".to_string(),
-            requester_id: "seq-1".to_string(),
-            requested_at_ms: 400,
-            reason: Some("restart".to_string()),
+        let request = membership_request(
+            "seq-1",
+            320,
+            ConsensusMembershipChange::AddValidator {
+                validator_id: "seq-4".to_string(),
+            },
+        );
+        let result = ConsensusMembershipChangeResult {
+            applied: true,
             validators: vec![
                 "seq-1".to_string(),
                 "seq-2".to_string(),
@@ -359,6 +603,39 @@ mod tests {
             ],
             quorum_threshold: 3,
         };
+
+        let announce = sync_client
+            .publish_membership_change_with_dht_signed(
+                "w1",
+                &request,
+                &result,
+                dht.as_ref(),
+                &signer,
+            )
+            .expect("publish signed");
+        assert!(announce.signature.is_some());
+
+        let snapshot = dht
+            .get_membership_directory("w1")
+            .expect("get membership")
+            .expect("snapshot exists");
+        assert_eq!(snapshot.signature, announce.signature);
+        signer.verify_snapshot(&snapshot).expect("signature valid");
+
+        let drained = sync_client
+            .drain_announcements(&subscription)
+            .expect("drain announcements");
+        assert_eq!(drained.len(), 1);
+        assert_eq!(drained[0], announce);
+    }
+
+    #[test]
+    fn restore_membership_from_dht_applies_replace_snapshot() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+        let snapshot = sample_snapshot();
         dht.put_membership_directory("w1", &snapshot)
             .expect("put membership");
 
@@ -370,6 +647,90 @@ mod tests {
         assert!(restored.applied);
         assert_eq!(consensus.validators().len(), 4);
         assert_eq!(consensus.quorum_threshold(), 3);
+    }
+
+    #[test]
+    fn restore_membership_from_dht_verified_rejects_untrusted_requester() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+        let snapshot = sample_snapshot();
+        dht.put_membership_directory("w1", &snapshot)
+            .expect("put membership");
+
+        let mut consensus = sample_consensus();
+        let policy = MembershipSnapshotRestorePolicy {
+            trusted_requesters: vec!["seq-9".to_string()],
+            require_signature: false,
+        };
+        let err = sync_client
+            .restore_membership_from_dht_verified("w1", &mut consensus, dht.as_ref(), None, &policy)
+            .expect_err("restore should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
+    }
+
+    #[test]
+    fn restore_membership_from_dht_verified_requires_signature_when_enabled() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+        let snapshot = sample_snapshot();
+        dht.put_membership_directory("w1", &snapshot)
+            .expect("put membership");
+
+        let mut consensus = sample_consensus();
+        let policy = MembershipSnapshotRestorePolicy {
+            trusted_requesters: vec!["seq-1".to_string()],
+            require_signature: true,
+        };
+        let err = sync_client
+            .restore_membership_from_dht_verified(
+                "w1",
+                &mut consensus,
+                dht.as_ref(),
+                Some(&MembershipDirectorySigner::hmac_sha256("membership-secret")),
+                &policy,
+            )
+            .expect_err("restore should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
+    }
+
+    #[test]
+    fn restore_membership_from_dht_verified_accepts_signed_trusted_snapshot() {
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let dht: Arc<dyn DistributedDht + Send + Sync> = Arc::new(InMemoryDht::new());
+        let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+        let signer = MembershipDirectorySigner::hmac_sha256("membership-secret");
+
+        let mut snapshot = sample_snapshot();
+        snapshot.signature = Some(signer.sign_snapshot(&snapshot).expect("sign snapshot"));
+        dht.put_membership_directory("w1", &snapshot)
+            .expect("put membership");
+
+        let mut consensus = sample_consensus();
+        let policy = MembershipSnapshotRestorePolicy {
+            trusted_requesters: vec!["seq-1".to_string()],
+            require_signature: true,
+        };
+        let restored = sync_client
+            .restore_membership_from_dht_verified(
+                "w1",
+                &mut consensus,
+                dht.as_ref(),
+                Some(&signer),
+                &policy,
+            )
+            .expect("restore")
+            .expect("restored");
+        assert!(restored.applied);
     }
 
     #[test]
