@@ -274,6 +274,20 @@
 - [x] 新增状态持久化与公平调度单元测试
 - [x] 单元测试与分布式回归
 
+### 44. P3.27 成员目录吊销死信回放状态观测聚合与策略自适应
+- [x] 新增 `recommend_revocation_dead_letter_replay_policy`
+- [x] 新增 `validate_adaptive_policy_bounds` 与 delivery metrics 聚合工具函数
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_adaptive_policy`
+- [x] 新增策略自适应单元测试（扩容、收敛、公平倾斜、联动执行）
+- [x] 单元测试与分布式回归
+
+### 45. P3.28 成员目录吊销死信回放策略冷却窗口与漂移抑制
+- [x] 新增 `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard`
+- [x] 新增 `validate_adaptive_policy_guard_bounds` 与策略步长截断 helper
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy`
+- [x] 新增冷却窗口与漂移抑制单元测试
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -281,6 +295,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.26 完成（成员目录吊销死信回放状态持久化与公平调度）
-- 下一步：P3.27（成员目录吊销死信回放状态观测聚合与策略自适应）
-- 最近更新：成员目录吊销死信回放状态持久化与公平调度（2026-02-11）
+- 当前阶段：P3.28 完成（成员目录吊销死信回放策略冷却窗口与漂移抑制）
+- 下一步：P3.29（成员目录吊销死信回放策略建议持久化与回滚保护）
+- 最近更新：成员目录吊销死信回放策略冷却窗口与漂移抑制（2026-02-11）
