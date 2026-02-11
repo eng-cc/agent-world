@@ -207,6 +207,18 @@ impl Default for ViewerCameraMode {
     }
 }
 
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerPanelMode {
+    Observe,
+    PromptOps,
+}
+
+impl Default for ViewerPanelMode {
+    fn default() -> Self {
+        Self::Observe
+    }
+}
+
 #[derive(Resource)]
 struct Viewer3dAssets {
     agent_mesh: Handle<Mesh>,
@@ -1190,6 +1202,11 @@ mod camera_mode_tests {
     #[test]
     fn default_camera_mode_is_2d() {
         assert_eq!(ViewerCameraMode::default(), ViewerCameraMode::TwoD);
+    }
+
+    #[test]
+    fn default_panel_mode_is_observe() {
+        assert_eq!(ViewerPanelMode::default(), ViewerPanelMode::Observe);
     }
 }
 #[cfg(test)]

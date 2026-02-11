@@ -4,6 +4,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let auto_focus_config = auto_focus_config_from_env();
+    let panel_mode = resolve_panel_mode_from_env();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
 
@@ -15,6 +16,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(viewer_3d_config)
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerCameraMode::default())
+        .insert_resource(panel_mode)
         .insert_resource(ViewerSelection::default())
         .insert_resource(world_overlay_config_from_env())
         .insert_resource(WorldOverlayUiState::default())
@@ -93,6 +95,18 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         )
         .add_systems(EguiPrimaryContextPass, render_right_side_panel_egui)
         .run();
+}
+
+fn resolve_panel_mode_from_env() -> ViewerPanelMode {
+    let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_PANEL_MODE").ok() else {
+        return ViewerPanelMode::default();
+    };
+
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "observe" | "obs" | "default" => ViewerPanelMode::Observe,
+        "prompt_ops" | "prompt-ops" | "promptops" | "ops" => ViewerPanelMode::PromptOps,
+        _ => ViewerPanelMode::default(),
+    }
 }
 
 pub(super) fn run_headless(addr: String, offline: bool) {

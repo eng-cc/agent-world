@@ -114,3 +114,12 @@
 ## TODO（本轮不展开）
 - TODO-3：玩家动作玩法闭环（非 prompt 交互）。
 - TODO-6：产品化能力（音频/资产管线/新手引导等）。
+
+## 实施进展（2026-02-11）
+- 已完成 OWR1：
+  - viewer 顶部新增 `模式` 切换（`Observe` / `Prompt Ops`）。
+  - `Prompt Ops` 已提供 Prompt-only 约束提示、Agent 目标选择、Prompt 草稿编辑区与审计占位区。
+  - 支持环境变量 `AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops` 直接进入运营态。
+- 已完成验证：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过。
+  - 截图闭环通过：`AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops ./scripts/capture-viewer-frame.sh ...`。

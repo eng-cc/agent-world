@@ -5,12 +5,12 @@
 ### OWR0 文档与对齐
 - [x] OWR0.1 输出设计文档（`doc/world-simulator/viewer-open-world-sandbox-readiness.md`）
 - [x] OWR0.2 输出项目管理文档（本文件）
-- [ ] OWR0.3 在总项目文档挂载分册入口并同步阶段状态
+- [x] OWR0.3 在总项目文档挂载分册入口并同步阶段状态
 
 ### OWR1 观察态/运营态信息架构（对应缺口 1）
-- [ ] OWR1.1 定义 `Observe/Prompt Ops` 双模式 UI 状态机与切换规则
-- [ ] OWR1.2 新增运营态总览（Agent prompt 版本、变更风险、生效 tick）
-- [ ] OWR1.3 补充 UI 回归测试（模式切换、状态同步、无回归）
+- [x] OWR1.1 定义 `Observe/Prompt Ops` 双模式 UI 状态机与切换规则
+- [x] OWR1.2 新增运营态总览（Prompt-only 约束、Agent 选择、Prompt 草稿区、审计占位）
+- [x] OWR1.3 补充 UI 回归测试（模式文案、Prompt Ops 面板渲染）并通过 `cargo test -p agent_world_viewer`
 
 ### OWR2 Prompt 控制面（对应缺口 2，严格 prompt-only）
 - [ ] OWR2.1 协议扩展：`prompt_control.preview/apply/rollback`
@@ -35,9 +35,9 @@
 - [ ] OWR4.5 形成跨版本基线（帧时间、事件吞吐、丢帧/卡顿指标）
 
 ### OWR5 收口
-- [ ] OWR5.1 更新设计文档与项目文档状态
-- [ ] OWR5.2 更新任务日志（`doc/devlog/YYYY-MM-DD.md`）
-- [ ] OWR5.3 执行 `env -u RUSTC_WRAPPER cargo check` 与相关测试
+- [x] OWR5.1 更新设计文档与项目文档状态
+- [x] OWR5.2 更新任务日志（`doc/devlog/YYYY-MM-DD.md`）
+- [x] OWR5.3 执行 `env -u RUSTC_WRAPPER cargo check` 与相关测试
 - [ ] OWR5.4 按任务粒度提交 git commit
 
 ## 依赖
@@ -47,9 +47,9 @@
 - 联测与脚本：`crates/agent_world/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`
 
 ## 状态
-- 当前阶段：OWR0 已完成（计划文档就绪）
-- 下一阶段：OWR1 + OWR2（先打通 Prompt Ops 基础闭环）
-- 最近更新：按“仅 prompt 交互”约束完成 1/2/4/5 计划拆解（2026-02-11）
+- 当前阶段：OWR1 已完成（Observe/Prompt Ops 双模式 UI 骨架已落地）
+- 下一阶段：OWR2（prompt_control 协议与 `AgentPromptUpdated` 事件链路）
+- 最近更新：完成 Prompt Ops 面板落地、`AGENT_WORLD_VIEWER_PANEL_MODE` 启动模式支持、单测与截图闭环验证（2026-02-11）
 
 ## 不在本轮
 - TODO-3：动作玩法闭环（发现-采集-加工-建造）。
