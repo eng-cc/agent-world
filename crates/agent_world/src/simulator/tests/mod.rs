@@ -22,6 +22,7 @@ mod consistency;
 mod fragment_physics;
 mod init;
 mod kernel;
+mod kernel_rule_invariants;
 mod memory;
 mod module_visual;
 mod monotonicity;
