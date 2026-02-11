@@ -133,6 +133,7 @@
   - 覆盖层与网格线已接入节流与 LOD（覆盖层按 tick/事件增量刷新、flow 合批、远距 chunk 线隐藏）。
   - 右侧总览新增渲染性能摘要（avg/p95、对象/标签/覆盖层计数、预算状态）。
   - 修复 3D 缩放输入兼容性：滚轮 Pixel 单位归一化，并接入 macOS `PinchGesture` 缩放链路。
+  - 修复 2D 缩放链路：滚轮/Pinch 在 TwoD 模式下同步更新正交投影 `scale`，恢复俯视缩放可用性。
 - 已完成验证：
   - `env -u RUSTC_WRAPPER cargo check -p agent_world` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world prompt_control_ -- --nocapture` 通过。

@@ -12,6 +12,9 @@ use super::{
     ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
 };
 
+const ORTHO_MIN_SCALE: f32 = 0.01;
+const ORTHO_MAX_SCALE: f32 = 8.0;
+
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
     last_cursor_position: Option<Vec2>,
@@ -22,11 +25,12 @@ pub(super) fn orbit_camera_controls(
     buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
     camera_mode: Res<ViewerCameraMode>,
+    config: Res<Viewer3dConfig>,
     panel_width: Option<Res<RightPanelWidthState>>,
     mut mouse_wheel: MessageReader<MouseWheel>,
     mut pinch_gesture: MessageReader<PinchGesture>,
     mut drag_state: ResMut<OrbitDragState>,
-    mut query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
+    mut query: Query<(&mut OrbitCamera, &mut Transform, &mut Projection), With<Viewer3dCamera>>,
 ) {
     let Ok(window) = windows.single() else {
         return;
@@ -68,7 +72,7 @@ pub(super) fn orbit_camera_controls(
         return;
     }
 
-    let Ok((mut orbit, mut transform)) = query.single_mut() else {
+    let Ok((mut orbit, mut transform, mut projection)) = query.single_mut() else {
         return;
     };
 
@@ -83,6 +87,10 @@ pub(super) fn orbit_camera_controls(
 
     if changed {
         orbit.apply_to_transform(&mut transform);
+    }
+
+    if scroll != 0.0 && *camera_mode == ViewerCameraMode::TwoD {
+        sync_2d_zoom_projection(&mut projection, orbit.radius, config.effective_cm_to_unit());
     }
 }
 
@@ -118,6 +126,12 @@ fn normalized_mouse_wheel_delta(unit: MouseScrollUnit, y: f32) -> f32 {
 fn pinch_scroll_delta(delta: f32) -> f32 {
     // Pinch magnify deltas are much smaller than line-based wheel deltas.
     delta * 8.0
+}
+
+fn sync_2d_zoom_projection(projection: &mut Projection, orbit_radius: f32, cm_to_unit: f32) {
+    if let Projection::Orthographic(ortho) = projection {
+        ortho.scale = two_d_ortho_scale_for_radius(orbit_radius, cm_to_unit);
+    }
 }
 
 fn apply_orbit_input(
@@ -223,6 +237,19 @@ fn world_view_ortho_scale(cm_to_unit: f32) -> f32 {
     let world_span_units = cm_span * cm_to_unit;
     let reference_viewport_px = 880.0;
     ((world_span_units * 1.15) / reference_viewport_px).clamp(0.03, 4.0)
+}
+
+fn two_d_reference_radius(cm_to_unit: f32) -> f32 {
+    world_view_radius(cm_to_unit)
+        .max(DEFAULT_2D_CAMERA_RADIUS)
+        .max(ORBIT_MIN_RADIUS)
+}
+
+fn two_d_ortho_scale_for_radius(radius: f32, cm_to_unit: f32) -> f32 {
+    let base_scale = world_view_ortho_scale(cm_to_unit);
+    let reference_radius = two_d_reference_radius(cm_to_unit);
+    let ratio = (radius / reference_radius).max(0.01);
+    (base_scale * ratio).clamp(ORTHO_MIN_SCALE, ORTHO_MAX_SCALE)
 }
 
 pub(super) fn sync_camera_mode(
@@ -375,6 +402,36 @@ mod tests {
         assert!(zoom_in > 0.0);
         assert!(zoom_out < 0.0);
         assert!((zoom_in + zoom_out).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn two_d_ortho_scale_decreases_when_radius_decreases() {
+        let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
+        let reference = two_d_reference_radius(cm_to_unit);
+        let zoom_in_scale =
+            two_d_ortho_scale_for_radius((reference * 0.5).max(ORBIT_MIN_RADIUS), cm_to_unit);
+        let zoom_out_scale =
+            two_d_ortho_scale_for_radius((reference * 1.5).min(ORBIT_MAX_RADIUS), cm_to_unit);
+        assert!(zoom_in_scale < zoom_out_scale);
+    }
+
+    #[test]
+    fn sync_2d_zoom_projection_updates_orthographic_scale() {
+        let config = Viewer3dConfig::default();
+        let cm_to_unit = config.effective_cm_to_unit();
+        let mut projection = camera_projection_for_mode(ViewerCameraMode::TwoD, &config);
+        let before = match &projection {
+            Projection::Orthographic(ortho) => ortho.scale,
+            _ => panic!("expected orthographic projection"),
+        };
+
+        let zoom_in_radius = (two_d_reference_radius(cm_to_unit) * 0.6).max(ORBIT_MIN_RADIUS);
+        sync_2d_zoom_projection(&mut projection, zoom_in_radius, cm_to_unit);
+        let after = match &projection {
+            Projection::Orthographic(ortho) => ortho.scale,
+            _ => panic!("expected orthographic projection"),
+        };
+        assert!(after < before);
     }
 
     #[test]
