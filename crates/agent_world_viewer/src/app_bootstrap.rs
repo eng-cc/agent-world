@@ -34,6 +34,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
         .insert_resource(RightPanelWidthState::default())
+        .insert_resource(LabelLodStats::default())
         .insert_resource(module_visibility_state)
         .insert_resource(module_visibility_path)
         .insert_resource(StepControlLoadingState::default())
@@ -93,7 +94,10 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         )
         .add_systems(
             PostUpdate,
-            pick_3d_selection.after(TransformSystems::Propagate),
+            (
+                pick_3d_selection.after(TransformSystems::Propagate),
+                update_label_lod.after(pick_3d_selection),
+            ),
         )
         .add_systems(EguiPrimaryContextPass, render_right_side_panel_egui)
         .run();
