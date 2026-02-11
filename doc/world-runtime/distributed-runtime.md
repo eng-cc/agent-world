@@ -434,3 +434,10 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **编排入口**：新增 `run_revocation_reconcile_schedule_with_store_and_alerts(...)`，打通 load → run → save → emit。
 - **上报接口**：新增 `emit_revocation_reconcile_alerts(...)`，统一批量告警写入 sink。
 - **持久化维度**：文件落盘按 `world_id/node_id` 切分，便于节点级恢复与诊断。
+
+## 成员目录吊销告警抑制去重与调度多节点协同（草案）
+- **去重策略**：新增 `MembershipRevocationAlertDedupPolicy` 与 `MembershipRevocationAlertDedupState`。
+- **去重入口**：新增 `deduplicate_revocation_alerts(...)`，按 `world/node/code` + 时间窗口抑制重复告警。
+- **协同抽象**：新增 `MembershipRevocationScheduleCoordinator` 与 `InMemoryMembershipRevocationScheduleCoordinator`。
+- **协同编排**：新增 `run_revocation_reconcile_coordinated(...)`，先抢占协调锁再执行 schedule/store/alert。
+- **运行报告**：新增 `MembershipRevocationCoordinatedRunReport`，反馈是否获得执行权与实际告警发出数量。

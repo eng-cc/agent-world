@@ -212,6 +212,15 @@
 - [x] 文件落盘按 world/node 维度分片
 - [x] 单元测试与分布式回归
 
+### 37. P3.20 成员目录吊销告警抑制去重与调度多节点协同
+- [x] 新增 `MembershipRevocationAlertDedupPolicy/State`
+- [x] 新增 `deduplicate_revocation_alerts` 去重入口
+- [x] 新增 `MembershipRevocationScheduleCoordinator` 与内存实现
+- [x] 新增 `MembershipRevocationCoordinatedRunReport`
+- [x] 新增 `run_revocation_reconcile_coordinated`
+- [x] 协同锁支持 lease 过期与显式 release
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -219,6 +228,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.19 完成（成员目录吊销告警上报与调度状态持久化）
-- 下一步：P3.20（成员目录吊销告警抑制去重与调度多节点协同）
-- 最近更新：成员目录吊销告警上报与调度状态持久化（2026-02-10）
+- 当前阶段：P3.20 完成（成员目录吊销告警抑制去重与调度多节点协同）
+- 下一步：P3.21（成员目录吊销协同状态外部存储与告警恢复机制）
+- 最近更新：成员目录吊销告警抑制去重与调度多节点协同（2026-02-10）
