@@ -293,3 +293,75 @@ fn governance_recovery_drill_alert_event_summary_aggregates_outcome_counts() {
     assert_eq!(summary.get("suppressed_no_anomaly"), Some(&1));
     assert_eq!(summary.get("skipped_no_drill"), None);
 }
+
+#[test]
+fn governance_recovery_drill_alert_event_incremental_watermark_advances_monotonically() {
+    let client = sample_client();
+    let event_bus =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::new();
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::publish(
+        &event_bus,
+        "w1",
+        "node-a",
+        &sample_alert_event(
+            "w1",
+            "node-a",
+            1_040,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::SuppressedCooldown,
+        ),
+    )
+    .expect("publish node-a 1040");
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::publish(
+        &event_bus,
+        "w1",
+        "node-b",
+        &sample_alert_event(
+            "w1",
+            "node-b",
+            1_080,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::Emitted,
+        ),
+    )
+    .expect("publish node-b 1080");
+
+    let (batch1, watermark1) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_with_next_watermark(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            1_000,
+            &[],
+            1,
+            &event_bus,
+        )
+        .expect("first incremental batch");
+    assert_eq!(batch1.len(), 1);
+    assert_eq!(batch1[0].event_at_ms, 1_040);
+    assert_eq!(watermark1, 1_040);
+
+    let (batch2, watermark2) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_with_next_watermark(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            watermark1,
+            &[],
+            10,
+            &event_bus,
+        )
+        .expect("second incremental batch");
+    assert_eq!(batch2.len(), 1);
+    assert_eq!(batch2[0].event_at_ms, 1_080);
+    assert_eq!(watermark2, 1_080);
+
+    let (batch3, watermark3) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_with_next_watermark(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            watermark2,
+            &[],
+            10,
+            &event_bus,
+        )
+        .expect("third incremental batch");
+    assert!(batch3.is_empty());
+    assert_eq!(watermark3, 1_080);
+}
