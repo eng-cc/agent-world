@@ -55,8 +55,10 @@ mod selection_emphasis;
 mod selection_linking;
 mod timeline_controls;
 mod ui_locale_text;
+mod ui_state_types;
 mod ui_text;
 mod viewer_3d_config;
+mod viewer_automation;
 mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
@@ -108,8 +110,12 @@ use ui_locale_text::{
     agents_activity_no_snapshot, details_click_to_inspect, events_empty, selection_line,
     status_line, summary_no_snapshot,
 };
+use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
+use viewer_automation::{
+    run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
+};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
     update_world_overlay_status_text, update_world_overlays_3d, world_overlay_config_from_env,
@@ -351,55 +357,6 @@ fn grid_line_scale(axis: GridLineAxis, span: f32, thickness: f32) -> Vec3 {
 
 #[derive(Component, Copy, Clone)]
 struct BaseScale(Vec3);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ConnectionStatus {
-    Connecting,
-    Connected,
-    Error(String),
-}
-
-#[derive(Component)]
-struct StatusText;
-
-#[derive(Component)]
-struct SummaryText;
-
-#[derive(Component)]
-struct EventsText;
-
-#[derive(Component)]
-struct SelectionText;
-
-#[derive(Component)]
-struct AgentActivityText;
-
-#[derive(Component)]
-struct SelectionDetailsText;
-
-#[derive(Component, Clone)]
-struct ControlButton {
-    control: ViewerControl,
-}
-
-#[derive(Resource, Default)]
-struct HeadlessStatus {
-    last_status: Option<ConnectionStatus>,
-    last_events: usize,
-}
-
-#[derive(Resource, Clone, Copy, Debug)]
-struct RightPanelWidthState {
-    width_px: f32,
-}
-
-impl Default for RightPanelWidthState {
-    fn default() -> Self {
-        Self {
-            width_px: UI_PANEL_WIDTH,
-        }
-    }
-}
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
     let (tx, rx) = spawn_viewer_client(config.addr.clone());
@@ -1207,18 +1164,7 @@ fn update_3d_viewport(mut cameras: Query<&mut Camera, With<Viewer3dCamera>>) {
 }
 
 #[cfg(test)]
-mod camera_mode_tests {
-    use super::*;
-
-    #[test]
-    fn default_camera_mode_is_2d() {
-        assert_eq!(ViewerCameraMode::default(), ViewerCameraMode::TwoD);
-    }
-
-    #[test]
-    fn default_panel_mode_is_observe() {
-        assert_eq!(ViewerPanelMode::default(), ViewerPanelMode::Observe);
-    }
-}
+#[path = "tests_camera_mode.rs"]
+mod camera_mode_tests;
 #[cfg(test)]
 mod tests;
