@@ -29,6 +29,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(UiI18n::default())
         .insert_resource(auto_focus_config)
         .insert_resource(AutoFocusState::default())
+        .insert_resource(SelectionEmphasisState::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
@@ -76,6 +77,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             Update,
             (
                 update_3d_scene,
+                update_selection_emphasis.after(update_3d_scene),
                 apply_startup_auto_focus.after(update_3d_scene),
                 update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
