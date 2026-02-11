@@ -435,3 +435,39 @@ fn replay_with_budget_caps_keeps_chunk_generated_consistent() {
     let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
     assert_eq!(replayed.model(), kernel.model());
 }
+
+#[test]
+fn replay_from_snapshot_applies_agent_prompt_updated_event() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init kernel");
+    let snapshot = kernel.snapshot();
+
+    let mut profile = AgentPromptProfile::for_agent("agent-0");
+    profile.system_prompt_override = Some("system-v1".to_string());
+    profile.short_term_goal_override = Some("goal-v1".to_string());
+    profile.version = 1;
+    profile.updated_at_tick = kernel.time();
+    profile.updated_by = "persist-test".to_string();
+
+    kernel.apply_agent_prompt_profile_update(
+        profile.clone(),
+        PromptUpdateOperation::Apply,
+        vec![
+            "system_prompt_override".to_string(),
+            "short_term_goal_override".to_string(),
+        ],
+        "digest-v1".to_string(),
+        None,
+    );
+
+    let journal = kernel.journal_snapshot();
+    let replayed =
+        WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay with prompt update");
+
+    assert_eq!(replayed.model(), kernel.model());
+    assert_eq!(
+        replayed.model().agent_prompt_profiles.get("agent-0"),
+        Some(&profile)
+    );
+}

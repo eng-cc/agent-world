@@ -8,6 +8,8 @@ pub use live::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerLiveServerError,
 };
 pub use protocol::{
-    ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    PromptControlAck, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 pub use server::{ViewerServer, ViewerServerConfig, ViewerServerError};

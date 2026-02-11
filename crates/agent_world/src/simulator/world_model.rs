@@ -14,7 +14,8 @@ use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
     AgentId, AssetId, ChunkResourceBudget, ElementBudgetError, FacilityId, FragmentElementKind,
     FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, ResourceKind, ResourceStock,
-    CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, PPM_BASE,
+    WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
+    PPM_BASE,
 };
 use super::ResourceOwner;
 
@@ -133,6 +134,8 @@ pub enum AssetKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorldModel {
     pub agents: BTreeMap<AgentId, Agent>,
+    #[serde(default)]
+    pub agent_prompt_profiles: BTreeMap<AgentId, AgentPromptProfile>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,
     #[serde(default)]
@@ -159,6 +162,32 @@ pub struct WorldModel {
         deserialize_with = "deserialize_chunk_boundary_reservations"
     )]
     pub chunk_boundary_reservations: BTreeMap<ChunkCoord, Vec<BoundaryReservation>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct AgentPromptProfile {
+    pub agent_id: AgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_prompt_override: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub short_term_goal_override: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_term_goal_override: Option<String>,
+    #[serde(default)]
+    pub version: u64,
+    #[serde(default)]
+    pub updated_at_tick: WorldTime,
+    #[serde(default)]
+    pub updated_by: String,
+}
+
+impl AgentPromptProfile {
+    pub fn for_agent(agent_id: impl Into<String>) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+            ..Self::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

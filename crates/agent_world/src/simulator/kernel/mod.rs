@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 use super::types::{ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime};
-use super::world_model::{FragmentResourceError, WorldConfig, WorldModel};
+use super::world_model::{AgentPromptProfile, FragmentResourceError, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -42,8 +42,8 @@ impl ChunkRuntimeConfig {
 }
 
 pub use types::{
-    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, RejectReason, WorldEvent,
-    WorldEventKind,
+    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, PromptUpdateOperation,
+    RejectReason, WorldEvent, WorldEventKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -128,6 +128,26 @@ impl WorldKernel {
 
     pub fn journal(&self) -> &[WorldEvent] {
         &self.journal
+    }
+
+    pub fn apply_agent_prompt_profile_update(
+        &mut self,
+        profile: AgentPromptProfile,
+        operation: PromptUpdateOperation,
+        applied_fields: Vec<String>,
+        digest: String,
+        rolled_back_to_version: Option<u64>,
+    ) -> WorldEvent {
+        self.model
+            .agent_prompt_profiles
+            .insert(profile.agent_id.clone(), profile.clone());
+        self.record_event(WorldEventKind::AgentPromptUpdated {
+            profile,
+            operation,
+            applied_fields,
+            digest,
+            rolled_back_to_version,
+        })
     }
 
     pub(super) fn record_event(&mut self, kind: WorldEventKind) -> WorldEvent {

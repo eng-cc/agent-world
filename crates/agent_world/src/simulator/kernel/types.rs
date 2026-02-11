@@ -9,6 +9,7 @@ use super::super::types::{
     AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
     ResourceOwner, WorldEventId, WorldTime,
 };
+use super::super::world_model::AgentPromptProfile;
 
 // ============================================================================
 // Observation Types
@@ -105,6 +106,14 @@ pub enum WorldEventKind {
         chunk_budget: ChunkResourceBudget,
         cause: ChunkGenerationCause,
     },
+    AgentPromptUpdated {
+        profile: AgentPromptProfile,
+        operation: PromptUpdateOperation,
+        applied_fields: Vec<String>,
+        digest: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        rolled_back_to_version: Option<u64>,
+    },
     ActionRejected {
         reason: RejectReason,
     },
@@ -118,6 +127,13 @@ pub enum WorldEventKind {
     },
     // Power system events
     Power(PowerEvent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PromptUpdateOperation {
+    Apply,
+    Rollback,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

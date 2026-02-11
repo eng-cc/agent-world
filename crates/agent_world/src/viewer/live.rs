@@ -7,15 +7,17 @@ use std::time::{Duration, Instant};
 
 use crate::geometry::space_distance_cm;
 use crate::simulator::{
-    initialize_kernel, Action, AgentDecisionTrace, AgentRunner, LlmAgentBehavior,
-    LlmAgentBuildError, OpenAiChatCompletionClient, ResourceKind, ResourceOwner, RunnerMetrics,
-    WorldConfig, WorldEvent, WorldInitConfig, WorldInitError, WorldKernel, WorldScenario,
-    WorldSnapshot,
+    initialize_kernel, Action, AgentDecisionTrace, AgentPromptProfile, AgentRunner,
+    LlmAgentBehavior, LlmAgentBuildError, OpenAiChatCompletionClient, PromptUpdateOperation,
+    ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig, WorldEvent, WorldInitConfig,
+    WorldInitError, WorldKernel, WorldScenario, WorldSnapshot,
 };
+use sha2::{Digest, Sha256};
 
 use super::protocol::{
-    ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    PromptControlAck, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerEventKind,
+    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -246,6 +248,7 @@ enum LiveDriver {
 }
 
 const SEEK_STALL_LIMIT: u64 = 128;
+const PROMPT_UPDATED_BY_DEFAULT: &str = "viewer_prompt_ops";
 
 struct LiveStepResult {
     event: Option<WorldEvent>,
@@ -353,6 +356,326 @@ impl LiveWorld {
             current_tick: self.kernel.time(),
         })
     }
+
+    fn prompt_control_preview(
+        &self,
+        request: PromptControlApplyRequest,
+    ) -> Result<PromptControlAck, PromptControlError> {
+        let current = self.current_prompt_profile(request.agent_id.as_str())?;
+        ensure_expected_prompt_version(
+            request.agent_id.as_str(),
+            current.version,
+            request.expected_version,
+        )?;
+
+        let mut candidate = current.clone();
+        apply_prompt_patch(&mut candidate, &request);
+        let applied_fields = changed_prompt_fields(&current, &candidate);
+        let preview_version = if applied_fields.is_empty() {
+            current.version
+        } else {
+            current.version.saturating_add(1)
+        };
+
+        Ok(PromptControlAck {
+            agent_id: request.agent_id,
+            operation: PromptControlOperation::Apply,
+            preview: true,
+            version: preview_version,
+            updated_at_tick: self.kernel.time(),
+            applied_fields,
+            digest: prompt_profile_digest(&candidate),
+            rolled_back_to_version: None,
+        })
+    }
+
+    fn prompt_control_apply(
+        &mut self,
+        request: PromptControlApplyRequest,
+    ) -> Result<PromptControlAck, PromptControlError> {
+        let current = self.current_prompt_profile(request.agent_id.as_str())?;
+        ensure_expected_prompt_version(
+            request.agent_id.as_str(),
+            current.version,
+            request.expected_version,
+        )?;
+
+        let mut candidate = current.clone();
+        apply_prompt_patch(&mut candidate, &request);
+        let applied_fields = changed_prompt_fields(&current, &candidate);
+        let digest = prompt_profile_digest(&candidate);
+
+        if applied_fields.is_empty() {
+            return Ok(PromptControlAck {
+                agent_id: request.agent_id,
+                operation: PromptControlOperation::Apply,
+                preview: false,
+                version: current.version,
+                updated_at_tick: current.updated_at_tick,
+                applied_fields,
+                digest,
+                rolled_back_to_version: None,
+            });
+        }
+
+        candidate.version = current.version.saturating_add(1);
+        candidate.updated_at_tick = self.kernel.time();
+        candidate.updated_by = normalize_updated_by(request.updated_by.as_deref());
+
+        self.apply_prompt_profile_to_driver(&candidate)?;
+        let digest = prompt_profile_digest(&candidate);
+        self.kernel.apply_agent_prompt_profile_update(
+            candidate.clone(),
+            PromptUpdateOperation::Apply,
+            applied_fields.clone(),
+            digest.clone(),
+            None,
+        );
+
+        Ok(PromptControlAck {
+            agent_id: request.agent_id,
+            operation: PromptControlOperation::Apply,
+            preview: false,
+            version: candidate.version,
+            updated_at_tick: candidate.updated_at_tick,
+            applied_fields,
+            digest,
+            rolled_back_to_version: None,
+        })
+    }
+
+    fn prompt_control_rollback(
+        &mut self,
+        request: PromptControlRollbackRequest,
+    ) -> Result<PromptControlAck, PromptControlError> {
+        let current = self.current_prompt_profile(request.agent_id.as_str())?;
+        ensure_expected_prompt_version(
+            request.agent_id.as_str(),
+            current.version,
+            request.expected_version,
+        )?;
+
+        let target = if request.to_version == 0 {
+            AgentPromptProfile::for_agent(request.agent_id.clone())
+        } else {
+            self.lookup_prompt_profile_version(request.agent_id.as_str(), request.to_version)
+                .ok_or_else(|| PromptControlError {
+                    code: "target_version_not_found".to_string(),
+                    message: format!(
+                        "prompt profile version {} not found for {}",
+                        request.to_version, request.agent_id
+                    ),
+                    agent_id: Some(request.agent_id.clone()),
+                    current_version: Some(current.version),
+                })?
+        };
+
+        let mut candidate = current.clone();
+        candidate.system_prompt_override = target.system_prompt_override;
+        candidate.short_term_goal_override = target.short_term_goal_override;
+        candidate.long_term_goal_override = target.long_term_goal_override;
+        let applied_fields = changed_prompt_fields(&current, &candidate);
+        if applied_fields.is_empty() {
+            return Err(PromptControlError {
+                code: "rollback_noop".to_string(),
+                message: format!(
+                    "rollback target version {} yields no prompt changes for {}",
+                    request.to_version, request.agent_id
+                ),
+                agent_id: Some(request.agent_id),
+                current_version: Some(current.version),
+            });
+        }
+
+        candidate.version = current.version.saturating_add(1);
+        candidate.updated_at_tick = self.kernel.time();
+        candidate.updated_by = normalize_updated_by(request.updated_by.as_deref());
+
+        self.apply_prompt_profile_to_driver(&candidate)?;
+        let digest = prompt_profile_digest(&candidate);
+        self.kernel.apply_agent_prompt_profile_update(
+            candidate.clone(),
+            PromptUpdateOperation::Rollback,
+            applied_fields.clone(),
+            digest.clone(),
+            Some(request.to_version),
+        );
+
+        Ok(PromptControlAck {
+            agent_id: request.agent_id,
+            operation: PromptControlOperation::Rollback,
+            preview: false,
+            version: candidate.version,
+            updated_at_tick: candidate.updated_at_tick,
+            applied_fields,
+            digest,
+            rolled_back_to_version: Some(request.to_version),
+        })
+    }
+
+    fn current_prompt_profile(
+        &self,
+        agent_id: &str,
+    ) -> Result<AgentPromptProfile, PromptControlError> {
+        if !self.kernel.model().agents.contains_key(agent_id) {
+            return Err(PromptControlError {
+                code: "agent_not_found".to_string(),
+                message: format!("agent not found: {agent_id}"),
+                agent_id: Some(agent_id.to_string()),
+                current_version: None,
+            });
+        }
+        Ok(self
+            .kernel
+            .model()
+            .agent_prompt_profiles
+            .get(agent_id)
+            .cloned()
+            .unwrap_or_else(|| AgentPromptProfile::for_agent(agent_id.to_string())))
+    }
+
+    fn lookup_prompt_profile_version(
+        &self,
+        agent_id: &str,
+        version: u64,
+    ) -> Option<AgentPromptProfile> {
+        if let Some(profile) = self.kernel.model().agent_prompt_profiles.get(agent_id) {
+            if profile.version == version {
+                return Some(profile.clone());
+            }
+        }
+        self.kernel.journal().iter().rev().find_map(|event| {
+            let crate::simulator::WorldEventKind::AgentPromptUpdated { profile, .. } = &event.kind
+            else {
+                return None;
+            };
+            if profile.agent_id == agent_id && profile.version == version {
+                Some(profile.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn apply_prompt_profile_to_driver(
+        &mut self,
+        profile: &AgentPromptProfile,
+    ) -> Result<(), PromptControlError> {
+        match &mut self.driver {
+            LiveDriver::Script(_) => Err(PromptControlError {
+                code: "llm_mode_required".to_string(),
+                message: "prompt_control requires live server running with --llm".to_string(),
+                agent_id: Some(profile.agent_id.clone()),
+                current_version: self
+                    .kernel
+                    .model()
+                    .agent_prompt_profiles
+                    .get(&profile.agent_id)
+                    .map(|entry| entry.version),
+            }),
+            LiveDriver::Llm(runner) => {
+                let Some(agent) = runner.get_mut(profile.agent_id.as_str()) else {
+                    return Err(PromptControlError {
+                        code: "agent_not_registered".to_string(),
+                        message: format!(
+                            "agent {} is not registered in llm runner",
+                            profile.agent_id
+                        ),
+                        agent_id: Some(profile.agent_id.clone()),
+                        current_version: self
+                            .kernel
+                            .model()
+                            .agent_prompt_profiles
+                            .get(&profile.agent_id)
+                            .map(|entry| entry.version),
+                    });
+                };
+                agent.behavior.apply_prompt_overrides(
+                    profile.system_prompt_override.clone(),
+                    profile.short_term_goal_override.clone(),
+                    profile.long_term_goal_override.clone(),
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
+fn normalize_updated_by(value: Option<&str>) -> String {
+    value
+        .map(|raw| raw.trim())
+        .filter(|raw| !raw.is_empty())
+        .unwrap_or(PROMPT_UPDATED_BY_DEFAULT)
+        .to_string()
+}
+
+fn sanitize_patch_string(value: Option<String>) -> Option<String> {
+    value
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+}
+
+fn apply_prompt_patch(profile: &mut AgentPromptProfile, request: &PromptControlApplyRequest) {
+    if let Some(next) = &request.system_prompt_override {
+        profile.system_prompt_override = sanitize_patch_string(next.clone());
+    }
+    if let Some(next) = &request.short_term_goal_override {
+        profile.short_term_goal_override = sanitize_patch_string(next.clone());
+    }
+    if let Some(next) = &request.long_term_goal_override {
+        profile.long_term_goal_override = sanitize_patch_string(next.clone());
+    }
+}
+
+fn changed_prompt_fields(
+    current: &AgentPromptProfile,
+    candidate: &AgentPromptProfile,
+) -> Vec<String> {
+    let mut fields = Vec::new();
+    if current.system_prompt_override != candidate.system_prompt_override {
+        fields.push("system_prompt_override".to_string());
+    }
+    if current.short_term_goal_override != candidate.short_term_goal_override {
+        fields.push("short_term_goal_override".to_string());
+    }
+    if current.long_term_goal_override != candidate.long_term_goal_override {
+        fields.push("long_term_goal_override".to_string());
+    }
+    fields
+}
+
+fn prompt_profile_digest(profile: &AgentPromptProfile) -> String {
+    let payload = serde_json::json!({
+        "agent_id": profile.agent_id,
+        "system_prompt_override": profile.system_prompt_override,
+        "short_term_goal_override": profile.short_term_goal_override,
+        "long_term_goal_override": profile.long_term_goal_override,
+    });
+    let bytes = serde_json::to_vec(&payload).unwrap_or_default();
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    hex::encode(hasher.finalize())
+}
+
+fn ensure_expected_prompt_version(
+    agent_id: &str,
+    current_version: u64,
+    expected_version: Option<u64>,
+) -> Result<(), PromptControlError> {
+    if let Some(expected) = expected_version {
+        if expected != current_version {
+            return Err(PromptControlError {
+                code: "version_conflict".to_string(),
+                message: format!(
+                    "prompt profile version conflict for {}: expected {}, current {}",
+                    agent_id, expected, current_version
+                ),
+                agent_id: Some(agent_id.to_string()),
+                current_version: Some(current_version),
+            });
+        }
+    }
+    Ok(())
 }
 
 fn build_driver(
@@ -366,7 +689,14 @@ fn build_driver(
             let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
             agent_ids.sort();
             for agent_id in agent_ids {
-                let behavior = LlmAgentBehavior::from_env(agent_id)?;
+                let mut behavior = LlmAgentBehavior::from_env(agent_id.clone())?;
+                if let Some(profile) = kernel.model().agent_prompt_profiles.get(&agent_id) {
+                    behavior.apply_prompt_overrides(
+                        profile.system_prompt_override.clone(),
+                        profile.short_term_goal_override.clone(),
+                        profile.long_term_goal_override.clone(),
+                    );
+                }
                 runner.register(behavior);
             }
             Ok(LiveDriver::Llm(runner))
@@ -573,6 +903,25 @@ impl ViewerLiveSession {
                     )?;
                 }
             }
+            ViewerRequest::PromptControl { command } => {
+                let result = match command {
+                    PromptControlCommand::Preview { request } => {
+                        world.prompt_control_preview(request)
+                    }
+                    PromptControlCommand::Apply { request } => world.prompt_control_apply(request),
+                    PromptControlCommand::Rollback { request } => {
+                        world.prompt_control_rollback(request)
+                    }
+                };
+                match result {
+                    Ok(ack) => {
+                        send_response(writer, &ViewerResponse::PromptControlAck { ack })?;
+                    }
+                    Err(error) => {
+                        send_response(writer, &ViewerResponse::PromptControlError { error })?;
+                    }
+                }
+            }
             ViewerRequest::Control { mode } => match mode {
                 ViewerControl::Pause => {
                     self.playing = false;
@@ -740,117 +1089,4 @@ fn is_disconnect_error(err: &io::Error) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn live_script_moves_between_locations() {
-        let mut config = WorldConfig::default();
-        config.physics.max_move_distance_cm_per_tick = i64::MAX;
-        config.physics.max_move_speed_cm_per_s = i64::MAX;
-        config.move_cost_per_km_electricity = 0;
-        let init = WorldInitConfig::from_scenario(WorldScenario::TwinRegionBootstrap, &config);
-        let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
-
-        let mut script = LiveScript::new(&kernel);
-        let initial_location = kernel
-            .model()
-            .agents
-            .get("agent-0")
-            .expect("agent exists")
-            .location_id
-            .clone();
-        let mut moved = false;
-        for _ in 0..2 {
-            let action = script.next_action(&kernel).expect("action");
-            kernel.submit_action(action);
-            kernel.step_until_empty();
-
-            let agent = kernel.model().agents.get("agent-0").expect("agent exists");
-            if agent.location_id != initial_location {
-                moved = true;
-                break;
-            }
-        }
-
-        assert!(moved);
-    }
-
-    #[test]
-    fn live_world_reset_rebuilds_kernel() {
-        let config = WorldConfig::default();
-        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-        let mut world =
-            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-        for _ in 0..5 {
-            let _ = world.step().expect("step");
-            if world.kernel.time() > 0 {
-                break;
-            }
-        }
-        assert!(world.kernel.time() > 0);
-
-        world.reset().expect("reset ok");
-        assert_eq!(world.kernel.time(), 0);
-    }
-
-    #[test]
-    fn live_server_config_supports_llm_mode() {
-        let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
-        assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
-
-        let llm_config = config.clone().with_llm_mode(true);
-        assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
-
-        let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
-        assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
-    }
-
-    #[test]
-    fn live_world_seek_to_future_tick_advances_time() {
-        let config = WorldConfig::default();
-        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-        let mut world =
-            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-        let result = world.seek_to_tick(3).expect("seek ok");
-        assert!(result.reached);
-        assert_eq!(result.current_tick, 3);
-        assert_eq!(world.kernel.time(), 3);
-    }
-
-    #[test]
-    fn live_world_seek_to_past_tick_resets_and_replays() {
-        let config = WorldConfig::default();
-        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-        let mut world =
-            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-        let forward = world.seek_to_tick(5).expect("seek forward");
-        assert!(forward.reached);
-        assert_eq!(world.kernel.time(), 5);
-
-        let rewind = world.seek_to_tick(2).expect("seek rewind");
-        assert!(rewind.reached);
-        assert_eq!(rewind.current_tick, 2);
-        assert_eq!(world.kernel.time(), 2);
-    }
-
-    #[test]
-    fn live_world_seek_reports_stall_when_world_cannot_advance() {
-        let config = WorldConfig::default();
-        let mut init = WorldInitConfig::default();
-        init.agents = crate::simulator::AgentSpawnConfig {
-            count: 0,
-            ..crate::simulator::AgentSpawnConfig::default()
-        };
-        let mut world =
-            LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
-
-        let result = world.seek_to_tick(2).expect("seek handled");
-        assert!(!result.reached);
-        assert_eq!(result.current_tick, 0);
-        assert_eq!(world.kernel.time(), 0);
-    }
-}
+mod tests;

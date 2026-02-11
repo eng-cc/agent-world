@@ -1033,6 +1033,11 @@ fn poll_viewer_messages(
                 ViewerResponse::Error { message } => {
                     state.status = ConnectionStatus::Error(message);
                 }
+                ViewerResponse::PromptControlAck { .. } => {}
+                ViewerResponse::PromptControlError { error } => {
+                    state.status =
+                        ConnectionStatus::Error(format!("prompt control error: {}", error.message));
+                }
             },
             Err(mpsc::TryRecvError::Empty) => break,
             Err(mpsc::TryRecvError::Disconnected) => {

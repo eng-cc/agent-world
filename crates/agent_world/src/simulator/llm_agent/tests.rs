@@ -1106,6 +1106,23 @@ fn llm_agent_system_prompt_contains_configured_goals() {
 }
 
 #[test]
+fn llm_agent_runtime_prompt_overrides_take_effect() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    behavior.apply_prompt_overrides(
+        Some("runtime-system".to_string()),
+        Some("runtime-short".to_string()),
+        Some("runtime-long".to_string()),
+    );
+
+    let system_prompt = behavior.system_prompt();
+    assert!(system_prompt.contains("runtime-system"));
+    assert!(system_prompt.contains("runtime-short"));
+    assert!(system_prompt.contains("runtime-long"));
+    assert!(!system_prompt.contains("short-goal"));
+    assert!(!system_prompt.contains("long-goal"));
+}
+
+#[test]
 fn llm_agent_user_prompt_contains_step_context_metadata() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let prompt = behavior.user_prompt(&make_observation(), &[], 2, 5);

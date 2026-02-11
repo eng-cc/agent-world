@@ -247,6 +247,19 @@ impl WorldKernel {
                     });
                 }
             }
+            WorldEventKind::AgentPromptUpdated { profile, .. } => {
+                if !self.model.agents.contains_key(&profile.agent_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "agent not found for prompt profile: {}",
+                            profile.agent_id
+                        ),
+                    });
+                }
+                self.model
+                    .agent_prompt_profiles
+                    .insert(profile.agent_id.clone(), profile.clone());
+            }
             WorldEventKind::ActionRejected { .. } => {}
             WorldEventKind::ModuleVisualEntityUpserted { entity } => {
                 if entity.entity_id.trim().is_empty() || entity.module_id.trim().is_empty() {

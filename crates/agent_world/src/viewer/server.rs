@@ -11,8 +11,8 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    PromptControlError, ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse,
+    ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -259,6 +259,19 @@ impl<'a> ViewerSession<'a> {
                     self.emit_metrics(writer)?;
                 }
             },
+            ViewerRequest::PromptControl { .. } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::PromptControlError {
+                        error: PromptControlError {
+                            code: "unsupported_in_offline_server".to_string(),
+                            message: "prompt_control is only available in live mode".to_string(),
+                            agent_id: None,
+                            current_version: None,
+                        },
+                    },
+                )?;
+            }
         }
         Ok(true)
     }

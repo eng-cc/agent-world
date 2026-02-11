@@ -144,6 +144,13 @@ const PROMPT_MEMORY_DIGEST_MAX_CHARS: usize = 360;
 const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 5;
 const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 5;
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct LlmPromptOverrides {
+    pub system_prompt: Option<String>,
+    pub short_term_goal: Option<String>,
+    pub long_term_goal: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {
     pub model: String,
@@ -745,6 +752,18 @@ fn normalize_openai_api_base_url(base_url: &str) -> String {
     }
 }
 
+fn sanitize_prompt_override(value: Option<String>) -> Option<String> {
+    let Some(value) = value else {
+        return None;
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
 fn build_responses_request_payload(
     request: &LlmCompletionRequest,
 ) -> Result<CreateResponse, LlmClientError> {
@@ -815,6 +834,7 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
 pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     agent_id: String,
     config: LlmAgentConfig,
+    prompt_overrides: LlmPromptOverrides,
     client: C,
     memory: AgentMemory,
     next_effect_intent_id: u64,
@@ -856,6 +876,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         Self {
             agent_id: agent_id.into(),
             config,
+            prompt_overrides: LlmPromptOverrides::default(),
             client,
             memory,
             next_effect_intent_id: 0,
@@ -865,14 +886,50 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         }
     }
 
+    pub fn apply_prompt_overrides(
+        &mut self,
+        system_prompt: Option<String>,
+        short_term_goal: Option<String>,
+        long_term_goal: Option<String>,
+    ) {
+        self.prompt_overrides.system_prompt = sanitize_prompt_override(system_prompt);
+        self.prompt_overrides.short_term_goal = sanitize_prompt_override(short_term_goal);
+        self.prompt_overrides.long_term_goal = sanitize_prompt_override(long_term_goal);
+    }
+
+    pub fn prompt_overrides(&self) -> LlmPromptOverrides {
+        self.prompt_overrides.clone()
+    }
+
+    fn effective_system_prompt(&self) -> &str {
+        self.prompt_overrides
+            .system_prompt
+            .as_deref()
+            .unwrap_or(self.config.system_prompt.as_str())
+    }
+
+    fn effective_short_term_goal(&self) -> &str {
+        self.prompt_overrides
+            .short_term_goal
+            .as_deref()
+            .unwrap_or(self.config.short_term_goal.as_str())
+    }
+
+    fn effective_long_term_goal(&self) -> &str {
+        self.prompt_overrides
+            .long_term_goal
+            .as_deref()
+            .unwrap_or(self.config.long_term_goal.as_str())
+    }
+
     #[cfg(test)]
     fn system_prompt(&self) -> String {
         let prompt_budget = self.config.prompt_budget();
         let prompt: PromptAssemblyOutput = PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
-            base_system_prompt: self.config.system_prompt.as_str(),
-            short_term_goal: self.config.short_term_goal.as_str(),
-            long_term_goal: self.config.long_term_goal.as_str(),
+            base_system_prompt: self.effective_system_prompt(),
+            short_term_goal: self.effective_short_term_goal(),
+            long_term_goal: self.effective_long_term_goal(),
             observation_json: "{}",
             module_history_json: "[]",
             memory_digest: None,
@@ -915,9 +972,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         let prompt_budget = self.config.prompt_budget();
         PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
-            base_system_prompt: self.config.system_prompt.as_str(),
-            short_term_goal: self.config.short_term_goal.as_str(),
-            long_term_goal: self.config.long_term_goal.as_str(),
+            base_system_prompt: self.effective_system_prompt(),
+            short_term_goal: self.effective_short_term_goal(),
+            long_term_goal: self.effective_long_term_goal(),
             observation_json: observation_json.as_str(),
             module_history_json: history_json.as_str(),
             memory_digest: Some(memory_digest.as_str()),

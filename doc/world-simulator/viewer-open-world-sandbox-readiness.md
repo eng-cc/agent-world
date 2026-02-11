@@ -122,11 +122,20 @@
   - viewer 顶部新增 `模式` 切换（`Observe` / `Prompt Ops`）。
   - `Prompt Ops` 已提供 Prompt-only 约束提示、Agent 目标选择、Prompt 草稿编辑区与审计占位区。
   - 支持环境变量 `AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops` 直接进入运营态。
+- 已完成 OWR2-Server：
+  - `ViewerRequest/ViewerResponse` 扩展 `prompt_control.preview/apply/rollback`、`prompt_control_ack/error`，并补充协议回环测试。
+  - simulator 新增 `AgentPromptProfile` 与 `AgentPromptUpdated` 事件；kernel/replay 支持 prompt 更新事件持久化与回放一致性。
+  - live server 接入 PromptControl 处理（版本校验、摘要、冲突错误、回滚），并将生效配置下推到 LLM 行为运行时。
+  - `viewer/live.rs` 测试拆分到 `viewer/live/tests.rs`，保持单 Rust 文件行数约束（<1200）。
 - 已完成 OWR3（VPP5~VPP9）：
   - 选中反馈从“仅缩放”升级为“缩放 + 光晕强调”。
   - 标签 LOD 已支持距离衰减、同屏上限、遮挡降权与选中优先。
   - 覆盖层与网格线已接入节流与 LOD（覆盖层按 tick/事件增量刷新、flow 合批、远距 chunk 线隐藏）。
   - 右侧总览新增渲染性能摘要（avg/p95、对象/标签/覆盖层计数、预算状态）。
 - 已完成验证：
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world prompt_control_ -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world replay_from_snapshot_applies_agent_prompt_updated_event -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration -- --nocapture` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（157 tests）。
   - 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --tick-ms 300 --viewer-wait 10`。

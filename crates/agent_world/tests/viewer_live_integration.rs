@@ -6,8 +6,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use agent_world::viewer::{
-    ViewerControl, ViewerLiveServer, ViewerLiveServerConfig, ViewerRequest, ViewerResponse,
-    ViewerStream, VIEWER_PROTOCOL_VERSION,
+    PromptControlApplyRequest, PromptControlCommand, ViewerControl, ViewerLiveServer,
+    ViewerLiveServerConfig, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 use agent_world::WorldScenario;
 
@@ -53,6 +53,21 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
     send_request(&mut writer, &ViewerRequest::RequestSnapshot);
     send_request(
         &mut writer,
+        &ViewerRequest::PromptControl {
+            command: PromptControlCommand::Apply {
+                request: PromptControlApplyRequest {
+                    agent_id: "agent-0".to_string(),
+                    expected_version: Some(0),
+                    updated_by: Some("integration-test".to_string()),
+                    system_prompt_override: Some(Some("system".to_string())),
+                    short_term_goal_override: None,
+                    long_term_goal_override: None,
+                },
+            },
+        },
+    );
+    send_request(
+        &mut writer,
         &ViewerRequest::Control {
             mode: ViewerControl::Step { count: 1 },
         },
@@ -63,6 +78,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
     let mut saw_hello = false;
     let mut saw_snapshot = false;
     let mut saw_event = false;
+    let mut saw_prompt_error = false;
     let start = Instant::now();
 
     while start.elapsed() < Duration::from_secs(2) {
@@ -79,6 +95,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
                         ViewerResponse::HelloAck { .. } => saw_hello = true,
                         ViewerResponse::Snapshot { .. } => saw_snapshot = true,
                         ViewerResponse::Event { .. } => saw_event = true,
+                        ViewerResponse::PromptControlError { .. } => saw_prompt_error = true,
                         _ => {}
                     }
                 }
@@ -86,7 +103,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
             Err(_) => break,
         }
 
-        if saw_hello && saw_snapshot && saw_event {
+        if saw_hello && saw_snapshot && saw_event && saw_prompt_error {
             break;
         }
     }
@@ -94,6 +111,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
     assert!(saw_hello);
     assert!(saw_snapshot);
     assert!(saw_event);
+    assert!(saw_prompt_error);
 
     drop(reader);
     drop(writer);
