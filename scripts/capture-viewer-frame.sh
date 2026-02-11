@@ -21,6 +21,9 @@ Options:
                           viewer auto-focus target (e.g. first_fragment, location:frag-1)
   --auto-focus-radius <n> viewer auto-focus radius override
   --auto-focus-keep-2d    keep 2D mode during auto-focus (default: switch to 3D)
+  --auto-select-target <target>
+                          viewer auto-select target (e.g. first_agent, agent:agent-0)
+  --automation-steps <s>  viewer automation steps (e.g. mode=3d;select=agent:agent-0)
   --llm                   enable --llm on world_viewer_live
   --no-prewarm            skip prewarm cargo build step
   --keep-tmp              do not clear .tmp at start
@@ -247,6 +250,8 @@ capture_linux() {
   local auto_focus_target=${13:-}
   local auto_focus_radius=${14:-}
   local auto_focus_force_3d=${15:-1}
+  local auto_select_target=${16:-}
+  local automation_steps=${17:-}
 
   echo "+ Xvfb $display -screen 0 ${width}x${height}x24 > $xvfb_log"
   Xvfb "$display" -screen 0 "${width}x${height}x24" >"$xvfb_log" 2>&1 &
@@ -255,16 +260,23 @@ capture_linux() {
   sleep 2
 
   if [[ "$auto_focus_enabled" == "1" ]]; then
-    echo "+ DISPLAY=$display AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    echo "+ DISPLAY=$display AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
   else
-    echo "+ DISPLAY=$display env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
-    DISPLAY="$display" env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
+    echo "+ DISPLAY=$display ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
+    DISPLAY="$display" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
+    env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr" >"$viewer_log" 2>&1 &
   fi
   VIEWER_PID=$!
 
@@ -305,6 +317,8 @@ capture_macos() {
   local auto_focus_radius=${11:-}
   local auto_focus_force_3d=${12:-1}
   local auto_focus_enabled=${13:-0}
+  local auto_select_target=${14:-}
+  local automation_steps=${15:-}
 
   local capture_max_wait
   capture_max_wait=$(resolve_capture_max_wait "$viewer_wait" "$capture_max_wait_override")
@@ -315,7 +329,7 @@ capture_macos() {
 
   local viewer_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- "$addr")
   if [[ "$auto_focus_enabled" == "1" ]]; then
-    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${viewer_cmd[*]} > $viewer_log"
+    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
     AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
     AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
     AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
@@ -323,12 +337,18 @@ capture_macos() {
     AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS="$auto_focus_radius" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
   else
-    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png ${viewer_cmd[*]} > $viewer_log"
+    echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
     AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
     AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
     AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
+    AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
+    AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
     "${viewer_cmd[@]}" >"$viewer_log" 2>&1 &
   fi
   VIEWER_PID=$!
@@ -361,6 +381,8 @@ auto_focus_target=""
 auto_focus_radius=""
 auto_focus_force_3d="1"
 auto_focus_enabled="0"
+auto_select_target=""
+automation_steps=""
 capture_max_wait=""
 enable_llm=0
 prewarm=1
@@ -414,6 +436,14 @@ while [[ $# -gt 0 ]]; do
       auto_focus_force_3d="0"
       auto_focus_enabled="1"
       shift
+      ;;
+    --auto-select-target)
+      auto_select_target=${2:-}
+      shift 2
+      ;;
+    --automation-steps)
+      automation_steps=${2:-}
+      shift 2
       ;;
     --llm)
       enable_llm=1
@@ -494,9 +524,9 @@ echo "+ ${server_cmd[*]} > $server_log"
 SERVER_PID=$!
 
 if [[ "$platform" == "linux" ]]; then
-  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_enabled" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d"
+  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_enabled" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_select_target" "$automation_steps"
 else
-  capture_macos "$viewer_wait" "$capture_max_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_focus_enabled"
+  capture_macos "$viewer_wait" "$capture_max_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_focus_enabled" "$auto_select_target" "$automation_steps"
 fi
 
 echo "capture complete"
