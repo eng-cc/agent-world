@@ -787,3 +787,84 @@ fn governance_recovery_drill_alert_event_incremental_composite_sequence_cursor_s
     assert!(batch4.is_empty());
     assert_eq!(state4, state3);
 }
+
+#[test]
+fn governance_recovery_drill_alert_event_composite_sequence_cursor_state_store_rejects_rollback() {
+    let store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore::new();
+    let baseline =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+            world_id: "w1".to_string(),
+            consumer_id: "consumer-a".to_string(),
+            since_event_at_ms: 1_000,
+            since_node_id: Some("node-b".to_string()),
+            since_node_event_offset: 1,
+        };
+    store.save(&baseline).expect("save baseline cursor");
+    store
+        .save(&baseline)
+        .expect("save equal cursor is idempotent");
+
+    let forward =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+            world_id: "w1".to_string(),
+            consumer_id: "consumer-a".to_string(),
+            since_event_at_ms: 1_000,
+            since_node_id: Some("node-b".to_string()),
+            since_node_event_offset: 2,
+        };
+    store.save(&forward).expect("save forward cursor");
+
+    let rollback =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+            world_id: "w1".to_string(),
+            consumer_id: "consumer-a".to_string(),
+            since_event_at_ms: 999,
+            since_node_id: Some("node-a".to_string()),
+            since_node_event_offset: 0,
+        };
+    let error = store
+        .save(&rollback)
+        .expect_err("rollback cursor should be rejected");
+    assert!(format!("{error:?}").contains("cannot rollback"));
+}
+
+#[test]
+fn governance_recovery_drill_alert_event_composite_sequence_cursor_file_state_store_rejects_rollback(
+) {
+    let root_dir = unique_temp_dir("drill_alert_composite_sequence_cursor_state_rollback");
+    let store =
+        FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore::new(
+            root_dir.clone(),
+        )
+        .expect("create file state store");
+    let baseline =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+            world_id: "w1".to_string(),
+            consumer_id: "consumer-a".to_string(),
+            since_event_at_ms: 1_000,
+            since_node_id: Some("node-b".to_string()),
+            since_node_event_offset: 1,
+        };
+    store.save(&baseline).expect("save baseline cursor");
+
+    let rollback =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+            world_id: "w1".to_string(),
+            consumer_id: "consumer-a".to_string(),
+            since_event_at_ms: 900,
+            since_node_id: Some("node-a".to_string()),
+            since_node_event_offset: 0,
+        };
+    let error = store
+        .save(&rollback)
+        .expect_err("rollback cursor should be rejected");
+    assert!(format!("{error:?}").contains("cannot rollback"));
+
+    let loaded = store
+        .load("w1", "consumer-a")
+        .expect("load stored state")
+        .expect("stored state should exist");
+    assert_eq!(loaded, baseline);
+    std::fs::remove_dir_all(root_dir).expect("remove temp directory");
+}
