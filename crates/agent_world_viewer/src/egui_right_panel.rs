@@ -36,9 +36,9 @@ use crate::ui_text::{
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
     grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
-    GridLineKind, RightPanelLayoutState, RightPanelWidthState, TimelineMarkFilterState,
-    Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl, ViewerPanelMode,
-    ViewerSelection, ViewerState, WorldOverlayConfig,
+    GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
+    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl,
+    ViewerPanelMode, ViewerSelection, ViewerState, WorldOverlayConfig,
 };
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
@@ -69,6 +69,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     overlay_config: ResMut<'w, WorldOverlayConfig>,
     state: Res<'w, ViewerState>,
     selection: ResMut<'w, ViewerSelection>,
+    render_perf: Option<Res<'w, RenderPerfSummary>>,
     viewer_3d_config: Option<Res<'w, Viewer3dConfig>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
@@ -106,6 +107,7 @@ pub(super) fn render_right_side_panel_egui(
         mut overlay_config,
         state,
         mut selection,
+        render_perf,
         viewer_3d_config,
         mut loading,
         client,
@@ -284,7 +286,14 @@ pub(super) fn render_right_side_panel_egui(
 
             if module_visibility.show_overview {
                 ui.separator();
-                render_overview_section(ui, locale, &state, &selection, timeline.as_ref());
+                render_overview_section(
+                    ui,
+                    locale,
+                    &state,
+                    &selection,
+                    timeline.as_ref(),
+                    render_perf.as_deref(),
+                );
             }
 
             if module_visibility.show_overlay {
@@ -503,6 +512,7 @@ fn render_overview_section(
     state: &ViewerState,
     selection: &ViewerSelection,
     timeline: &TimelineUiState,
+    perf_summary: Option<&RenderPerfSummary>,
 ) {
     let current_tick = state
         .snapshot
@@ -567,6 +577,52 @@ fn render_overview_section(
     });
 
     ui.add(egui::Label::new(status_line(&state.status, locale)).selectable(true));
+
+    if let Some(perf) = perf_summary {
+        let frame_line = if locale.is_zh() {
+            format!(
+                "渲染: avg/p95 {:.1}/{:.1} ms",
+                perf.frame_ms_avg, perf.frame_ms_p95
+            )
+        } else {
+            format!(
+                "Render: avg/p95 {:.1}/{:.1} ms",
+                perf.frame_ms_avg, perf.frame_ms_p95
+            )
+        };
+        let entity_line = if locale.is_zh() {
+            format!(
+                "对象:{} 标签:{} 覆盖层:{} 事件窗:{}",
+                perf.world_entities,
+                perf.visible_labels,
+                perf.overlay_entities,
+                perf.event_window_size
+            )
+        } else {
+            format!(
+                "Entities:{} Labels:{} Overlays:{} EventWindow:{}",
+                perf.world_entities,
+                perf.visible_labels,
+                perf.overlay_entities,
+                perf.event_window_size
+            )
+        };
+        let budget_line = if locale.is_zh() {
+            if perf.auto_degrade_active {
+                "预算状态: 自动降级触发".to_string()
+            } else {
+                "预算状态: 稳定".to_string()
+            }
+        } else if perf.auto_degrade_active {
+            "Budget: auto degrade active".to_string()
+        } else {
+            "Budget: stable".to_string()
+        };
+
+        ui.add(egui::Label::new(frame_line).selectable(true));
+        ui.add(egui::Label::new(entity_line).selectable(true));
+        ui.add(egui::Label::new(budget_line).selectable(true));
+    }
 }
 
 fn render_prompt_ops_section(
