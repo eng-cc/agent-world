@@ -458,3 +458,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(...)`，在协调调度链路中接入 ACK 重试策略。
 - **兼容策略**：文件 recovery store 支持读取旧版 `Vec<MembershipRevocationAnomalyAlert>` 格式并自动升级为 pending 结构。
 - **运行报告扩展**：`MembershipRevocationAlertRecoveryReport`/`MembershipRevocationCoordinatedRecoveryRunReport` 增加 `deferred/dropped_capacity/dropped_retry_limit` 指标。
+
+## 成员目录吊销告警恢复死信归档与投递指标（草案）
+- **死信归档抽象**：新增 `MembershipRevocationAlertDeadLetterStore`，提供内存与 JSONL 文件实现。
+- **死信数据模型**：新增 `MembershipRevocationAlertDeadLetterRecord` 与 `MembershipRevocationAlertDeadLetterReason`（`retry_limit_exceeded` / `capacity_evicted`）。
+- **恢复发送扩展**：新增 `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter(...)`，在重试上限与容量裁剪时自动归档死信。
+- **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(...)`，在协同调度链路中透传死信归档能力。
+- **投递指标**：新增 `MembershipRevocationAlertDeliveryMetrics`，统计 attempted/succeeded/failed/deferred/buffered/drop/dead-letter 指标。
+- **报告补齐**：恢复与协同报告结构增加 `delivery_metrics` 字段，便于节点级故障诊断与容量调优。

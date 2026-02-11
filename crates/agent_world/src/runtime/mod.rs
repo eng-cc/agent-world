@@ -159,17 +159,20 @@ pub use distributed_observer::{
 };
 // Distributed membership directory sync
 pub use distributed_membership_sync::{
-    FileMembershipAuditStore, FileMembershipRevocationAlertRecoveryStore,
-    FileMembershipRevocationAlertSink, FileMembershipRevocationCoordinatorStateStore,
-    FileMembershipRevocationScheduleStateStore, InMemoryMembershipAuditStore,
+    FileMembershipAuditStore, FileMembershipRevocationAlertDeadLetterStore,
+    FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationAlertSink,
+    FileMembershipRevocationCoordinatorStateStore, FileMembershipRevocationScheduleStateStore,
+    InMemoryMembershipAuditStore, InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore, InMemoryMembershipRevocationAlertSink,
     InMemoryMembershipRevocationCoordinatorStateStore,
     InMemoryMembershipRevocationScheduleCoordinator,
     InMemoryMembershipRevocationScheduleStateStore, MembershipAuditStore,
     MembershipDirectoryAnnounce, MembershipDirectorySigner, MembershipDirectorySignerKeyring,
     MembershipKeyRevocationAnnounce, MembershipRestoreAuditReport,
-    MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDedupPolicy,
-    MembershipRevocationAlertDedupState, MembershipRevocationAlertPolicy,
+    MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
+    MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationAlertDedupPolicy, MembershipRevocationAlertDedupState,
+    MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertPolicy,
     MembershipRevocationAlertRecoveryReport, MembershipRevocationAlertRecoveryStore,
     MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
     MembershipRevocationAnomalyAlert, MembershipRevocationCheckpointAnnounce,
@@ -181,7 +184,7 @@ pub use distributed_membership_sync::{
     MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
     MembershipRevocationSyncPolicy, MembershipRevocationSyncReport, MembershipSnapshotAuditOutcome,
     MembershipSnapshotAuditRecord, MembershipSnapshotRestorePolicy, MembershipSyncClient,
-    MembershipSyncReport, MembershipSyncSubscription,
+    MembershipSyncReport, MembershipSyncSubscription, NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 // Distributed observer replay validation

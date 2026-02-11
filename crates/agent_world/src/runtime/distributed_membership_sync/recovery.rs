@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -17,6 +18,18 @@ use super::{
     logic, MembershipDirectorySignerKeyring, MembershipSyncClient, MembershipSyncSubscription,
 };
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationAlertDeliveryMetrics {
+    pub attempted: usize,
+    pub succeeded: usize,
+    pub failed: usize,
+    pub deferred: usize,
+    pub buffered: usize,
+    pub dropped_capacity: usize,
+    pub dropped_retry_limit: usize,
+    pub dead_lettered: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationAlertRecoveryReport {
     pub recovered: usize,
@@ -25,6 +38,7 @@ pub struct MembershipRevocationAlertRecoveryReport {
     pub deferred: usize,
     pub dropped_capacity: usize,
     pub dropped_retry_limit: usize,
+    pub delivery_metrics: MembershipRevocationAlertDeliveryMetrics,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +50,24 @@ pub struct MembershipRevocationCoordinatedRecoveryRunReport {
     pub deferred_alerts: usize,
     pub dropped_alerts_capacity: usize,
     pub dropped_alerts_retry_limit: usize,
+    pub delivery_metrics: MembershipRevocationAlertDeliveryMetrics,
     pub run_report: Option<MembershipRevocationScheduledRunReport>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MembershipRevocationAlertDeadLetterReason {
+    RetryLimitExceeded,
+    CapacityEvicted,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationAlertDeadLetterRecord {
+    pub world_id: String,
+    pub node_id: String,
+    pub dropped_at_ms: i64,
+    pub reason: MembershipRevocationAlertDeadLetterReason,
+    pub pending_alert: MembershipRevocationPendingAlert,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -358,6 +389,120 @@ impl MembershipRevocationAlertRecoveryStore for FileMembershipRevocationAlertRec
     }
 }
 
+pub trait MembershipRevocationAlertDeadLetterStore {
+    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct NoopMembershipRevocationAlertDeadLetterStore;
+
+impl MembershipRevocationAlertDeadLetterStore for NoopMembershipRevocationAlertDeadLetterStore {
+    fn append(
+        &self,
+        _record: &MembershipRevocationAlertDeadLetterRecord,
+    ) -> Result<(), WorldError> {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationAlertDeadLetterStore {
+    records: Arc<Mutex<BTreeMap<(String, String), Vec<MembershipRevocationAlertDeadLetterRecord>>>>,
+}
+
+impl InMemoryMembershipRevocationAlertDeadLetterStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn list(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<MembershipRevocationAlertDeadLetterRecord>, WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let guard = self.records.lock().map_err(|_| {
+            WorldError::Io("membership revocation dead-letter store lock poisoned".into())
+        })?;
+        Ok(guard.get(&key).cloned().unwrap_or_default())
+    }
+}
+
+impl MembershipRevocationAlertDeadLetterStore for InMemoryMembershipRevocationAlertDeadLetterStore {
+    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(&record.world_id, &record.node_id)?;
+        let mut guard = self.records.lock().map_err(|_| {
+            WorldError::Io("membership revocation dead-letter store lock poisoned".into())
+        })?;
+        guard.entry(key).or_default().push(record.clone());
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationAlertDeadLetterStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationAlertDeadLetterStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn dead_letter_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-alert-dead-letter.jsonl"
+        )))
+    }
+
+    pub fn list(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<MembershipRevocationAlertDeadLetterRecord>, WorldError> {
+        let path = self.dead_letter_path(world_id, node_id)?;
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let file = OpenOptions::new().read(true).open(path)?;
+        let reader = BufReader::new(file);
+        let mut records = Vec::new();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            records.push(serde_json::from_str(&line)?);
+        }
+        Ok(records)
+    }
+}
+
+impl MembershipRevocationAlertDeadLetterStore for FileMembershipRevocationAlertDeadLetterStore {
+    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError> {
+        let path = self.dead_letter_path(&record.world_id, &record.node_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        let line = serde_json::to_string(record)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        file.write_all(line.as_bytes())?;
+        file.write_all(b"\n")?;
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 pub struct StoreBackedMembershipRevocationScheduleCoordinator {
     store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync>,
@@ -426,7 +571,8 @@ impl MembershipSyncClient {
         new_alerts: Vec<MembershipRevocationAnomalyAlert>,
     ) -> Result<MembershipRevocationAlertRecoveryReport, WorldError> {
         let policy = MembershipRevocationAlertAckRetryPolicy::legacy_compatible();
-        self.emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+        let dead_letter_store = NoopMembershipRevocationAlertDeadLetterStore;
+        self.emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter(
             world_id,
             node_id,
             0,
@@ -434,6 +580,7 @@ impl MembershipSyncClient {
             recovery_store,
             new_alerts,
             &policy,
+            &dead_letter_store,
         )
     }
 
@@ -448,9 +595,35 @@ impl MembershipSyncClient {
         new_alerts: Vec<MembershipRevocationAnomalyAlert>,
         policy: &MembershipRevocationAlertAckRetryPolicy,
     ) -> Result<MembershipRevocationAlertRecoveryReport, WorldError> {
-        validate_ack_retry_policy(policy)?;
+        let dead_letter_store = NoopMembershipRevocationAlertDeadLetterStore;
+        self.emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter(
+            world_id,
+            node_id,
+            now_ms,
+            sink,
+            recovery_store,
+            new_alerts,
+            policy,
+            &dead_letter_store,
+        )
+    }
 
-        let mut pending = recovery_store.load_pending(world_id, node_id)?;
+    #[allow(clippy::too_many_arguments)]
+    pub fn emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        new_alerts: Vec<MembershipRevocationAnomalyAlert>,
+        policy: &MembershipRevocationAlertAckRetryPolicy,
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+    ) -> Result<MembershipRevocationAlertRecoveryReport, WorldError> {
+        validate_ack_retry_policy(policy)?;
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+
+        let mut pending = recovery_store.load_pending(&world_id, &node_id)?;
         let mut buffered = Vec::with_capacity(pending.len().saturating_add(new_alerts.len()));
         let mut report = MembershipRevocationAlertRecoveryReport {
             recovered: 0,
@@ -459,12 +632,23 @@ impl MembershipSyncClient {
             deferred: 0,
             dropped_capacity: 0,
             dropped_retry_limit: 0,
+            delivery_metrics: MembershipRevocationAlertDeliveryMetrics::default(),
         };
+        let mut metrics = MembershipRevocationAlertDeliveryMetrics::default();
         let mut transport_failed = false;
 
         for item in pending.drain(..) {
             if item.attempt >= policy.max_retry_attempts {
                 report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                archive_dead_letter(
+                    dead_letter_store,
+                    &world_id,
+                    &node_id,
+                    now_ms,
+                    MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+                    item,
+                    &mut metrics,
+                )?;
                 continue;
             }
             if item.next_retry_at_ms > now_ms {
@@ -477,12 +661,15 @@ impl MembershipSyncClient {
                 continue;
             }
 
+            metrics.attempted = metrics.attempted.saturating_add(1);
             match sink.emit(&item.alert) {
                 Ok(()) => {
                     report.recovered = report.recovered.saturating_add(1);
+                    metrics.succeeded = metrics.succeeded.saturating_add(1);
                 }
                 Err(error) => {
                     transport_failed = true;
+                    metrics.failed = metrics.failed.saturating_add(1);
                     let retried = item.with_retry_failure(
                         now_ms,
                         policy.retry_backoff_ms,
@@ -490,6 +677,15 @@ impl MembershipSyncClient {
                     );
                     if retried.attempt >= policy.max_retry_attempts {
                         report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                        archive_dead_letter(
+                            dead_letter_store,
+                            &world_id,
+                            &node_id,
+                            now_ms,
+                            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+                            retried,
+                            &mut metrics,
+                        )?;
                     } else {
                         buffered.push(retried);
                     }
@@ -503,16 +699,28 @@ impl MembershipSyncClient {
                 continue;
             }
 
+            metrics.attempted = metrics.attempted.saturating_add(1);
             match sink.emit(&alert) {
                 Ok(()) => {
                     report.emitted_new = report.emitted_new.saturating_add(1);
+                    metrics.succeeded = metrics.succeeded.saturating_add(1);
                 }
                 Err(error) => {
                     transport_failed = true;
+                    metrics.failed = metrics.failed.saturating_add(1);
                     let retried = MembershipRevocationPendingAlert::new(alert, now_ms)
                         .with_retry_failure(now_ms, policy.retry_backoff_ms, format!("{error:?}"));
                     if retried.attempt >= policy.max_retry_attempts {
                         report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                        archive_dead_letter(
+                            dead_letter_store,
+                            &world_id,
+                            &node_id,
+                            now_ms,
+                            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+                            retried,
+                            &mut metrics,
+                        )?;
                     } else {
                         buffered.push(retried);
                     }
@@ -521,12 +729,29 @@ impl MembershipSyncClient {
         }
 
         if buffered.len() > policy.max_pending_alerts {
-            report.dropped_capacity = buffered.len().saturating_sub(policy.max_pending_alerts);
-            buffered.truncate(policy.max_pending_alerts);
+            let dropped = buffered.split_off(policy.max_pending_alerts);
+            report.dropped_capacity = dropped.len();
+            for item in dropped {
+                archive_dead_letter(
+                    dead_letter_store,
+                    &world_id,
+                    &node_id,
+                    now_ms,
+                    MembershipRevocationAlertDeadLetterReason::CapacityEvicted,
+                    item,
+                    &mut metrics,
+                )?;
+            }
         }
 
         report.buffered = buffered.len();
-        recovery_store.save_pending(world_id, node_id, &buffered)?;
+        metrics.deferred = report.deferred;
+        metrics.buffered = report.buffered;
+        metrics.dropped_capacity = report.dropped_capacity;
+        metrics.dropped_retry_limit = report.dropped_retry_limit;
+        report.delivery_metrics = metrics;
+
+        recovery_store.save_pending(&world_id, &node_id, &buffered)?;
         Ok(report)
     }
 
@@ -550,7 +775,8 @@ impl MembershipSyncClient {
         coordinator_lease_ttl_ms: i64,
     ) -> Result<MembershipRevocationCoordinatedRecoveryRunReport, WorldError> {
         let policy = MembershipRevocationAlertAckRetryPolicy::legacy_compatible();
-        self.run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(
+        let dead_letter_store = NoopMembershipRevocationAlertDeadLetterStore;
+        self.run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(
             world_id,
             node_id,
             now_ms,
@@ -565,6 +791,7 @@ impl MembershipSyncClient {
             alert_sink,
             recovery_store,
             &policy,
+            &dead_letter_store,
             coordinator,
             coordinator_lease_ttl_ms,
         )
@@ -582,11 +809,54 @@ impl MembershipSyncClient {
         schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
         alert_policy: &MembershipRevocationAlertPolicy,
         dedup_policy: Option<&MembershipRevocationAlertDedupPolicy>,
+        dedup_state: Option<&mut MembershipRevocationAlertDedupState>,
+        schedule_store: &(dyn MembershipRevocationScheduleStateStore + Send + Sync),
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        recovery_policy: &MembershipRevocationAlertAckRetryPolicy,
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+    ) -> Result<MembershipRevocationCoordinatedRecoveryRunReport, WorldError> {
+        let dead_letter_store = NoopMembershipRevocationAlertDeadLetterStore;
+        self.run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(
+            world_id,
+            node_id,
+            now_ms,
+            subscription,
+            keyring,
+            reconcile_policy,
+            schedule_policy,
+            alert_policy,
+            dedup_policy,
+            dedup_state,
+            schedule_store,
+            alert_sink,
+            recovery_store,
+            recovery_policy,
+            &dead_letter_store,
+            coordinator,
+            coordinator_lease_ttl_ms,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        reconcile_policy: &MembershipRevocationReconcilePolicy,
+        schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+        alert_policy: &MembershipRevocationAlertPolicy,
+        dedup_policy: Option<&MembershipRevocationAlertDedupPolicy>,
         mut dedup_state: Option<&mut MembershipRevocationAlertDedupState>,
         schedule_store: &(dyn MembershipRevocationScheduleStateStore + Send + Sync),
         alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
         recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
         recovery_policy: &MembershipRevocationAlertAckRetryPolicy,
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
         coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
         coordinator_lease_ttl_ms: i64,
     ) -> Result<MembershipRevocationCoordinatedRecoveryRunReport, WorldError> {
@@ -599,6 +869,7 @@ impl MembershipSyncClient {
                 deferred_alerts: 0,
                 dropped_alerts_capacity: 0,
                 dropped_alerts_retry_limit: 0,
+                delivery_metrics: MembershipRevocationAlertDeliveryMetrics::default(),
                 run_report: None,
             });
         }
@@ -639,7 +910,7 @@ impl MembershipSyncClient {
             }
 
             let recovery_report = self
-                .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+                .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter(
                     world_id,
                     node_id,
                     now_ms,
@@ -647,6 +918,7 @@ impl MembershipSyncClient {
                     recovery_store,
                     alerts,
                     recovery_policy,
+                    dead_letter_store,
                 )?;
 
             Ok(MembershipRevocationCoordinatedRecoveryRunReport {
@@ -657,6 +929,7 @@ impl MembershipSyncClient {
                 deferred_alerts: recovery_report.deferred,
                 dropped_alerts_capacity: recovery_report.dropped_capacity,
                 dropped_alerts_retry_limit: recovery_report.dropped_retry_limit,
+                delivery_metrics: recovery_report.delivery_metrics.clone(),
                 run_report: Some(run_report),
             })
         })();
@@ -669,6 +942,26 @@ impl MembershipSyncClient {
             (Err(err), Err(_)) => Err(err),
         }
     }
+}
+
+fn archive_dead_letter(
+    dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+    world_id: &str,
+    node_id: &str,
+    dropped_at_ms: i64,
+    reason: MembershipRevocationAlertDeadLetterReason,
+    pending_alert: MembershipRevocationPendingAlert,
+    metrics: &mut MembershipRevocationAlertDeliveryMetrics,
+) -> Result<(), WorldError> {
+    dead_letter_store.append(&MembershipRevocationAlertDeadLetterRecord {
+        world_id: world_id.to_string(),
+        node_id: node_id.to_string(),
+        dropped_at_ms,
+        reason,
+        pending_alert,
+    })?;
+    metrics.dead_lettered = metrics.dead_lettered.saturating_add(1);
+    Ok(())
 }
 
 fn validate_coordinator_lease_ttl_ms(lease_ttl_ms: i64) -> Result<(), WorldError> {
