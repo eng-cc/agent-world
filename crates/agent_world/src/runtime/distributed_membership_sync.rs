@@ -1,15 +1,4 @@
 //! Distributed membership directory broadcast and sync helpers.
-
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-
-use hmac::{Hmac, Mac};
-use serde::{Deserialize, Serialize};
-use sha2::Sha256;
-
 use super::distributed::{
     topic_membership, topic_membership_reconcile, topic_membership_revocation,
 };
@@ -21,9 +10,15 @@ use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
-
+use hmac::{Hmac, Mac};
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 type HmacSha256 = Hmac<Sha256>;
-
 pub use reconciliation::{
     FileMembershipRevocationAlertSink, FileMembershipRevocationScheduleStateStore,
     InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleCoordinator,
@@ -39,11 +34,13 @@ pub use reconciliation::{
 pub use recovery::{
     FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
     FileMembershipRevocationCoordinatorStateStore,
+    FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
     FileMembershipRevocationDeadLetterReplayPolicyStore,
     FileMembershipRevocationDeadLetterReplayStateStore,
     InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
     InMemoryMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
     InMemoryMembershipRevocationDeadLetterReplayStateStore,
     MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
@@ -51,15 +48,20 @@ pub use recovery::{
     MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryReport,
     MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
     MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
-    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
+    MembershipRevocationDeadLetterReplayPolicy,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
+    MembershipRevocationDeadLetterReplayPolicyAuditStore,
+    MembershipRevocationDeadLetterReplayPolicyState,
     MembershipRevocationDeadLetterReplayPolicyStore,
+    MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
+    MembershipRevocationDeadLetterReplayRollbackAlertState,
     MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayScheduleState,
     MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
     NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipDirectoryAnnounce {
     pub world_id: String,
@@ -73,7 +75,6 @@ pub struct MembershipDirectoryAnnounce {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
 }
-
 impl MembershipDirectoryAnnounce {
     pub fn from_membership_change(
         world_id: &str,
@@ -1171,7 +1172,6 @@ fn restore_result_from_audit(
         }),
     }
 }
-
 fn world_error_reason(error: &WorldError) -> String {
     match error {
         WorldError::DistributedValidationFailed { reason } => reason.clone(),
@@ -1186,6 +1186,8 @@ mod logic;
 mod persistence_tests;
 mod reconciliation;
 mod recovery;
+#[cfg(test)]
+mod recovery_replay_policy_audit_tests;
 #[cfg(test)]
 mod recovery_replay_policy_persistence_tests;
 #[cfg(test)]

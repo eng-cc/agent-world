@@ -411,7 +411,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **落盘实现**：新增 `FileMembershipAuditStore`（JSONL），支持按 world_id 的 append/list 归档查询。
 - **接口扩展**：支持 `publish_key_revocation_signed(_by_key_id/_with_keyring)` 多签发入口。
 - **可维护性**：成员目录校验辅助逻辑拆分到 `distributed_membership_sync/logic.rs`，保持主文件规模可维护。
-
 ## 成员目录吊销授权治理与跨节点对账（草案）
 - **授权治理**：`MembershipRevocationSyncPolicy` 新增 `authorized_requesters`，在 trusted 之外提供治理授权白名单。
 - **对账通道**：新增 gossipsub topic `aw.<world_id>.membership.reconcile`，用于广播 revoked key 集 checkpoint。
@@ -419,7 +418,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **对账策略**：新增 `MembershipRevocationReconcilePolicy`（trusted_nodes + auto_revoke_missing_keys）。
 - **对账报告**：新增 `MembershipRevocationReconcileReport`，记录 `in_sync/diverged/merged/rejected`。
 - **收敛机制**：`reconcile_revocations_with_policy` 可在 divergence 时自动补齐本地缺失吊销 key，实现跨节点状态收敛。
-
 ## 成员目录吊销异常告警与对账调度自动化（草案）
 - **告警策略**：新增 `MembershipRevocationAlertPolicy`（`warn_diverged_threshold`、`critical_rejected_threshold`）。
 - **告警结构**：新增 `MembershipRevocationAnomalyAlert` 与 `MembershipRevocationAlertSeverity`，统一表达 warn/critical 异常。
@@ -427,7 +425,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **调度策略**：新增 `MembershipRevocationReconcileSchedulePolicy`（checkpoint/reconcile 间隔）。
 - **调度状态**：新增 `MembershipRevocationReconcileScheduleState`，记录最近 checkpoint/reconcile 执行时间。
 - **调度执行**：新增 `run_revocation_reconcile_schedule(...)`，自动判定到期任务并输出 `MembershipRevocationScheduledRunReport`。
-
 ## 成员目录吊销告警上报与调度状态持久化（草案）
 - **告警上报**：新增 `MembershipRevocationAlertSink` 抽象，提供内存与 JSONL 文件实现。
 - **状态存储**：新增 `MembershipRevocationScheduleStateStore` 抽象，提供内存与 JSON 文件实现。
@@ -497,3 +494,7 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **状态持久化**：新增 `MembershipRevocationDeadLetterReplayPolicyStore` 与 `MembershipRevocationDeadLetterReplayPolicyState`，支持内存/文件策略状态存储。
 - **回滚保护**：新增 `MembershipRevocationDeadLetterReplayRollbackGuard` 与 `recommend_revocation_dead_letter_replay_policy_with_persistence_and_rollback_guard(...)`，在指标恶化时回退到最近稳定策略。
 - **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy(...)`，返回 `(replayed, policy, rolled_back)` 并补充持久化/回滚测试。
+## 成员目录吊销死信回放策略采纳审计与异常回退告警（草案）
+- **采纳审计**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`，记录推荐/采纳/稳定策略、积压与回滚触发。
+- **审计存储**：新增 `MembershipRevocationDeadLetterReplayPolicyAuditStore`，提供内存与 JSONL 文件实现。
+- **异常告警联动**：新增 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State` 与 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
