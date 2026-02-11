@@ -79,6 +79,31 @@ impl MembershipRevocationAlertSink for FailOnceAlertSink {
     }
 }
 
+#[derive(Default, Clone)]
+struct AlwaysFailAlertSink {
+    emitted_attempts: Arc<Mutex<usize>>,
+}
+
+impl AlwaysFailAlertSink {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn attempts(&self) -> usize {
+        *self.emitted_attempts.lock().expect("lock attempts")
+    }
+}
+
+impl MembershipRevocationAlertSink for AlwaysFailAlertSink {
+    fn emit(&self, _alert: &MembershipRevocationAnomalyAlert) -> Result<(), WorldError> {
+        let mut attempts = self.emitted_attempts.lock().expect("lock attempts");
+        *attempts = attempts.saturating_add(1);
+        Err(WorldError::Io(
+            "simulated persistent alert sink failure".to_string(),
+        ))
+    }
+}
+
 #[test]
 fn file_coordinator_state_store_round_trip() {
     let root = temp_membership_dir("revocation-coordinator-state-store");
@@ -97,6 +122,27 @@ fn file_coordinator_state_store_round_trip() {
     store.clear("w1").expect("clear state");
     let missing = store.load("w1").expect("load missing");
     assert_eq!(missing, None);
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn file_alert_recovery_store_loads_legacy_alert_format() {
+    let root = temp_membership_dir("revocation-alert-legacy-format");
+    fs::create_dir_all(&root).expect("create temp dir");
+
+    let legacy_path = root.join("w1.node-a.revocation-alert-pending.json");
+    let legacy = vec![sample_alert("w1", "node-a", 1000)];
+    let legacy_bytes = serde_json::to_vec(&legacy).expect("serialize legacy alerts");
+    fs::write(&legacy_path, legacy_bytes).expect("write legacy alerts");
+
+    let store = FileMembershipRevocationAlertRecoveryStore::new(&root).expect("create store");
+    let loaded = store.load_pending("w1", "node-a").expect("load pending");
+
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].attempt, 0);
+    assert_eq!(loaded[0].next_retry_at_ms, 0);
+    assert_eq!(loaded[0].alert.detected_at_ms, 1000);
 
     let _ = fs::remove_dir_all(root);
 }
@@ -147,6 +193,9 @@ fn emit_revocation_reconcile_alerts_with_recovery_buffers_and_recovers() {
     assert_eq!(first.recovered, 0);
     assert_eq!(first.emitted_new, 0);
     assert_eq!(first.buffered, 2);
+    assert_eq!(first.deferred, 0);
+    assert_eq!(first.dropped_capacity, 0);
+    assert_eq!(first.dropped_retry_limit, 0);
 
     let pending_after_first = recovery_store
         .load_pending("w1", "node-a")
@@ -165,12 +214,167 @@ fn emit_revocation_reconcile_alerts_with_recovery_buffers_and_recovers() {
     assert_eq!(second.recovered, 2);
     assert_eq!(second.emitted_new, 0);
     assert_eq!(second.buffered, 0);
+    assert_eq!(second.deferred, 0);
+    assert_eq!(second.dropped_capacity, 0);
+    assert_eq!(second.dropped_retry_limit, 0);
 
     let pending_after_second = recovery_store
         .load_pending("w1", "node-a")
         .expect("load pending after second");
     assert!(pending_after_second.is_empty());
     assert_eq!(sink.emitted().len(), 2);
+}
+
+#[test]
+fn emit_revocation_reconcile_alerts_with_ack_retry_defers_until_backoff_elapsed() {
+    let client = sample_client();
+    let sink = FailOnceAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 8,
+        max_retry_attempts: 3,
+        retry_backoff_ms: 100,
+    };
+
+    let first = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            1000,
+            &sink,
+            &recovery_store,
+            vec![sample_alert("w1", "node-a", 1000)],
+            &policy,
+        )
+        .expect("first emit");
+    assert_eq!(first.recovered, 0);
+    assert_eq!(first.emitted_new, 0);
+    assert_eq!(first.buffered, 1);
+    assert_eq!(first.deferred, 0);
+
+    let pending_after_first = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after first");
+    assert_eq!(pending_after_first[0].attempt, 1);
+    assert_eq!(pending_after_first[0].next_retry_at_ms, 1100);
+
+    let second = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            1050,
+            &sink,
+            &recovery_store,
+            Vec::new(),
+            &policy,
+        )
+        .expect("second emit");
+    assert_eq!(second.recovered, 0);
+    assert_eq!(second.emitted_new, 0);
+    assert_eq!(second.buffered, 1);
+    assert_eq!(second.deferred, 1);
+    assert_eq!(sink.emitted().len(), 0);
+
+    let third = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            1100,
+            &sink,
+            &recovery_store,
+            Vec::new(),
+            &policy,
+        )
+        .expect("third emit");
+    assert_eq!(third.recovered, 1);
+    assert_eq!(third.emitted_new, 0);
+    assert_eq!(third.buffered, 0);
+    assert_eq!(third.deferred, 0);
+    assert_eq!(sink.emitted().len(), 1);
+}
+
+#[test]
+fn emit_revocation_reconcile_alerts_with_ack_retry_drops_when_retry_limit_reached() {
+    let client = sample_client();
+    let sink = AlwaysFailAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 8,
+        max_retry_attempts: 2,
+        retry_backoff_ms: 0,
+    };
+
+    let first = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            1000,
+            &sink,
+            &recovery_store,
+            vec![sample_alert("w1", "node-a", 1000)],
+            &policy,
+        )
+        .expect("first emit");
+    assert_eq!(first.buffered, 1);
+    assert_eq!(first.dropped_retry_limit, 0);
+
+    let second = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            1001,
+            &sink,
+            &recovery_store,
+            Vec::new(),
+            &policy,
+        )
+        .expect("second emit");
+    assert_eq!(second.buffered, 0);
+    assert_eq!(second.dropped_retry_limit, 1);
+    assert_eq!(sink.attempts(), 2);
+
+    let pending = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending");
+    assert!(pending.is_empty());
+}
+
+#[test]
+fn emit_revocation_reconcile_alerts_with_ack_retry_enforces_capacity() {
+    let client = sample_client();
+    let sink = AlwaysFailAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 2,
+        max_retry_attempts: 3,
+        retry_backoff_ms: 0,
+    };
+
+    let report = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            2000,
+            &sink,
+            &recovery_store,
+            vec![
+                sample_alert("w1", "node-a", 2000),
+                sample_alert("w1", "node-a", 2001),
+                sample_alert("w1", "node-a", 2002),
+            ],
+            &policy,
+        )
+        .expect("emit with capacity policy");
+
+    assert_eq!(report.buffered, 2);
+    assert_eq!(report.dropped_capacity, 1);
+
+    let pending = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending");
+    assert_eq!(pending.len(), 2);
+    assert_eq!(pending[0].alert.detected_at_ms, 2000);
+    assert_eq!(pending[1].alert.detected_at_ms, 2001);
 }
 
 #[test]
@@ -247,6 +451,9 @@ fn run_revocation_reconcile_coordinated_with_recovery_replays_pending_alerts() {
     assert_eq!(first.recovered_alerts, 0);
     assert_eq!(first.emitted_alerts, 0);
     assert_eq!(first.buffered_alerts, 1);
+    assert_eq!(first.deferred_alerts, 0);
+    assert_eq!(first.dropped_alerts_capacity, 0);
+    assert_eq!(first.dropped_alerts_retry_limit, 0);
 
     let second = client
         .run_revocation_reconcile_coordinated_with_recovery(
@@ -272,10 +479,150 @@ fn run_revocation_reconcile_coordinated_with_recovery_replays_pending_alerts() {
     assert_eq!(second.recovered_alerts, 1);
     assert_eq!(second.emitted_alerts, 0);
     assert_eq!(second.buffered_alerts, 0);
+    assert_eq!(second.deferred_alerts, 0);
+    assert_eq!(second.dropped_alerts_capacity, 0);
+    assert_eq!(second.dropped_alerts_retry_limit, 0);
 
     let pending = recovery_store
         .load_pending("w1", "node-b")
         .expect("load pending");
     assert!(pending.is_empty());
     assert_eq!(alert_sink.emitted().len(), 1);
+}
+
+#[test]
+fn run_revocation_reconcile_coordinated_with_ack_retry_handles_defer_and_drop() {
+    let client = sample_client();
+    let subscription = client.subscribe("w1").expect("subscribe");
+
+    let mut local_keyring = sample_keyring();
+    local_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add local k2");
+
+    let mut remote_keyring = MembershipDirectorySignerKeyring::new();
+    remote_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add remote k2");
+    assert!(remote_keyring.revoke_key("k2").expect("revoke remote k2"));
+
+    client
+        .publish_revocation_checkpoint("w1", "node-a", 1300, &remote_keyring)
+        .expect("publish remote checkpoint");
+
+    let reconcile_policy = MembershipRevocationReconcilePolicy {
+        trusted_nodes: vec!["node-a".to_string()],
+        auto_revoke_missing_keys: false,
+    };
+    let schedule_policy = MembershipRevocationReconcileSchedulePolicy {
+        checkpoint_interval_ms: 1000,
+        reconcile_interval_ms: 300,
+    };
+    let alert_policy = MembershipRevocationAlertPolicy {
+        warn_diverged_threshold: 1,
+        critical_rejected_threshold: 1,
+    };
+    let retry_policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 4,
+        max_retry_attempts: 2,
+        retry_backoff_ms: 100,
+    };
+
+    let schedule_store = InMemoryMembershipRevocationScheduleStateStore::new();
+    schedule_store
+        .save(
+            "w1",
+            "node-b",
+            &MembershipRevocationReconcileScheduleState {
+                last_checkpoint_at_ms: Some(1300),
+                last_reconcile_at_ms: Some(1000),
+            },
+        )
+        .expect("seed schedule state");
+
+    let alert_sink = AlwaysFailAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let coordinator_store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
+        Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
+    let coordinator = StoreBackedMembershipRevocationScheduleCoordinator::new(coordinator_store);
+
+    let first = client
+        .run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(
+            "w1",
+            "node-b",
+            1305,
+            &subscription,
+            &mut local_keyring,
+            &reconcile_policy,
+            &schedule_policy,
+            &alert_policy,
+            None,
+            None,
+            &schedule_store,
+            &alert_sink,
+            &recovery_store,
+            &retry_policy,
+            &coordinator,
+            1000,
+        )
+        .expect("first run");
+    assert!(first.acquired);
+    assert_eq!(first.buffered_alerts, 1);
+    assert_eq!(first.deferred_alerts, 0);
+    assert_eq!(first.dropped_alerts_retry_limit, 0);
+
+    let second = client
+        .run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(
+            "w1",
+            "node-b",
+            1310,
+            &subscription,
+            &mut local_keyring,
+            &reconcile_policy,
+            &schedule_policy,
+            &alert_policy,
+            None,
+            None,
+            &schedule_store,
+            &alert_sink,
+            &recovery_store,
+            &retry_policy,
+            &coordinator,
+            1000,
+        )
+        .expect("second run");
+    assert!(second.acquired);
+    assert_eq!(second.buffered_alerts, 1);
+    assert_eq!(second.deferred_alerts, 1);
+    assert_eq!(second.dropped_alerts_retry_limit, 0);
+
+    let third = client
+        .run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(
+            "w1",
+            "node-b",
+            1405,
+            &subscription,
+            &mut local_keyring,
+            &reconcile_policy,
+            &schedule_policy,
+            &alert_policy,
+            None,
+            None,
+            &schedule_store,
+            &alert_sink,
+            &recovery_store,
+            &retry_policy,
+            &coordinator,
+            1000,
+        )
+        .expect("third run");
+    assert!(third.acquired);
+    assert_eq!(third.buffered_alerts, 0);
+    assert_eq!(third.deferred_alerts, 0);
+    assert_eq!(third.dropped_alerts_retry_limit, 1);
+
+    let pending = recovery_store
+        .load_pending("w1", "node-b")
+        .expect("load pending");
+    assert!(pending.is_empty());
 }

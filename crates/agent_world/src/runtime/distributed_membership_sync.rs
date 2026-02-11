@@ -39,9 +39,10 @@ pub use reconciliation::{
 pub use recovery::{
     FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
-    InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertRecoveryReport,
-    MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
-    MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertAckRetryPolicy,
+    MembershipRevocationAlertRecoveryReport, MembershipRevocationAlertRecoveryStore,
+    MembershipRevocationCoordinatedRecoveryRunReport, MembershipRevocationCoordinatorLeaseState,
+    MembershipRevocationCoordinatorStateStore, MembershipRevocationPendingAlert,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 

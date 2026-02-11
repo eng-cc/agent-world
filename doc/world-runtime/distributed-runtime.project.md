@@ -230,6 +230,15 @@
 - [x] 新增 `run_revocation_reconcile_coordinated_with_recovery`
 - [x] 单元测试与分布式回归
 
+### 39. P3.22 成员目录吊销恢复队列容量治理与告警 ACK 重试
+- [x] 新增 `MembershipRevocationPendingAlert` 结构与持久化元数据
+- [x] 新增 `MembershipRevocationAlertAckRetryPolicy`
+- [x] 新增 `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry`
+- [x] 新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry`
+- [x] recovery store 兼容旧格式 pending 队列读取
+- [x] 恢复报告增加 deferred/capacity/retry_limit 统计
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -237,6 +246,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.21 完成（成员目录吊销协同状态外部存储与告警恢复机制）
-- 下一步：P3.22（成员目录吊销恢复队列容量治理与告警 ACK 重试）
-- 最近更新：成员目录吊销协同状态外部存储与告警恢复机制（2026-02-11）
+- 当前阶段：P3.22 完成（成员目录吊销恢复队列容量治理与告警 ACK 重试）
+- 下一步：P3.23（成员目录吊销告警恢复死信归档与投递指标）
+- 最近更新：成员目录吊销恢复队列容量治理与告警 ACK 重试（2026-02-11）
