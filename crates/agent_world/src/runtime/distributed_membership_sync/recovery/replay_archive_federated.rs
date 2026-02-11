@@ -99,6 +99,177 @@ pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAl
     pub severity: Option<MembershipRevocationAlertSeverity>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState
+{
+    pub world_id: String,
+    pub consumer_id: String,
+    pub since_event_at_ms: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub since_node_id: Option<String>,
+    #[serde(default)]
+    pub since_node_event_offset: usize,
+}
+
+pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+{
+    fn load(
+        &self,
+        world_id: &str,
+        consumer_id: &str,
+    ) -> Result<
+        Option<
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+        >,
+        WorldError,
+    >;
+
+    fn save(
+        &self,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+    ) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+{
+    states: Arc<
+        Mutex<
+            BTreeMap<
+                (String, String),
+                MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+            >,
+        >,
+    >,
+}
+
+impl InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+    for InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+{
+    fn load(
+        &self,
+        world_id: &str,
+        consumer_id: &str,
+    ) -> Result<
+        Option<
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+        >,
+        WorldError,
+    > {
+        let key = normalized_schedule_key(world_id, consumer_id)?;
+        let guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance recovery drill alert composite sequence cursor state store lock poisoned"
+                    .into(),
+            )
+        })?;
+        Ok(guard.get(&key).cloned())
+    }
+
+    fn save(
+        &self,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+    ) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(&state.world_id, &state.consumer_id)?;
+        let mut normalized_state = state.clone();
+        normalized_state.world_id = key.0.clone();
+        normalized_state.consumer_id = key.1.clone();
+        let mut guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance recovery drill alert composite sequence cursor state store lock poisoned"
+                    .into(),
+            )
+        })?;
+        guard.insert(key, normalized_state);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+{
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    fn state_path(&self, world_id: &str, consumer_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, consumer_id) = normalized_schedule_key(world_id, consumer_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{consumer_id}.revocation-dead-letter-replay-rollback-governance-recovery-drill-alert-composite-sequence-cursor-state.json"
+        )))
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+    for FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+{
+    fn load(
+        &self,
+        world_id: &str,
+        consumer_id: &str,
+    ) -> Result<
+        Option<
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+        >,
+        WorldError,
+    > {
+        let path = self.state_path(world_id, consumer_id)?;
+        if !path.exists() {
+            return Ok(None);
+        }
+        let content = fs::read_to_string(path)?;
+        if content.trim().is_empty() {
+            return Ok(None);
+        }
+        let state: MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState =
+            serde_json::from_str(&content)?;
+        let (normalized_world_id, normalized_consumer_id) =
+            normalized_schedule_key(world_id, consumer_id)?;
+        if state.world_id != normalized_world_id || state.consumer_id != normalized_consumer_id {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "membership revocation dead-letter replay rollback governance recovery drill alert composite sequence cursor state file contains mismatched world_id or consumer_id".to_string(),
+            });
+        }
+        Ok(Some(state))
+    }
+
+    fn save(
+        &self,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+    ) -> Result<(), WorldError> {
+        let path = self.state_path(&state.world_id, &state.consumer_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+        let (normalized_world_id, normalized_consumer_id) =
+            normalized_schedule_key(&state.world_id, &state.consumer_id)?;
+        let normalized_state =
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+                world_id: normalized_world_id,
+                consumer_id: normalized_consumer_id,
+                since_event_at_ms: state.since_event_at_ms,
+                since_node_id: state.since_node_id.clone(),
+                since_node_event_offset: state.since_node_event_offset,
+            };
+        fs::write(path, serde_json::to_vec(&normalized_state)?)?;
+        Ok(())
+    }
+}
+
 pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus {
     fn publish(
         &self,
@@ -584,6 +755,67 @@ impl MembershipSyncClient {
             next_node_id,
             next_node_event_offset,
         ))
+    }
+
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_with_composite_sequence_cursor_state(
+        &self,
+        world_id: &str,
+        consumer_id: &str,
+        node_ids: &[String],
+        initial_since_event_at_ms: i64,
+        initial_since_node_id: Option<&str>,
+        initial_since_node_event_offset: usize,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+        state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore
+              + Send
+              + Sync),
+    ) -> Result<
+        (
+            Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+        ),
+        WorldError,
+    >{
+        let (normalized_world_id, normalized_consumer_id) =
+            normalized_schedule_key(world_id, consumer_id)?;
+        let loaded_state = state_store.load(&normalized_world_id, &normalized_consumer_id)?;
+        let (since_event_at_ms, since_node_id, since_node_event_offset) = match loaded_state {
+            Some(state) => (
+                state.since_event_at_ms,
+                state.since_node_id,
+                state.since_node_event_offset,
+            ),
+            None => (
+                initial_since_event_at_ms,
+                initial_since_node_id.map(|value| value.to_string()),
+                initial_since_node_event_offset,
+            ),
+        };
+        let (events, next_event_at_ms, next_node_id, next_node_event_offset) = self
+            .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_composite_sequence_cursor(
+                &normalized_world_id,
+                node_ids,
+                since_event_at_ms,
+                since_node_id.as_deref(),
+                since_node_event_offset,
+                outcomes,
+                max_records,
+                event_bus,
+            )?;
+        let next_state =
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
+                world_id: normalized_world_id,
+                consumer_id: normalized_consumer_id,
+                since_event_at_ms: next_event_at_ms,
+                since_node_id: next_node_id,
+                since_node_event_offset: next_node_event_offset,
+            };
+        state_store.save(&next_state)?;
+        Ok((events, next_state))
     }
 
     pub fn summarize_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated_by_outcome(
