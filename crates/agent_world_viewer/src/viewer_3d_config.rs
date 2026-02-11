@@ -22,6 +22,10 @@ const DEFAULT_LABEL_FADE_END_DISTANCE: f32 = 140.0;
 const DEFAULT_MAX_VISIBLE_LABELS: usize = 48;
 const DEFAULT_LABEL_OCCLUSION_CELL_SPAN: f32 = 8.0;
 const DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL: usize = 2;
+const DEFAULT_OVERLAY_REFRESH_TICKS: u64 = 3;
+const DEFAULT_OVERLAY_MAX_HEAT_MARKERS: usize = 64;
+const DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS: usize = 80;
+const DEFAULT_GRID_LOD_DISTANCE: f32 = 120.0;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -30,6 +34,7 @@ pub(super) struct Viewer3dConfig {
     pub show_locations: bool,
     pub highlight_selected: bool,
     pub label_lod: ViewerLabelLodConfig,
+    pub render_budget: ViewerRenderBudgetConfig,
     pub lighting: ViewerLightingConfig,
     pub physical: ViewerPhysicalRenderConfig,
 }
@@ -52,6 +57,7 @@ impl Default for Viewer3dConfig {
             show_locations: true,
             highlight_selected: true,
             label_lod: ViewerLabelLodConfig::default(),
+            render_budget: ViewerRenderBudgetConfig::default(),
             lighting: ViewerLightingConfig::default(),
             physical: ViewerPhysicalRenderConfig::default(),
         }
@@ -75,6 +81,25 @@ impl Default for ViewerLabelLodConfig {
             max_visible_labels: DEFAULT_MAX_VISIBLE_LABELS,
             occlusion_cell_span: DEFAULT_LABEL_OCCLUSION_CELL_SPAN,
             occlusion_cap_per_cell: DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerRenderBudgetConfig {
+    pub overlay_refresh_ticks: u64,
+    pub overlay_max_heat_markers: usize,
+    pub overlay_max_flow_segments: usize,
+    pub grid_lod_distance: f32,
+}
+
+impl Default for ViewerRenderBudgetConfig {
+    fn default() -> Self {
+        Self {
+            overlay_refresh_ticks: DEFAULT_OVERLAY_REFRESH_TICKS,
+            overlay_max_heat_markers: DEFAULT_OVERLAY_MAX_HEAT_MARKERS,
+            overlay_max_flow_segments: DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS,
+            grid_lod_distance: DEFAULT_GRID_LOD_DISTANCE,
         }
     }
 }
@@ -193,6 +218,26 @@ where
             config.label_lod.occlusion_cap_per_cell = value;
         }
     }
+    if let Some(value) = parse_u64(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS") {
+        if value > 0 {
+            config.render_budget.overlay_refresh_ticks = value;
+        }
+    }
+    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT") {
+        if value > 0 {
+            config.render_budget.overlay_max_heat_markers = value;
+        }
+    }
+    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW") {
+        if value > 0 {
+            config.render_budget.overlay_max_flow_segments = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE") {
+        if value.is_finite() && value > 0.0 {
+            config.render_budget.grid_lod_distance = value;
+        }
+    }
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHADOWS_ENABLED") {
         config.lighting.shadows_enabled = value;
     }
@@ -298,6 +343,13 @@ where
     lookup(key).and_then(|raw| raw.trim().parse::<usize>().ok())
 }
 
+fn parse_u64<F>(lookup: &F, key: &str) -> Option<u64>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| raw.trim().parse::<u64>().ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -330,6 +382,22 @@ mod tests {
             config.label_lod.occlusion_cap_per_cell,
             DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL
         );
+        assert_eq!(
+            config.render_budget.overlay_refresh_ticks,
+            DEFAULT_OVERLAY_REFRESH_TICKS
+        );
+        assert_eq!(
+            config.render_budget.overlay_max_heat_markers,
+            DEFAULT_OVERLAY_MAX_HEAT_MARKERS
+        );
+        assert_eq!(
+            config.render_budget.overlay_max_flow_segments,
+            DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS
+        );
+        assert!(
+            (config.render_budget.grid_lod_distance - DEFAULT_GRID_LOD_DISTANCE).abs()
+                < f32::EPSILON
+        );
         assert!(!config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 110.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.28).abs() < f32::EPSILON);
@@ -356,6 +424,10 @@ mod tests {
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "32"),
             ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "9"),
             ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "3"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS", "5"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT", "72"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW", "96"),
+            ("AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE", "180"),
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "1"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "145"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "0.42"),
@@ -381,6 +453,10 @@ mod tests {
         assert_eq!(config.label_lod.max_visible_labels, 32);
         assert!((config.label_lod.occlusion_cell_span - 9.0).abs() < f32::EPSILON);
         assert_eq!(config.label_lod.occlusion_cap_per_cell, 3);
+        assert_eq!(config.render_budget.overlay_refresh_ticks, 5);
+        assert_eq!(config.render_budget.overlay_max_heat_markers, 72);
+        assert_eq!(config.render_budget.overlay_max_flow_segments, 96);
+        assert!((config.render_budget.grid_lod_distance - 180.0).abs() < f32::EPSILON);
         assert!(config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 145.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.42).abs() < f32::EPSILON);
@@ -405,6 +481,10 @@ mod tests {
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "0"),
             ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "0"),
             ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "0"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_REFRESH_TICKS", "0"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_MAX_HEAT", "0"),
+            ("AGENT_WORLD_VIEWER_OVERLAY_MAX_FLOW", "0"),
+            ("AGENT_WORLD_VIEWER_GRID_LOD_DISTANCE", "0"),
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "invalid"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "0"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "-1"),
@@ -441,6 +521,22 @@ mod tests {
         assert_eq!(
             config.label_lod.occlusion_cap_per_cell,
             DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL
+        );
+        assert_eq!(
+            config.render_budget.overlay_refresh_ticks,
+            DEFAULT_OVERLAY_REFRESH_TICKS
+        );
+        assert_eq!(
+            config.render_budget.overlay_max_heat_markers,
+            DEFAULT_OVERLAY_MAX_HEAT_MARKERS
+        );
+        assert_eq!(
+            config.render_budget.overlay_max_flow_segments,
+            DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS
+        );
+        assert!(
+            (config.render_budget.grid_lod_distance - DEFAULT_GRID_LOD_DISTANCE).abs()
+                < f32::EPSILON
         );
         assert_eq!(config.lighting.shadows_enabled, DEFAULT_SHADOWS_ENABLED);
         assert!(

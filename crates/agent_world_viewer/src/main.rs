@@ -66,7 +66,7 @@ use auto_focus::{
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{
     camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,
-    sync_world_background_visibility, OrbitDragState,
+    sync_world_background_visibility, update_grid_line_lod_visibility, OrbitDragState,
 };
 use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
@@ -111,7 +111,7 @@ use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
     update_world_overlay_status_text, update_world_overlays_3d, world_overlay_config_from_env,
-    WorldOverlayConfig, WorldOverlayUiState,
+    OverlayRenderRuntime, WorldOverlayConfig, WorldOverlayUiState,
 };
 
 const WORLD_MIN_AXIS: f32 = 0.1;
