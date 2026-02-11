@@ -13,12 +13,8 @@
 - [x] OWR1.3 补充 UI 回归测试（模式文案、Prompt Ops 面板渲染）并通过 `cargo test -p agent_world_viewer`
 
 ### OWR2 Prompt 控制面（对应缺口 2，严格 prompt-only）
-- [ ] OWR2.1 协议扩展：`prompt_control.preview/apply/rollback`
-- [ ] OWR2.2 live server 接入 `AgentPromptProfile`（版本、审计、冲突处理）
-- [ ] OWR2.3 事件扩展：`AgentPromptUpdated`（用于时间轴与回放）
-- [ ] OWR2.4 viewer 右侧编辑区：差异预览、提交、回滚、错误提示
-- [ ] OWR2.5 前后端联测：preview/apply/rollback 成功与失败路径
-- [ ] OWR2.6 回放一致性测试：prompt 变更后 replay 对齐
+- [ ] OWR2-Server 协议与运行态闭环：`prompt_control.preview/apply/rollback`、`AgentPromptProfile`（版本/审计/冲突处理）、`AgentPromptUpdated` 事件与 replay 一致性
+- [ ] OWR2-Client Viewer 交互闭环：Prompt Ops 差异预览/提交/回滚/错误提示与前后端联测（成功/失败路径）
 
 ### OWR3 3D 表达与性能收口（对应缺口 4）
 - [x] OWR3.1 完成 VPP5：选中反馈强化（缩放 + 视觉强调）
@@ -48,7 +44,7 @@
 
 ## 状态
 - 当前阶段：OWR3 已完成（VPP5~VPP9：选中强化、标签 LOD、覆盖层/网格线节流、性能摘要、联动回归）
-- 下一阶段：OWR4（规模化稳定性：事件窗口策略、增量刷新、自动降级、压测基线）
+- 下一阶段：OWR2-Server（完成后推进 OWR2-Client，再进入 OWR4）
 - 最近更新：完成 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（157 tests）与截图闭环验证（2026-02-11）
 
 ## 不在本轮

@@ -76,11 +76,13 @@
   - 现有观测功能不退化；
   - 新模式切换具备回归测试。
 
-### OWR-2（Prompt 控制面）
-- 交付：
+### OWR-2（Prompt 控制面，拆分 Server/Client 两任务）
+- OWR2-Server 交付：
   - 协议扩展、服务端应用与版本管理；
-  - prompt 变更事件与回放支持；
-  - viewer 编辑与回滚 UI。
+  - prompt 变更事件与回放支持。
+- OWR2-Client 交付：
+  - viewer 编辑、差异预览、回滚与错误反馈 UI；
+  - 与 server 端联测闭环。
 - 验收：
   - `preview/apply/rollback` 全链路联测通过；
   - prompt 改写后，后续 `decision_trace` 可观测到新版本生效。
