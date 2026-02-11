@@ -25,7 +25,7 @@
 - [x] OWR3.2 完成 VPP6：标签 LOD（距离衰减、数量上限、遮挡降权）
 - [x] OWR3.3 完成 VPP7：覆盖层/网格线批处理与节流
 - [x] OWR3.4 完成 VPP8：右侧总览接入渲染性能摘要
-- [ ] OWR3.5 完成 VPP9：2D/3D 与联动全回归
+- [x] OWR3.5 完成 VPP9：2D/3D 与联动全回归
 
 ### OWR4 规模化稳定性（对应缺口 5）
 - [ ] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
@@ -38,7 +38,7 @@
 - [x] OWR5.1 更新设计文档与项目文档状态
 - [x] OWR5.2 更新任务日志（`doc/devlog/YYYY-MM-DD.md`）
 - [x] OWR5.3 执行 `env -u RUSTC_WRAPPER cargo check` 与相关测试
-- [ ] OWR5.4 按任务粒度提交 git commit
+- [x] OWR5.4 按任务粒度提交 git commit
 
 ## 依赖
 - 协议与服务端：`crates/agent_world/src/viewer/protocol.rs`、`crates/agent_world/src/viewer/live.rs`
@@ -47,9 +47,9 @@
 - 联测与脚本：`crates/agent_world/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`
 
 ## 状态
-- 当前阶段：OWR1 已完成（Observe/Prompt Ops 双模式 UI 骨架已落地）
-- 下一阶段：OWR2（prompt_control 协议与 `AgentPromptUpdated` 事件链路）
-- 最近更新：完成 Prompt Ops 面板落地、`AGENT_WORLD_VIEWER_PANEL_MODE` 启动模式支持、单测与截图闭环验证（2026-02-11）
+- 当前阶段：OWR3 已完成（VPP5~VPP9：选中强化、标签 LOD、覆盖层/网格线节流、性能摘要、联动回归）
+- 下一阶段：OWR4（规模化稳定性：事件窗口策略、增量刷新、自动降级、压测基线）
+- 最近更新：完成 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（157 tests）与截图闭环验证（2026-02-11）
 
 ## 不在本轮
 - TODO-3：动作玩法闭环（发现-采集-加工-建造）。
