@@ -495,6 +495,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 ## 成员目录吊销死信回放策略采纳审计与异常回退告警（草案）
 - **采纳审计与告警**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`、`MembershipRevocationDeadLetterReplayPolicyAuditStore` 与 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State`。
 - **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
-## 成员目录吊销死信回放策略治理审计归档保留与演练调度（草案）
-- **归档保留与裁剪**：新增 governance audit retention policy（按条数/时窗）与 prune 入口，支持文件归档重写裁剪。
-- **演练调度编排**：新增 recovery drill schedule policy/state store（内存/文件）与调度编排入口，支持周期化演练执行与报告。
+## 成员目录吊销死信回放策略治理审计归档分层转储与演练告警联动（草案）
+- **分层转储与补偿**：新增 governance audit tiered offload policy（热层保留 + 年龄阈值 + 单轮转储上限）与转储入口；热层替换失败时回滚冷层写入，避免冷热层失配。
+- **演练告警联动编排**：新增 recovery drill alert policy/state store（内存/文件）与告警入口，并通过 `run_revocation_dead_letter_replay_rollback_governance_archive_tiered_offload_with_drill_schedule_and_alert(...)` 串联裁剪→转储→演练→告警闭环。
