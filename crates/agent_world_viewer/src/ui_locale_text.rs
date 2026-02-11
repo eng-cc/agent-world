@@ -482,6 +482,9 @@ pub(super) fn localize_details_block(text: String, locale: UiLocale) -> String {
     converted = converted.replace("(no llm trace yet)", "（暂无 LLM 轨迹）");
     converted = converted.replace("Details:", "详情:");
     converted = converted.replace("Location:", "地点:");
+    converted = converted.replace("Body Size:", "机体尺寸:");
+    converted = converted.replace("Location Radius:", "地点半径:");
+    converted = converted.replace("Scale Ratio:", "尺度比例:");
     converted = converted.replace("Name:", "名称:");
     converted = converted.replace("Resources:", "资源:");
     converted = converted.replace("Recent Events:", "近期事件:");

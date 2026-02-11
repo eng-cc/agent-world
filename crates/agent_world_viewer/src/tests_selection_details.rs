@@ -107,6 +107,13 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     assert!(details_text.0.contains("Details: agent agent-1"));
     assert!(details_text
         .0
+        .contains("Body Size: data_height=1.00m (100cm)"));
+    assert!(details_text.0.contains("Location Radius: 100cm (1.00m)"));
+    assert!(details_text
+        .0
+        .contains("Scale Ratio: height/location_radius=1.000"));
+    assert!(details_text
+        .0
         .contains("Thermal Visual: ratio=0.00 color=heat_low"));
     assert!(details_text.0.contains("Recent LLM I/O"));
     assert!(details_text.0.contains("input:"));

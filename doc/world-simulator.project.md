@@ -67,6 +67,9 @@
 - [x] 输出 viewer 选中详情项目管理文档（`doc/world-simulator/viewer-selection-details.project.md`）
 - [x] Viewer 选中对象详情面板（Agent/Location）+ LLM 输入输出展示
 - [x] Viewer 选中对象详情扩展（Asset/PowerPlant/PowerStorage/Chunk）
+- [x] 输出 Viewer Agent 尺寸可观测与比例校验设计文档（`doc/world-simulator/viewer-agent-size-inspection.md`）
+- [x] 输出 Viewer Agent 尺寸可观测与比例校验项目管理文档（`doc/world-simulator/viewer-agent-size-inspection.project.md`）
+- [x] Viewer 选中 Agent 详情新增尺寸字段（身高/Location 半径/比例）
 - [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
 - [x] 在线模式支持任意 tick seek（reset+replay，含不可达保护）
 - [x] Viewer 时间轴目标 tick 控件与拖拽 seek

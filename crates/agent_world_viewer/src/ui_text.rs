@@ -232,6 +232,24 @@ fn agent_details_summary(
         "Body: kind={} height={}cm",
         agent.body.kind, agent.body.height_cm
     ));
+    let body_height_cm = agent.body.height_cm.max(1);
+    lines.push(format!(
+        "Body Size: data_height={:.2}m ({}cm)",
+        body_height_cm as f64 / 100.0,
+        body_height_cm
+    ));
+    if let Some(location) = snapshot.model.locations.get(&agent.location_id) {
+        let location_radius_cm = location.profile.radius_cm.max(1);
+        let scale_ratio = body_height_cm as f64 / location_radius_cm as f64;
+        lines.push(format!(
+            "Location Radius: {}cm ({:.2}m)",
+            location_radius_cm,
+            location_radius_cm as f64 / 100.0
+        ));
+        lines.push(format!(
+            "Scale Ratio: height/location_radius={scale_ratio:.3}"
+        ));
+    }
     lines.push(format!(
         "Power: {}/{} ({:?})",
         agent.power.level, agent.power.capacity, agent.power.state
