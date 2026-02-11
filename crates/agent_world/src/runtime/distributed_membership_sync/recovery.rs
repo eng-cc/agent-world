@@ -24,9 +24,14 @@ pub use dead_letter::{
 };
 mod dead_letter;
 pub use replay::{
+    FileMembershipRevocationDeadLetterReplayPolicyStore,
     FileMembershipRevocationDeadLetterReplayStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
     InMemoryMembershipRevocationDeadLetterReplayStateStore,
-    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayScheduleState,
+    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
+    MembershipRevocationDeadLetterReplayPolicyStore,
+    MembershipRevocationDeadLetterReplayRollbackGuard,
+    MembershipRevocationDeadLetterReplayScheduleState,
     MembershipRevocationDeadLetterReplayStateStore,
 };
 mod replay;

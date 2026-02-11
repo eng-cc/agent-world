@@ -489,9 +489,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **联动调度入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_adaptive_policy(...)`，输出 `(replayed, recommended_policy)` 并保持原协同调度兼容。
 - **测试覆盖**：补充扩容、收敛、公平倾斜和联动执行测试，验证策略推荐与实际回放行为一致。
 ## 成员目录吊销死信回放策略冷却窗口与漂移抑制（草案）
-- **guard 推荐入口**：新增 `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(...)`，在基础推荐结果上叠加冷却窗口与步长限制。
-- **guard 校验**：新增 `validate_adaptive_policy_guard_bounds(...)`，约束 `policy_cooldown_ms` 与单轮参数变更步长必须为正。
-- **漂移抑制**：新增策略步长截断 helper，限制 `max_replay_per_run` 与 `max_retry_limit_exceeded_streak` 的单轮调整幅度。
-- **guard 协同入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy(...)`，返回 `(replayed, guarded_policy)`。
+- **guard 入口**：新增 `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(...)` 与 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy(...)`。
+- **guard 规则**：新增 `validate_adaptive_policy_guard_bounds(...)` 与步长截断 helper，约束参数并限制单轮漂移幅度。
 - **执行语义**：冷却窗口命中时保持当前 policy，不命中时应用步长截断后的推荐 policy。
 - **测试覆盖**：新增冷却窗口命中、步长截断、非法 guard 参数与联动调度测试。
+## 成员目录吊销死信回放策略建议持久化与回滚保护（草案）
+- **状态持久化**：新增 `MembershipRevocationDeadLetterReplayPolicyStore` 与 `MembershipRevocationDeadLetterReplayPolicyState`，支持内存/文件策略状态存储。
+- **回滚保护**：新增 `MembershipRevocationDeadLetterReplayRollbackGuard` 与 `recommend_revocation_dead_letter_replay_policy_with_persistence_and_rollback_guard(...)`，在指标恶化时回退到最近稳定策略。
+- **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy(...)`，返回 `(replayed, policy, rolled_back)` 并补充持久化/回滚测试。
