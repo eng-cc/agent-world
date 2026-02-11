@@ -17,6 +17,11 @@ const MAX_LIGHT_ILLUMINANCE_LUX: f32 = 120_000.0;
 const DEFAULT_SHADOWS_ENABLED: bool = false;
 const DEFAULT_AMBIENT_BRIGHTNESS: f32 = 110.0;
 const DEFAULT_FILL_LIGHT_RATIO: f32 = 0.28;
+const DEFAULT_LABEL_FADE_START_DISTANCE: f32 = 55.0;
+const DEFAULT_LABEL_FADE_END_DISTANCE: f32 = 140.0;
+const DEFAULT_MAX_VISIBLE_LABELS: usize = 48;
+const DEFAULT_LABEL_OCCLUSION_CELL_SPAN: f32 = 8.0;
+const DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL: usize = 2;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -24,6 +29,7 @@ pub(super) struct Viewer3dConfig {
     pub show_agents: bool,
     pub show_locations: bool,
     pub highlight_selected: bool,
+    pub label_lod: ViewerLabelLodConfig,
     pub lighting: ViewerLightingConfig,
     pub physical: ViewerPhysicalRenderConfig,
 }
@@ -45,8 +51,30 @@ impl Default for Viewer3dConfig {
             show_agents: true,
             show_locations: true,
             highlight_selected: true,
+            label_lod: ViewerLabelLodConfig::default(),
             lighting: ViewerLightingConfig::default(),
             physical: ViewerPhysicalRenderConfig::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerLabelLodConfig {
+    pub fade_start_distance: f32,
+    pub fade_end_distance: f32,
+    pub max_visible_labels: usize,
+    pub occlusion_cell_span: f32,
+    pub occlusion_cap_per_cell: usize,
+}
+
+impl Default for ViewerLabelLodConfig {
+    fn default() -> Self {
+        Self {
+            fade_start_distance: DEFAULT_LABEL_FADE_START_DISTANCE,
+            fade_end_distance: DEFAULT_LABEL_FADE_END_DISTANCE,
+            max_visible_labels: DEFAULT_MAX_VISIBLE_LABELS,
+            occlusion_cell_span: DEFAULT_LABEL_OCCLUSION_CELL_SPAN,
+            occlusion_cap_per_cell: DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL,
         }
     }
 }
@@ -140,6 +168,31 @@ where
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED") {
         config.highlight_selected = value;
     }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_START") {
+        if value.is_finite() && value >= 0.0 {
+            config.label_lod.fade_start_distance = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_END") {
+        if value.is_finite() && value > config.label_lod.fade_start_distance {
+            config.label_lod.fade_end_distance = value;
+        }
+    }
+    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS") {
+        if value > 0 {
+            config.label_lod.max_visible_labels = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN") {
+        if value.is_finite() && value > 0.0 {
+            config.label_lod.occlusion_cell_span = value;
+        }
+    }
+    if let Some(value) = parse_usize(&lookup, "AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL") {
+        if value > 0 {
+            config.label_lod.occlusion_cap_per_cell = value;
+        }
+    }
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_SHADOWS_ENABLED") {
         config.lighting.shadows_enabled = value;
     }
@@ -202,6 +255,9 @@ where
     if physical.camera_far_m <= physical.camera_near_m {
         physical.camera_far_m = (physical.camera_near_m + 1.0).max(DEFAULT_CAMERA_FAR_M);
     }
+    if config.label_lod.fade_end_distance <= config.label_lod.fade_start_distance {
+        config.label_lod.fade_end_distance = config.label_lod.fade_start_distance + 1.0;
+    }
 
     config.physical = physical;
     config
@@ -235,6 +291,13 @@ where
     lookup(key).and_then(|raw| raw.trim().parse::<f64>().ok())
 }
 
+fn parse_usize<F>(lookup: &F, key: &str) -> Option<usize>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| raw.trim().parse::<usize>().ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,6 +310,26 @@ mod tests {
         assert!(config.show_agents);
         assert!(config.show_locations);
         assert!(config.highlight_selected);
+        assert!(
+            (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (config.label_lod.fade_end_distance - DEFAULT_LABEL_FADE_END_DISTANCE).abs()
+                < f32::EPSILON
+        );
+        assert_eq!(
+            config.label_lod.max_visible_labels,
+            DEFAULT_MAX_VISIBLE_LABELS
+        );
+        assert!(
+            (config.label_lod.occlusion_cell_span - DEFAULT_LABEL_OCCLUSION_CELL_SPAN).abs()
+                < f32::EPSILON
+        );
+        assert_eq!(
+            config.label_lod.occlusion_cap_per_cell,
+            DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL
+        );
         assert!(!config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 110.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.28).abs() < f32::EPSILON);
@@ -268,6 +351,11 @@ mod tests {
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
             ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
             ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
+            ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "44"),
+            ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "110"),
+            ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "32"),
+            ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "9"),
+            ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "3"),
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "1"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "145"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "0.42"),
@@ -288,6 +376,11 @@ mod tests {
         assert!(!config.show_agents);
         assert!(!config.show_locations);
         assert!(!config.highlight_selected);
+        assert!((config.label_lod.fade_start_distance - 44.0).abs() < f32::EPSILON);
+        assert!((config.label_lod.fade_end_distance - 110.0).abs() < f32::EPSILON);
+        assert_eq!(config.label_lod.max_visible_labels, 32);
+        assert!((config.label_lod.occlusion_cell_span - 9.0).abs() < f32::EPSILON);
+        assert_eq!(config.label_lod.occlusion_cap_per_cell, 3);
         assert!(config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 145.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.42).abs() < f32::EPSILON);
@@ -307,6 +400,11 @@ mod tests {
         let env = HashMap::from([
             ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
+            ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "-5"),
+            ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "2"),
+            ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "0"),
+            ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CELL_SPAN", "0"),
+            ("AGENT_WORLD_VIEWER_LABEL_OCCLUSION_CAP_PER_CELL", "0"),
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "invalid"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "0"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "-1"),
@@ -324,6 +422,26 @@ mod tests {
 
         assert!((config.cm_to_unit - DEFAULT_CM_TO_UNIT).abs() < f32::EPSILON);
         assert!(config.show_agents);
+        assert!(
+            (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (config.label_lod.fade_end_distance - DEFAULT_LABEL_FADE_END_DISTANCE).abs()
+                < f32::EPSILON
+        );
+        assert_eq!(
+            config.label_lod.max_visible_labels,
+            DEFAULT_MAX_VISIBLE_LABELS
+        );
+        assert!(
+            (config.label_lod.occlusion_cell_span - DEFAULT_LABEL_OCCLUSION_CELL_SPAN).abs()
+                < f32::EPSILON
+        );
+        assert_eq!(
+            config.label_lod.occlusion_cap_per_cell,
+            DEFAULT_LABEL_OCCLUSION_CAP_PER_CELL
+        );
         assert_eq!(config.lighting.shadows_enabled, DEFAULT_SHADOWS_ENABLED);
         assert!(
             (config.lighting.ambient_brightness - DEFAULT_AMBIENT_BRIGHTNESS).abs() < f32::EPSILON

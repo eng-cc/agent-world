@@ -43,6 +43,7 @@ mod floating_origin;
 mod headless;
 mod i18n;
 mod internal_capture;
+mod label_lod;
 mod location_fragment_render;
 mod material_library;
 mod panel_layout;
@@ -79,6 +80,7 @@ use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
+use label_lod::{update_label_lod, LabelLodStats};
 use material_library::{
     build_fragment_element_material_handles, build_location_material_handles,
     FragmentElementMaterialHandles, LocationMaterialHandles,
