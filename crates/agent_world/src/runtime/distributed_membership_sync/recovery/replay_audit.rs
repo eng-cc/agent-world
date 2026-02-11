@@ -121,6 +121,37 @@ pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceState {
     pub last_level_updated_at_ms: Option<i64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+    pub world_id: String,
+    pub node_id: String,
+    pub audited_at_ms: i64,
+    pub governance_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+    pub rollback_streak: usize,
+    pub rolled_back: bool,
+    pub applied_policy: MembershipRevocationDeadLetterReplayPolicy,
+    pub alert_emitted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport {
+    pub world_id: String,
+    pub node_id: String,
+    pub drill_at_ms: i64,
+    pub alert_state: MembershipRevocationDeadLetterReplayRollbackAlertState,
+    pub governance_state: MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    pub recent_audits: Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
+    pub has_emergency_history: bool,
+}
+
+type MembershipRevocationDeadLetterReplayRollbackGovernanceRunResult = (
+    usize,
+    MembershipRevocationDeadLetterReplayPolicy,
+    bool,
+    bool,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+);
+
 pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
     fn load_governance_state(
         &self,
@@ -134,6 +165,21 @@ pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
         node_id: &str,
         state: &MembershipRevocationDeadLetterReplayRollbackGovernanceState,
     ) -> Result<(), WorldError>;
+}
+
+pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore {
+    fn append(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        record: &MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord,
+    ) -> Result<(), WorldError>;
+
+    fn list(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>, WorldError>;
 }
 
 pub trait MembershipRevocationDeadLetterReplayPolicyAuditStore {
@@ -488,6 +534,127 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore {
+    records: Arc<
+        Mutex<
+            BTreeMap<
+                (String, String),
+                Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
+            >,
+        >,
+    >,
+}
+
+impl InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+    for InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+{
+    fn append(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        record: &MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord,
+    ) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let mut guard = self.records.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance audit store lock poisoned"
+                    .into(),
+            )
+        })?;
+        guard.entry(key).or_default().push(record.clone());
+        Ok(())
+    }
+
+    fn list(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>, WorldError>
+    {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let guard = self.records.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance audit store lock poisoned"
+                    .into(),
+            )
+        })?;
+        Ok(guard.get(&key).cloned().unwrap_or_default())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    fn audit_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-dead-letter-replay-rollback-governance-audit.jsonl"
+        )))
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+    for FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+{
+    fn append(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        record: &MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord,
+    ) -> Result<(), WorldError> {
+        let path = self.audit_path(world_id, node_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+        let line = serde_json::to_string(record)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        file.write_all(line.as_bytes())?;
+        file.write_all(b"\n")?;
+        Ok(())
+    }
+
+    fn list(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>, WorldError>
+    {
+        let path = self.audit_path(world_id, node_id)?;
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let file = OpenOptions::new().read(true).open(path)?;
+        let reader = BufReader::new(file);
+        let mut records = Vec::new();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            records.push(serde_json::from_str(&line)?);
+        }
+        Ok(records)
+    }
+}
+
 impl MembershipSyncClient {
     #[allow(clippy::too_many_arguments)]
     pub fn run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(
@@ -585,7 +752,8 @@ impl MembershipSyncClient {
         let dead_letters = dead_letter_store.list(&world_id, &node_id)?;
         let pending = recovery_store.load_pending(&world_id, &node_id)?;
         let metric_lines = dead_letter_store.list_delivery_metrics(&world_id, &node_id)?;
-        let metrics = aggregate_recent_delivery_metrics(&metric_lines, metrics_lookback);
+        let metrics =
+            super::replay::aggregate_recent_delivery_metrics(&metric_lines, metrics_lookback);
         let audit_record = MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord {
             world_id: world_id.clone(),
             node_id: node_id.clone(),
@@ -652,16 +820,7 @@ impl MembershipSyncClient {
         rollback_alert_policy: &MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
         rollback_governance_policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
         alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
-    ) -> Result<
-        (
-            usize,
-            MembershipRevocationDeadLetterReplayPolicy,
-            bool,
-            bool,
-            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
-        ),
-        WorldError,
-    > {
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceRunResult, WorldError> {
         validate_dead_letter_replay_rollback_governance_policy(rollback_governance_policy)?;
         let mut rollback_alert_state =
             rollback_alert_state_store.load_alert_state(world_id, target_node_id)?;
@@ -727,6 +886,145 @@ impl MembershipSyncClient {
             alert_emitted,
             governance_level,
         ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_governance_and_archive(
+        &self,
+        world_id: &str,
+        target_node_id: &str,
+        coordinator_node_id: &str,
+        now_ms: i64,
+        replay_interval_ms: i64,
+        fallback_policy: &MembershipRevocationDeadLetterReplayPolicy,
+        replay_state_store: &(dyn MembershipRevocationDeadLetterReplayStateStore + Send + Sync),
+        replay_policy_store: &(dyn MembershipRevocationDeadLetterReplayPolicyStore + Send + Sync),
+        replay_policy_audit_store: &(dyn MembershipRevocationDeadLetterReplayPolicyAuditStore
+              + Send
+              + Sync),
+        rollback_alert_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackAlertStateStore
+              + Send
+              + Sync),
+        rollback_governance_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+              + Send
+              + Sync),
+        rollback_governance_audit_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+              + Send
+              + Sync),
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+        metrics_lookback: usize,
+        min_replay_per_run: usize,
+        max_replay_per_run: usize,
+        max_retry_limit_exceeded_streak: usize,
+        policy_cooldown_ms: i64,
+        max_replay_step_change: usize,
+        max_retry_streak_step_change: usize,
+        rollback_guard: &MembershipRevocationDeadLetterReplayRollbackGuard,
+        rollback_alert_policy: &MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
+        rollback_governance_policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceRunResult, WorldError> {
+        let (replayed, policy, rolled_back, alert_emitted, governance_level) = self
+            .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_and_governance(
+                world_id,
+                target_node_id,
+                coordinator_node_id,
+                now_ms,
+                replay_interval_ms,
+                fallback_policy,
+                replay_state_store,
+                replay_policy_store,
+                replay_policy_audit_store,
+                rollback_alert_state_store,
+                rollback_governance_state_store,
+                recovery_store,
+                dead_letter_store,
+                coordinator,
+                coordinator_lease_ttl_ms,
+                metrics_lookback,
+                min_replay_per_run,
+                max_replay_per_run,
+                max_retry_limit_exceeded_streak,
+                policy_cooldown_ms,
+                max_replay_step_change,
+                max_retry_streak_step_change,
+                rollback_guard,
+                rollback_alert_policy,
+                rollback_governance_policy,
+                alert_sink,
+            )?;
+        let (world_id, node_id) = normalized_schedule_key(world_id, target_node_id)?;
+        let governance_state =
+            rollback_governance_state_store.load_governance_state(&world_id, &node_id)?;
+        let record = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+            world_id: world_id.clone(),
+            node_id: node_id.clone(),
+            audited_at_ms: now_ms,
+            governance_level,
+            rollback_streak: governance_state.rollback_streak,
+            rolled_back,
+            applied_policy: policy.clone(),
+            alert_emitted,
+        };
+        rollback_governance_audit_store.append(&world_id, &node_id, &record)?;
+        Ok((
+            replayed,
+            policy,
+            rolled_back,
+            alert_emitted,
+            governance_level,
+        ))
+    }
+
+    pub fn run_revocation_dead_letter_replay_rollback_governance_recovery_drill(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        drill_at_ms: i64,
+        recent_audit_limit: usize,
+        rollback_alert_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackAlertStateStore
+              + Send
+              + Sync),
+        rollback_governance_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+              + Send
+              + Sync),
+        rollback_governance_audit_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore
+              + Send
+              + Sync),
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport, WorldError>
+    {
+        if recent_audit_limit == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason:
+                    "membership revocation dead-letter governance recovery recent_audit_limit must be positive"
+                        .to_string(),
+            });
+        }
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        let alert_state = rollback_alert_state_store.load_alert_state(&world_id, &node_id)?;
+        let governance_state =
+            rollback_governance_state_store.load_governance_state(&world_id, &node_id)?;
+        let audits = rollback_governance_audit_store.list(&world_id, &node_id)?;
+        let start = audits.len().saturating_sub(recent_audit_limit);
+        let recent_audits = audits[start..].to_vec();
+        let has_emergency_history = audits.iter().any(|record| {
+            record.governance_level
+                == MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency
+        });
+        Ok(
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport {
+                world_id,
+                node_id,
+                drill_at_ms,
+                alert_state,
+                governance_state,
+                recent_audits,
+                has_emergency_history,
+            },
+        )
     }
 }
 
@@ -895,29 +1193,4 @@ fn emit_dead_letter_replay_rollback_alert_if_needed(
     alert_sink.emit(&alert)?;
     state.last_alert_at_ms = Some(now_ms);
     Ok(true)
-}
-
-fn aggregate_recent_delivery_metrics(
-    metric_lines: &[(i64, MembershipRevocationAlertDeliveryMetrics)],
-    metrics_lookback: usize,
-) -> MembershipRevocationAlertDeliveryMetrics {
-    let start = metric_lines.len().saturating_sub(metrics_lookback);
-    metric_lines[start..].iter().fold(
-        MembershipRevocationAlertDeliveryMetrics::default(),
-        |mut total, (_, metrics)| {
-            total.attempted = total.attempted.saturating_add(metrics.attempted);
-            total.succeeded = total.succeeded.saturating_add(metrics.succeeded);
-            total.failed = total.failed.saturating_add(metrics.failed);
-            total.deferred = total.deferred.saturating_add(metrics.deferred);
-            total.buffered = total.buffered.saturating_add(metrics.buffered);
-            total.dropped_capacity = total
-                .dropped_capacity
-                .saturating_add(metrics.dropped_capacity);
-            total.dropped_retry_limit = total
-                .dropped_retry_limit
-                .saturating_add(metrics.dropped_retry_limit);
-            total.dead_lettered = total.dead_lettered.saturating_add(metrics.dead_lettered);
-            total
-        },
-    )
 }

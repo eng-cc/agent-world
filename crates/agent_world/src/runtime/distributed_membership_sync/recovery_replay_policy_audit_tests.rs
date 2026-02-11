@@ -457,6 +457,265 @@ fn rollback_governance_state_store_file_round_trip() {
 }
 
 #[test]
+fn rollback_governance_audit_store_file_round_trip() {
+    let root = temp_membership_dir("dead-letter-replay-rollback-governance-audit-store");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let store = FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore::new(&root)
+        .expect("create rollback governance audit store");
+    let record = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+        world_id: "w1".to_string(),
+        node_id: "node-a".to_string(),
+        audited_at_ms: 1234,
+        governance_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable,
+        rollback_streak: 2,
+        rolled_back: true,
+        applied_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 4,
+            max_retry_limit_exceeded_streak: 2,
+        },
+        alert_emitted: false,
+    };
+    store
+        .append("w1", "node-a", &record)
+        .expect("append governance audit record");
+    let loaded = store
+        .list("w1", "node-a")
+        .expect("list governance audit records");
+    assert_eq!(loaded, vec![record]);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn run_with_governance_archive_appends_audit_record() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy_store = InMemoryMembershipRevocationDeadLetterReplayPolicyStore::new();
+    let replay_policy_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore::new();
+    let rollback_alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore::new();
+    let rollback_governance_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore::new();
+    let rollback_governance_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator = InMemoryMembershipRevocationScheduleCoordinator::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+
+    replay_policy_store
+        .save_policy_state("w1", "node-a", &unstable_policy_state(Some(1000)))
+        .expect("seed unstable policy state");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1200,
+            4,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+    dead_letter_store
+        .append_delivery_metrics("w1", "node-a", 1200, &unhealthy_metrics())
+        .expect("append metrics");
+
+    let fallback_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let rollback_guard = MembershipRevocationDeadLetterReplayRollbackGuard {
+        min_attempted: 4,
+        failure_ratio_per_mille: 500,
+        dead_letter_ratio_per_mille: 350,
+        rollback_cooldown_ms: 100,
+    };
+    let rollback_alert_policy = MembershipRevocationDeadLetterReplayRollbackAlertPolicy {
+        rollback_window_ms: 5_000,
+        max_rollbacks_per_window: 10,
+        min_attempted: 4,
+        alert_cooldown_ms: 500,
+    };
+    let rollback_governance_policy = MembershipRevocationDeadLetterReplayRollbackGovernancePolicy {
+        level_one_rollback_streak: 1,
+        level_two_rollback_streak: 3,
+        level_two_emergency_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 1,
+            max_retry_limit_exceeded_streak: 1,
+        },
+    };
+
+    let (replayed, policy, rolled_back, alert_emitted, governance_level) = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_governance_and_archive(
+            "w1",
+            "node-a",
+            "coordinator-1",
+            1200,
+            1,
+            &fallback_policy,
+            &replay_state_store,
+            &replay_policy_store,
+            &replay_policy_audit_store,
+            &rollback_alert_state_store,
+            &rollback_governance_state_store,
+            &rollback_governance_audit_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            4,
+            2,
+            16,
+            4,
+            20,
+            4,
+            2,
+            &rollback_guard,
+            &rollback_alert_policy,
+            &rollback_governance_policy,
+            &alert_sink,
+        )
+        .expect("run with governance archive");
+    assert_eq!(replayed, 1);
+    assert!(rolled_back);
+    assert!(!alert_emitted);
+    assert_eq!(
+        governance_level,
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable
+    );
+
+    let records = rollback_governance_audit_store
+        .list("w1", "node-a")
+        .expect("list governance audit records");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].governance_level, governance_level);
+    assert_eq!(records[0].applied_policy, policy);
+    assert!(records[0].rolled_back);
+}
+
+#[test]
+fn rollback_governance_recovery_drill_reports_recent_audits_and_emergency_history() {
+    let client = sample_client();
+    let rollback_alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore::new();
+    let rollback_governance_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore::new();
+    let rollback_governance_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore::new();
+
+    let alert_state = MembershipRevocationDeadLetterReplayRollbackAlertState {
+        last_alert_at_ms: Some(1400),
+    };
+    rollback_alert_state_store
+        .save_alert_state("w1", "node-a", &alert_state)
+        .expect("save alert state");
+    let governance_state = MembershipRevocationDeadLetterReplayRollbackGovernanceState {
+        rollback_streak: 3,
+        last_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+        last_level_updated_at_ms: Some(1500),
+    };
+    rollback_governance_state_store
+        .save_governance_state("w1", "node-a", &governance_state)
+        .expect("save governance state");
+
+    let normal_record = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+        world_id: "w1".to_string(),
+        node_id: "node-a".to_string(),
+        audited_at_ms: 1200,
+        governance_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Normal,
+        rollback_streak: 0,
+        rolled_back: false,
+        applied_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 6,
+            max_retry_limit_exceeded_streak: 3,
+        },
+        alert_emitted: false,
+    };
+    let emergency_record = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+        world_id: "w1".to_string(),
+        node_id: "node-a".to_string(),
+        audited_at_ms: 1300,
+        governance_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+        rollback_streak: 2,
+        rolled_back: true,
+        applied_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 1,
+            max_retry_limit_exceeded_streak: 1,
+        },
+        alert_emitted: true,
+    };
+    let stable_record = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord {
+        world_id: "w1".to_string(),
+        node_id: "node-a".to_string(),
+        audited_at_ms: 1400,
+        governance_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable,
+        rollback_streak: 1,
+        rolled_back: true,
+        applied_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 4,
+            max_retry_limit_exceeded_streak: 2,
+        },
+        alert_emitted: false,
+    };
+    rollback_governance_audit_store
+        .append("w1", "node-a", &normal_record)
+        .expect("append normal governance record");
+    rollback_governance_audit_store
+        .append("w1", "node-a", &emergency_record)
+        .expect("append emergency governance record");
+    rollback_governance_audit_store
+        .append("w1", "node-a", &stable_record)
+        .expect("append stable governance record");
+
+    let report = client
+        .run_revocation_dead_letter_replay_rollback_governance_recovery_drill(
+            "w1",
+            "node-a",
+            1600,
+            2,
+            &rollback_alert_state_store,
+            &rollback_governance_state_store,
+            &rollback_governance_audit_store,
+        )
+        .expect("run governance recovery drill");
+
+    assert_eq!(report.world_id, "w1");
+    assert_eq!(report.node_id, "node-a");
+    assert_eq!(report.drill_at_ms, 1600);
+    assert_eq!(report.alert_state, alert_state);
+    assert_eq!(report.governance_state, governance_state);
+    assert_eq!(report.recent_audits, vec![emergency_record, stable_record]);
+    assert!(report.has_emergency_history);
+}
+
+#[test]
+fn rollback_governance_recovery_drill_rejects_zero_recent_audit_limit() {
+    let client = sample_client();
+    let rollback_alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore::new();
+    let rollback_governance_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore::new();
+    let rollback_governance_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore::new();
+
+    let error = client
+        .run_revocation_dead_letter_replay_rollback_governance_recovery_drill(
+            "w1",
+            "node-a",
+            1600,
+            0,
+            &rollback_alert_state_store,
+            &rollback_governance_state_store,
+            &rollback_governance_audit_store,
+        )
+        .expect_err("zero recent_audit_limit should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("recent_audit_limit must be positive"),
+        "unexpected error: {message}"
+    );
+}
+
+#[test]
 fn run_with_alert_state_store_persists_cooldown_between_runs() {
     let client = sample_client();
     let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();

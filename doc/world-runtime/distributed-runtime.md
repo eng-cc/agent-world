@@ -495,6 +495,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 ## 成员目录吊销死信回放策略采纳审计与异常回退告警（草案）
 - **采纳审计与告警**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`、`MembershipRevocationDeadLetterReplayPolicyAuditStore` 与 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State`。
 - **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
-## 成员目录吊销死信回放策略审计状态持久化与多级回退治理（草案）
-- **状态存储扩展**：新增 `MembershipRevocationDeadLetterReplayRollbackAlertStateStore` 与 `MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore`（内存/文件实现）。
-- **治理联动入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_and_governance(...)`，输出治理级别并支持 `Stable/Emergency` 多级回退。
+## 成员目录吊销死信回放策略审计状态持久化、多级回退治理与归档演练（草案）
+- **状态存储扩展**：新增 rollback alert/governance state store 与 governance audit store（内存/文件实现）。
+- **治理联动与演练入口**：新增 governance+archive 联动执行入口与 recovery drill 入口，支持治理级别归档追踪与最近审计恢复演练报告。
