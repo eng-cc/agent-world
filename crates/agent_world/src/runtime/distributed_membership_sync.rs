@@ -26,13 +26,15 @@ type HmacSha256 = Hmac<Sha256>;
 
 pub use reconciliation::{
     FileMembershipRevocationAlertSink, FileMembershipRevocationScheduleStateStore,
-    InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleStateStore,
-    MembershipRevocationAlertPolicy, MembershipRevocationAlertSeverity,
-    MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
-    MembershipRevocationCheckpointAnnounce, MembershipRevocationReconcilePolicy,
+    InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleCoordinator,
+    InMemoryMembershipRevocationScheduleStateStore, MembershipRevocationAlertDedupPolicy,
+    MembershipRevocationAlertDedupState, MembershipRevocationAlertPolicy,
+    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
+    MembershipRevocationAnomalyAlert, MembershipRevocationCheckpointAnnounce,
+    MembershipRevocationCoordinatedRunReport, MembershipRevocationReconcilePolicy,
     MembershipRevocationReconcileReport, MembershipRevocationReconcileSchedulePolicy,
-    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleStateStore,
-    MembershipRevocationScheduledRunReport,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleCoordinator,
+    MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1171,3 +1173,6 @@ mod scheduler_tests;
 
 #[cfg(test)]
 mod persistence_tests;
+
+#[cfg(test)]
+mod coordination_tests;

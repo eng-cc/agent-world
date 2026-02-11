@@ -94,6 +94,24 @@ pub struct MembershipRevocationAnomalyAlert {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationAlertDedupPolicy {
+    pub suppress_window_ms: i64,
+}
+
+impl Default for MembershipRevocationAlertDedupPolicy {
+    fn default() -> Self {
+        Self {
+            suppress_window_ms: 60_000,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationAlertDedupState {
+    pub last_emitted_at_by_key: BTreeMap<String, i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationReconcileSchedulePolicy {
     pub checkpoint_interval_ms: i64,
     pub reconcile_interval_ms: i64,
@@ -110,6 +128,13 @@ pub struct MembershipRevocationScheduledRunReport {
     pub checkpoint_published: bool,
     pub reconcile_executed: bool,
     pub reconcile_report: Option<MembershipRevocationReconcileReport>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationCoordinatedRunReport {
+    pub acquired: bool,
+    pub emitted_alerts: usize,
+    pub run_report: Option<MembershipRevocationScheduledRunReport>,
 }
 
 pub trait MembershipRevocationAlertSink {
@@ -321,6 +346,97 @@ impl MembershipRevocationScheduleStateStore for FileMembershipRevocationSchedule
     }
 }
 
+pub trait MembershipRevocationScheduleCoordinator {
+    fn acquire(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        lease_ttl_ms: i64,
+    ) -> Result<bool, WorldError>;
+
+    fn release(&self, world_id: &str, node_id: &str) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct InMemoryCoordinatorLease {
+    holder_node_id: String,
+    expires_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationScheduleCoordinator {
+    leases: Arc<Mutex<BTreeMap<String, InMemoryCoordinatorLease>>>,
+}
+
+impl InMemoryMembershipRevocationScheduleCoordinator {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn holder_node(&self, world_id: &str) -> Result<Option<String>, WorldError> {
+        let world_id = logic::normalized_world_id(world_id)?;
+        let guard = self.leases.lock().map_err(|_| {
+            WorldError::Io("membership revocation coordinator lock poisoned".into())
+        })?;
+        Ok(guard
+            .get(&world_id)
+            .map(|lease| lease.holder_node_id.clone()))
+    }
+}
+
+impl MembershipRevocationScheduleCoordinator for InMemoryMembershipRevocationScheduleCoordinator {
+    fn acquire(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        lease_ttl_ms: i64,
+    ) -> Result<bool, WorldError> {
+        validate_coordinator_lease_ttl_ms(lease_ttl_ms)?;
+        let world_id = logic::normalized_world_id(world_id)?;
+        let node_id = normalized_node_id(node_id)?;
+
+        let mut guard = self.leases.lock().map_err(|_| {
+            WorldError::Io("membership revocation coordinator lock poisoned".into())
+        })?;
+
+        if let Some(existing) = guard.get(&world_id) {
+            let lease_active = now_ms < existing.expires_at_ms;
+            if lease_active && existing.holder_node_id != node_id {
+                return Ok(false);
+            }
+        }
+
+        guard.insert(
+            world_id,
+            InMemoryCoordinatorLease {
+                holder_node_id: node_id,
+                expires_at_ms: now_ms.saturating_add(lease_ttl_ms),
+            },
+        );
+        Ok(true)
+    }
+
+    fn release(&self, world_id: &str, node_id: &str) -> Result<(), WorldError> {
+        let world_id = logic::normalized_world_id(world_id)?;
+        let node_id = normalized_node_id(node_id)?;
+
+        let mut guard = self.leases.lock().map_err(|_| {
+            WorldError::Io("membership revocation coordinator lock poisoned".into())
+        })?;
+
+        let should_remove = guard
+            .get(&world_id)
+            .map(|lease| lease.holder_node_id == node_id)
+            .unwrap_or(false);
+        if should_remove {
+            guard.remove(&world_id);
+        }
+        Ok(())
+    }
+}
+
 impl MembershipSyncClient {
     pub fn publish_revocation_checkpoint(
         &self,
@@ -448,6 +564,44 @@ impl MembershipSyncClient {
         Ok(alerts)
     }
 
+    pub fn deduplicate_revocation_alerts(
+        &self,
+        alerts: Vec<MembershipRevocationAnomalyAlert>,
+        now_ms: i64,
+        policy: &MembershipRevocationAlertDedupPolicy,
+        state: &mut MembershipRevocationAlertDedupState,
+    ) -> Result<Vec<MembershipRevocationAnomalyAlert>, WorldError> {
+        if policy.suppress_window_ms < 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation suppress_window_ms must be non-negative, got {}",
+                    policy.suppress_window_ms
+                ),
+            });
+        }
+        if policy.suppress_window_ms == 0 {
+            return Ok(alerts);
+        }
+
+        let mut filtered = Vec::new();
+        for alert in alerts {
+            let key = alert_dedup_key(&alert);
+            let suppressed = state
+                .last_emitted_at_by_key
+                .get(&key)
+                .map(|last| now_ms.saturating_sub(*last) < policy.suppress_window_ms)
+                .unwrap_or(false);
+            if suppressed {
+                continue;
+            }
+
+            state.last_emitted_at_by_key.insert(key, now_ms);
+            filtered.push(alert);
+        }
+
+        Ok(filtered)
+    }
+
     pub fn emit_revocation_reconcile_alerts(
         &self,
         sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
@@ -547,6 +701,85 @@ impl MembershipSyncClient {
 
         Ok(report)
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_reconcile_coordinated(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        reconcile_policy: &MembershipRevocationReconcilePolicy,
+        schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+        alert_policy: &MembershipRevocationAlertPolicy,
+        dedup_policy: Option<&MembershipRevocationAlertDedupPolicy>,
+        mut dedup_state: Option<&mut MembershipRevocationAlertDedupState>,
+        schedule_store: &(dyn MembershipRevocationScheduleStateStore + Send + Sync),
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+    ) -> Result<MembershipRevocationCoordinatedRunReport, WorldError> {
+        if !coordinator.acquire(world_id, node_id, now_ms, coordinator_lease_ttl_ms)? {
+            return Ok(MembershipRevocationCoordinatedRunReport {
+                acquired: false,
+                emitted_alerts: 0,
+                run_report: None,
+            });
+        }
+
+        let run_outcome = (|| {
+            let mut schedule_state = schedule_store.load(world_id, node_id)?;
+            let run_report = self.run_revocation_reconcile_schedule(
+                world_id,
+                node_id,
+                now_ms,
+                subscription,
+                keyring,
+                reconcile_policy,
+                schedule_policy,
+                &mut schedule_state,
+            )?;
+            schedule_store.save(world_id, node_id, &schedule_state)?;
+
+            let mut emitted_alerts = 0;
+            if let Some(reconcile_report) = run_report.reconcile_report.as_ref() {
+                let alerts = self.evaluate_revocation_reconcile_alerts(
+                    world_id,
+                    node_id,
+                    now_ms,
+                    reconcile_report,
+                    alert_policy,
+                )?;
+                let alerts = if let Some(dedup_policy) = dedup_policy {
+                    let state = dedup_state.as_deref_mut().ok_or_else(|| {
+                        WorldError::DistributedValidationFailed {
+                            reason: "membership revocation dedup_state is required when dedup_policy is configured"
+                                .to_string(),
+                        }
+                    })?;
+                    self.deduplicate_revocation_alerts(alerts, now_ms, dedup_policy, state)?
+                } else {
+                    alerts
+                };
+                emitted_alerts = self.emit_revocation_reconcile_alerts(alert_sink, &alerts)?;
+            }
+
+            Ok(MembershipRevocationCoordinatedRunReport {
+                acquired: true,
+                emitted_alerts,
+                run_report: Some(run_report),
+            })
+        })();
+
+        let release_outcome = coordinator.release(world_id, node_id);
+        match (run_outcome, release_outcome) {
+            (Ok(report), Ok(())) => Ok(report),
+            (Err(err), Ok(())) => Err(err),
+            (Ok(_), Err(release_err)) => Err(release_err),
+            (Err(err), Err(_)) => Err(err),
+        }
+    }
 }
 
 fn validate_revocation_checkpoint(
@@ -642,6 +875,18 @@ fn validate_schedule_policy(
     Ok(())
 }
 
+fn validate_coordinator_lease_ttl_ms(lease_ttl_ms: i64) -> Result<(), WorldError> {
+    if lease_ttl_ms <= 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation coordinator lease_ttl_ms must be positive, got {}",
+                lease_ttl_ms
+            ),
+        });
+    }
+    Ok(())
+}
+
 fn schedule_due(last_run_ms: Option<i64>, now_ms: i64, interval_ms: i64) -> bool {
     match last_run_ms {
         None => true,
@@ -654,4 +899,8 @@ fn normalized_schedule_key(world_id: &str, node_id: &str) -> Result<(String, Str
         logic::normalized_world_id(world_id)?,
         normalized_node_id(node_id)?,
     ))
+}
+
+fn alert_dedup_key(alert: &MembershipRevocationAnomalyAlert) -> String {
+    format!("{}:{}:{}", alert.world_id, alert.node_id, alert.code)
 }
