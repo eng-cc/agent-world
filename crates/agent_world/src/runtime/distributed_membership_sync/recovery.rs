@@ -56,6 +56,15 @@ pub use replay_archive_tiered::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore,
 };
 mod replay_archive_tiered;
+#[rustfmt::skip]
+pub use replay_archive_federated::{
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus, InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceArchiveTieredOffloadDrillAlertEventBusRunReport, MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryRecord, MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditArchiveTier, MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus, MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome,
+};
+mod replay_archive_federated;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeliveryMetrics {
     pub attempted: usize,
@@ -67,7 +76,6 @@ pub struct MembershipRevocationAlertDeliveryMetrics {
     pub dropped_retry_limit: usize,
     pub dead_lettered: usize,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationAlertRecoveryReport {
     pub recovered: usize,
@@ -78,7 +86,6 @@ pub struct MembershipRevocationAlertRecoveryReport {
     pub dropped_retry_limit: usize,
     pub delivery_metrics: MembershipRevocationAlertDeliveryMetrics,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationCoordinatedRecoveryRunReport {
     pub acquired: bool,
@@ -91,14 +98,12 @@ pub struct MembershipRevocationCoordinatedRecoveryRunReport {
     pub delivery_metrics: MembershipRevocationAlertDeliveryMetrics,
     pub run_report: Option<MembershipRevocationScheduledRunReport>,
 }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MembershipRevocationAlertDeadLetterReason {
     RetryLimitExceeded,
     CapacityEvicted,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeadLetterRecord {
     pub world_id: String,
@@ -107,13 +112,11 @@ pub struct MembershipRevocationAlertDeadLetterRecord {
     pub reason: MembershipRevocationAlertDeadLetterReason,
     pub pending_alert: MembershipRevocationPendingAlert,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationCoordinatorLeaseState {
     pub holder_node_id: String,
     pub expires_at_ms: i64,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationPendingAlert {
     pub alert: MembershipRevocationAnomalyAlert,
@@ -124,7 +127,6 @@ pub struct MembershipRevocationPendingAlert {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_error: Option<String>,
 }
-
 impl MembershipRevocationPendingAlert {
     fn new(alert: MembershipRevocationAnomalyAlert, now_ms: i64) -> Self {
         Self {
@@ -134,7 +136,6 @@ impl MembershipRevocationPendingAlert {
             last_error: None,
         }
     }
-
     fn from_legacy(alert: MembershipRevocationAnomalyAlert) -> Self {
         Self {
             alert,
@@ -143,7 +144,6 @@ impl MembershipRevocationPendingAlert {
             last_error: None,
         }
     }
-
     fn with_retry_failure(mut self, now_ms: i64, retry_backoff_ms: i64, error: String) -> Self {
         self.attempt = self.attempt.saturating_add(1);
         self.next_retry_at_ms = now_ms.saturating_add(retry_backoff_ms);
