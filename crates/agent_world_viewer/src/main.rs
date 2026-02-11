@@ -48,6 +48,7 @@ mod location_fragment_render;
 mod material_library;
 mod panel_layout;
 mod panel_scroll;
+mod render_perf_summary;
 mod right_panel_module_visibility;
 mod scene_helpers;
 mod selection_emphasis;
@@ -87,6 +88,7 @@ use material_library::{
 };
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
+use render_perf_summary::{sample_render_perf_summary, RenderPerfHistory, RenderPerfSummary};
 use right_panel_module_visibility::{
     persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,
 };

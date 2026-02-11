@@ -35,6 +35,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
         .insert_resource(RightPanelWidthState::default())
+        .insert_resource(RenderPerfSummary::default())
+        .insert_resource(RenderPerfHistory::default())
         .insert_resource(LabelLodStats::default())
         .insert_resource(module_visibility_state)
         .insert_resource(module_visibility_path)
@@ -90,6 +92,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_grid_line_lod_visibility.after(sync_camera_mode),
                 sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),
+                sample_render_perf_summary.after(update_grid_line_lod_visibility),
                 update_3d_viewport,
                 handle_control_buttons,
             ),

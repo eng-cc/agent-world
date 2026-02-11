@@ -419,6 +419,7 @@ fn egui_kittest_overview_renders_status_badges() {
             &state,
             &selection,
             &timeline,
+            None,
         );
     });
 
@@ -448,6 +449,7 @@ fn egui_kittest_overview_reacts_to_warn_and_manual_mode() {
             &state,
             &selection,
             &timeline,
+            None,
         );
     });
 
@@ -455,6 +457,38 @@ fn egui_kittest_overview_reacts_to_warn_and_manual_mode() {
     harness.get_by_label_contains("Health: Warn 1");
     harness.get_by_label_contains("View: Manual");
     harness.get_by_label_contains("Status: connected");
+}
+
+#[test]
+fn egui_kittest_overview_renders_render_perf_summary() {
+    let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let selection = crate::ViewerSelection::default();
+    let timeline = TimelineUiState::default();
+    let perf = crate::RenderPerfSummary {
+        frame_ms_avg: 16.7,
+        frame_ms_p95: 24.2,
+        world_entities: 180,
+        visible_labels: 46,
+        overlay_entities: 22,
+        event_window_size: 88,
+        auto_degrade_active: true,
+    };
+
+    let mut harness = Harness::new_ui(move |ui| {
+        render_overview_section(
+            ui,
+            crate::i18n::UiLocale::EnUs,
+            &state,
+            &selection,
+            &timeline,
+            Some(&perf),
+        );
+    });
+
+    harness.fit_contents();
+    harness.get_by_label_contains("Render: avg/p95 16.7/24.2 ms");
+    harness.get_by_label_contains("Entities:180");
+    harness.get_by_label_contains("Budget: auto degrade active");
 }
 
 #[derive(Default)]
@@ -662,6 +696,7 @@ fn egui_kittest_snapshot_overview_live() {
                 &state,
                 &selection,
                 &timeline,
+                None,
             );
         });
 
@@ -699,6 +734,7 @@ fn egui_kittest_snapshot_overview_manual_high_risk() {
                 &state,
                 &selection,
                 &timeline,
+                None,
             );
         });
 
