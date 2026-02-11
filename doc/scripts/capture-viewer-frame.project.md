@@ -24,6 +24,9 @@
 - [x] M7：当 `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS=1` 时自动提高默认最大等待
 - [x] M7：截图超时时输出 `viewer.log` tail，提升闭环排障效率
 - [x] M7：完成帮助信息、脚本语法与实跑截图回归
+- [x] M8：新增 `--auto-select-target` 参数并透传 `AGENT_WORLD_VIEWER_AUTO_SELECT*`
+- [x] M8：新增 `--automation-steps` 参数并透传 `AGENT_WORLD_VIEWER_AUTOMATION_STEPS`
+- [x] M8：更新帮助信息与日志输出，便于确认自动化参数是否生效
 
 ## 依赖
 - Linux：`Xvfb`、`ffmpeg`、`xwininfo`
@@ -31,6 +34,6 @@
 - Rust/Cargo（`world_viewer_live` + `agent_world_viewer`）
 
 ## 状态
-- 当前阶段：M7（预热编译 + 可调超时 + 失败日志完成）
-- 下一阶段：按需补充“多帧抓图”或“自动交互注入”
-- 最近更新：脚本默认预热并支持 `--capture-max-wait`，碎片重场景截图稳定性提升（2026-02-10）
+- 当前阶段：M8（启动自动选中/自动化步骤参数透传完成）
+- 下一阶段：按需补充“多帧抓图”或“自动化步骤模板库”
+- 最近更新：脚本支持 `--auto-select-target` 与 `--automation-steps`（2026-02-11）

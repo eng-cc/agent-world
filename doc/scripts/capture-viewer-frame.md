@@ -31,6 +31,8 @@
   - `--auto-focus-target`：启动 viewer 后自动聚焦目标（如 `first_fragment`、`location:frag-1`、`agent:agent-0`）
   - `--auto-focus-radius`：自动聚焦半径覆盖值
   - `--auto-focus-keep-2d`：自动聚焦时保持 2D（默认切换 3D）
+  - `--auto-select-target`：启动后自动选中目标（如 `first_agent`、`agent:agent-0`）
+  - `--automation-steps`：启动后自动执行步骤（如 `mode=3d;focus=agent:agent-0;zoom=0.8;select=agent:agent-0`）
   - `--capture-max-wait`：覆盖 macOS 内置截图最大等待秒数（默认自动推导）
   - `--no-prewarm`：跳过预热编译（默认会预热 `world_viewer_live` 与 `agent_world_viewer`）
 - viewer 内置截图环境变量：
@@ -38,6 +40,8 @@
   - `AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS`：最短等待秒数（默认 2 秒）。
   - `AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS`：无快照时的最大等待秒数（由脚本按 `viewer_wait` 自动推导，可被 `--capture-max-wait` 覆盖）。
   - （可选）`AGENT_WORLD_VIEWER_AUTO_FOCUS*`：脚本在传入 `--auto-focus-*` 时自动注入。
+  - （可选）`AGENT_WORLD_VIEWER_AUTO_SELECT*`：脚本在传入 `--auto-select-target` 时自动注入。
+  - （可选）`AGENT_WORLD_VIEWER_AUTOMATION_STEPS`：脚本在传入 `--automation-steps` 时自动注入。
 - 输出目录：`.tmp/screens/`
   - `root.png`：整屏截图（macOS 内置截图模式下与 `window.png` 相同）
   - `window.png`：viewer 窗口截图

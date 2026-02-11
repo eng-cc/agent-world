@@ -70,6 +70,9 @@
 - [x] 输出 Viewer Agent 尺寸可观测与比例校验设计文档（`doc/world-simulator/viewer-agent-size-inspection.md`）
 - [x] 输出 Viewer Agent 尺寸可观测与比例校验项目管理文档（`doc/world-simulator/viewer-agent-size-inspection.project.md`）
 - [x] Viewer 选中 Agent 详情新增尺寸字段（身高/Location 半径/比例）
+- [x] 输出 Viewer 启动自动化步骤设计文档（`doc/world-simulator/viewer-auto-select-capture.md`）
+- [x] 输出 Viewer 启动自动化步骤项目管理文档（`doc/world-simulator/viewer-auto-select-capture.project.md`）
+- [x] Viewer 启动自动化步骤（mode/focus/pan/zoom/orbit/select）+ 脚本透传，支持无人工闭环验证
 - [x] 可视化设计文档补充“信息直达”原则并盘点现状缺口
 - [x] 在线模式支持任意 tick seek（reset+replay，含不可达保护）
 - [x] Viewer 时间轴目标 tick 控件与拖拽 seek
