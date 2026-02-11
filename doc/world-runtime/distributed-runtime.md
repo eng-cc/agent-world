@@ -450,3 +450,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **恢复发送**：新增 `emit_revocation_reconcile_alerts_with_recovery(...)`，先重放 pending，再发送新告警，失败回写队列。
 - **协同编排**：新增 `run_revocation_reconcile_coordinated_with_recovery(...)`，打通协同调度 + 去重 + 恢复发送。
 - **运行报告**：新增 `MembershipRevocationAlertRecoveryReport` 与 `MembershipRevocationCoordinatedRecoveryRunReport`。
+
+## 成员目录吊销恢复队列容量治理与告警 ACK 重试（草案）
+- **恢复队列元素**：新增 `MembershipRevocationPendingAlert`，持久化 `attempt/next_retry_at_ms/last_error` 等重试元数据。
+- **ACK 重试策略**：新增 `MembershipRevocationAlertAckRetryPolicy`（`max_pending_alerts/max_retry_attempts/retry_backoff_ms`）。
+- **发送入口扩展**：新增 `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(...)`，支持到期重试、失败退避、容量裁剪。
+- **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(...)`，在协调调度链路中接入 ACK 重试策略。
+- **兼容策略**：文件 recovery store 支持读取旧版 `Vec<MembershipRevocationAnomalyAlert>` 格式并自动升级为 pending 结构。
+- **运行报告扩展**：`MembershipRevocationAlertRecoveryReport`/`MembershipRevocationCoordinatedRecoveryRunReport` 增加 `deferred/dropped_capacity/dropped_retry_limit` 指标。
