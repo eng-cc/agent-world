@@ -180,12 +180,24 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEve
         let mut normalized_state = state.clone();
         normalized_state.world_id = key.0.clone();
         normalized_state.consumer_id = key.1.clone();
+        normalized_state.since_node_id = match state.since_node_id.as_deref() {
+            Some(node_id) => {
+                let (_, normalized_node_id) =
+                    normalized_schedule_key(&normalized_state.world_id, node_id)?;
+                Some(normalized_node_id)
+            }
+            None => None,
+        };
         let mut guard = self.states.lock().map_err(|_| {
             WorldError::Io(
                 "membership revocation dead-letter replay rollback governance recovery drill alert composite sequence cursor state store lock poisoned"
                     .into(),
             )
         })?;
+        ensure_composite_sequence_cursor_state_not_rollback(
+            guard.get(&key),
+            &normalized_state,
+        )?;
         guard.insert(key, normalized_state);
         Ok(())
     }
@@ -249,22 +261,35 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEve
         &self,
         state: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
     ) -> Result<(), WorldError> {
-        let path = self.state_path(&state.world_id, &state.consumer_id)?;
+        let (normalized_world_id, normalized_consumer_id) =
+            normalized_schedule_key(&state.world_id, &state.consumer_id)?;
+        let path = self.state_path(&normalized_world_id, &normalized_consumer_id)?;
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
                 fs::create_dir_all(parent)?;
             }
         }
-        let (normalized_world_id, normalized_consumer_id) =
-            normalized_schedule_key(&state.world_id, &state.consumer_id)?;
+        let normalized_since_node_id = match state.since_node_id.as_deref() {
+            Some(node_id) => {
+                let (_, normalized_node_id) =
+                    normalized_schedule_key(&normalized_world_id, node_id)?;
+                Some(normalized_node_id)
+            }
+            None => None,
+        };
         let normalized_state =
             MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState {
                 world_id: normalized_world_id,
                 consumer_id: normalized_consumer_id,
                 since_event_at_ms: state.since_event_at_ms,
-                since_node_id: state.since_node_id.clone(),
+                since_node_id: normalized_since_node_id,
                 since_node_event_offset: state.since_node_event_offset,
             };
+        let existing_state = self.load(&normalized_state.world_id, &normalized_state.consumer_id)?;
+        ensure_composite_sequence_cursor_state_not_rollback(
+            existing_state.as_ref(),
+            &normalized_state,
+        )?;
         fs::write(path, serde_json::to_vec(&normalized_state)?)?;
         Ok(())
     }
@@ -937,6 +962,47 @@ fn validate_governance_recovery_drill_alert_event_aggregate_query_args(
         return Err(WorldError::DistributedValidationFailed {
             reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query max_records must be positive".to_string(),
         });
+    }
+    Ok(())
+}
+
+fn compare_composite_sequence_cursor(
+    left_since_event_at_ms: i64,
+    left_since_node_id: Option<&str>,
+    left_since_node_event_offset: usize,
+    right_since_event_at_ms: i64,
+    right_since_node_id: Option<&str>,
+    right_since_node_event_offset: usize,
+) -> std::cmp::Ordering {
+    left_since_event_at_ms
+        .cmp(&right_since_event_at_ms)
+        .then_with(|| left_since_node_id.cmp(&right_since_node_id))
+        .then_with(|| left_since_node_event_offset.cmp(&right_since_node_event_offset))
+}
+
+fn ensure_composite_sequence_cursor_state_not_rollback(
+    previous: Option<
+        &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+    >,
+    next: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+) -> Result<(), WorldError> {
+    if let Some(previous) = previous {
+        let ordering = compare_composite_sequence_cursor(
+            previous.since_event_at_ms,
+            previous.since_node_id.as_deref(),
+            previous.since_node_event_offset,
+            next.since_event_at_ms,
+            next.since_node_id.as_deref(),
+            next.since_node_event_offset,
+        );
+        if ordering == std::cmp::Ordering::Greater {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter replay rollback governance recovery drill alert composite sequence cursor state cannot rollback for world {} consumer {}",
+                    next.world_id, next.consumer_id
+                ),
+            });
+        }
     }
     Ok(())
 }
