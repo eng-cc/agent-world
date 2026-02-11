@@ -49,6 +49,7 @@ mod panel_layout;
 mod panel_scroll;
 mod right_panel_module_visibility;
 mod scene_helpers;
+mod selection_emphasis;
 mod selection_linking;
 mod timeline_controls;
 mod ui_locale_text;
@@ -88,6 +89,7 @@ use right_panel_module_visibility::{
     persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,
 };
 use scene_helpers::*;
+use selection_emphasis::{update_selection_emphasis, SelectionEmphasisState};
 use selection_linking::{
     handle_jump_selection_events_button, handle_locate_focus_event_button, pick_3d_selection,
     spawn_event_object_link_controls, update_event_object_link_text, EventObjectLinkState,
