@@ -36,6 +36,14 @@ pub use reconciliation::{
     MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleCoordinator,
     MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
 };
+pub use recovery::{
+    FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationAlertRecoveryStore,
+    InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertRecoveryReport,
+    MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
+    MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
+    StoreBackedMembershipRevocationScheduleCoordinator,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipDirectoryAnnounce {
@@ -1164,6 +1172,7 @@ fn world_error_reason(error: &WorldError) -> String {
 
 mod logic;
 mod reconciliation;
+mod recovery;
 
 #[cfg(test)]
 mod tests;
@@ -1176,3 +1185,6 @@ mod persistence_tests;
 
 #[cfg(test)]
 mod coordination_tests;
+
+#[cfg(test)]
+mod recovery_tests;

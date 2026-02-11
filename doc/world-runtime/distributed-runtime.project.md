@@ -221,6 +221,15 @@
 - [x] 协同锁支持 lease 过期与显式 release
 - [x] 单元测试与分布式回归
 
+### 38. P3.21 成员目录吊销协同状态外部存储与告警恢复机制
+- [x] 新增 `MembershipRevocationCoordinatorStateStore` 与内存/文件实现
+- [x] 新增 `StoreBackedMembershipRevocationScheduleCoordinator`
+- [x] 新增 `MembershipRevocationAlertRecoveryStore` 与内存/文件实现
+- [x] 新增 `emit_revocation_reconcile_alerts_with_recovery`
+- [x] 新增 `MembershipRevocationCoordinatedRecoveryRunReport`
+- [x] 新增 `run_revocation_reconcile_coordinated_with_recovery`
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -228,6 +237,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.20 完成（成员目录吊销告警抑制去重与调度多节点协同）
-- 下一步：P3.21（成员目录吊销协同状态外部存储与告警恢复机制）
-- 最近更新：成员目录吊销告警抑制去重与调度多节点协同（2026-02-10）
+- 当前阶段：P3.21 完成（成员目录吊销协同状态外部存储与告警恢复机制）
+- 下一步：P3.22（成员目录吊销恢复队列容量治理与告警 ACK 重试）
+- 最近更新：成员目录吊销协同状态外部存储与告警恢复机制（2026-02-11）

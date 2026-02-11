@@ -441,3 +441,12 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **协同抽象**：新增 `MembershipRevocationScheduleCoordinator` 与 `InMemoryMembershipRevocationScheduleCoordinator`。
 - **协同编排**：新增 `run_revocation_reconcile_coordinated(...)`，先抢占协调锁再执行 schedule/store/alert。
 - **运行报告**：新增 `MembershipRevocationCoordinatedRunReport`，反馈是否获得执行权与实际告警发出数量。
+
+
+## 成员目录吊销协同状态外部存储与告警恢复机制（草案）
+- **协同状态存储**：新增 `MembershipRevocationCoordinatorStateStore`，支持内存/文件 lease 状态持久化。
+- **Store 协调器**：新增 `StoreBackedMembershipRevocationScheduleCoordinator`，基于外部状态实现跨进程协同锁。
+- **恢复存储**：新增 `MembershipRevocationAlertRecoveryStore`，记录待重放告警队列。
+- **恢复发送**：新增 `emit_revocation_reconcile_alerts_with_recovery(...)`，先重放 pending，再发送新告警，失败回写队列。
+- **协同编排**：新增 `run_revocation_reconcile_coordinated_with_recovery(...)`，打通协同调度 + 去重 + 恢复发送。
+- **运行报告**：新增 `MembershipRevocationAlertRecoveryReport` 与 `MembershipRevocationCoordinatedRecoveryRunReport`。
