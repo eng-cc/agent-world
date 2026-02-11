@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -17,6 +16,12 @@ use super::reconciliation::{
 use super::{
     logic, MembershipDirectorySignerKeyring, MembershipSyncClient, MembershipSyncSubscription,
 };
+
+pub use dead_letter::{
+    FileMembershipRevocationAlertDeadLetterStore, InMemoryMembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationAlertDeadLetterStore, NoopMembershipRevocationAlertDeadLetterStore,
+};
+mod dead_letter;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeliveryMetrics {
@@ -389,120 +394,6 @@ impl MembershipRevocationAlertRecoveryStore for FileMembershipRevocationAlertRec
     }
 }
 
-pub trait MembershipRevocationAlertDeadLetterStore {
-    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError>;
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct NoopMembershipRevocationAlertDeadLetterStore;
-
-impl MembershipRevocationAlertDeadLetterStore for NoopMembershipRevocationAlertDeadLetterStore {
-    fn append(
-        &self,
-        _record: &MembershipRevocationAlertDeadLetterRecord,
-    ) -> Result<(), WorldError> {
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct InMemoryMembershipRevocationAlertDeadLetterStore {
-    records: Arc<Mutex<BTreeMap<(String, String), Vec<MembershipRevocationAlertDeadLetterRecord>>>>,
-}
-
-impl InMemoryMembershipRevocationAlertDeadLetterStore {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn list(
-        &self,
-        world_id: &str,
-        node_id: &str,
-    ) -> Result<Vec<MembershipRevocationAlertDeadLetterRecord>, WorldError> {
-        let key = normalized_schedule_key(world_id, node_id)?;
-        let guard = self.records.lock().map_err(|_| {
-            WorldError::Io("membership revocation dead-letter store lock poisoned".into())
-        })?;
-        Ok(guard.get(&key).cloned().unwrap_or_default())
-    }
-}
-
-impl MembershipRevocationAlertDeadLetterStore for InMemoryMembershipRevocationAlertDeadLetterStore {
-    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError> {
-        let key = normalized_schedule_key(&record.world_id, &record.node_id)?;
-        let mut guard = self.records.lock().map_err(|_| {
-            WorldError::Io("membership revocation dead-letter store lock poisoned".into())
-        })?;
-        guard.entry(key).or_default().push(record.clone());
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FileMembershipRevocationAlertDeadLetterStore {
-    root_dir: PathBuf,
-}
-
-impl FileMembershipRevocationAlertDeadLetterStore {
-    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
-        let root_dir = root_dir.into();
-        fs::create_dir_all(&root_dir)?;
-        Ok(Self { root_dir })
-    }
-
-    pub fn root_dir(&self) -> &Path {
-        &self.root_dir
-    }
-
-    fn dead_letter_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
-        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
-        Ok(self.root_dir.join(format!(
-            "{world_id}.{node_id}.revocation-alert-dead-letter.jsonl"
-        )))
-    }
-
-    pub fn list(
-        &self,
-        world_id: &str,
-        node_id: &str,
-    ) -> Result<Vec<MembershipRevocationAlertDeadLetterRecord>, WorldError> {
-        let path = self.dead_letter_path(world_id, node_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
-        let mut records = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            records.push(serde_json::from_str(&line)?);
-        }
-        Ok(records)
-    }
-}
-
-impl MembershipRevocationAlertDeadLetterStore for FileMembershipRevocationAlertDeadLetterStore {
-    fn append(&self, record: &MembershipRevocationAlertDeadLetterRecord) -> Result<(), WorldError> {
-        let path = self.dead_letter_path(&record.world_id, &record.node_id)?;
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)?;
-            }
-        }
-
-        let line = serde_json::to_string(record)?;
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        file.write_all(line.as_bytes())?;
-        file.write_all(b"\n")?;
-        Ok(())
-    }
-}
-
 #[derive(Clone)]
 pub struct StoreBackedMembershipRevocationScheduleCoordinator {
     store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync>,
@@ -752,6 +643,145 @@ impl MembershipSyncClient {
         report.delivery_metrics = metrics;
 
         recovery_store.save_pending(&world_id, &node_id, &buffered)?;
+        Ok(report)
+    }
+
+    pub fn replay_revocation_dead_letters(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        max_replay: usize,
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+    ) -> Result<usize, WorldError> {
+        if max_replay == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "membership revocation dead-letter max_replay must be positive".to_string(),
+            });
+        }
+
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        let mut dead_letters = dead_letter_store.list(&world_id, &node_id)?;
+        if dead_letters.is_empty() {
+            return Ok(0);
+        }
+
+        let replay_count = dead_letters.len().min(max_replay);
+        let replaying: Vec<MembershipRevocationAlertDeadLetterRecord> =
+            dead_letters.drain(0..replay_count).collect();
+
+        let mut pending = recovery_store.load_pending(&world_id, &node_id)?;
+        for record in replaying {
+            pending.push(record.pending_alert);
+        }
+        recovery_store.save_pending(&world_id, &node_id, &pending)?;
+        dead_letter_store.replace(&world_id, &node_id, &dead_letters)?;
+        Ok(replay_count)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_dead_letter_replay_schedule(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        replay_interval_ms: i64,
+        max_replay: usize,
+        last_replay_at_ms: &mut Option<i64>,
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+    ) -> Result<usize, WorldError> {
+        if replay_interval_ms <= 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter replay_interval_ms must be positive, got {}",
+                    replay_interval_ms
+                ),
+            });
+        }
+
+        let should_run = last_replay_at_ms
+            .map(|last| now_ms.saturating_sub(last) >= replay_interval_ms)
+            .unwrap_or(true);
+        if !should_run {
+            return Ok(0);
+        }
+
+        let replayed = self.replay_revocation_dead_letters(
+            world_id,
+            node_id,
+            max_replay,
+            recovery_store,
+            dead_letter_store,
+        )?;
+        *last_replay_at_ms = Some(now_ms);
+        Ok(replayed)
+    }
+
+    pub fn export_revocation_alert_delivery_metrics(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        exported_at_ms: i64,
+        metrics: &MembershipRevocationAlertDeliveryMetrics,
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+    ) -> Result<(), WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        dead_letter_store.append_delivery_metrics(&world_id, &node_id, exported_at_ms, metrics)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        now_ms: i64,
+        subscription: &MembershipSyncSubscription,
+        keyring: &mut MembershipDirectorySignerKeyring,
+        reconcile_policy: &MembershipRevocationReconcilePolicy,
+        schedule_policy: &MembershipRevocationReconcileSchedulePolicy,
+        alert_policy: &MembershipRevocationAlertPolicy,
+        dedup_policy: Option<&MembershipRevocationAlertDedupPolicy>,
+        dedup_state: Option<&mut MembershipRevocationAlertDedupState>,
+        schedule_store: &(dyn MembershipRevocationScheduleStateStore + Send + Sync),
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        recovery_policy: &MembershipRevocationAlertAckRetryPolicy,
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+    ) -> Result<MembershipRevocationCoordinatedRecoveryRunReport, WorldError> {
+        let report = self
+            .run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(
+                world_id,
+                node_id,
+                now_ms,
+                subscription,
+                keyring,
+                reconcile_policy,
+                schedule_policy,
+                alert_policy,
+                dedup_policy,
+                dedup_state,
+                schedule_store,
+                alert_sink,
+                recovery_store,
+                recovery_policy,
+                dead_letter_store,
+                coordinator,
+                coordinator_lease_ttl_ms,
+            )?;
+
+        if report.acquired {
+            self.export_revocation_alert_delivery_metrics(
+                world_id,
+                node_id,
+                now_ms,
+                &report.delivery_metrics,
+                dead_letter_store,
+            )?;
+        }
+
         Ok(report)
     }
 
@@ -1015,7 +1045,10 @@ fn normalized_node_id(raw: &str) -> Result<String, WorldError> {
     Ok(normalized.to_string())
 }
 
-fn normalized_schedule_key(world_id: &str, node_id: &str) -> Result<(String, String), WorldError> {
+pub(super) fn normalized_schedule_key(
+    world_id: &str,
+    node_id: &str,
+) -> Result<(String, String), WorldError> {
     Ok((
         logic::normalized_world_id(world_id)?,
         normalized_node_id(node_id)?,

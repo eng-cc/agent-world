@@ -466,3 +466,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(...)`，在协同调度链路中透传死信归档能力。
 - **投递指标**：新增 `MembershipRevocationAlertDeliveryMetrics`，统计 attempted/succeeded/failed/deferred/buffered/drop/dead-letter 指标。
 - **报告补齐**：恢复与协同报告结构增加 `delivery_metrics` 字段，便于节点级故障诊断与容量调优。
+
+## 成员目录吊销死信回放调度与指标导出（草案）
+- **Store 扩展**：`MembershipRevocationAlertDeadLetterStore` 增加 `list/replace` 与 delivery metrics `append/list` 能力。
+- **回放入口**：新增 `replay_revocation_dead_letters(...)`，按 FIFO + `max_replay` 将 dead-letter 回注到 recovery pending 队列。
+- **调度入口**：新增 `run_revocation_dead_letter_replay_schedule(...)`，按 `replay_interval_ms` 控制回放频率。
+- **指标导出**：新增 `export_revocation_alert_delivery_metrics(...)`，将 delivery metrics 归档到 dead-letter store 的 metrics 轨道。
+- **协同联动导出**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export(...)`。
+- **可观测性**：内存/文件 store 均可查询导出 metrics 历史，为后续外部监控接入提供数据面。
