@@ -264,6 +264,16 @@
 - [x] 新增优先级回放与跨节点协同单元测试
 - [x] 单元测试与分布式回归
 
+### 43. P3.26 成员目录吊销死信回放状态持久化与公平调度
+- [x] 新增 `MembershipRevocationDeadLetterReplayStateStore` 与内存/文件实现
+- [x] 新增 `MembershipRevocationDeadLetterReplayScheduleState`
+- [x] 新增 `MembershipRevocationDeadLetterReplayPolicy`（公平调度参数）
+- [x] 新增 `replay_revocation_dead_letters_with_policy`
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_with_state_store`
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store`
+- [x] 新增状态持久化与公平调度单元测试
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -271,6 +281,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.25 完成（成员目录吊销死信优先级回放与跨节点回放协同）
-- 下一步：P3.26（成员目录吊销死信回放状态持久化与公平调度）
-- 最近更新：成员目录吊销死信优先级回放与跨节点回放协同（2026-02-11）
+- 当前阶段：P3.26 完成（成员目录吊销死信回放状态持久化与公平调度）
+- 下一步：P3.27（成员目录吊销死信回放状态观测聚合与策略自适应）
+- 最近更新：成员目录吊销死信回放状态持久化与公平调度（2026-02-11）

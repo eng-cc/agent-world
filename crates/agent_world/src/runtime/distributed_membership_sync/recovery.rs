@@ -23,6 +23,13 @@ pub use dead_letter::{
     MembershipRevocationAlertDeadLetterStore, NoopMembershipRevocationAlertDeadLetterStore,
 };
 mod dead_letter;
+pub use replay::{
+    FileMembershipRevocationDeadLetterReplayStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayStateStore,
+    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayScheduleState,
+    MembershipRevocationDeadLetterReplayStateStore,
+};
+mod replay;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeliveryMetrics {
