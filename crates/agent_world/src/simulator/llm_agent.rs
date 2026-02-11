@@ -91,12 +91,12 @@ impl LlmPromptProfile {
             Self::Compact => PromptBudget {
                 context_window_tokens: 4_096,
                 reserved_output_tokens: 768,
-                safety_margin_tokens: 384,
+                safety_margin_tokens: 352,
             },
             Self::Balanced => PromptBudget {
                 context_window_tokens: 4_608,
                 reserved_output_tokens: 896,
-                safety_margin_tokens: 512,
+                safety_margin_tokens: 480,
             },
         }
     }

@@ -232,6 +232,21 @@ fn base_config() -> LlmAgentConfig {
 }
 
 #[test]
+fn llm_prompt_profile_uses_relaxed_token_budget_for_stability() {
+    let compact = LlmPromptProfile::Compact.prompt_budget();
+    assert_eq!(compact.context_window_tokens, 4_096);
+    assert_eq!(compact.reserved_output_tokens, 768);
+    assert_eq!(compact.safety_margin_tokens, 352);
+    assert_eq!(compact.effective_input_budget_tokens(), 2_976);
+
+    let balanced = LlmPromptProfile::Balanced.prompt_budget();
+    assert_eq!(balanced.context_window_tokens, 4_608);
+    assert_eq!(balanced.reserved_output_tokens, 896);
+    assert_eq!(balanced.safety_margin_tokens, 480);
+    assert_eq!(balanced.effective_input_budget_tokens(), 3_232);
+}
+
+#[test]
 fn llm_config_uses_default_system_prompt() {
     let mut vars = BTreeMap::new();
     vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
@@ -1825,6 +1840,7 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(system_prompt.contains("exploration_bias"));
     assert!(system_prompt.contains("execute_until"));
     assert!(user_prompt.contains("execute_until"));
+    assert!(user_prompt.contains("move_agent.to 不能是当前所在位置"));
 }
 
 #[test]

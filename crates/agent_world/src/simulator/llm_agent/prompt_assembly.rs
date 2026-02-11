@@ -264,6 +264,7 @@ impl PromptAssembler {
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
+- move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
@@ -800,6 +801,54 @@ mod tests {
     }
 
     #[test]
+    fn prompt_budget_soft_caps_are_relaxed_for_stability_phase() {
+        let early = PromptStepContext {
+            step_index: 0,
+            max_steps: 4,
+            module_calls_used: 0,
+            module_calls_max: 3,
+        };
+        let near_finalize = PromptStepContext {
+            step_index: 3,
+            max_steps: 4,
+            module_calls_used: 2,
+            module_calls_max: 3,
+        };
+
+        assert_eq!(PromptAssembler::soft_section_caps(early), (256, 192));
+        assert_eq!(
+            PromptAssembler::soft_section_caps(near_finalize),
+            (192, 128)
+        );
+    }
+
+    #[test]
+    fn prompt_budget_peak_targets_use_relaxed_reserve_values() {
+        let step = PromptStepContext {
+            step_index: 0,
+            max_steps: 4,
+            module_calls_used: 0,
+            module_calls_max: 3,
+        };
+        let near_finalize = PromptStepContext {
+            step_index: 3,
+            max_steps: 4,
+            module_calls_used: 2,
+            module_calls_max: 3,
+        };
+        let budget_tokens = 3_328;
+
+        let (early_soft, early_hard) = PromptAssembler::peak_targets_tokens(step, budget_tokens);
+        let (finalize_soft, finalize_hard) =
+            PromptAssembler::peak_targets_tokens(near_finalize, budget_tokens);
+
+        assert_eq!(early_hard, 3_072);
+        assert_eq!(early_soft, 2_944);
+        assert_eq!(finalize_hard, 3_008);
+        assert_eq!(finalize_soft, 2_880);
+    }
+
+    #[test]
     fn prompt_budget_peak_budget_enforces_hard_target_on_large_inputs() {
         let history = "h".repeat(14_000);
         let memory = "m".repeat(6_000);
@@ -870,6 +919,9 @@ mod tests {
         let output = PromptAssembler::assemble(input);
         assert!(output.user_prompt.contains("<i64 1..=42>"));
         assert!(output.user_prompt.contains("不超过 42"));
+        assert!(output
+            .user_prompt
+            .contains("move_agent.to 不能是当前所在位置"));
         assert!(output.user_prompt.contains("推荐 harvest 模板"));
         assert!(output.user_prompt.contains("推荐 move 模板"));
     }

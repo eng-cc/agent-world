@@ -174,6 +174,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 .as_str(),
             );
             user_prompt.push_str(
+                "- move_agent.to 不能是当前所在位置（observation 中 distance_cm=0 的 location）。
+",
+            );
+            user_prompt.push_str(
                 format!(
                     "- 若连续两轮输出同一可执行动作，优先使用 execute_until（参考 schema 推荐模板）减少重复决策；auto_reenter_ticks={}。
 ",

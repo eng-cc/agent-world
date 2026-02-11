@@ -69,7 +69,6 @@
 - [x] LMSO28C 30 tick 回归对比：验证 `llm_input_chars_max/avg/total`、`module_call` 与稳定性指标。
 
 ## 状态（LMSO28）
-- 当前子阶段：LMSO29A（待启动）
+- 当前子阶段：LMSO29（进行中，详见 `doc/world-simulator/llm-lmso29-stability.md`）
 - 目标：在保持峰值已收敛的基础上，进一步回收动作失败率并稳定行动效率。
-
 - 最近验证：`llm_input_chars_max 14216 -> 9373`，`llm_input_chars_avg 1786 -> 1121`，`module_call 9 -> 2`（`llm_errors=0`、`parse_errors=0`）。
