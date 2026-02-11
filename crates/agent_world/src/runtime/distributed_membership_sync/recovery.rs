@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -667,15 +668,27 @@ impl MembershipSyncClient {
         }
 
         let replay_count = dead_letters.len().min(max_replay);
-        let replaying: Vec<MembershipRevocationAlertDeadLetterRecord> =
-            dead_letters.drain(0..replay_count).collect();
+        let replay_indices = prioritized_dead_letter_indices(&dead_letters, replay_count);
+        let replaying: Vec<MembershipRevocationAlertDeadLetterRecord> = replay_indices
+            .iter()
+            .map(|index| dead_letters[*index].clone())
+            .collect();
+        let mut replay_selected = vec![false; dead_letters.len()];
+        for index in replay_indices {
+            replay_selected[index] = true;
+        }
+        let remaining: Vec<MembershipRevocationAlertDeadLetterRecord> = dead_letters
+            .drain(..)
+            .enumerate()
+            .filter_map(|(index, record)| (!replay_selected[index]).then_some(record))
+            .collect();
 
         let mut pending = recovery_store.load_pending(&world_id, &node_id)?;
         for record in replaying {
             pending.push(record.pending_alert);
         }
         recovery_store.save_pending(&world_id, &node_id, &pending)?;
-        dead_letter_store.replace(&world_id, &node_id, &dead_letters)?;
+        dead_letter_store.replace(&world_id, &node_id, &remaining)?;
         Ok(replay_count)
     }
 
@@ -716,6 +729,52 @@ impl MembershipSyncClient {
         )?;
         *last_replay_at_ms = Some(now_ms);
         Ok(replayed)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_dead_letter_replay_schedule_coordinated(
+        &self,
+        world_id: &str,
+        target_node_id: &str,
+        coordinator_node_id: &str,
+        now_ms: i64,
+        replay_interval_ms: i64,
+        max_replay: usize,
+        last_replay_at_ms: &mut Option<i64>,
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+    ) -> Result<usize, WorldError> {
+        validate_coordinator_lease_ttl_ms(coordinator_lease_ttl_ms)?;
+        let coordination_world_id =
+            normalized_dead_letter_replay_coordination_world_id(world_id, target_node_id)?;
+        if !coordinator.acquire(
+            &coordination_world_id,
+            coordinator_node_id,
+            now_ms,
+            coordinator_lease_ttl_ms,
+        )? {
+            return Ok(0);
+        }
+
+        let replay_outcome = self.run_revocation_dead_letter_replay_schedule(
+            world_id,
+            target_node_id,
+            now_ms,
+            replay_interval_ms,
+            max_replay,
+            last_replay_at_ms,
+            recovery_store,
+            dead_letter_store,
+        );
+        let release_outcome = coordinator.release(&coordination_world_id, coordinator_node_id);
+        match (replay_outcome, release_outcome) {
+            (Ok(replayed), Ok(())) => Ok(replayed),
+            (Err(err), Ok(())) => Err(err),
+            (Ok(_), Err(release_err)) => Err(release_err),
+            (Err(err), Err(_)) => Err(err),
+        }
     }
 
     pub fn export_revocation_alert_delivery_metrics(
@@ -994,6 +1053,31 @@ fn archive_dead_letter(
     Ok(())
 }
 
+fn dead_letter_reason_priority(reason: MembershipRevocationAlertDeadLetterReason) -> u8 {
+    match reason {
+        MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded => 2,
+        MembershipRevocationAlertDeadLetterReason::CapacityEvicted => 1,
+    }
+}
+
+fn prioritized_dead_letter_indices(
+    dead_letters: &[MembershipRevocationAlertDeadLetterRecord],
+    replay_count: usize,
+) -> Vec<usize> {
+    let mut indices: Vec<usize> = (0..dead_letters.len()).collect();
+    indices.sort_by_key(|index| {
+        let record = &dead_letters[*index];
+        (
+            Reverse(dead_letter_reason_priority(record.reason)),
+            Reverse(record.pending_alert.attempt),
+            record.dropped_at_ms,
+            *index,
+        )
+    });
+    indices.truncate(replay_count);
+    indices
+}
+
 fn validate_coordinator_lease_ttl_ms(lease_ttl_ms: i64) -> Result<(), WorldError> {
     if lease_ttl_ms <= 0 {
         return Err(WorldError::DistributedValidationFailed {
@@ -1052,6 +1136,16 @@ pub(super) fn normalized_schedule_key(
     Ok((
         logic::normalized_world_id(world_id)?,
         normalized_node_id(node_id)?,
+    ))
+}
+
+fn normalized_dead_letter_replay_coordination_world_id(
+    world_id: &str,
+    target_node_id: &str,
+) -> Result<String, WorldError> {
+    let (world_id, target_node_id) = normalized_schedule_key(world_id, target_node_id)?;
+    logic::normalized_world_id(&format!(
+        "{world_id}::revocation-dead-letter-replay::{target_node_id}"
     ))
 }
 
