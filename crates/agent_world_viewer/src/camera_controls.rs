@@ -1,5 +1,6 @@
 use bevy::ecs::message::MessageReader;
-use bevy::input::mouse::MouseWheel;
+use bevy::input::gestures::PinchGesture;
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -23,6 +24,7 @@ pub(super) fn orbit_camera_controls(
     camera_mode: Res<ViewerCameraMode>,
     panel_width: Option<Res<RightPanelWidthState>>,
     mut mouse_wheel: MessageReader<MouseWheel>,
+    mut pinch_gesture: MessageReader<PinchGesture>,
     mut drag_state: ResMut<OrbitDragState>,
     mut query: Query<(&mut OrbitCamera, &mut Transform), With<Viewer3dCamera>>,
 ) {
@@ -53,7 +55,12 @@ pub(super) fn orbit_camera_controls(
     let mut scroll = 0.0;
     for event in mouse_wheel.read() {
         if cursor_in_3d {
-            scroll += event.y;
+            scroll += normalized_mouse_wheel_delta(event.unit, event.y);
+        }
+    }
+    for event in pinch_gesture.read() {
+        if cursor_in_3d {
+            scroll += pinch_scroll_delta(event.0);
         }
     }
 
@@ -99,6 +106,18 @@ fn drag_delta(
 
     let delta = previous.map(|last| cursor - last).unwrap_or(Vec2::ZERO);
     (delta, Some(cursor))
+}
+
+fn normalized_mouse_wheel_delta(unit: MouseScrollUnit, y: f32) -> f32 {
+    match unit {
+        MouseScrollUnit::Line => y,
+        MouseScrollUnit::Pixel => y / MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR,
+    }
+}
+
+fn pinch_scroll_delta(delta: f32) -> f32 {
+    // Pinch magnify deltas are much smaller than line-based wheel deltas.
+    delta * 8.0
 }
 
 fn apply_orbit_input(
@@ -337,6 +356,25 @@ mod tests {
         let (delta, next_cursor) = drag_delta(Some(previous), Some(current), true);
         assert_eq!(delta, Vec2::new(14.0, 20.0));
         assert_eq!(next_cursor, Some(current));
+    }
+
+    #[test]
+    fn normalized_mouse_wheel_delta_converts_pixel_to_line_scale() {
+        let line = normalized_mouse_wheel_delta(MouseScrollUnit::Line, 1.5);
+        let pixel = normalized_mouse_wheel_delta(
+            MouseScrollUnit::Pixel,
+            MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR * 1.5,
+        );
+        assert!((line - pixel).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn pinch_scroll_delta_expands_small_magnify_values() {
+        let zoom_in = pinch_scroll_delta(0.25);
+        let zoom_out = pinch_scroll_delta(-0.25);
+        assert!(zoom_in > 0.0);
+        assert!(zoom_out < 0.0);
+        assert!((zoom_in + zoom_out).abs() < f32::EPSILON);
     }
 
     #[test]
