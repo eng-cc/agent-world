@@ -37,12 +37,17 @@ pub use reconciliation::{
     MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
 };
 pub use recovery::{
-    FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,
+    FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
+    FileMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
     InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertAckRetryPolicy,
+    MembershipRevocationAlertDeadLetterReason, MembershipRevocationAlertDeadLetterRecord,
+    MembershipRevocationAlertDeadLetterStore, MembershipRevocationAlertDeliveryMetrics,
     MembershipRevocationAlertRecoveryReport, MembershipRevocationAlertRecoveryStore,
     MembershipRevocationCoordinatedRecoveryRunReport, MembershipRevocationCoordinatorLeaseState,
     MembershipRevocationCoordinatorStateStore, MembershipRevocationPendingAlert,
+    NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 

@@ -239,6 +239,15 @@
 - [x] 恢复报告增加 deferred/capacity/retry_limit 统计
 - [x] 单元测试与分布式回归
 
+### 40. P3.23 成员目录吊销告警恢复死信归档与投递指标
+- [x] 新增 `MembershipRevocationAlertDeadLetterStore` 与内存/文件实现
+- [x] 新增 `MembershipRevocationAlertDeadLetterRecord/Reason`
+- [x] 新增 `MembershipRevocationAlertDeliveryMetrics`
+- [x] 新增 `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter`
+- [x] 新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter`
+- [x] 恢复与协同报告增加投递指标字段
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -246,6 +255,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.22 完成（成员目录吊销恢复队列容量治理与告警 ACK 重试）
-- 下一步：P3.23（成员目录吊销告警恢复死信归档与投递指标）
-- 最近更新：成员目录吊销恢复队列容量治理与告警 ACK 重试（2026-02-11）
+- 当前阶段：P3.23 完成（成员目录吊销告警恢复死信归档与投递指标）
+- 下一步：P3.24（成员目录吊销死信回放调度与指标导出）
+- 最近更新：成员目录吊销告警恢复死信归档与投递指标（2026-02-11）
