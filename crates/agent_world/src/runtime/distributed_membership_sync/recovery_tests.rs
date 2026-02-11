@@ -46,6 +46,35 @@ fn sample_alert(
     }
 }
 
+fn sample_pending_alert(
+    world_id: &str,
+    node_id: &str,
+    detected_at_ms: i64,
+    attempt: usize,
+) -> MembershipRevocationPendingAlert {
+    MembershipRevocationPendingAlert {
+        alert: sample_alert(world_id, node_id, detected_at_ms),
+        attempt,
+        next_retry_at_ms: detected_at_ms,
+        last_error: None,
+    }
+}
+
+fn sample_dead_letter(
+    world_id: &str,
+    node_id: &str,
+    detected_at_ms: i64,
+    reason: MembershipRevocationAlertDeadLetterReason,
+) -> MembershipRevocationAlertDeadLetterRecord {
+    MembershipRevocationAlertDeadLetterRecord {
+        world_id: world_id.to_string(),
+        node_id: node_id.to_string(),
+        dropped_at_ms: detected_at_ms,
+        reason,
+        pending_alert: sample_pending_alert(world_id, node_id, detected_at_ms, 1),
+    }
+}
+
 #[derive(Default, Clone)]
 struct FailOnceAlertSink {
     fail_once: Arc<Mutex<bool>>,
@@ -171,6 +200,174 @@ fn file_dead_letter_store_appends_and_lists() {
     assert_eq!(listed, vec![record]);
 
     let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn file_dead_letter_store_metrics_export_round_trip() {
+    let root = temp_membership_dir("revocation-alert-metrics-file-store");
+    fs::create_dir_all(&root).expect("create temp dir");
+
+    let store = FileMembershipRevocationAlertDeadLetterStore::new(&root).expect("create store");
+    let metrics = MembershipRevocationAlertDeliveryMetrics {
+        attempted: 3,
+        succeeded: 2,
+        failed: 1,
+        deferred: 1,
+        buffered: 1,
+        dropped_capacity: 0,
+        dropped_retry_limit: 0,
+        dead_lettered: 0,
+    };
+
+    store
+        .append_delivery_metrics("w1", "node-a", 1200, &metrics)
+        .expect("append metrics");
+    let listed = store
+        .list_delivery_metrics("w1", "node-a")
+        .expect("list metrics");
+    assert_eq!(listed, vec![(1200, metrics)]);
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn replay_revocation_dead_letters_moves_records_to_pending() {
+    let client = sample_client();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter 1");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1001,
+            MembershipRevocationAlertDeadLetterReason::CapacityEvicted,
+        ))
+        .expect("append dead letter 2");
+
+    let first = client
+        .replay_revocation_dead_letters("w1", "node-a", 1, &recovery_store, &dead_letter_store)
+        .expect("first replay");
+    assert_eq!(first, 1);
+
+    let pending_after_first = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after first replay");
+    assert_eq!(pending_after_first.len(), 1);
+    assert_eq!(pending_after_first[0].alert.detected_at_ms, 1000);
+
+    let dead_letters_after_first = dead_letter_store
+        .list("w1", "node-a")
+        .expect("list dead letters after first replay");
+    assert_eq!(dead_letters_after_first.len(), 1);
+    assert_eq!(
+        dead_letters_after_first[0]
+            .pending_alert
+            .alert
+            .detected_at_ms,
+        1001
+    );
+
+    let second = client
+        .replay_revocation_dead_letters("w1", "node-a", 4, &recovery_store, &dead_letter_store)
+        .expect("second replay");
+    assert_eq!(second, 1);
+
+    let pending_after_second = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after second replay");
+    assert_eq!(pending_after_second.len(), 2);
+
+    let dead_letters_after_second = dead_letter_store
+        .list("w1", "node-a")
+        .expect("list dead letters after second replay");
+    assert!(dead_letters_after_second.is_empty());
+}
+
+#[test]
+fn run_revocation_dead_letter_replay_schedule_respects_interval() {
+    let client = sample_client();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter 1");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1001,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter 2");
+
+    let mut last_replay = None;
+    let first = client
+        .run_revocation_dead_letter_replay_schedule(
+            "w1",
+            "node-a",
+            1000,
+            100,
+            1,
+            &mut last_replay,
+            &recovery_store,
+            &dead_letter_store,
+        )
+        .expect("first scheduled replay");
+    assert_eq!(first, 1);
+    assert_eq!(last_replay, Some(1000));
+
+    let second = client
+        .run_revocation_dead_letter_replay_schedule(
+            "w1",
+            "node-a",
+            1050,
+            100,
+            1,
+            &mut last_replay,
+            &recovery_store,
+            &dead_letter_store,
+        )
+        .expect("second scheduled replay");
+    assert_eq!(second, 0);
+
+    let remaining_after_second = dead_letter_store
+        .list("w1", "node-a")
+        .expect("list remaining after second replay");
+    assert_eq!(remaining_after_second.len(), 1);
+
+    let third = client
+        .run_revocation_dead_letter_replay_schedule(
+            "w1",
+            "node-a",
+            1101,
+            100,
+            1,
+            &mut last_replay,
+            &recovery_store,
+            &dead_letter_store,
+        )
+        .expect("third scheduled replay");
+    assert_eq!(third, 1);
+
+    let remaining_after_third = dead_letter_store
+        .list("w1", "node-a")
+        .expect("list remaining after third replay");
+    assert!(remaining_after_third.is_empty());
 }
 
 #[test]
@@ -847,4 +1044,92 @@ fn run_revocation_reconcile_coordinated_with_dead_letter_archives_retry_drop() {
         dead_letters[0].reason,
         MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded
     );
+}
+
+#[test]
+fn run_revocation_reconcile_with_metrics_export_appends_metric_line() {
+    let client = sample_client();
+    let subscription = client.subscribe("w1").expect("subscribe");
+
+    let mut local_keyring = sample_keyring();
+    local_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add local k2");
+
+    let mut remote_keyring = MembershipDirectorySignerKeyring::new();
+    remote_keyring
+        .add_hmac_sha256_key("k2", "membership-secret-v2")
+        .expect("add remote k2");
+    assert!(remote_keyring.revoke_key("k2").expect("revoke remote k2"));
+
+    client
+        .publish_revocation_checkpoint("w1", "node-a", 1300, &remote_keyring)
+        .expect("publish remote checkpoint");
+
+    let reconcile_policy = MembershipRevocationReconcilePolicy {
+        trusted_nodes: vec!["node-a".to_string()],
+        auto_revoke_missing_keys: false,
+    };
+    let schedule_policy = MembershipRevocationReconcileSchedulePolicy {
+        checkpoint_interval_ms: 1000,
+        reconcile_interval_ms: 300,
+    };
+    let alert_policy = MembershipRevocationAlertPolicy {
+        warn_diverged_threshold: 1,
+        critical_rejected_threshold: 1,
+    };
+    let retry_policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 8,
+        max_retry_attempts: 2,
+        retry_backoff_ms: 100,
+    };
+
+    let schedule_store = InMemoryMembershipRevocationScheduleStateStore::new();
+    schedule_store
+        .save(
+            "w1",
+            "node-b",
+            &MembershipRevocationReconcileScheduleState {
+                last_checkpoint_at_ms: Some(1300),
+                last_reconcile_at_ms: Some(1000),
+            },
+        )
+        .expect("seed schedule state");
+
+    let alert_sink = FailOnceAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator_store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
+        Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
+    let coordinator = StoreBackedMembershipRevocationScheduleCoordinator::new(coordinator_store);
+
+    let report = client
+        .run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export(
+            "w1",
+            "node-b",
+            1305,
+            &subscription,
+            &mut local_keyring,
+            &reconcile_policy,
+            &schedule_policy,
+            &alert_policy,
+            None,
+            None,
+            &schedule_store,
+            &alert_sink,
+            &recovery_store,
+            &retry_policy,
+            &dead_letter_store,
+            &coordinator,
+            1000,
+        )
+        .expect("run with metrics export");
+
+    assert!(report.acquired);
+    let metrics_lines = dead_letter_store
+        .list_delivery_metrics("w1", "node-b")
+        .expect("list exported metrics");
+    assert_eq!(metrics_lines.len(), 1);
+    assert_eq!(metrics_lines[0].0, 1305);
+    assert_eq!(metrics_lines[0].1, report.delivery_metrics);
 }

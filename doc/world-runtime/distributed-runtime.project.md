@@ -248,6 +248,15 @@
 - [x] 恢复与协同报告增加投递指标字段
 - [x] 单元测试与分布式回归
 
+### 41. P3.24 成员目录吊销死信回放调度与指标导出
+- [x] 扩展 `MembershipRevocationAlertDeadLetterStore`（list/replace/metrics）
+- [x] 新增 `replay_revocation_dead_letters`
+- [x] 新增 `run_revocation_dead_letter_replay_schedule`
+- [x] 新增 `export_revocation_alert_delivery_metrics`
+- [x] 新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export`
+- [x] 内存/文件 dead-letter store 支持 delivery metrics 导出查询
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -255,6 +264,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.23 完成（成员目录吊销告警恢复死信归档与投递指标）
-- 下一步：P3.24（成员目录吊销死信回放调度与指标导出）
-- 最近更新：成员目录吊销告警恢复死信归档与投递指标（2026-02-11）
+- 当前阶段：P3.24 完成（成员目录吊销死信回放调度与指标导出）
+- 下一步：P3.25（成员目录吊销死信优先级回放与跨节点回放协同）
+- 最近更新：成员目录吊销死信回放调度与指标导出（2026-02-11）
