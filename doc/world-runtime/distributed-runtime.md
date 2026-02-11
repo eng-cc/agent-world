@@ -495,6 +495,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 ## 成员目录吊销死信回放策略采纳审计与异常回退告警（草案）
 - **采纳审计与告警**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`、`MembershipRevocationDeadLetterReplayPolicyAuditStore` 与 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State`。
 - **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
-## 成员目录吊销死信回放策略治理审计归档分层转储与演练告警联动（草案）
-- **分层转储与补偿**：新增 governance audit tiered offload policy（热层保留 + 年龄阈值 + 单轮转储上限）与转储入口；热层替换失败时回滚冷层写入，避免冷热层失配。
-- **演练告警联动编排**：新增 recovery drill alert policy/state store（内存/文件）与告警入口，并通过 `run_revocation_dead_letter_replay_rollback_governance_archive_tiered_offload_with_drill_schedule_and_alert(...)` 串联裁剪→转储→演练→告警闭环。
+## 成员目录吊销死信回放策略治理审计聚合查询与演练告警事件总线（草案）
+- **聚合查询能力**：新增 governance audit aggregate query policy/report 与跨节点查询入口，支持 hot/cold 分层、时间窗、级别过滤与条数限制。
+- **告警事件总线联动**：新增 recovery drill alert event/event bus（内存/文件）与联动编排入口 `run_revocation_dead_letter_replay_rollback_governance_archive_tiered_offload_with_drill_schedule_alert_and_event_bus(...)`，实现告警结果事件化落盘。
