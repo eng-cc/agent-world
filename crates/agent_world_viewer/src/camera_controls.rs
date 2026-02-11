@@ -6,9 +6,9 @@ use bevy::window::PrimaryWindow;
 use super::{
     grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, GridLineVisual, OrbitCamera,
     RightPanelWidthState, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface,
-    WorldFloorSurface, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS,
-    ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY,
-    UI_PANEL_WIDTH,
+    WorldFloorSurface, WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS,
+    ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY,
+    ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
 };
 
 #[derive(Resource, Default)]
@@ -224,27 +224,81 @@ pub(super) fn sync_camera_mode(
     }
 
     let mode_changed = camera_mode.is_changed();
-
-    if mode_changed {
-        let Ok((mut orbit, mut transform, mut projection)) = cameras.single_mut() else {
-            return;
-        };
-
-        let next_orbit = camera_orbit_preset(
-            *camera_mode,
-            Some(orbit.focus),
-            config.effective_cm_to_unit(),
-        );
-        *orbit = next_orbit;
-        orbit.apply_to_transform(&mut transform);
-        *projection = camera_projection_for_mode(*camera_mode, &config);
+    if !mode_changed {
+        return;
     }
+
+    let Ok((mut orbit, mut transform, mut projection)) = cameras.single_mut() else {
+        return;
+    };
+
+    let next_orbit = camera_orbit_preset(
+        *camera_mode,
+        Some(orbit.focus),
+        config.effective_cm_to_unit(),
+    );
+    *orbit = next_orbit;
+    orbit.apply_to_transform(&mut transform);
+    *projection = camera_projection_for_mode(*camera_mode, &config);
 
     for (visual, mut transform, mut base_scale) in &mut grid_lines {
         let thickness = grid_line_thickness(visual.kind, *camera_mode);
         let scale = grid_line_scale(visual.axis, visual.span, thickness);
         transform.scale = scale;
         base_scale.0 = scale;
+    }
+}
+
+pub(super) fn update_grid_line_lod_visibility(
+    camera_mode: Res<ViewerCameraMode>,
+    config: Res<Viewer3dConfig>,
+    overlay_config: Res<WorldOverlayConfig>,
+    cameras: Query<&Transform, With<Viewer3dCamera>>,
+    mut grid_lines: Query<(&GridLineVisual, &GlobalTransform, &mut Visibility)>,
+    mut last_camera_position: Local<Option<Vec3>>,
+) {
+    let Ok(camera_transform) = cameras.single() else {
+        return;
+    };
+
+    let camera_position = camera_transform.translation;
+    let lod_distance = config.render_budget.grid_lod_distance.max(1.0);
+    let move_threshold = (lod_distance * 0.04).max(0.5);
+    let camera_moved = last_camera_position
+        .as_ref()
+        .map(|last| last.distance(camera_position) > move_threshold)
+        .unwrap_or(true);
+    let should_recompute = camera_mode.is_changed()
+        || config.is_changed()
+        || overlay_config.is_changed()
+        || camera_moved;
+    if !should_recompute {
+        return;
+    }
+    *last_camera_position = Some(camera_position);
+
+    let mode_factor = match *camera_mode {
+        ViewerCameraMode::TwoD => 1.35,
+        ViewerCameraMode::ThreeD => 1.0,
+    };
+    let chunk_cutoff = lod_distance * mode_factor;
+
+    for (visual, line_transform, mut visibility) in &mut grid_lines {
+        if visual.kind == crate::GridLineKind::World {
+            *visibility = Visibility::Visible;
+            continue;
+        }
+        if !overlay_config.show_chunk_overlay {
+            *visibility = Visibility::Hidden;
+            continue;
+        }
+
+        let distance = camera_position.distance(line_transform.translation());
+        *visibility = if distance <= chunk_cutoff {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 
@@ -410,5 +464,60 @@ mod tests {
             .expect("bounds visibility");
         assert_eq!(*floor_visibility, Visibility::Hidden);
         assert_eq!(*bounds_visibility, Visibility::Hidden);
+    }
+
+    #[test]
+    fn grid_line_lod_hides_far_chunk_lines_and_keeps_world_lines() {
+        let mut app = App::new();
+        app.add_systems(Update, update_grid_line_lod_visibility);
+        app.insert_resource(ViewerCameraMode::ThreeD);
+        app.insert_resource(Viewer3dConfig::default());
+        app.insert_resource(WorldOverlayConfig::default());
+
+        app.world_mut().spawn((
+            Viewer3dCamera,
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            GlobalTransform::default(),
+        ));
+
+        let world_line = app
+            .world_mut()
+            .spawn((
+                GridLineVisual {
+                    kind: GridLineKind::World,
+                    axis: crate::GridLineAxis::AlongX,
+                    span: 10.0,
+                },
+                GlobalTransform::from_translation(Vec3::new(0.0, 0.0, -200.0)),
+                Visibility::Visible,
+            ))
+            .id();
+
+        let chunk_line = app
+            .world_mut()
+            .spawn((
+                GridLineVisual {
+                    kind: GridLineKind::Chunk,
+                    axis: crate::GridLineAxis::AlongX,
+                    span: 10.0,
+                },
+                GlobalTransform::from_translation(Vec3::new(0.0, 0.0, -220.0)),
+                Visibility::Visible,
+            ))
+            .id();
+
+        app.update();
+
+        let world_visibility = app
+            .world()
+            .get::<Visibility>(world_line)
+            .expect("world visibility");
+        let chunk_visibility = app
+            .world()
+            .get::<Visibility>(chunk_line)
+            .expect("chunk visibility");
+
+        assert_eq!(*world_visibility, Visibility::Visible);
+        assert_eq!(*chunk_visibility, Visibility::Hidden);
     }
 }

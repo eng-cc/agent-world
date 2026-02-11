@@ -3,6 +3,7 @@ use agent_world::simulator::{
 };
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
+use std::collections::HashMap;
 
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};
 use crate::ui_locale_text::{overlay_button_label, overlay_loading, overlay_status};
@@ -10,6 +11,7 @@ use crate::ui_locale_text::{overlay_button_label, overlay_loading, overlay_statu
 use super::*;
 
 const FLOW_WINDOW: usize = 28;
+const FLOW_BATCH_QUANTIZE: f32 = 32.0;
 const HEAT_BASE_HEIGHT: f32 = 0.25;
 const HEAT_MAX_HEIGHT: f32 = 1.8;
 const HEAT_OFFSET_Y: f32 = 0.2;
@@ -18,12 +20,18 @@ const FLOW_MIN_THICKNESS: f32 = 0.03;
 const FLOW_MAX_THICKNESS: f32 = 0.12;
 const SHOW_FRAGMENT_ELEMENTS_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS";
 
-#[derive(Resource, Clone, Copy)]
+#[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub(super) struct WorldOverlayConfig {
     pub show_chunk_overlay: bool,
     pub show_resource_heatmap: bool,
     pub show_flow_overlay: bool,
     pub show_fragment_elements: bool,
+}
+
+#[derive(Resource, Default)]
+pub(super) struct OverlayRenderRuntime {
+    last_snapshot_tick: Option<u64>,
+    last_event_count: usize,
 }
 
 impl Default for WorldOverlayConfig {
@@ -79,7 +87,7 @@ pub(super) struct WorldOverlayToggleLabel;
 #[derive(Component)]
 pub(super) struct WorldOverlayStatusText;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum FlowSegmentKind {
     Power,
     Trade,
@@ -263,12 +271,9 @@ pub(super) fn update_world_overlays_3d(
     overlay_config: Res<WorldOverlayConfig>,
     assets: Res<Viewer3dAssets>,
     mut scene: ResMut<Viewer3dScene>,
+    mut runtime: ResMut<OverlayRenderRuntime>,
     mut chunk_visibility: Query<&mut Visibility>,
 ) {
-    if !state.is_changed() && !overlay_config.is_changed() && !viewer_3d_config.is_changed() {
-        return;
-    }
-
     let chunk_visibility_value = if overlay_config.show_chunk_overlay {
         Visibility::Visible
     } else {
@@ -282,6 +287,25 @@ pub(super) fn update_world_overlays_3d(
         }
     }
 
+    let Some(snapshot) = state.snapshot.as_ref() else {
+        return;
+    };
+
+    let refresh_interval = viewer_3d_config.render_budget.overlay_refresh_ticks.max(1);
+    let changed_by_toggle = overlay_config.is_changed() || viewer_3d_config.is_changed();
+    if !overlay_refresh_due(
+        &runtime,
+        snapshot.time,
+        state.events.len(),
+        refresh_interval,
+        changed_by_toggle,
+    ) {
+        return;
+    }
+
+    runtime.last_snapshot_tick = Some(snapshot.time);
+    runtime.last_event_count = state.events.len();
+
     for entity in scene.heat_overlay_entities.drain(..) {
         if let Ok(mut command) = commands.get_entity(entity) {
             command.despawn();
@@ -293,9 +317,6 @@ pub(super) fn update_world_overlays_3d(
         }
     }
 
-    let Some(snapshot) = state.snapshot.as_ref() else {
-        return;
-    };
     let Some(origin) = scene.origin else {
         return;
     };
@@ -303,7 +324,14 @@ pub(super) fn update_world_overlays_3d(
     let cm_to_unit = viewer_3d_config.effective_cm_to_unit();
 
     if overlay_config.show_resource_heatmap {
-        let heat_points = collect_location_heat_points(snapshot, origin, cm_to_unit);
+        let mut heat_points = collect_location_heat_points(snapshot, origin, cm_to_unit);
+        heat_points.sort_by_key(|point| std::cmp::Reverse(point.intensity.max(0)));
+        heat_points.truncate(
+            viewer_3d_config
+                .render_budget
+                .overlay_max_heat_markers
+                .max(1),
+        );
         let max_intensity = heat_points
             .iter()
             .map(|point| point.intensity.max(0))
@@ -339,6 +367,13 @@ pub(super) fn update_world_overlays_3d(
 
     if overlay_config.show_flow_overlay {
         let mut flow_segments = collect_flow_segments(snapshot, &state.events, origin, cm_to_unit);
+        flow_segments = batch_flow_segments(
+            flow_segments,
+            viewer_3d_config
+                .render_budget
+                .overlay_max_flow_segments
+                .max(1),
+        );
         let max_amount = flow_segments
             .iter()
             .map(|segment| segment.amount.abs())
@@ -365,6 +400,25 @@ pub(super) fn update_world_overlays_3d(
             scene.flow_overlay_entities.push(entity);
         }
     }
+}
+
+fn overlay_refresh_due(
+    runtime: &OverlayRenderRuntime,
+    snapshot_tick: u64,
+    event_count: usize,
+    refresh_interval: u64,
+    force_refresh: bool,
+) -> bool {
+    if force_refresh {
+        return true;
+    }
+
+    let tick_due = runtime
+        .last_snapshot_tick
+        .map(|tick| snapshot_tick.saturating_sub(tick) >= refresh_interval.max(1))
+        .unwrap_or(true);
+    let event_delta = event_count.saturating_sub(runtime.last_event_count);
+    tick_due || event_delta >= 8
 }
 
 fn build_overlay_status_text(
@@ -527,6 +581,43 @@ fn collect_flow_segments(
     segments
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct FlowBatchKey {
+    from: (i32, i32, i32),
+    to: (i32, i32, i32),
+    kind: FlowSegmentKind,
+}
+
+fn batch_flow_segments(segments: Vec<FlowSegment>, max_segments: usize) -> Vec<FlowSegment> {
+    let mut batched = HashMap::<FlowBatchKey, FlowSegment>::new();
+    for segment in segments {
+        let key = FlowBatchKey {
+            from: quantize_vec3(segment.from),
+            to: quantize_vec3(segment.to),
+            kind: segment.kind,
+        };
+        batched
+            .entry(key)
+            .and_modify(|existing| {
+                existing.amount = existing.amount.saturating_add(segment.amount);
+            })
+            .or_insert(segment);
+    }
+
+    let mut merged: Vec<_> = batched.into_values().collect();
+    merged.sort_by_key(|segment| std::cmp::Reverse(segment.amount.abs()));
+    merged.truncate(max_segments.max(1));
+    merged
+}
+
+fn quantize_vec3(value: Vec3) -> (i32, i32, i32) {
+    (
+        (value.x * FLOW_BATCH_QUANTIZE).round() as i32,
+        (value.y * FLOW_BATCH_QUANTIZE).round() as i32,
+        (value.z * FLOW_BATCH_QUANTIZE).round() as i32,
+    )
+}
+
 fn owner_position(
     snapshot: &WorldSnapshot,
     owner: &ResourceOwner,
@@ -684,6 +775,48 @@ mod tests {
         assert!(segments
             .iter()
             .any(|segment| segment.kind == FlowSegmentKind::Power));
+    }
+
+    #[test]
+    fn batch_flow_segments_merges_same_path_and_applies_limit() {
+        let segments = vec![
+            FlowSegment {
+                from: Vec3::new(0.0, 0.0, 0.0),
+                to: Vec3::new(1.0, 0.0, 0.0),
+                amount: 5,
+                kind: FlowSegmentKind::Trade,
+            },
+            FlowSegment {
+                from: Vec3::new(0.0, 0.0, 0.0),
+                to: Vec3::new(1.0, 0.0, 0.0),
+                amount: 7,
+                kind: FlowSegmentKind::Trade,
+            },
+            FlowSegment {
+                from: Vec3::new(0.0, 0.0, 0.0),
+                to: Vec3::new(0.0, 0.0, 1.0),
+                amount: 4,
+                kind: FlowSegmentKind::Power,
+            },
+        ];
+
+        let batched = batch_flow_segments(segments, 1);
+        assert_eq!(batched.len(), 1);
+        assert_eq!(batched[0].kind, FlowSegmentKind::Trade);
+        assert_eq!(batched[0].amount, 12);
+    }
+
+    #[test]
+    fn overlay_refresh_due_respects_tick_interval_and_event_burst() {
+        let runtime = OverlayRenderRuntime {
+            last_snapshot_tick: Some(10),
+            last_event_count: 20,
+        };
+
+        assert!(!overlay_refresh_due(&runtime, 12, 21, 5, false));
+        assert!(overlay_refresh_due(&runtime, 15, 21, 5, false));
+        assert!(overlay_refresh_due(&runtime, 11, 28, 5, false));
+        assert!(overlay_refresh_due(&runtime, 11, 21, 5, true));
     }
 
     #[test]

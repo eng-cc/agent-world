@@ -20,6 +20,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(ViewerSelection::default())
         .insert_resource(world_overlay_config_from_env())
         .insert_resource(WorldOverlayUiState::default())
+        .insert_resource(OverlayRenderRuntime::default())
         .insert_resource(DiagnosisState::default())
         .insert_resource(EventObjectLinkState::default())
         .insert_resource(TimelineUiState::default())
@@ -86,6 +87,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 sync_camera_mode
                     .after(orbit_camera_controls)
                     .after(handle_focus_selection_hotkey),
+                update_grid_line_lod_visibility.after(sync_camera_mode),
                 sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),
                 update_3d_viewport,
