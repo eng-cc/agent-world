@@ -1175,7 +1175,6 @@ fn world_error_reason(error: &WorldError) -> String {
         _ => format!("{error:?}"),
     }
 }
-
 #[cfg(test)]
 mod coordination_tests;
 mod logic;
@@ -1185,6 +1184,8 @@ mod reconciliation;
 mod recovery;
 #[cfg(test)]
 mod recovery_replay_archive_tests;
+#[cfg(test)]
+mod recovery_replay_federated_tests;
 #[cfg(test)]
 mod recovery_replay_policy_audit_tests;
 #[cfg(test)]

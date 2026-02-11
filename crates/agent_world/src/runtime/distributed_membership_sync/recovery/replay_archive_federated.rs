@@ -338,6 +338,68 @@ impl MembershipSyncClient {
         )
     }
 
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        min_event_at_ms: Option<i64>,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        offset: usize,
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<
+        Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+        WorldError,
+    > {
+        validate_governance_recovery_drill_alert_event_aggregate_query_args(max_records)?;
+        if node_ids.is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
+            });
+        }
+        let first_node_id = node_ids.first().ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
+            }
+        })?;
+        let (normalized_world_id, _) = normalized_schedule_key(world_id, first_node_id)?;
+        let mut queried_nodes = BTreeSet::new();
+        for node_id in node_ids {
+            let (_, node_id) = normalized_schedule_key(&normalized_world_id, node_id)?;
+            queried_nodes.insert(node_id);
+        }
+        let mut events = Vec::new();
+        for node_id in queried_nodes {
+            let node_events = event_bus.list(&normalized_world_id, &node_id)?;
+            for event in node_events {
+                if event.world_id != normalized_world_id || event.node_id != node_id {
+                    continue;
+                }
+                if let Some(min_event_at_ms) = min_event_at_ms {
+                    if event.event_at_ms < min_event_at_ms {
+                        continue;
+                    }
+                }
+                if !outcomes.is_empty() && !outcomes.contains(&event.outcome) {
+                    continue;
+                }
+                events.push(event);
+            }
+        }
+        events.sort_by(|left, right| {
+            right
+                .event_at_ms
+                .cmp(&left.event_at_ms)
+                .then_with(|| left.node_id.cmp(&right.node_id))
+        });
+        if offset >= events.len() {
+            return Ok(Vec::new());
+        }
+        Ok(events.into_iter().skip(offset).take(max_records).collect())
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn run_revocation_dead_letter_replay_rollback_governance_archive_tiered_offload_with_drill_schedule_alert_and_event_bus(
         &self,
@@ -418,6 +480,17 @@ fn validate_governance_audit_aggregate_query_policy(
     if policy.max_records == 0 {
         return Err(WorldError::DistributedValidationFailed {
             reason: "membership revocation dead-letter rollback governance audit aggregate query max_records must be positive".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_governance_recovery_drill_alert_event_aggregate_query_args(
+    max_records: usize,
+) -> Result<(), WorldError> {
+    if max_records == 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query max_records must be positive".to_string(),
         });
     }
     Ok(())
