@@ -365,3 +365,97 @@ fn governance_recovery_drill_alert_event_incremental_watermark_advances_monotoni
     assert!(batch3.is_empty());
     assert_eq!(watermark3, 1_080);
 }
+
+#[test]
+fn governance_recovery_drill_alert_event_incremental_cursor_handles_same_timestamp_nodes() {
+    let client = sample_client();
+    let event_bus =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::new();
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::publish(
+        &event_bus,
+        "w1",
+        "node-a",
+        &sample_alert_event(
+            "w1",
+            "node-a",
+            1_000,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::Emitted,
+        ),
+    )
+    .expect("publish node-a 1000");
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::publish(
+        &event_bus,
+        "w1",
+        "node-b",
+        &sample_alert_event(
+            "w1",
+            "node-b",
+            1_000,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::SuppressedCooldown,
+        ),
+    )
+    .expect("publish node-b 1000");
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::publish(
+        &event_bus,
+        "w1",
+        "node-b",
+        &sample_alert_event(
+            "w1",
+            "node-b",
+            1_050,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::Emitted,
+        ),
+    )
+    .expect("publish node-b 1050");
+
+    let (batch1, next_ts1, next_node1) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_cursor(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            999,
+            None,
+            &[],
+            1,
+            &event_bus,
+        )
+        .expect("first cursor batch");
+    assert_eq!(batch1.len(), 1);
+    assert_eq!(batch1[0].event_at_ms, 1_000);
+    assert_eq!(batch1[0].node_id, "node-a");
+    assert_eq!(next_ts1, 1_000);
+    assert_eq!(next_node1.as_deref(), Some("node-a"));
+
+    let (batch2, next_ts2, next_node2) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_cursor(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            next_ts1,
+            next_node1.as_deref(),
+            &[],
+            10,
+            &event_bus,
+        )
+        .expect("second cursor batch");
+    assert_eq!(batch2.len(), 2);
+    assert_eq!(batch2[0].event_at_ms, 1_000);
+    assert_eq!(batch2[0].node_id, "node-b");
+    assert_eq!(batch2[1].event_at_ms, 1_050);
+    assert_eq!(batch2[1].node_id, "node-b");
+    assert_eq!(next_ts2, 1_050);
+    assert_eq!(next_node2.as_deref(), Some("node-b"));
+
+    let (batch3, next_ts3, next_node3) = client
+        .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_cursor(
+            "w1",
+            &["node-a".to_string(), "node-b".to_string()],
+            next_ts2,
+            next_node2.as_deref(),
+            &[],
+            10,
+            &event_bus,
+        )
+        .expect("third cursor batch");
+    assert!(batch3.is_empty());
+    assert_eq!(next_ts3, 1_050);
+    assert_eq!(next_node3.as_deref(), Some("node-b"));
+}

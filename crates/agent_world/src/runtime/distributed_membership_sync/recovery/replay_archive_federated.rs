@@ -437,6 +437,62 @@ impl MembershipSyncClient {
         Ok((events, next_since_event_at_ms))
     }
 
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_cursor(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        since_event_at_ms: i64,
+        since_node_id: Option<&str>,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<
+        (
+            Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+            i64,
+            Option<String>,
+        ),
+        WorldError,
+    > {
+        validate_governance_recovery_drill_alert_event_aggregate_query_args(max_records)?;
+        let normalized_since_node_id = if let Some(node_id) = since_node_id {
+            let (_, normalized_node_id) = normalized_schedule_key(world_id, node_id)?;
+            Some(normalized_node_id)
+        } else {
+            None
+        };
+        let mut events = collect_governance_recovery_drill_alert_events_aggregated(
+            world_id, node_ids, None, outcomes, event_bus,
+        )?;
+        events.retain(|event| {
+            if event.event_at_ms > since_event_at_ms {
+                return true;
+            }
+            if event.event_at_ms < since_event_at_ms {
+                return false;
+            }
+            match normalized_since_node_id.as_deref() {
+                Some(since_node_id) => event.node_id.as_str() > since_node_id,
+                None => true,
+            }
+        });
+        events.sort_by(|left, right| {
+            left.event_at_ms
+                .cmp(&right.event_at_ms)
+                .then_with(|| left.node_id.cmp(&right.node_id))
+        });
+        if events.len() > max_records {
+            events.truncate(max_records);
+        }
+        let (next_event_at_ms, next_node_id) = match events.last() {
+            Some(last) => (last.event_at_ms, Some(last.node_id.clone())),
+            None => (since_event_at_ms, normalized_since_node_id),
+        };
+        Ok((events, next_event_at_ms, next_node_id))
+    }
+
     pub fn summarize_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated_by_outcome(
         &self,
         world_id: &str,
