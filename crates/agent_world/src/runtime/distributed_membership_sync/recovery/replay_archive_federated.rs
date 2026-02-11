@@ -403,6 +403,40 @@ impl MembershipSyncClient {
         Ok(events)
     }
 
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_with_next_watermark(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        since_event_at_ms: i64,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<
+        (
+            Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+            i64,
+        ),
+        WorldError,
+    > {
+        let events = self
+            .query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since(
+                world_id,
+                node_ids,
+                since_event_at_ms,
+                outcomes,
+                max_records,
+                event_bus,
+            )?;
+        let next_since_event_at_ms = events
+            .last()
+            .map(|event| event.event_at_ms)
+            .unwrap_or(since_event_at_ms)
+            .max(since_event_at_ms);
+        Ok((events, next_since_event_at_ms))
+    }
+
     pub fn summarize_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated_by_outcome(
         &self,
         world_id: &str,
