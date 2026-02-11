@@ -23,17 +23,8 @@ pub use dead_letter::{
     MembershipRevocationAlertDeadLetterStore, NoopMembershipRevocationAlertDeadLetterStore,
 };
 mod dead_letter;
-pub use replay::{
-    FileMembershipRevocationDeadLetterReplayPolicyStore,
-    FileMembershipRevocationDeadLetterReplayStateStore,
-    InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
-    InMemoryMembershipRevocationDeadLetterReplayStateStore,
-    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
-    MembershipRevocationDeadLetterReplayPolicyStore,
-    MembershipRevocationDeadLetterReplayRollbackGuard,
-    MembershipRevocationDeadLetterReplayScheduleState,
-    MembershipRevocationDeadLetterReplayStateStore,
-};
+#[rustfmt::skip]
+pub use replay::{FileMembershipRevocationDeadLetterReplayPolicyStore, FileMembershipRevocationDeadLetterReplayStateStore, InMemoryMembershipRevocationDeadLetterReplayPolicyStore, InMemoryMembershipRevocationDeadLetterReplayStateStore, MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState, MembershipRevocationDeadLetterReplayPolicyStore, MembershipRevocationDeadLetterReplayRollbackGuard, MembershipRevocationDeadLetterReplayScheduleState, MembershipRevocationDeadLetterReplayStateStore};
 mod replay;
 #[rustfmt::skip]
 pub use replay_audit::{
@@ -50,6 +41,16 @@ pub use replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 mod replay_audit;
+#[rustfmt::skip]
+pub use replay_archive::{
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore, FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore, InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceArchiveDrillScheduledRunReport, MembershipRevocationDeadLetterReplayRollbackGovernanceAuditPruneReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy, MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillSchedulePolicy, MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduledRunReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleState, MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+};
+mod replay_archive;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeliveryMetrics {
