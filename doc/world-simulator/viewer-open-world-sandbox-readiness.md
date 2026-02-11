@@ -120,6 +120,11 @@
   - viewer 顶部新增 `模式` 切换（`Observe` / `Prompt Ops`）。
   - `Prompt Ops` 已提供 Prompt-only 约束提示、Agent 目标选择、Prompt 草稿编辑区与审计占位区。
   - 支持环境变量 `AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops` 直接进入运营态。
+- 已完成 OWR3（VPP5~VPP9）：
+  - 选中反馈从“仅缩放”升级为“缩放 + 光晕强调”。
+  - 标签 LOD 已支持距离衰减、同屏上限、遮挡降权与选中优先。
+  - 覆盖层与网格线已接入节流与 LOD（覆盖层按 tick/事件增量刷新、flow 合批、远距 chunk 线隐藏）。
+  - 右侧总览新增渲染性能摘要（avg/p95、对象/标签/覆盖层计数、预算状态）。
 - 已完成验证：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过。
-  - 截图闭环通过：`AGENT_WORLD_VIEWER_PANEL_MODE=prompt_ops ./scripts/capture-viewer-frame.sh ...`。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（157 tests）。
+  - 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --tick-ms 300 --viewer-wait 10`。
