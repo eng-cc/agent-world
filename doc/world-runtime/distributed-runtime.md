@@ -484,17 +484,17 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **指标聚合**：新增 `aggregate_recent_delivery_metrics(...)` 与 `ratio_per_mille(...)`，对最近 N 条 delivery metrics 做窗口化统计与比例计算。
 - **策略建议规则**：高积压场景提升 `max_replay_per_run`，低积压且健康指标场景收敛 `max_replay_per_run`，容量型积压场景降低 `max_retry_limit_exceeded_streak` 以提升公平性。
 - **联动调度入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_adaptive_policy(...)`，输出 `(replayed, recommended_policy)` 并保持原协同调度兼容。
-- **测试覆盖**：补充扩容、收敛、公平倾斜和联动执行测试，验证策略推荐与实际回放行为一致。
 ## 成员目录吊销死信回放策略冷却窗口与漂移抑制（草案）
 - **guard 入口**：新增 `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(...)` 与 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy(...)`。
 - **guard 规则**：新增 `validate_adaptive_policy_guard_bounds(...)` 与步长截断 helper，约束参数并限制单轮漂移幅度。
 - **执行语义**：冷却窗口命中时保持当前 policy，不命中时应用步长截断后的推荐 policy。
-- **测试覆盖**：新增冷却窗口命中、步长截断、非法 guard 参数与联动调度测试。
 ## 成员目录吊销死信回放策略建议持久化与回滚保护（草案）
 - **状态持久化**：新增 `MembershipRevocationDeadLetterReplayPolicyStore` 与 `MembershipRevocationDeadLetterReplayPolicyState`，支持内存/文件策略状态存储。
 - **回滚保护**：新增 `MembershipRevocationDeadLetterReplayRollbackGuard` 与 `recommend_revocation_dead_letter_replay_policy_with_persistence_and_rollback_guard(...)`，在指标恶化时回退到最近稳定策略。
 - **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy(...)`，返回 `(replayed, policy, rolled_back)` 并补充持久化/回滚测试。
 ## 成员目录吊销死信回放策略采纳审计与异常回退告警（草案）
-- **采纳审计**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`，记录推荐/采纳/稳定策略、积压与回滚触发。
-- **审计存储**：新增 `MembershipRevocationDeadLetterReplayPolicyAuditStore`，提供内存与 JSONL 文件实现。
-- **异常告警联动**：新增 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State` 与 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
+- **采纳审计与告警**：新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`、`MembershipRevocationDeadLetterReplayPolicyAuditStore` 与 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State`。
+- **联动执行**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(...)`，支持回滚窗口阈值告警与冷却抑制。
+## 成员目录吊销死信回放策略审计状态持久化与多级回退治理（草案）
+- **状态存储扩展**：新增 `MembershipRevocationDeadLetterReplayRollbackAlertStateStore` 与 `MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore`（内存/文件实现）。
+- **治理联动入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_and_governance(...)`，输出治理级别并支持 `Stable/Emergency` 多级回退。

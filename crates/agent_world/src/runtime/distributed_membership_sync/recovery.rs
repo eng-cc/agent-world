@@ -37,12 +37,21 @@ pub use replay::{
 mod replay;
 pub use replay_audit::{
     FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
     MembershipRevocationDeadLetterReplayPolicyAuditStore,
     MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
     MembershipRevocationDeadLetterReplayRollbackAlertState,
+    MembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+    MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 mod replay_audit;
 

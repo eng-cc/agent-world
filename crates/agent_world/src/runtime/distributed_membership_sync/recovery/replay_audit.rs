@@ -67,6 +67,75 @@ pub struct MembershipRevocationDeadLetterReplayRollbackAlertState {
     pub last_alert_at_ms: Option<i64>,
 }
 
+pub trait MembershipRevocationDeadLetterReplayRollbackAlertStateStore {
+    fn load_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackAlertState, WorldError>;
+
+    fn save_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackAlertState,
+    ) -> Result<(), WorldError>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MembershipRevocationDeadLetterReplayRollbackGovernanceLevel {
+    #[default]
+    Normal,
+    Stable,
+    Emergency,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MembershipRevocationDeadLetterReplayRollbackGovernancePolicy {
+    pub level_one_rollback_streak: usize,
+    pub level_two_rollback_streak: usize,
+    pub level_two_emergency_policy: MembershipRevocationDeadLetterReplayPolicy,
+}
+
+impl Default for MembershipRevocationDeadLetterReplayRollbackGovernancePolicy {
+    fn default() -> Self {
+        Self {
+            level_one_rollback_streak: 2,
+            level_two_rollback_streak: 4,
+            level_two_emergency_policy: MembershipRevocationDeadLetterReplayPolicy {
+                max_replay_per_run: 2,
+                max_retry_limit_exceeded_streak: 1,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceState {
+    #[serde(default)]
+    pub rollback_streak: usize,
+    #[serde(default)]
+    pub last_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_level_updated_at_ms: Option<i64>,
+}
+
+pub trait MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
+    fn load_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceState, WorldError>;
+
+    fn save_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    ) -> Result<(), WorldError>;
+}
+
 pub trait MembershipRevocationDeadLetterReplayPolicyAuditStore {
     fn append(
         &self,
@@ -205,6 +274,220 @@ impl MembershipRevocationDeadLetterReplayPolicyAuditStore
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore {
+    states: Arc<
+        Mutex<BTreeMap<(String, String), MembershipRevocationDeadLetterReplayRollbackAlertState>>,
+    >,
+}
+
+impl InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackAlertStateStore
+    for InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore
+{
+    fn load_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackAlertState, WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback alert state lock poisoned"
+                    .into(),
+            )
+        })?;
+        Ok(guard.get(&key).cloned().unwrap_or_default())
+    }
+
+    fn save_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackAlertState,
+    ) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let mut guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback alert state lock poisoned"
+                    .into(),
+            )
+        })?;
+        guard.insert(key, state.clone());
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn state_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-dead-letter-replay-rollback-alert-state.json"
+        )))
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackAlertStateStore
+    for FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore
+{
+    fn load_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackAlertState, WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if !path.exists() {
+            return Ok(MembershipRevocationDeadLetterReplayRollbackAlertState::default());
+        }
+        let bytes = fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    fn save_alert_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackAlertState,
+    ) -> Result<(), WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+        fs::write(path, serde_json::to_vec(state)?)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
+    states: Arc<
+        Mutex<
+            BTreeMap<(String, String), MembershipRevocationDeadLetterReplayRollbackGovernanceState>,
+        >,
+    >,
+}
+
+impl InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+    for InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+{
+    fn load_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceState, WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance state lock poisoned"
+                    .into(),
+            )
+        })?;
+        Ok(guard.get(&key).cloned().unwrap_or_default())
+    }
+
+    fn save_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    ) -> Result<(), WorldError> {
+        let key = normalized_schedule_key(world_id, node_id)?;
+        let mut guard = self.states.lock().map_err(|_| {
+            WorldError::Io(
+                "membership revocation dead-letter replay rollback governance state lock poisoned"
+                    .into(),
+            )
+        })?;
+        guard.insert(key, state.clone());
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
+    root_dir: PathBuf,
+}
+
+impl FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore {
+    pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
+        let root_dir = root_dir.into();
+        fs::create_dir_all(&root_dir)?;
+        Ok(Self { root_dir })
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    fn state_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-dead-letter-replay-rollback-governance-state.json"
+        )))
+    }
+}
+
+impl MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+    for FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+{
+    fn load_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+    ) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceState, WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if !path.exists() {
+            return Ok(MembershipRevocationDeadLetterReplayRollbackGovernanceState::default());
+        }
+        let bytes = fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    fn save_governance_state(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        state: &MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    ) -> Result<(), WorldError> {
+        let path = self.state_path(world_id, node_id)?;
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+        fs::write(path, serde_json::to_vec(state)?)?;
+        Ok(())
+    }
+}
+
 impl MembershipSyncClient {
     #[allow(clippy::too_many_arguments)]
     pub fn run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(
@@ -333,6 +616,118 @@ impl MembershipSyncClient {
         )?;
         Ok((replayed, applied_policy, rolled_back, alert_emitted))
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_and_governance(
+        &self,
+        world_id: &str,
+        target_node_id: &str,
+        coordinator_node_id: &str,
+        now_ms: i64,
+        replay_interval_ms: i64,
+        fallback_policy: &MembershipRevocationDeadLetterReplayPolicy,
+        replay_state_store: &(dyn MembershipRevocationDeadLetterReplayStateStore + Send + Sync),
+        replay_policy_store: &(dyn MembershipRevocationDeadLetterReplayPolicyStore + Send + Sync),
+        replay_policy_audit_store: &(dyn MembershipRevocationDeadLetterReplayPolicyAuditStore
+              + Send
+              + Sync),
+        rollback_alert_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackAlertStateStore
+              + Send
+              + Sync),
+        rollback_governance_state_store: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore
+              + Send
+              + Sync),
+        recovery_store: &(dyn MembershipRevocationAlertRecoveryStore + Send + Sync),
+        dead_letter_store: &(dyn MembershipRevocationAlertDeadLetterStore + Send + Sync),
+        coordinator: &(dyn MembershipRevocationScheduleCoordinator + Send + Sync),
+        coordinator_lease_ttl_ms: i64,
+        metrics_lookback: usize,
+        min_replay_per_run: usize,
+        max_replay_per_run: usize,
+        max_retry_limit_exceeded_streak: usize,
+        policy_cooldown_ms: i64,
+        max_replay_step_change: usize,
+        max_retry_streak_step_change: usize,
+        rollback_guard: &MembershipRevocationDeadLetterReplayRollbackGuard,
+        rollback_alert_policy: &MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
+        rollback_governance_policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+        alert_sink: &(dyn MembershipRevocationAlertSink + Send + Sync),
+    ) -> Result<
+        (
+            usize,
+            MembershipRevocationDeadLetterReplayPolicy,
+            bool,
+            bool,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+        ),
+        WorldError,
+    > {
+        validate_dead_letter_replay_rollback_governance_policy(rollback_governance_policy)?;
+        let mut rollback_alert_state =
+            rollback_alert_state_store.load_alert_state(world_id, target_node_id)?;
+        let (replayed, applied_policy, rolled_back, alert_emitted) = self
+            .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(
+                world_id,
+                target_node_id,
+                coordinator_node_id,
+                now_ms,
+                replay_interval_ms,
+                fallback_policy,
+                replay_state_store,
+                replay_policy_store,
+                replay_policy_audit_store,
+                recovery_store,
+                dead_letter_store,
+                coordinator,
+                coordinator_lease_ttl_ms,
+                metrics_lookback,
+                min_replay_per_run,
+                max_replay_per_run,
+                max_retry_limit_exceeded_streak,
+                policy_cooldown_ms,
+                max_replay_step_change,
+                max_retry_streak_step_change,
+                rollback_guard,
+                rollback_alert_policy,
+                &mut rollback_alert_state,
+                alert_sink,
+            )?;
+        rollback_alert_state_store.save_alert_state(
+            world_id,
+            target_node_id,
+            &rollback_alert_state,
+        )?;
+
+        let mut policy_state = replay_policy_store.load_policy_state(world_id, target_node_id)?;
+        let mut governance_state =
+            rollback_governance_state_store.load_governance_state(world_id, target_node_id)?;
+        let (governed_policy, governance_level) =
+            apply_dead_letter_replay_rollback_governance_policy(
+                now_ms,
+                rolled_back,
+                &applied_policy,
+                &policy_state.last_stable_policy,
+                rollback_governance_policy,
+                &mut governance_state,
+            );
+        if governed_policy != applied_policy {
+            policy_state.active_policy = governed_policy.clone();
+            policy_state.last_policy_update_at_ms = Some(now_ms);
+            replay_policy_store.save_policy_state(world_id, target_node_id, &policy_state)?;
+        }
+        rollback_governance_state_store.save_governance_state(
+            world_id,
+            target_node_id,
+            &governance_state,
+        )?;
+        Ok((
+            replayed,
+            governed_policy,
+            rolled_back,
+            alert_emitted,
+            governance_level,
+        ))
+    }
 }
 
 fn validate_dead_letter_replay_rollback_alert_policy(
@@ -367,6 +762,80 @@ fn validate_dead_letter_replay_rollback_alert_policy(
         });
     }
     Ok(())
+}
+
+fn validate_dead_letter_replay_rollback_governance_policy(
+    policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+) -> Result<(), WorldError> {
+    if policy.level_one_rollback_streak == 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation dead-letter rollback governance level_one_rollback_streak must be positive".to_string(),
+        });
+    }
+    if policy.level_two_rollback_streak < policy.level_one_rollback_streak {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation dead-letter rollback governance thresholds are invalid: level_two={} < level_one={}",
+                policy.level_two_rollback_streak,
+                policy.level_one_rollback_streak
+            ),
+        });
+    }
+    if policy.level_two_emergency_policy.max_replay_per_run == 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation dead-letter rollback governance emergency policy max_replay_per_run must be positive".to_string(),
+        });
+    }
+    if policy
+        .level_two_emergency_policy
+        .max_retry_limit_exceeded_streak
+        == 0
+    {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation dead-letter rollback governance emergency policy max_retry_limit_exceeded_streak must be positive".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn apply_dead_letter_replay_rollback_governance_policy(
+    now_ms: i64,
+    rolled_back: bool,
+    applied_policy: &MembershipRevocationDeadLetterReplayPolicy,
+    stable_policy: &MembershipRevocationDeadLetterReplayPolicy,
+    policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+    state: &mut MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+) -> (
+    MembershipRevocationDeadLetterReplayPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+) {
+    state.rollback_streak = if rolled_back {
+        state.rollback_streak.saturating_add(1)
+    } else {
+        0
+    };
+    let level = if state.rollback_streak >= policy.level_two_rollback_streak {
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency
+    } else if state.rollback_streak >= policy.level_one_rollback_streak {
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable
+    } else {
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Normal
+    };
+    state.last_level = level;
+    state.last_level_updated_at_ms = Some(now_ms);
+
+    let governed_policy = match level {
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Normal => {
+            applied_policy.clone()
+        }
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable => {
+            stable_policy.clone()
+        }
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency => {
+            policy.level_two_emergency_policy.clone()
+        }
+    };
+    (governed_policy, level)
 }
 
 #[allow(clippy::too_many_arguments)]
