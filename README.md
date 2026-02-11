@@ -97,6 +97,10 @@
   - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
 - `scripts/llm-longrun-stress.sh`：真实 LLM 长跑压测（运行 demo、落盘指标、阈值断言）
   - 运行：`./scripts/llm-longrun-stress.sh --ticks 120 --out-dir .tmp/llm_stress_longrun`
+  - 多场景（降低单场景偏差）：`./scripts/llm-longrun-stress.sh --ticks 30 --scenarios llm_bootstrap,power_bootstrap,resource_bootstrap --out-dir .tmp/llm_stress_multi_30 --no-llm-io`
+  - 多场景并行：`./scripts/llm-longrun-stress.sh --ticks 30 --scenarios llm_bootstrap,power_bootstrap,resource_bootstrap --jobs 3 --out-dir .tmp/llm_stress_multi_30_p3 --no-llm-io`
+  - 多次 `--scenario` 与 `--scenarios` 可混用；多场景结果会落在 `<out-dir>/scenarios/<scenario>/`，根目录 `report.json/summary.txt/run.log` 为聚合视图
+  - 并行度通过 `--jobs <n>` 控制；默认 `1`（串行）
   - 结果：默认生成 `report.json`、`run.log`、`summary.txt`，其中 `run.log` 默认包含 LLM 输入/输出（可用 `--no-llm-io` 关闭，或用 `--llm-io-max-chars <n>` 截断）
 
 ## Viewer 快速运行（离线回放）

@@ -72,3 +72,15 @@
 - 当前子阶段：LMSO29（进行中，详见 `doc/world-simulator/llm-lmso29-stability.md`）
 - 目标：在保持峰值已收敛的基础上，进一步回收动作失败率并稳定行动效率。
 - 最近验证：`llm_input_chars_max 14216 -> 9373`，`llm_input_chars_avg 1786 -> 1121`，`module_call 9 -> 2`（`llm_errors=0`、`parse_errors=0`）。
+
+## LMSO30 任务拆解（2026-02-11）
+- [x] LMSO30A 多场景评测设计文档（`doc/world-simulator/llm-multi-scenario-evaluation.md`）。
+- [x] LMSO30B 压测脚本支持多场景输入与批量执行。
+- [x] LMSO30C 聚合报告与阈值断言（分场景 + 总览）落盘。
+- [x] LMSO30D 30 tick 多场景回归并更新文档。
+- [x] LMSO30E 增加 `--jobs` 并行能力并完成冒烟验证。
+
+## 状态（LMSO30）
+- 当前子阶段：LMSO30（已完成，详见 `doc/world-simulator/llm-multi-scenario-evaluation.project.md`）
+- 目标：降低单场景偏差，建立可复用的跨场景评测口径。
+- 最近更新：补充完成 5 场景 30 tick 回归（含 `twin_region_bootstrap`、`triad_region_bootstrap`），确认需采用固定场景集与重复采样验收（2026-02-11）。
