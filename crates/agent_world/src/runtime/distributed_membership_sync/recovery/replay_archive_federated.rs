@@ -493,6 +493,99 @@ impl MembershipSyncClient {
         Ok((events, next_event_at_ms, next_node_id))
     }
 
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since_composite_sequence_cursor(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        since_event_at_ms: i64,
+        since_node_id: Option<&str>,
+        since_node_event_offset: usize,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<
+        (
+            Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+            i64,
+            Option<String>,
+            usize,
+        ),
+        WorldError,
+    > {
+        validate_governance_recovery_drill_alert_event_aggregate_query_args(max_records)?;
+        let normalized_since_node_id = if let Some(node_id) = since_node_id {
+            let (_, normalized_node_id) = normalized_schedule_key(world_id, node_id)?;
+            Some(normalized_node_id)
+        } else {
+            None
+        };
+        let events = collect_governance_recovery_drill_alert_events_aggregated(
+            world_id, node_ids, None, outcomes, event_bus,
+        )?;
+        let mut node_offsets = BTreeMap::new();
+        let mut cursor_rows = Vec::with_capacity(events.len());
+        for event in events {
+            let next_offset_entry = node_offsets.entry(event.node_id.clone()).or_insert(0usize);
+            let node_event_offset = *next_offset_entry;
+            *next_offset_entry = next_offset_entry.saturating_add(1);
+            cursor_rows.push((event, node_event_offset));
+        }
+        cursor_rows.retain(|(event, node_event_offset)| {
+            if event.event_at_ms > since_event_at_ms {
+                return true;
+            }
+            if event.event_at_ms < since_event_at_ms {
+                return false;
+            }
+            match normalized_since_node_id.as_deref() {
+                Some(since_node_id) => {
+                    if event.node_id.as_str() > since_node_id {
+                        true
+                    } else if event.node_id.as_str() < since_node_id {
+                        false
+                    } else {
+                        *node_event_offset > since_node_event_offset
+                    }
+                }
+                None => true,
+            }
+        });
+        cursor_rows.sort_by(|left, right| {
+            left.0
+                .event_at_ms
+                .cmp(&right.0.event_at_ms)
+                .then_with(|| left.0.node_id.cmp(&right.0.node_id))
+                .then_with(|| left.1.cmp(&right.1))
+        });
+        if cursor_rows.len() > max_records {
+            cursor_rows.truncate(max_records);
+        }
+        let (next_event_at_ms, next_node_id, next_node_event_offset) = match cursor_rows.last() {
+            Some((event, node_event_offset)) => (
+                event.event_at_ms,
+                Some(event.node_id.clone()),
+                *node_event_offset,
+            ),
+            None => (
+                since_event_at_ms,
+                normalized_since_node_id,
+                since_node_event_offset,
+            ),
+        };
+        let events = cursor_rows
+            .into_iter()
+            .map(|(event, _)| event)
+            .collect::<Vec<_>>();
+        Ok((
+            events,
+            next_event_at_ms,
+            next_node_id,
+            next_node_event_offset,
+        ))
+    }
+
     pub fn summarize_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated_by_outcome(
         &self,
         world_id: &str,
