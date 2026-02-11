@@ -35,6 +35,16 @@ pub use replay::{
     MembershipRevocationDeadLetterReplayStateStore,
 };
 mod replay;
+pub use replay_audit::{
+    FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
+    MembershipRevocationDeadLetterReplayPolicyAuditStore,
+    MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
+    MembershipRevocationDeadLetterReplayRollbackAlertState,
+};
+mod replay_audit;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationAlertDeliveryMetrics {

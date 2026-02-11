@@ -297,6 +297,14 @@
 - [x] 新增持久化/回滚保护单元测试
 - [x] 单元测试与分布式回归
 
+### 47. P3.30 成员目录吊销死信回放策略采纳审计与异常回退告警
+- [x] 新增 `MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord/Decision`
+- [x] 新增 `MembershipRevocationDeadLetterReplayPolicyAuditStore` 与内存/文件实现
+- [x] 新增 `MembershipRevocationDeadLetterReplayRollbackAlertPolicy/State`
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert`
+- [x] 新增策略采纳审计与回退告警单元测试
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -304,6 +312,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.29 完成（成员目录吊销死信回放策略建议持久化与回滚保护）
-- 下一步：P3.30（成员目录吊销死信回放策略采纳审计与异常回退告警）
-- 最近更新：成员目录吊销死信回放策略建议持久化与回滚保护（2026-02-11）
+- 当前阶段：P3.30 完成（成员目录吊销死信回放策略采纳审计与异常回退告警）
+- 下一步：P3.31（成员目录吊销死信回放策略审计状态持久化与多级回退治理）
+- 最近更新：成员目录吊销死信回放策略采纳审计与异常回退告警（2026-02-11）
