@@ -39,17 +39,22 @@ pub use reconciliation::{
 pub use recovery::{
     FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
     FileMembershipRevocationCoordinatorStateStore,
+    FileMembershipRevocationDeadLetterReplayPolicyStore,
     FileMembershipRevocationDeadLetterReplayStateStore,
     InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
     InMemoryMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
     InMemoryMembershipRevocationDeadLetterReplayStateStore,
     MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
     MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeadLetterStore,
     MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryReport,
     MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
     MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
-    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayScheduleState,
+    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
+    MembershipRevocationDeadLetterReplayPolicyStore,
+    MembershipRevocationDeadLetterReplayRollbackGuard,
+    MembershipRevocationDeadLetterReplayScheduleState,
     MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
     NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
@@ -946,13 +951,11 @@ impl MembershipSyncClient {
             ignored: 0,
             rejected: 0,
         };
-
         let mut verification_keyring = if signer.is_none() {
             Some(keyring.clone())
         } else {
             None
         };
-
         for revocation in revocations {
             let keyring_ref = verification_keyring.as_ref();
             if let Err(_err) =
@@ -961,7 +964,6 @@ impl MembershipSyncClient {
                 report.rejected = report.rejected.saturating_add(1);
                 continue;
             }
-
             if keyring.revoke_key(&revocation.key_id)? {
                 report.applied = report.applied.saturating_add(1);
                 if let Some(verifier) = verification_keyring.as_mut() {
@@ -971,7 +973,6 @@ impl MembershipSyncClient {
                 report.ignored = report.ignored.saturating_add(1);
             }
         }
-
         Ok(report)
     }
 
@@ -986,7 +987,6 @@ impl MembershipSyncClient {
             applied: 0,
             ignored: 0,
         };
-
         for announce in announcements {
             let request = ConsensusMembershipChangeRequest {
                 requester_id: announce.requester_id,
@@ -1004,7 +1004,6 @@ impl MembershipSyncClient {
                 report.ignored = report.ignored.saturating_add(1);
             }
         }
-
         Ok(report)
     }
 
@@ -1187,6 +1186,8 @@ mod logic;
 mod persistence_tests;
 mod reconciliation;
 mod recovery;
+#[cfg(test)]
+mod recovery_replay_policy_persistence_tests;
 #[cfg(test)]
 mod recovery_replay_tests;
 #[cfg(test)]
