@@ -434,15 +434,12 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **编排入口**：新增 `run_revocation_reconcile_schedule_with_store_and_alerts(...)`，打通 load → run → save → emit。
 - **上报接口**：新增 `emit_revocation_reconcile_alerts(...)`，统一批量告警写入 sink。
 - **持久化维度**：文件落盘按 `world_id/node_id` 切分，便于节点级恢复与诊断。
-
 ## 成员目录吊销告警抑制去重与调度多节点协同（草案）
 - **去重策略**：新增 `MembershipRevocationAlertDedupPolicy` 与 `MembershipRevocationAlertDedupState`。
 - **去重入口**：新增 `deduplicate_revocation_alerts(...)`，按 `world/node/code` + 时间窗口抑制重复告警。
 - **协同抽象**：新增 `MembershipRevocationScheduleCoordinator` 与 `InMemoryMembershipRevocationScheduleCoordinator`。
 - **协同编排**：新增 `run_revocation_reconcile_coordinated(...)`，先抢占协调锁再执行 schedule/store/alert。
 - **运行报告**：新增 `MembershipRevocationCoordinatedRunReport`，反馈是否获得执行权与实际告警发出数量。
-
-
 ## 成员目录吊销协同状态外部存储与告警恢复机制（草案）
 - **协同状态存储**：新增 `MembershipRevocationCoordinatorStateStore`，支持内存/文件 lease 状态持久化。
 - **Store 协调器**：新增 `StoreBackedMembershipRevocationScheduleCoordinator`，基于外部状态实现跨进程协同锁。
@@ -450,7 +447,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **恢复发送**：新增 `emit_revocation_reconcile_alerts_with_recovery(...)`，先重放 pending，再发送新告警，失败回写队列。
 - **协同编排**：新增 `run_revocation_reconcile_coordinated_with_recovery(...)`，打通协同调度 + 去重 + 恢复发送。
 - **运行报告**：新增 `MembershipRevocationAlertRecoveryReport` 与 `MembershipRevocationCoordinatedRecoveryRunReport`。
-
 ## 成员目录吊销恢复队列容量治理与告警 ACK 重试（草案）
 - **恢复队列元素**：新增 `MembershipRevocationPendingAlert`，持久化 `attempt/next_retry_at_ms/last_error` 等重试元数据。
 - **ACK 重试策略**：新增 `MembershipRevocationAlertAckRetryPolicy`（`max_pending_alerts/max_retry_attempts/retry_backoff_ms`）。
@@ -458,7 +454,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry(...)`，在协调调度链路中接入 ACK 重试策略。
 - **兼容策略**：文件 recovery store 支持读取旧版 `Vec<MembershipRevocationAnomalyAlert>` 格式并自动升级为 pending 结构。
 - **运行报告扩展**：`MembershipRevocationAlertRecoveryReport`/`MembershipRevocationCoordinatedRecoveryRunReport` 增加 `deferred/dropped_capacity/dropped_retry_limit` 指标。
-
 ## 成员目录吊销告警恢复死信归档与投递指标（草案）
 - **死信归档抽象**：新增 `MembershipRevocationAlertDeadLetterStore`，提供内存与 JSONL 文件实现。
 - **死信数据模型**：新增 `MembershipRevocationAlertDeadLetterRecord` 与 `MembershipRevocationAlertDeadLetterReason`（`retry_limit_exceeded` / `capacity_evicted`）。
@@ -466,7 +461,6 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **协同编排扩展**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter(...)`，在协同调度链路中透传死信归档能力。
 - **投递指标**：新增 `MembershipRevocationAlertDeliveryMetrics`，统计 attempted/succeeded/failed/deferred/buffered/drop/dead-letter 指标。
 - **报告补齐**：恢复与协同报告结构增加 `delivery_metrics` 字段，便于节点级故障诊断与容量调优。
-
 ## 成员目录吊销死信回放调度与指标导出（草案）
 - **Store 扩展**：`MembershipRevocationAlertDeadLetterStore` 增加 `list/replace` 与 delivery metrics `append/list` 能力。
 - **回放入口**：新增 `replay_revocation_dead_letters(...)`，按 FIFO + `max_replay` 将 dead-letter 回注到 recovery pending 队列。
@@ -474,14 +468,12 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **指标导出**：新增 `export_revocation_alert_delivery_metrics(...)`，将 delivery metrics 归档到 dead-letter store 的 metrics 轨道。
 - **协同联动导出**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export(...)`。
 - **可观测性**：内存/文件 store 均可查询导出 metrics 历史，为后续外部监控接入提供数据面。
-
 ## 成员目录吊销死信优先级回放与跨节点回放协同（草案）
 - **优先级回放**：`replay_revocation_dead_letters(...)` 改为按 `reason > attempt > dropped_at_ms` 选择回放对象，优先恢复 `RetryLimitExceeded`。
 - **排序规则**：同 reason 下重试次数高者优先；重试次数相同则更早 dropped 记录优先，保证长期积压可逐步出队。
 - **跨节点协同**：新增 `run_revocation_dead_letter_replay_schedule_coordinated(...)`，通过协调器 lease 控制同一目标队列的并发回放。
 - **协同维度**：lease key 采用 `world_id + target_node_id` 组合，允许不同目标节点并行回放，同时避免同队列竞争。
 - **兼容性**：既有 `run_revocation_dead_letter_replay_schedule(...)` 与指标导出链路保持可用，按需增量接入协同入口。
-
 ## 成员目录吊销死信回放状态持久化与公平调度（草案）
 - **状态模型**：新增 `MembershipRevocationDeadLetterReplayScheduleState`，持久化 `last_replay_at_ms` 与公平提示位 `prefer_capacity_evicted`。
 - **状态存储**：新增 `MembershipRevocationDeadLetterReplayStateStore`，提供内存与 JSON 文件实现。
@@ -489,3 +481,17 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **策略回放入口**：新增 `replay_revocation_dead_letters_with_policy(...)`，在保持高优先级优先的同时轮转处理 `CapacityEvicted` 积压。
 - **持久化调度入口**：新增 `run_revocation_dead_letter_replay_schedule_with_state_store(...)`，由 store 接管 replay interval 及公平状态读写。
 - **协同持久化调度**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store(...)`，将跨节点 lease 与 state-store 调度组合。
+## 成员目录吊销死信回放状态观测聚合与策略自适应（草案）
+- **观测聚合入口**：新增 `recommend_revocation_dead_letter_replay_policy(...)`，聚合 replay state、dead-letter backlog、pending 队列与最近投递指标。
+- **边界校验**：新增 `validate_adaptive_policy_bounds(...)`，统一约束 `metrics_lookback`、`min/max_replay_per_run` 与 `max_retry_limit_exceeded_streak`。
+- **指标聚合**：新增 `aggregate_recent_delivery_metrics(...)` 与 `ratio_per_mille(...)`，对最近 N 条 delivery metrics 做窗口化统计与比例计算。
+- **策略建议规则**：高积压场景提升 `max_replay_per_run`，低积压且健康指标场景收敛 `max_replay_per_run`，容量型积压场景降低 `max_retry_limit_exceeded_streak` 以提升公平性。
+- **联动调度入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_adaptive_policy(...)`，输出 `(replayed, recommended_policy)` 并保持原协同调度兼容。
+- **测试覆盖**：补充扩容、收敛、公平倾斜和联动执行测试，验证策略推荐与实际回放行为一致。
+## 成员目录吊销死信回放策略冷却窗口与漂移抑制（草案）
+- **guard 推荐入口**：新增 `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(...)`，在基础推荐结果上叠加冷却窗口与步长限制。
+- **guard 校验**：新增 `validate_adaptive_policy_guard_bounds(...)`，约束 `policy_cooldown_ms` 与单轮参数变更步长必须为正。
+- **漂移抑制**：新增策略步长截断 helper，限制 `max_replay_per_run` 与 `max_retry_limit_exceeded_streak` 的单轮调整幅度。
+- **guard 协同入口**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy(...)`，返回 `(replayed, guarded_policy)`。
+- **执行语义**：冷却窗口命中时保持当前 policy，不命中时应用步长截断后的推荐 policy。
+- **测试覆盖**：新增冷却窗口命中、步长截断、非法 guard 参数与联动调度测试。

@@ -473,3 +473,421 @@ fn run_replay_schedule_with_state_store_rejects_invalid_policy() {
     };
     assert!(reason.contains("max_replay_per_run"));
 }
+
+#[test]
+fn recommend_replay_policy_increases_max_replay_for_high_backlog() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    for offset in 0..8 {
+        dead_letter_store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-a",
+                1000 + offset,
+                1,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append dead-letter backlog");
+    }
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 2,
+        max_retry_limit_exceeded_streak: 3,
+    };
+    let recommendation = client
+        .recommend_revocation_dead_letter_replay_policy(
+            "w1",
+            "node-a",
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            16,
+            8,
+        )
+        .expect("recommend policy");
+
+    assert!(recommendation.max_replay_per_run > current_policy.max_replay_per_run);
+}
+
+#[test]
+fn recommend_replay_policy_decreases_max_replay_for_low_backlog_and_healthy_metrics() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    dead_letter_store
+        .append_delivery_metrics(
+            "w1",
+            "node-a",
+            1000,
+            &MembershipRevocationAlertDeliveryMetrics {
+                attempted: 6,
+                succeeded: 6,
+                failed: 0,
+                deferred: 0,
+                buffered: 0,
+                dropped_capacity: 0,
+                dropped_retry_limit: 0,
+                dead_lettered: 0,
+            },
+        )
+        .expect("append healthy metrics");
+    dead_letter_store
+        .append_delivery_metrics(
+            "w1",
+            "node-a",
+            1100,
+            &MembershipRevocationAlertDeliveryMetrics {
+                attempted: 5,
+                succeeded: 5,
+                failed: 0,
+                deferred: 0,
+                buffered: 0,
+                dropped_capacity: 0,
+                dropped_retry_limit: 0,
+                dead_lettered: 0,
+            },
+        )
+        .expect("append healthy metrics #2");
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 5,
+        max_retry_limit_exceeded_streak: 3,
+    };
+    let recommendation = client
+        .recommend_revocation_dead_letter_replay_policy(
+            "w1",
+            "node-a",
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            4,
+            1,
+            16,
+            8,
+        )
+        .expect("recommend policy");
+
+    assert_eq!(recommendation.max_replay_per_run, 4);
+}
+
+#[test]
+fn recommend_replay_policy_reduces_retry_streak_when_capacity_preferred() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    replay_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayScheduleState {
+                last_replay_at_ms: Some(900),
+                prefer_capacity_evicted: true,
+            },
+        )
+        .expect("seed replay state");
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            1,
+            MembershipRevocationAlertDeadLetterReason::CapacityEvicted,
+        ))
+        .expect("append capacity dead-letter");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1001,
+            2,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append retry dead-letter");
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 4,
+    };
+    let recommendation = client
+        .recommend_revocation_dead_letter_replay_policy(
+            "w1",
+            "node-a",
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            4,
+            1,
+            16,
+            8,
+        )
+        .expect("recommend policy");
+    assert_eq!(recommendation.max_retry_limit_exceeded_streak, 3);
+}
+
+#[test]
+fn run_coordinated_replay_with_adaptive_policy_returns_updated_policy() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator_store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
+        Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
+    let coordinator = StoreBackedMembershipRevocationScheduleCoordinator::new(coordinator_store);
+
+    for offset in 0..6 {
+        dead_letter_store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-target",
+                1000 + offset,
+                1,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append dead-letter");
+    }
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 2,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let (replayed, updated_policy) = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_adaptive_policy(
+            "w1",
+            "node-target",
+            "node-runner",
+            1200,
+            50,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            8,
+            1,
+            16,
+            8,
+        )
+        .expect("run adaptive coordinated replay");
+
+    assert!(updated_policy.max_replay_per_run >= current_policy.max_replay_per_run);
+    assert_eq!(replayed, updated_policy.max_replay_per_run.min(6));
+}
+
+#[test]
+fn recommend_guarded_policy_respects_cooldown_window() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    replay_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayScheduleState {
+                last_replay_at_ms: Some(1000),
+                prefer_capacity_evicted: false,
+            },
+        )
+        .expect("seed replay state");
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    for offset in 0..12 {
+        dead_letter_store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-a",
+                2000 + offset,
+                1,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append retry dead-letter backlog");
+    }
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 3,
+        max_retry_limit_exceeded_streak: 3,
+    };
+    let guarded = client
+        .recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(
+            "w1",
+            "node-a",
+            1200,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            32,
+            8,
+            500,
+            4,
+            2,
+        )
+        .expect("recommend guarded policy");
+
+    assert_eq!(
+        guarded, current_policy,
+        "guard should hold policy when cooldown window is active"
+    );
+}
+
+#[test]
+fn recommend_guarded_policy_clamps_step_change() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    for offset in 0..40 {
+        dead_letter_store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-a",
+                3000 + offset,
+                1,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append retry dead-letter backlog");
+    }
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 12,
+        max_retry_limit_exceeded_streak: 4,
+    };
+    let guarded = client
+        .recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(
+            "w1",
+            "node-a",
+            5000,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            64,
+            8,
+            100,
+            2,
+            1,
+        )
+        .expect("recommend guarded policy");
+
+    assert_eq!(
+        guarded.max_replay_per_run, 14,
+        "guard should cap max_replay_per_run single-step drift"
+    );
+    assert_eq!(
+        guarded.max_retry_limit_exceeded_streak, 5,
+        "guard should cap max_retry_limit_exceeded_streak single-step drift"
+    );
+}
+
+#[test]
+fn recommend_guarded_policy_rejects_invalid_guard_bounds() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy::default();
+
+    let error = client
+        .recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(
+            "w1",
+            "node-a",
+            1000,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            64,
+            8,
+            0,
+            2,
+            1,
+        )
+        .expect_err("invalid guard bounds should fail");
+    let reason = match error {
+        WorldError::DistributedValidationFailed { reason } => reason,
+        other => panic!("unexpected error: {other:?}"),
+    };
+    assert!(reason.contains("policy_cooldown_ms"));
+}
+
+#[test]
+fn run_coordinated_replay_with_guarded_adaptive_policy_uses_guarded_policy() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    replay_state_store
+        .save_state(
+            "w1",
+            "node-target",
+            &MembershipRevocationDeadLetterReplayScheduleState {
+                last_replay_at_ms: Some(1000),
+                prefer_capacity_evicted: false,
+            },
+        )
+        .expect("seed replay state");
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator_store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
+        Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
+    let coordinator = StoreBackedMembershipRevocationScheduleCoordinator::new(coordinator_store);
+
+    for offset in 0..6 {
+        dead_letter_store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-target",
+                4000 + offset,
+                1,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append dead-letter");
+    }
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 2,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let (replayed, guarded_policy) = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_guarded_adaptive_policy(
+            "w1",
+            "node-target",
+            "node-runner",
+            1200,
+            50,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            8,
+            1,
+            16,
+            8,
+            500,
+            4,
+            2,
+        )
+        .expect("run guarded adaptive replay");
+
+    assert_eq!(
+        guarded_policy, current_policy,
+        "cooldown should keep policy unchanged"
+    );
+    assert_eq!(replayed, 2);
+}
