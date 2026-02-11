@@ -1041,7 +1041,7 @@ fn clamp_usize_delta(current: usize, target: usize, max_step_change: usize) -> u
     }
 }
 
-fn aggregate_recent_delivery_metrics(
+pub(super) fn aggregate_recent_delivery_metrics(
     metric_lines: &[(i64, super::MembershipRevocationAlertDeliveryMetrics)],
     metrics_lookback: usize,
 ) -> super::MembershipRevocationAlertDeliveryMetrics {
