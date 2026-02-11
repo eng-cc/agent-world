@@ -431,3 +431,29 @@
 
 ### 后续
 - 继续推进 LMSO27，结合 30 tick 指标回收 `module_call` 与 `llm_input_chars_avg/total`。
+
+## LMSO27B 30 tick 回归对比（2026-02-10）
+
+### 回归命令
+- `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso27b_replan_30/report.json`
+
+### 回归结果
+- 报告：`.tmp/lmso27b_replan_30/report.json`
+- 基线：`.tmp/lmso26_budget_30/report.json`
+- 稳定性保持：`llm_errors=0`、`parse_errors=0`、`repair_rounds_total=0`。
+- 效率对比（LMSO26 -> LMSO27B）：
+  - `module_call: 10 -> 9`
+  - `plan: 4 -> 3`
+  - `llm_input_chars_total: 59705 -> 53604`
+  - `llm_input_chars_avg: 1990 -> 1786`
+  - `execute_until_continue: 23 -> 24`
+- 动作结果（LMSO26 -> LMSO27B）：
+  - `action_success: 28 -> 29`
+  - `action_failure: 2 -> 1`
+
+### 观察
+- 在保持 `prompt_section_clipped=0` 的前提下，平均输入与模块调用轮次均进一步收敛。
+- `llm_input_chars_max` 出现轻微抖动（`14094 -> 14216`），当前幅度可接受，后续继续观测。
+
+### 后续
+- LMSO27 收口完成；下一步进入 LMSO28，重点处理输入峰值抖动并继续提升稳定效率比。

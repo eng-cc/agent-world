@@ -106,11 +106,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             String::new()
         };
 
-        let mut phase = if should_force_replan {
-            DecisionPhase::ModuleLoop
-        } else {
-            DecisionPhase::Plan
-        };
+        let mut phase = DecisionPhase::Plan;
         let mut pending_draft: Option<AgentDecision> = None;
         let mut repair_rounds_used = 0_u32;
         let mut repair_context: Option<String> = None;
@@ -379,10 +375,16 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     .next
                                     .as_deref()
                                     .is_some_and(|next| next.eq_ignore_ascii_case("module_call"));
-                                let must_keep_module_loop =
-                                    should_force_replan && module_history.is_empty();
+                                let force_replan_optional_module_call = should_force_replan
+                                    && module_history.is_empty()
+                                    && plan.missing.is_empty();
+                                let effective_wants_module_call =
+                                    wants_module_call && !force_replan_optional_module_call;
+                                let must_keep_module_loop = should_force_replan
+                                    && module_history.is_empty()
+                                    && !plan.missing.is_empty();
                                 phase = if must_keep_module_loop
-                                    || wants_module_call
+                                    || effective_wants_module_call
                                     || !plan.missing.is_empty()
                                 {
                                     DecisionPhase::ModuleLoop

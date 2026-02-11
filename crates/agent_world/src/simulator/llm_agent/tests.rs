@@ -934,6 +934,58 @@ fn llm_agent_supports_plan_module_draft_finalize_flow() {
 }
 
 #[test]
+fn llm_agent_force_replan_plan_can_finalize_without_module_call_when_missing_is_empty() {
+    let client = SequenceMockClient::new(vec![
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"type":"plan","missing":[],"next":"module_call"}"#.to_string(),
+        r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+    ]);
+
+    let mut config = base_config();
+    config.max_decision_steps = 5;
+    config.max_repair_rounds = 1;
+    config.force_replan_after_same_action = 2;
+    config.execute_until_auto_reenter_ticks = 0;
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let mut observation = make_observation();
+    observation.time = 70;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 71;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::HarvestRadiation { .. })
+    ));
+
+    observation.time = 72;
+    let third = behavior.decide(&observation);
+    assert!(matches!(
+        third,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace.parse_error.is_none());
+    assert!(trace.llm_effect_intents.is_empty());
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("plan missing=-")));
+    assert!(!trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.step_type == "module_call"));
+}
+
+#[test]
 fn llm_agent_repair_round_can_recover_invalid_output() {
     let client = SequenceMockClient::new(vec![
         "not-json".to_string(),
