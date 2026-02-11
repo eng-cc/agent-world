@@ -9,6 +9,15 @@ const MEMORY_SOFT_CAP_TOKENS: usize = 192;
 const FINALIZE_HISTORY_SOFT_CAP_TOKENS: usize = 192;
 const FINALIZE_MEMORY_SOFT_CAP_TOKENS: usize = 128;
 const CONTEXT_MIN_TOKENS: usize = 64;
+const PEAK_MIN_TARGET_TOKENS: usize = 768;
+const PEAK_SOFT_RESERVE_TOKENS: usize = 384;
+const PEAK_HARD_RESERVE_TOKENS: usize = 256;
+const FINALIZE_PEAK_SOFT_RESERVE_TOKENS: usize = 448;
+const FINALIZE_PEAK_HARD_RESERVE_TOKENS: usize = 320;
+const PEAK_HISTORY_SOFT_CAP_TOKENS: usize = 192;
+const PEAK_MEMORY_SOFT_CAP_TOKENS: usize = 128;
+const PEAK_HISTORY_HARD_CAP_TOKENS: usize = 128;
+const PEAK_MEMORY_HARD_CAP_TOKENS: usize = 96;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromptBudget {
@@ -280,6 +289,9 @@ impl PromptAssembler {
             history_soft_cap,
             memory_soft_cap,
         );
+        let (peak_soft_tokens, peak_hard_tokens) =
+            Self::peak_targets_tokens(input.step_context, budget_tokens);
+        Self::apply_peak_budget(&mut sections, peak_soft_tokens, peak_hard_tokens);
 
         let section_trace = sections
             .iter()
@@ -387,16 +399,90 @@ impl PromptAssembler {
             if Self::included_tokens(sections) <= budget_tokens {
                 break;
             }
-            if let Some(state) = sections
-                .iter_mut()
-                .find(|state| state.section.kind == kind && state.included && !state.required)
-            {
-                state.included = false;
-            }
+            Self::drop_optional_section(sections, kind);
         }
 
         if Self::included_tokens(sections) > budget_tokens {
             Self::truncate_required_context(sections, budget_tokens);
+        }
+    }
+
+    fn peak_targets_tokens(
+        step_context: PromptStepContext,
+        budget_tokens: usize,
+    ) -> (usize, usize) {
+        let turns_remaining = step_context
+            .max_steps
+            .saturating_sub(step_context.step_index.saturating_add(1));
+        let module_calls_remaining = step_context
+            .module_calls_max
+            .saturating_sub(step_context.module_calls_used);
+
+        let (soft_reserve, hard_reserve) = if turns_remaining <= 1 || module_calls_remaining <= 1 {
+            (
+                FINALIZE_PEAK_SOFT_RESERVE_TOKENS,
+                FINALIZE_PEAK_HARD_RESERVE_TOKENS,
+            )
+        } else {
+            (PEAK_SOFT_RESERVE_TOKENS, PEAK_HARD_RESERVE_TOKENS)
+        };
+
+        let min_target = PEAK_MIN_TARGET_TOKENS.min(budget_tokens.max(1));
+        let hard_target = budget_tokens.saturating_sub(hard_reserve).max(min_target);
+        let soft_target = hard_target
+            .saturating_sub(soft_reserve.saturating_sub(hard_reserve))
+            .max(min_target.saturating_sub(96));
+
+        (soft_target.min(hard_target), hard_target)
+    }
+
+    fn apply_peak_budget(
+        sections: &mut [SectionState],
+        peak_soft_tokens: usize,
+        peak_hard_tokens: usize,
+    ) {
+        if Self::included_tokens(sections) <= peak_soft_tokens {
+            return;
+        }
+
+        Self::truncate_soft_section(
+            sections,
+            PromptSectionKind::History,
+            PEAK_HISTORY_SOFT_CAP_TOKENS,
+        );
+        if Self::included_tokens(sections) > peak_soft_tokens {
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::Memory,
+                PEAK_MEMORY_SOFT_CAP_TOKENS,
+            );
+        }
+        if Self::included_tokens(sections) > peak_soft_tokens {
+            Self::drop_optional_section(sections, PromptSectionKind::StepMeta);
+        }
+
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::History,
+                PEAK_HISTORY_HARD_CAP_TOKENS,
+            );
+        }
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::Memory,
+                PEAK_MEMORY_HARD_CAP_TOKENS,
+            );
+        }
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::drop_optional_section(sections, PromptSectionKind::Memory);
+        }
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::drop_optional_section(sections, PromptSectionKind::History);
+        }
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::truncate_required_context(sections, peak_hard_tokens);
         }
     }
 
@@ -411,6 +497,15 @@ impl PromptAssembler {
         {
             state.section.content =
                 truncate_to_token_cap(state.section.content.as_str(), token_cap);
+        }
+    }
+
+    fn drop_optional_section(sections: &mut [SectionState], kind: PromptSectionKind) {
+        if let Some(state) = sections
+            .iter_mut()
+            .find(|state| state.section.kind == kind && state.included && !state.required)
+        {
+            state.included = false;
         }
     }
 
@@ -653,6 +748,92 @@ mod tests {
             .expect("history trace");
         assert!(history.included);
         assert_eq!(history.emitted_tokens, history.estimated_tokens);
+    }
+
+    #[test]
+    fn prompt_budget_peak_targets_are_below_effective_budget() {
+        let budget = PromptBudget {
+            context_window_tokens: 4_608,
+            reserved_output_tokens: 896,
+            safety_margin_tokens: 512,
+        };
+        let step = PromptStepContext {
+            step_index: 0,
+            max_steps: 4,
+            module_calls_used: 0,
+            module_calls_max: 3,
+        };
+
+        let effective = budget.effective_input_budget_tokens();
+        let (soft, hard) = PromptAssembler::peak_targets_tokens(step, effective);
+
+        assert!(soft <= hard);
+        assert!(hard < effective);
+    }
+
+    #[test]
+    fn prompt_budget_peak_targets_are_stricter_near_finalize_phase() {
+        let budget = PromptBudget {
+            context_window_tokens: 4_608,
+            reserved_output_tokens: 896,
+            safety_margin_tokens: 512,
+        };
+
+        let early = PromptStepContext {
+            step_index: 0,
+            max_steps: 4,
+            module_calls_used: 0,
+            module_calls_max: 3,
+        };
+        let near_finalize = PromptStepContext {
+            step_index: 3,
+            max_steps: 4,
+            module_calls_used: 2,
+            module_calls_max: 3,
+        };
+
+        let effective = budget.effective_input_budget_tokens();
+        let (_, early_hard) = PromptAssembler::peak_targets_tokens(early, effective);
+        let (_, finalize_hard) = PromptAssembler::peak_targets_tokens(near_finalize, effective);
+
+        assert!(finalize_hard < early_hard);
+    }
+
+    #[test]
+    fn prompt_budget_peak_budget_enforces_hard_target_on_large_inputs() {
+        let history = "h".repeat(14_000);
+        let memory = "m".repeat(6_000);
+        let step_context = PromptStepContext {
+            step_index: 0,
+            max_steps: 4,
+            module_calls_used: 0,
+            module_calls_max: 3,
+        };
+        let budget = PromptBudget {
+            context_window_tokens: 4_608,
+            reserved_output_tokens: 896,
+            safety_margin_tokens: 512,
+        };
+        let input = PromptAssemblyInput {
+            agent_id: "agent-1",
+            base_system_prompt: "base prompt",
+            short_term_goal: "short goal",
+            long_term_goal: "long goal",
+            observation_json: "{\"time\":1}",
+            module_history_json: history.as_str(),
+            memory_digest: Some(memory.as_str()),
+            step_context,
+            harvest_max_amount_cap: 100,
+            prompt_budget: budget,
+        };
+
+        let output = PromptAssembler::assemble(input);
+        let (_, hard_target) = PromptAssembler::peak_targets_tokens(
+            step_context,
+            budget.effective_input_budget_tokens(),
+        );
+
+        assert!(output.estimated_input_tokens <= hard_target);
     }
 
     #[test]

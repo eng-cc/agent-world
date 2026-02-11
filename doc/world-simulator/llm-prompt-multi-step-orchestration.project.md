@@ -38,9 +38,9 @@
 - `README.md`
 
 ## 状态
-- 当前阶段：LMSO27（效率回收已完成）
-- 下一步：启动 LMSO28（在效率回收完成后继续收敛输入峰值抖动）
-- 最近更新：完成 LMSO27B 30 tick 回归（`.tmp/lmso27b_replan_30/report.json`，`module_call: 10 -> 9`，`llm_input_chars_avg: 1990 -> 1786`，2026-02-10）
+- 当前阶段：LMSO28（峰值收敛已完成）
+- 下一步：进入 LMSO29（稳定性与动作成功率协同优化）
+- 最近更新：完成 LMSO28 30 tick 回归并收口（2026-02-11）
 
 ## 增量优化任务（30 tick 观察）
 - [x] LMSO23 解析噪声收敛（输入侧优先）：强化 prompt 单 JSON 约束、阶段收敛门槛与模块白名单，先降低多段输出/超限 module_call 导致的 parse_error。
@@ -50,14 +50,26 @@
 - [x] LMSO27 效率回收：在保持峰值受控下，回收 `module_call` 与 `llm_input_chars_avg/total`。
 
 ## 状态（增量）
-- 当前增量阶段：LMSO28（待启动）
-- 增量目标：在保持效率指标的同时，进一步收敛 `llm_input_chars_max` 峰值抖动。
-- 最近更新：完成 LMSO27B 回归并确认平均输入与模块调用进一步收敛（`llm_input_chars_avg: 1990 -> 1786`、`module_call: 10 -> 9`，2026-02-10）。
+- 当前增量阶段：LMSO29（待启动）
+- 增量目标：在保持峰值收敛成果下，继续优化动作成功率与策略稳定性。
+- 最近更新：完成 LMSO28 回归并收敛峰值输入（`llm_input_chars_max: 14216 -> 9373`，2026-02-11）。
 
 ## LMSO27 任务进展（2026-02-10）
 - [x] LMSO27A 重规划门控收敛：仅对“重复上一动作”的终态 decision 触发强制重规划，允许无 module_call 直接切换到新动作。
 - [x] LMSO27B 30 tick 回归对比：确认门控收敛后 `module_call` 与 `llm_input_chars_avg/total` 进一步下降。
 
 ## 状态（LMSO27 后）
-- 当前增量阶段：LMSO28（待启动）
-- 最近更新：完成 LMSO27B（30 tick 回归对比达成，2026-02-10）。
+- 当前增量阶段：LMSO28（已完成）
+- 最近更新：LMSO28 已在 2026-02-11 收口并进入 LMSO29 规划。
+
+
+## LMSO28 任务拆解（2026-02-11）
+- [x] LMSO28A 双阈值峰值预算：在 Prompt 预算中增加 soft/hard 峰值目标与分级压缩。
+- [x] LMSO28B 高波动源压缩：收敛 observation/history/memory 注入体积，优先压缩软段。
+- [x] LMSO28C 30 tick 回归对比：验证 `llm_input_chars_max/avg/total`、`module_call` 与稳定性指标。
+
+## 状态（LMSO28）
+- 当前子阶段：LMSO29A（待启动）
+- 目标：在保持峰值已收敛的基础上，进一步回收动作失败率并稳定行动效率。
+
+- 最近验证：`llm_input_chars_max 14216 -> 9373`，`llm_input_chars_avg 1786 -> 1121`，`module_call 9 -> 2`（`llm_errors=0`、`parse_errors=0`）。

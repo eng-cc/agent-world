@@ -138,11 +138,11 @@ const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
 const LLM_PROMPT_MODULE_CALL_KIND: &str = "llm.prompt.module_call";
 const LLM_PROMPT_MODULE_CALL_CAP_REF: &str = "llm.prompt.module_access";
 const LLM_PROMPT_MODULE_CALL_ORIGIN: &str = "llm_agent";
-const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 640;
-const PROMPT_MODULE_ARGS_MAX_CHARS: usize = 240;
-const PROMPT_MEMORY_DIGEST_MAX_CHARS: usize = 480;
-const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 6;
-const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 6;
+const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 520;
+const PROMPT_MODULE_ARGS_MAX_CHARS: usize = 192;
+const PROMPT_MEMORY_DIGEST_MAX_CHARS: usize = 360;
+const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 5;
+const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 5;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LlmAgentConfig {

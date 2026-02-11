@@ -457,3 +457,38 @@
 
 ### 后续
 - LMSO27 收口完成；下一步进入 LMSO28，重点处理输入峰值抖动并继续提升稳定效率比。
+
+## LMSO28 峰值收敛策略（2026-02-11）
+
+### 目标
+- 在保持 `llm_errors=0` / `parse_errors=0` 的前提下，进一步收敛 `llm_input_chars_max` 峰值抖动。
+- 不牺牲 LMSO27 已收敛的效率指标（`module_call`、`llm_input_chars_avg/total`）。
+
+### 范围
+- In Scope：Prompt 预算的双阈值峰值控制（soft/hard）、高波动输入源压缩（observation/history/memory）、30 tick 回归对比。
+- Out of Scope：模型切换、工具协议改造、业务动作语义变更。
+
+### 策略
+1. **双阈值峰值预算**：在现有 budget 之上增加 `soft/hard` 峰值目标；超过 soft 先轻压缩，超过 hard 再强压缩。
+2. **高波动源优先压缩**：优先压缩 `module_history.args/result`、`memory_digest` 与 dense observation 注入量。
+3. **阶段化保真**：优先保留协议与输出 schema 段，软段（history/memory/step meta）按优先级裁剪。
+4. **可观测验证**：用 30 tick 报告对比 `llm_input_chars_max/avg/total`、`module_call`、`parse_errors`。
+
+### 里程碑
+- M1：完成预算策略代码改造与单测。
+- M2：完成 30 tick 回归并输出对比结论。
+
+### 风险
+- **过度压缩风险**：可能降低决策信息充分性；通过保留 high-priority 协议段与回归指标兜底。
+- **波动样本风险**：单次 run 可能受场景细节影响；通过固定场景回归与基线对比缓解。
+
+### 已实施与验证（LMSO28A~C）
+- 已实施：增加 soft/hard 双阈值峰值预算收敛；峰值超 soft 时先压 `history/memory/step`，超 hard 时再强压并必要时降级软段。
+- 已实施：进一步收敛 observation 近邻注入与 `module_history` / `memory_digest` 摘要长度上限。
+- 回归命令：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso28_peak_30_final/report.json`
+- 对比基线（`.tmp/lmso27b_replan_30/report.json` -> `.tmp/lmso28_peak_30_final/report.json`）：
+  - `llm_input_chars_max: 14216 -> 9373`
+  - `llm_input_chars_avg: 1786 -> 1121`
+  - `llm_input_chars_total: 53604 -> 33654`
+  - `module_call: 9 -> 2`
+  - 稳定性保持：`llm_errors=0`、`parse_errors=0`、`prompt_section_clipped=0`
