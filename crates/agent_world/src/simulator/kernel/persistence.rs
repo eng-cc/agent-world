@@ -50,6 +50,7 @@ impl WorldKernel {
             journal: journal.events,
             model: snapshot.model,
             chunk_runtime: snapshot.chunk_runtime,
+            rule_hooks: Default::default(),
         })
     }
 
@@ -80,6 +81,7 @@ impl WorldKernel {
             journal: journal.events.clone(),
             model: snapshot.model,
             chunk_runtime: snapshot.chunk_runtime,
+            rule_hooks: Default::default(),
         };
 
         for event in journal.events.iter().skip(snapshot.journal_len) {

@@ -1,5 +1,6 @@
 use super::*;
 use crate::geometry::{GeoPos, DEFAULT_CLOUD_WIDTH_CM};
+use std::sync::{Arc, Mutex};
 
 #[test]
 fn kernel_registers_and_moves_agent() {
@@ -1068,4 +1069,107 @@ fn refine_compound_rejects_when_electricity_insufficient() {
         }
         other => panic!("unexpected event: {other:?}"),
     }
+}
+
+fn collect_basic_action_sequence(kernel: &mut WorldKernel) -> Vec<WorldEventKind> {
+    let mut kinds = Vec::new();
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-seq".to_string(),
+        name: "seq".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kinds.push(kernel.step().expect("register location").kind);
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-seq".to_string(),
+        location_id: "loc-seq".to_string(),
+    });
+    kinds.push(kernel.step().expect("register agent").kind);
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-seq".to_string(),
+        location_id: "loc-seq".to_string(),
+    });
+    kinds.push(kernel.step().expect("reject duplicate agent").kind);
+
+    kinds
+}
+
+#[test]
+fn kernel_rule_hooks_default_path_keeps_action_behavior() {
+    let mut baseline = WorldKernel::new();
+    let baseline_kinds = collect_basic_action_sequence(&mut baseline);
+
+    let mut with_noop_hooks = WorldKernel::new();
+    with_noop_hooks.add_pre_action_rule_hook(|_, _| {});
+    with_noop_hooks.add_post_action_rule_hook(|_, _, _| {});
+    let hook_kinds = collect_basic_action_sequence(&mut with_noop_hooks);
+
+    assert_eq!(baseline_kinds, hook_kinds);
+}
+
+#[test]
+fn kernel_rule_hooks_run_in_registration_order() {
+    let mut kernel = WorldKernel::new();
+    let trace = Arc::new(Mutex::new(Vec::new()));
+
+    let trace_pre_1 = Arc::clone(&trace);
+    kernel.add_pre_action_rule_hook(move |_, _| {
+        trace_pre_1.lock().expect("lock trace").push("pre-1");
+    });
+
+    let trace_pre_2 = Arc::clone(&trace);
+    kernel.add_pre_action_rule_hook(move |_, _| {
+        trace_pre_2.lock().expect("lock trace").push("pre-2");
+    });
+
+    let trace_post_1 = Arc::clone(&trace);
+    kernel.add_post_action_rule_hook(move |_, _, _| {
+        trace_post_1.lock().expect("lock trace").push("post-1");
+    });
+
+    let trace_post_2 = Arc::clone(&trace);
+    kernel.add_post_action_rule_hook(move |_, _, _| {
+        trace_post_2.lock().expect("lock trace").push("post-2");
+    });
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-hook-order".to_string(),
+        name: "hook-order".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("step with hooks");
+
+    let trace = trace.lock().expect("lock trace");
+    assert_eq!(*trace, vec!["pre-1", "pre-2", "post-1", "post-2"]);
+}
+
+#[test]
+fn kernel_post_action_hook_receives_emitted_event() {
+    let mut kernel = WorldKernel::new();
+    let captured = Arc::new(Mutex::new(None::<(ActionId, Action, WorldEvent)>));
+    let captured_hook = Arc::clone(&captured);
+
+    kernel.add_post_action_rule_hook(move |action_id, action, event| {
+        *captured_hook.lock().expect("lock captured") =
+            Some((action_id, action.clone(), event.clone()));
+    });
+
+    let action = Action::RegisterLocation {
+        location_id: "loc-hook-post".to_string(),
+        name: "hook-post".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    };
+    let submitted_action_id = kernel.submit_action(action.clone());
+    let emitted_event = kernel.step().expect("step with post hook");
+
+    let captured = captured.lock().expect("lock captured");
+    let (hook_action_id, hook_action, hook_event) = captured.clone().expect("captured event");
+    assert_eq!(hook_action_id, submitted_action_id);
+    assert_eq!(hook_action, action);
+    assert_eq!(hook_event, emitted_event);
 }

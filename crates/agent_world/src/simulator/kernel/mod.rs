@@ -10,8 +10,11 @@ mod types;
 
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::sync::Arc;
 
-use super::types::{ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime};
+use super::types::{
+    Action, ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime,
+};
 use super::world_model::{AgentPromptProfile, FragmentResourceError, WorldConfig, WorldModel};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -46,6 +49,31 @@ pub use types::{
     RejectReason, WorldEvent, WorldEventKind,
 };
 
+type PreActionRuleHook = Arc<dyn Fn(ActionId, &Action) + Send + Sync>;
+type PostActionRuleHook = Arc<dyn Fn(ActionId, &Action, &WorldEvent) + Send + Sync>;
+
+#[derive(Default, Clone)]
+struct RuleHookRegistry {
+    pre_action: Vec<PreActionRuleHook>,
+    post_action: Vec<PostActionRuleHook>,
+}
+
+impl std::fmt::Debug for RuleHookRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RuleHookRegistry")
+            .field("pre_action_len", &self.pre_action.len())
+            .field("post_action_len", &self.post_action.len())
+            .finish()
+    }
+}
+
+impl PartialEq for RuleHookRegistry {
+    fn eq(&self, _other: &Self) -> bool {
+        // Runtime hooks are process-local closures and intentionally excluded from state equality.
+        true
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct WorldKernel {
     time: WorldTime,
@@ -57,6 +85,8 @@ pub struct WorldKernel {
     model: WorldModel,
     #[serde(default)]
     chunk_runtime: ChunkRuntimeConfig,
+    #[serde(skip, default)]
+    rule_hooks: RuleHookRegistry,
 }
 
 impl WorldKernel {
@@ -80,6 +110,7 @@ impl WorldKernel {
             journal: Vec::new(),
             model,
             chunk_runtime: ChunkRuntimeConfig::default(),
+            rule_hooks: RuleHookRegistry::default(),
         }
     }
 
@@ -97,7 +128,22 @@ impl WorldKernel {
             journal: Vec::new(),
             model,
             chunk_runtime,
+            rule_hooks: RuleHookRegistry::default(),
         }
+    }
+
+    pub fn add_pre_action_rule_hook<F>(&mut self, hook: F)
+    where
+        F: Fn(ActionId, &Action) + Send + Sync + 'static,
+    {
+        self.rule_hooks.pre_action.push(Arc::new(hook));
+    }
+
+    pub fn add_post_action_rule_hook<F>(&mut self, hook: F)
+    where
+        F: Fn(ActionId, &Action, &WorldEvent) + Send + Sync + 'static,
+    {
+        self.rule_hooks.post_action.push(Arc::new(hook));
     }
 
     pub fn time(&self) -> WorldTime {

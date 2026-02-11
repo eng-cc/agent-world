@@ -17,8 +17,15 @@ impl WorldKernel {
 
     pub fn step(&mut self) -> Option<WorldEvent> {
         let envelope = self.pending_actions.pop_front()?;
+        let action_id = envelope.id;
+        let action = envelope.action;
+
+        for hook in &self.rule_hooks.pre_action {
+            hook(action_id, &action);
+        }
+
         self.time = self.time.saturating_add(1);
-        let kind = self.apply_action(envelope.action);
+        let kind = self.apply_action(action.clone());
         let event = WorldEvent {
             id: self.next_event_id,
             time: self.time,
@@ -26,6 +33,11 @@ impl WorldKernel {
         };
         self.next_event_id = self.next_event_id.saturating_add(1);
         self.journal.push(event.clone());
+
+        for hook in &self.rule_hooks.post_action {
+            hook(action_id, &action, &event);
+        }
+
         Some(event)
     }
 
