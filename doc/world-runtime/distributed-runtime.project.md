@@ -257,6 +257,13 @@
 - [x] 内存/文件 dead-letter store 支持 delivery metrics 导出查询
 - [x] 单元测试与分布式回归
 
+### 42. P3.25 成员目录吊销死信优先级回放与跨节点回放协同
+- [x] `replay_revocation_dead_letters` 按 reason/attempt/dropped_at 优先级回放
+- [x] 新增 `run_revocation_dead_letter_replay_schedule_coordinated`
+- [x] 回放协同 lease key 按 `world_id + target_node_id` 维度隔离
+- [x] 新增优先级回放与跨节点协同单元测试
+- [x] 单元测试与分布式回归
+
 ## 依赖
 - `doc/world-runtime.md`
 - `doc/world-runtime/runtime-integration.md`
@@ -264,6 +271,6 @@
 - libp2p 协议栈与实现
 
 ## 状态
-- 当前阶段：P3.24 完成（成员目录吊销死信回放调度与指标导出）
-- 下一步：P3.25（成员目录吊销死信优先级回放与跨节点回放协同）
-- 最近更新：成员目录吊销死信回放调度与指标导出（2026-02-11）
+- 当前阶段：P3.25 完成（成员目录吊销死信优先级回放与跨节点回放协同）
+- 下一步：P3.26（成员目录吊销死信回放状态持久化与公平调度）
+- 最近更新：成员目录吊销死信优先级回放与跨节点回放协同（2026-02-11）

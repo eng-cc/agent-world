@@ -474,3 +474,10 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **指标导出**：新增 `export_revocation_alert_delivery_metrics(...)`，将 delivery metrics 归档到 dead-letter store 的 metrics 轨道。
 - **协同联动导出**：新增 `run_revocation_reconcile_coordinated_with_recovery_and_ack_retry_with_dead_letter_and_metrics_export(...)`。
 - **可观测性**：内存/文件 store 均可查询导出 metrics 历史，为后续外部监控接入提供数据面。
+
+## 成员目录吊销死信优先级回放与跨节点回放协同（草案）
+- **优先级回放**：`replay_revocation_dead_letters(...)` 改为按 `reason > attempt > dropped_at_ms` 选择回放对象，优先恢复 `RetryLimitExceeded`。
+- **排序规则**：同 reason 下重试次数高者优先；重试次数相同则更早 dropped 记录优先，保证长期积压可逐步出队。
+- **跨节点协同**：新增 `run_revocation_dead_letter_replay_schedule_coordinated(...)`，通过协调器 lease 控制同一目标队列的并发回放。
+- **协同维度**：lease key 采用 `world_id + target_node_id` 组合，允许不同目标节点并行回放，同时避免同队列竞争。
+- **兼容性**：既有 `run_revocation_dead_letter_replay_schedule(...)` 与指标导出链路保持可用，按需增量接入协同入口。

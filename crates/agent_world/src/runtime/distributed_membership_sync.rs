@@ -1194,3 +1194,6 @@ mod coordination_tests;
 
 #[cfg(test)]
 mod recovery_tests;
+
+#[cfg(test)]
+mod recovery_replay_tests;
