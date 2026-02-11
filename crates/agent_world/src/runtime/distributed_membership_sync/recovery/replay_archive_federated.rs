@@ -354,40 +354,13 @@ impl MembershipSyncClient {
         WorldError,
     > {
         validate_governance_recovery_drill_alert_event_aggregate_query_args(max_records)?;
-        if node_ids.is_empty() {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
-            });
-        }
-        let first_node_id = node_ids.first().ok_or_else(|| {
-            WorldError::DistributedValidationFailed {
-                reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
-            }
-        })?;
-        let (normalized_world_id, _) = normalized_schedule_key(world_id, first_node_id)?;
-        let mut queried_nodes = BTreeSet::new();
-        for node_id in node_ids {
-            let (_, node_id) = normalized_schedule_key(&normalized_world_id, node_id)?;
-            queried_nodes.insert(node_id);
-        }
-        let mut events = Vec::new();
-        for node_id in queried_nodes {
-            let node_events = event_bus.list(&normalized_world_id, &node_id)?;
-            for event in node_events {
-                if event.world_id != normalized_world_id || event.node_id != node_id {
-                    continue;
-                }
-                if let Some(min_event_at_ms) = min_event_at_ms {
-                    if event.event_at_ms < min_event_at_ms {
-                        continue;
-                    }
-                }
-                if !outcomes.is_empty() && !outcomes.contains(&event.outcome) {
-                    continue;
-                }
-                events.push(event);
-            }
-        }
+        let mut events = collect_governance_recovery_drill_alert_events_aggregated(
+            world_id,
+            node_ids,
+            min_event_at_ms,
+            outcomes,
+            event_bus,
+        )?;
         events.sort_by(|left, right| {
             right
                 .event_at_ms
@@ -398,6 +371,63 @@ impl MembershipSyncClient {
             return Ok(Vec::new());
         }
         Ok(events.into_iter().skip(offset).take(max_records).collect())
+    }
+
+    pub fn query_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_incremental_since(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        since_event_at_ms: i64,
+        outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+        max_records: usize,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<
+        Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+        WorldError,
+    > {
+        validate_governance_recovery_drill_alert_event_aggregate_query_args(max_records)?;
+        let mut events = collect_governance_recovery_drill_alert_events_aggregated(
+            world_id, node_ids, None, outcomes, event_bus,
+        )?;
+        events.retain(|event| event.event_at_ms > since_event_at_ms);
+        events.sort_by(|left, right| {
+            left.event_at_ms
+                .cmp(&right.event_at_ms)
+                .then_with(|| left.node_id.cmp(&right.node_id))
+        });
+        if events.len() > max_records {
+            events.truncate(max_records);
+        }
+        Ok(events)
+    }
+
+    pub fn summarize_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_events_aggregated_by_outcome(
+        &self,
+        world_id: &str,
+        node_ids: &[String],
+        min_event_at_ms: Option<i64>,
+        event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+              + Send
+              + Sync),
+    ) -> Result<BTreeMap<String, usize>, WorldError> {
+        let events = collect_governance_recovery_drill_alert_events_aggregated(
+            world_id,
+            node_ids,
+            min_event_at_ms,
+            &[],
+            event_bus,
+        )?;
+        let mut summary = BTreeMap::new();
+        for event in events {
+            *summary
+                .entry(
+                    governance_recovery_drill_alert_event_outcome_label(event.outcome).to_string(),
+                )
+                .or_insert(0) += 1;
+        }
+        Ok(summary)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -494,6 +524,64 @@ fn validate_governance_recovery_drill_alert_event_aggregate_query_args(
         });
     }
     Ok(())
+}
+
+fn collect_governance_recovery_drill_alert_events_aggregated(
+    world_id: &str,
+    node_ids: &[String],
+    min_event_at_ms: Option<i64>,
+    outcomes: &[MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome],
+    event_bus: &(dyn MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
+          + Send
+          + Sync),
+) -> Result<
+    Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent>,
+    WorldError,
+> {
+    if node_ids.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
+        });
+    }
+    let first_node_id = node_ids.first().ok_or_else(|| WorldError::DistributedValidationFailed {
+        reason: "membership revocation dead-letter rollback governance recovery drill alert event aggregate query requires at least one node_id".to_string(),
+    })?;
+    let (normalized_world_id, _) = normalized_schedule_key(world_id, first_node_id)?;
+    let mut queried_nodes = BTreeSet::new();
+    for node_id in node_ids {
+        let (_, node_id) = normalized_schedule_key(&normalized_world_id, node_id)?;
+        queried_nodes.insert(node_id);
+    }
+    let mut events = Vec::new();
+    for node_id in queried_nodes {
+        let node_events = event_bus.list(&normalized_world_id, &node_id)?;
+        for event in node_events {
+            if event.world_id != normalized_world_id || event.node_id != node_id {
+                continue;
+            }
+            if let Some(min_event_at_ms) = min_event_at_ms {
+                if event.event_at_ms < min_event_at_ms {
+                    continue;
+                }
+            }
+            if !outcomes.is_empty() && !outcomes.contains(&event.outcome) {
+                continue;
+            }
+            events.push(event);
+        }
+    }
+    Ok(events)
+}
+
+fn governance_recovery_drill_alert_event_outcome_label(
+    outcome: MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome,
+) -> &'static str {
+    match outcome {
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::Emitted => "emitted",
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::SuppressedCooldown => "suppressed_cooldown",
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::SuppressedNoAnomaly => "suppressed_no_anomaly",
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::SkippedNoDrill => "skipped_no_drill",
+    }
 }
 
 fn append_aggregate_records(
