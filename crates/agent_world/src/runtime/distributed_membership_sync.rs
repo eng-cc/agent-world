@@ -39,14 +39,18 @@ pub use reconciliation::{
 pub use recovery::{
     FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
     FileMembershipRevocationCoordinatorStateStore,
+    FileMembershipRevocationDeadLetterReplayStateStore,
     InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
-    InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertAckRetryPolicy,
-    MembershipRevocationAlertDeadLetterReason, MembershipRevocationAlertDeadLetterRecord,
-    MembershipRevocationAlertDeadLetterStore, MembershipRevocationAlertDeliveryMetrics,
-    MembershipRevocationAlertRecoveryReport, MembershipRevocationAlertRecoveryStore,
-    MembershipRevocationCoordinatedRecoveryRunReport, MembershipRevocationCoordinatorLeaseState,
-    MembershipRevocationCoordinatorStateStore, MembershipRevocationPendingAlert,
+    InMemoryMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayStateStore,
+    MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
+    MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryReport,
+    MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
+    MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
+    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayScheduleState,
+    MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
     NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
@@ -1176,24 +1180,18 @@ fn world_error_reason(error: &WorldError) -> String {
     }
 }
 
-mod logic;
-mod reconciliation;
-mod recovery;
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod scheduler_tests;
-
-#[cfg(test)]
-mod persistence_tests;
-
 #[cfg(test)]
 mod coordination_tests;
-
+mod logic;
 #[cfg(test)]
-mod recovery_tests;
-
+mod persistence_tests;
+mod reconciliation;
+mod recovery;
 #[cfg(test)]
 mod recovery_replay_tests;
+#[cfg(test)]
+mod recovery_tests;
+#[cfg(test)]
+mod scheduler_tests;
+#[cfg(test)]
+mod tests;

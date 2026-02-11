@@ -481,3 +481,11 @@ ErrorResponse { code: String, message: String, retryable: bool }
 - **跨节点协同**：新增 `run_revocation_dead_letter_replay_schedule_coordinated(...)`，通过协调器 lease 控制同一目标队列的并发回放。
 - **协同维度**：lease key 采用 `world_id + target_node_id` 组合，允许不同目标节点并行回放，同时避免同队列竞争。
 - **兼容性**：既有 `run_revocation_dead_letter_replay_schedule(...)` 与指标导出链路保持可用，按需增量接入协同入口。
+
+## 成员目录吊销死信回放状态持久化与公平调度（草案）
+- **状态模型**：新增 `MembershipRevocationDeadLetterReplayScheduleState`，持久化 `last_replay_at_ms` 与公平提示位 `prefer_capacity_evicted`。
+- **状态存储**：新增 `MembershipRevocationDeadLetterReplayStateStore`，提供内存与 JSON 文件实现。
+- **公平策略**：新增 `MembershipRevocationDeadLetterReplayPolicy`，通过 `max_replay_per_run` 和 `max_retry_limit_exceeded_streak` 控制高优先级连续回放上限。
+- **策略回放入口**：新增 `replay_revocation_dead_letters_with_policy(...)`，在保持高优先级优先的同时轮转处理 `CapacityEvicted` 积压。
+- **持久化调度入口**：新增 `run_revocation_dead_letter_replay_schedule_with_state_store(...)`，由 store 接管 replay interval 及公平状态读写。
+- **协同持久化调度**：新增 `run_revocation_dead_letter_replay_schedule_coordinated_with_state_store(...)`，将跨节点 lease 与 state-store 调度组合。
