@@ -26,10 +26,12 @@
 - [x] E10 补充模块状态输入/更新测试
 - [x] E10 pure 模块返回 new_state 视为 InvalidOutput
 - [x] E10 模块状态回放/快照一致性测试
+- [x] E11 升级 Wasmtime 依赖版本（18 -> 41）并刷新锁文件
+- [x] E11 执行 `--features wasmtime` 编译与执行器回归测试
 
 ## 依赖
 - `ModuleSandbox` 接口与模块 ABI 文档（`doc/world-runtime/wasm-interface.md`）
 - 模块加载缓存与存储实现（`doc/world-runtime/module-storage.md`）
 
 ## 状态
-- 当前阶段：E10（模块状态已接入）
+- 当前阶段：E11（Wasmtime 41 升级完成并通过回归）

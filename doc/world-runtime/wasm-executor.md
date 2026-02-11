@@ -81,6 +81,11 @@
 - 模块返回 `new_state` 时记录 `ModuleStateUpdated` 并更新状态，保证回放一致。
 - pure 模块返回 `new_state` 视为 InvalidOutput。
 
+### 实现要点（E11）
+- 将 `crates/agent_world/Cargo.toml` 的 `wasmtime` 依赖从 `18` 升级到 `41`，并刷新 `Cargo.lock`。
+- 保持现有 `ModuleSandbox` 的 Wasmtime API 调用路径不变（`Config/Engine/Store/Linker/TypedFunc`），验证升级后可直接兼容。
+- 升级后通过 `--features wasmtime` 执行 `cargo check` 与 `wasm_executor` 相关测试，确保执行器闭环可用。
+
 ## 里程碑
 - **E1**：选择 WASM 引擎并完成配置结构体与沙箱实现骨架。
 - **E2**：接入燃料/超时/内存限制，输出校验与错误码映射。
@@ -90,6 +95,9 @@
 - **E6**：模块输入切换为 Canonical CBOR 编码并补充测试。
 - **E7**：模块输入封装 ModuleContext + event/action envelope 并补充测试。
 - **E8**：补充 world_config_hash 并测试。
+- **E9**：模块调用入口按 ModuleKind 选择并补充测试。
+- **E10**：模块状态输入/更新接入并补齐回放一致性测试。
+- **E11**：升级 Wasmtime 版本（18 -> 41）并完成兼容性回归验证。
 
 ## 风险
 - 引擎版本升级导致行为变化（需锁定版本/回放验证）。

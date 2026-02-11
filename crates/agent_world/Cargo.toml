@@ -20,7 +20,7 @@ toml = "0.8"
 async-openai = { version = "0.32.4", default-features = false, features = ["responses", "rustls"] }
 tokio = { version = "1", features = ["rt", "time"] }
 futures = { version = "0.3", optional = true }
-wasmtime = { version = "18", optional = true }
+wasmtime = { version = "41", optional = true }
 libp2p = { version = "0.53", optional = true, default-features = false, features = ["async-std", "cbor", "dns", "gossipsub", "kad", "macros", "noise", "request-response", "tcp", "yamux"] }
 
 [features]
