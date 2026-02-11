@@ -4,6 +4,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let auto_focus_config = auto_focus_config_from_env();
+    let viewer_automation_config = viewer_automation_config_from_env();
     let panel_mode = resolve_panel_mode_from_env();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
@@ -30,6 +31,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(UiI18n::default())
         .insert_resource(auto_focus_config)
         .insert_resource(AutoFocusState::default())
+        .insert_resource(viewer_automation_config)
+        .insert_resource(ViewerAutomationState::default())
         .insert_resource(SelectionEmphasisState::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
@@ -86,6 +89,11 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_world_overlays_3d.after(update_3d_scene),
                 orbit_camera_controls,
                 handle_focus_selection_hotkey.after(orbit_camera_controls),
+                run_viewer_automation
+                    .after(update_3d_scene)
+                    .after(apply_startup_auto_focus)
+                    .after(orbit_camera_controls)
+                    .before(sync_camera_mode),
                 sync_camera_mode
                     .after(orbit_camera_controls)
                     .after(handle_focus_selection_hotkey),
