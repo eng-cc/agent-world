@@ -23,6 +23,7 @@
 - [x] OWR3.4 完成 VPP8：右侧总览接入渲染性能摘要
 - [x] OWR3.5 完成 VPP9：2D/3D 与联动全回归
 - [x] OWR3.6 3D 缩放输入兼容修复（MouseWheel Pixel 归一化 + macOS PinchGesture）
+- [x] OWR3.7 2D 缩放恢复（滚轮/Pinch 同步正交投影 scale）
 
 ### OWR4 规模化稳定性（对应缺口 5）
 - [ ] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
