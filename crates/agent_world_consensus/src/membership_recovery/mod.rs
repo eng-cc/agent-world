@@ -15,12 +15,21 @@ use crate::membership_reconciliation::{
 };
 
 mod dead_letter;
+mod replay;
 mod stores;
 mod types;
 
 pub use dead_letter::{
     FileMembershipRevocationAlertDeadLetterStore, InMemoryMembershipRevocationAlertDeadLetterStore,
     MembershipRevocationAlertDeadLetterStore, NoopMembershipRevocationAlertDeadLetterStore,
+};
+#[rustfmt::skip]
+pub use replay::{
+    FileMembershipRevocationDeadLetterReplayPolicyStore, FileMembershipRevocationDeadLetterReplayStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyStore, InMemoryMembershipRevocationDeadLetterReplayStateStore,
+    MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
+    MembershipRevocationDeadLetterReplayPolicyStore, MembershipRevocationDeadLetterReplayRollbackGuard,
+    MembershipRevocationDeadLetterReplayScheduleState, MembershipRevocationDeadLetterReplayStateStore,
 };
 pub use stores::{
     FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,

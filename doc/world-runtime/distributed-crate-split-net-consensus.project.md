@@ -35,6 +35,8 @@
 - [x] T32：完成十四次扩展阶段回归验证与文档收口。
 - [x] T33：将 `distributed_membership_sync/recovery.rs` 告警恢复核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T34：完成十五次扩展阶段回归验证与文档收口。
+- [x] T35：将 `distributed_membership_sync/recovery/replay.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [ ] T36：完成十六次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -77,8 +79,12 @@
 - `crates/agent_world_consensus/src/membership_recovery/stores.rs`
 - `crates/agent_world_consensus/src/membership_recovery/dead_letter.rs`
 - `crates/agent_world_consensus/src/membership_recovery_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_tests.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_persistence_tests.rs`
 
 ## 状态
-- 当前阶段：十五次扩展阶段已收口（T33~T34 全部完成）。
-- 下一步：按需继续推进 `distributed_membership_sync` 的 replay/governance 子系统迁移（`recovery/replay*.rs`），保持导出 API 兼容并按切片逐步下沉。
+- 当前阶段：十六次扩展阶段进行中（T35 已完成，T36 待完成）。
+- 下一步：完成十六次扩展阶段回归验证与文档收口（T36）。
+- 后续：按需继续推进 `distributed_membership_sync` 的 replay/governance 子系统迁移（`recovery/replay_audit.rs` / `recovery/replay_archive*.rs`），保持导出 API 兼容并按切片逐步下沉。
 - 最近更新：2026-02-12
