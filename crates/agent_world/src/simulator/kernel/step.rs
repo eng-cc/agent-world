@@ -1,6 +1,7 @@
 use super::super::types::{Action, ActionEnvelope, ActionId};
 use super::types::{
-    KernelRuleDecision, KernelRuleVerdict, RejectReason, WorldEvent, WorldEventKind,
+    KernelRuleDecision, KernelRuleModuleContext, KernelRuleModuleInput, KernelRuleVerdict,
+    RejectReason, WorldEvent, WorldEventKind,
 };
 use super::WorldKernel;
 
@@ -22,7 +23,20 @@ impl WorldKernel {
         let action_id = envelope.id;
         let action = envelope.action;
 
-        let mut decisions = Vec::with_capacity(self.rule_hooks.pre_action.len());
+        let mut decisions = Vec::with_capacity(
+            self.rule_hooks.pre_action.len()
+                + usize::from(self.rule_hooks.pre_action_wasm.is_some()),
+        );
+        if let Some(evaluator) = &self.rule_hooks.pre_action_wasm {
+            let input = self.build_pre_action_wasm_rule_input(action_id, &action);
+            match evaluator(&input) {
+                Ok(output) => decisions.push(output.decision),
+                Err(err) => decisions.push(KernelRuleDecision::deny(
+                    action_id,
+                    vec![format!("wasm pre-action evaluator failed: {err}")],
+                )),
+            }
+        }
         for hook in &self.rule_hooks.pre_action {
             decisions.push(hook(action_id, &action, self));
         }
@@ -74,6 +88,22 @@ impl WorldKernel {
         match super::merge_kernel_rule_decisions(action_id, decisions) {
             Ok(merged) => merged,
             Err(err) => KernelRuleDecision::deny(action_id, vec![err.to_string()]),
+        }
+    }
+
+    fn build_pre_action_wasm_rule_input(
+        &self,
+        action_id: ActionId,
+        action: &Action,
+    ) -> KernelRuleModuleInput {
+        KernelRuleModuleInput {
+            action_id,
+            action: action.clone(),
+            context: KernelRuleModuleContext {
+                time: self.time,
+                location_ids: self.model.locations.keys().cloned().collect(),
+                agent_ids: self.model.agents.keys().cloned().collect(),
+            },
         }
     }
 

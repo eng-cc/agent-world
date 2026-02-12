@@ -179,7 +179,7 @@
 ### 12. 规则 Wasm 执行接线基础（KWE）
 - [x] 输出 KWE 设计文档（`doc/world-simulator/kernel-rule-wasm-executor-foundation.md`）
 - [x] 输出 KWE 项目管理文档（`doc/world-simulator/kernel-rule-wasm-executor-foundation.project.md`）
-- [ ] KWE-1 规则 wasm 输入/输出契约与可选 pre-action 评估入口
+- [x] KWE-1 规则 wasm 输入/输出契约与可选 pre-action 评估入口
 - [ ] KWE-2 wasm 接线测试（allow/deny/modify/错误兜底）
 - [ ] KWE-3 回归验证与文档收口
 

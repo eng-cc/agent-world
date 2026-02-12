@@ -46,18 +46,22 @@ impl ChunkRuntimeConfig {
 
 pub use types::{
     merge_kernel_rule_decisions, ChunkGenerationCause, KernelRuleCost, KernelRuleDecision,
-    KernelRuleDecisionMergeError, KernelRuleVerdict, Observation, ObservedAgent, ObservedLocation,
+    KernelRuleDecisionMergeError, KernelRuleModuleContext, KernelRuleModuleInput,
+    KernelRuleModuleOutput, KernelRuleVerdict, Observation, ObservedAgent, ObservedLocation,
     PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
 };
 
 type PreActionRuleHook =
     Arc<dyn Fn(ActionId, &Action, &WorldKernel) -> KernelRuleDecision + Send + Sync>;
 type PostActionRuleHook = Arc<dyn Fn(ActionId, &Action, &WorldEvent) + Send + Sync>;
+type PreActionWasmRuleEvaluator =
+    Arc<dyn Fn(&KernelRuleModuleInput) -> Result<KernelRuleModuleOutput, String> + Send + Sync>;
 
 #[derive(Default, Clone)]
 struct RuleHookRegistry {
     pre_action: Vec<PreActionRuleHook>,
     post_action: Vec<PostActionRuleHook>,
+    pre_action_wasm: Option<PreActionWasmRuleEvaluator>,
 }
 
 impl std::fmt::Debug for RuleHookRegistry {
@@ -65,6 +69,7 @@ impl std::fmt::Debug for RuleHookRegistry {
         f.debug_struct("RuleHookRegistry")
             .field("pre_action_len", &self.pre_action.len())
             .field("post_action_len", &self.post_action.len())
+            .field("pre_action_wasm_enabled", &self.pre_action_wasm.is_some())
             .finish()
     }
 }
@@ -146,6 +151,20 @@ impl WorldKernel {
         F: Fn(ActionId, &Action, &WorldEvent) + Send + Sync + 'static,
     {
         self.rule_hooks.post_action.push(Arc::new(hook));
+    }
+
+    pub fn set_pre_action_wasm_rule_evaluator<F>(&mut self, evaluator: F)
+    where
+        F: Fn(&KernelRuleModuleInput) -> Result<KernelRuleModuleOutput, String>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.rule_hooks.pre_action_wasm = Some(Arc::new(evaluator));
+    }
+
+    pub fn clear_pre_action_wasm_rule_evaluator(&mut self) {
+        self.rule_hooks.pre_action_wasm = None;
     }
 
     pub fn time(&self) -> WorldTime {

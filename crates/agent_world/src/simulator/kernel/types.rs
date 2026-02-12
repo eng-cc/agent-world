@@ -301,6 +301,33 @@ impl KernelRuleDecision {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct KernelRuleModuleContext {
+    pub time: WorldTime,
+    #[serde(default)]
+    pub location_ids: Vec<LocationId>,
+    #[serde(default)]
+    pub agent_ids: Vec<AgentId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct KernelRuleModuleInput {
+    pub action_id: ActionId,
+    pub action: Action,
+    pub context: KernelRuleModuleContext,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct KernelRuleModuleOutput {
+    pub decision: KernelRuleDecision,
+}
+
+impl KernelRuleModuleOutput {
+    pub fn from_decision(decision: KernelRuleDecision) -> Self {
+        Self { decision }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelRuleDecisionMergeError {
     ActionIdMismatch { expected: ActionId, got: ActionId },
