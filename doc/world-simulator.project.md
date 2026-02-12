@@ -167,6 +167,7 @@
 - [x] KRH-1 内核动作行为基线回归测试（`kernel_action_behavior_snapshot_stays_stable`）
 - [x] KRH-2 `WorldKernel::step` 接入 pre/post Hook（默认 no-op）
 - [x] KRH-3 规则决策结构与合并（deny/modify/allow + merge）
+- [x] KRH-4 回归验证与文档收口（`cargo test -p agent_world`）
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
