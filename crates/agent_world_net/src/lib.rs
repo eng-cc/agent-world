@@ -16,6 +16,9 @@ mod observer_replay;
 mod provider_cache;
 mod util;
 
+#[cfg(feature = "libp2p")]
+mod libp2p_net;
+
 pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult, HeadValidationResult};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::distributed_net as proto_net;
@@ -47,7 +50,7 @@ pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubs
 pub use provider_cache::{ProviderCache, ProviderCacheConfig};
 
 #[cfg(feature = "libp2p")]
-pub use agent_world::runtime::{Libp2pNetwork, Libp2pNetworkConfig};
+pub use libp2p_net::{Libp2pNetwork, Libp2pNetworkConfig};
 
 #[cfg(test)]
 mod tests;

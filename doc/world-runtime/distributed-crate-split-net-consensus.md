@@ -174,6 +174,16 @@
 - 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（二十次扩展阶段）
+- 继续推进 `agent_world_net` 的 p2p 网络实现下沉（`libp2p` adapter）：
+  - 将 `libp2p_net.rs` 核心实现下沉到 `agent_world_net`（保持 feature name 为 `libp2p`）：
+    - `Libp2pNetwork` / `Libp2pNetworkConfig`
+    - gossipsub publish/subscribe 与 request/response
+    - Kademlia DHT provider/head/membership record CRUD
+  - `agent_world_net --features libp2p` 可独立编译通过（并尽量覆盖最小单测）。
+- 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
+- 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -238,6 +248,8 @@
 - P41：`distributed_storage.rs` 核心实现下沉到 `agent_world_net`。
 - P42：`distributed_validation.rs` 核心实现下沉到 `agent_world_net`。
 - P43：十九次扩展阶段回归验证与文档收口。
+- P44：`libp2p_net.rs` 核心实现下沉到 `agent_world_net`。
+- P45：二十次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
