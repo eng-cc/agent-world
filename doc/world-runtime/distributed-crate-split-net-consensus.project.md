@@ -5,6 +5,8 @@
 - [x] T2：新建 `agent_world_net` / `agent_world_consensus` crate，并接入 workspace。
 - [x] T3：完成 net/consensus 导出能力面，确保 `distributed_membership_sync` 纳入 `agent_world_consensus`。
 - [x] T4：完成编译与定向测试回归，回写文档状态并收口。
+- [x] T5：将 `distributed_net` 核心实现下沉到 `agent_world_net`（`InMemoryNetwork` 与网络 trait/type）。
+- [ ] T6：完成扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -12,8 +14,9 @@
 - `crates/agent_world/src/runtime/libp2p_net.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
+- `crates/agent_world_net/src/lib.rs`
 
 ## 状态
-- 当前阶段：T1~T4 全部完成。
-- 下一步：当前拆分阶段已收口；后续可按需推进实现物理迁移。
+- 当前阶段：T5 完成，T6 进行中。
+- 下一步：执行扩展阶段回归并完成文档收口。
 - 最近更新：2026-02-12

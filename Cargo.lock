@@ -169,6 +169,7 @@ name = "agent_world_net"
 version = "0.1.0"
 dependencies = [
  "agent_world",
+ "agent_world_proto",
 ]
 
 [[package]]

@@ -17,6 +17,12 @@
 - `agent_world_consensus` 对外聚合共识与 membership sync 能力（含 `distributed_membership_sync` 相关导出）。
 - 补充最小验证（编译/测试）与文档回写。
 
+### In Scope（扩展阶段）
+- 在不引入第三个 crate 的前提下，继续推进“实现物理迁移”：
+  - 优先将 `distributed_net` 的核心实现（`DistributedNetwork` / `InMemoryNetwork`）下沉到 `agent_world_net`。
+  - `agent_world` 保持兼容 API，不改变现有对外行为与语义。
+- 通过定向编译/测试验证迁移不回归。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -42,6 +48,8 @@
 - P2：新 crate 脚手架与 workspace 接线完成。
 - P3：导出能力面落地（net/consensus 分类稳定）。
 - P4：编译与定向测试回归通过，项目文档收口。
+- P5：`distributed_net` 核心实现下沉到 `agent_world_net`。
+- P6：扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
