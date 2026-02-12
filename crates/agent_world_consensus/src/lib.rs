@@ -3,6 +3,7 @@
 mod lease;
 mod membership;
 mod membership_logic;
+mod membership_reconciliation;
 mod mempool;
 mod quorum;
 
@@ -15,6 +16,18 @@ pub use membership::{
     MembershipSnapshotRestorePolicy, MembershipSyncClient, MembershipSyncReport,
     MembershipSyncSubscription,
 };
+pub use membership_reconciliation::{
+    FileMembershipRevocationAlertSink, FileMembershipRevocationScheduleStateStore,
+    InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleCoordinator,
+    InMemoryMembershipRevocationScheduleStateStore, MembershipRevocationAlertDedupPolicy,
+    MembershipRevocationAlertDedupState, MembershipRevocationAlertPolicy,
+    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
+    MembershipRevocationAnomalyAlert, MembershipRevocationCheckpointAnnounce,
+    MembershipRevocationCoordinatedRunReport, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileReport, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleCoordinator,
+    MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
+};
 pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
 pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
@@ -25,7 +38,7 @@ pub use quorum::{
 
 pub use agent_world::runtime::{
     FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
-    FileMembershipRevocationAlertSink, FileMembershipRevocationCoordinatorStateStore,
+    FileMembershipRevocationCoordinatorStateStore,
     FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
     FileMembershipRevocationDeadLetterReplayPolicyStore,
     FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
@@ -35,9 +48,9 @@ pub use agent_world::runtime::{
     FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore,
     FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
     FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
-    FileMembershipRevocationDeadLetterReplayStateStore, FileMembershipRevocationScheduleStateStore,
+    FileMembershipRevocationDeadLetterReplayStateStore,
     InMemoryMembershipRevocationAlertDeadLetterStore,
-    InMemoryMembershipRevocationAlertRecoveryStore, InMemoryMembershipRevocationAlertSink,
+    InMemoryMembershipRevocationAlertRecoveryStore,
     InMemoryMembershipRevocationCoordinatorStateStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
@@ -49,17 +62,12 @@ pub use agent_world::runtime::{
     InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
     InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     InMemoryMembershipRevocationDeadLetterReplayStateStore,
-    InMemoryMembershipRevocationScheduleCoordinator,
-    InMemoryMembershipRevocationScheduleStateStore, MembershipRevocationAlertAckRetryPolicy,
-    MembershipRevocationAlertDeadLetterReason, MembershipRevocationAlertDeadLetterRecord,
-    MembershipRevocationAlertDeadLetterStore, MembershipRevocationAlertDedupPolicy,
-    MembershipRevocationAlertDedupState, MembershipRevocationAlertDeliveryMetrics,
-    MembershipRevocationAlertPolicy, MembershipRevocationAlertRecoveryReport,
-    MembershipRevocationAlertRecoveryStore, MembershipRevocationAlertSeverity,
-    MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
-    MembershipRevocationCheckpointAnnounce, MembershipRevocationCoordinatedRecoveryRunReport,
-    MembershipRevocationCoordinatedRunReport, MembershipRevocationCoordinatorLeaseState,
-    MembershipRevocationCoordinatorStateStore, MembershipRevocationDeadLetterReplayPolicy,
+    MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
+    MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryReport,
+    MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
+    MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
+    MembershipRevocationDeadLetterReplayPolicy,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
     MembershipRevocationDeadLetterReplayPolicyAuditStore,
@@ -101,13 +109,12 @@ pub use agent_world::runtime::{
     MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayScheduleState,
     MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
-    MembershipRevocationReconcilePolicy, MembershipRevocationReconcileReport,
-    MembershipRevocationReconcileSchedulePolicy, MembershipRevocationReconcileScheduleState,
-    MembershipRevocationScheduleCoordinator, MembershipRevocationScheduleStateStore,
-    MembershipRevocationScheduledRunReport, NoopMembershipRevocationAlertDeadLetterStore,
+    NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 
+#[cfg(test)]
+mod membership_reconciliation_tests;
 #[cfg(test)]
 mod membership_tests;
 

@@ -31,7 +31,7 @@
 - [x] T28：完成十二次扩展阶段回归验证与文档收口。
 - [x] T29：将 `distributed_membership_sync` 的签名/审计/同步核心（不含 recovery/reconciliation）下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T30：完成十三次扩展阶段回归验证与文档收口。
-- [ ] T31：将 `distributed_membership_sync/reconciliation.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T31：将 `distributed_membership_sync/reconciliation.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [ ] T32：完成十四次扩展阶段回归验证与文档收口。
 
 ## 依赖
@@ -72,6 +72,6 @@
 - `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
 
 ## 状态
-- 当前阶段：十四次扩展阶段进行中（T31 进行中）。
-- 下一步：完成 membership reconcile 核心迁移并执行扩展回归验证。
+- 当前阶段：十四次扩展阶段进行中（T32 进行中）。
+- 下一步：执行十四次扩展阶段回归验证并完成文档收口。
 - 最近更新：2026-02-12
