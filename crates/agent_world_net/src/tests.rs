@@ -120,6 +120,95 @@ fn in_memory_dht_stores_providers() {
     assert_eq!(providers.len(), 2);
 }
 
+#[cfg(feature = "libp2p")]
+#[test]
+fn libp2p_smoke_request_response_and_pubsub_work_between_peers() {
+    use std::time::{Duration, Instant};
+
+    use libp2p::Multiaddr;
+
+    use agent_world::runtime::WorldError;
+
+    fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {
+        while Instant::now() < deadline {
+            if condition() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        panic!("timed out waiting for condition: {what}");
+    }
+
+    let listen_addr: Multiaddr = "/ip4/127.0.0.1/tcp/0".parse().expect("multiaddr");
+    let net1 = Libp2pNetwork::new(Libp2pNetworkConfig {
+        listen_addrs: vec![listen_addr],
+        ..Libp2pNetworkConfig::default()
+    });
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    wait_until("net1 listening addrs", deadline, || {
+        !net1.listening_addrs().is_empty()
+    });
+    let dial_addr = net1
+        .listening_addrs()
+        .into_iter()
+        .find(|addr| addr.to_string().contains("127.0.0.1"))
+        .expect("listening addr")
+        .with(libp2p::multiaddr::Protocol::P2p(net1.peer_id().into()));
+
+    net1.register_handler(
+        "/aw/rr/1.0.0/ping",
+        Box::new(|payload| {
+            let mut out = payload.to_vec();
+            out.extend_from_slice(b"-ok");
+            Ok(out)
+        }),
+    )
+    .expect("register handler");
+
+    let net2 = Libp2pNetwork::new(Libp2pNetworkConfig {
+        listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listen")],
+        bootstrap_peers: vec![dial_addr],
+        ..Libp2pNetworkConfig::default()
+    });
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline {
+        if !net2.connected_peers().is_empty() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    if net2.connected_peers().is_empty() {
+        panic!(
+            "timed out waiting for net2 connected peers; net2_errors={:?}; net1_errors={:?}; net1_addrs={:?}",
+            net2.debug_errors(),
+            net1.debug_errors(),
+            net1.listening_addrs(),
+        );
+    }
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    wait_until("request/response", deadline, || {
+        match net2.request("/aw/rr/1.0.0/ping", b"ping") {
+            Ok(reply) => reply == b"ping-ok".to_vec(),
+            Err(WorldError::NetworkProtocolUnavailable { .. }) => false,
+            Err(err) => panic!("unexpected request error: {err:?}"),
+        }
+    });
+
+    let sub2 = net2.subscribe("aw.smoke").expect("sub2");
+    let _sub1 = net1.subscribe("aw.smoke").expect("sub1");
+    std::thread::sleep(Duration::from_millis(200));
+
+    net1.publish("aw.smoke", b"hello").expect("publish");
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+    wait_until("gossipsub deliver", deadline, || {
+        sub2.drain().iter().any(|msg| msg == b"hello")
+    });
+}
+
 #[test]
 fn in_memory_dht_tracks_world_head() {
     let dht = InMemoryDht::new();

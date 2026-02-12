@@ -46,6 +46,8 @@
 - [x] T43：完成十九次扩展阶段回归验证与文档收口。
 - [x] T44：将 `libp2p_net.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变，feature=`libp2p`）。
 - [x] T45：完成二十次扩展阶段回归验证与文档收口。
+- [x] T46：增强 `agent_world_net` 的 `Libp2pNetwork` 可观测性并补齐跨节点 smoke test（feature=`libp2p`）。
+- [ ] T47：完成二十一次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -102,6 +104,6 @@
 - `crates/agent_world_net/src/libp2p_net.rs`
 
 ## 状态
-- 当前阶段：二十次扩展阶段已收口（T44~T45 全部完成）。
-- 下一步：按需继续推进更多 runtime 实现的物理迁移（优先 `agent_world_net` 的网络实现与 `agent_world_consensus` 的共识逻辑），保持导出 API 兼容并按切片逐步推进。
+- 当前阶段：二十一次扩展阶段进行中（T46 已完成，T47 进行中）。
+- 下一步：执行二十一次扩展阶段回归验证与文档收口（T47），保持导出 API 兼容并按切片逐步推进。
 - 最近更新：2026-02-12
