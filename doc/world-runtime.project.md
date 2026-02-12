@@ -116,7 +116,7 @@
 - [x] 输出 BMS 项目管理文档（`doc/world-runtime/builtin-wasm-crate-split.project.md`）
 - [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
 - [x] BMS-2 接入构建脚本并补充验证
-- [ ] BMS-3 回归验证与文档收口
+- [x] BMS-3 回归验证与文档收口
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -125,5 +125,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：推进 BMS-3（回归验证与文档收口）并继续评估真实 WASM 执行器接入
-- 最近更新：完成 BMS-2（builtin wasm 构建脚本接线与构建验证）（2026-02-12）
+- 下一步：继续评估真实 WASM 执行器接入，并按模块清单迁移剩余 builtin
+- 最近更新：完成 BMS-3（builtin 独立 crate 化阶段收口）（2026-02-12）
