@@ -16,6 +16,7 @@ use crate::membership_reconciliation::{
 
 mod dead_letter;
 mod replay;
+mod replay_audit;
 mod stores;
 mod types;
 
@@ -30,6 +31,30 @@ pub use replay::{
     MembershipRevocationDeadLetterReplayPolicy, MembershipRevocationDeadLetterReplayPolicyState,
     MembershipRevocationDeadLetterReplayPolicyStore, MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayScheduleState, MembershipRevocationDeadLetterReplayStateStore,
+};
+#[rustfmt::skip]
+pub use replay_audit::{
+    FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore,
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
+    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
+    MembershipRevocationDeadLetterReplayPolicyAuditStore,
+    MembershipRevocationDeadLetterReplayRollbackAlertPolicy,
+    MembershipRevocationDeadLetterReplayRollbackAlertState,
+    MembershipRevocationDeadLetterReplayRollbackAlertStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+    MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceState,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 pub use stores::{
     FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,
