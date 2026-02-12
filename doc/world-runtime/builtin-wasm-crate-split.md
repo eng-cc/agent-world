@@ -13,6 +13,7 @@
 - 继续迁移规则模块 `m1.rule.visibility`、`m1.rule.transfer` 到独立 crate。
 - 继续迁移 `m1.body.core` 到独立 crate。
 - 继续迁移 `m1.sensor.basic` 到独立 crate。
+- 继续迁移 `m1.mobility.basic` 到独立 crate。
 - 新增脚本封装，基于 `scripts/build-wasm-module.sh` 构建该 crate 产物。
 - 补充最小测试与回归命令，确保 crate 可编译、脚本可执行、产物可生成。
 
@@ -27,7 +28,7 @@
   - 导出 wasm-1 ABI 入口：`alloc` + `reduce`（必要时兼容 `call`）
 - 新增构建脚本（草案）：
   - `scripts/build-builtin-wasm-modules.sh`
-  - 默认构建模块：`m1.rule.move`、`m1.rule.visibility`、`m1.rule.transfer`、`m1.body.core`、`m1.sensor.basic`
+  - 默认构建模块：`m1.rule.move`、`m1.rule.visibility`、`m1.rule.transfer`、`m1.body.core`、`m1.sensor.basic`、`m1.mobility.basic`
   - 调用链路：`build-builtin-wasm-modules.sh -> build-wasm-module.sh -> wasm_build_suite`
 - 产物目录（草案）：
   - `.tmp/builtin-wasm/<module-id>.wasm`
@@ -40,8 +41,10 @@
 - M4：完成 BMS-4~BMS-7（规则模块 `visibility/transfer` 迁移与回归收口）。
 - M5：完成 BMS-8~BMS-11（`m1.body.core` 迁移与回归收口）。
 - M6：完成 BMS-12~BMS-15（`m1.sensor.basic` 迁移与回归收口）。
+- M7：完成 BMS-16~BMS-19（`m1.mobility.basic` 迁移与回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
 - 独立 crate 与现有 builtin sandbox 会短期并行：需要在文档中明确“以 wasm 构建链路为先，运行时切换后续推进”。
 - 后续批量迁移模块时会出现模块 ID 与版本治理一致性问题：本阶段先用单模块样板固化流程。
+- 默认模块封装层（如 `m1.mobility.basic`）复用底层规则模块时，存在行为漂移风险：通过并行单测对齐 native 与 wasm 输出。
