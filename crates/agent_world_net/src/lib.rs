@@ -9,6 +9,7 @@ mod index;
 mod index_store;
 mod network;
 mod observer;
+mod observer_replay;
 mod provider_cache;
 mod util;
 
@@ -27,6 +28,10 @@ pub use index_store::{DistributedIndexStore, HeadIndexRecord, InMemoryIndexStore
 pub use network::{DistributedNetwork, InMemoryNetwork};
 pub use observer::{
     HeadFollowReport, HeadSyncReport, HeadSyncResult, ObserverClient, ObserverSubscription,
+};
+pub use observer_replay::{
+    replay_validate_head, replay_validate_head_with_dht, replay_validate_with_head,
+    replay_validate_with_head_and_dht,
 };
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
