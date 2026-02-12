@@ -16,6 +16,9 @@ use crate::membership_reconciliation::{
 
 mod dead_letter;
 mod replay;
+mod replay_archive;
+mod replay_archive_federated;
+mod replay_archive_tiered;
 mod replay_audit;
 mod stores;
 mod types;
@@ -55,6 +58,50 @@ pub use replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport,
     MembershipRevocationDeadLetterReplayRollbackGovernanceState,
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
+};
+#[rustfmt::skip]
+pub use replay_archive::{
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore,
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceArchiveDrillScheduledRunReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditPruneReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillSchedulePolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleState,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduledRunReport,
+};
+#[rustfmt::skip]
+pub use replay_archive_tiered::{
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceArchiveTieredOffloadDrillAlertRunReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertRunReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertState,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore,
+};
+#[rustfmt::skip]
+pub use replay_archive_federated::{
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus,
+    FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus,
+    InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceArchiveTieredOffloadDrillAlertEventBusRunReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryPolicy,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryRecord,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditAggregateQueryReport,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditArchiveTier,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorState,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventCompositeSequenceCursorStateStore,
+    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome,
 };
 pub use stores::{
     FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,

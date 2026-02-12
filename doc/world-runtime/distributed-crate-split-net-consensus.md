@@ -152,6 +152,17 @@
 - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（十八次扩展阶段）
+- 继续推进 `agent_world_consensus` 的 membership dead-letter replay 归档/联邦 event bus 下沉（完成 `replay_archive*` 切片）：
+  - 将 `distributed_membership_sync/recovery/replay_archive.rs` / `replay_archive_tiered.rs` / `replay_archive_federated.rs` 核心实现下沉到 `agent_world_consensus`：
+    - governance audit retention store（in-memory / file）与 prune helper
+    - recovery drill schedule policy/state 与 state store（in-memory / file）
+    - tiered offload policy/report 与 drill alert state store（in-memory / file）
+    - federated recovery drill alert event bus（in-memory / file）与 aggregate query helper
+    - composite sequence cursor state/store（in-memory / file）
+  - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
+  - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -211,6 +222,8 @@
 - P36：十六次扩展阶段回归验证与文档收口。
 - P37：`distributed_membership_sync/recovery/replay_audit.rs` 核心实现下沉到 `agent_world_consensus`。
 - P38：十七次扩展阶段回归验证与文档收口。
+- P39：`distributed_membership_sync/recovery/replay_archive*.rs` 核心实现下沉到 `agent_world_consensus`。
+- P40：十八次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
