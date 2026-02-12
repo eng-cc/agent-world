@@ -12,6 +12,7 @@
 - 迁移以下协议类型定义：
   - topic / DHT key 约定、RR 协议名、错误码、请求响应结构。
   - `WorldBlock` / `WorldHeadAnnounce` / `ActionEnvelope` / `SnapshotManifest` 等协议载荷。
+  - 共识成员变更相关协议载荷：`ConsensusMembershipChange*`、`ConsensusStatus`、`ConsensusVote`、`HeadConsensusRecord`。
 - 迁移以下协议 trait 定义：
   - 网络抽象：`DistributedNetwork`
   - DHT 抽象：`DistributedDht`
@@ -38,6 +39,9 @@
 - `agent_world_proto::distributed_dht`
   - `ProviderRecord` / `MembershipDirectorySnapshot`。
   - `DistributedDht<E>` trait（错误类型泛型）。
+- `agent_world_proto::distributed_consensus`
+  - 成员变更协议结构：`ConsensusMembershipChange*`。
+  - 共识状态/投票与记录：`ConsensusStatus` / `ConsensusVote` / `HeadConsensusRecord`。
 
 ### 兼容策略
 - `agent_world` 继续对外导出原有 runtime 命名：
@@ -48,6 +52,7 @@
 - **P1**：文档与任务拆解完成。
 - **P2**：`agent_world_proto` crate 新建并完成协议类型迁移。
 - **P3**：trait 迁移 + `agent_world` wrapper 适配 + 编译/测试回归通过。
+- **P4**：补齐共识成员变更协议类型迁移并保持 `agent_world` 外部 API 稳定。
 
 ## 风险
 - trait 泛型化后若 wrapper 不完整，可能导致 trait object 推断歧义。
