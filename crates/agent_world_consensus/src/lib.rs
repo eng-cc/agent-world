@@ -1,10 +1,11 @@
 //! Consensus-focused facade for distributed runtime capabilities.
 
+mod lease;
+mod mempool;
 mod quorum;
 
-pub use agent_world::runtime::{
-    ActionBatchRules, ActionMempool, ActionMempoolConfig, LeaseDecision, LeaseManager, LeaseState,
-};
+pub use lease::{LeaseDecision, LeaseManager, LeaseState};
+pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
 pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
     ConsensusConfig, ConsensusDecision, ConsensusMembershipChange,
