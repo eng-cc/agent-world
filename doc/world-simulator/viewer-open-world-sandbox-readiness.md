@@ -141,3 +141,16 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration -- --nocapture` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（157 tests）。
   - 截图闭环通过：`./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5163 --tick-ms 300 --viewer-wait 10`。
+
+## 实施进展（2026-02-12）
+- 已完成 OWR2-Client：
+  - viewer Prompt Ops 面板接入真实协议请求：`prompt_control.preview/apply/rollback`（含回滚版本输入）。
+  - Prompt 草稿支持“载入当前配置”，并按字段展示草稿与当前生效 profile 的差异预览。
+  - viewer 轮询链路新增 Prompt 控制回执状态：接收 `prompt_control_ack/error`，在面板内回显成功/失败信息，不再把业务错误误判为连接断开。
+  - Prompt Ops 审计区接入 `AgentPromptUpdated` 事件流（按 Agent 过滤，展示 tick/version/operation/fields/digest）。
+  - 为满足单 Rust 文件行数约束，将 Prompt Ops 面板逻辑从 `egui_right_panel.rs` 拆分到 `prompt_ops_panel.rs`。
+- 已完成验证：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer prompt_control -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer prompt_ops -- --nocapture` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（171 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
