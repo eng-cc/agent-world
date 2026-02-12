@@ -17,6 +17,8 @@
 - [x] T14：完成五次扩展阶段回归验证与文档收口。
 - [x] T15：完成 `agent_world_net` 内部模块化拆分（`lib.rs` 多文件拆分 + 单测迁移，导出 API 不变）。
 - [x] T16：完成六次扩展阶段回归验证与文档收口。
+- [ ] T17：将 `distributed_index_store` / `distributed_provider_cache` / `distributed_dht_cache` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [ ] T18：完成七次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -36,8 +38,11 @@
 - `crates/agent_world_net/src/gateway.rs`
 - `crates/agent_world_net/src/util.rs`
 - `crates/agent_world_net/src/tests.rs`
+- `crates/agent_world_net/src/index_store.rs`
+- `crates/agent_world_net/src/provider_cache.rs`
+- `crates/agent_world_net/src/dht_cache.rs`
 
 ## 状态
-- 当前阶段：六次扩展阶段已完成（T1~T16 全部完成）。
-- 下一步：按后续拆分计划继续推进 net/consensus 中剩余分布式能力的实现迁移。
+- 当前阶段：七次扩展阶段进行中（T17 进行中）。
+- 下一步：完成 cache/index store 迁移并执行扩展回归验证。
 - 最近更新：2026-02-12
