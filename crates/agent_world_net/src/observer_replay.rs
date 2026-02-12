@@ -1,10 +1,7 @@
-use agent_world::runtime::{
-    blake3_hex, validate_head_update, BlobStore, HeadValidationResult, JournalSegmentRef,
-    WorldError,
-};
+use agent_world::runtime::{blake3_hex, BlobStore, JournalSegmentRef, WorldError};
 use agent_world_proto::distributed::{SnapshotManifest, WorldHeadAnnounce};
 
-use crate::{DistributedClient, DistributedDht};
+use crate::{validate_head_update, DistributedClient, DistributedDht, HeadValidationResult};
 
 pub fn replay_validate_head(
     world_id: &str,
