@@ -615,6 +615,47 @@ fn headless_report_tracks_status_and_event_count() {
 }
 
 #[test]
+fn headless_auto_play_sends_play_once_after_connected() {
+    struct AutoPlayEnvGuard;
+    impl Drop for AutoPlayEnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                std::env::remove_var("AGENT_WORLD_VIEWER_AUTO_PLAY");
+            }
+        }
+    }
+    unsafe {
+        std::env::set_var("AGENT_WORLD_VIEWER_AUTO_PLAY", "1");
+    }
+    let _guard = AutoPlayEnvGuard;
+
+    let mut app = App::new();
+    app.add_systems(Update, headless_auto_play_once);
+
+    let (tx_request, rx_request) = mpsc::channel::<ViewerRequest>();
+    app.world_mut().insert_resource(ViewerClient {
+        tx: tx_request,
+        rx: Mutex::new(mpsc::channel::<ViewerResponse>().1),
+    });
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        ..ViewerState::default()
+    });
+
+    app.update();
+    let first = rx_request.try_recv().expect("first control request");
+    assert_eq!(
+        first,
+        ViewerRequest::Control {
+            mode: ViewerControl::Play
+        }
+    );
+
+    app.update();
+    assert!(rx_request.try_recv().is_err());
+}
+
+#[test]
 fn poll_viewer_messages_applies_event_window_sampling_policy() {
     let mut app = App::new();
     app.add_systems(Update, poll_viewer_messages);

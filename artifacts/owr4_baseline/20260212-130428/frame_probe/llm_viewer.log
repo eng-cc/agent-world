@@ -1,0 +1,26 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+warning: unused imports: `SelectionInfo` and `SelectionKind`
+ --> crates/agent_world_viewer/src/selection_emphasis.rs:3:13
+  |
+3 | use super::{SelectionInfo, SelectionKind, Viewer3dScene, ViewerSelection};
+  |             ^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `agent_world_viewer` (bin "agent_world_viewer") generated 1 warning (run `cargo fix --bin "agent_world_viewer" -p agent_world_viewer` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.05s
+     Running `target/debug/agent_world_viewer '127.0.0.1:5641'`
+2026-02-12T05:09:47.067334Z  WARN bevy_egui::render: Bindless textures are not yet supported on metal. Disabling bindless mode. See https://github.com/bevyengine/bevy/issues/18149 for more information
+viewer perf_probe t=0.2s avg=168.89 p95=168.89 over_budget_pct=100.00 event_window=0 auto_degrade=false
+viewer perf_probe t=1.2s avg=31.61 p95=168.89 over_budget_pct=8.11 event_window=9 auto_degrade=true
+viewer perf_probe t=2.2s avg=22.37 p95=17.18 over_budget_pct=3.09 event_window=14 auto_degrade=true
+viewer perf_probe t=3.2s avg=20.19 p95=17.16 over_budget_pct=1.91 event_window=19 auto_degrade=true
+viewer perf_probe t=4.2s avg=16.67 p95=17.08 over_budget_pct=1.38 event_window=24 auto_degrade=true
+viewer perf_probe t=5.2s avg=16.67 p95=17.07 over_budget_pct=1.08 event_window=29 auto_degrade=true
+viewer perf_probe t=6.2s avg=16.67 p95=17.10 over_budget_pct=0.88 event_window=34 auto_degrade=true
+viewer perf_probe t=7.2s avg=16.67 p95=17.13 over_budget_pct=0.75 event_window=39 auto_degrade=true
+viewer perf_probe t=8.2s avg=16.67 p95=17.11 over_budget_pct=0.65 event_window=44 auto_degrade=true
+viewer perf_probe t=9.2s avg=17.78 p95=21.43 over_budget_pct=1.38 event_window=49 auto_degrade=true

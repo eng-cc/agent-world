@@ -4,6 +4,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let auto_degrade_config = auto_degrade_config_from_env();
+    let perf_probe_config = perf_probe::perf_probe_config_from_env();
     let auto_focus_config = auto_focus_config_from_env();
     let viewer_automation_config = viewer_automation_config_from_env();
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
@@ -34,6 +35,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(UiI18n::default())
         .insert_resource(auto_degrade_config)
         .insert_resource(AutoDegradeState::default())
+        .insert_resource(perf_probe_config)
+        .insert_resource(perf_probe::PerfProbeState::default())
         .insert_resource(auto_focus_config)
         .insert_resource(AutoFocusState::default())
         .insert_resource(viewer_automation_config)
@@ -64,6 +67,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             Update,
             (
                 poll_viewer_messages,
+                headless_auto_play_once,
                 sync_timeline_state_from_world,
                 handle_timeline_adjust_buttons,
                 handle_timeline_mark_filter_buttons,
@@ -107,6 +111,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_floating_origin.after(orbit_camera_controls),
                 sample_render_perf_summary.after(update_grid_line_lod_visibility),
                 update_auto_degrade_policy.after(sample_render_perf_summary),
+                perf_probe::update_perf_probe.after(update_auto_degrade_policy),
                 update_3d_viewport,
                 handle_control_buttons,
             ),
@@ -146,7 +151,15 @@ pub(super) fn run_headless(addr: String, offline: bool) {
         .insert_resource(OfflineConfig { offline })
         .add_plugins(MinimalPlugins)
         .add_systems(Startup, setup_startup_state)
-        .add_systems(Update, (poll_viewer_messages, headless_report))
+        .add_systems(
+            Update,
+            (
+                poll_viewer_messages,
+                headless_auto_play_once,
+                headless_report,
+            )
+                .chain(),
+        )
         .run();
 }
 

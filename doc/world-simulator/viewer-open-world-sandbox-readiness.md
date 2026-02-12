@@ -198,3 +198,17 @@
   - `bash -n scripts/viewer-owr4-stress.sh` 通过。
   - `./scripts/viewer-owr4-stress.sh --help` 通过。
   - `./scripts/viewer-owr4-stress.sh --duration-secs 5 --tick-ms 300 --scenarios triad_region_bootstrap --no-prewarm --out-dir .tmp/viewer_owr4_stress_smoke` 通过。
+- 已完成 OWR4.5：
+  - 新增跨版本基线文档 `doc/world-simulator/viewer-open-world-sandbox-readiness.baseline.md`，固定记录三类指标：
+    - 帧时间：`frame_ms_avg` / `frame_ms_p95`；
+    - 事件吞吐：`events/s`；
+    - 卡顿指标：`over_budget_pct`（以 `AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33` 为阈值）。
+  - 为基线采样补齐自动化可观测链路：
+    - viewer 新增 `perf_probe`（`AGENT_WORLD_VIEWER_PERF_PROBE*`）周期输出运行时性能摘要；
+    - headless 模式新增自动 `Play`（默认开启）并落 `viewer status/events` 指标日志；
+    - UI 模式支持 `AGENT_WORLD_VIEWER_AUTO_PLAY=1`，用于截图闭环场景下的动态负载采样。
+  - 形成当前基线批次 `artifacts/owr4_baseline/20260212-130428`，可用于后续版本增量对比。
+- 已完成验证（OWR4.5）：
+  - `./scripts/viewer-owr4-stress.sh --duration-secs 12 --tick-ms 200 --out-dir artifacts/owr4_baseline --no-prewarm` 通过。
+  - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario triad_region_bootstrap --addr 127.0.0.1:5640 --tick-ms 200 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
+  - `AGENT_WORLD_VIEWER_AUTO_PLAY=1 AGENT_WORLD_VIEWER_PERF_PROBE=1 AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS=1 AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33 ./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5641 --tick-ms 200 --viewer-wait 10 --no-prewarm --keep-tmp` 通过。
