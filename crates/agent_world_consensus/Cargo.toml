@@ -12,3 +12,6 @@ agent_world_proto = { path = "../agent_world_proto" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_cbor = "0.11"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"

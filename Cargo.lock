@@ -163,9 +163,12 @@ version = "0.1.0"
 dependencies = [
  "agent_world",
  "agent_world_proto",
+ "hex",
+ "hmac",
  "serde",
  "serde_cbor",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
