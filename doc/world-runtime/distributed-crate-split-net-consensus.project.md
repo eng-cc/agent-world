@@ -13,7 +13,7 @@
 - [x] T10：完成三次扩展阶段回归验证与文档收口。
 - [x] T11：将 `distributed_gateway` 核心实现下沉到 `agent_world_net`（Action 发布网关与回执类型）。
 - [x] T12：完成四次扩展阶段回归验证与文档收口。
-- [ ] T13：将 `distributed_index` 核心实现下沉到 `agent_world_net`（head/provider 索引发布与查询 helper）。
+- [x] T13：将 `distributed_index` 核心实现下沉到 `agent_world_net`（head/provider 索引发布与查询 helper）。
 - [ ] T14：完成五次扩展阶段回归验证与文档收口。
 
 ## 依赖
@@ -29,6 +29,6 @@
 - `crates/agent_world_net/src/lib.rs`
 
 ## 状态
-- 当前阶段：五次扩展阶段进行中（T13 进行中，T14 待完成）。
-- 下一步：完成 `distributed_index` 下沉实现并执行回归收口。
+- 当前阶段：五次扩展阶段进行中（T13 完成，T14 进行中）。
+- 下一步：完成扩展回归验证并收口文档状态。
 - 最近更新：2026-02-12
