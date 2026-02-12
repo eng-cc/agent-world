@@ -412,15 +412,61 @@ impl ModuleSandbox for WasmExecutor {
                         format!("missing alloc export: {err}"),
                     )
                 })?;
-            let call = instance
-                .get_typed_func::<(i32, i32), (i32, i32)>(&mut store, request.entrypoint.as_str())
-                .map_err(|err| {
-                    self.failure(
-                        request,
-                        ModuleCallErrorCode::InvalidOutput,
-                        format!("missing {} export: {err}", request.entrypoint),
+            enum EntrypointAbi {
+                Multi(wasmtime::TypedFunc<(i32, i32), (i32, i32)>),
+                PackedI64(wasmtime::TypedFunc<(i32, i32), i64>),
+                SRet(wasmtime::TypedFunc<(i32, i32, i32), ()>),
+            }
+            let multi = instance
+                .get_typed_func::<(i32, i32), (i32, i32)>(&mut store, request.entrypoint.as_str());
+            let packed = if multi.is_err() {
+                instance
+                    .get_typed_func::<(i32, i32), i64>(&mut store, request.entrypoint.as_str())
+                    .ok()
+            } else {
+                None
+            };
+            let sret = if multi.is_err() && packed.is_none() {
+                instance
+                    .get_typed_func::<(i32, i32, i32), ()>(&mut store, request.entrypoint.as_str())
+                    .ok()
+            } else {
+                None
+            };
+            let call = if let Ok(func) = multi {
+                EntrypointAbi::Multi(func)
+            } else if let Some(func) = packed {
+                EntrypointAbi::PackedI64(func)
+            } else if let Some(func) = sret {
+                EntrypointAbi::SRet(func)
+            } else {
+                let multi_err = instance
+                    .get_typed_func::<(i32, i32), (i32, i32)>(
+                        &mut store,
+                        request.entrypoint.as_str(),
                     )
-                })?;
+                    .err()
+                    .map(|err| err.to_string())
+                    .unwrap_or_else(|| "unavailable".to_string());
+                let i64_err = instance
+                    .get_typed_func::<(i32, i32), i64>(&mut store, request.entrypoint.as_str())
+                    .err()
+                    .map(|err| err.to_string())
+                    .unwrap_or_else(|| "unavailable".to_string());
+                let sret_err = instance
+                    .get_typed_func::<(i32, i32, i32), ()>(&mut store, request.entrypoint.as_str())
+                    .err()
+                    .map(|err| err.to_string())
+                    .unwrap_or_else(|| "unavailable".to_string());
+                return Err(self.failure(
+                    request,
+                    ModuleCallErrorCode::InvalidOutput,
+                    format!(
+                        "missing {} export: multi-value `{multi_err}`; i64 `{i64_err}`; sret `{sret_err}`",
+                        request.entrypoint
+                    ),
+                ));
+            };
 
             let input_len = i32::try_from(request.input.len()).map_err(|_| {
                 self.failure(
@@ -465,9 +511,44 @@ impl ModuleSandbox for WasmExecutor {
                         self.failure(request, ModuleCallErrorCode::Trap, err.to_string())
                     })?;
             }
-            let (output_ptr, output_len) = call
-                .call(&mut store, (input_ptr, input_len))
-                .map_err(|err| self.map_wasmtime_error(request, err))?;
+            let (output_ptr, output_len) = match call {
+                EntrypointAbi::Multi(func) => func
+                    .call(&mut store, (input_ptr, input_len))
+                    .map_err(|err| self.map_wasmtime_error(request, err))?,
+                EntrypointAbi::PackedI64(func) => {
+                    let packed = func
+                        .call(&mut store, (input_ptr, input_len))
+                        .map_err(|err| self.map_wasmtime_error(request, err))?
+                        as u64;
+                    (
+                        (packed & 0xffff_ffff) as u32 as i32,
+                        ((packed >> 32) & 0xffff_ffff) as u32 as i32,
+                    )
+                }
+                EntrypointAbi::SRet(func) => {
+                    let out_pair_ptr = alloc
+                        .call(&mut store, 8)
+                        .map_err(|err| self.map_wasmtime_error(request, err))?;
+                    if out_pair_ptr < 0 {
+                        return Err(self.failure(
+                            request,
+                            ModuleCallErrorCode::InvalidOutput,
+                            "alloc returned negative output pair pointer",
+                        ));
+                    }
+                    func.call(&mut store, (out_pair_ptr, input_ptr, input_len))
+                        .map_err(|err| self.map_wasmtime_error(request, err))?;
+                    let mut pair = [0_u8; 8];
+                    memory
+                        .read(&mut store, out_pair_ptr as usize, &mut pair)
+                        .map_err(|err| {
+                            self.failure(request, ModuleCallErrorCode::Trap, err.to_string())
+                        })?;
+                    let output_ptr = i32::from_le_bytes([pair[0], pair[1], pair[2], pair[3]]);
+                    let output_len = i32::from_le_bytes([pair[4], pair[5], pair[6], pair[7]]);
+                    (output_ptr, output_len)
+                }
+            };
             let memory_size = memory.data_size(&store) as u64;
             if memory_size > request.limits.max_mem_bytes {
                 return Err(self.failure(

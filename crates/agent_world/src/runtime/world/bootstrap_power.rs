@@ -7,12 +7,15 @@ use super::super::{
 };
 use super::World;
 
-const M1_RADIATION_POWER_ARTIFACT: &[u8] = b"m1-radiation-power";
-const M1_STORAGE_POWER_ARTIFACT: &[u8] = b"m1-storage-power";
-const M1_SENSOR_ARTIFACT: &[u8] = b"m1-sensor-basic";
-const M1_MOBILITY_ARTIFACT: &[u8] = b"m1-mobility-basic";
-const M1_MEMORY_ARTIFACT: &[u8] = b"m1-memory-core";
-const M1_STORAGE_CARGO_ARTIFACT: &[u8] = b"m1-storage-cargo";
+const M1_BUILTIN_WASM_ARTIFACT: &[u8] = include_bytes!("artifacts/m1_builtin_modules.wasm");
+const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
+const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
+const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_STORAGE_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_SENSOR_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_MOBILITY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_MEMORY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_STORAGE_CARGO_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {
@@ -211,8 +214,8 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 32,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -250,8 +253,8 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 2048,
-            max_gas: 20_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 64,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -289,8 +292,8 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 32,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -328,8 +331,8 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 32,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -356,8 +359,8 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
         }],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 4 * 1024,
-            max_gas: 20_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 64,
             max_output_bytes: 8 * 1024,
             max_effects: 0,
@@ -388,8 +391,8 @@ fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
         }],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 4 * 1024,
-            max_gas: 20_000,
+            max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
+            max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
             max_call_rate: 64,
             max_output_bytes: max_output,
             max_effects: 0,

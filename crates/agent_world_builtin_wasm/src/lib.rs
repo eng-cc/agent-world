@@ -28,6 +28,8 @@ const M1_POWER_STORAGE_MOVE_COST_PER_KM: i64 = 3;
 const M1_POWER_HARVEST_BASE_PER_TICK: i64 = 1;
 const M1_POWER_HARVEST_DISTANCE_STEP_CM: i64 = 800_000;
 const M1_POWER_HARVEST_DISTANCE_BONUS_CAP: i64 = 1;
+const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
+const CM_PER_KM: i64 = 100_000;
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -230,13 +232,72 @@ fn update_position_state_from_event(state: &mut PositionState, event_bytes: &[u8
     }
 }
 
-fn build_move_rule_output(input: &ModuleCallInput) -> Vec<u8> {
-    let action_id = action_envelope(input).map(|(id, _)| id).unwrap_or(0);
-    let payload = json!({
+fn movement_cost(distance_cm: i64, per_km_cost: i64) -> i64 {
+    if distance_cm <= 0 || per_km_cost <= 0 {
+        return 0;
+    }
+    let km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
+    km.saturating_mul(per_km_cost)
+}
+
+fn build_move_rule_action_output(input: &ModuleCallInput, state: &PositionState) -> Vec<u8> {
+    let Some((action_id, action)) = action_envelope(input) else {
+        return encode_output(empty_output());
+    };
+    if action.get("type").and_then(Value::as_str) != Some("MoveAgent") {
+        return encode_output(empty_output());
+    }
+    let Some(data) = action.get("data") else {
+        return encode_output(empty_output());
+    };
+    let Some(agent_id) = data.get("agent_id").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(to) = data.get("to").and_then(parse_geo_pos) else {
+        return encode_output(empty_output());
+    };
+
+    let mut decision = json!({
         "action_id": action_id,
         "verdict": "allow",
+        "cost": { "entries": {} },
+        "notes": [],
     });
-    rule_emit_output(payload)
+
+    match state.agents.get(agent_id).copied() {
+        Some(from) => {
+            let distance_cm = space_distance_cm(from, to);
+            if distance_cm == 0 {
+                decision["verdict"] = json!("deny");
+                decision["notes"] = json!(["move target equals current position"]);
+            } else {
+                let cost = movement_cost(distance_cm, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY);
+                if cost > 0 {
+                    decision["cost"] = json!({
+                        "entries": {
+                            "electricity": -cost,
+                        }
+                    });
+                }
+            }
+        }
+        None => {
+            decision["notes"] = json!(["agent position missing for move rule"]);
+        }
+    }
+
+    rule_emit_output(decision)
+}
+
+fn build_move_rule_output(input: &ModuleCallInput) -> Vec<u8> {
+    let state = decode_state(input.state.as_deref());
+    if input.action.is_some() {
+        return build_move_rule_action_output(input, &state);
+    }
+    if input.event.is_some() {
+        return build_state_tracking_event_output(input.event.as_deref(), state);
+    }
+    encode_output(empty_output())
 }
 
 fn build_visibility_rule_action_output(input: &ModuleCallInput, state: &PositionState) -> Vec<u8> {
@@ -1024,6 +1085,48 @@ mod tests {
         let payload = &output.emits[0].payload;
         assert_eq!(payload["action_id"], json!(61u64));
         assert_eq!(payload["verdict"], json!("allow"));
+    }
+
+    #[test]
+    fn mobility_module_denies_when_move_target_equals_current_position() {
+        let mut agents = BTreeMap::new();
+        agents.insert(
+            "agent-1".to_string(),
+            GeoPos {
+                x_cm: 100.0,
+                y_cm: 200.0,
+                z_cm: 0.0,
+            },
+        );
+        let state_bytes = serde_cbor::to_vec(&PositionState { agents }).expect("encode state");
+        let action = json!({
+            "id": 62u64,
+            "action": {
+                "type": "MoveAgent",
+                "data": {
+                    "agent_id":"agent-1",
+                    "to":{"x_cm": 100.0, "y_cm": 200.0, "z_cm": 0.0}
+                }
+            }
+        });
+        let input = encode_input(
+            M1_MOBILITY_MODULE_ID,
+            1001,
+            Some(action),
+            Some(state_bytes),
+            None,
+        );
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        assert_eq!(output.emits.len(), 1);
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(62u64));
+        assert_eq!(payload["verdict"], json!("deny"));
+        assert_eq!(
+            payload["notes"][0],
+            json!("move target equals current position")
+        );
     }
 
     #[test]

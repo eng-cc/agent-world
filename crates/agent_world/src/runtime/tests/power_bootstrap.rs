@@ -6,14 +6,22 @@ fn has_active(world: &World, module_id: &str) -> bool {
 }
 
 fn power_module_sandbox() -> BuiltinModuleSandbox {
-    BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
+    let sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
         WasmExecutorConfig::default(),
-    )))
-    .register_builtin(
-        M1_RADIATION_POWER_MODULE_ID,
-        M1RadiationPowerModule::default(),
-    )
-    .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
+    )));
+    #[cfg(feature = "wasmtime")]
+    {
+        sandbox
+    }
+    #[cfg(not(feature = "wasmtime"))]
+    {
+        sandbox
+            .register_builtin(
+                M1_RADIATION_POWER_MODULE_ID,
+                M1RadiationPowerModule::default(),
+            )
+            .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
+    }
 }
 
 fn apply_module_changes(world: &mut World, actor: &str, changes: ModuleChangeSet) {

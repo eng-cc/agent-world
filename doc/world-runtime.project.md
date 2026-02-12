@@ -147,7 +147,7 @@
 - [x] BMS-31 回归验证与文档收口
 - [x] BMS-32 扩展设计与任务拆解（runtime cutover：WASM 优先 + builtin fallback + 渐进下线 builtin 注册）
 - [x] BMS-33 实现 runtime 执行路径切换（WASM 优先 + builtin fallback）并补充验证
-- [ ] BMS-34 逐步下线一批 builtin 注册点（先 tests/demo）并补充验证
+- [x] BMS-34 逐步下线一批 builtin 注册点（先 tests/demo）并补充验证
 - [ ] BMS-35 回归验证与文档收口（cutover 阶段一期）
 
 ## 依赖
@@ -157,5 +157,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：执行 BMS-34，先在 tests/demo 入口逐步下线 builtin 注册
-- 最近更新：完成 BMS-33（runtime 执行路径切换到 WASM 优先 + builtin fallback）（2026-02-12）
+- 下一步：执行 BMS-35，进行 cutover 阶段一期回归与文档收口
+- 最近更新：完成 BMS-34（tests/demo 首批 builtin 注册点下线与 wasm artifact 接入）（2026-02-12）
