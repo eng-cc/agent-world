@@ -39,6 +39,7 @@ mod copyable_text;
 mod diagnosis;
 mod egui_right_panel;
 mod event_click_list;
+mod event_window;
 mod floating_origin;
 mod headless;
 mod i18n;
@@ -79,6 +80,7 @@ use egui_right_panel::render_right_side_panel_egui;
 use event_click_list::{
     handle_event_click_buttons, spawn_event_click_list, update_event_click_list_ui,
 };
+use event_window::{event_window_policy_from_env, push_event_with_window, EventWindowPolicy};
 use floating_origin::update_floating_origin;
 use headless::headless_report;
 use i18n::{control_button_label, locale_or_default, UiI18n};
@@ -148,6 +150,7 @@ fn main() {
 struct ViewerConfig {
     addr: String,
     max_events: usize,
+    event_window: EventWindowPolicy,
 }
 
 #[derive(Resource, Default)]
@@ -980,11 +983,7 @@ fn poll_viewer_messages(
                     state.snapshot = Some(snapshot);
                 }
                 ViewerResponse::Event { event } => {
-                    state.events.push(event);
-                    if state.events.len() > config.max_events {
-                        let overflow = state.events.len() - config.max_events;
-                        state.events.drain(0..overflow);
-                    }
+                    push_event_with_window(&mut state.events, event, config.event_window);
                 }
                 ViewerResponse::DecisionTrace { trace } => {
                     state.decision_traces.push(trace);
