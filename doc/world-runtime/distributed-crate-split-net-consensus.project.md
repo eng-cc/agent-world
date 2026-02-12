@@ -19,6 +19,8 @@
 - [x] T16：完成六次扩展阶段回归验证与文档收口。
 - [x] T17：将 `distributed_index_store` / `distributed_provider_cache` / `distributed_dht_cache` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
 - [x] T18：完成七次扩展阶段回归验证与文档收口。
+- [ ] T19：将 `distributed_head_follow` / `distributed_observer` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [ ] T20：完成八次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -41,8 +43,10 @@
 - `crates/agent_world_net/src/index_store.rs`
 - `crates/agent_world_net/src/provider_cache.rs`
 - `crates/agent_world_net/src/dht_cache.rs`
+- `crates/agent_world_net/src/head_follow.rs`
+- `crates/agent_world_net/src/observer.rs`
 
 ## 状态
-- 当前阶段：七次扩展阶段已完成（T1~T18 全部完成）。
-- 下一步：按后续拆分计划继续推进 net/consensus 中剩余分布式能力的实现迁移。
+- 当前阶段：八次扩展阶段进行中（T19 进行中）。
+- 下一步：完成 observer/head_follow 迁移并执行扩展回归验证。
 - 最近更新：2026-02-12
