@@ -197,6 +197,13 @@
 - [x] KWM-2 装载治理测试（missing hash / 冲突注册 / 激活成功路径）
 - [x] KWM-3 回归验证与文档收口
 
+### 15. Rust 到 Wasm 编译套件（KWT）
+- [x] 输出 KWT 设计文档（`doc/world-simulator/rust-wasm-build-suite.md`）
+- [x] 输出 KWT 项目管理文档（`doc/world-simulator/rust-wasm-build-suite.project.md`）
+- [ ] KWT-1 Rust->Wasm 构建套件（CLI + 脚本封装）
+- [ ] KWT-2 构建套件测试与最小模板闭环
+- [ ] KWT-3 回归验证与文档收口
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
@@ -205,4 +212,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 KWM（规则 Wasm 模块装载治理）阶段收口，补齐治理测试并通过 `cargo test -p agent_world` 回归（2026-02-12）
+- 最近更新：启动 KWT（Rust 到 Wasm 编译套件）阶段，完成设计与项目文档初始化（2026-02-12）
