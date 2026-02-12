@@ -127,7 +127,7 @@
 - [x] BMS-11 回归验证与文档收口
 - [x] BMS-12 扩展设计与任务拆解（`m1.sensor.basic` 迁移阶段）
 - [x] BMS-13 迁移 `m1.sensor.basic` 到独立 wasm crate 并补充验证
-- [ ] BMS-14 扩展构建脚本支持 `m1.sensor.basic` 并补充验证
+- [x] BMS-14 扩展构建脚本支持 `m1.sensor.basic` 并补充验证
 - [ ] BMS-15 回归验证与文档收口
 
 ## 依赖
@@ -137,5 +137,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：推进 BMS-14，扩展构建脚本支持 `m1.sensor.basic`
-- 最近更新：完成 BMS-13（`m1.sensor.basic` 迁移到独立 wasm crate）（2026-02-12）
+- 下一步：推进 BMS-15 回归收口（覆盖 move/visibility/transfer/body/sensor 五模块）
+- 最近更新：完成 BMS-14（构建脚本支持 `m1.sensor.basic`）（2026-02-12）

@@ -39,6 +39,9 @@ module_manifest_path() {
     m1.body.core)
       echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
       ;;
+    m1.sensor.basic)
+      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
+      ;;
     *)
       return 1
       ;;
@@ -51,6 +54,7 @@ m1.rule.move
 m1.rule.visibility
 m1.rule.transfer
 m1.body.core
+m1.sensor.basic
 EOF_IDS
 }
 
