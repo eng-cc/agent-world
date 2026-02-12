@@ -184,6 +184,16 @@
 - 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（二十一次扩展阶段）
+- 针对 `agent_world_net` 的 `libp2p` adapter 做最小闭环增强，降低“仅能编译但不可用”的风险：
+  - 增加最小可观测性（用于测试与调试）：
+    - 可查询 listen addrs（首帧监听就绪）
+    - 可查询已连接 peers（用于等待连接建立）
+  - 新增跨节点 smoke test：
+    - request/response 可跨 peer 收发
+    - gossipsub publish 可在 peer 间传播
+- 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -250,6 +260,8 @@
 - P43：十九次扩展阶段回归验证与文档收口。
 - P44：`libp2p_net.rs` 核心实现下沉到 `agent_world_net`。
 - P45：二十次扩展阶段回归验证与文档收口。
+- P46：`libp2p` adapter 最小可观测性补齐 + 跨节点 smoke test。
+- P47：二十一次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。

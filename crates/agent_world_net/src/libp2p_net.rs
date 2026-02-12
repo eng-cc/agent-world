@@ -14,7 +14,7 @@ use libp2p::kad::{self, store::MemoryStore, Quorum, RecordKey};
 use libp2p::noise;
 use libp2p::request_response::{self, ProtocolSupport};
 use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
-use libp2p::{Multiaddr, PeerId, StreamProtocol, SwarmBuilder};
+use libp2p::{Multiaddr, PeerId, StreamProtocol, Transport as _};
 
 use agent_world::runtime::WorldError;
 use agent_world_proto::distributed::{
@@ -54,6 +54,9 @@ pub struct Libp2pNetwork {
     command_tx: mpsc::UnboundedSender<Command>,
     inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
     published: Arc<Mutex<Vec<NetworkMessage>>>,
+    listening_addrs: Arc<Mutex<Vec<Multiaddr>>>,
+    connected_peers: Arc<Mutex<HashSet<PeerId>>>,
+    errors: Arc<Mutex<Vec<String>>>,
 }
 
 type Handler = Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>;
@@ -65,6 +68,9 @@ enum Command {
     },
     Subscribe {
         topic: String,
+    },
+    Dial {
+        addr: Multiaddr,
     },
     Request {
         protocol: String,
@@ -142,13 +148,20 @@ impl Libp2pNetwork {
         let peer_id = PeerId::from(keypair.public());
         let inbox = Arc::new(Mutex::new(HashMap::<String, Vec<Vec<u8>>>::new()));
         let published = Arc::new(Mutex::new(Vec::new()));
+        let listening_addrs = Arc::new(Mutex::new(Vec::new()));
+        let connected_peers = Arc::new(Mutex::new(HashSet::new()));
+        let errors = Arc::new(Mutex::new(Vec::new()));
         let (command_tx, command_rx) = mpsc::unbounded();
 
         let event_inbox = Arc::clone(&inbox);
         let event_published = Arc::clone(&published);
+        let event_listening_addrs = Arc::clone(&listening_addrs);
+        let event_connected_peers = Arc::clone(&connected_peers);
+        let event_errors = Arc::clone(&errors);
         let config_clone = config.clone();
         let keypair_clone = keypair.clone();
         let republish_tx = command_tx.clone();
+        let bootstrap_peers = config.bootstrap_peers.clone();
 
         std::thread::spawn(move || {
             let mut swarm = build_swarm(&keypair_clone);
@@ -166,13 +179,8 @@ impl Libp2pNetwork {
 
             for addr in config_clone.listen_addrs {
                 if let Err(err) = swarm.listen_on(addr) {
-                    eprintln!("libp2p listen failed: {err}");
-                }
-            }
-
-            for addr in config_clone.bootstrap_peers {
-                if let Err(err) = swarm.dial(addr) {
-                    eprintln!("libp2p dial failed: {err}");
+                    let msg = format!("libp2p listen failed: {err}");
+                    event_errors.lock().expect("lock errors").push(msg);
                 }
             }
 
@@ -190,7 +198,7 @@ impl Libp2pNetwork {
                 });
             }
 
-            futures::executor::block_on(async move {
+            async_std::task::block_on(async move {
                 let mut command_rx = command_rx;
                 loop {
                     futures::select! {
@@ -208,6 +216,13 @@ impl Libp2pNetwork {
                                         if swarm.behaviour_mut().gossipsub.subscribe(&topic_handle).is_ok() {
                                             topic_map.insert(topic_handle.hash(), topic);
                                         }
+                                    }
+                                }
+                                Some(Command::Dial { addr }) => {
+                                    if let Err(err) = dial_addr_with_optional_peer_id(&mut swarm, addr) {
+                                        event_errors.lock().expect("lock errors").push(format!(
+                                            "libp2p dial failed: {err}"
+                                        ));
                                     }
                                 }
                                 Some(Command::Request { protocol, payload, providers, response }) => {
@@ -429,10 +444,23 @@ impl Libp2pNetwork {
                                         }
                                     }
                                 }
+                                SwarmEvent::NewListenAddr { address, .. } => {
+                                    event_listening_addrs
+                                        .lock()
+                                        .expect("lock listening addrs")
+                                        .push(address);
+                                }
                                 SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                                     if !peers.contains(&peer_id) {
                                         peers.push(peer_id);
                                     }
+                                    event_connected_peers
+                                        .lock()
+                                        .expect("lock connected peers")
+                                        .insert(peer_id);
+                                    event_errors.lock().expect("lock errors").push(format!(
+                                        "libp2p connection established peer={peer_id}"
+                                    ));
                                     match endpoint {
                                         libp2p::core::connection::ConnectedPoint::Dialer { address, .. } => {
                                             swarm
@@ -450,6 +478,23 @@ impl Libp2pNetwork {
                                 }
                                 SwarmEvent::ConnectionClosed { peer_id, .. } => {
                                     peers.retain(|peer| peer != &peer_id);
+                                    event_connected_peers
+                                        .lock()
+                                        .expect("lock connected peers")
+                                        .remove(&peer_id);
+                                    event_errors.lock().expect("lock errors").push(format!(
+                                        "libp2p connection closed peer={peer_id}"
+                                    ));
+                                }
+                                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                                    event_errors.lock().expect("lock errors").push(format!(
+                                        "libp2p outgoing connection error peer={peer_id:?}: {error:?}"
+                                    ));
+                                }
+                                SwarmEvent::IncomingConnectionError { error, .. } => {
+                                    event_errors.lock().expect("lock errors").push(format!(
+                                        "libp2p incoming connection error: {error:?}"
+                                    ));
                                 }
                                 _ => {}
                             }
@@ -459,12 +504,20 @@ impl Libp2pNetwork {
             });
         });
 
+        for addr in bootstrap_peers {
+            // Best-effort: if the background task exits, dial requests can be dropped.
+            let _ = command_tx.unbounded_send(Command::Dial { addr });
+        }
+
         Self {
             peer_id,
             keypair,
             command_tx,
             inbox,
             published,
+            listening_addrs,
+            connected_peers,
+            errors,
         }
     }
 
@@ -478,6 +531,34 @@ impl Libp2pNetwork {
 
     pub fn published(&self) -> Vec<NetworkMessage> {
         self.published.lock().expect("lock published").clone()
+    }
+
+    pub fn dial(&self, addr: Multiaddr) -> Result<(), WorldError> {
+        self.command_tx
+            .unbounded_send(Command::Dial { addr })
+            .map_err(|_| WorldError::NetworkProtocolUnavailable {
+                protocol: "libp2p".to_string(),
+            })
+    }
+
+    pub fn listening_addrs(&self) -> Vec<Multiaddr> {
+        self.listening_addrs
+            .lock()
+            .expect("lock listening addrs")
+            .clone()
+    }
+
+    pub fn connected_peers(&self) -> Vec<PeerId> {
+        self.connected_peers
+            .lock()
+            .expect("lock connected peers")
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn debug_errors(&self) -> Vec<String> {
+        self.errors.lock().expect("lock errors").clone()
     }
 }
 
@@ -721,6 +802,9 @@ impl From<kad::Event> for BehaviourEvent {
 }
 
 fn build_swarm(keypair: &Keypair) -> Swarm<Behaviour> {
+    let swarm_config = libp2p::swarm::Config::with_async_std_executor()
+        .with_idle_connection_timeout(std::time::Duration::from_secs(30));
+
     let peer_id = PeerId::from(keypair.public());
     let gossipsub = gossipsub::Behaviour::new(
         MessageAuthenticity::Signed(keypair.clone()),
@@ -744,17 +828,47 @@ fn build_swarm(keypair: &Keypair) -> Swarm<Behaviour> {
         kademlia,
     };
 
-    SwarmBuilder::with_existing_identity(keypair.clone())
-        .with_async_std()
-        .with_tcp(
-            libp2p::tcp::Config::default(),
-            noise::Config::new,
-            libp2p::yamux::Config::default,
-        )
-        .expect("tcp transport")
-        .with_behaviour(|_| behaviour)
-        .expect("behaviour")
-        .build()
+    let transport = libp2p::tcp::async_io::Transport::new(libp2p::tcp::Config::default())
+        .upgrade(libp2p::core::upgrade::Version::V1)
+        .authenticate(noise::Config::new(keypair).expect("noise config"))
+        .multiplex(libp2p::yamux::Config::default())
+        .boxed();
+
+    Swarm::new(transport, behaviour, peer_id, swarm_config)
+}
+
+fn dial_addr_with_optional_peer_id(
+    swarm: &mut Swarm<Behaviour>,
+    addr: Multiaddr,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let (peer_id, dial_addr) = split_peer_id(addr);
+    if let Some(peer_id) = peer_id {
+        swarm
+            .behaviour_mut()
+            .kademlia
+            .add_address(&peer_id, dial_addr.clone());
+        let opts = libp2p::swarm::dial_opts::DialOpts::peer_id(peer_id)
+            .addresses(vec![dial_addr])
+            .build();
+        swarm.dial(opts)?;
+    } else {
+        swarm.dial(dial_addr)?;
+    }
+    Ok(())
+}
+
+fn split_peer_id(mut addr: Multiaddr) -> (Option<PeerId>, Multiaddr) {
+    use libp2p::multiaddr::Protocol;
+
+    let peer_id = match addr.pop() {
+        Some(Protocol::P2p(peer)) => Some(peer),
+        Some(protocol) => {
+            addr.push(protocol);
+            None
+        }
+        None => None,
+    };
+    (peer_id, addr)
 }
 
 fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, is_last: bool) {
@@ -982,118 +1096,4 @@ fn should_republish(last_ms: i64, now_ms: i64, interval_ms: i64) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn libp2p_network_generates_peer_id() {
-        let network = Libp2pNetwork::new(Libp2pNetworkConfig::default());
-        assert!(!network.peer_id().to_string().is_empty());
-    }
-
-    #[test]
-    fn dht_get_providers_collects_results() {
-        let (sender, receiver) = oneshot::channel();
-        let mut pending = PendingDhtQuery::GetProviders {
-            response: Some(sender),
-            providers: HashSet::new(),
-            error: None,
-        };
-        let key_label = "providers".to_string();
-        let key = RecordKey::new(&key_label);
-        let mut providers = HashSet::new();
-        providers.insert(PeerId::random());
-        providers.insert(PeerId::random());
-        let expected: HashSet<String> = providers.iter().map(|peer| peer.to_string()).collect();
-        let result = kad::QueryResult::GetProviders(Ok(kad::GetProvidersOk::FoundProviders {
-            key,
-            providers,
-        }));
-        handle_dht_progress(&mut pending, result, true);
-        let records = futures::executor::block_on(receiver)
-            .expect("oneshot")
-            .expect("get providers");
-        let actual: HashSet<String> = records
-            .into_iter()
-            .map(|record| record.provider_id)
-            .collect();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn dht_get_world_head_decodes_record() {
-        let head = WorldHeadAnnounce {
-            world_id: "w1".to_string(),
-            height: 9,
-            block_hash: "b1".to_string(),
-            state_root: "s1".to_string(),
-            timestamp_ms: 42,
-            signature: "sig".to_string(),
-        };
-        let payload = to_canonical_cbor(&head).expect("encode head");
-        let key_label = "head".to_string();
-        let record = kad::Record {
-            key: RecordKey::new(&key_label),
-            value: payload,
-            publisher: None,
-            expires: None,
-        };
-        let peer_record = kad::PeerRecord { peer: None, record };
-        let (sender, receiver) = oneshot::channel();
-        let mut pending = PendingDhtQuery::GetWorldHead {
-            response: Some(sender),
-            head: None,
-            error: None,
-        };
-        let result = kad::QueryResult::GetRecord(Ok(kad::GetRecordOk::FoundRecord(peer_record)));
-        handle_dht_progress(&mut pending, result, true);
-        let loaded = futures::executor::block_on(receiver)
-            .expect("oneshot")
-            .expect("get head");
-        assert_eq!(loaded, Some(head));
-    }
-
-    #[test]
-    fn dht_get_membership_directory_decodes_record() {
-        let snapshot = MembershipDirectorySnapshot {
-            world_id: "w1".to_string(),
-            requester_id: "seq-1".to_string(),
-            requested_at_ms: 99,
-            reason: Some("sync".to_string()),
-            validators: vec!["seq-1".to_string(), "seq-2".to_string()],
-            quorum_threshold: 2,
-            signature_key_id: None,
-            signature: None,
-        };
-        let payload = to_canonical_cbor(&snapshot).expect("encode snapshot");
-        let key_label = "membership".to_string();
-        let record = kad::Record {
-            key: RecordKey::new(&key_label),
-            value: payload,
-            publisher: None,
-            expires: None,
-        };
-        let peer_record = kad::PeerRecord { peer: None, record };
-        let (sender, receiver) = oneshot::channel();
-        let mut pending = PendingDhtQuery::GetMembershipDirectory {
-            response: Some(sender),
-            snapshot: None,
-            error: None,
-        };
-        let result = kad::QueryResult::GetRecord(Ok(kad::GetRecordOk::FoundRecord(peer_record)));
-        handle_dht_progress(&mut pending, result, true);
-
-        let loaded = futures::executor::block_on(receiver)
-            .expect("oneshot")
-            .expect("get membership");
-        assert_eq!(loaded, Some(snapshot));
-    }
-
-    #[test]
-    fn republish_interval_gate() {
-        assert!(!should_republish(100, 150, 100));
-        assert!(should_republish(100, 200, 100));
-        assert!(should_republish(100, 201, 100));
-        assert!(!should_republish(100, 200, 0));
-    }
-}
+mod tests;

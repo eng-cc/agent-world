@@ -8,7 +8,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
-libp2p = ["dep:libp2p", "dep:futures"]
+libp2p = ["dep:libp2p", "dep:futures", "dep:async-std"]
 
 [dependencies]
 agent_world = { path = "../agent_world", default-features = false }
@@ -16,4 +16,5 @@ agent_world_proto = { path = "../agent_world_proto" }
 serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
 futures = { version = "0.3", optional = true }
+async-std = { version = "1", optional = true }
 libp2p = { version = "0.53", optional = true, default-features = false, features = ["async-std", "cbor", "dns", "gossipsub", "kad", "macros", "noise", "request-response", "tcp", "yamux"] }
