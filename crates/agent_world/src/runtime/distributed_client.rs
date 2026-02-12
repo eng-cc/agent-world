@@ -219,6 +219,9 @@ fn decode_response<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, WorldError> {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+    use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
+
     use super::super::distributed_net::{InMemoryNetwork, NetworkSubscription};
     use super::*;
     use crate::runtime::distributed::DistributedErrorCode;
@@ -243,7 +246,7 @@ mod tests {
         }
     }
 
-    impl DistributedNetwork for SpyNetwork {
+    impl ProtoDistributedNetwork<WorldError> for SpyNetwork {
         fn publish(&self, _topic: &str, _payload: &[u8]) -> Result<(), WorldError> {
             Ok(())
         }

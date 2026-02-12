@@ -84,6 +84,8 @@ fn collect_execution_hashes(result: &ExecutionWriteResult) -> HashSet<String> {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
     use super::super::{
         Action, InMemoryDht, InMemoryIndexStore, LocalCasStore, ProviderCache, ProviderCacheConfig,

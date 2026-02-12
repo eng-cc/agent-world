@@ -196,6 +196,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
     use super::super::{InMemoryDht, InMemoryIndexStore};
     use super::*;
 

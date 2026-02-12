@@ -747,6 +747,7 @@ mod tests {
 
     use super::super::distributed_dht::InMemoryDht;
     use super::*;
+    use agent_world_proto::distributed_dht::DistributedDht as _;
 
     fn sample_head(height: u64, block_hash: &str) -> WorldHeadAnnounce {
         WorldHeadAnnounce {

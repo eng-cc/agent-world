@@ -1,62 +1,19 @@
 //! Distributed DHT adapter abstractions (provider/head indexing).
 
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::distributed::WorldHeadAnnounce;
+use agent_world_proto::distributed::WorldHeadAnnounce;
+use agent_world_proto::distributed_dht as proto_dht;
+
 use super::error::WorldError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ProviderRecord {
-    pub provider_id: String,
-    pub last_seen_ms: i64,
-}
+pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MembershipDirectorySnapshot {
-    pub world_id: String,
-    pub requester_id: String,
-    pub requested_at_ms: i64,
-    pub reason: Option<String>,
-    pub validators: Vec<String>,
-    pub quorum_threshold: usize,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub signature_key_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub signature: Option<String>,
-}
+pub trait DistributedDht: proto_dht::DistributedDht<WorldError> {}
 
-pub trait DistributedDht {
-    fn publish_provider(
-        &self,
-        world_id: &str,
-        content_hash: &str,
-        provider_id: &str,
-    ) -> Result<(), WorldError>;
-
-    fn get_providers(
-        &self,
-        world_id: &str,
-        content_hash: &str,
-    ) -> Result<Vec<ProviderRecord>, WorldError>;
-
-    fn put_world_head(&self, world_id: &str, head: &WorldHeadAnnounce) -> Result<(), WorldError>;
-
-    fn get_world_head(&self, world_id: &str) -> Result<Option<WorldHeadAnnounce>, WorldError>;
-
-    fn put_membership_directory(
-        &self,
-        world_id: &str,
-        snapshot: &MembershipDirectorySnapshot,
-    ) -> Result<(), WorldError>;
-
-    fn get_membership_directory(
-        &self,
-        world_id: &str,
-    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError>;
-}
+impl<T> DistributedDht for T where T: proto_dht::DistributedDht<WorldError> {}
 
 #[derive(Debug, Clone, Default)]
 pub struct InMemoryDht {
@@ -71,7 +28,7 @@ impl InMemoryDht {
     }
 }
 
-impl DistributedDht for InMemoryDht {
+impl proto_dht::DistributedDht<WorldError> for InMemoryDht {
     fn publish_provider(
         &self,
         world_id: &str,
@@ -143,6 +100,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
     use super::*;
 
     #[test]

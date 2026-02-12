@@ -3,6 +3,8 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
+
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
 use super::distributed_index_store::DistributedIndexStore;
@@ -105,7 +107,7 @@ impl CachedDht {
     }
 }
 
-impl DistributedDht for CachedDht {
+impl ProtoDistributedDht<WorldError> for CachedDht {
     fn publish_provider(
         &self,
         world_id: &str,
@@ -178,6 +180,8 @@ fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
     use super::super::{HeadIndexRecord, InMemoryDht, ProviderRecord};
     use super::*;
     use std::collections::BTreeMap;

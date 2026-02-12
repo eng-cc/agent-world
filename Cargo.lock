@@ -139,6 +139,7 @@ dependencies = [
 name = "agent_world"
 version = "0.1.0"
 dependencies = [
+ "agent_world_proto",
  "async-openai",
  "blake3",
  "futures",
@@ -154,6 +155,14 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "wasmtime",
+]
+
+[[package]]
+name = "agent_world_proto"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_cbor",
 ]
 
 [[package]]
