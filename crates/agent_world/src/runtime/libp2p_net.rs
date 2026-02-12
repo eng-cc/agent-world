@@ -4,6 +4,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
+use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use futures::channel::{mpsc, oneshot};
 use futures::{FutureExt, StreamExt};
 use libp2p::gossipsub::{self, IdentTopic, MessageAuthenticity, TopicHash};
@@ -18,9 +20,9 @@ use super::distributed::{
     dht_membership_key, dht_provider_key, dht_world_head_key, ErrorResponse, WorldHeadAnnounce,
     RR_PROTOCOL_PREFIX,
 };
-use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
+use super::distributed_dht::{MembershipDirectorySnapshot, ProviderRecord};
 use super::distributed_net::{
-    DistributedNetwork, NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription,
+    NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription,
 };
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
@@ -484,7 +486,7 @@ impl Drop for Libp2pNetwork {
     }
 }
 
-impl DistributedNetwork for Libp2pNetwork {
+impl ProtoDistributedNetwork<WorldError> for Libp2pNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
         self.command_tx
             .unbounded_send(Command::Publish {
@@ -554,7 +556,7 @@ impl DistributedNetwork for Libp2pNetwork {
     }
 }
 
-impl DistributedDht for Libp2pNetwork {
+impl ProtoDistributedDht<WorldError> for Libp2pNetwork {
     fn publish_provider(
         &self,
         world_id: &str,

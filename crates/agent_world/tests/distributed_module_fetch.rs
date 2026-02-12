@@ -5,10 +5,12 @@ use agent_world::runtime::distributed::{
     GetModuleArtifactResponse, RR_FETCH_BLOB, RR_GET_MODULE_ARTIFACT,
 };
 use agent_world::{
-    DistributedClient, DistributedDht, DistributedNetwork, InMemoryDht, InMemoryNetwork, Manifest,
-    ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest, ModuleRole,
-    ModuleSubscription, ModuleSubscriptionStage, ProposalDecision, World,
+    DistributedClient, InMemoryDht, InMemoryNetwork, Manifest, ModuleActivation, ModuleChangeSet,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, ProposalDecision, World,
 };
+use agent_world_proto::distributed_dht::DistributedDht as _;
+use agent_world_proto::distributed_net::DistributedNetwork as _;
 use sha2::{Digest, Sha256};
 
 #[test]

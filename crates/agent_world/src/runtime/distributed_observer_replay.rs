@@ -103,6 +103,8 @@ fn verify_blob_hash(expected: &str, bytes: &[u8]) -> Result<(), WorldError> {
 
 #[cfg(test)]
 mod tests {
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
     use super::super::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse,
         GetWorldHeadRequest, GetWorldHeadResponse, RR_FETCH_BLOB, RR_GET_BLOCK, RR_GET_WORLD_HEAD,
