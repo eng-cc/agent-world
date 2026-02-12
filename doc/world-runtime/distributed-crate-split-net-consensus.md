@@ -35,6 +35,12 @@
   - 在 `agent_world_net` 内补齐 canonical CBOR 序列化 helper，避免依赖 `agent_world::runtime::util` 私有实现。
 - 保持 `agent_world` 与现有测试行为兼容；迁移过程允许短期共存（runtime 侧保留实现，新 crate 侧提供并行实现）。
 
+### In Scope（四次扩展阶段）
+- 继续推进 `agent_world_net` 的网关能力下沉：
+  - 将 `distributed_gateway` 核心实现（`ActionGateway` / `NetworkGateway` / `SubmitActionReceipt`）下沉到 `agent_world_net`。
+  - 复用 `agent_world_proto::distributed` 的 topic helper 与 `ActionEnvelope` 协议类型，保持 wire 行为一致。
+- 保持 `agent_world` 与现有测试行为兼容；迁移过程允许短期共存（runtime 侧保留实现，新 crate 侧提供并行实现）。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -66,6 +72,8 @@
 - P8：二次扩展阶段回归验证与文档收口。
 - P9：`distributed_client` 核心实现下沉到 `agent_world_net`。
 - P10：三次扩展阶段回归验证与文档收口。
+- P11：`distributed_gateway` 核心实现下沉到 `agent_world_net`。
+- P12：四次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -73,3 +81,4 @@
 - feature 透传（尤其 `libp2p`）若配置不完整，可能导致构建行为与预期不一致。
 - 迁移期间若同名类型在 runtime 与新 crate 并行存在，可能引入调用方误用；需要通过文档和导出边界降低歧义。
 - `distributed_client` 涉及协议编解码与错误映射，若 canonical CBOR 行为偏差可能导致跨节点请求兼容性回归，需要定向测试覆盖。
+- `distributed_gateway` 涉及 action 发布 topic 与序列化，若 topic 生成或 payload 编码偏差，可能导致上游节点收不到动作，需要保留端到端发布测试。

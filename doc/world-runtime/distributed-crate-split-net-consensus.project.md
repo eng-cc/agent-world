@@ -11,6 +11,8 @@
 - [x] T8：完成二次扩展阶段回归验证与文档收口。
 - [x] T9：将 `distributed_client` 核心实现下沉到 `agent_world_net`（请求编解码、DHT provider 路由、错误映射）。
 - [x] T10：完成三次扩展阶段回归验证与文档收口。
+- [ ] T11：将 `distributed_gateway` 核心实现下沉到 `agent_world_net`（Action 发布网关与回执类型）。
+- [ ] T12：完成四次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -20,9 +22,10 @@
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_client.rs`
+- `crates/agent_world/src/runtime/distributed_gateway.rs`
 - `crates/agent_world_net/src/lib.rs`
 
 ## 状态
-- 当前阶段：T1~T10 全部完成。
-- 下一步：当前三次扩展阶段已收口；后续按需继续迁移其余 net/consensus 实现。
+- 当前阶段：四次扩展阶段进行中（T11 进行中，T12 待完成）。
+- 下一步：完成 `distributed_gateway` 下沉实现并执行回归收口。
 - 最近更新：2026-02-12
