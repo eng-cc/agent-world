@@ -7,7 +7,7 @@
 - [x] BMS-3 回归验证、文档与 devlog 收口。
 - [x] BMS-4 扩展设计与任务拆解（`m1.rule.visibility` / `m1.rule.transfer` 迁移阶段）。
 - [x] BMS-5 迁移 `m1.rule.visibility` 到独立 wasm crate 并补充验证。
-- [ ] BMS-6 迁移 `m1.rule.transfer` 到独立 wasm crate，扩展构建脚本并补充验证。
+- [x] BMS-6 迁移 `m1.rule.transfer` 到独立 wasm crate，扩展构建脚本并补充验证。
 - [ ] BMS-7 回归验证、文档与 devlog 收口。
 
 ## 依赖
@@ -16,6 +16,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：BMS-6（进行中）
-- 最近更新：完成 BMS-5（`m1.rule.visibility` 迁移到独立 wasm crate，2026-02-12）。
-- 下一步：完成 BMS-6（迁移 `m1.rule.transfer` + 扩展构建脚本）。
+- 当前阶段：BMS-7（进行中）
+- 最近更新：完成 BMS-6（`m1.rule.transfer` 迁移与构建脚本扩展，2026-02-12）。
+- 下一步：完成 BMS-7（回归验证与文档收口）。

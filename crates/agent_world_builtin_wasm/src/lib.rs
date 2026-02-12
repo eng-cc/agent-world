@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
+pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -267,11 +268,11 @@ fn build_visibility_rule_action_output(input: &ModuleCallInput, state: &Position
     rule_emit_output(decision)
 }
 
-fn build_visibility_rule_event_output(
-    input: &ModuleCallInput,
+fn build_state_tracking_event_output(
+    event_bytes: Option<&[u8]>,
     mut state: PositionState,
 ) -> Vec<u8> {
-    let Some(event_bytes) = input.event.as_deref() else {
+    let Some(event_bytes) = event_bytes else {
         return encode_output(empty_output());
     };
     let changed = update_position_state_from_event(&mut state, event_bytes);
@@ -290,7 +291,82 @@ fn build_visibility_rule_output(input: &ModuleCallInput) -> Vec<u8> {
         return build_visibility_rule_action_output(input, &state);
     }
     if input.event.is_some() {
-        return build_visibility_rule_event_output(input, state);
+        return build_state_tracking_event_output(input.event.as_deref(), state);
+    }
+    encode_output(empty_output())
+}
+
+fn build_transfer_rule_action_output(input: &ModuleCallInput, state: &PositionState) -> Vec<u8> {
+    let Some((action_id, action)) = action_envelope(input) else {
+        return encode_output(empty_output());
+    };
+    if action.get("type").and_then(Value::as_str) != Some("TransferResource") {
+        return encode_output(empty_output());
+    }
+    let Some(data) = action.get("data") else {
+        return encode_output(empty_output());
+    };
+    let Some(from_agent_id) = data.get("from_agent_id").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(to_agent_id) = data.get("to_agent_id").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(kind) = data.get("kind").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(amount) = data.get("amount").and_then(Value::as_i64) else {
+        return encode_output(empty_output());
+    };
+
+    let mut decision = json!({
+        "action_id": action_id,
+        "verdict": "modify",
+        "cost": { "entries": {} },
+        "notes": [],
+    });
+
+    if amount <= 0 {
+        decision["verdict"] = json!("deny");
+        decision["notes"] = json!(["transfer amount must be positive"]);
+        return rule_emit_output(decision);
+    }
+
+    let from_pos = state.agents.get(from_agent_id).copied();
+    let to_pos = state.agents.get(to_agent_id).copied();
+    match (from_pos, to_pos) {
+        (Some(from_pos), Some(to_pos)) => {
+            let distance_cm = space_distance_cm(from_pos, to_pos);
+            if distance_cm > 0 {
+                decision["verdict"] = json!("deny");
+                decision["notes"] = json!(["transfer requires co-located agents"]);
+            } else {
+                decision["override_action"] = json!({
+                    "type": "EmitResourceTransfer",
+                    "data": {
+                        "from_agent_id": from_agent_id,
+                        "to_agent_id": to_agent_id,
+                        "kind": kind,
+                        "amount": amount,
+                    }
+                });
+            }
+        }
+        _ => {
+            decision["verdict"] = json!("deny");
+            decision["notes"] = json!(["agent position missing for transfer rule"]);
+        }
+    }
+    rule_emit_output(decision)
+}
+
+fn build_transfer_rule_output(input: &ModuleCallInput) -> Vec<u8> {
+    let state = decode_state(input.state.as_deref());
+    if input.action.is_some() {
+        return build_transfer_rule_action_output(input, &state);
+    }
+    if input.event.is_some() {
+        return build_state_tracking_event_output(input.event.as_deref(), state);
     }
     encode_output(empty_output())
 }
@@ -302,6 +378,7 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
     match input.ctx.module_id.as_str() {
         M1_MOVE_RULE_MODULE_ID => build_move_rule_output(&input),
         M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(&input),
+        M1_TRANSFER_RULE_MODULE_ID => build_transfer_rule_output(&input),
         _ => encode_output(empty_output()),
     }
 }
@@ -527,6 +604,174 @@ mod tests {
             Some(&GeoPos {
                 x_cm: 10.0,
                 y_cm: 20.0,
+                z_cm: 0.0
+            })
+        );
+    }
+
+    #[test]
+    fn transfer_rule_emits_resource_transfer_override_when_colocated() {
+        let mut agents = BTreeMap::new();
+        let pos = GeoPos {
+            x_cm: 10.0,
+            y_cm: 20.0,
+            z_cm: 0.0,
+        };
+        agents.insert("agent-1".to_string(), pos);
+        agents.insert("agent-2".to_string(), pos);
+        let state_bytes = serde_cbor::to_vec(&PositionState { agents }).expect("encode state");
+        let action = json!({
+            "id": 31u64,
+            "action": {
+                "type": "TransferResource",
+                "data": {
+                    "from_agent_id": "agent-1",
+                    "to_agent_id": "agent-2",
+                    "kind": "electricity",
+                    "amount": 3i64
+                }
+            }
+        });
+        let input = encode_input(
+            M1_TRANSFER_RULE_MODULE_ID,
+            100,
+            Some(action),
+            Some(state_bytes),
+            None,
+        );
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        assert_eq!(output.emits.len(), 1);
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(31u64));
+        assert_eq!(payload["verdict"], json!("modify"));
+        assert_eq!(
+            payload["override_action"]["type"],
+            json!("EmitResourceTransfer")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["from_agent_id"],
+            json!("agent-1")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["to_agent_id"],
+            json!("agent-2")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["kind"],
+            json!("electricity")
+        );
+        assert_eq!(payload["override_action"]["data"]["amount"], json!(3i64));
+    }
+
+    #[test]
+    fn transfer_rule_denies_when_amount_not_positive() {
+        let action = json!({
+            "id": 32u64,
+            "action": {
+                "type": "TransferResource",
+                "data": {
+                    "from_agent_id": "agent-1",
+                    "to_agent_id": "agent-2",
+                    "kind": "electricity",
+                    "amount": 0i64
+                }
+            }
+        });
+        let input = encode_input(M1_TRANSFER_RULE_MODULE_ID, 0, Some(action), None, None);
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(32u64));
+        assert_eq!(payload["verdict"], json!("deny"));
+        assert_eq!(
+            payload["notes"][0],
+            json!("transfer amount must be positive")
+        );
+    }
+
+    #[test]
+    fn transfer_rule_denies_when_agents_not_colocated() {
+        let mut agents = BTreeMap::new();
+        agents.insert(
+            "agent-1".to_string(),
+            GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+        );
+        agents.insert(
+            "agent-2".to_string(),
+            GeoPos {
+                x_cm: 100.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+        );
+        let state_bytes = serde_cbor::to_vec(&PositionState { agents }).expect("encode state");
+        let action = json!({
+            "id": 33u64,
+            "action": {
+                "type": "TransferResource",
+                "data": {
+                    "from_agent_id": "agent-1",
+                    "to_agent_id": "agent-2",
+                    "kind": "electricity",
+                    "amount": 1i64
+                }
+            }
+        });
+        let input = encode_input(
+            M1_TRANSFER_RULE_MODULE_ID,
+            0,
+            Some(action),
+            Some(state_bytes),
+            None,
+        );
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(33u64));
+        assert_eq!(payload["verdict"], json!("deny"));
+        assert_eq!(
+            payload["notes"][0],
+            json!("transfer requires co-located agents")
+        );
+    }
+
+    #[test]
+    fn transfer_rule_updates_position_state_on_event() {
+        let event = json!({
+            "id": 2u64,
+            "time": 2u64,
+            "caused_by": null,
+            "body": {
+                "kind": "Domain",
+                "payload": {
+                    "type": "AgentMoved",
+                    "data": {
+                        "agent_id": "agent-11",
+                        "from": {"x_cm": 0.0, "y_cm": 0.0, "z_cm": 0.0},
+                        "to": {"x_cm": 55.0, "y_cm": 66.0, "z_cm": 0.0}
+                    }
+                }
+            }
+        });
+        let input = encode_input(M1_TRANSFER_RULE_MODULE_ID, 0, None, None, Some(event));
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        let state_bytes = output.new_state.expect("state bytes");
+        let state: PositionState = serde_cbor::from_slice(&state_bytes).expect("decode state");
+        assert_eq!(
+            state.agents.get("agent-11"),
+            Some(&GeoPos {
+                x_cm: 55.0,
+                y_cm: 66.0,
                 z_cm: 0.0
             })
         );
