@@ -18,6 +18,13 @@ use crate::util::to_canonical_cbor;
 fn net_exports_are_available() {
     let _ = std::any::type_name::<NetworkMessage>();
     let _ = std::any::type_name::<DistributedClient>();
+    let _ = std::any::type_name::<CachedDht>();
+    let _ = std::any::type_name::<DhtCacheConfig>();
+    let _ = std::any::type_name::<dyn DistributedIndexStore>();
+    let _ = std::any::type_name::<HeadIndexRecord>();
+    let _ = std::any::type_name::<InMemoryIndexStore>();
+    let _ = std::any::type_name::<ProviderCache>();
+    let _ = std::any::type_name::<ProviderCacheConfig>();
     let _ = std::any::type_name::<IndexPublishResult>();
     let _ = std::any::type_name::<SubmitActionReceipt>();
     let _ = std::any::type_name::<HeadFollower>();
