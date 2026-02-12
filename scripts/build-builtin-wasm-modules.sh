@@ -48,6 +48,9 @@ module_manifest_path() {
     m1.memory.core)
       echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
       ;;
+    m1.storage.cargo)
+      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
+      ;;
     *)
       return 1
       ;;
@@ -63,6 +66,7 @@ m1.body.core
 m1.sensor.basic
 m1.mobility.basic
 m1.memory.core
+m1.storage.cargo
 EOF_IDS
 }
 
