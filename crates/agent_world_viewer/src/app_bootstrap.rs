@@ -5,6 +5,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let auto_focus_config = auto_focus_config_from_env();
     let viewer_automation_config = viewer_automation_config_from_env();
+    let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     let panel_mode = resolve_panel_mode_from_env();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
@@ -12,7 +13,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     App::new()
         .insert_resource(ViewerConfig {
             addr,
-            max_events: DEFAULT_MAX_EVENTS,
+            max_events: event_window.max_events,
+            event_window,
         })
         .insert_resource(viewer_3d_config)
         .insert_resource(Viewer3dScene::default())
@@ -129,10 +131,12 @@ fn resolve_panel_mode_from_env() -> ViewerPanelMode {
 }
 
 pub(super) fn run_headless(addr: String, offline: bool) {
+    let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     App::new()
         .insert_resource(ViewerConfig {
             addr,
-            max_events: DEFAULT_MAX_EVENTS,
+            max_events: event_window.max_events,
+            event_window,
         })
         .insert_resource(HeadlessStatus::default())
         .insert_resource(OfflineConfig { offline })

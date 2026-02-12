@@ -503,6 +503,7 @@ fn poll_viewer_messages_collects_decision_traces() {
     app.world_mut().insert_resource(ViewerConfig {
         addr: "127.0.0.1:0".to_string(),
         max_events: 2,
+        event_window: EventWindowPolicy::new(2, 2, 1),
     });
 
     let (tx, rx) = mpsc::channel::<ViewerResponse>();
@@ -611,6 +612,46 @@ fn headless_report_tracks_status_and_event_count() {
     let status = app.world_mut().resource::<HeadlessStatus>();
     assert_eq!(status.last_status, Some(ConnectionStatus::Connected));
     assert_eq!(status.last_events, 1);
+}
+
+#[test]
+fn poll_viewer_messages_applies_event_window_sampling_policy() {
+    let mut app = App::new();
+    app.add_systems(Update, poll_viewer_messages);
+
+    app.world_mut().insert_resource(ViewerConfig {
+        addr: "127.0.0.1:0".to_string(),
+        max_events: 16,
+        event_window: EventWindowPolicy::new(6, 3, 2),
+    });
+
+    let (tx, rx) = mpsc::channel::<ViewerResponse>();
+    app.world_mut().insert_resource(ViewerClient {
+        tx: mpsc::channel::<ViewerRequest>().0,
+        rx: Mutex::new(rx),
+    });
+    app.world_mut().insert_resource(ViewerState::default());
+
+    for id in 1..=8_u64 {
+        tx.send(ViewerResponse::Event {
+            event: WorldEvent {
+                id,
+                time: id,
+                kind: agent_world::simulator::WorldEventKind::ActionRejected {
+                    reason: agent_world::simulator::RejectReason::InvalidAmount {
+                        amount: id as i64,
+                    },
+                },
+            },
+        })
+        .expect("send event");
+    }
+
+    app.update();
+
+    let state = app.world().resource::<ViewerState>();
+    let ids: Vec<u64> = state.events.iter().map(|event| event.id).collect();
+    assert_eq!(ids, vec![1, 3, 5, 6, 7, 8]);
 }
 
 #[test]

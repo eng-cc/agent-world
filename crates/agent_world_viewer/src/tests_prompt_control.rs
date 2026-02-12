@@ -11,6 +11,7 @@ fn poll_viewer_messages_records_prompt_control_ack() {
     app.world_mut().insert_resource(ViewerConfig {
         addr: "127.0.0.1:0".to_string(),
         max_events: 16,
+        event_window: EventWindowPolicy::new(16, 16, 1),
     });
 
     let (tx_response, rx_response) = mpsc::channel::<ViewerResponse>();
@@ -57,6 +58,7 @@ fn poll_viewer_messages_records_prompt_control_error_without_connection_drop() {
     app.world_mut().insert_resource(ViewerConfig {
         addr: "127.0.0.1:0".to_string(),
         max_events: 16,
+        event_window: EventWindowPolicy::new(16, 16, 1),
     });
 
     let (tx_response, rx_response) = mpsc::channel::<ViewerResponse>();

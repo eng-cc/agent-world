@@ -26,7 +26,7 @@
 - [x] OWR3.7 2D 缩放恢复（滚轮/Pinch 同步正交投影 scale）
 
 ### OWR4 规模化稳定性（对应缺口 5）
-- [ ] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
+- [x] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
 - [ ] OWR4.2 场景对象增量刷新（脏区更新）与回归测试
 - [ ] OWR4.3 自动降级策略（标签/覆盖层分级关闭）
 - [ ] OWR4.4 压测脚本与报告模板（triad/llm 高负载）
@@ -46,8 +46,8 @@
 
 ## 状态
 - 当前阶段：OWR1/OWR2/OWR3 已完成（Prompt 控制双端闭环 + VPP5~VPP9）
-- 下一阶段：OWR4（规模化稳定性）
-- 最近更新：完成 OWR2-Client（Prompt Ops 协议接线 + 差异预览/提交/回滚/错误反馈 + 审计事件展示），并通过 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`、`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`（2026-02-12）
+- 下一阶段：OWR4.2（场景对象增量刷新）
+- 最近更新：完成 OWR4.1（事件滚动窗口 + 采样 + 配置项），并通过 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（176 tests）与 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`（2026-02-12）
 
 ## 不在本轮
 - TODO-3：动作玩法闭环（发现-采集-加工-建造）。

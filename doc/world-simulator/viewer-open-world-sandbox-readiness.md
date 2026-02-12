@@ -154,3 +154,14 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer prompt_ops -- --nocapture` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（171 tests）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+- 已完成 OWR4.1：
+  - 新增事件窗口策略模块 `event_window.rs`，在 `poll_viewer_messages` 入口对事件流执行“滚动窗口 + 采样”压缩：保留近期事件全量细节，对旧事件按步长采样，避免事件洪峰导致 UI 与内存线性增长。
+  - `ViewerConfig` 增加事件窗口策略配置，启动时从环境变量读取并归一化：
+    - `AGENT_WORLD_VIEWER_EVENT_WINDOW_SIZE`：事件窗口上限；
+    - `AGENT_WORLD_VIEWER_EVENT_WINDOW_RECENT`：近期全量保留条数；
+    - `AGENT_WORLD_VIEWER_EVENT_SAMPLE_STRIDE`：旧事件采样步长。
+  - 保持既有右侧性能摘要指标口径不变，`event_window_size` 继续反映压缩后窗口大小。
+- 已完成验证（OWR4.1）：
+  - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（176 tests，含事件窗口采样新增测试）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
