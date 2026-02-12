@@ -176,6 +176,13 @@
 - [x] KWR-2 基于上下文的规则测试与兼容回归
 - [x] KWR-3 回归验证与文档收口
 
+### 12. 规则 Wasm 执行接线基础（KWE）
+- [x] 输出 KWE 设计文档（`doc/world-simulator/kernel-rule-wasm-executor-foundation.md`）
+- [x] 输出 KWE 项目管理文档（`doc/world-simulator/kernel-rule-wasm-executor-foundation.project.md`）
+- [ ] KWE-1 规则 wasm 输入/输出契约与可选 pre-action 评估入口
+- [ ] KWE-2 wasm 接线测试（allow/deny/modify/错误兜底）
+- [ ] KWE-3 回归验证与文档收口
+
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
 - 存储（本地文件、SQLite、或其他 KV/文档存储，待选）
