@@ -8,7 +8,7 @@
 - [x] T5：将 `distributed_net` 核心实现下沉到 `agent_world_net`（`InMemoryNetwork` 与网络 trait/type）。
 - [x] T6：完成扩展阶段回归验证与文档收口。
 - [x] T7：将 `distributed_dht` 核心实现下沉到 `agent_world_net`（`InMemoryDht` 与 DHT trait/type）。
-- [ ] T8：完成二次扩展阶段回归验证与文档收口。
+- [x] T8：完成二次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -20,6 +20,6 @@
 - `crates/agent_world_net/src/lib.rs`
 
 ## 状态
-- 当前阶段：T7 完成，T8 进行中。
-- 下一步：执行二次扩展阶段回归并完成文档收口。
+- 当前阶段：T1~T8 全部完成。
+- 下一步：当前二次扩展阶段已收口；后续按需继续迁移其余 net/consensus 实现。
 - 最近更新：2026-02-12
