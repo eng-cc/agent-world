@@ -2,13 +2,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
+mod memory_module;
+
+use memory_module::build_memory_module_output;
+
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
 pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
 pub const M1_BODY_MODULE_ID: &str = "m1.body.core";
 pub const M1_SENSOR_MODULE_ID: &str = "m1.sensor.basic";
 pub const M1_MOBILITY_MODULE_ID: &str = "m1.mobility.basic";
+pub const M1_MEMORY_MODULE_ID: &str = "m1.memory.core";
 const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
+const M1_MEMORY_MAX_ENTRIES: usize = 256;
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -456,6 +462,7 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
         M1_BODY_MODULE_ID => build_body_module_output(&input),
         M1_SENSOR_MODULE_ID => build_visibility_rule_output(&input),
         M1_MOBILITY_MODULE_ID => build_move_rule_output(&input),
+        M1_MEMORY_MODULE_ID => build_memory_module_output(&input),
         _ => encode_output(empty_output()),
     }
 }
@@ -515,6 +522,7 @@ pub extern "C" fn call(input_ptr: i32, input_len: i32) -> (i32, i32) {
 
 #[cfg(test)]
 mod tests {
+    use super::memory_module::{MemoryModuleEntry, MemoryModuleState};
     use super::*;
 
     #[derive(Debug, Clone, Serialize)]
@@ -1000,6 +1008,155 @@ mod tests {
         let payload = &output.emits[0].payload;
         assert_eq!(payload["action_id"], json!(61u64));
         assert_eq!(payload["verdict"], json!("allow"));
+    }
+
+    #[test]
+    fn memory_module_records_domain_event_and_agent_id() {
+        let event = json!({
+            "id": 71u64,
+            "time": 456u64,
+            "caused_by": null,
+            "body": {
+                "kind": "Domain",
+                "payload": {
+                    "type": "AgentRegistered",
+                    "data": {
+                        "agent_id": "agent-memory",
+                        "pos": {"x_cm": 1.0, "y_cm": 2.0, "z_cm": 0.0}
+                    }
+                }
+            }
+        });
+        let input = encode_input(M1_MEMORY_MODULE_ID, 0, None, None, Some(event));
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        let state_bytes = output.new_state.expect("state bytes");
+        let state: MemoryModuleState = serde_cbor::from_slice(&state_bytes).expect("decode state");
+        assert_eq!(state.entries.len(), 1);
+        assert_eq!(state.entries[0].time, 456u64);
+        assert_eq!(state.entries[0].kind, "domain.agent_registered");
+        assert_eq!(state.entries[0].agent_id.as_deref(), Some("agent-memory"));
+    }
+
+    #[test]
+    fn memory_module_tracks_observation_and_action_rejected_labels() {
+        let observation_event = json!({
+            "id": 72u64,
+            "time": 100u64,
+            "caused_by": null,
+            "body": {
+                "kind": "Domain",
+                "payload": {
+                    "type": "Observation",
+                    "data": {
+                        "observation": {
+                            "time": 100u64,
+                            "agent_id": "agent-obs",
+                            "pos": {"x_cm": 0.0, "y_cm": 0.0, "z_cm": 0.0},
+                            "visibility_range_cm": 1000i64,
+                            "visible_agents": []
+                        }
+                    }
+                }
+            }
+        });
+        let input_observation =
+            encode_input(M1_MEMORY_MODULE_ID, 0, None, None, Some(observation_event));
+        let output_observation = build_module_output(&input_observation);
+        let output: ModuleOutput =
+            serde_cbor::from_slice(&output_observation).expect("decode output");
+        let state_bytes = output.new_state.expect("state bytes");
+
+        let rejected_event = json!({
+            "id": 73u64,
+            "time": 101u64,
+            "caused_by": null,
+            "body": {
+                "kind": "Domain",
+                "payload": {
+                    "type": "ActionRejected",
+                    "data": {"action_id": 9u64, "reason": "invalid"}
+                }
+            }
+        });
+        let input_rejected = encode_input(
+            M1_MEMORY_MODULE_ID,
+            0,
+            None,
+            Some(state_bytes),
+            Some(rejected_event),
+        );
+        let output_rejected = build_module_output(&input_rejected);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_rejected).expect("decode output");
+        let state_bytes = output.new_state.expect("state bytes");
+        let state: MemoryModuleState = serde_cbor::from_slice(&state_bytes).expect("decode state");
+
+        assert_eq!(state.entries.len(), 2);
+        assert_eq!(state.entries[0].kind, "domain.observation");
+        assert_eq!(state.entries[0].agent_id.as_deref(), Some("agent-obs"));
+        assert_eq!(state.entries[1].kind, "domain.action_rejected");
+        assert_eq!(state.entries[1].agent_id, None);
+    }
+
+    #[test]
+    fn memory_module_drops_old_entries_when_capacity_exceeded() {
+        let mut seed_entries = Vec::new();
+        for idx in 0..M1_MEMORY_MAX_ENTRIES {
+            seed_entries.push(MemoryModuleEntry {
+                time: idx as u64,
+                kind: format!("seed.{idx}"),
+                agent_id: None,
+            });
+        }
+        let seed_state = MemoryModuleState {
+            entries: seed_entries,
+        };
+        let state_bytes = serde_cbor::to_vec(&seed_state).expect("encode state");
+        let event = json!({
+            "id": 74u64,
+            "time": 999u64,
+            "caused_by": null,
+            "body": {
+                "kind": "Domain",
+                "payload": {
+                    "type": "BodyAttributesUpdated",
+                    "data": {
+                        "agent_id": "agent-77",
+                        "view": {
+                            "mass_kg": 1u64,
+                            "radius_cm": 1u64,
+                            "thrust_limit": 1u64,
+                            "cross_section_cm2": 1u64
+                        },
+                        "reason": "test"
+                    }
+                }
+            }
+        });
+        let input = encode_input(M1_MEMORY_MODULE_ID, 0, None, Some(state_bytes), Some(event));
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        let state_bytes = output.new_state.expect("state bytes");
+        let state: MemoryModuleState = serde_cbor::from_slice(&state_bytes).expect("decode state");
+
+        assert_eq!(state.entries.len(), M1_MEMORY_MAX_ENTRIES);
+        assert_eq!(
+            state.entries.first().map(|entry| entry.kind.as_str()),
+            Some("seed.1")
+        );
+        assert_eq!(
+            state.entries.last().map(|entry| entry.kind.as_str()),
+            Some("domain.body_attributes_updated")
+        );
+        assert_eq!(
+            state
+                .entries
+                .last()
+                .and_then(|entry| entry.agent_id.as_deref()),
+            Some("agent-77")
+        );
     }
 
     #[test]
