@@ -11,6 +11,10 @@ use super::distributed_dht::DistributedDht;
 use super::distributed_lease::LeaseState;
 use super::error::WorldError;
 use super::util::{read_json_from_path, write_json_to_path};
+pub use agent_world_proto::distributed_consensus::{
+    ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
+    ConsensusStatus, ConsensusVote, HeadConsensusRecord,
+};
 
 pub const CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
 
@@ -29,34 +33,6 @@ impl ConsensusConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ConsensusStatus {
-    Pending,
-    Committed,
-    Rejected,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConsensusVote {
-    pub validator_id: String,
-    pub approve: bool,
-    pub reason: Option<String>,
-    pub voted_at_ms: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HeadConsensusRecord {
-    pub head: WorldHeadAnnounce,
-    pub proposer_id: String,
-    pub proposed_at_ms: i64,
-    pub quorum_threshold: usize,
-    #[serde(default)]
-    pub validator_count: usize,
-    pub status: ConsensusStatus,
-    pub votes: BTreeMap<String, ConsensusVote>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConsensusDecision {
     pub world_id: String,
@@ -65,36 +41,6 @@ pub struct ConsensusDecision {
     pub status: ConsensusStatus,
     pub approvals: usize,
     pub rejections: usize,
-    pub quorum_threshold: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ConsensusMembershipChange {
-    AddValidator {
-        validator_id: String,
-    },
-    RemoveValidator {
-        validator_id: String,
-    },
-    ReplaceValidators {
-        validators: Vec<String>,
-        quorum_threshold: usize,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConsensusMembershipChangeRequest {
-    pub requester_id: String,
-    pub requested_at_ms: i64,
-    pub reason: Option<String>,
-    pub change: ConsensusMembershipChange,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConsensusMembershipChangeResult {
-    pub applied: bool,
-    pub validators: Vec<String>,
     pub quorum_threshold: usize,
 }
 
