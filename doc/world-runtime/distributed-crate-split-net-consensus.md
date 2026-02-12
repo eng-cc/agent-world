@@ -85,6 +85,13 @@
   - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（十二次扩展阶段）
+- 继续推进 `agent_world_consensus` 的协调与聚合能力下沉：
+  - 将 `distributed_lease` 核心实现下沉到 `agent_world_consensus`（`LeaseManager` / `LeaseState` / `LeaseDecision`）。
+  - 将 `distributed_mempool` 核心实现下沉到 `agent_world_consensus`（`ActionMempool` / `ActionBatchRules` / `ActionMempoolConfig`）。
+- 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
+- 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -132,6 +139,8 @@
 - P24：十次扩展阶段回归验证与文档收口。
 - P25：`distributed_consensus` 核心实现下沉到 `agent_world_consensus`。
 - P26：十一次扩展阶段回归验证与文档收口。
+- P27：`distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`。
+- P28：十二次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -147,3 +156,4 @@
 - 观察回放校验下沉涉及 block/snapshot/journal 三段数据一致性验证，若 hash 校验或装配顺序偏差会导致误判，需要保留回放 round-trip 与 DHT 路径测试。
 - world bootstrap 下沉涉及 head 获取与回放结果装配，若 fallback 路径偏差会导致启动失败，需要保留 head 直连与 DHT 启动路径测试。
 - 共识主流程下沉涉及 quorum 阈值判定、提案/投票终态与快照恢复，若状态机迁移偏差会导致错误提交或恢复失败，需要保留提案冲突、否决终态与快照 round-trip 测试。
+- lease/mempool 下沉涉及主写租约时序与 action 批次切片，若租约续期/过期判定或 payload 约束偏差会导致 leader 抖动与动作丢弃，需要保留租约续期、过期接管与 batch 限流测试。
