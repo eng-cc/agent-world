@@ -1,2 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.44s
-     Running `target/debug/world_viewer_live triad_region_bootstrap --bind '127.0.0.1:5420' --tick-ms 200`
