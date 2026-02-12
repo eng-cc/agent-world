@@ -162,6 +162,9 @@ name = "agent_world_consensus"
 version = "0.1.0"
 dependencies = [
  "agent_world",
+ "agent_world_proto",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
