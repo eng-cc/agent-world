@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
 pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
+pub const M1_BODY_MODULE_ID: &str = "m1.body.core";
+const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -30,6 +32,14 @@ struct GeoPos {
     x_cm: f64,
     y_cm: f64,
     z_cm: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct BodyKernelView {
+    mass_kg: u64,
+    radius_cm: u64,
+    thrust_limit: u64,
+    cross_section_cm2: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -371,6 +381,68 @@ fn build_transfer_rule_output(input: &ModuleCallInput) -> Vec<u8> {
     encode_output(empty_output())
 }
 
+fn build_body_module_action_output(input: &ModuleCallInput) -> Vec<u8> {
+    let Some((action_id, action)) = action_envelope(input) else {
+        return encode_output(empty_output());
+    };
+    if action.get("type").and_then(Value::as_str) != Some("BodyAction") {
+        return encode_output(empty_output());
+    }
+    let Some(data) = action.get("data") else {
+        return encode_output(empty_output());
+    };
+    let Some(agent_id) = data.get("agent_id").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(kind) = data.get("kind").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(payload) = data.get("payload") else {
+        return encode_output(empty_output());
+    };
+
+    let mut decision = json!({
+        "action_id": action_id,
+        "verdict": "allow",
+        "cost": { "entries": {} },
+        "notes": [],
+    });
+
+    let view: BodyKernelView = match serde_json::from_value(payload.clone()) {
+        Ok(view) => view,
+        Err(err) => {
+            decision["verdict"] = json!("deny");
+            decision["notes"] = json!([format!("body action payload decode failed: {err}")]);
+            return rule_emit_output(decision);
+        }
+    };
+
+    decision["verdict"] = json!("modify");
+    decision["override_action"] = json!({
+        "type": "EmitBodyAttributes",
+        "data": {
+            "agent_id": agent_id,
+            "view": view,
+            "reason": format!("body.{kind}"),
+        }
+    });
+    if M1_BODY_ACTION_COST_ELECTRICITY > 0 {
+        decision["cost"] = json!({
+            "entries": {
+                "electricity": -M1_BODY_ACTION_COST_ELECTRICITY
+            }
+        });
+    }
+    rule_emit_output(decision)
+}
+
+fn build_body_module_output(input: &ModuleCallInput) -> Vec<u8> {
+    if input.action.is_some() {
+        return build_body_module_action_output(input);
+    }
+    encode_output(empty_output())
+}
+
 fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
     let Some(input) = decode_input(input_bytes) else {
         return encode_output(empty_output());
@@ -379,6 +451,7 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
         M1_MOVE_RULE_MODULE_ID => build_move_rule_output(&input),
         M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(&input),
         M1_TRANSFER_RULE_MODULE_ID => build_transfer_rule_output(&input),
+        M1_BODY_MODULE_ID => build_body_module_output(&input),
         _ => encode_output(empty_output()),
     }
 }
@@ -775,6 +848,84 @@ mod tests {
                 z_cm: 0.0
             })
         );
+    }
+
+    #[test]
+    fn body_module_emits_emit_body_attributes_override_and_cost() {
+        let action = json!({
+            "id": 41u64,
+            "action": {
+                "type": "BodyAction",
+                "data": {
+                    "agent_id": "agent-1",
+                    "kind": "boot",
+                    "payload": {
+                        "mass_kg": 120u64,
+                        "radius_cm": 80u64,
+                        "thrust_limit": 200u64,
+                        "cross_section_cm2": 4000u64
+                    }
+                }
+            }
+        });
+        let input = encode_input(M1_BODY_MODULE_ID, 0, Some(action), None, None);
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        assert_eq!(output.emits.len(), 1);
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(41u64));
+        assert_eq!(payload["verdict"], json!("modify"));
+        assert_eq!(
+            payload["override_action"]["type"],
+            json!("EmitBodyAttributes")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["agent_id"],
+            json!("agent-1")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["reason"],
+            json!("body.boot")
+        );
+        assert_eq!(
+            payload["override_action"]["data"]["view"]["mass_kg"],
+            json!(120u64)
+        );
+        assert_eq!(
+            payload["cost"]["entries"]["electricity"],
+            json!(-M1_BODY_ACTION_COST_ELECTRICITY)
+        );
+    }
+
+    #[test]
+    fn body_module_denies_when_payload_decode_failed() {
+        let action = json!({
+            "id": 42u64,
+            "action": {
+                "type": "BodyAction",
+                "data": {
+                    "agent_id": "agent-2",
+                    "kind": "boot",
+                    "payload": {
+                        "mass_kg": 120u64,
+                        "radius_cm": 80u64,
+                        "thrust_limit": "bad",
+                        "cross_section_cm2": 4000u64
+                    }
+                }
+            }
+        });
+        let input = encode_input(M1_BODY_MODULE_ID, 0, Some(action), None, None);
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        assert_eq!(output.emits.len(), 1);
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(42u64));
+        assert_eq!(payload["verdict"], json!("deny"));
+        let note = payload["notes"][0].as_str().expect("note str");
+        assert!(note.starts_with("body action payload decode failed:"));
     }
 
     #[test]
