@@ -7,9 +7,10 @@ use agent_world::runtime::distributed::{
 use agent_world::runtime::{store_execution_result, ExecutionWriteConfig};
 use agent_world::Action;
 use agent_world::{
-    BlobStore, DistributedClient, DistributedDht, DistributedNetwork, InMemoryDht, InMemoryNetwork,
-    LocalCasStore, World,
+    BlobStore, DistributedClient, InMemoryDht, InMemoryNetwork, LocalCasStore, World,
 };
+use agent_world_proto::distributed_dht::DistributedDht as _;
+use agent_world_proto::distributed_net::DistributedNetwork as _;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
