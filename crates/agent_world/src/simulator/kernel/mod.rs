@@ -8,9 +8,13 @@ mod replay;
 mod step;
 mod types;
 
+use crate::runtime::{
+    ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext, ModuleLimits,
+    ModuleOutput, ModuleSandbox,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use super::types::{
     Action, ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime,
@@ -56,6 +60,7 @@ type PreActionRuleHook =
 type PostActionRuleHook = Arc<dyn Fn(ActionId, &Action, &WorldEvent) + Send + Sync>;
 type PreActionWasmRuleEvaluator =
     Arc<dyn Fn(&KernelRuleModuleInput) -> Result<KernelRuleModuleOutput, String> + Send + Sync>;
+const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
 #[derive(Default, Clone)]
 struct RuleHookRegistry {
@@ -167,6 +172,42 @@ impl WorldKernel {
         self.rule_hooks.pre_action_wasm = None;
     }
 
+    pub fn set_pre_action_wasm_rule_module_evaluator<S>(
+        &mut self,
+        module_id: impl Into<String>,
+        wasm_hash: impl Into<String>,
+        entrypoint: impl Into<String>,
+        wasm_bytes: Vec<u8>,
+        limits: ModuleLimits,
+        sandbox: Arc<Mutex<S>>,
+    ) where
+        S: ModuleSandbox + Send + 'static,
+    {
+        let module_id = module_id.into();
+        let wasm_hash = wasm_hash.into();
+        let entrypoint = entrypoint.into();
+        self.set_pre_action_wasm_rule_evaluator(move |input| {
+            let request = build_pre_action_wasm_call_request(
+                input,
+                &module_id,
+                &wasm_hash,
+                &entrypoint,
+                &wasm_bytes,
+                &limits,
+            )?;
+            let output = {
+                let mut locked = sandbox
+                    .lock()
+                    .map_err(|_| "wasm sandbox mutex poisoned".to_string())?;
+                locked.call(&request).map_err(|failure| {
+                    format!("module call failed {:?}: {}", failure.code, failure.detail)
+                })?
+            };
+            let decision = parse_pre_action_wasm_rule_decision(input.action_id, &output)?;
+            Ok(KernelRuleModuleOutput::from_decision(decision))
+        });
+    }
+
     pub fn time(&self) -> WorldTime {
         self.time
     }
@@ -227,4 +268,87 @@ impl WorldKernel {
         self.journal.push(event.clone());
         event
     }
+}
+
+fn build_pre_action_wasm_call_request(
+    input: &KernelRuleModuleInput,
+    module_id: &str,
+    wasm_hash: &str,
+    entrypoint: &str,
+    wasm_bytes: &[u8],
+    limits: &ModuleLimits,
+) -> Result<ModuleCallRequest, String> {
+    let action_bytes = to_canonical_cbor(input)?;
+    let trace_id = format!(
+        "sim-kernel-action-{}-t{}",
+        input.action_id, input.context.time
+    );
+    let call_input = ModuleCallInput {
+        ctx: ModuleContext {
+            v: "wasm-1".to_string(),
+            module_id: module_id.to_string(),
+            trace_id: trace_id.clone(),
+            time: input.context.time,
+            origin: ModuleCallOrigin {
+                kind: "simulator_action".to_string(),
+                id: input.action_id.to_string(),
+            },
+            limits: limits.clone(),
+            world_config_hash: None,
+        },
+        event: None,
+        action: Some(action_bytes),
+        state: None,
+    };
+    let input_bytes = to_canonical_cbor(&call_input)?;
+
+    Ok(ModuleCallRequest {
+        module_id: module_id.to_string(),
+        wasm_hash: wasm_hash.to_string(),
+        trace_id,
+        entrypoint: entrypoint.to_string(),
+        input: input_bytes,
+        limits: limits.clone(),
+        wasm_bytes: wasm_bytes.to_vec(),
+    })
+}
+
+fn parse_pre_action_wasm_rule_decision(
+    action_id: ActionId,
+    output: &ModuleOutput,
+) -> Result<KernelRuleDecision, String> {
+    let mut decision = None;
+    for emit in &output.emits {
+        if emit.kind != RULE_DECISION_EMIT_KIND {
+            continue;
+        }
+        if decision.is_some() {
+            return Err("multiple rule.decision emits in wasm module output".to_string());
+        }
+        let parsed: KernelRuleDecision = serde_json::from_value(emit.payload.clone())
+            .map_err(|err| format!("failed to decode rule.decision payload: {err}"))?;
+        if parsed.action_id != action_id {
+            return Err(format!(
+                "rule.decision action_id mismatch expected {action_id} got {}",
+                parsed.action_id
+            ));
+        }
+        decision = Some(parsed);
+    }
+
+    Ok(decision.unwrap_or_else(|| KernelRuleDecision::allow(action_id)))
+}
+
+fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::with_capacity(256);
+    let canonical_value = serde_cbor::value::to_value(value)
+        .map_err(|err| format!("failed to convert value to canonical cbor: {err}"))?;
+    let mut serializer = serde_cbor::ser::Serializer::new(&mut buf);
+    serializer
+        .self_describe()
+        .map_err(|err| format!("failed to write cbor self describe tag: {err}"))?;
+    canonical_value
+        .serialize(&mut serializer)
+        .map_err(|err| format!("failed to serialize canonical cbor value: {err}"))?;
+    Ok(buf)
 }
