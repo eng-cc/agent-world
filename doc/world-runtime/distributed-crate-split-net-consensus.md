@@ -60,6 +60,13 @@
   - 将 `distributed_dht_cache` 核心实现（`CachedDht` / `DhtCacheConfig`）下沉到 `agent_world_net`。
 - 保持 `agent_world_net` 对外导出名与调用语义不变，确保 `agent_world` 调用方无需改动。
 
+### In Scope（八次扩展阶段）
+- 继续推进 `agent_world_net` 的观察者链路能力下沉：
+  - 将 `distributed_head_follow` 核心实现（`HeadFollower` / `HeadUpdateDecision`）下沉到 `agent_world_net`。
+  - 将 `distributed_observer` 核心实现（`ObserverClient` / `ObserverSubscription` / `HeadSync*` / `HeadFollowReport`）下沉到 `agent_world_net`。
+- 复用 `agent_world::runtime` 既有 bootstrap 与 `BlobStore`/`World` 类型契约，保持行为一致。
+- 保持 `agent_world_net` 对外导出名与调用语义不变，确保 `agent_world` 调用方无需改动。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -99,6 +106,8 @@
 - P16：六次扩展阶段回归验证与文档收口。
 - P17：`distributed_index_store` / `distributed_provider_cache` / `distributed_dht_cache` 核心实现下沉到 `agent_world_net`。
 - P18：七次扩展阶段回归验证与文档收口。
+- P19：`distributed_head_follow` / `distributed_observer` 核心实现下沉到 `agent_world_net`。
+- P20：八次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -110,3 +119,4 @@
 - `distributed_index` 涉及执行产物 hash 聚合与 provider 发布，若 hash 收集集合不一致会导致拉取路径缺 provider，需要保留执行产物全量索引测试。
 - `agent_world_net` 模块化拆分若处理不当可能引入循环依赖或可见性收窄，需保持导出面稳定并保留全量 `agent_world_net` 单测回归。
 - cache/index store 下沉涉及 TTL、provider 截断与 head 缓存刷新路径，若时间窗口判定偏差会导致命中过期数据或频繁回源，需保留缓存命中/过期刷新测试。
+- 观察者链路下沉涉及 head 选择与同步回放入口，若 `world_id` 校验或冲突判定偏差会导致错误 world 被应用，需要保留订阅/同步与 head 冲突路径测试。
