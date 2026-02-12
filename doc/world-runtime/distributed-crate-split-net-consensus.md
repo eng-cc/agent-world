@@ -53,6 +53,13 @@
   - 将 `agent_world_net` 单测拆分到独立 `tests.rs`，保证 `lib.rs` 行数安全余量，避免后续迁移触及 1200 行约束。
 - 保持 `agent_world_net` 对外导出 API 不变，确保 `agent_world` 调用方无需改动。
 
+### In Scope（七次扩展阶段）
+- 继续推进 `agent_world_net` 的缓存与索引存储能力下沉：
+  - 将 `distributed_index_store` 核心实现（`DistributedIndexStore` / `HeadIndexRecord` / `InMemoryIndexStore`）下沉到 `agent_world_net`。
+  - 将 `distributed_provider_cache` 核心实现（`ProviderCache` / `ProviderCacheConfig`）下沉到 `agent_world_net`。
+  - 将 `distributed_dht_cache` 核心实现（`CachedDht` / `DhtCacheConfig`）下沉到 `agent_world_net`。
+- 保持 `agent_world_net` 对外导出名与调用语义不变，确保 `agent_world` 调用方无需改动。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -90,6 +97,8 @@
 - P14：五次扩展阶段回归验证与文档收口。
 - P15：完成 `agent_world_net` 内部模块化拆分（多文件 + 单测迁移）。
 - P16：六次扩展阶段回归验证与文档收口。
+- P17：`distributed_index_store` / `distributed_provider_cache` / `distributed_dht_cache` 核心实现下沉到 `agent_world_net`。
+- P18：七次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -100,3 +109,4 @@
 - `distributed_gateway` 涉及 action 发布 topic 与序列化，若 topic 生成或 payload 编码偏差，可能导致上游节点收不到动作，需要保留端到端发布测试。
 - `distributed_index` 涉及执行产物 hash 聚合与 provider 发布，若 hash 收集集合不一致会导致拉取路径缺 provider，需要保留执行产物全量索引测试。
 - `agent_world_net` 模块化拆分若处理不当可能引入循环依赖或可见性收窄，需保持导出面稳定并保留全量 `agent_world_net` 单测回归。
+- cache/index store 下沉涉及 TTL、provider 截断与 head 缓存刷新路径，若时间窗口判定偏差会导致命中过期数据或频繁回源，需保留缓存命中/过期刷新测试。
