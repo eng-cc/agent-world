@@ -47,6 +47,12 @@
   - 保持 `ExecutionWriteResult` 输入契约兼容，确保现有执行结果索引路径不回归。
 - 保持 `agent_world` 与现有测试行为兼容；迁移过程允许短期共存（runtime 侧保留实现，新 crate 侧提供并行实现）。
 
+### In Scope（六次扩展阶段）
+- 在不新增 crate 的前提下，先完成 `agent_world_net` 内部模块化拆分：
+  - 将 `src/lib.rs` 按能力拆成 `network` / `dht` / `index` / `client` / `gateway` / `util` 多文件结构。
+  - 将 `agent_world_net` 单测拆分到独立 `tests.rs`，保证 `lib.rs` 行数安全余量，避免后续迁移触及 1200 行约束。
+- 保持 `agent_world_net` 对外导出 API 不变，确保 `agent_world` 调用方无需改动。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -82,6 +88,8 @@
 - P12：四次扩展阶段回归验证与文档收口。
 - P13：`distributed_index` 核心实现下沉到 `agent_world_net`。
 - P14：五次扩展阶段回归验证与文档收口。
+- P15：完成 `agent_world_net` 内部模块化拆分（多文件 + 单测迁移）。
+- P16：六次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -91,3 +99,4 @@
 - `distributed_client` 涉及协议编解码与错误映射，若 canonical CBOR 行为偏差可能导致跨节点请求兼容性回归，需要定向测试覆盖。
 - `distributed_gateway` 涉及 action 发布 topic 与序列化，若 topic 生成或 payload 编码偏差，可能导致上游节点收不到动作，需要保留端到端发布测试。
 - `distributed_index` 涉及执行产物 hash 聚合与 provider 发布，若 hash 收集集合不一致会导致拉取路径缺 provider，需要保留执行产物全量索引测试。
+- `agent_world_net` 模块化拆分若处理不当可能引入循环依赖或可见性收窄，需保持导出面稳定并保留全量 `agent_world_net` 单测回归。
