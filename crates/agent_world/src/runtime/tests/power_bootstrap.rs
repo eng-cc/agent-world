@@ -5,6 +5,17 @@ fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)
 }
 
+fn power_module_sandbox() -> BuiltinModuleSandbox {
+    BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
+        WasmExecutorConfig::default(),
+    )))
+    .register_builtin(
+        M1_RADIATION_POWER_MODULE_ID,
+        M1RadiationPowerModule::default(),
+    )
+    .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
+}
+
 fn apply_module_changes(world: &mut World, actor: &str, changes: ModuleChangeSet) {
     let mut content = serde_json::Map::new();
     content.insert(
@@ -180,12 +191,7 @@ fn radiation_module_emits_harvest_event() {
         .install_m1_power_bootstrap_modules("bootstrap")
         .expect("install modules");
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(
-            M1_RADIATION_POWER_MODULE_ID,
-            M1RadiationPowerModule::default(),
-        )
-        .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default());
+    let mut sandbox = power_module_sandbox();
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -226,12 +232,7 @@ fn storage_module_blocks_continuous_move_when_power_runs_out() {
         .install_m1_power_bootstrap_modules("bootstrap")
         .expect("install modules");
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(
-            M1_RADIATION_POWER_MODULE_ID,
-            M1RadiationPowerModule::default(),
-        )
-        .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default());
+    let mut sandbox = power_module_sandbox();
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),

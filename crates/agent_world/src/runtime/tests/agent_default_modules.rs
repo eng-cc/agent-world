@@ -3,24 +3,28 @@ use super::pos;
 use crate::models::{CargoEntityEntry, CargoEntityKind};
 
 fn default_module_sandbox() -> BuiltinModuleSandbox {
-    BuiltinModuleSandbox::new()
-        .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
-        .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
-        .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
-        .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
+    BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
+        WasmExecutorConfig::default(),
+    )))
+    .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
+    .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
+    .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
+    .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
 }
 
 fn scenario_module_sandbox() -> BuiltinModuleSandbox {
-    BuiltinModuleSandbox::new()
-        .register_builtin(
-            M1_RADIATION_POWER_MODULE_ID,
-            M1RadiationPowerModule::default(),
-        )
-        .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
-        .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
-        .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
-        .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
-        .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
+    BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
+        WasmExecutorConfig::default(),
+    )))
+    .register_builtin(
+        M1_RADIATION_POWER_MODULE_ID,
+        M1RadiationPowerModule::default(),
+    )
+    .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
+    .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
+    .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
+    .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
+    .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
 }
 
 fn setup_world_with_default_modules() -> (World, BuiltinModuleSandbox) {

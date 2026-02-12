@@ -48,6 +48,7 @@ pub trait BuiltinModule {
 pub struct BuiltinModuleSandbox {
     builtins: BTreeMap<String, Box<dyn BuiltinModule>>,
     fallback: Option<Box<dyn ModuleSandbox>>,
+    prefer_fallback: bool,
 }
 
 impl BuiltinModuleSandbox {
@@ -55,6 +56,7 @@ impl BuiltinModuleSandbox {
         Self {
             builtins: BTreeMap::new(),
             fallback: None,
+            prefer_fallback: false,
         }
     }
 
@@ -62,6 +64,15 @@ impl BuiltinModuleSandbox {
         Self {
             builtins: BTreeMap::new(),
             fallback: Some(fallback),
+            prefer_fallback: false,
+        }
+    }
+
+    pub fn with_preferred_fallback(fallback: Box<dyn ModuleSandbox>) -> Self {
+        Self {
+            builtins: BTreeMap::new(),
+            fallback: Some(fallback),
+            prefer_fallback: true,
         }
     }
 
@@ -77,6 +88,20 @@ impl BuiltinModuleSandbox {
 
 impl ModuleSandbox for BuiltinModuleSandbox {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        if self.prefer_fallback {
+            if let Some(fallback) = self.fallback.as_mut() {
+                match fallback.call(request) {
+                    Ok(output) => return Ok(output),
+                    Err(fallback_failure) => {
+                        if let Some(module) = self.builtins.get_mut(&request.module_id) {
+                            return module.call(request);
+                        }
+                        return Err(fallback_failure);
+                    }
+                }
+            }
+        }
+
         if let Some(module) = self.builtins.get_mut(&request.module_id) {
             return module.call(request);
         }
@@ -195,4 +220,105 @@ fn movement_cost(distance_cm: i64, per_km_cost: i64) -> i64 {
     }
     let km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
     km.saturating_mul(per_km_cost)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::modules::ModuleLimits;
+    use super::super::sandbox::{FixedSandbox, ModuleCallFailure, ModuleOutput};
+    use super::*;
+
+    struct DummyBuiltinModule {
+        output: ModuleOutput,
+    }
+
+    impl DummyBuiltinModule {
+        fn new() -> Self {
+            Self {
+                output: ModuleOutput {
+                    new_state: Some(vec![1, 2, 3]),
+                    effects: Vec::new(),
+                    emits: Vec::new(),
+                    output_bytes: 3,
+                },
+            }
+        }
+    }
+
+    impl BuiltinModule for DummyBuiltinModule {
+        fn call(
+            &mut self,
+            _request: &ModuleCallRequest,
+        ) -> Result<ModuleOutput, ModuleCallFailure> {
+            Ok(self.output.clone())
+        }
+    }
+
+    fn request(module_id: &str) -> ModuleCallRequest {
+        ModuleCallRequest {
+            module_id: module_id.to_string(),
+            wasm_hash: "hash".to_string(),
+            trace_id: "trace".to_string(),
+            entrypoint: "reduce".to_string(),
+            input: Vec::new(),
+            limits: ModuleLimits::default(),
+            wasm_bytes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn preferred_fallback_returns_fallback_success_without_builtin() {
+        let fallback_output = ModuleOutput {
+            new_state: Some(vec![9]),
+            effects: Vec::new(),
+            emits: Vec::new(),
+            output_bytes: 1,
+        };
+        let mut sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(
+            FixedSandbox::succeed(fallback_output.clone()),
+        ))
+        .register_builtin("m1.rule.move", DummyBuiltinModule::new());
+
+        let output = sandbox
+            .call(&request("m1.rule.move"))
+            .expect("fallback success");
+        assert_eq!(output, fallback_output);
+    }
+
+    #[test]
+    fn preferred_fallback_uses_builtin_when_fallback_fails() {
+        let fallback_failure = ModuleCallFailure {
+            module_id: "m1.rule.move".to_string(),
+            trace_id: "trace".to_string(),
+            code: ModuleCallErrorCode::Trap,
+            detail: "fallback failed".to_string(),
+        };
+        let mut sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(
+            FixedSandbox::fail(fallback_failure),
+        ))
+        .register_builtin("m1.rule.move", DummyBuiltinModule::new());
+
+        let output = sandbox
+            .call(&request("m1.rule.move"))
+            .expect("builtin fallback success");
+        assert_eq!(output.new_state, Some(vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn preferred_fallback_returns_fallback_error_without_builtin() {
+        let fallback_failure = ModuleCallFailure {
+            module_id: "m1.rule.move".to_string(),
+            trace_id: "trace".to_string(),
+            code: ModuleCallErrorCode::Trap,
+            detail: "fallback failed".to_string(),
+        };
+        let mut sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(
+            FixedSandbox::fail(fallback_failure.clone()),
+        ));
+
+        let err = sandbox
+            .call(&request("m1.rule.move"))
+            .expect_err("fallback error");
+        assert_eq!(err, fallback_failure);
+    }
 }
