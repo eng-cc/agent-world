@@ -131,7 +131,7 @@
 - [x] BMS-15 回归验证与文档收口
 - [x] BMS-16 扩展设计与任务拆解（`m1.mobility.basic` 迁移阶段）
 - [x] BMS-17 迁移 `m1.mobility.basic` 到独立 wasm crate 并补充验证
-- [ ] BMS-18 扩展构建脚本支持 `m1.mobility.basic` 并补充验证
+- [x] BMS-18 扩展构建脚本支持 `m1.mobility.basic` 并补充验证
 - [ ] BMS-19 回归验证与文档收口
 
 ## 依赖
@@ -141,5 +141,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：推进 BMS-18（扩展构建脚本支持 `m1.mobility.basic` 并补充验证）
-- 最近更新：完成 BMS-17（`m1.mobility.basic` wasm 入口迁移）（2026-02-12）
+- 下一步：推进 BMS-19（回归验证与文档收口）
+- 最近更新：完成 BMS-18（构建脚本支持 `m1.mobility.basic`）（2026-02-12）
