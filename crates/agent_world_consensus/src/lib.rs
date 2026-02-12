@@ -1,11 +1,15 @@
 //! Consensus-focused facade for distributed runtime capabilities.
 
+mod quorum;
+
 pub use agent_world::runtime::{
+    ActionBatchRules, ActionMempool, ActionMempoolConfig, LeaseDecision, LeaseManager, LeaseState,
+};
+pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
-    ActionBatchRules, ActionMempool, ActionMempoolConfig, ConsensusConfig, ConsensusDecision,
-    ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
-    ConsensusStatus, ConsensusVote, HeadConsensusRecord, LeaseDecision, LeaseManager, LeaseState,
-    QuorumConsensus, CONSENSUS_SNAPSHOT_VERSION,
+    ConsensusConfig, ConsensusDecision, ConsensusMembershipChange,
+    ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult, ConsensusStatus,
+    ConsensusVote, HeadConsensusRecord, QuorumConsensus, CONSENSUS_SNAPSHOT_VERSION,
 };
 
 pub use agent_world::runtime::{

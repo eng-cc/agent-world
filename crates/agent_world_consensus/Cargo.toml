@@ -8,3 +8,6 @@ path = "src/lib.rs"
 
 [dependencies]
 agent_world = { path = "../agent_world", default-features = false }
+agent_world_proto = { path = "../agent_world_proto" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
