@@ -1,3 +1,9 @@
 [workspace]
-members = ["crates/agent_world", "crates/agent_world_proto", "crates/agent_world_viewer"]
+members = [
+    "crates/agent_world",
+    "crates/agent_world_consensus",
+    "crates/agent_world_net",
+    "crates/agent_world_proto",
+    "crates/agent_world_viewer",
+]
 resolver = "2"
