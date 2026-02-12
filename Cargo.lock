@@ -186,6 +186,8 @@ version = "0.1.0"
 dependencies = [
  "agent_world",
  "agent_world_proto",
+ "futures",
+ "libp2p",
  "serde",
  "serde_cbor",
 ]

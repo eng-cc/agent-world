@@ -44,6 +44,8 @@
 - [x] T41：将 `distributed_storage.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
 - [x] T42：将 `distributed_validation.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
 - [x] T43：完成十九次扩展阶段回归验证与文档收口。
+- [x] T44：将 `libp2p_net.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变，feature=`libp2p`）。
+- [ ] T45：完成二十次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -97,8 +99,9 @@
 - `crates/agent_world_consensus/src/membership_dead_letter_replay_archive_tests.rs`
 - `crates/agent_world_net/src/execution_storage.rs`
 - `crates/agent_world_net/src/head_validation.rs`
+- `crates/agent_world_net/src/libp2p_net.rs`
 
 ## 状态
-- 当前阶段：十九次扩展阶段已收口（T41~T43 全部完成）。
-- 下一步：按需继续推进 `agent_world_net` 的分布式链路收敛（例如 `libp2p` 实现下沉）或进一步做跨 crate 依赖收敛，保持导出 API 兼容并按切片逐步推进。
+- 当前阶段：二十次扩展阶段进行中（T44 已完成，T45 进行中）。
+- 下一步：执行二十次扩展阶段回归验证与文档收口（T45），并补齐 CI 对 `agent_world_net --features libp2p` 的覆盖，保持导出 API 兼容并按切片逐步推进。
 - 最近更新：2026-02-12
