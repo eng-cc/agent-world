@@ -181,7 +181,7 @@
 - [x] 输出 KWE 项目管理文档（`doc/world-simulator/kernel-rule-wasm-executor-foundation.project.md`）
 - [x] KWE-1 规则 wasm 输入/输出契约与可选 pre-action 评估入口
 - [x] KWE-2 wasm 接线测试（allow/deny/modify/错误兜底）
-- [ ] KWE-3 回归验证与文档收口
+- [x] KWE-3 回归验证与文档收口
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
@@ -191,4 +191,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 KWR（规则 Wasm 化就绪）阶段收口，pre-hook 已支持只读内核上下文并补齐上下文回归测试（2026-02-12）
+- 最近更新：完成 KWE（规则 Wasm 执行接线基础）阶段收口，已具备可选 wasm pre-action evaluator 与接线回归测试（2026-02-12）
