@@ -255,6 +255,7 @@ main {
 }
 
 .section-hero {
+  isolation: isolate;
   border-color: rgba(68, 231, 197, 0.35);
   box-shadow:
     0 22px 46px rgba(0, 0, 0, 0.38),
@@ -275,11 +276,29 @@ main {
   pointer-events: none;
 }
 
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.72;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.95) 52%,
+    rgba(0, 0, 0, 0.32) 100%
+  );
+}
+
 .hero {
   display: grid;
 }
 
 .hero-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 1.2rem;
   grid-template-columns: 1.12fr 0.88fr;
@@ -948,6 +967,10 @@ code {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hero-canvas {
+    display: none;
+  }
+
   html {
     scroll-behavior: auto;
   }
