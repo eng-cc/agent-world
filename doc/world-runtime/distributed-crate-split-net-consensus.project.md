@@ -29,6 +29,8 @@
 - [x] T26：完成十一次扩展阶段回归验证与文档收口。
 - [x] T27：将 `distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T28：完成十二次扩展阶段回归验证与文档收口。
+- [ ] T29：将 `distributed_membership_sync` 的签名/审计/同步核心（不含 recovery/reconciliation）下沉到 `agent_world_consensus`（导出 API 不变）。
+- [ ] T30：完成十三次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -62,8 +64,10 @@
 - `crates/agent_world_consensus/src/quorum.rs`
 - `crates/agent_world_consensus/src/lease.rs`
 - `crates/agent_world_consensus/src/mempool.rs`
+- `crates/agent_world_consensus/src/membership.rs`
+- `crates/agent_world_consensus/src/membership_logic.rs`
 
 ## 状态
-- 当前阶段：十二次扩展阶段已完成（T1~T28 全部完成）。
-- 下一步：按需规划后续迁移范围（优先评估 `distributed_membership_sync` 的可切片下沉路径）。
+- 当前阶段：十三次扩展阶段进行中（T29 进行中）。
+- 下一步：完成 membership sync 核心切片迁移并执行扩展回归验证。
 - 最近更新：2026-02-12
