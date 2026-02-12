@@ -22,6 +22,7 @@ target
 
 # Local demo outputs
 .data/
+output/
 
 # Local runtime config
 config.toml
