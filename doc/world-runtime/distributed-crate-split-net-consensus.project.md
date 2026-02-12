@@ -21,6 +21,8 @@
 - [x] T18：完成七次扩展阶段回归验证与文档收口。
 - [x] T19：将 `distributed_head_follow` / `distributed_observer` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
 - [x] T20：完成八次扩展阶段回归验证与文档收口。
+- [ ] T21：将 `distributed_observer_replay` 核心实现下沉到 `agent_world_net`，并由 `head_follow` 复用。
+- [ ] T22：完成九次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -45,8 +47,9 @@
 - `crates/agent_world_net/src/dht_cache.rs`
 - `crates/agent_world_net/src/head_follow.rs`
 - `crates/agent_world_net/src/observer.rs`
+- `crates/agent_world_net/src/observer_replay.rs`
 
 ## 状态
-- 当前阶段：八次扩展阶段已完成（T1~T20 全部完成）。
-- 下一步：按后续拆分计划继续推进 net/consensus 中剩余分布式能力的实现迁移。
+- 当前阶段：九次扩展阶段进行中（T21 进行中）。
+- 下一步：完成 observer replay 迁移并执行扩展回归验证。
 - 最近更新：2026-02-12
