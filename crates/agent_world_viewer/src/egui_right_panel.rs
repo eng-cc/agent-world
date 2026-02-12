@@ -2,7 +2,6 @@ use agent_world::simulator::WorldEventKind;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use std::collections::BTreeSet;
 
 use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
 use crate::copyable_text::{copy_panel_hint, copy_panel_title, ensure_egui_cjk_font};
@@ -40,6 +39,7 @@ use crate::{
     TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl,
     ViewerPanelMode, ViewerSelection, ViewerState, WorldOverlayConfig,
 };
+use crate::{prompt_ops_panel::render_prompt_ops_section, prompt_ops_panel::PromptOpsDraftState};
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
 const MIN_PANEL_WIDTH: f32 = 240.0;
@@ -71,6 +71,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     selection: ResMut<'w, ViewerSelection>,
     render_perf: Option<Res<'w, RenderPerfSummary>>,
     viewer_3d_config: Option<Res<'w, Viewer3dConfig>>,
+    prompt_control: Option<Res<'w, crate::PromptControlUiState>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
     timeline: ResMut<'w, TimelineUiState>,
@@ -79,15 +80,6 @@ pub(super) struct RightPanelParams<'w, 's> {
     link_state: ResMut<'w, EventObjectLinkState>,
     scene: Res<'w, crate::Viewer3dScene>,
     transforms: Query<'w, 's, (&'static mut Transform, Option<&'static crate::BaseScale>)>,
-}
-
-#[derive(Default)]
-pub(super) struct PromptOpsDraftState {
-    selected_agent_id: Option<String>,
-    system_prompt: String,
-    short_term_goal: String,
-    long_term_goal: String,
-    status_message: String,
 }
 
 pub(super) fn render_right_side_panel_egui(
@@ -109,6 +101,7 @@ pub(super) fn render_right_side_panel_egui(
         mut selection,
         render_perf,
         viewer_3d_config,
+        prompt_control,
         mut loading,
         client,
         mut timeline,
@@ -228,6 +221,7 @@ pub(super) fn render_right_side_panel_egui(
                     locale,
                     &state,
                     &mut prompt_ops_draft,
+                    prompt_control.as_deref(),
                     client.as_deref(),
                 );
                 return;
@@ -622,262 +616,6 @@ fn render_overview_section(
         ui.add(egui::Label::new(frame_line).selectable(true));
         ui.add(egui::Label::new(entity_line).selectable(true));
         ui.add(egui::Label::new(budget_line).selectable(true));
-    }
-}
-
-fn render_prompt_ops_section(
-    ui: &mut egui::Ui,
-    locale: crate::i18n::UiLocale,
-    state: &ViewerState,
-    prompt_ops_draft: &mut PromptOpsDraftState,
-    client: Option<&ViewerClient>,
-) {
-    sync_prompt_ops_selected_agent(prompt_ops_draft, state);
-
-    let title = if locale.is_zh() {
-        "Prompt 运维"
-    } else {
-        "Prompt Ops"
-    };
-    ui.strong(title);
-
-    let scope_note = if locale.is_zh() {
-        "约束：仅支持修改 Agent Prompt，不提供玩家动作输入。"
-    } else {
-        "Constraint: prompt-only control. No direct player action input is allowed."
-    };
-    ui.add(egui::Label::new(scope_note).wrap().selectable(true));
-
-    let agent_ids = collect_prompt_ops_agent_ids(state);
-    let chips = [
-        (
-            if locale.is_zh() { "Agent" } else { "Agents" },
-            agent_ids.len().to_string(),
-        ),
-        (
-            if locale.is_zh() { "轨迹" } else { "Traces" },
-            state.decision_traces.len().to_string(),
-        ),
-        (
-            if locale.is_zh() { "连接" } else { "Link" },
-            if client.is_some() {
-                if locale.is_zh() {
-                    "在线".to_string()
-                } else {
-                    "online".to_string()
-                }
-            } else if locale.is_zh() {
-                "离线".to_string()
-            } else {
-                "offline".to_string()
-            },
-        ),
-    ];
-
-    ui.horizontal_wrapped(|ui| {
-        for (label, value) in chips {
-            egui::Frame::group(ui.style()).show(ui, |ui| {
-                ui.small(label);
-                ui.label(value);
-            });
-        }
-    });
-
-    ui.separator();
-    ui.strong(if locale.is_zh() {
-        "Agent 选择"
-    } else {
-        "Agent Target"
-    });
-    if agent_ids.is_empty() {
-        ui.label(if locale.is_zh() {
-            "暂无可操作 Agent（等待快照或轨迹）。"
-        } else {
-            "No agent is available yet (waiting for snapshot/trace)."
-        });
-        return;
-    }
-
-    ui.horizontal_wrapped(|ui| {
-        for agent_id in &agent_ids {
-            let selected = prompt_ops_draft.selected_agent_id.as_deref() == Some(agent_id.as_str());
-            if ui.selectable_label(selected, agent_id).clicked() {
-                prompt_ops_draft.selected_agent_id = Some(agent_id.clone());
-            }
-        }
-    });
-
-    let selected_agent_id = prompt_ops_draft
-        .selected_agent_id
-        .clone()
-        .unwrap_or_else(|| agent_ids[0].clone());
-    if prompt_ops_draft.selected_agent_id.is_none() {
-        prompt_ops_draft.selected_agent_id = Some(selected_agent_id.clone());
-    }
-
-    let latest_tick = state
-        .decision_traces
-        .iter()
-        .rev()
-        .find(|trace| trace.agent_id == selected_agent_id)
-        .map(|trace| trace.time);
-    let latest_tick_label = latest_tick.map(|tick| tick.to_string()).unwrap_or_else(|| {
-        if locale.is_zh() {
-            "(无轨迹)".to_string()
-        } else {
-            "(no trace)".to_string()
-        }
-    });
-
-    ui.add(
-        egui::Label::new(if locale.is_zh() {
-            format!("目标: {selected_agent_id} 最近轨迹 tick: {latest_tick_label}")
-        } else {
-            format!("Target: {selected_agent_id} latest trace tick: {latest_tick_label}")
-        })
-        .selectable(true),
-    );
-
-    ui.separator();
-    ui.strong(if locale.is_zh() {
-        "Prompt 草稿"
-    } else {
-        "Prompt Draft"
-    });
-
-    ui.label(if locale.is_zh() {
-        "system prompt"
-    } else {
-        "system prompt"
-    });
-    ui.add(
-        egui::TextEdit::multiline(&mut prompt_ops_draft.system_prompt)
-            .desired_rows(4)
-            .hint_text(if locale.is_zh() {
-                "输入 system prompt 覆盖草稿"
-            } else {
-                "Type a system prompt override draft"
-            }),
-    );
-
-    ui.label(if locale.is_zh() {
-        "short-term goal"
-    } else {
-        "short-term goal"
-    });
-    ui.add(
-        egui::TextEdit::multiline(&mut prompt_ops_draft.short_term_goal)
-            .desired_rows(2)
-            .hint_text(if locale.is_zh() {
-                "输入短期目标草稿"
-            } else {
-                "Type a short-term goal draft"
-            }),
-    );
-
-    ui.label(if locale.is_zh() {
-        "long-term goal"
-    } else {
-        "long-term goal"
-    });
-    ui.add(
-        egui::TextEdit::multiline(&mut prompt_ops_draft.long_term_goal)
-            .desired_rows(2)
-            .hint_text(if locale.is_zh() {
-                "输入长期目标草稿"
-            } else {
-                "Type a long-term goal draft"
-            }),
-    );
-
-    ui.horizontal_wrapped(|ui| {
-        if ui.button(if locale.is_zh() { "预览" } else { "Preview" }).clicked() {
-            let system_len = prompt_ops_draft.system_prompt.chars().count();
-            let short_len = prompt_ops_draft.short_term_goal.chars().count();
-            let long_len = prompt_ops_draft.long_term_goal.chars().count();
-            prompt_ops_draft.status_message = if locale.is_zh() {
-                format!(
-                    "预览完成：target={selected_agent_id} system={system_len} short={short_len} long={long_len}"
-                )
-            } else {
-                format!(
-                    "Preview ready: target={selected_agent_id} system={system_len} short={short_len} long={long_len}"
-                )
-            };
-        }
-
-        if ui.button(if locale.is_zh() { "提交" } else { "Apply" }).clicked() {
-            prompt_ops_draft.status_message = if locale.is_zh() {
-                "OWR2 未完成：prompt_control 协议尚未接入。".to_string()
-            } else {
-                "OWR2 pending: prompt_control protocol is not wired yet.".to_string()
-            };
-        }
-
-        if ui
-            .button(if locale.is_zh() { "回滚" } else { "Rollback" })
-            .clicked()
-        {
-            prompt_ops_draft.status_message = if locale.is_zh() {
-                "OWR2 未完成：回滚链路尚未接入。".to_string()
-            } else {
-                "OWR2 pending: rollback flow is not wired yet.".to_string()
-            };
-        }
-    });
-
-    if !prompt_ops_draft.status_message.is_empty() {
-        ui.add(
-            egui::Label::new(prompt_ops_draft.status_message.as_str())
-                .wrap()
-                .selectable(true),
-        );
-    }
-
-    ui.separator();
-    ui.strong(if locale.is_zh() {
-        "变更审计"
-    } else {
-        "Audit Trail"
-    });
-    ui.label(if locale.is_zh() {
-        "当前版本暂无 AgentPromptUpdated 事件（待 OWR2 接入协议与事件）。"
-    } else {
-        "No AgentPromptUpdated events yet (pending OWR2 protocol/event wiring)."
-    });
-}
-
-fn collect_prompt_ops_agent_ids(state: &ViewerState) -> Vec<String> {
-    let mut ids = BTreeSet::new();
-
-    if let Some(snapshot) = state.snapshot.as_ref() {
-        for agent_id in snapshot.model.agents.keys() {
-            ids.insert(agent_id.clone());
-        }
-    }
-
-    for trace in &state.decision_traces {
-        ids.insert(trace.agent_id.clone());
-    }
-
-    ids.into_iter().collect()
-}
-
-fn sync_prompt_ops_selected_agent(prompt_ops_draft: &mut PromptOpsDraftState, state: &ViewerState) {
-    let ids = collect_prompt_ops_agent_ids(state);
-    if ids.is_empty() {
-        prompt_ops_draft.selected_agent_id = None;
-        return;
-    }
-
-    let already_selected = prompt_ops_draft.selected_agent_id.clone();
-    let selected_exists = already_selected
-        .as_deref()
-        .map(|agent_id| ids.iter().any(|id| id == agent_id))
-        .unwrap_or(false);
-
-    if !selected_exists {
-        prompt_ops_draft.selected_agent_id = Some(ids[0].clone());
     }
 }
 

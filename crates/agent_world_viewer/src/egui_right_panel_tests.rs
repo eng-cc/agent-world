@@ -562,6 +562,7 @@ fn egui_kittest_prompt_ops_section_renders_agent_targets_and_scope_note() {
             &state,
             &mut prompt_ops_draft,
             None,
+            None,
         );
     });
 
@@ -570,6 +571,7 @@ fn egui_kittest_prompt_ops_section_renders_agent_targets_and_scope_note() {
     harness.get_by_label_contains("仅支持修改 Agent Prompt");
     harness.get_by_label_contains("agent-1");
     harness.get_by_label_contains("目标: agent-0");
+    harness.get_by_label_contains("差异预览");
     harness.get_by_label_contains("变更审计");
 }
 
