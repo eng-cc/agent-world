@@ -163,6 +163,17 @@
   - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
   - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（十九次扩展阶段）
+- 继续推进 `agent_world_net` 的分布式存储/校验计算下沉（执行结果写入与 head 验证）：
+  - 将 `distributed_storage.rs` 核心实现下沉到 `agent_world_net`：
+    - `store_execution_result`（block/snapshot/journal refs 写入）
+    - `ExecutionWriteConfig` / `ExecutionWriteResult`（保持类型与语义兼容）
+  - 将 `distributed_validation.rs` 核心实现下沉到 `agent_world_net`：
+    - `validate_head_update` / `assemble_snapshot` / `assemble_journal`
+    - `HeadValidationResult`（保持类型与语义兼容）
+- 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
+- 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -224,6 +235,9 @@
 - P38：十七次扩展阶段回归验证与文档收口。
 - P39：`distributed_membership_sync/recovery/replay_archive*.rs` 核心实现下沉到 `agent_world_consensus`。
 - P40：十八次扩展阶段回归验证与文档收口。
+- P41：`distributed_storage.rs` 核心实现下沉到 `agent_world_net`。
+- P42：`distributed_validation.rs` 核心实现下沉到 `agent_world_net`。
+- P43：十九次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。

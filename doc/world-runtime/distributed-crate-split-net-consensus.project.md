@@ -41,6 +41,9 @@
 - [x] T38：完成十七次扩展阶段回归验证与文档收口。
 - [x] T39：将 `distributed_membership_sync/recovery/replay_archive*.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T40：完成十八次扩展阶段回归验证与文档收口。
+- [x] T41：将 `distributed_storage.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [ ] T42：将 `distributed_validation.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [ ] T43：完成十九次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -92,8 +95,10 @@
 - `crates/agent_world_consensus/src/membership_recovery/replay_archive_tiered.rs`
 - `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs`
 - `crates/agent_world_consensus/src/membership_dead_letter_replay_archive_tests.rs`
+- `crates/agent_world_net/src/execution_storage.rs`
+- `crates/agent_world_net/src/head_validation.rs`
 
 ## 状态
-- 当前阶段：十八次扩展阶段已收口（T39~T40 全部完成）。
-- 下一步：按需继续推进 `distributed_membership_sync` 其余子系统迁移与 runtime bridge 收敛，保持导出 API 兼容并按切片逐步推进。
+- 当前阶段：十九次扩展阶段进行中（T41 已完成，T42 进行中）。
+- 下一步：完成 `distributed_validation.rs` 下沉（T42），并执行回归验证与文档收口（T43），保持导出 API 兼容并按切片逐步推进。
 - 最近更新：2026-02-12

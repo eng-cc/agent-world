@@ -3,7 +3,7 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{store_execution_result, Action, ExecutionWriteConfig, LocalCasStore};
+use agent_world::runtime::{Action, LocalCasStore};
 use agent_world::runtime::{ModuleKind, ModuleLimits, ModuleRole};
 use agent_world::{GeoPos, World};
 use agent_world_proto::distributed as proto_distributed;

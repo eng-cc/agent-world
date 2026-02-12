@@ -43,9 +43,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{
-        store_execution_result, Action, ExecutionWriteConfig, LocalCasStore,
-    };
+    use agent_world::runtime::{Action, LocalCasStore};
     use agent_world::GeoPos;
     use agent_world::World;
     use agent_world_proto::distributed::{
@@ -56,6 +54,7 @@ mod tests {
 
     use super::*;
     use crate::util::to_canonical_cbor;
+    use crate::{store_execution_result, ExecutionWriteConfig};
     use crate::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
