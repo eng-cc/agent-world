@@ -4,6 +4,7 @@ mod bootstrap;
 mod client;
 mod dht;
 mod dht_cache;
+mod execution_storage;
 mod gateway;
 mod head_follow;
 mod index;
@@ -14,6 +15,7 @@ mod observer_replay;
 mod provider_cache;
 mod util;
 
+pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::distributed_net as proto_net;
 pub use bootstrap::{
@@ -22,6 +24,7 @@ pub use bootstrap::{
 pub use client::DistributedClient;
 pub use dht::{DistributedDht, InMemoryDht};
 pub use dht_cache::{CachedDht, DhtCacheConfig};
+pub use execution_storage::store_execution_result;
 pub use gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
 pub use head_follow::{HeadFollower, HeadUpdateDecision};
 pub use index::{
