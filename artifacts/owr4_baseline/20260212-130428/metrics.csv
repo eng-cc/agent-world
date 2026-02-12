@@ -1,3 +1,0 @@
-scenario,mode,duration_secs,tick_ms,final_events,event_rate,status,server_log,viewer_log
-triad_region_bootstrap,script,12,200,30,2.50,connected,artifacts/owr4_baseline/20260212-130428/triad_region_bootstrap/live_server.log,artifacts/owr4_baseline/20260212-130428/triad_region_bootstrap/viewer.log
-llm_bootstrap,script_fallback(no_openai_key),12,200,32,2.67,connected,artifacts/owr4_baseline/20260212-130428/llm_bootstrap/live_server.log,artifacts/owr4_baseline/20260212-130428/llm_bootstrap/viewer.log

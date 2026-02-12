@@ -31,7 +31,7 @@ config.toml
 
 # Local debug artifacts
 .tmp/
+artifacts/owr4_baseline/
 # egui_kittest snapshot artifacts
 **/tests/snapshots/*.diff.png
 **/tests/snapshots/*.new.png
-

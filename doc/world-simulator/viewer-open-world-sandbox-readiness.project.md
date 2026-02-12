@@ -47,7 +47,20 @@
 ## 状态
 - 当前阶段：OWR1/OWR2/OWR3 已完成（Prompt 控制双端闭环 + VPP5~VPP9）
 - 下一阶段：OWR4 完整收口后按版本周期复跑基线
-- 最近更新：完成 OWR4.5（基线落表：帧时间 + 事件吞吐 + over-budget 卡顿占比），产物 `doc/world-simulator/viewer-open-world-sandbox-readiness.baseline.md`（2026-02-12）
+- 最近更新：完成 OWR4.5（基线落表：帧时间 + 事件吞吐 + over-budget 卡顿占比），并将结论归档到本项目文档（2026-02-12）
+
+### OWR4.5 基线结论（2026-02-12）
+- 采样口径：
+  - 场景：`triad_region_bootstrap`、`llm_bootstrap`（无 `OPENAI_API_KEY` 时为 `script_fallback(no_openai_key)`）。
+  - Tick：`200ms`；采样时长：`12s`；预算阈值：`AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33`。
+- 结论数据：
+
+| 场景 | mode | events/s | frame_ms_avg | frame_ms_p95 | over_budget_pct |
+|---|---|---:|---:|---:|---:|
+| `triad_region_bootstrap` | `script` | 2.50 | 17.13 | 22.47 | 2.85% |
+| `llm_bootstrap` | `script_fallback(no_openai_key)` | 2.67 | 17.78 | 21.43 | 1.38% |
+
+- 归档策略：原始截图/日志不纳入 git，仅保留可复跑脚本与本节结论指标，后续版本按同口径复跑并直接更新本表。
 
 ## 不在本轮
 - TODO-3：动作玩法闭环（发现-采集-加工-建造）。
