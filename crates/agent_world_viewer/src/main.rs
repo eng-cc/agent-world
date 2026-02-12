@@ -32,6 +32,7 @@ const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
 mod app_bootstrap;
+mod auto_degrade;
 mod auto_focus;
 mod button_feedback;
 mod camera_controls;
@@ -66,6 +67,7 @@ mod viewer_automation;
 mod world_overlay;
 
 use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
+use auto_degrade::{auto_degrade_config_from_env, update_auto_degrade_policy, AutoDegradeState};
 use auto_focus::{
     apply_startup_auto_focus, auto_focus_config_from_env, handle_focus_selection_hotkey,
     AutoFocusState,
