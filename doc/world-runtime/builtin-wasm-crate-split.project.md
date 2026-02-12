@@ -33,6 +33,10 @@
 - [x] BMS-29 迁移 `m1.power.radiation_harvest` / `m1.power.storage` 到独立 wasm crate 并补充验证。
 - [x] BMS-30 扩展构建脚本支持 `m1.power.radiation_harvest` / `m1.power.storage` 并补充验证。
 - [x] BMS-31 回归验证、文档与 devlog 收口。
+- [x] BMS-32 扩展设计与任务拆解（runtime cutover：WASM 优先 + builtin fallback + 渐进下线 builtin 注册）。
+- [ ] BMS-33 实现 runtime 执行路径切换（WASM 优先 + builtin fallback）并补充验证。
+- [ ] BMS-34 逐步下线一批 builtin 注册点（先 tests/demo）并补充验证。
+- [ ] BMS-35 回归验证、文档与 devlog 收口（cutover 阶段一期）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -40,6 +44,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：已完成（BMS-0 ~ BMS-31）
-- 最近更新：完成 BMS-31（`move/visibility/transfer/body/sensor/mobility/memory/storage/power` 回归收口，2026-02-12）。
-- 下一步：推进 runtime 装载链路从 builtin sandbox 逐步切换到外部 wasm 产物优先执行。
+- 当前阶段：进行中（BMS-0 ~ BMS-32 已完成，BMS-33 起执行 runtime cutover）
+- 最近更新：完成 BMS-32（cutover 设计与任务拆解扩展，2026-02-12）。
+- 下一步：执行 BMS-33，先落地 WASM 优先 + builtin fallback 运行时链路。
