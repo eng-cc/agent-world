@@ -111,6 +111,13 @@
 - [x] 落地默认 `sensor/mobility/memory/storage` 四模块最小实现
 - [x] 完成默认模块回放一致性与降级策略测试
 
+### 8. Builtin 模块独立 Crate 化（BMS）
+- [x] 输出 BMS 设计文档（`doc/world-runtime/builtin-wasm-crate-split.md`）
+- [x] 输出 BMS 项目管理文档（`doc/world-runtime/builtin-wasm-crate-split.project.md`）
+- [ ] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
+- [ ] BMS-2 接入构建脚本并补充验证
+- [ ] BMS-3 回归验证与文档收口
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
@@ -118,5 +125,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：推进接口模块来源机制分册（制造/交易/回收/奖励）并继续评估真实 WASM 执行器接入
-- 最近更新：完成电力 builtin 再细分（radiation/storage）并保持回归通过（2026-02-08）
+- 下一步：推进 BMS-1（builtin 独立 crate 首模块落地）并继续评估真实 WASM 执行器接入
+- 最近更新：启动 BMS（builtin 模块独立 crate 化）并完成文档初始化（2026-02-12）
