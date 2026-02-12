@@ -53,6 +53,7 @@ mod prompt_control_state;
 mod prompt_ops_panel;
 mod render_perf_summary;
 mod right_panel_module_visibility;
+mod scene_dirty_refresh;
 mod scene_helpers;
 mod selection_emphasis;
 mod selection_linking;
@@ -99,6 +100,7 @@ use render_perf_summary::{sample_render_perf_summary, RenderPerfHistory, RenderP
 use right_panel_module_visibility::{
     persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,
 };
+use scene_dirty_refresh::{refresh_scene_dirty_objects, scene_requires_full_rebuild};
 use scene_helpers::*;
 use selection_emphasis::{update_selection_emphasis, SelectionEmphasisState};
 use selection_linking::{
@@ -1039,10 +1041,7 @@ fn update_3d_scene(
     };
 
     let snapshot_time = snapshot.time;
-    let snapshot_changed = scene.last_snapshot_time != Some(snapshot_time);
-    let fragment_visibility_changed =
-        scene.fragment_elements_visible != overlay_config.show_fragment_elements;
-    if snapshot_changed || fragment_visibility_changed {
+    if scene_requires_full_rebuild(&scene, snapshot, overlay_config.show_fragment_elements) {
         rebuild_scene_from_snapshot(
             &mut commands,
             &config,
@@ -1051,11 +1050,20 @@ fn update_3d_scene(
             snapshot,
             overlay_config.show_fragment_elements,
         );
-        scene.last_snapshot_time = Some(snapshot_time);
         scene.last_event_id = None;
-        scene.fragment_elements_visible = overlay_config.show_fragment_elements;
         selection.clear();
+    } else {
+        refresh_scene_dirty_objects(
+            &mut commands,
+            &config,
+            &assets,
+            &mut scene,
+            snapshot,
+            overlay_config.show_fragment_elements,
+        );
     }
+    scene.last_snapshot_time = Some(snapshot_time);
+    scene.fragment_elements_visible = overlay_config.show_fragment_elements;
 
     apply_events_to_scene(
         &mut commands,
