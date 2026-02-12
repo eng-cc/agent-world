@@ -187,6 +187,187 @@
     }, 2200);
   };
 
+  const bindHeroCanvas = () => {
+    const canvas = document.querySelector("[data-hero-canvas]");
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) {
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    let width = 0;
+    let height = 0;
+    let rafId = 0;
+    let lastFrameAt = 0;
+    let sweepX = 0;
+
+    /** @type {Array<{x:number,y:number,vx:number,vy:number,size:number}>} */
+    let nodes = [];
+
+    const randomIn = (min, max) => min + Math.random() * (max - min);
+
+    const nodeCountForViewport = () => {
+      const area = width * height;
+      if (area < 220000) {
+        return 12;
+      }
+      if (area < 500000) {
+        return 18;
+      }
+      return 26;
+    };
+
+    const rebuildNodes = () => {
+      const count = nodeCountForViewport();
+      nodes = Array.from({ length: count }, () => ({
+        x: randomIn(0, width),
+        y: randomIn(0, height),
+        vx: randomIn(-0.16, 0.16),
+        vy: randomIn(-0.14, 0.14),
+        size: randomIn(1.2, 2.4),
+      }));
+    };
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const nextWidth = Math.max(1, Math.floor(rect.width));
+      const nextHeight = Math.max(1, Math.floor(rect.height));
+      if (nextWidth === width && nextHeight === height) {
+        return;
+      }
+
+      width = nextWidth;
+      height = nextHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rebuildNodes();
+    };
+
+    const stepNodes = () => {
+      for (const node of nodes) {
+        node.x += node.vx;
+        node.y += node.vy;
+
+        if (node.x <= 0 || node.x >= width) {
+          node.vx *= -1;
+          node.x = Math.max(0, Math.min(width, node.x));
+        }
+        if (node.y <= 0 || node.y >= height) {
+          node.vy *= -1;
+          node.y = Math.max(0, Math.min(height, node.y));
+        }
+      }
+    };
+
+    const drawGridScan = () => {
+      sweepX = (sweepX + 0.85) % (width + 180);
+      const gradient = context.createLinearGradient(sweepX - 170, 0, sweepX + 40, 0);
+      gradient.addColorStop(0, "rgba(68, 231, 197, 0)");
+      gradient.addColorStop(0.55, "rgba(68, 231, 197, 0.1)");
+      gradient.addColorStop(1, "rgba(68, 231, 197, 0)");
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, width, height);
+    };
+
+    const drawLinksAndNodes = () => {
+      const maxDistance = width < 680 ? 115 : 150;
+      const maxDistanceSquare = maxDistance * maxDistance;
+
+      for (let i = 0; i < nodes.length; i += 1) {
+        const first = nodes[i];
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          const second = nodes[j];
+          const dx = first.x - second.x;
+          const dy = first.y - second.y;
+          const distanceSquare = dx * dx + dy * dy;
+          if (distanceSquare > maxDistanceSquare) {
+            continue;
+          }
+          const distance = Math.sqrt(distanceSquare);
+          const alpha = Math.pow(1 - distance / maxDistance, 1.8) * 0.24;
+          context.strokeStyle = `rgba(110, 213, 235, ${alpha})`;
+          context.lineWidth = 1;
+          context.beginPath();
+          context.moveTo(first.x, first.y);
+          context.lineTo(second.x, second.y);
+          context.stroke();
+        }
+      }
+
+      for (const node of nodes) {
+        context.fillStyle = "rgba(132, 255, 188, 0.72)";
+        context.beginPath();
+        context.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+        context.fill();
+      }
+    };
+
+    const paint = (now) => {
+      if (document.hidden) {
+        rafId = 0;
+        return;
+      }
+
+      if (now - lastFrameAt < 32) {
+        rafId = window.requestAnimationFrame(paint);
+        return;
+      }
+      lastFrameAt = now;
+
+      context.clearRect(0, 0, width, height);
+      drawGridScan();
+      stepNodes();
+      drawLinksAndNodes();
+      rafId = window.requestAnimationFrame(paint);
+    };
+
+    resize();
+    window.addEventListener("resize", resize, { passive: true });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (rafId) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        return;
+      }
+      if (!rafId) {
+        lastFrameAt = 0;
+        rafId = window.requestAnimationFrame(paint);
+      }
+    });
+
+    if (typeof reducedMotion.addEventListener === "function") {
+      reducedMotion.addEventListener("change", (event) => {
+        if (!event.matches) {
+          if (!rafId) {
+            lastFrameAt = 0;
+            rafId = window.requestAnimationFrame(paint);
+          }
+          return;
+        }
+        if (rafId) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        context.clearRect(0, 0, width, height);
+      });
+    }
+
+    rafId = window.requestAnimationFrame(paint);
+  };
+
   const bindActiveNav = () => {
     const nav = document.querySelector("[data-section-nav]");
     if (!nav) {
@@ -492,6 +673,7 @@
   }
 
   bindSectionReveal();
+  bindHeroCanvas();
   bindCounters();
   bindActiveNav();
   bindTimelineFilters();
