@@ -32,7 +32,7 @@
 - [x] BMS-28 扩展设计与任务拆解（`m1.power.radiation_harvest` / `m1.power.storage` 迁移阶段）。
 - [x] BMS-29 迁移 `m1.power.radiation_harvest` / `m1.power.storage` 到独立 wasm crate 并补充验证。
 - [x] BMS-30 扩展构建脚本支持 `m1.power.radiation_harvest` / `m1.power.storage` 并补充验证。
-- [ ] BMS-31 回归验证、文档与 devlog 收口。
+- [x] BMS-31 回归验证、文档与 devlog 收口。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -40,6 +40,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：进行中（BMS-28 ~ BMS-31）
-- 最近更新：完成 BMS-30（构建脚本支持 power 模块，2026-02-12）。
-- 下一步：推进 BMS-31，执行回归验证并完成文档/devlog 收口。
+- 当前阶段：已完成（BMS-0 ~ BMS-31）
+- 最近更新：完成 BMS-31（`move/visibility/transfer/body/sensor/mobility/memory/storage/power` 回归收口，2026-02-12）。
+- 下一步：推进 runtime 装载链路从 builtin sandbox 逐步切换到外部 wasm 产物优先执行。
