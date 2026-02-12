@@ -4,6 +4,7 @@ mod lease;
 mod membership;
 mod membership_logic;
 mod membership_reconciliation;
+mod membership_recovery;
 mod mempool;
 mod quorum;
 
@@ -28,6 +29,20 @@ pub use membership_reconciliation::{
     MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleCoordinator,
     MembershipRevocationScheduleStateStore, MembershipRevocationScheduledRunReport,
 };
+pub use membership_recovery::{
+    FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
+    FileMembershipRevocationCoordinatorStateStore,
+    InMemoryMembershipRevocationAlertDeadLetterStore,
+    InMemoryMembershipRevocationAlertRecoveryStore,
+    InMemoryMembershipRevocationCoordinatorStateStore, MembershipRevocationAlertAckRetryPolicy,
+    MembershipRevocationAlertDeadLetterReason, MembershipRevocationAlertDeadLetterRecord,
+    MembershipRevocationAlertDeadLetterStore, MembershipRevocationAlertDeliveryMetrics,
+    MembershipRevocationAlertRecoveryReport, MembershipRevocationAlertRecoveryStore,
+    MembershipRevocationCoordinatedRecoveryRunReport, MembershipRevocationCoordinatorLeaseState,
+    MembershipRevocationCoordinatorStateStore, MembershipRevocationPendingAlert,
+    NoopMembershipRevocationAlertDeadLetterStore,
+    StoreBackedMembershipRevocationScheduleCoordinator,
+};
 pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
 pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
@@ -37,8 +52,6 @@ pub use quorum::{
 };
 
 pub use agent_world::runtime::{
-    FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
-    FileMembershipRevocationCoordinatorStateStore,
     FileMembershipRevocationDeadLetterReplayPolicyAuditStore,
     FileMembershipRevocationDeadLetterReplayPolicyStore,
     FileMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
@@ -49,9 +62,6 @@ pub use agent_world::runtime::{
     FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
     FileMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     FileMembershipRevocationDeadLetterReplayStateStore,
-    InMemoryMembershipRevocationAlertDeadLetterStore,
-    InMemoryMembershipRevocationAlertRecoveryStore,
-    InMemoryMembershipRevocationCoordinatorStateStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore,
     InMemoryMembershipRevocationDeadLetterReplayPolicyStore,
     InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore,
@@ -62,11 +72,6 @@ pub use agent_world::runtime::{
     InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore,
     InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     InMemoryMembershipRevocationDeadLetterReplayStateStore,
-    MembershipRevocationAlertAckRetryPolicy, MembershipRevocationAlertDeadLetterReason,
-    MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeadLetterStore,
-    MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryReport,
-    MembershipRevocationAlertRecoveryStore, MembershipRevocationCoordinatedRecoveryRunReport,
-    MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
     MembershipRevocationDeadLetterReplayPolicy,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision,
     MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord,
@@ -108,13 +113,13 @@ pub use agent_world::runtime::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayScheduleState,
-    MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
-    NoopMembershipRevocationAlertDeadLetterStore,
-    StoreBackedMembershipRevocationScheduleCoordinator,
+    MembershipRevocationDeadLetterReplayStateStore,
 };
 
 #[cfg(test)]
 mod membership_reconciliation_tests;
+#[cfg(test)]
+mod membership_recovery_tests;
 #[cfg(test)]
 mod membership_tests;
 

@@ -33,7 +33,7 @@
 - [x] T30：完成十三次扩展阶段回归验证与文档收口。
 - [x] T31：将 `distributed_membership_sync/reconciliation.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T32：完成十四次扩展阶段回归验证与文档收口。
-- [ ] T33：将 `distributed_membership_sync/recovery.rs` 告警恢复核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T33：将 `distributed_membership_sync/recovery.rs` 告警恢复核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [ ] T34：完成十五次扩展阶段回归验证与文档收口。
 
 ## 依赖
@@ -72,8 +72,13 @@
 - `crates/agent_world_consensus/src/membership_logic.rs`
 - `crates/agent_world_consensus/src/membership_reconciliation.rs`
 - `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/mod.rs`
+- `crates/agent_world_consensus/src/membership_recovery/types.rs`
+- `crates/agent_world_consensus/src/membership_recovery/stores.rs`
+- `crates/agent_world_consensus/src/membership_recovery/dead_letter.rs`
+- `crates/agent_world_consensus/src/membership_recovery_tests.rs`
 
 ## 状态
-- 当前阶段：十五次扩展阶段进行中（T33 进行中）。
-- 下一步：完成 membership recovery 核心迁移并执行扩展回归验证。
+- 当前阶段：十五次扩展阶段进行中（T34 进行中）。
+- 下一步：执行十五次扩展阶段回归验证并完成文档收口。
 - 最近更新：2026-02-12
