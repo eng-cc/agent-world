@@ -187,3 +187,14 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（181 tests，含自动降级新增测试）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+- 已完成 OWR4.4：
+  - 新增高负载压测脚本 `scripts/viewer-owr4-stress.sh`：
+    - 默认执行 `triad_region_bootstrap,llm_bootstrap`；
+    - `llm_bootstrap` 自动附带 `--llm`；
+    - headless-online 方式采集事件窗口计数并导出 `metrics.csv` / `summary.md`。
+  - 新增报告模板 `doc/world-simulator/viewer-open-world-sandbox-readiness.stress-report.template.md`，统一记录脚本结果、渲染指标补录、异常与结论。
+  - 压测脚本输出目录标准化为 `.tmp/viewer_owr4_stress/<timestamp>/`，便于后续 OWR4.5 跨版本横向对比。
+- 已完成验证（OWR4.4）：
+  - `bash -n scripts/viewer-owr4-stress.sh` 通过。
+  - `./scripts/viewer-owr4-stress.sh --help` 通过。
+  - `./scripts/viewer-owr4-stress.sh --duration-secs 5 --tick-ms 300 --scenarios triad_region_bootstrap --no-prewarm --out-dir .tmp/viewer_owr4_stress_smoke` 通过。
