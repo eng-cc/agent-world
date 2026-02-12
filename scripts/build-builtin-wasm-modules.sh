@@ -36,6 +36,9 @@ module_manifest_path() {
     m1.rule.transfer)
       echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
       ;;
+    m1.body.core)
+      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
+      ;;
     *)
       return 1
       ;;
@@ -47,6 +50,7 @@ all_module_ids() {
 m1.rule.move
 m1.rule.visibility
 m1.rule.transfer
+m1.body.core
 EOF_IDS
 }
 
