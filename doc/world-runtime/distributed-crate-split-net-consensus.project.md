@@ -16,7 +16,7 @@
 - [x] T13：将 `distributed_index` 核心实现下沉到 `agent_world_net`（head/provider 索引发布与查询 helper）。
 - [x] T14：完成五次扩展阶段回归验证与文档收口。
 - [x] T15：完成 `agent_world_net` 内部模块化拆分（`lib.rs` 多文件拆分 + 单测迁移，导出 API 不变）。
-- [ ] T16：完成六次扩展阶段回归验证与文档收口。
+- [x] T16：完成六次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -38,6 +38,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：六次扩展阶段进行中（T15 完成，T16 进行中）。
-- 下一步：执行六次扩展阶段回归并收口文档状态。
+- 当前阶段：六次扩展阶段已完成（T1~T16 全部完成）。
+- 下一步：按后续拆分计划继续推进 net/consensus 中剩余分布式能力的实现迁移。
 - 最近更新：2026-02-12
