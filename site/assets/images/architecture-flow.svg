@@ -1,109 +1,157 @@
 <svg width="1400" height="720" viewBox="0 0 1400 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">agent-world architecture flow</title>
-  <desc id="desc">Runtime, simulator, viewer, and LLM/module layers with rule and data flow.</desc>
+  <desc id="desc">Runtime, Simulator, Viewer, and LLM or Modules are connected by evidence and control feedback loops.</desc>
 
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1400" y2="720" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0B1222" />
-      <stop offset="1" stop-color="#07101E" />
+      <stop stop-color="#06111D" />
+      <stop offset="1" stop-color="#030A12" />
     </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#12203A" stop-opacity="0.95" />
-      <stop offset="1" stop-color="#0D162B" stop-opacity="0.92" />
+    <linearGradient id="corePanel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#123044" stop-opacity="0.95" />
+      <stop offset="1" stop-color="#0A1A2A" stop-opacity="0.93" />
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop stop-color="#81A8FF" />
-      <stop offset="1" stop-color="#53E2E6" />
+    <linearGradient id="accentLine" x1="88" y1="0" x2="1312" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#45E8C9" />
+      <stop offset="0.52" stop-color="#6DE8FF" />
+      <stop offset="1" stop-color="#B8FF80" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+    <linearGradient id="busGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#45E8C9" stop-opacity="0" />
+      <stop offset="0.52" stop-color="#45E8C9" stop-opacity="0.35" />
+      <stop offset="1" stop-color="#45E8C9" stop-opacity="0" />
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="8" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-      <path d="M0 0 L10 5 L0 10 Z" fill="#74C8FF" />
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="8.5" refY="5.5" orient="auto">
+      <path d="M0 0 L11 5.5 L0 11 Z" fill="#78EAFE" />
+    </marker>
+    <marker id="arrowMint" markerWidth="11" markerHeight="11" refX="8.5" refY="5.5" orient="auto">
+      <path d="M0 0 L11 5.5 L0 11 Z" fill="#7FFFAF" />
     </marker>
   </defs>
 
   <rect width="1400" height="720" rx="24" fill="url(#bg)" />
-  <g opacity="0.18">
-    <path d="M0 120H1400" stroke="#3B5A89" />
-    <path d="M0 240H1400" stroke="#3B5A89" />
-    <path d="M0 360H1400" stroke="#3B5A89" />
-    <path d="M0 480H1400" stroke="#3B5A89" />
-    <path d="M0 600H1400" stroke="#3B5A89" />
-    <path d="M200 0V720" stroke="#3B5A89" />
-    <path d="M400 0V720" stroke="#3B5A89" />
-    <path d="M600 0V720" stroke="#3B5A89" />
-    <path d="M800 0V720" stroke="#3B5A89" />
-    <path d="M1000 0V720" stroke="#3B5A89" />
-    <path d="M1200 0V720" stroke="#3B5A89" />
+
+  <g opacity="0.16">
+    <path d="M0 104H1400" stroke="#2C4B63" />
+    <path d="M0 188H1400" stroke="#2C4B63" />
+    <path d="M0 272H1400" stroke="#2C4B63" />
+    <path d="M0 356H1400" stroke="#2C4B63" />
+    <path d="M0 440H1400" stroke="#2C4B63" />
+    <path d="M0 524H1400" stroke="#2C4B63" />
+    <path d="M0 608H1400" stroke="#2C4B63" />
+    <path d="M160 0V720" stroke="#2C4B63" />
+    <path d="M320 0V720" stroke="#2C4B63" />
+    <path d="M480 0V720" stroke="#2C4B63" />
+    <path d="M640 0V720" stroke="#2C4B63" />
+    <path d="M800 0V720" stroke="#2C4B63" />
+    <path d="M960 0V720" stroke="#2C4B63" />
+    <path d="M1120 0V720" stroke="#2C4B63" />
+    <path d="M1280 0V720" stroke="#2C4B63" />
   </g>
 
-  <text x="64" y="82" fill="#D7E4FF" font-size="42" font-family="Inter, Arial, sans-serif" font-weight="700">
-    agent-world Architecture Flow
+  <text x="88" y="84" fill="#E6FAFF" font-size="42" font-family="Inter, Arial, sans-serif" font-weight="700">
+    agent-world System Architecture
   </text>
-  <text x="64" y="118" fill="#9FB7E9" font-size="22" font-family="Inter, Arial, sans-serif">
-    Rule Gate → World Evolution → Replay &amp; Observability → Intelligent Decision Extension
+  <text x="88" y="118" fill="#A7CADD" font-size="21" font-family="Inter, Arial, sans-serif">
+    Rule Gate -> State Evolution -> Replay Observability -> Policy Intelligence Extension
   </text>
 
-  <rect x="72" y="168" width="1248" height="480" rx="20" fill="#0B152A" stroke="#2A4168" />
+  <rect x="88" y="146" width="1224" height="6" rx="3" fill="url(#accentLine)" />
+
+  <rect x="88" y="176" width="1224" height="486" rx="22" fill="#081523" stroke="#26516E" />
 
   <g>
-    <rect x="116" y="218" width="260" height="120" rx="16" fill="url(#panel)" stroke="#496A9B" />
-    <text x="142" y="262" fill="#E4EEFF" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">Runtime</text>
-    <text x="142" y="296" fill="#AFC4EA" font-size="19" font-family="Inter, Arial, sans-serif">Rule validation / action gate</text>
-  </g>
-
-  <g>
-    <rect x="432" y="218" width="260" height="120" rx="16" fill="url(#panel)" stroke="#496A9B" />
-    <text x="458" y="262" fill="#E4EEFF" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">Simulator</text>
-    <text x="458" y="296" fill="#AFC4EA" font-size="19" font-family="Inter, Arial, sans-serif">Tick loop / state transition</text>
-  </g>
-
-  <g>
-    <rect x="748" y="218" width="260" height="120" rx="16" fill="url(#panel)" stroke="#496A9B" />
-    <text x="774" y="262" fill="#E4EEFF" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">Viewer</text>
-    <text x="774" y="296" fill="#AFC4EA" font-size="19" font-family="Inter, Arial, sans-serif">Live monitor / replay / diagnosis</text>
+    <rect x="136" y="224" width="258" height="132" rx="18" fill="url(#corePanel)" stroke="#4B89AC" />
+    <rect x="154" y="244" width="44" height="44" rx="10" fill="#0F3242" stroke="#5ED3C8" />
+    <path d="M168 274L184 258L196 266" stroke="#8FFFE1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="212" y="272" fill="#E8FDFF" font-size="29" font-family="Inter, Arial, sans-serif" font-weight="700">Runtime</text>
+    <text x="154" y="314" fill="#A7CADD" font-size="18" font-family="Inter, Arial, sans-serif">Action validation and rule gate</text>
+    <text x="154" y="338" fill="#7EDFCF" font-size="16" font-family="Inter, Arial, sans-serif">Policy-safe execution boundary</text>
   </g>
 
   <g>
-    <rect x="1064" y="218" width="212" height="120" rx="16" fill="url(#panel)" stroke="#3FA0B6" />
-    <text x="1090" y="262" fill="#E4EEFF" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">LLM /</text>
-    <text x="1090" y="296" fill="#E4EEFF" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700">Modules</text>
+    <rect x="440" y="224" width="258" height="132" rx="18" fill="url(#corePanel)" stroke="#4B89AC" />
+    <rect x="458" y="244" width="44" height="44" rx="10" fill="#113548" stroke="#67D1FF" />
+    <circle cx="480" cy="266" r="10" fill="none" stroke="#9EE5FF" stroke-width="3" />
+    <path d="M480 256V276M470 266H490" stroke="#9EE5FF" stroke-width="2.2" />
+    <text x="516" y="272" fill="#E8FDFF" font-size="29" font-family="Inter, Arial, sans-serif" font-weight="700">Simulator</text>
+    <text x="458" y="314" fill="#A7CADD" font-size="18" font-family="Inter, Arial, sans-serif">Tick loop and world transition</text>
+    <text x="458" y="338" fill="#7BD9FF" font-size="16" font-family="Inter, Arial, sans-serif">Deterministic state progression</text>
   </g>
 
   <g>
-    <rect x="116" y="410" width="576" height="188" rx="16" fill="#101A31" stroke="#36527F" />
-    <text x="142" y="452" fill="#DCE9FF" font-size="28" font-family="Inter, Arial, sans-serif" font-weight="700">Persistence &amp; Evidence</text>
-    <text x="142" y="488" fill="#AFC4EA" font-size="19" font-family="Inter, Arial, sans-serif">snapshot.json / journal.json / deterministic replay</text>
-    <rect x="142" y="518" width="214" height="48" rx="11" fill="#132748" stroke="#4A6E9F" />
-    <text x="162" y="550" fill="#98D6FF" font-size="18" font-family="Inter, Arial, sans-serif">state snapshots</text>
-    <rect x="374" y="518" width="214" height="48" rx="11" fill="#132748" stroke="#4A6E9F" />
-    <text x="394" y="550" fill="#98D6FF" font-size="18" font-family="Inter, Arial, sans-serif">event journals</text>
+    <rect x="744" y="224" width="258" height="132" rx="18" fill="url(#corePanel)" stroke="#4B89AC" />
+    <rect x="762" y="244" width="44" height="44" rx="10" fill="#113548" stroke="#67D1FF" />
+    <rect x="772" y="255" width="24" height="18" rx="4" fill="none" stroke="#B0F0FF" stroke-width="2.4" />
+    <path d="M776 278H792" stroke="#B0F0FF" stroke-width="2" />
+    <text x="820" y="272" fill="#E8FDFF" font-size="29" font-family="Inter, Arial, sans-serif" font-weight="700">Viewer</text>
+    <text x="762" y="314" fill="#A7CADD" font-size="18" font-family="Inter, Arial, sans-serif">Replay, live stream, diagnosis</text>
+    <text x="762" y="338" fill="#7BD9FF" font-size="16" font-family="Inter, Arial, sans-serif">World observability interface</text>
   </g>
 
   <g>
-    <rect x="748" y="410" width="528" height="188" rx="16" fill="#101A31" stroke="#36527F" />
-    <text x="774" y="452" fill="#DCE9FF" font-size="28" font-family="Inter, Arial, sans-serif" font-weight="700">Control &amp; Feedback Loop</text>
-    <text x="774" y="488" fill="#AFC4EA" font-size="19" font-family="Inter, Arial, sans-serif">policy update / diagnostics / runtime intervention</text>
-    <rect x="774" y="518" width="220" height="48" rx="11" fill="#132748" stroke="#3FA0B6" />
-    <text x="796" y="550" fill="#7EF0E4" font-size="18" font-family="Inter, Arial, sans-serif">repair mechanism</text>
-    <rect x="1018" y="518" width="230" height="48" rx="11" fill="#132748" stroke="#3FA0B6" />
-    <text x="1040" y="550" fill="#7EF0E4" font-size="18" font-family="Inter, Arial, sans-serif">module injection</text>
+    <rect x="1048" y="224" width="216" height="132" rx="18" fill="#0D2330" stroke="#53C797" />
+    <rect x="1066" y="244" width="44" height="44" rx="10" fill="#113226" stroke="#7DF6AD" />
+    <path d="M1078 277L1098 255M1078 255L1098 277" stroke="#A9FFC6" stroke-width="2.6" stroke-linecap="round" />
+    <text x="1122" y="268" fill="#EEFFF4" font-size="27" font-family="Inter, Arial, sans-serif" font-weight="700">LLM /</text>
+    <text x="1122" y="298" fill="#EEFFF4" font-size="27" font-family="Inter, Arial, sans-serif" font-weight="700">Modules</text>
+    <text x="1066" y="338" fill="#AAEBC4" font-size="16" font-family="Inter, Arial, sans-serif">Policy intelligence extension</text>
   </g>
 
-  <g stroke="#74C8FF" stroke-width="4" fill="none" marker-end="url(#arrow)" filter="url(#glow)">
-    <path d="M376 278H432" />
-    <path d="M692 278H748" />
-    <path d="M1008 278H1064" />
-    <path d="M562 338V410" />
-    <path d="M878 338V410" />
-    <path d="M1064 504V338" />
-    <path d="M748 504H692" />
+  <g stroke="#78EAFE" stroke-width="4" fill="none" marker-end="url(#arrow)" filter="url(#softGlow)">
+    <path d="M394 290H440" />
+    <path d="M698 290H744" />
+    <path d="M1002 290H1048" />
   </g>
 
-  <rect x="72" y="168" width="1248" height="6" fill="url(#accent)" opacity="0.95" />
+  <g>
+    <rect x="136" y="418" width="562" height="204" rx="18" fill="#0D2031" stroke="#3A6D91" />
+    <text x="166" y="460" fill="#E7FAFF" font-size="28" font-family="Inter, Arial, sans-serif" font-weight="700">Persistence and Evidence Bus</text>
+    <text x="166" y="492" fill="#A9CFE2" font-size="18" font-family="Inter, Arial, sans-serif">snapshot.json + journal.json + deterministic replay index</text>
+
+    <rect x="166" y="522" width="240" height="56" rx="12" fill="#102C43" stroke="#4B89AC" />
+    <text x="192" y="556" fill="#9DEBFF" font-size="18" font-family="Inter, Arial, sans-serif">State snapshot stream</text>
+
+    <rect x="430" y="522" width="238" height="56" rx="12" fill="#102C43" stroke="#4B89AC" />
+    <text x="456" y="556" fill="#9DEBFF" font-size="18" font-family="Inter, Arial, sans-serif">Event journal stream</text>
+
+    <rect x="166" y="592" width="502" height="10" rx="5" fill="url(#busGlow)" />
+  </g>
+
+  <g>
+    <rect x="744" y="418" width="520" height="204" rx="18" fill="#0D2031" stroke="#3A6D91" />
+    <text x="774" y="460" fill="#E7FAFF" font-size="28" font-family="Inter, Arial, sans-serif" font-weight="700">Control and Feedback Loop</text>
+    <text x="774" y="492" fill="#A9CFE2" font-size="18" font-family="Inter, Arial, sans-serif">diagnostics + policy update + runtime intervention</text>
+
+    <rect x="774" y="522" width="226" height="56" rx="12" fill="#113229" stroke="#53C797" />
+    <text x="800" y="556" fill="#B9FFD4" font-size="18" font-family="Inter, Arial, sans-serif">Repair mechanism</text>
+
+    <rect x="1022" y="522" width="212" height="56" rx="12" fill="#113229" stroke="#53C797" />
+    <text x="1048" y="556" fill="#B9FFD4" font-size="18" font-family="Inter, Arial, sans-serif">Module injection</text>
+
+    <rect x="774" y="592" width="460" height="10" rx="5" fill="url(#busGlow)" />
+  </g>
+
+  <g stroke="#78EAFE" stroke-width="3.5" fill="none" marker-end="url(#arrow)">
+    <path d="M568 356V418" />
+    <path d="M874 356V418" />
+    <path d="M698 550H744" />
+  </g>
+
+  <g stroke="#7FFFAF" stroke-width="3.5" fill="none" marker-end="url(#arrowMint)" filter="url(#softGlow)">
+    <path d="M1048 550H1000" />
+    <path d="M1160 418V356" />
+  </g>
+
+  <g>
+    <rect x="1098" y="176" width="214" height="30" rx="15" fill="#0C2730" stroke="#3F8B82" />
+    <text x="1122" y="196" fill="#9BEFD4" font-size="14" font-family="Inter, Arial, sans-serif">Online policy hook and repair loop</text>
+  </g>
 </svg>
