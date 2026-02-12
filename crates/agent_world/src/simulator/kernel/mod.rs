@@ -13,7 +13,7 @@ use crate::runtime::{
     ModuleOutput, ModuleSandbox,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use super::types::{
@@ -67,6 +67,7 @@ struct RuleHookRegistry {
     pre_action: Vec<PreActionRuleHook>,
     post_action: Vec<PostActionRuleHook>,
     pre_action_wasm: Option<PreActionWasmRuleEvaluator>,
+    pre_action_wasm_artifacts: BTreeMap<String, Vec<u8>>,
 }
 
 impl std::fmt::Debug for RuleHookRegistry {
@@ -75,6 +76,10 @@ impl std::fmt::Debug for RuleHookRegistry {
             .field("pre_action_len", &self.pre_action.len())
             .field("post_action_len", &self.post_action.len())
             .field("pre_action_wasm_enabled", &self.pre_action_wasm.is_some())
+            .field(
+                "pre_action_wasm_artifact_count",
+                &self.pre_action_wasm_artifacts.len(),
+            )
             .finish()
     }
 }
@@ -206,6 +211,65 @@ impl WorldKernel {
             let decision = parse_pre_action_wasm_rule_decision(input.action_id, &output)?;
             Ok(KernelRuleModuleOutput::from_decision(decision))
         });
+    }
+
+    pub fn register_pre_action_wasm_rule_artifact(
+        &mut self,
+        wasm_hash: impl Into<String>,
+        wasm_bytes: Vec<u8>,
+    ) -> Result<(), String> {
+        let wasm_hash = wasm_hash.into();
+        if wasm_hash.trim().is_empty() {
+            return Err("wasm hash is empty".to_string());
+        }
+        if wasm_bytes.is_empty() {
+            return Err(format!("wasm bytes are empty for hash {wasm_hash}"));
+        }
+        if let Some(existing) = self.rule_hooks.pre_action_wasm_artifacts.get(&wasm_hash) {
+            if existing != &wasm_bytes {
+                return Err(format!(
+                    "artifact hash {wasm_hash} already registered with different bytes"
+                ));
+            }
+            return Ok(());
+        }
+
+        self.rule_hooks
+            .pre_action_wasm_artifacts
+            .insert(wasm_hash, wasm_bytes);
+        Ok(())
+    }
+
+    pub fn remove_pre_action_wasm_rule_artifact(&mut self, wasm_hash: &str) -> bool {
+        self.rule_hooks
+            .pre_action_wasm_artifacts
+            .remove(wasm_hash)
+            .is_some()
+    }
+
+    pub fn set_pre_action_wasm_rule_module_from_registry<S>(
+        &mut self,
+        module_id: impl Into<String>,
+        wasm_hash: impl Into<String>,
+        entrypoint: impl Into<String>,
+        limits: ModuleLimits,
+        sandbox: Arc<Mutex<S>>,
+    ) -> Result<(), String>
+    where
+        S: ModuleSandbox + Send + 'static,
+    {
+        let wasm_hash = wasm_hash.into();
+        let wasm_bytes = self
+            .rule_hooks
+            .pre_action_wasm_artifacts
+            .get(&wasm_hash)
+            .cloned()
+            .ok_or_else(|| format!("pre-action wasm artifact missing for hash {wasm_hash}"))?;
+
+        self.set_pre_action_wasm_rule_module_evaluator(
+            module_id, wasm_hash, entrypoint, wasm_bytes, limits, sandbox,
+        );
+        Ok(())
     }
 
     pub fn time(&self) -> WorldTime {

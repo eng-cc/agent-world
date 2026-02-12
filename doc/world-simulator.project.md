@@ -193,7 +193,7 @@
 ### 14. 规则 Wasm 模块装载治理（KWM）
 - [x] 输出 KWM 设计文档（`doc/world-simulator/kernel-rule-wasm-module-governance.md`）
 - [x] 输出 KWM 项目管理文档（`doc/world-simulator/kernel-rule-wasm-module-governance.project.md`）
-- [ ] KWM-1 wasm rule artifact 注册表与按 hash 激活 API
+- [x] KWM-1 wasm rule artifact 注册表与按 hash 激活 API
 - [ ] KWM-2 装载治理测试（missing hash / 冲突注册 / 激活成功路径）
 - [ ] KWM-3 回归验证与文档收口
 
