@@ -115,6 +115,19 @@
 - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（十五次扩展阶段）
+- 继续推进 `agent_world_consensus` 的 membership 告警恢复路径下沉（先做低耦合切片）：
+  - 将 `distributed_membership_sync/recovery.rs` 中告警恢复核心实现下沉到 `agent_world_consensus`：
+    - ack retry：pending alert 状态、`MembershipRevocationAlertAckRetryPolicy`、告警重试/缓冲/丢弃策略
+    - dead-letter：dead-letter store（append/list/replace）与 delivery metrics 导出
+    - recovery store：pending alert 持久化（in-memory / file）与 legacy 兼容解码
+    - coordinator state store：跨节点协调租约状态持久化（in-memory / file）
+    - dead-letter replay：从 dead-letter 回放到 pending 的调度 helper（不含 replay policy/governance）
+  - 为满足 1200 行约束，在 `agent_world_consensus` 内对 recovery 模块做多文件拆分（`membership_recovery/*`）。
+  - `recovery/replay*.rs`（回放策略、自适应调参、治理/归档）仍暂留 `agent_world::runtime`，由 `agent_world_consensus` 继续桥接导出，避免一次性迁移超大模块。
+- 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
+- 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -168,6 +181,8 @@
 - P30：十三次扩展阶段回归验证与文档收口。
 - P31：`distributed_membership_sync/reconciliation.rs` 核心实现下沉到 `agent_world_consensus`。
 - P32：十四次扩展阶段回归验证与文档收口。
+- P33：`distributed_membership_sync/recovery.rs` 告警恢复核心实现下沉到 `agent_world_consensus`。
+- P34：十五次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -186,3 +201,4 @@
 - lease/mempool 下沉涉及主写租约时序与 action 批次切片，若租约续期/过期判定或 payload 约束偏差会导致 leader 抖动与动作丢弃，需要保留租约续期、过期接管与 batch 限流测试。
 - membership sync 核心路径下沉涉及签名验证策略、DHT 恢复与审计落盘，若策略对象或签名载荷行为偏差会导致合法快照被拒或非法快照被接受，需要保留 keyring 签名/验签、restore 审计与 key revocation 策略测试。
 - membership reconcile 下沉涉及跨节点 revoked set 对账、调度持久化与协调锁，若 checkpoint hash、时间窗口或锁租约判定偏差会导致重复告警或漏合并，需要保留 reconcile merge、schedule due 与 coordinated lock 相关测试。
+- membership recovery 下沉涉及 pending alert buffer/ack-retry/dead-letter 与落盘格式兼容，若 retry/backoff/capacity 判定或 legacy 解码偏差会导致漏告警或重复告警，需要保留 ack-retry 缓冲/丢弃、dead-letter 回放与持久化 round-trip 测试。
