@@ -19,7 +19,8 @@ Options:
   -h, --help               show help
 
 Behavior:
-  - Scenario "llm_bootstrap" will be launched with --llm automatically.
+  - Scenario "llm_bootstrap" will be launched with --llm when OPENAI_API_KEY is present.
+  - Without OPENAI_API_KEY, "llm_bootstrap" falls back to script mode and is marked as script_fallback.
   - viewer runs in headless-online mode and reports event counters to logs.
   - output includes per-scenario logs + CSV + Markdown summary.
 USAGE
@@ -140,8 +141,12 @@ for scenario_raw in "${scenarios[@]}"; do
   mode="script"
   server_cmd=(env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$addr" --tick-ms "$tick_ms")
   if [[ "$scenario" == "llm_bootstrap" ]]; then
-    mode="llm"
-    server_cmd+=(--llm)
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+      mode="llm"
+      server_cmd+=(--llm)
+    else
+      mode="script_fallback(no_openai_key)"
+    fi
   fi
 
   echo "== scenario: $scenario ($mode) =="

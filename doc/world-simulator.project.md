@@ -105,7 +105,7 @@
 - [x] Viewer 中文字体渲染修复（引入 `ms-yahei.ttf`，解决方块字）
 - [x] 输出 Viewer 面向开放世界沙盒可玩化准备设计文档（`doc/world-simulator/viewer-open-world-sandbox-readiness.md`）
 - [x] 输出 Viewer 面向开放世界沙盒可玩化准备项目管理文档（`doc/world-simulator/viewer-open-world-sandbox-readiness.project.md`）
-- [ ] 可玩化准备主线：OWR1~OWR4（观察态/Prompt Ops/3D 表达优化/规模化稳定性）【进行中：OWR1+OWR3 已完成，下一步 OWR4】
+- [x] 可玩化准备主线：OWR1~OWR4（观察态/Prompt Ops/3D 表达优化/规模化稳定性）【已完成：OWR1~OWR4 全链路收口，含稳定性基线】
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

@@ -50,6 +50,7 @@ mod location_fragment_render;
 mod material_library;
 mod panel_layout;
 mod panel_scroll;
+mod perf_probe;
 mod prompt_control_state;
 mod prompt_ops_panel;
 mod render_perf_summary;
@@ -85,7 +86,7 @@ use event_click_list::{
 };
 use event_window::{event_window_policy_from_env, push_event_with_window, EventWindowPolicy};
 use floating_origin::update_floating_origin;
-use headless::headless_report;
+use headless::{headless_auto_play_once, headless_report};
 use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,

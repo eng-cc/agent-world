@@ -1,0 +1,2 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running `target/debug/world_viewer_live llm_bootstrap --bind '127.0.0.1:5421' --tick-ms 200`
