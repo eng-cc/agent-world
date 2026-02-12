@@ -7,6 +7,7 @@ mod dht_cache;
 mod execution_storage;
 mod gateway;
 mod head_follow;
+mod head_validation;
 mod index;
 mod index_store;
 mod network;
@@ -15,7 +16,7 @@ mod observer_replay;
 mod provider_cache;
 mod util;
 
-pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult};
+pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult, HeadValidationResult};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::distributed_net as proto_net;
 pub use bootstrap::{
@@ -27,6 +28,7 @@ pub use dht_cache::{CachedDht, DhtCacheConfig};
 pub use execution_storage::store_execution_result;
 pub use gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
 pub use head_follow::{HeadFollower, HeadUpdateDecision};
+pub use head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
 pub use index::{
     publish_execution_providers, publish_execution_providers_cached, publish_world_head,
     query_providers, IndexPublishResult,
