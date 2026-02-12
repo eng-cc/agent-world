@@ -93,6 +93,114 @@ fn kernel_pre_action_rule_modify_overrides_action() {
 }
 
 #[test]
+fn kernel_pre_action_rule_can_read_kernel_time_context() {
+    let mut kernel = WorldKernel::new();
+    kernel.add_pre_action_rule_hook(|action_id, _, kernel| {
+        if kernel.time() == 0 {
+            KernelRuleDecision::deny(action_id, vec!["time gate blocks tick zero".to_string()])
+        } else {
+            KernelRuleDecision::allow(action_id)
+        }
+    });
+
+    kernel.submit_action(register_location_action("loc-time-0"));
+    let rejected = kernel.step().expect("first action emits reject");
+    match rejected.kind {
+        WorldEventKind::ActionRejected { reason } => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("time gate blocks tick zero")));
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+    assert!(!kernel.model().locations.contains_key("loc-time-0"));
+
+    kernel.submit_action(register_location_action("loc-time-1"));
+    let accepted = kernel.step().expect("second action should pass time gate");
+    match accepted.kind {
+        WorldEventKind::LocationRegistered { location_id, .. } => {
+            assert_eq!(location_id, "loc-time-1");
+        }
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+    assert!(kernel.model().locations.contains_key("loc-time-1"));
+}
+
+#[test]
+fn kernel_pre_action_rule_can_read_model_state_context() {
+    let mut kernel = WorldKernel::new();
+    kernel.add_pre_action_rule_hook(|action_id, action, kernel| match action {
+        Action::RegisterAgent { agent_id, .. } => {
+            if kernel.model().locations.contains_key("loc-ready") {
+                KernelRuleDecision::modify(
+                    action_id,
+                    Action::RegisterAgent {
+                        agent_id: agent_id.clone(),
+                        location_id: "loc-ready".to_string(),
+                    },
+                )
+            } else {
+                KernelRuleDecision::deny(
+                    action_id,
+                    vec!["loc-ready is required before registering agent".to_string()],
+                )
+            }
+        }
+        _ => KernelRuleDecision::allow(action_id),
+    });
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-context".to_string(),
+        location_id: "loc-missing".to_string(),
+    });
+    let denied = kernel.step().expect("first agent registration rejected");
+    match denied.kind {
+        WorldEventKind::ActionRejected { reason } => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("loc-ready is required")));
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+    assert!(
+        !kernel.model().agents.contains_key("agent-context"),
+        "denied action must keep model unchanged"
+    );
+
+    kernel.submit_action(register_location_action("loc-ready"));
+    let location_event = kernel.step().expect("register ready location");
+    match location_event.kind {
+        WorldEventKind::LocationRegistered { location_id, .. } => {
+            assert_eq!(location_id, "loc-ready");
+        }
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-context".to_string(),
+        location_id: "loc-ignored".to_string(),
+    });
+    let accepted = kernel.step().expect("second agent registration accepted");
+    match accepted.kind {
+        WorldEventKind::AgentRegistered {
+            agent_id,
+            location_id,
+            ..
+        } => {
+            assert_eq!(agent_id, "agent-context");
+            assert_eq!(location_id, "loc-ready");
+        }
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+}
+
+#[test]
 fn kernel_conflicting_modify_decisions_are_denied() {
     let mut kernel = WorldKernel::new();
     kernel.add_pre_action_rule_hook(|action_id, _, _| {
