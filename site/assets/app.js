@@ -208,6 +208,10 @@
     let rafId = 0;
     let lastFrameAt = 0;
     let sweepX = 0;
+    let pointerX = -1;
+    let pointerY = -1;
+    let pointerActive = false;
+    let pointerEnergy = 0;
 
     /** @type {Array<{x:number,y:number,vx:number,vy:number,size:number}>} */
     let nodes = [];
@@ -253,10 +257,41 @@
       rebuildNodes();
     };
 
+    const setPointer = (clientX, clientY, boost = 1) => {
+      const rect = canvas.getBoundingClientRect();
+      pointerX = Math.max(0, Math.min(width, clientX - rect.left));
+      pointerY = Math.max(0, Math.min(height, clientY - rect.top));
+      pointerActive = true;
+      pointerEnergy = Math.min(1, Math.max(pointerEnergy, boost));
+    };
+
+    const fadePointer = () => {
+      pointerActive = false;
+    };
+
     const stepNodes = () => {
+      const interactionRadius = width < 680 ? 105 : 148;
+      const interactionRadiusSquare = interactionRadius * interactionRadius;
+      const interactionScale = 0.075 * (0.38 + pointerEnergy * 0.62);
+
       for (const node of nodes) {
+        if (pointerEnergy > 0 && pointerX >= 0 && pointerY >= 0) {
+          const dx = node.x - pointerX;
+          const dy = node.y - pointerY;
+          const distanceSquare = dx * dx + dy * dy;
+          if (distanceSquare < interactionRadiusSquare) {
+            const distance = Math.max(1, Math.sqrt(distanceSquare));
+            const pull = Math.pow(1 - distance / interactionRadius, 1.9) * interactionScale;
+            node.vx += (dx / distance) * pull;
+            node.vy += (dy / distance) * pull;
+          }
+        }
+
         node.x += node.vx;
         node.y += node.vy;
+
+        node.vx *= 0.994;
+        node.vy *= 0.994;
 
         if (node.x <= 0 || node.x >= width) {
           node.vx *= -1;
@@ -270,13 +305,29 @@
     };
 
     const drawGridScan = () => {
-      sweepX = (sweepX + 0.85) % (width + 180);
+      const sweepSpeed = 0.82 * (1 + pointerEnergy * 1.7);
+      sweepX = (sweepX + sweepSpeed) % (width + 180);
       const gradient = context.createLinearGradient(sweepX - 170, 0, sweepX + 40, 0);
       gradient.addColorStop(0, "rgba(68, 231, 197, 0)");
-      gradient.addColorStop(0.55, "rgba(68, 231, 197, 0.1)");
+      gradient.addColorStop(0.55, `rgba(68, 231, 197, ${0.1 + pointerEnergy * 0.08})`);
       gradient.addColorStop(1, "rgba(68, 231, 197, 0)");
       context.fillStyle = gradient;
       context.fillRect(0, 0, width, height);
+
+      if (pointerEnergy > 0.02 && pointerX >= 0 && pointerY >= 0) {
+        const halo = context.createRadialGradient(
+          pointerX,
+          pointerY,
+          0,
+          pointerX,
+          pointerY,
+          125 + pointerEnergy * 35,
+        );
+        halo.addColorStop(0, `rgba(124, 241, 139, ${0.19 * pointerEnergy})`);
+        halo.addColorStop(1, "rgba(124, 241, 139, 0)");
+        context.fillStyle = halo;
+        context.fillRect(0, 0, width, height);
+      }
     };
 
     const drawLinksAndNodes = () => {
@@ -294,7 +345,8 @@
             continue;
           }
           const distance = Math.sqrt(distanceSquare);
-          const alpha = Math.pow(1 - distance / maxDistance, 1.8) * 0.24;
+          const alphaBoost = pointerEnergy > 0 ? pointerEnergy * 0.1 : 0;
+          const alpha = Math.pow(1 - distance / maxDistance, 1.8) * (0.24 + alphaBoost);
           context.strokeStyle = `rgba(110, 213, 235, ${alpha})`;
           context.lineWidth = 1;
           context.beginPath();
@@ -305,7 +357,16 @@
       }
 
       for (const node of nodes) {
-        context.fillStyle = "rgba(132, 255, 188, 0.72)";
+        let nodeAlpha = 0.72;
+        if (pointerEnergy > 0 && pointerX >= 0 && pointerY >= 0) {
+          const dx = node.x - pointerX;
+          const dy = node.y - pointerY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 130) {
+            nodeAlpha = 0.72 + (1 - dist / 130) * 0.24 * pointerEnergy;
+          }
+        }
+        context.fillStyle = `rgba(132, 255, 188, ${Math.min(1, nodeAlpha)})`;
         context.beginPath();
         context.arc(node.x, node.y, node.size, 0, Math.PI * 2);
         context.fill();
@@ -324,6 +385,13 @@
       }
       lastFrameAt = now;
 
+      if (!pointerActive) {
+        pointerEnergy *= 0.94;
+        if (pointerEnergy < 0.01) {
+          pointerEnergy = 0;
+        }
+      }
+
       context.clearRect(0, 0, width, height);
       drawGridScan();
       stepNodes();
@@ -334,12 +402,42 @@
     resize();
     window.addEventListener("resize", resize, { passive: true });
 
+    const heroSection = canvas.closest(".section-hero");
+    if (heroSection) {
+      heroSection.addEventListener(
+        "pointermove",
+        (event) => {
+          setPointer(event.clientX, event.clientY, event.pointerType === "touch" ? 0.75 : 1);
+        },
+        { passive: true },
+      );
+      heroSection.addEventListener(
+        "pointerdown",
+        (event) => {
+          setPointer(event.clientX, event.clientY, 1);
+        },
+        { passive: true },
+      );
+      heroSection.addEventListener("pointerleave", fadePointer, { passive: true });
+      heroSection.addEventListener("pointercancel", fadePointer, { passive: true });
+      heroSection.addEventListener(
+        "pointerup",
+        (event) => {
+          if (event.pointerType === "touch") {
+            fadePointer();
+          }
+        },
+        { passive: true },
+      );
+    }
+
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         if (rafId) {
           window.cancelAnimationFrame(rafId);
           rafId = 0;
         }
+        pointerActive = false;
         return;
       }
       if (!rafId) {
