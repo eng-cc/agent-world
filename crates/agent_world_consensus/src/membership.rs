@@ -630,7 +630,7 @@ pub struct MembershipRevocationSyncReport {
 
 #[derive(Clone)]
 pub struct MembershipSyncClient {
-    network: Arc<dyn DistributedNetwork + Send + Sync>,
+    pub(crate) network: Arc<dyn DistributedNetwork + Send + Sync>,
 }
 
 impl MembershipSyncClient {
