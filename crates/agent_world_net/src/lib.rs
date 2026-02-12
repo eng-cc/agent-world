@@ -1,10 +1,10 @@
 //! Network-focused facade for distributed runtime capabilities.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{ModuleArtifact, ModuleManifest, WorldError};
+use agent_world::runtime::{ExecutionWriteResult, ModuleArtifact, ModuleManifest, WorldError};
 use agent_world_proto::distributed as proto_distributed;
 use agent_world_proto::distributed::WorldHeadAnnounce;
 use agent_world_proto::distributed_dht as proto_dht;
@@ -13,11 +13,9 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 pub use agent_world::runtime::{
-    publish_execution_providers, publish_execution_providers_cached, publish_world_head,
-    query_providers, CachedDht, DhtCacheConfig, DistributedIndexStore, HeadFollowReport,
-    HeadFollower, HeadIndexRecord, HeadSyncReport, HeadSyncResult, HeadUpdateDecision,
-    InMemoryIndexStore, IndexPublishResult, ObserverClient, ObserverSubscription, ProviderCache,
-    ProviderCacheConfig,
+    CachedDht, DhtCacheConfig, DistributedIndexStore, HeadFollowReport, HeadFollower,
+    HeadIndexRecord, HeadSyncReport, HeadSyncResult, HeadUpdateDecision, InMemoryIndexStore,
+    ObserverClient, ObserverSubscription, ProviderCache, ProviderCacheConfig,
 };
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
@@ -172,6 +170,80 @@ impl proto_dht::DistributedDht<WorldError> for InMemoryDht {
         let memberships = self.memberships.lock().expect("lock memberships");
         Ok(memberships.get(world_id).cloned())
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct IndexPublishResult {
+    pub world_id: String,
+    pub published: usize,
+}
+
+pub fn publish_world_head(
+    dht: &impl DistributedDht,
+    head: &WorldHeadAnnounce,
+) -> Result<(), WorldError> {
+    dht.put_world_head(&head.world_id, head)
+}
+
+pub fn publish_execution_providers(
+    dht: &impl DistributedDht,
+    world_id: &str,
+    provider_id: &str,
+    result: &ExecutionWriteResult,
+) -> Result<IndexPublishResult, WorldError> {
+    let hashes = collect_execution_hashes(result);
+
+    let mut published = 0usize;
+    for hash in hashes {
+        dht.publish_provider(world_id, &hash, provider_id)?;
+        published = published.saturating_add(1);
+    }
+
+    Ok(IndexPublishResult {
+        world_id: world_id.to_string(),
+        published,
+    })
+}
+
+pub fn publish_execution_providers_cached(
+    cache: &ProviderCache,
+    world_id: &str,
+    result: &ExecutionWriteResult,
+) -> Result<IndexPublishResult, WorldError> {
+    let hashes = collect_execution_hashes(result);
+
+    let mut published = 0usize;
+    for hash in hashes {
+        cache.register_local_content(world_id, &hash)?;
+        published = published.saturating_add(1);
+    }
+
+    Ok(IndexPublishResult {
+        world_id: world_id.to_string(),
+        published,
+    })
+}
+
+pub fn query_providers(
+    dht: &impl DistributedDht,
+    world_id: &str,
+    content_hash: &str,
+) -> Result<Vec<ProviderRecord>, WorldError> {
+    dht.get_providers(world_id, content_hash)
+}
+
+fn collect_execution_hashes(result: &ExecutionWriteResult) -> HashSet<String> {
+    let mut hashes: HashSet<String> = HashSet::new();
+    hashes.insert(result.block_ref.content_hash.clone());
+    hashes.insert(result.snapshot_manifest_ref.content_hash.clone());
+    hashes.insert(result.journal_segments_ref.content_hash.clone());
+    for chunk in &result.snapshot_manifest.chunks {
+        hashes.insert(chunk.content_hash.clone());
+    }
+    for segment in &result.journal_segments {
+        hashes.insert(segment.content_hash.clone());
+    }
+    hashes
 }
 
 #[derive(Clone)]
@@ -456,10 +528,16 @@ pub use agent_world::runtime::{Libp2pNetwork, Libp2pNetworkConfig};
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
+    use std::fs;
     use std::sync::{Arc, Mutex};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
+    use agent_world::runtime::{
+        store_execution_result, Action, ExecutionWriteConfig, LocalCasStore,
+    };
     use agent_world::runtime::{ModuleKind, ModuleLimits, ModuleRole};
+    use agent_world::{GeoPos, World};
     use agent_world_proto::distributed_dht::DistributedDht as _;
     use agent_world_proto::distributed_net::DistributedNetwork as _;
 
@@ -469,8 +547,17 @@ mod tests {
     fn net_exports_are_available() {
         let _ = std::any::type_name::<NetworkMessage>();
         let _ = std::any::type_name::<DistributedClient>();
+        let _ = std::any::type_name::<IndexPublishResult>();
         let _ = std::any::type_name::<SubmitActionReceipt>();
         let _ = std::any::type_name::<HeadFollower>();
+    }
+
+    fn temp_dir(prefix: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration since epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
     }
 
     #[test]
@@ -589,6 +676,116 @@ mod tests {
 
         let loaded = dht.get_membership_directory("w1").expect("get membership");
         assert_eq!(loaded, Some(snapshot));
+    }
+
+    #[test]
+    fn publish_execution_providers_indexes_all_hashes() {
+        let dir = temp_dir("index");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        let write = store_execution_result(
+            "w1",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write");
+
+        let dht = InMemoryDht::new();
+        let result =
+            publish_execution_providers(&dht, "w1", "store-1", &write).expect("publish providers");
+        assert!(result.published > 0);
+
+        let mut expected = HashSet::new();
+        expected.insert(write.block_ref.content_hash.clone());
+        expected.insert(write.snapshot_manifest_ref.content_hash.clone());
+        expected.insert(write.journal_segments_ref.content_hash.clone());
+        for chunk in &write.snapshot_manifest.chunks {
+            expected.insert(chunk.content_hash.clone());
+        }
+        for segment in &write.journal_segments {
+            expected.insert(segment.content_hash.clone());
+        }
+
+        for hash in expected {
+            let providers = query_providers(&dht, "w1", &hash).expect("get providers");
+            assert!(!providers.is_empty());
+            assert_eq!(providers[0].provider_id, "store-1");
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn publish_execution_providers_cached_indexes_all_hashes() {
+        let dir = temp_dir("index-cache");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        let write = store_execution_result(
+            "w1",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write");
+
+        let dht = InMemoryDht::new();
+        let index_store = InMemoryIndexStore::new();
+        let cache = ProviderCache::new(
+            Arc::new(dht.clone()),
+            Arc::new(index_store),
+            "store-1",
+            ProviderCacheConfig::default(),
+        );
+
+        let result =
+            publish_execution_providers_cached(&cache, "w1", &write).expect("publish providers");
+        assert!(result.published > 0);
+
+        let mut expected = HashSet::new();
+        expected.insert(write.block_ref.content_hash.clone());
+        expected.insert(write.snapshot_manifest_ref.content_hash.clone());
+        expected.insert(write.journal_segments_ref.content_hash.clone());
+        for chunk in &write.snapshot_manifest.chunks {
+            expected.insert(chunk.content_hash.clone());
+        }
+        for segment in &write.journal_segments {
+            expected.insert(segment.content_hash.clone());
+        }
+
+        for hash in expected {
+            let providers = query_providers(&dht, "w1", &hash).expect("get providers");
+            assert!(!providers.is_empty());
+            assert_eq!(providers[0].provider_id, "store-1");
+        }
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[derive(Default)]
