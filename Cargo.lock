@@ -164,6 +164,7 @@ dependencies = [
  "agent_world",
  "agent_world_proto",
  "serde",
+ "serde_cbor",
  "serde_json",
 ]
 

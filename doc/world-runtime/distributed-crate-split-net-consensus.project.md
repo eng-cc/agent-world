@@ -27,7 +27,7 @@
 - [x] T24：完成十次扩展阶段回归验证与文档收口。
 - [x] T25：将 `distributed_consensus` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [x] T26：完成十一次扩展阶段回归验证与文档收口。
-- [ ] T27：将 `distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T27：将 `distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
 - [ ] T28：完成十二次扩展阶段回归验证与文档收口。
 
 ## 依赖
@@ -64,6 +64,6 @@
 - `crates/agent_world_consensus/src/mempool.rs`
 
 ## 状态
-- 当前阶段：十二次扩展阶段进行中（T27 进行中）。
-- 下一步：完成 lease/mempool 迁移并执行扩展回归验证。
+- 当前阶段：十二次扩展阶段进行中（T28 进行中）。
+- 下一步：执行十二次扩展阶段回归验证并完成文档收口。
 - 最近更新：2026-02-12
