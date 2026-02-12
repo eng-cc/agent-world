@@ -93,7 +93,7 @@
               </article>
               <article class="metric-box">
                 <strong data-counter-target="3">0</strong>
-                <span>标准运行路径</span>
+                <span>运行模式（离线 / 在线脚本 / 在线 LLM）</span>
               </article>
               <article class="metric-box">
                 <strong data-counter-target="90">0</strong>
@@ -304,6 +304,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
           <span>证据覆盖：3 个标准场景</span>
           <span>路径覆盖：Offline Replay + Live Viewer</span>
           <span>落地覆盖：命令、事件、截图</span>
+          <span>近期更新：Hero 动效层 + 指针联动 + 架构图精修</span>
         </div>
         <div class="proof-timeline" data-proof-timeline>
           <article class="proof-timeline-item" data-proof-event="minimal" data-proof-visible="true">
@@ -342,14 +343,19 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010</code></p
             <p>完成规则循环、快照与日志，具备可复现实验基础。</p>
           </article>
           <article class="timeline-item">
-            <span class="status-tag active">进行中</span>
+            <span class="status-tag done">已完成</span>
             <h3>M3 · Runtime 与模块扩展</h3>
-            <p>增强运行时能力与可组合模块接口，降低策略接入成本。</p>
+            <p>Agent 运行时、模块接口与可观测性主线已完成并稳定收口。</p>
+          </article>
+          <article class="timeline-item">
+            <span class="status-tag active">进行中</span>
+            <h3>M4 · 社会系统（电力 / 硬件 / 数据）</h3>
+            <p>推进制度与经济闭环，聚焦可持续演化的社会经济约束。</p>
           </article>
           <article class="timeline-item">
             <span class="status-tag next">下一阶段</span>
-            <h3>M4 / M5 · 社会经济与观测增强</h3>
-            <p>补齐复杂制度建模与高负载观测工具链。</p>
+            <h3>M5 · 可视化与调试增强</h3>
+            <p>继续提升高负载观测、压测基线与可视化诊断工具链。</p>
           </article>
         </div>
       </section>

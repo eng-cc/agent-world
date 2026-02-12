@@ -26,10 +26,11 @@
 - 对外展示站点（GitHub Pages）：`https://eng-cc.github.io/agent-world/`
   - 中文：`https://eng-cc.github.io/agent-world/`
   - English: `https://eng-cc.github.io/agent-world/en/`
-  - 三期优化亮点（2026-02-10）：
-    - 首屏改为“体验优先”双 CTA（30 秒快速体验 / 设计文档）
-    - 新增“三段式理解路径”（30 秒 / 3 分钟 / 30 分钟）
-    - 新增“真实运行证据”模块（命令闭环、事件样例、近期更新）
+  - 近期优化亮点（截至 2026-02-12）：
+    - 四期改版：信息架构瘦身（双语同构）与视觉层级重构
+    - Hero 动态背景层（Canvas 轻量粒子 + 连线 + 扫描光带）
+    - Hero 指针微交互（鼠标/触摸联动，含 reduced-motion 降级）
+    - 架构图 SVG 精修（主链路、证据总线、反馈环路层次增强）
 - 设计文档：`doc/world-simulator.md`
 - 项目管理文档：`doc/world-simulator.project.md`
 - 任务日志：`doc/devlog/`
