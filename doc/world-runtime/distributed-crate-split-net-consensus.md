@@ -23,6 +23,12 @@
   - `agent_world` 保持兼容 API，不改变现有对外行为与语义。
 - 通过定向编译/测试验证迁移不回归。
 
+### In Scope（二次扩展阶段）
+- 继续推进 `agent_world_net` 的网络基础设施下沉：
+  - 将 `distributed_dht` 的核心实现（`DistributedDht` / `InMemoryDht`）下沉到 `agent_world_net`。
+  - `MembershipDirectorySnapshot` / `ProviderRecord` 由 `agent_world_proto` 驱动，避免重复协议定义。
+- 保持 `agent_world` 与现有测试行为兼容；迁移过程允许短期共存（runtime 侧保留实现，新 crate 侧提供并行实现）。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -50,8 +56,11 @@
 - P4：编译与定向测试回归通过，项目文档收口。
 - P5：`distributed_net` 核心实现下沉到 `agent_world_net`。
 - P6：扩展阶段回归验证与文档收口。
+- P7：`distributed_dht` 核心实现下沉到 `agent_world_net`。
+- P8：二次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
 - 导出项过多时，维护成本上升；需要后续按使用频率做分组收敛。
 - feature 透传（尤其 `libp2p`）若配置不完整，可能导致构建行为与预期不一致。
+- 迁移期间若同名类型在 runtime 与新 crate 并行存在，可能引入调用方误用；需要通过文档和导出边界降低歧义。
