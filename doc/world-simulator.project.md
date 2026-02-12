@@ -194,7 +194,7 @@
 - [x] 输出 KWM 设计文档（`doc/world-simulator/kernel-rule-wasm-module-governance.md`）
 - [x] 输出 KWM 项目管理文档（`doc/world-simulator/kernel-rule-wasm-module-governance.project.md`）
 - [x] KWM-1 wasm rule artifact 注册表与按 hash 激活 API
-- [ ] KWM-2 装载治理测试（missing hash / 冲突注册 / 激活成功路径）
+- [x] KWM-2 装载治理测试（missing hash / 冲突注册 / 激活成功路径）
 - [ ] KWM-3 回归验证与文档收口
 
 ## 依赖
@@ -205,4 +205,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 KWS（规则 Wasm Sandbox 桥接）阶段收口，已打通 `WorldKernel` 到 `ModuleSandbox` 的 pre-action 调用路径（2026-02-12）
+- 最近更新：完成 KWM-2（装载治理测试），补齐 missing hash / 冲突注册 / 激活成功路径（2026-02-12）

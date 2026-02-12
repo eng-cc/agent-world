@@ -224,3 +224,73 @@ fn kernel_wasm_sandbox_bridge_failure_is_rejected_with_rule_denied_note() {
         other => panic!("unexpected event kind: {other:?}"),
     }
 }
+
+#[test]
+fn kernel_wasm_artifact_registry_activation_fails_when_hash_missing() {
+    let mut kernel = WorldKernel::new();
+    let sandbox = Arc::new(Mutex::new(CapturingSandbox::new(Ok(empty_output()))));
+    let error = kernel
+        .set_pre_action_wasm_rule_module_from_registry(
+            "rule.module",
+            "hash-missing",
+            "call",
+            ModuleLimits::unbounded(),
+            Arc::clone(&sandbox),
+        )
+        .expect_err("missing hash should fail activation");
+    assert!(error.contains("pre-action wasm artifact missing"));
+    assert!(error.contains("hash-missing"));
+}
+
+#[test]
+fn kernel_wasm_artifact_registry_rejects_conflicting_duplicate_hash() {
+    let mut kernel = WorldKernel::new();
+    kernel
+        .register_pre_action_wasm_rule_artifact("hash-dup", vec![0x00, 0x61, 0x73, 0x6d])
+        .expect("first registration should pass");
+    kernel
+        .register_pre_action_wasm_rule_artifact("hash-dup", vec![0x00, 0x61, 0x73, 0x6d])
+        .expect("same bytes idempotent registration should pass");
+
+    let error = kernel
+        .register_pre_action_wasm_rule_artifact("hash-dup", vec![0x01, 0x02, 0x03, 0x04])
+        .expect_err("same hash with different bytes should fail");
+    assert!(error.contains("already registered with different bytes"));
+}
+
+#[test]
+fn kernel_wasm_artifact_registry_activation_uses_registered_bytes() {
+    let mut kernel = WorldKernel::new();
+    let wasm_bytes = vec![0x00, 0x61, 0x73, 0x6d, 0x01, 0x00];
+    kernel
+        .register_pre_action_wasm_rule_artifact("hash-registered", wasm_bytes.clone())
+        .expect("register artifact");
+
+    let sandbox = Arc::new(Mutex::new(CapturingSandbox::new(Ok(empty_output()))));
+    kernel
+        .set_pre_action_wasm_rule_module_from_registry(
+            "rule.module",
+            "hash-registered",
+            "call",
+            ModuleLimits::unbounded(),
+            Arc::clone(&sandbox),
+        )
+        .expect("activate module from registry");
+
+    kernel.submit_action(register_location_action("loc-from-registry"));
+    let event = kernel.step().expect("activation from registry should run");
+    match event.kind {
+        WorldEventKind::LocationRegistered { location_id, .. } => {
+            assert_eq!(location_id, "loc-from-registry");
+        }
+        other => panic!("unexpected event kind: {other:?}"),
+    }
+
+    let requests = sandbox.lock().expect("lock sandbox").requests.clone();
+    assert_eq!(requests.len(), 1);
+    let request = &requests[0];
+    assert_eq!(request.module_id, "rule.module");
+    assert_eq!(request.wasm_hash, "hash-registered");
+    assert_eq!(request.entrypoint, "call");
+    assert_eq!(request.wasm_bytes, wasm_bytes);
+}
