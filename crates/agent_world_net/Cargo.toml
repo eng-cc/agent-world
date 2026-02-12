@@ -6,4 +6,9 @@ edition = "2021"
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = []
+libp2p = ["agent_world/libp2p"]
+
 [dependencies]
+agent_world = { path = "../agent_world", default-features = false }

@@ -7,3 +7,4 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+agent_world = { path = "../agent_world", default-features = false }
