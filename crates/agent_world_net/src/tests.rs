@@ -25,6 +25,11 @@ fn net_exports_are_available() {
     let _ = std::any::type_name::<InMemoryIndexStore>();
     let _ = std::any::type_name::<ProviderCache>();
     let _ = std::any::type_name::<ProviderCacheConfig>();
+    let _ = std::any::type_name::<ObserverClient>();
+    let _ = std::any::type_name::<ObserverSubscription>();
+    let _ = std::any::type_name::<HeadSyncResult>();
+    let _ = std::any::type_name::<HeadSyncReport>();
+    let _ = std::any::type_name::<HeadFollowReport>();
     let _ = std::any::type_name::<IndexPublishResult>();
     let _ = std::any::type_name::<SubmitActionReceipt>();
     let _ = std::any::type_name::<HeadFollower>();
