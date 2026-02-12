@@ -392,3 +392,95 @@ fn canonical_or_original(path: &Path) -> PathBuf {
 fn normalize_artifact_name(name: &str) -> String {
     name.replace('-', "_")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    fn sample_request() -> BuildRequest {
+        BuildRequest {
+            module_id: "test.module".to_string(),
+            manifest_path: PathBuf::from("/tmp/module/Cargo.toml"),
+            out_dir: PathBuf::from("/tmp/out"),
+            target: DEFAULT_TARGET.to_string(),
+            profile: DEFAULT_PROFILE.to_string(),
+            dry_run: false,
+        }
+    }
+
+    #[test]
+    fn validate_request_rejects_empty_module_id() {
+        let mut request = sample_request();
+        request.module_id = "  ".to_string();
+        let error = validate_request(&request).expect_err("expected empty module id to fail");
+        assert!(matches!(error, BuildError::InvalidArgument(_)));
+    }
+
+    #[test]
+    fn validate_request_rejects_invalid_profile() {
+        let mut request = sample_request();
+        request.profile = "staging".to_string();
+        let error = validate_request(&request).expect_err("expected invalid profile to fail");
+        assert!(matches!(error, BuildError::InvalidArgument(_)));
+    }
+
+    #[test]
+    fn validate_request_rejects_empty_manifest_path() {
+        let mut request = sample_request();
+        request.manifest_path = PathBuf::new();
+        let error = validate_request(&request).expect_err("expected empty manifest path to fail");
+        assert!(matches!(error, BuildError::InvalidArgument(_)));
+    }
+
+    #[test]
+    fn resolve_artifact_path_maps_profile_directory() {
+        let metadata = CargoMetadata {
+            packages: Vec::new(),
+            target_directory: "/tmp/target".to_string(),
+        };
+        let release = resolve_artifact_path(&metadata, DEFAULT_TARGET, "release", "demo_module");
+        let dev = resolve_artifact_path(&metadata, DEFAULT_TARGET, "dev", "demo_module");
+
+        assert_eq!(
+            release,
+            Path::new("/tmp/target")
+                .join(DEFAULT_TARGET)
+                .join("release")
+                .join("demo_module.wasm")
+        );
+        assert_eq!(
+            dev,
+            Path::new("/tmp/target")
+                .join(DEFAULT_TARGET)
+                .join("debug")
+                .join("demo_module.wasm")
+        );
+    }
+
+    #[test]
+    fn find_wasm_target_prefers_cdylib_and_normalizes_name() {
+        let package = CargoPackage {
+            manifest_path: "/tmp/module/Cargo.toml".to_string(),
+            targets: vec![
+                CargoTarget {
+                    name: "demo-lib".to_string(),
+                    kind: vec!["lib".to_string()],
+                },
+                CargoTarget {
+                    name: "demo-cdylib".to_string(),
+                    kind: vec!["cdylib".to_string()],
+                },
+            ],
+        };
+
+        let target_name =
+            find_wasm_target_name(&package).expect("expected cdylib target to be selected");
+        assert_eq!(target_name, "demo_cdylib");
+    }
+
+    #[test]
+    fn normalize_artifact_name_replaces_hyphen() {
+        assert_eq!(normalize_artifact_name("alpha-beta"), "alpha_beta");
+    }
+}

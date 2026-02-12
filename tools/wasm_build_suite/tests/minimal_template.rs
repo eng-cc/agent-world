@@ -1,0 +1,115 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use wasm_build_suite::{run_build, BuildMetadata, BuildRequest, DEFAULT_TARGET};
+
+fn template_manifest_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("templates")
+        .join("minimal_module")
+        .join("Cargo.toml")
+}
+
+fn unique_temp_dir(prefix: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+}
+
+fn has_target_installed(target: &str) -> bool {
+    let output = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output();
+    let Ok(output) = output else {
+        return false;
+    };
+    output.status.success()
+        && String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .any(|line| line.trim() == target)
+}
+
+#[test]
+fn minimal_template_dry_run_resolves_paths() {
+    let out_dir = unique_temp_dir("wasm-build-suite-dry-run");
+    let module_id = "kwt.template.dryrun";
+    let request = BuildRequest {
+        module_id: module_id.to_string(),
+        manifest_path: template_manifest_path(),
+        out_dir: out_dir.clone(),
+        target: DEFAULT_TARGET.to_string(),
+        profile: "dev".to_string(),
+        dry_run: true,
+    };
+
+    let output = run_build(&request).expect("dry-run build should succeed");
+    assert!(output.dry_run);
+    assert!(output
+        .source_artifact_path
+        .ends_with("wasm32-unknown-unknown/debug/minimal_wasm_module.wasm"));
+    assert_eq!(
+        output.packaged_wasm_path,
+        out_dir.join(format!("{module_id}.wasm"))
+    );
+    assert_eq!(
+        output.metadata_path,
+        out_dir.join(format!("{module_id}.metadata.json"))
+    );
+    assert!(output.wasm_hash_sha256.is_none());
+    assert!(output.wasm_size_bytes.is_none());
+}
+
+#[test]
+fn minimal_template_real_build_writes_wasm_and_metadata() {
+    if !has_target_installed(DEFAULT_TARGET) {
+        eprintln!(
+            "skip minimal_template_real_build_writes_wasm_and_metadata: target {DEFAULT_TARGET} is not installed"
+        );
+        return;
+    }
+
+    let out_dir = unique_temp_dir("wasm-build-suite-build");
+    let module_id = "kwt.template.real";
+    let request = BuildRequest {
+        module_id: module_id.to_string(),
+        manifest_path: template_manifest_path(),
+        out_dir: out_dir.clone(),
+        target: DEFAULT_TARGET.to_string(),
+        profile: "dev".to_string(),
+        dry_run: false,
+    };
+
+    let output = run_build(&request).expect("real build should succeed");
+    assert!(!output.dry_run);
+    assert!(output.packaged_wasm_path.exists());
+    assert!(output.metadata_path.exists());
+    assert_eq!(
+        output.wasm_size_bytes,
+        Some(
+            fs::metadata(&output.packaged_wasm_path)
+                .expect("read wasm metadata")
+                .len()
+        )
+    );
+    assert_eq!(
+        output.wasm_hash_sha256.as_ref().map(|hash| hash.len()),
+        Some(64)
+    );
+
+    let metadata_bytes = fs::read(&output.metadata_path).expect("read metadata json");
+    let metadata: BuildMetadata =
+        serde_json::from_slice(&metadata_bytes).expect("parse metadata json");
+    assert_eq!(metadata.module_id, module_id);
+    assert_eq!(metadata.target, DEFAULT_TARGET);
+    assert_eq!(metadata.profile, "dev");
+    assert_eq!(
+        metadata.packaged_wasm_path,
+        output.packaged_wasm_path.to_string_lossy()
+    );
+
+    let _ = fs::remove_dir_all(out_dir);
+}
