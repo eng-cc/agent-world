@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use agent_world::runtime::{BlobStore, World, WorldError};
 use agent_world_proto::distributed::WorldHeadAnnounce;
 
-use crate::observer_replay::{replay_validate_with_head, replay_validate_with_head_and_dht};
+use crate::bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
 use crate::{DistributedClient, DistributedDht};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,23 +136,4 @@ fn compare_heads(a: &WorldHeadAnnounce, b: &WorldHeadAnnounce) -> Ordering {
         .cmp(&b.height)
         .then_with(|| a.timestamp_ms.cmp(&b.timestamp_ms))
         .then_with(|| a.block_hash.cmp(&b.block_hash))
-}
-
-fn bootstrap_world_from_head(
-    head: &WorldHeadAnnounce,
-    client: &DistributedClient,
-    store: &impl BlobStore,
-) -> Result<World, WorldError> {
-    let result = replay_validate_with_head(head, client, store)?;
-    World::from_snapshot(result.snapshot, result.journal)
-}
-
-fn bootstrap_world_from_head_with_dht(
-    head: &WorldHeadAnnounce,
-    dht: &impl DistributedDht,
-    client: &DistributedClient,
-    store: &impl BlobStore,
-) -> Result<World, WorldError> {
-    let result = replay_validate_with_head_and_dht(head, dht, client, store)?;
-    World::from_snapshot(result.snapshot, result.journal)
 }
