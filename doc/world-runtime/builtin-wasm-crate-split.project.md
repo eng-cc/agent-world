@@ -5,6 +5,10 @@
 - [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）。
 - [x] BMS-2 接入构建脚本（调用 Rust->Wasm 构建套件）并补充验证。
 - [x] BMS-3 回归验证、文档与 devlog 收口。
+- [ ] BMS-4 扩展设计与任务拆解（`m1.rule.visibility` / `m1.rule.transfer` 迁移阶段）。
+- [ ] BMS-5 迁移 `m1.rule.visibility` 到独立 wasm crate 并补充验证。
+- [ ] BMS-6 迁移 `m1.rule.transfer` 到独立 wasm crate，扩展构建脚本并补充验证。
+- [ ] BMS-7 回归验证、文档与 devlog 收口。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -12,6 +16,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：已完成（BMS-0~BMS-3）
-- 最近更新：完成 BMS-3（回归验证、文档与 devlog 收口，2026-02-12）。
-- 下一步：按模块清单逐步迁移剩余 builtin 到独立 wasm crate/产物流水线。
+- 当前阶段：BMS-4（进行中）
+- 最近更新：完成 BMS-3（首批迁移收口，2026-02-12）。
+- 下一步：完成 `m1.rule.visibility` / `m1.rule.transfer` 迁移任务。

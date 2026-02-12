@@ -117,6 +117,10 @@
 - [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
 - [x] BMS-2 接入构建脚本并补充验证
 - [x] BMS-3 回归验证与文档收口
+- [ ] BMS-4 扩展设计与任务拆解（`m1.rule.visibility` / `m1.rule.transfer`）
+- [ ] BMS-5 迁移 `m1.rule.visibility` 到独立 wasm crate 并补充验证
+- [ ] BMS-6 迁移 `m1.rule.transfer` 到独立 wasm crate，扩展构建脚本并补充验证
+- [ ] BMS-7 回归验证与文档收口
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -125,5 +129,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：继续评估真实 WASM 执行器接入，并按模块清单迁移剩余 builtin
-- 最近更新：完成 BMS-3（builtin 独立 crate 化阶段收口）（2026-02-12）
+- 下一步：推进 BMS-5/BMS-6，迁移 visibility/transfer 规则模块到独立 wasm crate
+- 最近更新：启动 BMS 第二阶段（visibility/transfer 迁移任务拆解）（2026-02-12）

@@ -10,6 +10,7 @@
 ### In Scope
 - 新增独立 crate（workspace 成员）承载 builtin wasm 模块源码。
 - 首批迁移 `m1.rule.move` 到独立 crate（保守增量）。
+- 继续迁移规则模块 `m1.rule.visibility`、`m1.rule.transfer` 到独立 crate。
 - 新增脚本封装，基于 `scripts/build-wasm-module.sh` 构建该 crate 产物。
 - 补充最小测试与回归命令，确保 crate 可编译、脚本可执行、产物可生成。
 
@@ -24,7 +25,7 @@
   - 导出 wasm-1 ABI 入口：`alloc` + `reduce`（必要时兼容 `call`）
 - 新增构建脚本（草案）：
   - `scripts/build-builtin-wasm-modules.sh`
-  - 默认构建模块：`m1.rule.move`
+  - 默认构建模块：`m1.rule.move`、`m1.rule.visibility`、`m1.rule.transfer`
   - 调用链路：`build-builtin-wasm-modules.sh -> build-wasm-module.sh -> wasm_build_suite`
 - 产物目录（草案）：
   - `.tmp/builtin-wasm/<module-id>.wasm`
@@ -34,6 +35,7 @@
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
 - M2：完成 BMS-2（构建脚本接入与验证）。
 - M3：完成 BMS-3（回归验证、文档和 devlog 收口）。
+- M4：完成 BMS-4~BMS-7（规则模块 `visibility/transfer` 迁移与回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
