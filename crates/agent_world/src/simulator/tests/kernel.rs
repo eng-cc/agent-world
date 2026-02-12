@@ -1103,7 +1103,8 @@ fn kernel_rule_hooks_default_path_keeps_action_behavior() {
     let baseline_kinds = collect_basic_action_sequence(&mut baseline);
 
     let mut with_noop_hooks = WorldKernel::new();
-    with_noop_hooks.add_pre_action_rule_hook(|action_id, _| KernelRuleDecision::allow(action_id));
+    with_noop_hooks
+        .add_pre_action_rule_hook(|action_id, _, _| KernelRuleDecision::allow(action_id));
     with_noop_hooks.add_post_action_rule_hook(|_, _, _| {});
     let hook_kinds = collect_basic_action_sequence(&mut with_noop_hooks);
 
@@ -1116,13 +1117,13 @@ fn kernel_rule_hooks_run_in_registration_order() {
     let trace = Arc::new(Mutex::new(Vec::new()));
 
     let trace_pre_1 = Arc::clone(&trace);
-    kernel.add_pre_action_rule_hook(move |action_id, _| {
+    kernel.add_pre_action_rule_hook(move |action_id, _, _| {
         trace_pre_1.lock().expect("lock trace").push("pre-1");
         KernelRuleDecision::allow(action_id)
     });
 
     let trace_pre_2 = Arc::clone(&trace);
-    kernel.add_pre_action_rule_hook(move |action_id, _| {
+    kernel.add_pre_action_rule_hook(move |action_id, _, _| {
         trace_pre_2.lock().expect("lock trace").push("pre-2");
         KernelRuleDecision::allow(action_id)
     });

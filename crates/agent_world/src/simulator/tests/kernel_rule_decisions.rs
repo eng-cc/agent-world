@@ -48,7 +48,7 @@ fn merge_kernel_rule_decisions_rejects_missing_override() {
 #[test]
 fn kernel_pre_action_rule_deny_rejects_action() {
     let mut kernel = WorldKernel::new();
-    kernel.add_pre_action_rule_hook(|action_id, _| {
+    kernel.add_pre_action_rule_hook(|action_id, _, _| {
         KernelRuleDecision::deny(action_id, vec!["blocked by test hook".to_string()])
     });
 
@@ -75,7 +75,7 @@ fn kernel_pre_action_rule_deny_rejects_action() {
 #[test]
 fn kernel_pre_action_rule_modify_overrides_action() {
     let mut kernel = WorldKernel::new();
-    kernel.add_pre_action_rule_hook(|action_id, _| {
+    kernel.add_pre_action_rule_hook(|action_id, _, _| {
         KernelRuleDecision::modify(action_id, register_location_action("loc-overridden"))
     });
 
@@ -95,10 +95,10 @@ fn kernel_pre_action_rule_modify_overrides_action() {
 #[test]
 fn kernel_conflicting_modify_decisions_are_denied() {
     let mut kernel = WorldKernel::new();
-    kernel.add_pre_action_rule_hook(|action_id, _| {
+    kernel.add_pre_action_rule_hook(|action_id, _, _| {
         KernelRuleDecision::modify(action_id, register_location_action("loc-mod-a"))
     });
-    kernel.add_pre_action_rule_hook(|action_id, _| {
+    kernel.add_pre_action_rule_hook(|action_id, _, _| {
         KernelRuleDecision::modify(action_id, register_location_action("loc-mod-b"))
     });
 
@@ -124,7 +124,7 @@ fn kernel_conflicting_modify_decisions_are_denied() {
 #[test]
 fn post_action_hook_receives_event_after_modify_decision() {
     let mut kernel = WorldKernel::new();
-    kernel.add_pre_action_rule_hook(|action_id, _| {
+    kernel.add_pre_action_rule_hook(|action_id, _, _| {
         KernelRuleDecision::modify(action_id, register_location_action("loc-post-override"))
     });
 

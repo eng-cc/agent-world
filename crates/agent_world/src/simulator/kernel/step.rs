@@ -24,7 +24,7 @@ impl WorldKernel {
 
         let mut decisions = Vec::with_capacity(self.rule_hooks.pre_action.len());
         for hook in &self.rule_hooks.pre_action {
-            decisions.push(hook(action_id, &action));
+            decisions.push(hook(action_id, &action, self));
         }
         let merged_decision =
             self.merge_pre_action_rule_decisions(action_id, decisions.into_iter());

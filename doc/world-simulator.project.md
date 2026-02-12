@@ -172,7 +172,7 @@
 ### 11. 规则 Wasm 化就绪（KWR）
 - [x] 输出 KWR 设计文档（`doc/world-simulator/kernel-rule-wasm-readiness.md`）
 - [x] 输出 KWR 项目管理文档（`doc/world-simulator/kernel-rule-wasm-readiness.project.md`）
-- [ ] KWR-1 pre-action hook 接口扩展为可读取 `&WorldKernel` 上下文
+- [x] KWR-1 pre-action hook 接口扩展为可读取 `&WorldKernel` 上下文
 - [ ] KWR-2 基于上下文的规则测试与兼容回归
 - [ ] KWR-3 回归验证与文档收口
 
