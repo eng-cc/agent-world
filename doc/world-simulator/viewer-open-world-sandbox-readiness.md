@@ -175,3 +175,15 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（179 tests）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+- 已完成 OWR4.3：
+  - 新增自动降级模块 `auto_degrade.rs`，基于渲染压力实现三级降级与回升（带滞回）：
+    - Level 1：收紧 `label_lod.max_visible_labels`；
+    - Level 2：继续收紧标签并关闭 `heat overlay`；
+    - Level 3：继续收紧标签并关闭 `flow overlay`。
+  - 降级策略在压力缓解后按级别回升，并恢复到进入降级前的基线标签与覆盖层开关状态，避免一次降级后长期锁死。
+  - 启动配置新增 `AGENT_WORLD_VIEWER_AUTO_DEGRADE`（默认开启），支持显式关闭自动降级。
+  - 渲染主链路接入：`sample_render_perf_summary` 之后运行 `update_auto_degrade_policy`，确保降级决策使用最新采样窗口。
+- 已完成验证（OWR4.3）：
+  - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（181 tests，含自动降级新增测试）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。

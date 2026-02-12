@@ -3,6 +3,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
+    let auto_degrade_config = auto_degrade_config_from_env();
     let auto_focus_config = auto_focus_config_from_env();
     let viewer_automation_config = viewer_automation_config_from_env();
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
@@ -31,6 +32,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(CopyableTextPanelState::default())
         .insert_resource(OrbitDragState::default())
         .insert_resource(UiI18n::default())
+        .insert_resource(auto_degrade_config)
+        .insert_resource(AutoDegradeState::default())
         .insert_resource(auto_focus_config)
         .insert_resource(AutoFocusState::default())
         .insert_resource(viewer_automation_config)
@@ -103,6 +106,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),
                 sample_render_perf_summary.after(update_grid_line_lod_visibility),
+                update_auto_degrade_policy.after(sample_render_perf_summary),
                 update_3d_viewport,
                 handle_control_buttons,
             ),

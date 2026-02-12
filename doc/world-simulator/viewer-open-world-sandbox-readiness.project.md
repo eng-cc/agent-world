@@ -28,7 +28,7 @@
 ### OWR4 规模化稳定性（对应缺口 5）
 - [x] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
 - [x] OWR4.2 场景对象增量刷新（脏区更新）与回归测试
-- [ ] OWR4.3 自动降级策略（标签/覆盖层分级关闭）
+- [x] OWR4.3 自动降级策略（标签/覆盖层分级关闭）
 - [ ] OWR4.4 压测脚本与报告模板（triad/llm 高负载）
 - [ ] OWR4.5 形成跨版本基线（帧时间、事件吞吐、丢帧/卡顿指标）
 
@@ -46,8 +46,8 @@
 
 ## 状态
 - 当前阶段：OWR1/OWR2/OWR3 已完成（Prompt 控制双端闭环 + VPP5~VPP9）
-- 下一阶段：OWR4.3（自动降级策略）
-- 最近更新：完成 OWR4.2（场景对象增量刷新 + 回归测试），并通过 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（179 tests）与 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`（2026-02-12）
+- 下一阶段：OWR4.4（压测脚本与报告模板）
+- 最近更新：完成 OWR4.3（标签/覆盖层自动降级分级关闭 + 恢复策略），并通过 `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（181 tests）与 `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer`（2026-02-12）
 
 ## 不在本轮
 - TODO-3：动作玩法闭环（发现-采集-加工-建造）。
