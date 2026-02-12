@@ -6,6 +6,7 @@ pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
 pub const M1_VISIBILITY_RULE_MODULE_ID: &str = "m1.rule.visibility";
 pub const M1_TRANSFER_RULE_MODULE_ID: &str = "m1.rule.transfer";
 pub const M1_BODY_MODULE_ID: &str = "m1.body.core";
+pub const M1_SENSOR_MODULE_ID: &str = "m1.sensor.basic";
 const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
@@ -452,6 +453,7 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
         M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(&input),
         M1_TRANSFER_RULE_MODULE_ID => build_transfer_rule_output(&input),
         M1_BODY_MODULE_ID => build_body_module_output(&input),
+        M1_SENSOR_MODULE_ID => build_visibility_rule_output(&input),
         _ => encode_output(empty_output()),
     }
 }
@@ -926,6 +928,54 @@ mod tests {
         assert_eq!(payload["verdict"], json!("deny"));
         let note = payload["notes"][0].as_str().expect("note str");
         assert!(note.starts_with("body action payload decode failed:"));
+    }
+
+    #[test]
+    fn sensor_module_reuses_visibility_behavior() {
+        let mut agents = BTreeMap::new();
+        agents.insert(
+            "agent-1".to_string(),
+            GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+        );
+        agents.insert(
+            "agent-2".to_string(),
+            GeoPos {
+                x_cm: 5.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+        );
+        let state_bytes = serde_cbor::to_vec(&PositionState { agents }).expect("encode state");
+        let action = json!({
+            "id": 51u64,
+            "action": {
+                "type": "QueryObservation",
+                "data": {"agent_id":"agent-1"}
+            }
+        });
+        let input = encode_input(
+            M1_SENSOR_MODULE_ID,
+            999,
+            Some(action),
+            Some(state_bytes),
+            None,
+        );
+
+        let output_bytes = build_module_output(&input);
+        let output: ModuleOutput = serde_cbor::from_slice(&output_bytes).expect("decode output");
+        assert_eq!(output.emits.len(), 1);
+        let payload = &output.emits[0].payload;
+        assert_eq!(payload["action_id"], json!(51u64));
+        assert_eq!(payload["verdict"], json!("modify"));
+        assert_eq!(payload["override_action"]["type"], json!("EmitObservation"));
+        assert_eq!(
+            payload["override_action"]["data"]["observation"]["visible_agents"][0]["agent_id"],
+            json!("agent-2")
+        );
     }
 
     #[test]
