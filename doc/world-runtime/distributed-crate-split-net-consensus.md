@@ -92,6 +92,19 @@
 - 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
 - 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
 
+### In Scope（十三次扩展阶段）
+- 继续推进 `agent_world_consensus` 的 membership 同步核心路径下沉（先做低耦合切片）：
+  - 将 `distributed_membership_sync` 中 `MembershipSyncClient` 及其直接依赖类型下沉到 `agent_world_consensus`：
+    - `MembershipDirectoryAnnounce` / `MembershipKeyRevocationAnnounce`
+    - `MembershipDirectorySigner` / `MembershipDirectorySignerKeyring`
+    - `MembershipSnapshotRestorePolicy` / `MembershipRevocationSyncPolicy`
+    - `MembershipSnapshotAudit*` / `MembershipRestoreAuditReport`
+    - `MembershipAuditStore` / `InMemoryMembershipAuditStore` / `FileMembershipAuditStore`
+    - `MembershipSyncSubscription` / `MembershipSyncReport` / `MembershipRevocationSyncReport`
+  - `recovery` / `reconciliation` 子系统仍暂留 `agent_world::runtime`，由 `agent_world_consensus` 继续桥接导出，避免一次性迁移超大模块。
+- 保持 `agent_world_consensus` 对外导出名与调用语义不变，确保调用方无需改动。
+- 保持 `agent_world` runtime 兼容导出不变，迁移过程允许短期并行实现共存。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -141,6 +154,8 @@
 - P26：十一次扩展阶段回归验证与文档收口。
 - P27：`distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`。
 - P28：十二次扩展阶段回归验证与文档收口。
+- P29：`distributed_membership_sync` 的签名/审计/同步核心（不含 recovery/reconciliation）下沉到 `agent_world_consensus`。
+- P30：十三次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -157,3 +172,4 @@
 - world bootstrap 下沉涉及 head 获取与回放结果装配，若 fallback 路径偏差会导致启动失败，需要保留 head 直连与 DHT 启动路径测试。
 - 共识主流程下沉涉及 quorum 阈值判定、提案/投票终态与快照恢复，若状态机迁移偏差会导致错误提交或恢复失败，需要保留提案冲突、否决终态与快照 round-trip 测试。
 - lease/mempool 下沉涉及主写租约时序与 action 批次切片，若租约续期/过期判定或 payload 约束偏差会导致 leader 抖动与动作丢弃，需要保留租约续期、过期接管与 batch 限流测试。
+- membership sync 核心路径下沉涉及签名验证策略、DHT 恢复与审计落盘，若策略对象或签名载荷行为偏差会导致合法快照被拒或非法快照被接受，需要保留 keyring 签名/验签、restore 审计与 key revocation 策略测试。
