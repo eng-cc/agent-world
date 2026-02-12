@@ -3,9 +3,11 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 mod memory_module;
+mod power_modules;
 mod storage_cargo_module;
 
 use memory_module::build_memory_module_output;
+use power_modules::{build_radiation_power_module_output, build_storage_power_module_output};
 use storage_cargo_module::build_storage_cargo_module_output;
 
 pub const M1_MOVE_RULE_MODULE_ID: &str = "m1.rule.move";
@@ -16,8 +18,16 @@ pub const M1_SENSOR_MODULE_ID: &str = "m1.sensor.basic";
 pub const M1_MOBILITY_MODULE_ID: &str = "m1.mobility.basic";
 pub const M1_MEMORY_MODULE_ID: &str = "m1.memory.core";
 pub const M1_STORAGE_CARGO_MODULE_ID: &str = "m1.storage.cargo";
+pub const M1_RADIATION_POWER_MODULE_ID: &str = "m1.power.radiation_harvest";
+pub const M1_STORAGE_POWER_MODULE_ID: &str = "m1.power.storage";
 const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
 const M1_MEMORY_MAX_ENTRIES: usize = 256;
+const M1_POWER_STORAGE_CAPACITY: i64 = 12;
+const M1_POWER_STORAGE_INITIAL_LEVEL: i64 = 6;
+const M1_POWER_STORAGE_MOVE_COST_PER_KM: i64 = 3;
+const M1_POWER_HARVEST_BASE_PER_TICK: i64 = 1;
+const M1_POWER_HARVEST_DISTANCE_STEP_CM: i64 = 800_000;
+const M1_POWER_HARVEST_DISTANCE_BONUS_CAP: i64 = 1;
 const DEFAULT_VISIBILITY_RANGE_CM: i64 = 10_000_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
@@ -467,6 +477,8 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
         M1_MOBILITY_MODULE_ID => build_move_rule_output(&input),
         M1_MEMORY_MODULE_ID => build_memory_module_output(&input),
         M1_STORAGE_CARGO_MODULE_ID => build_storage_cargo_module_output(&input),
+        M1_RADIATION_POWER_MODULE_ID => build_radiation_power_module_output(&input),
+        M1_STORAGE_POWER_MODULE_ID => build_storage_power_module_output(&input),
         _ => encode_output(empty_output()),
     }
 }

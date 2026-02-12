@@ -30,7 +30,7 @@
 - [x] BMS-26 扩展构建脚本支持 `m1.storage.cargo` 并补充验证。
 - [x] BMS-27 回归验证、文档与 devlog 收口。
 - [x] BMS-28 扩展设计与任务拆解（`m1.power.radiation_harvest` / `m1.power.storage` 迁移阶段）。
-- [ ] BMS-29 迁移 `m1.power.radiation_harvest` / `m1.power.storage` 到独立 wasm crate 并补充验证。
+- [x] BMS-29 迁移 `m1.power.radiation_harvest` / `m1.power.storage` 到独立 wasm crate 并补充验证。
 - [ ] BMS-30 扩展构建脚本支持 `m1.power.radiation_harvest` / `m1.power.storage` 并补充验证。
 - [ ] BMS-31 回归验证、文档与 devlog 收口。
 
@@ -41,5 +41,5 @@
 
 ## 状态
 - 当前阶段：进行中（BMS-28 ~ BMS-31）
-- 最近更新：完成 BMS-28（power 模块迁移阶段文档扩展，2026-02-12）。
-- 下一步：推进 BMS-29，迁移 `m1.power.radiation_harvest` / `m1.power.storage` 到独立 wasm crate 并补充验证。
+- 最近更新：完成 BMS-29（power 模块 wasm 迁移与验证，2026-02-12）。
+- 下一步：推进 BMS-30，扩展构建脚本支持 `m1.power.radiation_harvest` / `m1.power.storage` 并补充验证。
