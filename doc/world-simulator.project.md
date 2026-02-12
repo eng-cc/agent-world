@@ -187,7 +187,7 @@
 - [x] 输出 KWS 设计文档（`doc/world-simulator/kernel-rule-wasm-sandbox-bridge.md`）
 - [x] 输出 KWS 项目管理文档（`doc/world-simulator/kernel-rule-wasm-sandbox-bridge.project.md`）
 - [x] KWS-1 基于 `ModuleSandbox` 的 pre-action wasm 桥接 API 与输入/输出转换
-- [ ] KWS-2 sandbox 桥接测试（请求编码、allow/deny/modify、失败兜底）
+- [x] KWS-2 sandbox 桥接测试（请求编码、allow/deny/modify、失败兜底）
 - [ ] KWS-3 回归验证与文档收口
 
 ## 依赖
