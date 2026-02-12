@@ -170,6 +170,8 @@ version = "0.1.0"
 dependencies = [
  "agent_world",
  "agent_world_proto",
+ "serde",
+ "serde_cbor",
 ]
 
 [[package]]
