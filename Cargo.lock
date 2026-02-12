@@ -158,6 +158,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent_world_builtin_wasm"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_cbor",
+ "serde_json",
+]
+
+[[package]]
 name = "agent_world_consensus"
 version = "0.1.0"
 dependencies = [

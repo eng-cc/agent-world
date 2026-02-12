@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/agent_world",
+    "crates/agent_world_builtin_wasm",
     "crates/agent_world_consensus",
     "crates/agent_world_net",
     "crates/agent_world_proto",

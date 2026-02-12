@@ -114,7 +114,7 @@
 ### 8. Builtin 模块独立 Crate 化（BMS）
 - [x] 输出 BMS 设计文档（`doc/world-runtime/builtin-wasm-crate-split.md`）
 - [x] 输出 BMS 项目管理文档（`doc/world-runtime/builtin-wasm-crate-split.project.md`）
-- [ ] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
+- [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
 - [ ] BMS-2 接入构建脚本并补充验证
 - [ ] BMS-3 回归验证与文档收口
 
@@ -125,5 +125,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成）
-- 下一步：推进 BMS-1（builtin 独立 crate 首模块落地）并继续评估真实 WASM 执行器接入
-- 最近更新：启动 BMS（builtin 模块独立 crate 化）并完成文档初始化（2026-02-12）
+- 下一步：推进 BMS-2（构建脚本接线与验证）并继续评估真实 WASM 执行器接入
+- 最近更新：完成 BMS-1（独立 crate + `m1.rule.move` wasm 样板）（2026-02-12）
