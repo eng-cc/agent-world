@@ -288,7 +288,7 @@ pub(super) fn apply_events_to_scene(
     config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
-    snapshot_time: u64,
+    _snapshot_time: u64,
     events: &[WorldEvent],
 ) {
     let Some(origin) = scene.origin else {
@@ -302,9 +302,6 @@ pub(super) fn apply_events_to_scene(
     let mut processed = false;
 
     for event in events {
-        if event.time <= snapshot_time {
-            continue;
-        }
         if let Some(last_id) = last_event_id {
             if event.id <= last_id {
                 continue;
@@ -834,7 +831,7 @@ fn location_radius_m(radius_cm: i64) -> f32 {
     (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
 }
 
-fn location_visual_radius_cm(
+pub(super) fn location_visual_radius_cm(
     radius_cm: i64,
     fragment_budget: Option<&FragmentResourceBudget>,
 ) -> i64 {
@@ -1164,7 +1161,7 @@ fn agent_module_marker_transforms(height_cm: i64, module_count: usize) -> Vec<Ve
     transforms
 }
 
-fn agent_module_counts_in_snapshot(
+pub(super) fn agent_module_counts_in_snapshot(
     snapshot: &WorldSnapshot,
 ) -> std::collections::HashMap<String, usize> {
     let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();

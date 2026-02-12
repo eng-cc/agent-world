@@ -165,3 +165,13 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（176 tests，含事件窗口采样新增测试）。
   - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
+- 已完成 OWR4.2：
+  - 引入场景增量刷新模块 `scene_dirty_refresh.rs`，将 3D 场景更新拆为“全量重建判定 + 脏区更新”：
+    - 仅在首次快照、时间回退（seek 回放）、空间配置变化、fragment 可见性切换时触发 `rebuild_scene_from_snapshot`；
+    - 常规 tick 走脏区刷新路径，按对象级别更新 location/agent/chunk，避免每 tick 全量销毁与重建。
+  - `apply_events_to_scene` 的事件增量应用改为基于 `last_event_id` 去重，不再受 `event.time <= snapshot_time` 过滤影响，确保“先收 event、后收 snapshot”时也能稳定增量落地。
+  - 为增量刷新补充回归测试（全量重建判定、location/agent 脏区判定）。
+- 已完成验证（OWR4.2）：
+  - `env -u RUSTC_WRAPPER cargo fmt --all` 通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（179 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer` 通过。
