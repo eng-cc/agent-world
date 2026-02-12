@@ -19,6 +19,7 @@ run_cargo() {
 
 run env -u RUSTC_WRAPPER cargo fmt --all -- --check
 run_cargo test
+run_cargo test -p agent_world_net --features libp2p --lib
 run_cargo test -p agent_world --features wasmtime
 run_cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration
 run_cargo test -p agent_world --test viewer_offline_integration
