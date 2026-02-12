@@ -23,6 +23,8 @@
 - [x] T20：完成八次扩展阶段回归验证与文档收口。
 - [x] T21：将 `distributed_observer_replay` 核心实现下沉到 `agent_world_net`，并由 `head_follow` 复用。
 - [x] T22：完成九次扩展阶段回归验证与文档收口。
+- [ ] T23：将 `distributed_bootstrap` 核心实现下沉到 `agent_world_net`，并由 `head_follow` 复用。
+- [ ] T24：完成十次扩展阶段回归验证与文档收口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -48,8 +50,9 @@
 - `crates/agent_world_net/src/head_follow.rs`
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/observer_replay.rs`
+- `crates/agent_world_net/src/bootstrap.rs`
 
 ## 状态
-- 当前阶段：九次扩展阶段已收口（T1~T22 全部完成）。
-- 下一步：按需规划后续 `agent_world_net` / `agent_world_consensus` 进一步物理迁移任务。
+- 当前阶段：十次扩展阶段进行中（T23 进行中）。
+- 下一步：完成 bootstrap 迁移并执行扩展回归验证。
 - 最近更新：2026-02-12
