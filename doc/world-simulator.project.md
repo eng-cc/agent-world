@@ -166,6 +166,7 @@
 - [x] 输出 KRH 项目管理文档（`doc/world-simulator/kernel-rule-hook-foundation.project.md`）
 - [x] KRH-1 内核动作行为基线回归测试（`kernel_action_behavior_snapshot_stays_stable`）
 - [x] KRH-2 `WorldKernel::step` 接入 pre/post Hook（默认 no-op）
+- [x] KRH-3 规则决策结构与合并（deny/modify/allow + merge）
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）

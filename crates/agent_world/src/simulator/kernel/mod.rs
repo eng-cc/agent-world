@@ -45,11 +45,12 @@ impl ChunkRuntimeConfig {
 }
 
 pub use types::{
-    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, PromptUpdateOperation,
-    RejectReason, WorldEvent, WorldEventKind,
+    merge_kernel_rule_decisions, ChunkGenerationCause, KernelRuleCost, KernelRuleDecision,
+    KernelRuleDecisionMergeError, KernelRuleVerdict, Observation, ObservedAgent, ObservedLocation,
+    PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
 };
 
-type PreActionRuleHook = Arc<dyn Fn(ActionId, &Action) + Send + Sync>;
+type PreActionRuleHook = Arc<dyn Fn(ActionId, &Action) -> KernelRuleDecision + Send + Sync>;
 type PostActionRuleHook = Arc<dyn Fn(ActionId, &Action, &WorldEvent) + Send + Sync>;
 
 #[derive(Default, Clone)]
@@ -134,7 +135,7 @@ impl WorldKernel {
 
     pub fn add_pre_action_rule_hook<F>(&mut self, hook: F)
     where
-        F: Fn(ActionId, &Action) + Send + Sync + 'static,
+        F: Fn(ActionId, &Action) -> KernelRuleDecision + Send + Sync + 'static,
     {
         self.rule_hooks.pre_action.push(Arc::new(hook));
     }

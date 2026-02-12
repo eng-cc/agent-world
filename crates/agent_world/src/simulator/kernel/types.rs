@@ -1,13 +1,14 @@
 use crate::geometry::GeoPos;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use super::super::agent::{LlmEffectIntentTrace, LlmEffectReceiptTrace};
 use super::super::chunking::ChunkCoord;
 use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
 use super::super::types::{
-    AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile, ResourceKind,
-    ResourceOwner, WorldEventId, WorldTime,
+    Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile,
+    ResourceKind, ResourceOwner, WorldEventId, WorldTime,
 };
 use super::super::world_model::AgentPromptProfile;
 
@@ -225,4 +226,157 @@ pub enum RejectReason {
         amount: i64,
         loss: i64,
     },
+    RuleDenied {
+        #[serde(default)]
+        notes: Vec<String>,
+    },
+}
+
+// ============================================================================
+// Rule Decision Types
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct KernelRuleCost {
+    pub entries: BTreeMap<ResourceKind, i64>,
+}
+
+impl KernelRuleCost {
+    pub fn add_assign(&mut self, other: &KernelRuleCost) {
+        for (kind, delta) in &other.entries {
+            *self.entries.entry(*kind).or_insert(0) += *delta;
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum KernelRuleVerdict {
+    Allow,
+    Deny,
+    Modify,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct KernelRuleDecision {
+    pub action_id: ActionId,
+    pub verdict: KernelRuleVerdict,
+    #[serde(default)]
+    pub override_action: Option<Action>,
+    #[serde(default)]
+    pub notes: Vec<String>,
+    #[serde(default)]
+    pub cost: KernelRuleCost,
+}
+
+impl KernelRuleDecision {
+    pub fn allow(action_id: ActionId) -> Self {
+        Self {
+            action_id,
+            verdict: KernelRuleVerdict::Allow,
+            override_action: None,
+            notes: Vec::new(),
+            cost: KernelRuleCost::default(),
+        }
+    }
+
+    pub fn deny(action_id: ActionId, notes: Vec<String>) -> Self {
+        Self {
+            action_id,
+            verdict: KernelRuleVerdict::Deny,
+            override_action: None,
+            notes,
+            cost: KernelRuleCost::default(),
+        }
+    }
+
+    pub fn modify(action_id: ActionId, override_action: Action) -> Self {
+        Self {
+            action_id,
+            verdict: KernelRuleVerdict::Modify,
+            override_action: Some(override_action),
+            notes: Vec::new(),
+            cost: KernelRuleCost::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KernelRuleDecisionMergeError {
+    ActionIdMismatch { expected: ActionId, got: ActionId },
+    MissingOverride { action_id: ActionId },
+    ConflictingOverride { action_id: ActionId },
+}
+
+impl std::fmt::Display for KernelRuleDecisionMergeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ActionIdMismatch { expected, got } => {
+                write!(
+                    f,
+                    "rule decision action_id mismatch expected {expected} got {got}"
+                )
+            }
+            Self::MissingOverride { action_id } => {
+                write!(f, "rule decision missing override for action {action_id}")
+            }
+            Self::ConflictingOverride { action_id } => {
+                write!(
+                    f,
+                    "rule decision conflicting override for action {action_id}"
+                )
+            }
+        }
+    }
+}
+
+pub fn merge_kernel_rule_decisions<I>(
+    action_id: ActionId,
+    decisions: I,
+) -> Result<KernelRuleDecision, KernelRuleDecisionMergeError>
+where
+    I: IntoIterator<Item = KernelRuleDecision>,
+{
+    let mut merged = KernelRuleDecision::allow(action_id);
+    let mut has_deny = false;
+
+    for decision in decisions {
+        if decision.action_id != action_id {
+            return Err(KernelRuleDecisionMergeError::ActionIdMismatch {
+                expected: action_id,
+                got: decision.action_id,
+            });
+        }
+
+        merged.cost.add_assign(&decision.cost);
+        merged.notes.extend(decision.notes);
+
+        match decision.verdict {
+            KernelRuleVerdict::Deny => {
+                merged.verdict = KernelRuleVerdict::Deny;
+                has_deny = true;
+            }
+            KernelRuleVerdict::Modify => {
+                if has_deny {
+                    continue;
+                }
+                let Some(action) = decision.override_action else {
+                    return Err(KernelRuleDecisionMergeError::MissingOverride { action_id });
+                };
+                match &merged.override_action {
+                    Some(existing) if existing != &action => {
+                        return Err(KernelRuleDecisionMergeError::ConflictingOverride {
+                            action_id,
+                        });
+                    }
+                    Some(_) => {}
+                    None => merged.override_action = Some(action),
+                }
+                merged.verdict = KernelRuleVerdict::Modify;
+            }
+            KernelRuleVerdict::Allow => {}
+        }
+    }
+
+    Ok(merged)
 }

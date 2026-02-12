@@ -97,5 +97,7 @@ pub use power::{
 
 // Re-export event types from kernel
 pub use kernel::{
-    ChunkGenerationCause, PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
+    merge_kernel_rule_decisions, ChunkGenerationCause, KernelRuleCost, KernelRuleDecision,
+    KernelRuleDecisionMergeError, KernelRuleVerdict, PromptUpdateOperation, RejectReason,
+    WorldEvent, WorldEventKind,
 };
