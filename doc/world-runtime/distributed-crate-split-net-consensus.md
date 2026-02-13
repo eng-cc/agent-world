@@ -289,6 +289,13 @@
 - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
 - 通过定向 `cargo check` 与 membership/recovery federated 回归测试验证收口。
 
+### In Scope（三十二次扩展阶段）
+- 继续推进 runtime 同源复用上下文的 warning 分层治理，聚焦 `distributed_observer_replay`：
+  - 在 runtime `distributed_observer_replay` 包装层增加局部 `dead_code` 门控，抑制共享 `observer_replay` 在 runtime 侧未导出 helper（`replay_validate_head_with_dht`）带来的孤立 warning。
+  - 保持 `agent_world_net` 共享实现与 runtime 对外 API 不变，不改动验证流程语义。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+- 通过定向 `cargo check` + distributed observer replay 相关集成测试验证收口。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -377,6 +384,8 @@
 - P65：三十次扩展阶段回归验证与文档收口。
 - P66：完成 runtime `distributed_membership_sync` 同源复用 dead_code warning 分层治理。
 - P67：三十一次扩展阶段回归验证与文档收口。
+- P68：完成 runtime `distributed_observer_replay` 孤立 dead_code warning 分层治理。
+- P69：三十二次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -402,3 +411,4 @@
 - recovery 旧文件物理删除后，若未来误将 runtime 本地子模块重新声明为编译入口，可能触发路径找不到错误；需要以 `recovery.rs` 单入口同源复用为准并在项目文档持续约束。
 - recovery 导出分组后若 runtime 与 consensus 端的测试门控不一致，可能出现“`cargo check` 干净但联调测试缺类型”回归，需要保留 federated replay 相关定向测试作为回归门禁。
 - warning 分层治理若范围过大（全局 allow）可能掩盖真实回归；需要保持局部门控并持续用定向测试覆盖 membership/recovery 关键路径。
+- observer replay warning 治理若误扩散到共享源码层，可能影响 `agent_world_net` 端可见性语义；需将门控限定在 runtime 包装层并保留跨节点集成测试回归。
