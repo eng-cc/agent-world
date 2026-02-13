@@ -5,14 +5,14 @@ use crate::simulator::ResourceKind;
 use std::collections::BTreeMap;
 
 #[cfg(feature = "wasmtime")]
-fn register_m1_builtin_wasm_artifact(world: &mut World) -> String {
-    super::super::register_m1_builtin_wasm_artifact(world)
-        .expect("register embedded m1 builtin wasm artifact")
+fn register_m1_builtin_wasm_artifact(world: &mut World, module_id: &str) -> String {
+    super::super::register_m1_builtin_wasm_module_artifact(world, module_id)
+        .expect("register embedded m1 builtin wasm module artifact")
 }
 
 #[cfg(feature = "wasmtime")]
 fn install_m1_move_rule(world: &mut World) {
-    let wasm_hash = register_m1_builtin_wasm_artifact(world);
+    let wasm_hash = register_m1_builtin_wasm_artifact(world, M1_MOVE_RULE_MODULE_ID);
 
     let module_manifest = ModuleManifest {
         module_id: M1_MOVE_RULE_MODULE_ID.to_string(),
@@ -80,7 +80,7 @@ fn install_m1_move_rule(world: &mut World) {
 
 #[cfg(feature = "wasmtime")]
 fn install_m1_visibility_rule(world: &mut World) {
-    let wasm_hash = register_m1_builtin_wasm_artifact(world);
+    let wasm_hash = register_m1_builtin_wasm_artifact(world, M1_VISIBILITY_RULE_MODULE_ID);
 
     let module_manifest = ModuleManifest {
         module_id: M1_VISIBILITY_RULE_MODULE_ID.to_string(),
@@ -148,7 +148,7 @@ fn install_m1_visibility_rule(world: &mut World) {
 
 #[cfg(feature = "wasmtime")]
 fn install_m1_transfer_rule(world: &mut World) {
-    let wasm_hash = register_m1_builtin_wasm_artifact(world);
+    let wasm_hash = register_m1_builtin_wasm_artifact(world, M1_TRANSFER_RULE_MODULE_ID);
 
     let module_manifest = ModuleManifest {
         module_id: M1_TRANSFER_RULE_MODULE_ID.to_string(),

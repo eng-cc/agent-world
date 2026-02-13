@@ -119,6 +119,17 @@
     - `scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`。
   - 当前过渡状态：
     - 单聚合工件与多工件目录并存，供后续 BMS-59 执行 runtime/bootstrap 装载切换。
+- 阶段五规则域装载切换（BMS-59，2026-02-13）：
+  - `rules` 域安装链路改为按 `module_id` 注册独立工件：
+    - `m1.rule.move`
+    - `m1.rule.visibility`
+    - `m1.rule.transfer`
+  - 新增 runtime 测试辅助：
+    - `m1_builtin_wasm_module_artifact_bytes(module_id)`
+    - `register_m1_builtin_wasm_module_artifact(world, module_id)`
+  - 当前范围说明：
+    - 本任务仅切换规则域（`runtime::tests::rules`）到独立工件装载；
+    - 保持 bootstrap 与其他域先继续使用既有入口，待后续批次迁移。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -143,7 +154,7 @@
   - BMS-56：扩展设计与任务拆解（阶段五启动：多模块独立 wasm 工件实施）（已完成）。
   - BMS-57：收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验（已完成）。
   - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）（已完成）。
-  - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）。
+  - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）（已完成规则域切换）。
   - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog。
 
 ## 里程碑
@@ -170,6 +181,7 @@
 - M21：完成 BMS-56（阶段五启动：实施方案与任务拆解）。
 - M22：完成 BMS-57（模块清单单一来源收敛与一致性校验）。
 - M23：完成 BMS-58（独立工件同步脚本与 hash 清单接入）。
+- M24：完成 BMS-59（规则域按 module_id 独立工件装载切换）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
