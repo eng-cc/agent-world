@@ -72,6 +72,7 @@
 - [x] T69：完成 distributed observer replay 定向回归验证并回写设计/项目管理文档。
 - [x] T70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估（`--all-targets` / `--all-targets --features wasmtime`）。
 - [x] T71：确认本轮评估无新增上下文特异 warning，完成文档与日志收口。
+- [x] T72：新增 include warning 基线检查脚本并接入 `scripts/ci-tests.sh`，统一 pre-commit/CI 门禁入口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -160,8 +161,10 @@
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world_consensus/src/quorum.rs`
 - `crates/agent_world_consensus/src/lib.rs`
+- `scripts/check-include-warning-baseline.sh`
+- `scripts/ci-tests.sh`
 
 ## 状态
-- 当前阶段：三十三次扩展阶段已收口（T70~T71 全部完成）。
-- 下一步：把 include 复用 warning 基线检查固化为可复用脚本或 CI 子任务，避免后续阶段回归时重复手工排查。
+- 当前阶段：三十四次扩展阶段已收口（T72 完成）。
+- 下一步：观察 CI 上 include warning 基线门禁稳定性，并在后续阶段将 warning 回归定位流程继续模板化。
 - 最近更新：2026-02-13
