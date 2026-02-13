@@ -1,11 +1,12 @@
 //! Module types and registry for WASM runtime integration.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 use super::types::{ProposalId, WorldEventId, WorldTime};
 pub use agent_world_wasm_abi::{
-    ModuleKind, ModuleLimits, ModuleSubscription, ModuleSubscriptionStage,
+    ModuleArtifact, ModuleCache, ModuleKind, ModuleLimits, ModuleSubscription,
+    ModuleSubscriptionStage,
 };
 
 /// Roles for modules in the runtime.
@@ -21,83 +22,6 @@ pub enum ModuleRole {
 impl Default for ModuleRole {
     fn default() -> Self {
         ModuleRole::Domain
-    }
-}
-
-/// Stored artifact bytes for a module.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ModuleArtifact {
-    pub wasm_hash: String,
-    pub bytes: Vec<u8>,
-}
-
-/// In-memory LRU cache of loaded module artifacts.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ModuleCache {
-    max_cached_modules: usize,
-    cache: BTreeMap<String, ModuleArtifact>,
-    lru: VecDeque<String>,
-}
-
-impl ModuleCache {
-    pub fn new(max_cached_modules: usize) -> Self {
-        Self {
-            max_cached_modules,
-            cache: BTreeMap::new(),
-            lru: VecDeque::new(),
-        }
-    }
-
-    pub fn max_cached_modules(&self) -> usize {
-        self.max_cached_modules
-    }
-
-    pub fn len(&self) -> usize {
-        self.cache.len()
-    }
-
-    pub fn set_max_cached_modules(&mut self, max_cached_modules: usize) {
-        self.max_cached_modules = max_cached_modules;
-        self.prune();
-    }
-
-    pub fn get(&mut self, wasm_hash: &str) -> Option<ModuleArtifact> {
-        let artifact = self.cache.get(wasm_hash)?.clone();
-        self.touch(wasm_hash);
-        Some(artifact)
-    }
-
-    pub fn insert(&mut self, artifact: ModuleArtifact) {
-        let key = artifact.wasm_hash.clone();
-        self.cache.insert(key.clone(), artifact);
-        self.touch(&key);
-        self.prune();
-    }
-
-    fn touch(&mut self, wasm_hash: &str) {
-        self.lru.retain(|entry| entry != wasm_hash);
-        self.lru.push_back(wasm_hash.to_string());
-    }
-
-    fn prune(&mut self) {
-        if self.max_cached_modules == 0 {
-            self.cache.clear();
-            self.lru.clear();
-            return;
-        }
-        while self.cache.len() > self.max_cached_modules {
-            if let Some(evicted) = self.lru.pop_front() {
-                self.cache.remove(&evicted);
-            } else {
-                break;
-            }
-        }
-    }
-}
-
-impl Default for ModuleCache {
-    fn default() -> Self {
-        Self::new(8)
     }
 }
 
