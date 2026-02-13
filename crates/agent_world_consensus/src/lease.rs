@@ -1,4 +1,4 @@
-//! Lease-based single-writer coordination for sequencer roles.
+// Lease-based single-writer coordination for sequencer roles.
 
 use agent_world::runtime::blake3_hex;
 

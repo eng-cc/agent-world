@@ -19,6 +19,10 @@ mod util;
 #[cfg(feature = "libp2p")]
 mod libp2p_net;
 
+pub mod distributed_net {
+    pub use super::network::*;
+}
+
 pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult, HeadValidationResult};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::distributed_net as proto_net;

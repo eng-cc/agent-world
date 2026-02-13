@@ -194,6 +194,17 @@
     - gossipsub publish 可在 peer 间传播
 - 保持 `agent_world_net` 对外导出名与调用语义不变，确保调用方无需改动。
 
+### In Scope（二十二次扩展阶段）
+- 进一步消除 `agent_world::runtime` 与新 crate 的重复实现，先完成“同源实现复用”切片：
+  - `agent_world::runtime` 的以下模块改为直接复用新 crate 源实现（`include!`）：
+    - `distributed_net.rs` <- `agent_world_net/src/network.rs`
+    - `distributed_dht.rs` <- `agent_world_net/src/dht.rs`
+    - `distributed_gateway.rs` <- `agent_world_net/src/gateway.rs`
+    - `distributed_lease.rs` <- `agent_world_consensus/src/lease.rs`
+    - `distributed_mempool.rs` <- `agent_world_consensus/src/mempool.rs`
+  - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+  - 通过 workspace 级回归验证收口，确保 CI 路径可直接覆盖该切片。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -262,6 +273,8 @@
 - P45：二十次扩展阶段回归验证与文档收口。
 - P46：`libp2p` adapter 最小可观测性补齐 + 跨节点 smoke test。
 - P47：二十一次扩展阶段回归验证与文档收口。
+- P48：完成 runtime 与新 crate 的同源实现复用切片（net+dht+gateway+lease+mempool）。
+- P49：二十二次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。

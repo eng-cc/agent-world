@@ -1,10 +1,11 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::WorldError;
 use agent_world_proto::distributed as proto_distributed;
 
-use crate::util::{now_ms, to_canonical_cbor};
-use crate::DistributedNetwork;
+use super::distributed_net::DistributedNetwork;
+use super::util::to_canonical_cbor;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubmitActionReceipt {
@@ -54,4 +55,11 @@ impl ActionGateway for NetworkGateway {
             accepted_at_ms: (self.now_fn)(),
         })
     }
+}
+
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }
