@@ -50,6 +50,8 @@
 - [x] T47：完成二十一次扩展阶段回归验证与文档收口。
 - [x] T48：将 `agent_world::runtime` 的 `distributed_net/dht/gateway/lease/mempool` 改为直接复用 `agent_world_net`/`agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
 - [x] T49：完成二十二次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T50：将 `agent_world::runtime` 的 `distributed_client/index/index_store/provider_cache/dht_cache` 改为直接复用 `agent_world_net` 同源实现（`include!`），保持导出 API 不变。
+- [x] T51：完成二十三次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -110,8 +112,19 @@
 - `crates/agent_world/src/runtime/distributed_gateway.rs`
 - `crates/agent_world/src/runtime/distributed_lease.rs`
 - `crates/agent_world/src/runtime/distributed_mempool.rs`
+- `crates/agent_world/src/runtime/distributed_client.rs`
+- `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world/src/runtime/distributed_index_store.rs`
+- `crates/agent_world/src/runtime/distributed_provider_cache.rs`
+- `crates/agent_world/src/runtime/distributed_dht_cache.rs`
+- `crates/agent_world_net/src/client.rs`
+- `crates/agent_world_net/src/index.rs`
+- `crates/agent_world_net/src/index_store.rs`
+- `crates/agent_world_net/src/provider_cache.rs`
+- `crates/agent_world_net/src/dht_cache.rs`
+- `crates/agent_world_net/src/util.rs`
 
 ## 状态
-- 当前阶段：二十二次扩展阶段已收口（T48~T49 全部完成）。
-- 下一步：继续把 `distributed_client/index/provider_cache/dht_cache` 等 runtime 模块收敛到“直接复用新 crate 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
+- 当前阶段：二十三次扩展阶段已收口（T50~T51 全部完成）。
+- 下一步：继续把 `distributed_bootstrap/head_follow/observer/observer_replay/storage/validation` 等 runtime 模块收敛到“直接复用新 crate 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
 - 最近更新：2026-02-13

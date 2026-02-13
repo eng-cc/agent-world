@@ -1,9 +1,11 @@
 use std::collections::HashSet;
 
-use agent_world::runtime::{ExecutionWriteResult, WorldError};
 use agent_world_proto::distributed::WorldHeadAnnounce;
 
-use crate::{DistributedDht, ProviderCache, ProviderRecord};
+use super::distributed_dht::{DistributedDht, ProviderRecord};
+use super::distributed_provider_cache::ProviderCache;
+use super::distributed_storage::ExecutionWriteResult;
+use super::error::WorldError;
 
 #[derive(Debug, Clone)]
 pub struct IndexPublishResult {

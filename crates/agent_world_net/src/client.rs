@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-use agent_world::runtime::{ModuleArtifact, ModuleManifest, WorldError};
 use agent_world_proto::distributed as proto_distributed;
 use agent_world_proto::distributed::WorldHeadAnnounce;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::util::{decode_response, to_canonical_cbor};
-use crate::{DistributedDht, DistributedNetwork};
+use super::distributed_dht::DistributedDht;
+use super::distributed_net::DistributedNetwork;
+use super::error::WorldError;
+use super::modules::{ModuleArtifact, ModuleManifest};
+use super::util::to_canonical_cbor;
 
 #[derive(Clone)]
 pub struct DistributedClient {
@@ -207,4 +209,15 @@ impl DistributedClient {
             .request_with_providers(protocol, &payload, providers)?;
         decode_response(&response_bytes)
     }
+}
+
+fn decode_response<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, WorldError> {
+    if let Ok(error) = serde_cbor::from_slice::<proto_distributed::ErrorResponse>(bytes) {
+        return Err(WorldError::NetworkRequestFailed {
+            code: error.code,
+            message: error.message,
+            retryable: error.retryable,
+        });
+    }
+    Ok(serde_cbor::from_slice(bytes)?)
 }

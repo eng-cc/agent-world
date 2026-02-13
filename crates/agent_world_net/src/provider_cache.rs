@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::WorldError;
-
-use crate::util::now_ms;
-use crate::{DistributedDht, DistributedIndexStore, ProviderRecord};
+use super::distributed_dht::{DistributedDht, ProviderRecord};
+use super::distributed_index_store::DistributedIndexStore;
+use super::error::WorldError;
 
 #[derive(Debug, Clone)]
 pub struct ProviderCacheConfig {
@@ -185,14 +185,21 @@ impl ProviderCache {
     }
 }
 
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use agent_world_proto::distributed_dht::DistributedDht as _;
 
+    use super::super::{InMemoryDht, InMemoryIndexStore};
     use super::*;
-    use crate::{InMemoryDht, InMemoryIndexStore};
 
     fn cache_with_config(config: ProviderCacheConfig) -> ProviderCache {
         ProviderCache::new(

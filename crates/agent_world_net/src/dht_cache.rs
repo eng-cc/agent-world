@@ -1,11 +1,12 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::WorldError;
 use agent_world_proto::distributed::WorldHeadAnnounce;
 use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
 
-use crate::util::now_ms;
-use crate::{DistributedDht, DistributedIndexStore, MembershipDirectorySnapshot, ProviderRecord};
+use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot, ProviderRecord};
+use super::distributed_index_store::DistributedIndexStore;
+use super::error::WorldError;
 
 #[derive(Debug, Clone)]
 pub struct DhtCacheConfig {
@@ -168,6 +169,13 @@ impl ProtoDistributedDht<WorldError> for CachedDht {
     }
 }
 
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -175,8 +183,8 @@ mod tests {
 
     use agent_world_proto::distributed_dht::DistributedDht as _;
 
+    use super::super::{HeadIndexRecord, InMemoryDht};
     use super::*;
-    use crate::{HeadIndexRecord, InMemoryDht};
 
     #[derive(Default, Clone)]
     struct TestIndexStore {

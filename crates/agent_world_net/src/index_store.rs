@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::WorldError;
 use agent_world_proto::distributed::WorldHeadAnnounce;
 
-use crate::util::now_ms;
-use crate::ProviderRecord;
+use super::distributed_dht::ProviderRecord;
+use super::error::WorldError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeadIndexRecord {
@@ -85,6 +85,13 @@ impl DistributedIndexStore for InMemoryIndexStore {
             .map(|records| records.values().cloned().collect())
             .unwrap_or_default())
     }
+}
+
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]

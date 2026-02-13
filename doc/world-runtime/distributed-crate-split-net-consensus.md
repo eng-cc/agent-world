@@ -205,6 +205,18 @@
   - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
   - 通过 workspace 级回归验证收口，确保 CI 路径可直接覆盖该切片。
 
+### In Scope（二十三次扩展阶段）
+- 继续推进 runtime 与 `agent_world_net` 的同源实现复用，覆盖网络缓存与索引链路核心：
+  - `agent_world::runtime` 的以下模块改为直接复用 `agent_world_net` 源实现（`include!`）：
+    - `distributed_client.rs` <- `agent_world_net/src/client.rs`
+    - `distributed_index.rs` <- `agent_world_net/src/index.rs`
+    - `distributed_index_store.rs` <- `agent_world_net/src/index_store.rs`
+    - `distributed_provider_cache.rs` <- `agent_world_net/src/provider_cache.rs`
+    - `distributed_dht_cache.rs` <- `agent_world_net/src/dht_cache.rs`
+  - 在 `agent_world_net` 增加兼容导出命名层（`distributed_*` alias），保证同源文件在两侧 crate 均可编译。
+  - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+  - 通过 workspace 级回归验证收口，确保 CI 路径可直接覆盖该切片。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -275,6 +287,8 @@
 - P47：二十一次扩展阶段回归验证与文档收口。
 - P48：完成 runtime 与新 crate 的同源实现复用切片（net+dht+gateway+lease+mempool）。
 - P49：二十二次扩展阶段回归验证与文档收口。
+- P50：完成 runtime 与 `agent_world_net` 同源实现复用切片（client+index+cache+index_store）。
+- P51：二十三次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
