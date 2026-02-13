@@ -77,7 +77,8 @@
 - [x] T74：将 `WorldError` 下沉到 `agent_world_proto` 并切换 `agent_world_net` 复用，收敛 net/runtime 错误类型重复定义。
 - [x] T75：将执行产物索引相关公共依赖（`ExecutionWriteResult` / `ExecutionWriteConfig` / `SegmentConfig` / `JournalSegmentRef`）下沉到 `agent_world_proto`，收敛 runtime/net 双类型并将 `distributed_index` 收敛为 net 薄封装。
 - [x] T76：清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层，改为 runtime 本地直接实现并保持 include warning 基线无回归。
-- [ ] T77：继续推进 `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛可直接 re-export 的低耦合入口。
+- [x] T77：清理 `distributed_bootstrap` include 包装层，改为 runtime 本地直接实现并完成 bootstrap 定向回归。
+- [ ] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -183,6 +184,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：三十八次扩展阶段进行中（T76 完成，T77 待执行）。
-- 下一步：执行 T77，推进 bootstrap/head_follow/observer 链路 include 替换策略并做低耦合入口收敛。
+- 当前阶段：三十九次扩展阶段进行中（T77 完成，T78 待执行）。
+- 下一步：执行 T78，推进 head_follow/observer 链路 include 替换策略并做低耦合入口收敛。
 - 最近更新：2026-02-13
