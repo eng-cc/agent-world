@@ -1,27 +1,12 @@
 //! Module types and registry for WASM runtime integration.
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, VecDeque};
 
 use super::types::{ProposalId, WorldEventId, WorldTime};
-
-/// Kinds of WASM modules supported by the runtime.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleKind {
-    Reducer,
-    Pure,
-}
-
-impl ModuleKind {
-    pub fn entrypoint(&self) -> &'static str {
-        match self {
-            ModuleKind::Reducer => "reduce",
-            ModuleKind::Pure => "call",
-        }
-    }
-}
+pub use agent_world_wasm_abi::{
+    ModuleKind, ModuleLimits, ModuleSubscription, ModuleSubscriptionStage,
+};
 
 /// Roles for modules in the runtime.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,43 +21,6 @@ pub enum ModuleRole {
 impl Default for ModuleRole {
     fn default() -> Self {
         ModuleRole::Domain
-    }
-}
-
-/// Resource limits for module execution.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ModuleLimits {
-    pub max_mem_bytes: u64,
-    pub max_gas: u64,
-    pub max_call_rate: u32,
-    pub max_output_bytes: u64,
-    pub max_effects: u32,
-    pub max_emits: u32,
-}
-
-impl Default for ModuleLimits {
-    fn default() -> Self {
-        Self {
-            max_mem_bytes: 0,
-            max_gas: 0,
-            max_call_rate: 0,
-            max_output_bytes: 0,
-            max_effects: 0,
-            max_emits: 0,
-        }
-    }
-}
-
-impl ModuleLimits {
-    pub fn unbounded() -> Self {
-        Self {
-            max_mem_bytes: u64::MAX,
-            max_gas: u64::MAX,
-            max_call_rate: u32::MAX,
-            max_output_bytes: u64::MAX,
-            max_effects: u32::MAX,
-            max_emits: u32::MAX,
-        }
     }
 }
 
@@ -150,46 +98,6 @@ impl ModuleCache {
 impl Default for ModuleCache {
     fn default() -> Self {
         Self::new(8)
-    }
-}
-
-/// Subscription specification for module event routing.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ModuleSubscription {
-    #[serde(default)]
-    pub event_kinds: Vec<String>,
-    #[serde(default)]
-    pub action_kinds: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stage: Option<ModuleSubscriptionStage>,
-    #[serde(default)]
-    pub filters: Option<JsonValue>,
-}
-
-impl ModuleSubscription {
-    pub fn resolved_stage(&self) -> ModuleSubscriptionStage {
-        self.stage.unwrap_or_else(|| {
-            if !self.event_kinds.is_empty() {
-                ModuleSubscriptionStage::PostEvent
-            } else {
-                ModuleSubscriptionStage::PreAction
-            }
-        })
-    }
-}
-
-/// Routing stage for module subscriptions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModuleSubscriptionStage {
-    PreAction,
-    PostAction,
-    PostEvent,
-}
-
-impl Default for ModuleSubscriptionStage {
-    fn default() -> Self {
-        ModuleSubscriptionStage::PostEvent
     }
 }
 
