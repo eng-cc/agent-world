@@ -88,6 +88,7 @@
 - [x] T85：将 `distributed_mempool` 从 runtime 本地实现切换为 `agent_world_consensus::ActionMempool` 薄包装，复用 consensus crate 闭环能力并保持 runtime 导出签名不变。
 - [x] T86：将 `distributed_lease` 从 runtime 本地实现切换为 `agent_world_consensus` 直接复用（re-export），去除 runtime 侧重复 lease 逻辑。
 - [x] T87：收敛 `distributed_consensus` 中的 lease 适配冗余，直接复用共享 `LeaseState` 类型并删除 runtime -> consensus 的字段级拷贝转换。
+- [x] T88：将 runtime `distributed_membership_sync` 从 `#[path]` 包装切到 `agent_world_consensus` 直接复用（删除 `reconciliation/recovery` 包装入口），并同步收敛 `distributed_consensus` 到 consensus 直接 re-export 与 DHT trait 对齐。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -95,8 +96,6 @@
 - `crates/agent_world/src/runtime/libp2p_net.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
-- `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
-- `crates/agent_world/src/runtime/distributed_membership_sync/recovery_exports.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_client.rs`
 - `crates/agent_world/src/runtime/distributed_gateway.rs`
@@ -193,6 +192,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：五十次扩展阶段完成（T87 已完成，consensus lease 适配层已收敛到共享类型）。
-- 下一步：继续推进 `distributed_membership_sync` 从路径复用向 `agent_world_consensus` 直接依赖收敛，减少 runtime 包装层。
+- 当前阶段：五十一次扩展阶段完成（T88 已完成，runtime `distributed_membership_sync` 已从路径包装切换为 `agent_world_consensus` 直接复用，`reconciliation/recovery` 包装入口已删除）。
+- 下一步：继续推进 runtime 其它仍有重复实现/兼容层的模块收敛，优先评估 `distributed_head_follow` / `distributed_observer` 是否可安全切到 net crate 直接复用并保持错误语义一致。
 - 最近更新：2026-02-13

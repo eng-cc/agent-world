@@ -13,18 +13,7 @@ pub mod distributed {
 }
 
 pub mod distributed_dht {
-    pub use agent_world_net::InMemoryDht;
-    pub use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
-
-    pub trait DistributedDht:
-        agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
-    {
-    }
-
-    impl<T> DistributedDht for T where
-        T: agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
-    {
-    }
+    pub use agent_world_net::{DistributedDht, InMemoryDht, MembershipDirectorySnapshot};
 }
 
 pub mod distributed_net {
