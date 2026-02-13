@@ -100,7 +100,8 @@ pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
 #[cfg(test)]
 pub(crate) use m1_builtin_wasm_artifact::{
-    m1_builtin_wasm_artifact_hash_hex, register_m1_builtin_wasm_artifact,
+    m1_builtin_module_ids_manifest, m1_builtin_wasm_artifact_hash_hex,
+    register_m1_builtin_wasm_artifact,
 };
 pub(crate) use m1_builtin_wasm_artifact::{
     M1_BUILTIN_WASM_ARTIFACT_BYTES, M1_BUILTIN_WASM_ARTIFACT_SHA256,

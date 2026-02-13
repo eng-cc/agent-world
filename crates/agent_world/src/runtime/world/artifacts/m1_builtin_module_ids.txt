@@ -1,0 +1,10 @@
+m1.rule.move
+m1.rule.visibility
+m1.rule.transfer
+m1.body.core
+m1.sensor.basic
+m1.mobility.basic
+m1.memory.core
+m1.storage.cargo
+m1.power.radiation_harvest
+m1.power.storage

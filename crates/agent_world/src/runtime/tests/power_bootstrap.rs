@@ -43,6 +43,23 @@ fn embedded_m1_builtin_wasm_hash_manifest_matches_artifact() {
 }
 
 #[test]
+fn m1_builtin_module_ids_manifest_matches_runtime_constants() {
+    let expected = vec![
+        M1_MOVE_RULE_MODULE_ID,
+        M1_VISIBILITY_RULE_MODULE_ID,
+        M1_TRANSFER_RULE_MODULE_ID,
+        M1_BODY_MODULE_ID,
+        M1_SENSOR_MODULE_ID,
+        M1_MOBILITY_MODULE_ID,
+        M1_MEMORY_MODULE_ID,
+        M1_STORAGE_CARGO_MODULE_ID,
+        M1_RADIATION_POWER_MODULE_ID,
+        M1_STORAGE_POWER_MODULE_ID,
+    ];
+    assert_eq!(m1_builtin_module_ids_manifest(), expected);
+}
+
+#[test]
 fn install_power_bootstrap_modules_registers_and_activates() {
     let mut world = World::new();
     world

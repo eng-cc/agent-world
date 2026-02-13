@@ -6,6 +6,8 @@ OUT_DIR="$ROOT_DIR/.tmp/builtin-wasm"
 PROFILE="release"
 DRY_RUN=0
 LIST_ONLY=0
+MODULE_IDS_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt"
+MANIFEST_PATH="$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
 
 declare -a REQUESTED_MODULE_IDS=()
 
@@ -24,58 +26,17 @@ Options:
 USAGE
 }
 
-module_manifest_path() {
-  local module_id="$1"
-  case "$module_id" in
-    m1.rule.move)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.rule.visibility)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.rule.transfer)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.body.core)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.sensor.basic)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.mobility.basic)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.memory.core)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.storage.cargo)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.power.radiation_harvest)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    m1.power.storage)
-      echo "$ROOT_DIR/crates/agent_world_builtin_wasm/Cargo.toml"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+all_module_ids() {
+  if [[ ! -f "$MODULE_IDS_PATH" ]]; then
+    echo "error: builtin module id manifest not found: $MODULE_IDS_PATH" >&2
+    exit 1
+  fi
+  cat "$MODULE_IDS_PATH"
 }
 
-all_module_ids() {
-  cat <<'EOF_IDS'
-m1.rule.move
-m1.rule.visibility
-m1.rule.transfer
-m1.body.core
-m1.sensor.basic
-m1.mobility.basic
-m1.memory.core
-m1.storage.cargo
-m1.power.radiation_harvest
-m1.power.storage
-EOF_IDS
+is_supported_module_id() {
+  local module_id="$1"
+  all_module_ids | grep -Fqx "$module_id"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -130,14 +91,14 @@ fi
 mkdir -p "$OUT_DIR"
 
 for module_id in "${REQUESTED_MODULE_IDS[@]}"; do
-  manifest_path="$(module_manifest_path "$module_id")" || {
+  if ! is_supported_module_id "$module_id"; then
     echo "error: unsupported module id: $module_id" >&2
     exit 2
-  }
+  fi
   cmd=(
     "$ROOT_DIR/scripts/build-wasm-module.sh"
     --module-id "$module_id"
-    --manifest-path "$manifest_path"
+    --manifest-path "$MANIFEST_PATH"
     --out-dir "$OUT_DIR"
     --profile "$PROFILE"
   )
