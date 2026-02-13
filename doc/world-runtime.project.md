@@ -156,7 +156,7 @@
 - [x] BMS-40 扩展设计与任务拆解（阶段三启动：逐步物理删除 native builtin 老代码）
 - [x] BMS-41 删除 `runtime/builtin_modules/*` native 实现文件，保留运行时常量与最小 sandbox 兼容层
 - [x] BMS-42 下线 `BuiltinModuleSandbox` 的 builtin 注册兜底能力并清理残余引用
-- [ ] BMS-43 回归验证、文档与 devlog 收口（阶段三首轮）
+- [x] BMS-43 回归验证、文档与 devlog 收口（阶段三首轮）
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -164,6 +164,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS cutover 阶段三进行中）
-- 下一步：执行 BMS-43，完成阶段三首轮回归收口与文档闭环
-- 最近更新：完成 BMS-42（下线 `BuiltinModuleSandbox` builtin 注册兜底能力并通过定向回归）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS cutover 阶段三首轮完成）
+- 下一步：评估是否启动 BMS 下一轮（移除 `BuiltinModuleSandbox` 兼容层及相关导出）
+- 最近更新：完成 BMS-43（阶段三首轮回归收口与文档闭环）（2026-02-13）
