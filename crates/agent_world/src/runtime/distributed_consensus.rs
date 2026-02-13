@@ -69,10 +69,9 @@ impl QuorumConsensus {
         request: &ConsensusMembershipChangeRequest,
         lease: Option<&LeaseState>,
     ) -> Result<ConsensusMembershipChangeResult, WorldError> {
-        let lease = lease.map(to_consensus_lease_state);
         Ok(self
             .inner
-            .apply_membership_change_with_lease(request, lease.as_ref())?)
+            .apply_membership_change_with_lease(request, lease)?)
     }
 
     pub fn propose_head(
@@ -156,20 +155,9 @@ pub fn ensure_lease_holder_validator(
     lease: Option<&LeaseState>,
     requested_at_ms: i64,
 ) -> Result<ConsensusMembershipChangeResult, WorldError> {
-    let lease = lease.map(to_consensus_lease_state);
     Ok(agent_world_consensus::ensure_lease_holder_validator(
         &mut consensus.inner,
-        lease.as_ref(),
+        lease,
         requested_at_ms,
     )?)
-}
-
-fn to_consensus_lease_state(lease: &LeaseState) -> agent_world_consensus::LeaseState {
-    agent_world_consensus::LeaseState {
-        holder_id: lease.holder_id.clone(),
-        lease_id: lease.lease_id.clone(),
-        acquired_at_ms: lease.acquired_at_ms,
-        expires_at_ms: lease.expires_at_ms,
-        term: lease.term,
-    }
 }
