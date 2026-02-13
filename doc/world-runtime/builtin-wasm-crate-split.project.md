@@ -42,7 +42,7 @@
 - [x] BMS-38 下线 `sensor/mobility/memory/storage/power` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）。
 - [x] BMS-39 清理 runtime 中不再使用的 builtin 模块实现导出与冗余回退路径，并完成回归收口。
 - [x] BMS-40 扩展设计与任务拆解（阶段三启动：逐步物理删除 native builtin 老代码）。
-- [ ] BMS-41 删除 `runtime/builtin_modules/*` native 实现文件，保留运行时常量与最小 sandbox 兼容层。
+- [x] BMS-41 删除 `runtime/builtin_modules/*` native 实现文件，保留运行时常量与最小 sandbox 兼容层。
 - [ ] BMS-42 下线 `BuiltinModuleSandbox` 的 builtin 注册兜底能力并清理残余引用。
 - [ ] BMS-43 回归验证、文档与 devlog 收口（阶段三首轮）。
 
@@ -52,6 +52,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：cutover 阶段三进行中（BMS-40 已完成，进入代码删除阶段）。
-- 最近更新：完成 BMS-40（扩展阶段三任务拆解并启动“逐步删除老代码”，2026-02-13）。
-- 下一步：执行 BMS-41，先物理删除 `runtime/builtin_modules` native 实现文件并做回归验证。
+- 当前阶段：cutover 阶段三进行中（BMS-41 已完成，进入接口下线阶段）。
+- 最近更新：完成 BMS-41（物理删除 `runtime/builtin_modules/*` native 实现文件并通过定向回归，2026-02-13）。
+- 下一步：执行 BMS-42，下线 `BuiltinModuleSandbox` builtin 注册兜底能力并清理残余引用。
