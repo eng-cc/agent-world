@@ -8,6 +8,52 @@ mod membership_recovery;
 mod mempool;
 mod quorum;
 
+pub mod distributed {
+    pub use agent_world_proto::distributed::*;
+}
+
+pub mod distributed_dht {
+    pub use agent_world::runtime::InMemoryDht;
+
+    pub trait DistributedDht:
+        agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
+    {
+    }
+
+    impl<T> DistributedDht for T where
+        T: agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
+    {
+    }
+}
+
+pub mod distributed_lease {
+    pub use super::lease::*;
+}
+
+pub mod error {
+    pub use agent_world::runtime::WorldError;
+}
+
+pub mod util {
+    use serde::de::DeserializeOwned;
+    use serde::Serialize;
+    use std::fs;
+    use std::path::Path;
+
+    use super::error::WorldError;
+
+    pub fn write_json_to_path<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
+        let bytes = serde_json::to_vec_pretty(value)?;
+        fs::write(path, bytes)?;
+        Ok(())
+    }
+
+    pub fn read_json_from_path<T: DeserializeOwned>(path: &Path) -> Result<T, WorldError> {
+        let bytes = fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+}
+
 pub use lease::{LeaseDecision, LeaseManager, LeaseState};
 pub use membership::{
     FileMembershipAuditStore, InMemoryMembershipAuditStore, MembershipAuditStore,

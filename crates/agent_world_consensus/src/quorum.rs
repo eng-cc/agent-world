@@ -1,15 +1,16 @@
-//! Quorum-based consensus helpers for distributed head commits.
+// Quorum-based consensus helpers for distributed head commits.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
-use agent_world::runtime::{LeaseState, WorldError};
-use agent_world_proto::distributed::WorldHeadAnnounce;
-use agent_world_proto::distributed_dht::DistributedDht;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_dht::DistributedDht;
+use super::distributed_lease::LeaseState;
+use super::error::WorldError;
+use super::util::{read_json_from_path, write_json_to_path};
 pub use agent_world_proto::distributed_consensus::{
     ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
     ConsensusStatus, ConsensusVote, HeadConsensusRecord,
@@ -563,7 +564,7 @@ impl QuorumConsensus {
 }
 
 pub fn propose_world_head_with_quorum(
-    dht: &impl DistributedDht<WorldError>,
+    dht: &impl DistributedDht,
     consensus: &mut QuorumConsensus,
     head: &WorldHeadAnnounce,
     proposer_id: &str,
@@ -577,7 +578,7 @@ pub fn propose_world_head_with_quorum(
 }
 
 pub fn vote_world_head_with_quorum(
-    dht: &impl DistributedDht<WorldError>,
+    dht: &impl DistributedDht,
     consensus: &mut QuorumConsensus,
     world_id: &str,
     height: u64,
@@ -677,22 +678,6 @@ fn decision_from_record(record: &HeadConsensusRecord) -> ConsensusDecision {
     }
 }
 
-fn read_json_from_path<T: DeserializeOwned>(path: &Path) -> Result<T, WorldError> {
-    let bytes = fs::read(path)?;
-    Ok(serde_json::from_slice(&bytes)?)
-}
-
-fn write_json_to_path<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
-    }
-    let bytes = serde_json::to_vec_pretty(value)?;
-    fs::write(path, bytes)?;
-    Ok(())
-}
-
 fn write_json_atomic<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
     let tmp = path.with_extension("tmp");
     write_json_to_path(value, &tmp)?;
@@ -706,8 +691,9 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use super::super::distributed_dht::InMemoryDht;
     use super::*;
-    use agent_world::runtime::InMemoryDht;
+    use agent_world_proto::distributed_dht::DistributedDht as _;
 
     fn sample_head(height: u64, block_hash: &str) -> WorldHeadAnnounce {
         WorldHeadAnnounce {
