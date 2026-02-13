@@ -86,6 +86,7 @@
 - [x] T83：将 `distributed_membership_sync` / `reconciliation` 的 `include!` 宏收敛为路径模块包装（`#[path]`），并修正 include warning 基线脚本在 0 include 场景下的兼容性。
 - [x] T84：将 runtime `distributed_membership_sync` 的 `membership_logic` 切换为路径复用 `agent_world_consensus/src/membership_logic.rs`，并删除 runtime 本地重复实现文件。
 - [x] T85：将 `distributed_mempool` 从 runtime 本地实现切换为 `agent_world_consensus::ActionMempool` 薄包装，复用 consensus crate 闭环能力并保持 runtime 导出签名不变。
+- [x] T86：将 `distributed_lease` 从 runtime 本地实现切换为 `agent_world_consensus` 直接复用（re-export），去除 runtime 侧重复 lease 逻辑。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -191,6 +192,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：四十八次扩展阶段完成（T85 已完成，mempool 主实现已下沉到 consensus crate）。
-- 下一步：继续收敛 `distributed_lease` 到 `agent_world_consensus` 直接复用，降低 runtime 剩余重复逻辑。
+- 当前阶段：四十九次扩展阶段完成（T86 已完成，lease 主实现已下沉到 consensus crate）。
+- 下一步：继续推进 `distributed_membership_sync` 从路径复用向 `agent_world_consensus` 直接依赖收敛，减少 runtime 包装层。
 - 最近更新：2026-02-13
