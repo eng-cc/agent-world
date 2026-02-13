@@ -23,8 +23,28 @@ pub mod distributed_net {
     pub use super::network::*;
 }
 
+pub mod distributed {
+    pub use agent_world_proto::distributed::*;
+}
+
 pub mod distributed_dht {
     pub use super::dht::*;
+}
+
+pub mod distributed_client {
+    pub use super::client::*;
+}
+
+pub mod distributed_bootstrap {
+    pub use super::bootstrap::*;
+}
+
+pub mod distributed_head_follow {
+    pub use super::head_follow::*;
+}
+
+pub mod distributed_observer_replay {
+    pub use super::observer_replay::*;
 }
 
 pub mod distributed_index_store {
@@ -40,8 +60,43 @@ pub mod distributed_storage {
     pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult};
 }
 
+pub mod distributed_validation {
+    pub use super::head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
+    pub use agent_world::runtime::HeadValidationResult;
+}
+
 pub mod error {
     pub use agent_world::runtime::WorldError;
+}
+
+pub mod blob_store {
+    pub use agent_world::runtime::{blake3_hex, BlobStore};
+}
+
+pub mod world {
+    pub use agent_world::runtime::World;
+}
+
+pub mod events {
+    pub use agent_world::runtime::CausedBy;
+}
+
+pub mod segmenter {
+    pub use agent_world::runtime::{
+        segment_journal, segment_snapshot, JournalSegmentRef, SegmentConfig,
+    };
+}
+
+pub mod snapshot {
+    pub use agent_world::runtime::{Journal, Snapshot};
+}
+
+pub mod types {
+    pub use agent_world::runtime::ActionId;
+}
+
+pub mod world_event {
+    pub use agent_world::runtime::{WorldEvent, WorldEventBody};
 }
 
 pub mod modules {

@@ -1,7 +1,10 @@
-use agent_world::runtime::{blake3_hex, BlobStore, JournalSegmentRef, WorldError};
-use agent_world_proto::distributed::{SnapshotManifest, WorldHeadAnnounce};
-
-use crate::{validate_head_update, DistributedClient, DistributedDht, HeadValidationResult};
+use super::blob_store::{blake3_hex, BlobStore};
+use super::distributed::{SnapshotManifest, WorldHeadAnnounce};
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_validation::{validate_head_update, HeadValidationResult};
+use super::error::WorldError;
+use super::segmenter::JournalSegmentRef;
 
 pub fn replay_validate_head(
     world_id: &str,
@@ -109,10 +112,11 @@ mod tests {
     };
     use agent_world_proto::distributed_dht::DistributedDht as _;
 
+    use super::super::distributed_dht::InMemoryDht;
+    use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
+    use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
+    use super::super::util::to_canonical_cbor;
     use super::*;
-    use crate::util::to_canonical_cbor;
-    use crate::{store_execution_result, ExecutionWriteConfig};
-    use crate::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()

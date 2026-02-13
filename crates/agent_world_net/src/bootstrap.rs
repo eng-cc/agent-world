@@ -1,8 +1,12 @@
-use agent_world::runtime::{BlobStore, World, WorldError};
-use agent_world_proto::distributed::WorldHeadAnnounce;
-
-use crate::observer_replay::{replay_validate_with_head, replay_validate_with_head_and_dht};
-use crate::{DistributedClient, DistributedDht};
+use super::blob_store::BlobStore;
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_observer_replay::{
+    replay_validate_with_head, replay_validate_with_head_and_dht,
+};
+use super::error::WorldError;
+use super::world::World;
 
 pub fn bootstrap_world_from_head(
     head: &WorldHeadAnnounce,
@@ -52,10 +56,11 @@ mod tests {
     };
     use agent_world_proto::distributed_dht::DistributedDht as _;
 
+    use super::super::distributed_dht::InMemoryDht;
+    use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
+    use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
+    use super::super::util::to_canonical_cbor;
     use super::*;
-    use crate::util::to_canonical_cbor;
-    use crate::{store_execution_result, ExecutionWriteConfig};
-    use crate::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()

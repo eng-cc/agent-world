@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
-use agent_world::runtime::{BlobStore, World, WorldError};
-use agent_world_proto::distributed::{topic_event, topic_head, WorldHeadAnnounce};
-
-use crate::{
-    DistributedClient, DistributedDht, DistributedNetwork, HeadFollower, NetworkSubscription,
-};
+use super::blob_store::BlobStore;
+use super::distributed::{topic_event, topic_head, WorldHeadAnnounce};
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_head_follow::HeadFollower;
+use super::distributed_net::{DistributedNetwork, NetworkSubscription};
+use super::error::WorldError;
+use super::world::World;
 
 #[derive(Debug, Clone)]
 pub struct ObserverSubscription {
@@ -252,9 +254,9 @@ impl ObserverClient {
 mod tests {
     use std::sync::Arc;
 
+    use super::super::distributed_net::InMemoryNetwork;
+    use super::super::util::to_canonical_cbor;
     use super::*;
-    use crate::util::to_canonical_cbor;
-    use crate::InMemoryNetwork;
 
     #[test]
     fn observer_subscribes_and_drains_head_updates() {

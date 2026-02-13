@@ -1,14 +1,18 @@
-//! Head update and replay validation helpers for distributed runtime (net crate facade).
+// Head update and replay validation helpers for distributed runtime (net crate facade).
 
 use serde::Serialize;
 
-use agent_world::runtime::{
-    blake3_hex, ActionId, BlobStore, CausedBy, HeadValidationResult, Journal, JournalSegmentRef,
-    Snapshot, World, WorldError, WorldEvent, WorldEventBody,
-};
-use agent_world_proto::distributed::{SnapshotManifest, WorldBlock, WorldHeadAnnounce};
-
-use crate::util::to_canonical_cbor;
+use super::blob_store::{blake3_hex, BlobStore};
+use super::distributed::{SnapshotManifest, WorldBlock, WorldHeadAnnounce};
+use super::distributed_validation::HeadValidationResult as DistributedHeadValidationResult;
+use super::error::WorldError;
+use super::events::CausedBy;
+use super::segmenter::JournalSegmentRef;
+use super::snapshot::{Journal, Snapshot};
+use super::types::ActionId;
+use super::util::to_canonical_cbor;
+use super::world::World;
+use super::world_event::{WorldEvent, WorldEventBody};
 
 pub fn validate_head_update(
     head: &WorldHeadAnnounce,
@@ -16,7 +20,7 @@ pub fn validate_head_update(
     snapshot_manifest: &SnapshotManifest,
     journal_segments: &[JournalSegmentRef],
     store: &impl BlobStore,
-) -> Result<HeadValidationResult, WorldError> {
+) -> Result<DistributedHeadValidationResult, WorldError> {
     if head.world_id != block.world_id {
         return Err(WorldError::DistributedValidationFailed {
             reason: format!(
@@ -113,7 +117,7 @@ pub fn validate_head_update(
 
     World::from_snapshot(snapshot.clone(), journal.clone())?;
 
-    Ok(HeadValidationResult {
+    Ok(DistributedHeadValidationResult {
         block_hash,
         snapshot,
         journal,
@@ -247,8 +251,8 @@ mod tests {
     use agent_world::runtime::{Action, LocalCasStore, World};
     use agent_world::GeoPos;
 
+    use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
     use super::*;
-    use crate::{store_execution_result, ExecutionWriteConfig};
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()
