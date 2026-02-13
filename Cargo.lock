@@ -140,6 +140,7 @@ name = "agent_world"
 version = "0.1.0"
 dependencies = [
  "agent_world_builtin_wasm",
+ "agent_world_consensus",
  "agent_world_net",
  "agent_world_proto",
  "async-openai",
