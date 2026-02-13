@@ -43,10 +43,10 @@
 - 产物目录（草案）：
   - `.tmp/builtin-wasm/<module-id>.wasm`
   - `.tmp/builtin-wasm/<module-id>.metadata.json`
-- runtime 装载工厂（草案）：
-  - `BuiltinModuleSandbox::with_preferred_fallback(Box<dyn ModuleSandbox>)`
-  - `fallback` 指向 `WasmExecutor`（加载 builtin wasm 产物）
-  - 策略：优先命中 wasm 工件；builtin 仅在工件缺失或执行失败时兜底（保守切换）。
+- runtime 装载接口（阶段三现状）：
+  - `BuiltinModuleSandbox` 兼容层已在 BMS-45 删除。
+  - 默认执行链路为 wasm 工件路径（`WasmExecutor`）。
+  - `runtime` 侧仍保留一层 builtin 模块常量导出（`runtime/builtin_modules.rs`）。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -56,6 +56,10 @@
   - BMS-44：扩展任务拆解，明确移除 `BuiltinModuleSandbox` 兼容层与导出的顺序。
   - BMS-45：移除 `BuiltinModuleSandbox` 类型与 `runtime` 对外导出，仅保留模块常量导出。
   - BMS-46：执行第二轮回归收口，更新文档与 devlog。
+- 阶段三第三轮下线路线（2026-02-13）：
+  - BMS-47：扩展任务拆解，明确“删除 runtime builtin 常量兼容层并统一常量来源”的执行顺序。
+  - BMS-48：移除 `runtime/builtin_modules.rs`，将常量来源统一到 `agent_world_builtin_wasm` crate。
+  - BMS-49：执行第三轮回归收口，更新文档与 devlog。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -76,6 +80,7 @@
 - M16：完成 BMS-37~BMS-39（按模块域逐步删除 builtin fallback 与实现）。
 - M17：完成 BMS-40~BMS-43（阶段三首轮：物理删除 native builtin 老代码并收口接口）。
 - M18：完成 BMS-44~BMS-46（阶段三第二轮：删除兼容 sandbox 层并收口导出）。
+- M19：完成 BMS-47~BMS-49（阶段三第三轮：删除 runtime builtin 常量兼容层并统一常量来源）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
@@ -91,3 +96,4 @@
 - 物理删除 `runtime/builtin_modules/*` 旧实现后，存在隐藏引用或常量来源漂移风险：通过 `rg` 全量扫描 + 定向编译测试 + bootstrap/power 回归覆盖。
 - 下线 builtin 注册 API 时，存在测试夹具未同步导致不可执行风险：阶段三保持“每删一层就补对应测试迁移”的原子任务提交。
 - 删除 `BuiltinModuleSandbox` 导出后，存在下游调用方编译失败风险：先 `rg` 扫描确认无代码引用，再执行 wasm 路径回归。
+- 删除 `runtime/builtin_modules.rs` 后，存在常量可见性与依赖方向变化风险：先在 wasm crate 补齐 `pub const` 导出，再执行 bootstrap/rules/power 路径回归。
