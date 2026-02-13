@@ -1,3 +1,5 @@
+#![cfg(feature = "wasmtime")]
+
 use super::super::*;
 use super::pos;
 
@@ -5,23 +7,8 @@ fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)
 }
 
-fn power_module_sandbox() -> BuiltinModuleSandbox {
-    let sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
-        WasmExecutorConfig::default(),
-    )));
-    #[cfg(feature = "wasmtime")]
-    {
-        sandbox
-    }
-    #[cfg(not(feature = "wasmtime"))]
-    {
-        sandbox
-            .register_builtin(
-                M1_RADIATION_POWER_MODULE_ID,
-                M1RadiationPowerModule::default(),
-            )
-            .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
-    }
+fn power_module_sandbox() -> WasmExecutor {
+    WasmExecutor::new(WasmExecutorConfig::default())
 }
 
 fn apply_module_changes(world: &mut World, actor: &str, changes: ModuleChangeSet) {

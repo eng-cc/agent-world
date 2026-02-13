@@ -1,49 +1,18 @@
+#![cfg(feature = "wasmtime")]
+
 use super::super::*;
 use super::pos;
 use crate::models::{CargoEntityEntry, CargoEntityKind};
 
-fn default_module_sandbox() -> BuiltinModuleSandbox {
-    let sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
-        WasmExecutorConfig::default(),
-    )));
-    #[cfg(feature = "wasmtime")]
-    {
-        sandbox
-    }
-    #[cfg(not(feature = "wasmtime"))]
-    {
-        sandbox
-            .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
-            .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
-            .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
-            .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
-    }
+fn default_module_sandbox() -> WasmExecutor {
+    WasmExecutor::new(WasmExecutorConfig::default())
 }
 
-fn scenario_module_sandbox() -> BuiltinModuleSandbox {
-    let sandbox = BuiltinModuleSandbox::with_preferred_fallback(Box::new(WasmExecutor::new(
-        WasmExecutorConfig::default(),
-    )));
-    #[cfg(feature = "wasmtime")]
-    {
-        sandbox
-    }
-    #[cfg(not(feature = "wasmtime"))]
-    {
-        sandbox
-            .register_builtin(
-                M1_RADIATION_POWER_MODULE_ID,
-                M1RadiationPowerModule::default(),
-            )
-            .register_builtin(M1_STORAGE_POWER_MODULE_ID, M1StoragePowerModule::default())
-            .register_builtin(M1_SENSOR_MODULE_ID, M1SensorModule::default())
-            .register_builtin(M1_MOBILITY_MODULE_ID, M1MobilityModule::default())
-            .register_builtin(M1_MEMORY_MODULE_ID, M1MemoryModule::default())
-            .register_builtin(M1_STORAGE_CARGO_MODULE_ID, M1StorageCargoModule)
-    }
+fn scenario_module_sandbox() -> WasmExecutor {
+    WasmExecutor::new(WasmExecutorConfig::default())
 }
 
-fn setup_world_with_default_modules() -> (World, BuiltinModuleSandbox) {
+fn setup_world_with_default_modules() -> (World, WasmExecutor) {
     let mut world = World::new();
     world
         .install_m1_agent_default_modules("bootstrap")
@@ -52,9 +21,7 @@ fn setup_world_with_default_modules() -> (World, BuiltinModuleSandbox) {
     (world, default_module_sandbox())
 }
 
-fn setup_world_with_scenario_modules(
-    config: M1ScenarioBootstrapConfig,
-) -> (World, BuiltinModuleSandbox) {
+fn setup_world_with_scenario_modules(config: M1ScenarioBootstrapConfig) -> (World, WasmExecutor) {
     let mut world = World::new();
     world
         .install_m1_scenario_bootstrap_modules("bootstrap", config)
