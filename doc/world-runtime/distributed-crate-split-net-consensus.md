@@ -304,6 +304,14 @@
 - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
 - 通过编译检查与定向集成测试确认“无新增 warning”状态稳定。
 
+### In Scope（三十四次扩展阶段）
+- 把 include 复用 warning 基线检查固化为可复用脚本并接入 CI 统一入口：
+  - 新增脚本封装 `runtime include!` 入口扫描与双维度编译检查（`--all-targets` / `--all-targets --features wasmtime`）。
+  - 在 `scripts/ci-tests.sh` 中接入该脚本，确保 pre-commit 与 CI 复用同一基线门禁。
+  - 失败时输出 warning 命中日志，便于定位回归来源。
+- 保持代码行为与导出 API 不变，不改业务语义。
+- 通过脚本自检 + 分布式定向集成测试验证收口。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -396,6 +404,7 @@
 - P69：三十二次扩展阶段回归验证与文档收口。
 - P70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估。
 - P71：三十三次扩展阶段回归验证与文档收口。
+- P72：完成 include warning 基线脚本化与 CI 接入收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -423,3 +432,4 @@
 - warning 分层治理若范围过大（全局 allow）可能掩盖真实回归；需要保持局部门控并持续用定向测试覆盖 membership/recovery 关键路径。
 - observer replay warning 治理若误扩散到共享源码层，可能影响 `agent_world_net` 端可见性语义；需将门控限定在 runtime 包装层并保留跨节点集成测试回归。
 - warning 基线评估若缺少 feature/target 维度，可能出现“当前无 warning、切换 feature 后回归”的盲区；需固定 `--all-targets` 与 `--features wasmtime` 双路径校验。
+- warning 基线脚本若未和 CI/本地入口统一，可能出现“手工通过但流水线遗漏”的门禁漂移；需统一复用 `scripts/ci-tests.sh` 作为执行入口。
