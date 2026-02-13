@@ -6,6 +6,7 @@
 - 在不破坏现有 runtime 闭环的前提下，分阶段完成：
   - 阶段 1：`源码分仓 + 产物构建`（BMS-0~BMS-31，已完成）。
   - 阶段 2：runtime 装载切换（外部 wasm 产物优先，builtin 仅兜底，逐步删除 builtin 注册）。
+  - 阶段 3：逐域删除 runtime builtin fallback 与实现（以 wasm-only 运行为目标）。
 
 ## 范围
 
@@ -62,6 +63,8 @@
 - M12：完成 BMS-33（接入 WASM 优先 + builtin fallback 执行路径）。
 - M13：完成 BMS-34（逐步缩减一批 builtin 注册点，保持回归通过）。
 - M14：完成 BMS-35（cutover 阶段回归收口与文档闭环）。
+- M15：完成 BMS-36（cutover 阶段二设计扩展与任务拆解）。
+- M16：完成 BMS-37~BMS-39（按模块域逐步删除 builtin fallback 与实现）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
@@ -73,3 +76,4 @@
 - 资源型模块（如 `m1.power.radiation_harvest` / `m1.power.storage`）依赖“采集-扣费-位置更新”复合路径，存在动作与事件双入口行为偏差风险：通过动作驱动与事件驱动并行测试覆盖。
 - runtime 双路径（wasm + builtin fallback）短期并行时，存在“同模块不同执行器”导致行为漂移风险：通过同输入对比测试与回放一致性测试覆盖。
 - 逐步删除 builtin 注册点过程中，存在测试夹具未同步导致模块缺失风险：先在测试入口灰度切换，保留 fallback 并补充缺失报错断言。
+- 删除 runtime 内 builtin 实现时，存在“无 wasmtime 构建路径”兼容风险：通过 feature 门控分阶段下线，并在每批任务执行双路径回归（with/without wasmtime）。
