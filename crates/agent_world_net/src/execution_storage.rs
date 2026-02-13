@@ -1,14 +1,20 @@
-//! Execution result storage helpers for distributed runtime (net crate facade).
+// Execution result storage helpers for distributed runtime (net crate facade).
 
 use serde::Serialize;
 
-use agent_world::runtime::{
-    blake3_hex, segment_journal, segment_snapshot, ActionId, BlobStore, CausedBy,
-    ExecutionWriteConfig, ExecutionWriteResult, Journal, Snapshot, WorldError, WorldEventBody,
+use super::blob_store::{blake3_hex, BlobStore};
+use super::distributed::{BlobRef, BlockAnnounce, WorldBlock, WorldHeadAnnounce};
+use super::distributed_storage::{
+    ExecutionWriteConfig as DistributedExecutionWriteConfig,
+    ExecutionWriteResult as DistributedExecutionWriteResult,
 };
-use agent_world_proto::distributed::{BlobRef, BlockAnnounce, WorldBlock, WorldHeadAnnounce};
-
-use crate::util::to_canonical_cbor;
+use super::error::WorldError;
+use super::events::CausedBy;
+use super::segmenter::{segment_journal, segment_snapshot, SegmentConfig};
+use super::snapshot::{Journal, Snapshot};
+use super::types::ActionId;
+use super::util::to_canonical_cbor;
+use super::world_event::WorldEventBody;
 
 pub fn store_execution_result(
     world_id: &str,
@@ -19,16 +25,21 @@ pub fn store_execution_result(
     snapshot: &Snapshot,
     journal: &Journal,
     store: &impl BlobStore,
-    config: ExecutionWriteConfig,
-) -> Result<ExecutionWriteResult, WorldError> {
+    config: DistributedExecutionWriteConfig,
+) -> Result<DistributedExecutionWriteResult, WorldError> {
+    let DistributedExecutionWriteConfig {
+        segment: segment_config,
+        codec,
+    } = config;
+    let segment_config: SegmentConfig = segment_config;
     let snapshot_manifest =
-        segment_snapshot(snapshot, world_id, snapshot_epoch, store, config.segment)?;
+        segment_snapshot(snapshot, world_id, snapshot_epoch, store, segment_config)?;
     let snapshot_manifest_bytes = to_canonical_cbor(&snapshot_manifest)?;
     let snapshot_manifest_hash = store.put_bytes(&snapshot_manifest_bytes)?;
     let snapshot_manifest_ref = BlobRef {
         content_hash: snapshot_manifest_hash.clone(),
         size_bytes: snapshot_manifest_bytes.len() as u64,
-        codec: config.codec.clone(),
+        codec: codec.clone(),
         links: snapshot_manifest
             .chunks
             .iter()
@@ -36,13 +47,13 @@ pub fn store_execution_result(
             .collect(),
     };
 
-    let journal_segments = segment_journal(journal, store, config.segment)?;
+    let journal_segments = segment_journal(journal, store, segment_config)?;
     let journal_segments_bytes = to_canonical_cbor(&journal_segments)?;
     let journal_segments_hash = store.put_bytes(&journal_segments_bytes)?;
     let journal_segments_ref = BlobRef {
         content_hash: journal_segments_hash.clone(),
         size_bytes: journal_segments_bytes.len() as u64,
-        codec: config.codec.clone(),
+        codec: codec.clone(),
         links: journal_segments
             .iter()
             .map(|segment| segment.content_hash.clone())
@@ -74,7 +85,7 @@ pub fn store_execution_result(
     let block_ref = BlobRef {
         content_hash: block_hash.clone(),
         size_bytes: block_bytes.len() as u64,
-        codec: config.codec.clone(),
+        codec: codec.clone(),
         links: vec![
             snapshot_manifest_hash.clone(),
             journal_segments_hash.clone(),
@@ -101,7 +112,7 @@ pub fn store_execution_result(
         signature: String::new(),
     };
 
-    Ok(ExecutionWriteResult {
+    Ok(DistributedExecutionWriteResult {
         block,
         block_hash,
         block_ref,
@@ -155,6 +166,7 @@ mod tests {
     use agent_world::runtime::{Action, LocalCasStore, World};
     use agent_world::GeoPos;
 
+    use super::super::distributed_storage::ExecutionWriteConfig;
     use super::*;
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {

@@ -1,10 +1,12 @@
 use std::cmp::Ordering;
 
-use agent_world::runtime::{BlobStore, World, WorldError};
-use agent_world_proto::distributed::WorldHeadAnnounce;
-
-use crate::bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
-use crate::{DistributedClient, DistributedDht};
+use super::blob_store::BlobStore;
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::error::WorldError;
+use super::world::World;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeadUpdateDecision {
