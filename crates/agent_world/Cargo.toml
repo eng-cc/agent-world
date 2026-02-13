@@ -7,6 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+agent_world_builtin_wasm = { path = "../agent_world_builtin_wasm" }
 agent_world_proto = { path = "../agent_world_proto" }
 hmac = "0.12"
 hex = "0.4"

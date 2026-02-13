@@ -139,6 +139,7 @@ dependencies = [
 name = "agent_world"
 version = "0.1.0"
 dependencies = [
+ "agent_world_builtin_wasm",
  "agent_world_proto",
  "async-openai",
  "blake3",

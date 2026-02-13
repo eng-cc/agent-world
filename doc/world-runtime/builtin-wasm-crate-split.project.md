@@ -49,7 +49,7 @@
 - [x] BMS-45 删除 `BuiltinModuleSandbox` 类型与 `runtime` 对外导出，保留模块常量导出。
 - [x] BMS-46 回归验证、文档与 devlog 收口（阶段三第二轮）。
 - [x] BMS-47 扩展设计与任务拆解（阶段三第三轮：删除 runtime builtin 常量兼容层）。
-- [ ] BMS-48 删除 `runtime/builtin_modules.rs` 常量层，统一引用 `agent_world_builtin_wasm` 常量导出。
+- [x] BMS-48 删除 `runtime/builtin_modules.rs` 常量层，统一引用 `agent_world_builtin_wasm` 常量导出。
 - [ ] BMS-49 回归验证、文档与 devlog 收口（阶段三第三轮）。
 
 ## 依赖
@@ -58,6 +58,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：cutover 阶段三第三轮进行中（BMS-47 已完成，进入常量层删除实现阶段）。
-- 最近更新：完成 BMS-47（阶段三第三轮任务拆解，2026-02-13）。
-- 下一步：执行 BMS-48，删除 `runtime/builtin_modules.rs` 并统一常量来源。
+- 当前阶段：cutover 阶段三第三轮进行中（BMS-48 已完成，进入第三轮收口）。
+- 最近更新：完成 BMS-48（删除 runtime 常量兼容层并统一常量来源，2026-02-13）。
+- 下一步：执行 BMS-49，完成第三轮回归收口与文档闭环。
