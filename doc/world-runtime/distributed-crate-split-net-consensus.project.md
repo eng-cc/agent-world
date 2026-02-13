@@ -84,6 +84,7 @@
 - [x] T81：解耦 `agent_world_consensus` 对 `agent_world` 依赖，切换到 `agent_world_net`/`agent_world_proto::WorldError` 闭环，并补齐 runtime recovery 同源包装兼容层与定向回归。
 - [x] T82：将 `agent_world::runtime::distributed_consensus` 从 include 复用切到直接依赖 `agent_world_consensus`（包装适配层保留 runtime 错误语义），并完成 membership 定向回归。
 - [x] T83：将 `distributed_membership_sync` / `reconciliation` 的 `include!` 宏收敛为路径模块包装（`#[path]`），并修正 include warning 基线脚本在 0 include 场景下的兼容性。
+- [x] T84：将 runtime `distributed_membership_sync` 的 `membership_logic` 切换为路径复用 `agent_world_consensus/src/membership_logic.rs`，并删除 runtime 本地重复实现文件。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -189,6 +190,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：四十六次扩展阶段完成（T83 已完成，runtime 已无 `include!` 宏入口）。
+- 当前阶段：四十七次扩展阶段完成（T84 已完成，membership sync 逻辑重复文件已清零）。
 - 下一步：推进 `distributed_membership_sync` 从路径复用进一步收敛到 `agent_world_consensus` 直接依赖调用，减少 runtime 包装层。
 - 最近更新：2026-02-13

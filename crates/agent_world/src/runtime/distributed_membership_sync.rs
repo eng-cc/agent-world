@@ -25,7 +25,7 @@ mod util {
     pub(super) use super::super::util::to_canonical_cbor;
 }
 
-#[path = "distributed_membership_sync/logic.rs"]
+#[path = "../../../agent_world_consensus/src/membership_logic.rs"]
 mod membership_logic;
 
 #[path = "../../../agent_world_consensus/src/membership.rs"]
