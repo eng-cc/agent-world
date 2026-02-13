@@ -168,7 +168,7 @@
 - [x] BMS-52 补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验）
 - [x] BMS-53 收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码
 - [x] BMS-54 评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批顺序
-- [ ] BMS-55 回归验证、文档与 devlog 收口（阶段四）
+- [x] BMS-55 回归验证、文档与 devlog 收口（阶段四）
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -176,6 +176,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段四进行中）
-- 下一步：执行 BMS-55，进行阶段四回归验证、文档与 devlog 收口
-- 最近更新：完成 BMS-54（决策采用多模块独立 wasm 工件，单聚合作为过渡兼容层）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段四已完成）
+- 下一步：若进入“多模块独立 wasm 工件”实施阶段，需新增下一阶段任务拆解（建议 BMS-56+）
+- 最近更新：完成 BMS-55（阶段四回归验证、文档与 devlog 收口）（2026-02-13）

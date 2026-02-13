@@ -77,6 +77,17 @@
   - 验收门槛：
     - 每批次均具备“独立构建、独立 hash 清单、独立 bootstrap/test 装载”能力。
     - `scripts/ci-tests.sh` 能覆盖“独立工件漂移检查”并维持现有回归通过。
+- 阶段四回归收口（BMS-55，2026-02-13）：
+  - 已完成阶段四收口回归：
+    - `./scripts/sync-m1-builtin-wasm-artifact.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 阶段四结论：
+    - 单工件同步与漂移校验机制可用。
+    - bootstrap/tests 工件入口已收敛。
+    - 后续工作可进入“多模块独立工件”实施阶段。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -96,7 +107,7 @@
   - BMS-52：补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验），避免源码与工件漂移。
   - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码（已完成：统一入口为 `runtime/m1_builtin_wasm_artifact.rs`）。
   - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序（已完成：决策采用多模块独立工件，单聚合作为过渡兼容层）。
-  - BMS-55：执行阶段四回归收口，更新文档与 devlog。
+  - BMS-55：执行阶段四回归收口，更新文档与 devlog（已完成：阶段四任务全部收口）。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
