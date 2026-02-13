@@ -4,12 +4,22 @@ use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use std::collections::BTreeMap;
 
-fn install_m1_move_rule(world: &mut World) {
-    let wasm_bytes = b"m1-move-rule";
-    let wasm_hash = util::sha256_hex(wasm_bytes);
+#[cfg(feature = "wasmtime")]
+const M1_BUILTIN_WASM_ARTIFACT: &[u8] =
+    include_bytes!("../world/artifacts/m1_builtin_modules.wasm");
+
+#[cfg(feature = "wasmtime")]
+fn register_m1_builtin_wasm_artifact(world: &mut World) -> String {
+    let wasm_hash = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
     world
-        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .register_module_artifact(wasm_hash.clone(), M1_BUILTIN_WASM_ARTIFACT)
         .unwrap();
+    wasm_hash
+}
+
+#[cfg(feature = "wasmtime")]
+fn install_m1_move_rule(world: &mut World) {
+    let wasm_hash = register_m1_builtin_wasm_artifact(world);
 
     let module_manifest = ModuleManifest {
         module_id: M1_MOVE_RULE_MODULE_ID.to_string(),
@@ -39,8 +49,8 @@ fn install_m1_move_rule(world: &mut World) {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: 64 * 1024 * 1024,
+            max_gas: 2_000_000,
             max_call_rate: 10,
             max_output_bytes: 2048,
             max_effects: 0,
@@ -75,12 +85,9 @@ fn install_m1_move_rule(world: &mut World) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
+#[cfg(feature = "wasmtime")]
 fn install_m1_visibility_rule(world: &mut World) {
-    let wasm_bytes = b"m1-visibility-rule";
-    let wasm_hash = util::sha256_hex(wasm_bytes);
-    world
-        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
-        .unwrap();
+    let wasm_hash = register_m1_builtin_wasm_artifact(world);
 
     let module_manifest = ModuleManifest {
         module_id: M1_VISIBILITY_RULE_MODULE_ID.to_string(),
@@ -110,8 +117,8 @@ fn install_m1_visibility_rule(world: &mut World) {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: 64 * 1024 * 1024,
+            max_gas: 2_000_000,
             max_call_rate: 10,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -146,12 +153,9 @@ fn install_m1_visibility_rule(world: &mut World) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
+#[cfg(feature = "wasmtime")]
 fn install_m1_transfer_rule(world: &mut World) {
-    let wasm_bytes = b"m1-transfer-rule";
-    let wasm_hash = util::sha256_hex(wasm_bytes);
-    world
-        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
-        .unwrap();
+    let wasm_hash = register_m1_builtin_wasm_artifact(world);
 
     let module_manifest = ModuleManifest {
         module_id: M1_TRANSFER_RULE_MODULE_ID.to_string(),
@@ -181,8 +185,8 @@ fn install_m1_transfer_rule(world: &mut World) {
         ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: 64 * 1024 * 1024,
+            max_gas: 2_000_000,
             max_call_rate: 10,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -540,14 +544,14 @@ fn rule_decision_rejects_on_insufficient_resources() {
     }
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_move_rule_rejects_when_insufficient_resources() {
     let mut world = World::new();
     world.set_resource_balance(ResourceKind::Electricity, 0);
     install_m1_move_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_MOVE_RULE_MODULE_ID, M1MoveRuleModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -571,14 +575,14 @@ fn m1_move_rule_rejects_when_insufficient_resources() {
     assert_eq!(world.resource_balance(ResourceKind::Electricity), 0);
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_move_rule_denies_same_position() {
     let mut world = World::new();
     world.set_resource_balance(ResourceKind::Electricity, 10);
     install_m1_move_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_MOVE_RULE_MODULE_ID, M1MoveRuleModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -602,15 +606,13 @@ fn m1_move_rule_denies_same_position() {
     assert_eq!(world.resource_balance(ResourceKind::Electricity), 10);
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_visibility_rule_emits_observation() {
     let mut world = World::new();
     install_m1_visibility_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
-        M1_VISIBILITY_RULE_MODULE_ID,
-        M1VisibilityRuleModule::default(),
-    );
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -638,15 +640,13 @@ fn m1_visibility_rule_emits_observation() {
     }
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_visibility_rule_denies_when_missing_agent() {
     let mut world = World::new();
     install_m1_visibility_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new().register_builtin(
-        M1_VISIBILITY_RULE_MODULE_ID,
-        M1VisibilityRuleModule::default(),
-    );
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::QueryObservation {
         agent_id: "agent-1".to_string(),
@@ -662,13 +662,13 @@ fn m1_visibility_rule_denies_when_missing_agent() {
     }
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_transfer_rule_moves_resources() {
     let mut world = World::new();
     install_m1_transfer_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -722,13 +722,13 @@ fn m1_transfer_rule_moves_resources() {
     );
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_transfer_rule_rejects_when_insufficient() {
     let mut world = World::new();
     install_m1_transfer_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -761,13 +761,13 @@ fn m1_transfer_rule_rejects_when_insufficient() {
     }
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn m1_transfer_rule_denies_when_not_colocated() {
     let mut world = World::new();
     install_m1_transfer_rule(&mut world);
 
-    let mut sandbox = BuiltinModuleSandbox::new()
-        .register_builtin(M1_TRANSFER_RULE_MODULE_ID, M1TransferRuleModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
 
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),

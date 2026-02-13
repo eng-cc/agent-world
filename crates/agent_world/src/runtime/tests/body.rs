@@ -1,13 +1,18 @@
 use super::super::*;
 use super::pos;
 use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry, CargoEntityKind};
+#[cfg(feature = "wasmtime")]
 use crate::simulator::ResourceKind;
 
+#[cfg(feature = "wasmtime")]
+const M1_BUILTIN_WASM_ARTIFACT: &[u8] =
+    include_bytes!("../world/artifacts/m1_builtin_modules.wasm");
+
+#[cfg(feature = "wasmtime")]
 fn install_m1_body_module(world: &mut World) {
-    let wasm_bytes = b"m1-body-module";
-    let wasm_hash = util::sha256_hex(wasm_bytes);
+    let wasm_hash = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
     world
-        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .register_module_artifact(wasm_hash.clone(), M1_BUILTIN_WASM_ARTIFACT)
         .unwrap();
 
     let module_manifest = ModuleManifest {
@@ -27,8 +32,8 @@ fn install_m1_body_module(world: &mut World) {
         }],
         required_caps: Vec::new(),
         limits: ModuleLimits {
-            max_mem_bytes: 1024,
-            max_gas: 10_000,
+            max_mem_bytes: 64 * 1024 * 1024,
+            max_gas: 2_000_000,
             max_call_rate: 10,
             max_output_bytes: 4096,
             max_effects: 0,
@@ -219,6 +224,7 @@ fn record_body_attributes_update_rejects_on_rate_violation() {
     }
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn body_action_updates_view_and_costs_resources() {
     let mut world = World::new();
@@ -244,8 +250,7 @@ fn body_action_updates_view_and_costs_resources() {
         payload: serde_json::to_value(view.clone()).unwrap(),
     });
 
-    let mut sandbox =
-        BuiltinModuleSandbox::new().register_builtin(M1_BODY_MODULE_ID, M1BodyModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
     world.step_with_modules(&mut sandbox).unwrap();
 
     let agent = world.state().agents.get("agent-1").unwrap();
@@ -256,6 +261,7 @@ fn body_action_updates_view_and_costs_resources() {
     );
 }
 
+#[cfg(feature = "wasmtime")]
 #[test]
 fn body_action_rejects_when_insufficient_resources() {
     let mut world = World::new();
@@ -281,8 +287,7 @@ fn body_action_rejects_when_insufficient_resources() {
         payload: serde_json::to_value(view).unwrap(),
     });
 
-    let mut sandbox =
-        BuiltinModuleSandbox::new().register_builtin(M1_BODY_MODULE_ID, M1BodyModule::default());
+    let mut sandbox = WasmExecutor::new(WasmExecutorConfig::default());
     world.step_with_modules(&mut sandbox).unwrap();
 
     let last = world.journal().events.last().unwrap();

@@ -150,7 +150,7 @@
 - [x] BMS-34 逐步下线一批 builtin 注册点（先 tests/demo）并补充验证
 - [x] BMS-35 回归验证与文档收口（cutover 阶段一期）
 - [x] BMS-36 扩展设计与任务拆解（cutover 阶段二：逐域删除 runtime builtin fallback/实现）
-- [ ] BMS-37 下线 `rule/body` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）
+- [x] BMS-37 下线 `rule/body` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）
 - [ ] BMS-38 下线 `sensor/mobility/memory/storage/power` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）
 - [ ] BMS-39 清理 runtime 中不再使用的 builtin 模块实现导出与冗余回退路径，并完成回归收口
 
@@ -161,5 +161,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS cutover 阶段二进行中）
-- 下一步：执行 BMS-37，从 `rule/body` 开始逐域下线 builtin 测试注册与回退路径
-- 最近更新：完成 BMS-36（cutover 阶段二任务拆解）（2026-02-13）
+- 下一步：执行 BMS-38，继续下线 `sensor/mobility/memory/storage/power` 的 builtin 测试注册与回退路径
+- 最近更新：完成 BMS-37（`rule/body` 测试切换到 wasm 工件优先）（2026-02-13）
