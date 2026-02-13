@@ -31,7 +31,8 @@ jobs:
           libxrandr-dev \
           libxinerama-dev \
           libasound2-dev \
-          libudev-dev
+          libudev-dev \
+          ripgrep
     - name: Format check
       run: env -u RUSTC_WRAPPER cargo fmt --all -- --check
     - name: Build
