@@ -8,6 +8,8 @@ use super::super::{
 use super::World;
 
 const M1_BUILTIN_WASM_ARTIFACT: &[u8] = include_bytes!("artifacts/m1_builtin_modules.wasm");
+const M1_BUILTIN_WASM_ARTIFACT_SHA256: &str =
+    include_str!("artifacts/m1_builtin_modules.wasm.sha256");
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
 const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
@@ -35,6 +37,7 @@ impl World {
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
+        validate_m1_embedded_wasm_artifact()?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -94,6 +97,7 @@ impl World {
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
+        validate_m1_embedded_wasm_artifact()?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -151,6 +155,26 @@ impl World {
 
         Ok(())
     }
+}
+
+fn validate_m1_embedded_wasm_artifact() -> Result<(), WorldError> {
+    let expected = M1_BUILTIN_WASM_ARTIFACT_SHA256.trim();
+    if expected.len() != 64 || !expected.chars().all(|ch| ch.is_ascii_hexdigit()) {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: "invalid embedded wasm hash file: expected 64-char hex sha256".to_string(),
+        });
+    }
+
+    let actual = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
+    if actual != expected {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "embedded wasm artifact hash mismatch: expected={expected}, actual={actual}"
+            ),
+        });
+    }
+
+    Ok(())
 }
 
 fn ensure_bootstrap_module(

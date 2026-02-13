@@ -165,7 +165,7 @@
 - [x] BMS-49 回归验证、文档与 devlog 收口（阶段三第三轮）
 - [x] BMS-50 扩展设计与任务拆解（阶段四启动：产物接入收敛 + 文档去陈旧 + 工件策略决策）
 - [x] BMS-51 清理过时文档描述（`BuiltinModuleSandbox`/`runtime/builtin_modules.rs` 等），统一到 wasm-only 现状
-- [ ] BMS-52 补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验）
+- [x] BMS-52 补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验）
 - [ ] BMS-53 收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码
 - [ ] BMS-54 评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批顺序
 - [ ] BMS-55 回归验证、文档与 devlog 收口（阶段四）
@@ -177,5 +177,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段四进行中）
-- 下一步：执行 BMS-52，补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验）
-- 最近更新：完成 BMS-51（清理 `agent-default-modules`、`bootstrap-power-modules` 等陈旧文档口径并统一 wasm-only 现状）（2026-02-13）
+- 下一步：执行 BMS-53，收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码
+- 最近更新：完成 BMS-52（补齐 runtime 内嵌 wasm 工件同步机制并接入哈希校验）（2026-02-13）

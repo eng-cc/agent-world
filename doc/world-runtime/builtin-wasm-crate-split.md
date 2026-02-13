@@ -47,6 +47,12 @@
   - `BuiltinModuleSandbox` 兼容层已在 BMS-45 删除。
   - 默认执行链路为 wasm 工件路径（`WasmExecutor`）。
   - `runtime` 侧 builtin 常量兼容层已在 BMS-48 删除，常量统一来自 `agent_world_builtin_wasm`。
+- 阶段四工件同步机制（BMS-52，2026-02-13）：
+  - 新增同步脚本：`scripts/sync-m1-builtin-wasm-artifact.sh`。
+  - 支持两类模式：
+    - `sync`：构建 wasm -> 回填 `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.wasm` -> 刷新 `m1_builtin_modules.wasm.sha256`。
+    - `check`：重建并校验“源码构建产物 hash == runtime 内嵌工件 hash == sha256 清单 hash”。
+  - CI 接入：`scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifact.sh --check`，用于预提交防漂移。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
