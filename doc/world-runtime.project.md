@@ -194,8 +194,8 @@
 - [x] 输出 WRS 设计文档（`doc/world-runtime/wasm-runtime-crate-split.md`）
 - [x] 输出 WRS 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split.project.md`）
 - [x] WRS-2 新建 ABI/Executor/Router 三 crate 并接入 `agent_world`
-- [ ] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
-- [ ] WRS-4 回归验证、文档与 devlog 收口
+- [x] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
+- [x] WRS-4 回归验证、文档与 devlog 收口
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -203,6 +203,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七已完成，WRS-2 已完成）
-- 下一步：推进 WRS-3（`agent_world_builtin_wasm/src/lib.rs` 目录化拆分）
-- 最近更新：完成 WRS-2（ABI/Executor/Router 三 crate 落地与接入）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七与 WRS 阶段均已完成）
+- 下一步：如继续推进，需新建后续任务拆解
+- 最近更新：完成 WRS-3/WRS-4（builtin wasm 大文件拆分 + 回归收口）（2026-02-13）
