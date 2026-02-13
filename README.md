@@ -22,88 +22,6 @@
 - 关系与声誉会影响合作与交易条件；谣言与误解会像真实社会一样传播与纠偏。
 - 世界不需要“主线任务”也能持续产生活动：供需变化、劳动分工、组织形成、规则演化。
 
-## 文档入口
-- 对外展示站点（GitHub Pages）：`https://eng-cc.github.io/agent-world/`
-  - 中文：`https://eng-cc.github.io/agent-world/`
-  - English: `https://eng-cc.github.io/agent-world/en/`
-  - 近期优化亮点（截至 2026-02-12）：
-    - 四期改版：信息架构瘦身（双语同构）与视觉层级重构
-    - Hero 动态背景层（Canvas 轻量粒子 + 连线 + 扫描光带）
-    - Hero 指针微交互（鼠标/触摸联动，含 reduced-motion 降级）
-    - 架构图 SVG 精修（主链路、证据总线、反馈环路层次增强）
-- 设计文档：`doc/world-simulator.md`
-- 项目管理文档：`doc/world-simulator.project.md`
-- 任务日志：`doc/devlog/`
-
-## 工程结构
-- Rust workspace（Cargo），核心库：`crates/agent_world`
-
-## LLM Agent 行为配置
-- 代码侧已提供 `LlmAgentBehavior`（基于 `async-openai`，使用 Responses API）。
-- 默认从仓库根目录 `config.toml` 读取配置（可由 `config.example.toml` 复制）。
-- 配置项（必填）：
-  - `AGENT_WORLD_LLM_MODEL`
-  - `AGENT_WORLD_LLM_BASE_URL`
-  - `AGENT_WORLD_LLM_API_KEY`
-- 配置项（可选）：
-  - `AGENT_WORLD_LLM_TIMEOUT_MS`（默认 `180000`，3 分钟）
-  - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
-  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`（默认内置短期目标）
-  - `AGENT_WORLD_LLM_LONG_TERM_GOAL`（默认内置长期目标）
-  - `AGENT_WORLD_LLM_MAX_MODULE_CALLS`（默认 `3`）
-  - `AGENT_WORLD_LLM_MAX_DECISION_STEPS`（默认 `4`，单轮 `decide` 最大步骤）
-  - `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS`（默认 `1`，解析失败后的修复轮次）
-  - `AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS`（默认 `4`，Prompt 注入的模块历史上限）
-  - `AGENT_WORLD_LLM_PROMPT_PROFILE`（默认 `balanced`，可选 `compact` / `balanced`）
-  - `AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`（默认 `4`，连续同动作达到阈值后强制先 plan/module_call；设为 `0` 可关闭）
-  - `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，`harvest_radiation.max_amount` 上限；超限将自动裁剪）
-  - `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`（默认 `4`，检测到连续同动作时自动挂载短周期 execute_until；设为 `0` 可关闭）
-- Agent 级目标覆盖（可选）：
-  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL_<AGENT_ID_NORMALIZED>`
-  - `AGENT_WORLD_LLM_LONG_TERM_GOAL_<AGENT_ID_NORMALIZED>`
-  - 例：`agent-1` 对应 `AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1`
-- 当 `AGENT_WORLD_LLM_SYSTEM_PROMPT` 未配置时，默认值为：
-  - `硅基个体存在的意义是保障硅基文明存续和发展；`
-- `AGENT_WORLD_LLM_BASE_URL` 支持 `/v1`、`/v1/responses`、`/v1/chat/completions`，运行时会自动归一到 API Base。
-- LLM 在决策过程中支持多步协议：`plan -> module_call* -> decision_draft -> final decision`，并兼容直接输出最终 `decision`。
-- 当模型在同一轮输出多段 JSON（例如多个 `module_call` + `decision`）时，系统会按顺序消费片段并继续收敛。
-- 当模型输出 `harvest_radiation.max_amount` 超过上限时，系统会按 `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP` 自动裁剪并记录 trace 备注。
-- 为避免长期运行陷入“动作复读”，系统会在连续同动作达到阈值后触发反重复门控（优先要求 plan/module_call 先补证据）。
-- 在连续同动作场景下，系统可按 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS` 自动挂载短周期 `execute_until`，减少不必要的重复 LLM 调用。
-- 为抑制 Prompt 峰值输入，系统采用 soft/hard 双阈值预算收敛：先压缩 history/memory/step 软段，再按需强压；同时对 observation 可见对象做近邻采样，并对 memory digest 与 module history（args/result）做摘要压缩。
-- 当模型输出无法解析时，系统会按 `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS` 自动追加 repair 提示重试，超限后降级为 `Wait`。
-- LLM 在决策过程中按 Responses API `tools/function_call` 注册并解析内置模块调用，同时兼容文本 JSON `type=module_call`：
-  - `agent.modules.list`（tool 名：`agent_modules_list`）
-  - `environment.current_observation`（tool 名：`environment_current_observation`）
-  - `memory.short_term.recent`（tool 名：`memory_short_term_recent`）
-  - `memory.long_term.search`（tool 名：`memory_long_term_search`）
-- 若确需连续执行同一动作，可输出 `execute_until`：
-  - 单事件：`{"decision":"execute_until","action":{<decision_json>},"until":{"event":"action_rejected"},"max_ticks":<u64>}`
-  - 多事件（任一命中即停止）：`{"decision":"execute_until","action":{<decision_json>},"until":{"event_any_of":["action_rejected","new_visible_agent"]},"max_ticks":<u64>}`
-  - 阈值事件：`{"decision":"execute_until","action":{<decision_json>},"until":{"event":"harvest_available_below","value_lte":<i64>},"max_ticks":<u64>}`
-  - `event_name` 可选：`action_rejected`、`new_visible_agent`、`new_visible_location`、`arrive_target`、`insufficient_electricity`、`thermal_overload`、`harvest_yield_below`、`harvest_available_below`
-  - 兼容写法：`until.event` 允许 `"a|b"` 或 `"a,b"`（会按多事件解析）
-  - 当事件为 `harvest_yield_below` / `harvest_available_below` 时，必须提供 `until.value_lte`（`>=0`）
-
-## 示例工具
-- `world_init_demo`：输出世界初始化场景的摘要信息  
-  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- <scenario>`  
-  - 场景：`minimal` / `two_bases` / `llm_bootstrap` / `power_bootstrap` / `resource_bootstrap` / `twin_region_bootstrap` / `triad_region_bootstrap` / `asteroid_fragment_bootstrap` / `asteroid_fragment_twin_region_bootstrap` / `asteroid_fragment_triad_region_bootstrap`
-- `world_llm_agent_demo`：以 `AgentRunner + LlmAgentBehavior` 运行 LLM 决策循环
-  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 20 --print-llm-io`
-  - 输出报告：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 120 --report-json .tmp/llm_stress/report.json --print-llm-io`
-  - 日志开关：`--print-llm-io` 将每 tick 的 LLM 输入/输出打印到 run.log（用于 prompt 质量检查）；可叠加 `--llm-io-max-chars <n>` 截断单轮日志体积
-  - 配置：默认读取项目根目录 `config.toml`（`AGENT_WORLD_LLM_MODEL/BASE_URL/API_KEY` 必填）
-- `world_viewer_demo`：生成 viewer 回放所需的 `snapshot.json` + `journal.json`  
-  - 运行：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- <scenario> --out .data/world_viewer_data`
-- `scripts/llm-longrun-stress.sh`：真实 LLM 长跑压测（运行 demo、落盘指标、阈值断言）
-  - 运行：`./scripts/llm-longrun-stress.sh --ticks 120 --out-dir .tmp/llm_stress_longrun`
-  - 多场景（降低单场景偏差）：`./scripts/llm-longrun-stress.sh --ticks 30 --scenarios llm_bootstrap,power_bootstrap,resource_bootstrap --out-dir .tmp/llm_stress_multi_30 --no-llm-io`
-  - 多场景并行：`./scripts/llm-longrun-stress.sh --ticks 30 --scenarios llm_bootstrap,power_bootstrap,resource_bootstrap --jobs 3 --out-dir .tmp/llm_stress_multi_30_p3 --no-llm-io`
-  - 多次 `--scenario` 与 `--scenarios` 可混用；多场景结果会落在 `<out-dir>/scenarios/<scenario>/`，根目录 `report.json/summary.txt/run.log` 为聚合视图
-  - 并行度通过 `--jobs <n>` 控制；默认 `1`（串行）
-  - 结果：默认生成 `report.json`、`run.log`、`summary.txt`，其中 `run.log` 默认包含 LLM 输入/输出（可用 `--no-llm-io` 关闭，或用 `--llm-io-max-chars <n>` 截断）
-
 ## Viewer 快速运行（离线回放）
 1. 生成 demo 数据：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
@@ -122,12 +40,7 @@
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
 
-## 路线图（摘要）
-- M1：世界内核最小闭环（时间、地点、事件、行动校验、可恢复）
-- M2：持久化与回放（快照/事件日志、可审计、可分叉）
-- M3：Agent 运行时与 SDK（调度、限速、可观测性、记忆）
-- M4：最小社会与经济（生产/消耗/交易/关系/声誉；电力系统已完成 M4.3 传输/交易基础接口）
-- M5：可视化与调试工具（世界面板、事件浏览、回放与指标）
+## 路线图（TODO）
 
 ## 设计原则
 - **世界是第一性**：Agent 只能通过感知得到有限信息，行动必须通过世界规则校验。

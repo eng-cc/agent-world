@@ -17,6 +17,7 @@
 
 ## 工程架构
 - 本仓库内所有新功能必须包含:设计文档、项目管理文档、代码
+- 主crate是agent_world其他子模块各自闭环基础模块功能
 - third_party下面的代码只可读，不能写
 - 执行cargo命令需要如下形式 env -u RUSTC_WRAPPER cargo check
 
@@ -30,14 +31,6 @@
    `./scripts/capture-viewer-frame.sh`
 2) 可选参数：
    `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
-
-### 手动流程（Xvfb + ffmpeg）
-1) 启动 live server（示例）：
-   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --tick-ms 300`
-2) 启动 viewer（使用同一 DISPLAY）：
-   `DISPLAY=:100 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023`
-3) 抓图（root 或窗口区域）
-4) agent 读取图片并分析，再继续改代码。
 
 ### 推荐约定
 - 临时产物统一放在 `.tmp/screens/`（日志、截图、窗口几何）；默认每次新调试前由脚本清空 `.tmp/`。
