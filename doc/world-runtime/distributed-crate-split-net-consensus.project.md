@@ -68,6 +68,8 @@
 - [x] T65：清理 membership recovery composite cursor 相关无效导入 warning（测试门控导出 + recovery 包装层 warning 降噪），并完成定向回归验证。
 - [x] T66：治理 `distributed_membership_sync` 同源复用 dead_code warning（移除 `logic.rs` 重复模块编译路径并统一到 `membership_logic`）。
 - [x] T67：在 runtime recovery 共享包装层增加局部 warning 门控，完成 membership/recovery 定向回归验证并回写文档。
+- [x] T68：治理 `distributed_observer_replay` 同源复用孤立 dead_code warning（runtime 包装层局部门控，不改共享源码与 API）。
+- [x] T69：完成 distributed observer replay 定向回归验证并回写设计/项目管理文档。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -158,6 +160,6 @@
 - `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：三十一次扩展阶段已收口（T66~T67 全部完成）。
-- 下一步：评估 `distributed_observer_replay` 同源复用路径中的孤立 dead_code warning（`replay_validate_head_with_dht`）是否应按运行时上下文做同类分层治理。
+- 当前阶段：三十二次扩展阶段已收口（T68~T69 全部完成）。
+- 下一步：评估 runtime 与 `agent_world_net` 其余 include! 复用模块是否仍有上下文特异 warning，按同样“局部门控 + 定向测试”模式逐项收敛。
 - 最近更新：2026-02-13
