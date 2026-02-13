@@ -188,7 +188,7 @@
 - [x] BMS-72 回归验证、文档与 devlog 收口（阶段六闭环联测）
 - [x] BMS-73 扩展设计与任务拆解（阶段七：`agent_world` 运行时 wasmtime 闭环联测）
 - [x] BMS-74 新增 `runtime::tests` 闭环场景测试，验证 `World + WasmExecutor + builtin wasm` 端到端链路
-- [ ] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）
+- [x] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -196,6 +196,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七进行中）
-- 下一步：执行 BMS-75（回归验证、文档与 devlog 收口）
-- 最近更新：完成 BMS-74（运行时闭环场景测试落地）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七已完成）
+- 下一步：BMS 阶段七已收口；若继续推进需新增后续任务拆解
+- 最近更新：完成 BMS-75（阶段七回归收口）（2026-02-13）
