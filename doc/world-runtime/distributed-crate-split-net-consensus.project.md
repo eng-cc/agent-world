@@ -78,7 +78,7 @@
 - [x] T75：将执行产物索引相关公共依赖（`ExecutionWriteResult` / `ExecutionWriteConfig` / `SegmentConfig` / `JournalSegmentRef`）下沉到 `agent_world_proto`，收敛 runtime/net 双类型并将 `distributed_index` 收敛为 net 薄封装。
 - [x] T76：清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层，改为 runtime 本地直接实现并保持 include warning 基线无回归。
 - [x] T77：清理 `distributed_bootstrap` include 包装层，改为 runtime 本地直接实现并完成 bootstrap 定向回归。
-- [ ] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口（进行中：`distributed_head_follow.rs` 已去除 include 包装，待推进 observer/observer_replay）。
+- [x] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口（已完成：`distributed_head_follow.rs` / `distributed_observer.rs` / `distributed_observer_replay.rs` 均去除 include 包装）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -184,6 +184,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：四十次扩展阶段进行中（T78 进行中：已完成 head_follow 去 include，observer/observer_replay 待收敛）。
-- 下一步：继续执行 T78，清理 `distributed_observer.rs` / `distributed_observer_replay.rs` include 包装层并完成链路回归。
+- 当前阶段：四十一次扩展阶段完成（T78 已完成，head_follow + observer + observer_replay 均完成去 include 收敛）。
+- 下一步：评估并拆解下一阶段任务（如需继续收敛 runtime 与 net 同源实现差异，新增 T79+ 任务并补回归门禁）。
 - 最近更新：2026-02-13
