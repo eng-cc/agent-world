@@ -59,6 +59,24 @@
     - `m1_builtin_modules.wasm.sha256` 清单常量引用。
     - tests 安装夹具复用的工件注册辅助函数。
   - `bootstrap/tests` 全部改为通过统一入口访问工件，去除分散 `include_bytes!/include_str!` 硬编码。
+- 阶段四工件策略决策（BMS-54，2026-02-13）：
+  - 备选方案：
+    - 方案 A：保持“单聚合 wasm 工件”（`m1_builtin_modules.wasm`）长期不变。
+    - 方案 B：迁移为“多模块独立 wasm 工件”（按 `module_id` 产物切分）。
+  - 评估结论：
+    - 在治理/审计粒度、变更影响面、缓存命中与回滚精度上，方案 B 明显优于方案 A。
+    - 方案 A 仅在短期实现复杂度更低，但会长期放大“任一模块改动导致整包 hash 变更”的运营成本。
+  - 最终决策：
+    - 目标形态选择方案 B（多模块独立 wasm 工件）。
+    - 保留当前单聚合工件作为过渡兼容层，分批迁移完成后再移除。
+  - 分批迁移顺序（草案）：
+    - 批次 1（规则域，低状态耦合）：`m1.rule.move` / `m1.rule.visibility` / `m1.rule.transfer`
+    - 批次 2（动作接口域）：`m1.body.core` / `m1.sensor.basic` / `m1.mobility.basic`
+    - 批次 3（状态与账本域）：`m1.memory.core` / `m1.storage.cargo`
+    - 批次 4（能量域与收尾）：`m1.power.radiation_harvest` / `m1.power.storage`，并下线单聚合工件入口
+  - 验收门槛：
+    - 每批次均具备“独立构建、独立 hash 清单、独立 bootstrap/test 装载”能力。
+    - `scripts/ci-tests.sh` 能覆盖“独立工件漂移检查”并维持现有回归通过。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -77,7 +95,7 @@
   - BMS-51：清理过时文档描述（`BuiltinModuleSandbox`/`runtime/builtin_modules.rs` 等），统一到当前 wasm-only 事实。
   - BMS-52：补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验），避免源码与工件漂移。
   - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码（已完成：统一入口为 `runtime/m1_builtin_wasm_artifact.rs`）。
-  - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序。
+  - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序（已完成：决策采用多模块独立工件，单聚合作为过渡兼容层）。
   - BMS-55：执行阶段四回归收口，更新文档与 devlog。
 
 ## 里程碑
