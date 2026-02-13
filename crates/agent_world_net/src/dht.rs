@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::WorldError;
 use agent_world_proto::distributed::WorldHeadAnnounce;
 use agent_world_proto::distributed_dht as proto_dht;
 
-use crate::util::now_ms;
-use crate::{MembershipDirectorySnapshot, ProviderRecord};
+pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 
 pub trait DistributedDht: proto_dht::DistributedDht<WorldError> {}
 
@@ -86,4 +86,11 @@ impl proto_dht::DistributedDht<WorldError> for InMemoryDht {
         let memberships = self.memberships.lock().expect("lock memberships");
         Ok(memberships.get(world_id).cloned())
     }
+}
+
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }

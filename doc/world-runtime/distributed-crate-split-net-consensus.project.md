@@ -48,6 +48,8 @@
 - [x] T45：完成二十次扩展阶段回归验证与文档收口。
 - [x] T46：增强 `agent_world_net` 的 `Libp2pNetwork` 可观测性并补齐跨节点 smoke test（feature=`libp2p`）。
 - [x] T47：完成二十一次扩展阶段回归验证与文档收口。
+- [x] T48：将 `agent_world::runtime` 的 `distributed_net/dht/gateway/lease/mempool` 改为直接复用 `agent_world_net`/`agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
+- [x] T49：完成二十二次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -102,8 +104,14 @@
 - `crates/agent_world_net/src/execution_storage.rs`
 - `crates/agent_world_net/src/head_validation.rs`
 - `crates/agent_world_net/src/libp2p_net.rs`
+- `crates/agent_world/src/lib.rs`
+- `crates/agent_world/src/runtime/distributed_net.rs`
+- `crates/agent_world/src/runtime/distributed_dht.rs`
+- `crates/agent_world/src/runtime/distributed_gateway.rs`
+- `crates/agent_world/src/runtime/distributed_lease.rs`
+- `crates/agent_world/src/runtime/distributed_mempool.rs`
 
 ## 状态
-- 当前阶段：二十一次扩展阶段已收口（T46~T47 全部完成）。
-- 下一步：按需继续推进更多 runtime 实现的物理迁移与协议/依赖收敛，保持导出 API 兼容并按切片逐步推进。
-- 最近更新：2026-02-12
+- 当前阶段：二十二次扩展阶段已收口（T48~T49 全部完成）。
+- 下一步：继续把 `distributed_client/index/provider_cache/dht_cache` 等 runtime 模块收敛到“直接复用新 crate 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
+- 最近更新：2026-02-13

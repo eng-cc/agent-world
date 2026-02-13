@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use agent_world::runtime::WorldError;
 use agent_world_proto::distributed_net as proto_net;
 
-use crate::{NetworkMessage, NetworkSubscription};
+pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 
 pub trait DistributedNetwork: proto_net::DistributedNetwork<WorldError> {}
 

@@ -1,4 +1,4 @@
-//! Action mempool aggregation and deduplication.
+// Action mempool aggregation and deduplication.
 
 use std::collections::{HashMap, VecDeque};
 
