@@ -338,6 +338,13 @@
   - `agent_world::runtime::distributed_index` 改为调用 `agent_world_net` 索引实现并做错误桥接，消除 runtime 本地重复逻辑。
 - 保持 `agent_world` 对外 API 命名与行为语义兼容，确保分布式一致性/多节点回归无变化。
 
+### In Scope（三十八次扩展阶段）
+- 清理 `distributed_storage` / `distributed_validation` 的 runtime include 包装层：
+  - `agent_world::runtime::distributed_storage.rs` 移除 `include!`，改为 runtime 本地直接实现（继续复用 net/proto 统一类型）。
+  - `agent_world::runtime::distributed_validation.rs` 移除 `include!`，改为 runtime 本地直接实现（`HeadValidationResult`/校验流程语义不变）。
+  - include warning 基线脚本继续收口，确认去掉两处 include 后无新增 warning。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容，不改变执行产物写入与 head 校验结果。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -434,6 +441,7 @@
 - P73：完成 `agent_world_net` 去除 `agent_world` 依赖与 runtime 首批直接依赖切换收口。
 - P74：完成 `WorldError` 下沉到 `agent_world_proto` 并在 net crate 收敛复用。
 - P75：完成执行产物索引数据面（`ExecutionWrite*` / `Segment*`）下沉到 `agent_world_proto` 并收敛 runtime/net 双类型。
+- P76：完成 runtime `distributed_storage` / `distributed_validation` 去 include 包装层收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -464,3 +472,4 @@
 - warning 基线脚本若未和 CI/本地入口统一，可能出现“手工通过但流水线遗漏”的门禁漂移；需统一复用 `scripts/ci-tests.sh` 作为执行入口。
 - `agent_world` 切换到 `agent_world_net` 直接依赖后，`WorldError` 与 `ExecutionWriteResult` 若双定义并存，容易出现隐式签名不兼容；需通过显式 `From` 桥接与 runtime 本地 wrapper 稳定过渡。
 - `ExecutionWriteConfig` 下沉到 proto 后，若未来 runtime/net 对分段参数解释不一致，可能导致跨节点数据组装差异；需以统一类型 + 分布式回归测试持续约束。
+- `distributed_storage` / `distributed_validation` 改为 runtime 本地实现后，若后续 net 侧同名逻辑继续演进可能出现实现漂移；需通过定向测试与阶段性比对保持语义一致。
