@@ -320,6 +320,13 @@
   - 对 `distributed_index` 保持 runtime 本地实现，避免 `ExecutionWriteResult` 在 net/runtime 两侧类型尚未统一时产生签名断裂。
 - 保持对外 API 语义兼容，优先保障多节点与一致性回归通过。
 
+### In Scope（三十六次扩展阶段）
+- 将 net/runtime 共享错误类型下沉到 `agent_world_proto`：
+  - 新增 `agent_world_proto::world_error::WorldError`，承载 net 链路所需错误语义（network request/validation/io/serde）。
+  - `agent_world_net` 改为直接复用 proto `WorldError`，去除本地重复定义。
+  - 保持 `agent_world` 通过 `From<agent_world_net::WorldError>` 桥接，避免 runtime 侧错误语义回归。
+- 保持 `agent_world_net` 基础化目标不变，并为后续 `ExecutionWriteResult` 公共数据面下沉做准备。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -414,6 +421,7 @@
 - P71：三十三次扩展阶段回归验证与文档收口。
 - P72：完成 include warning 基线脚本化与 CI 接入收口。
 - P73：完成 `agent_world_net` 去除 `agent_world` 依赖与 runtime 首批直接依赖切换收口。
+- P74：完成 `WorldError` 下沉到 `agent_world_proto` 并在 net crate 收敛复用。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
