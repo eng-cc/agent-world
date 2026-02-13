@@ -166,6 +166,14 @@
   - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）（已完成）。
   - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）（已完成规则域切换）。
   - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog（已完成）。
+- 阶段五第二轮路线（2026-02-13）：
+  - BMS-61：扩展设计与任务拆解（`body/sensor/mobility` 按 `module_id` 独立工件装载）（已完成）。
+  - BMS-62：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）。
+  - BMS-63：执行阶段五第二轮回归收口，更新文档与 devlog。
+  - 本轮实施约束：
+    - 保持 `m1.memory.core` / `m1.storage.cargo` / power 域仍走既有入口，避免跨批次混改。
+    - 第二轮仅涉及 `runtime::tests::body` 与 `install_m1_agent_default_modules` 的装载切换。
+    - 回归最小覆盖需包含 `body`、`agent_default_modules`、`power_bootstrap` 与独立工件同步校验。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -192,6 +200,7 @@
 - M22：完成 BMS-57（模块清单单一来源收敛与一致性校验）。
 - M23：完成 BMS-58（独立工件同步脚本与 hash 清单接入）。
 - M24：完成 BMS-59（规则域按 module_id 独立工件装载切换）。
+- M25：完成 BMS-61（阶段五第二轮任务拆解）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
