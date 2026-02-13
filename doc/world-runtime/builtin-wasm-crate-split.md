@@ -197,7 +197,7 @@
 - 阶段五第三轮路线（2026-02-13）：
   - BMS-64：扩展设计与任务拆解（`memory/storage_cargo + power` 按 `module_id` 独立工件装载）（已完成）。
   - BMS-65：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）（已完成）。
-  - BMS-66：执行阶段五第三轮回归收口，更新文档与 devlog。
+  - BMS-66：执行阶段五第三轮回归收口，更新文档与 devlog（已完成）。
   - 本轮实施约束：
     - 优先切 `install_m1_power_bootstrap_modules` 与 `install_m1_agent_default_modules` 中 remaining 模块（`memory/storage_cargo`）。
     - 单聚合工件 hash 校验入口先保留，避免与“删除聚合工件入口”任务耦合。
@@ -214,6 +214,16 @@
     - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+- 阶段五第三轮回归收口（BMS-66，2026-02-13）：
+  - 回归与校验通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第三轮结论：
+    - `memory/storage_cargo + power` 完成按 `module_id` 独立工件装载后，`rules/body/default/power` 路径回归通过。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -245,6 +255,7 @@
 - M27：完成 BMS-63（阶段五第二轮回归收口）。
 - M28：完成 BMS-64（阶段五第三轮任务拆解）。
 - M29：完成 BMS-65（`memory/storage_cargo + power` 按 module_id 独立工件装载切换）。
+- M30：完成 BMS-66（阶段五第三轮回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
