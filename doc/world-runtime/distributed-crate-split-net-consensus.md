@@ -327,6 +327,17 @@
   - 保持 `agent_world` 通过 `From<agent_world_net::WorldError>` 桥接，避免 runtime 侧错误语义回归。
 - 保持 `agent_world_net` 基础化目标不变，并为后续 `ExecutionWriteResult` 公共数据面下沉做准备。
 
+### In Scope（三十七次扩展阶段）
+- 将执行产物索引相关公共数据面下沉到 `agent_world_proto` 并收敛 runtime/net 双类型：
+  - 新增 `agent_world_proto::distributed_storage`：
+    - `SegmentConfig` / `JournalSegmentRef`
+    - `ExecutionWriteConfig` / `ExecutionWriteResult`
+  - `agent_world_net::distributed_storage` 改为直接复用 proto 类型，去除 net 本地重复定义。
+  - `agent_world::runtime::distributed_storage` 改为复用 net/proto 统一类型，保持 `store_execution_result` 行为不变。
+  - `agent_world::runtime::segmenter` 复用 proto 的 `SegmentConfig` / `JournalSegmentRef`，避免并行结构体漂移。
+  - `agent_world::runtime::distributed_index` 改为调用 `agent_world_net` 索引实现并做错误桥接，消除 runtime 本地重复逻辑。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容，确保分布式一致性/多节点回归无变化。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -422,6 +433,7 @@
 - P72：完成 include warning 基线脚本化与 CI 接入收口。
 - P73：完成 `agent_world_net` 去除 `agent_world` 依赖与 runtime 首批直接依赖切换收口。
 - P74：完成 `WorldError` 下沉到 `agent_world_proto` 并在 net crate 收敛复用。
+- P75：完成执行产物索引数据面（`ExecutionWrite*` / `Segment*`）下沉到 `agent_world_proto` 并收敛 runtime/net 双类型。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -451,3 +463,4 @@
 - warning 基线评估若缺少 feature/target 维度，可能出现“当前无 warning、切换 feature 后回归”的盲区；需固定 `--all-targets` 与 `--features wasmtime` 双路径校验。
 - warning 基线脚本若未和 CI/本地入口统一，可能出现“手工通过但流水线遗漏”的门禁漂移；需统一复用 `scripts/ci-tests.sh` 作为执行入口。
 - `agent_world` 切换到 `agent_world_net` 直接依赖后，`WorldError` 与 `ExecutionWriteResult` 若双定义并存，容易出现隐式签名不兼容；需通过显式 `From` 桥接与 runtime 本地 wrapper 稳定过渡。
+- `ExecutionWriteConfig` 下沉到 proto 后，若未来 runtime/net 对分段参数解释不一致，可能导致跨节点数据组装差异；需以统一类型 + 分布式回归测试持续约束。

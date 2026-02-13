@@ -1,38 +1,12 @@
 //! Snapshot/journal segmentation helpers for distributed storage.
 
-use serde::{Deserialize, Serialize};
-
 use super::blob_store::{blake3_hex, BlobStore};
 use super::distributed::{SnapshotManifest, StateChunkRef};
 use super::error::WorldError;
 use super::snapshot::{Journal, Snapshot};
 use super::util::to_canonical_cbor;
 
-pub const DEFAULT_SNAPSHOT_CHUNK_BYTES: usize = 256 * 1024;
-pub const DEFAULT_JOURNAL_EVENTS_PER_SEGMENT: usize = 256;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SegmentConfig {
-    pub snapshot_chunk_bytes: usize,
-    pub journal_events_per_segment: usize,
-}
-
-impl Default for SegmentConfig {
-    fn default() -> Self {
-        Self {
-            snapshot_chunk_bytes: DEFAULT_SNAPSHOT_CHUNK_BYTES,
-            journal_events_per_segment: DEFAULT_JOURNAL_EVENTS_PER_SEGMENT,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct JournalSegmentRef {
-    pub from_event_id: u64,
-    pub to_event_id: u64,
-    pub content_hash: String,
-    pub size_bytes: u64,
-}
+pub use agent_world_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
 
 pub fn segment_snapshot(
     snapshot: &Snapshot,

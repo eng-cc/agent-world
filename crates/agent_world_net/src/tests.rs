@@ -5,6 +5,7 @@ use agent_world_proto::distributed as proto_distributed;
 use agent_world_proto::distributed_dht::DistributedDht as _;
 use agent_world_proto::distributed_net as proto_net;
 use agent_world_proto::distributed_net::DistributedNetwork as _;
+use agent_world_proto::distributed_storage as proto_storage;
 
 use super::*;
 use crate::util::to_canonical_cbor;
@@ -238,6 +239,19 @@ fn sample_blob_ref(content_hash: &str) -> proto_distributed::BlobRef {
     }
 }
 
+fn sample_segment_ref(
+    from_event_id: u64,
+    to_event_id: u64,
+    content_hash: &str,
+) -> proto_storage::JournalSegmentRef {
+    proto_storage::JournalSegmentRef {
+        from_event_id,
+        to_event_id,
+        content_hash: content_hash.to_string(),
+        size_bytes: 1,
+    }
+}
+
 fn sample_write_result() -> ExecutionWriteResult {
     ExecutionWriteResult {
         block: proto_distributed::WorldBlock {
@@ -293,8 +307,8 @@ fn sample_write_result() -> ExecutionWriteResult {
         },
         snapshot_manifest_ref: sample_blob_ref("snapshot-manifest"),
         journal_segments: vec![
-            sample_blob_ref("journal-seg-1"),
-            sample_blob_ref("journal-seg-2"),
+            sample_segment_ref(1, 1, "journal-seg-1"),
+            sample_segment_ref(2, 2, "journal-seg-2"),
         ],
         journal_segments_ref: sample_blob_ref("journal-index"),
     }
