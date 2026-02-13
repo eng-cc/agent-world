@@ -281,6 +281,14 @@
 - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
 - 通过定向 `cargo check` + federated recovery replay 测试验证收口。
 
+### In Scope（三十一次扩展阶段）
+- 继续推进 runtime 同源复用上下文的 warning 分层治理，聚焦 `distributed_membership_sync`：
+  - 删除 `distributed_membership_sync` 内 `logic.rs` 的重复模块编译路径（移除 `mod logic;`，统一复用 `membership_logic`），降低重复 dead_code 噪音。
+  - runtime recovery 共享包装层增加 `dead_code` + `unused_imports` 局部门控，避免 consensus recovery 共享源码在 runtime 非测试上下文产生无效 warning。
+  - 保持 recovery 与 membership sync 对外导出 API 不变，不改业务语义。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+- 通过定向 `cargo check` 与 membership/recovery federated 回归测试验证收口。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -367,6 +375,8 @@
 - P63：二十九次扩展阶段回归验证与文档收口。
 - P64：完成 runtime `distributed_membership_sync` recovery 导出清单分组与测试导出门控收敛。
 - P65：三十次扩展阶段回归验证与文档收口。
+- P66：完成 runtime `distributed_membership_sync` 同源复用 dead_code warning 分层治理。
+- P67：三十一次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -391,3 +401,4 @@
 - recovery 子模块切换为 `#[path]` 复用后，若相对路径或父级 alias 发生漂移，可能导致仅单 crate 通过而 workspace 失败，需要维持 `membership_recovery/*` 的相对导入一致性并用 workspace 测试收口。
 - recovery 旧文件物理删除后，若未来误将 runtime 本地子模块重新声明为编译入口，可能触发路径找不到错误；需要以 `recovery.rs` 单入口同源复用为准并在项目文档持续约束。
 - recovery 导出分组后若 runtime 与 consensus 端的测试门控不一致，可能出现“`cargo check` 干净但联调测试缺类型”回归，需要保留 federated replay 相关定向测试作为回归门禁。
+- warning 分层治理若范围过大（全局 allow）可能掩盖真实回归；需要保持局部门控并持续用定向测试覆盖 membership/recovery 关键路径。

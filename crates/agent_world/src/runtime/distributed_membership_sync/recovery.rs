@@ -5,7 +5,7 @@ mod membership {
 }
 
 mod membership_logic {
-    pub(super) use super::super::logic::*;
+    pub(super) use super::super::membership_logic::*;
 }
 
 mod membership_reconciliation {
@@ -13,7 +13,7 @@ mod membership_reconciliation {
 }
 
 #[path = "../../../../agent_world_consensus/src/membership_recovery/mod.rs"]
-#[allow(unused_imports)]
+#[allow(dead_code, unused_imports)]
 mod shared_recovery;
 
 pub use shared_recovery::*;
