@@ -63,7 +63,6 @@ pub use recovery_exports::*;
 
 #[cfg(test)]
 mod coordination_tests;
-mod logic;
 #[cfg(test)]
 mod persistence_tests;
 mod reconciliation;

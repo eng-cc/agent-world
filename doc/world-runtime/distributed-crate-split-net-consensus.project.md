@@ -66,6 +66,8 @@
 - [x] T63：完成二十九次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 - [x] T64：收敛 `distributed_membership_sync.rs` 中超长 recovery re-export 清单（拆分 `recovery_exports.rs` 并按能力分组维护）。
 - [x] T65：清理 membership recovery composite cursor 相关无效导入 warning（测试门控导出 + recovery 包装层 warning 降噪），并完成定向回归验证。
+- [x] T66：治理 `distributed_membership_sync` 同源复用 dead_code warning（移除 `logic.rs` 重复模块编译路径并统一到 `membership_logic`）。
+- [x] T67：在 runtime recovery 共享包装层增加局部 warning 门控，完成 membership/recovery 定向回归验证并回写文档。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -156,6 +158,6 @@
 - `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：三十次扩展阶段已收口（T64~T65 全部完成）。
-- 下一步：评估 `distributed_membership_sync` 同源共享模块中的 `dead_code` warning 是否需要按运行时上下文进一步分层治理，避免 warning 噪音继续累积。
+- 当前阶段：三十一次扩展阶段已收口（T66~T67 全部完成）。
+- 下一步：评估 `distributed_observer_replay` 同源复用路径中的孤立 dead_code warning（`replay_validate_head_with_dht`）是否应按运行时上下文做同类分层治理。
 - 最近更新：2026-02-13
