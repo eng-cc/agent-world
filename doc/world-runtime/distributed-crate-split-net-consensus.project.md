@@ -80,6 +80,7 @@
 - [x] T77：清理 `distributed_bootstrap` include 包装层，改为 runtime 本地直接实现并完成 bootstrap 定向回归。
 - [x] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口（已完成：`distributed_head_follow.rs` / `distributed_observer.rs` / `distributed_observer_replay.rs` 均去除 include 包装）。
 - [x] T79：继续清理 `distributed_mempool` include 包装层，改为 runtime 本地直接实现并完成 mempool/多节点定向回归。
+- [x] T80：继续清理 `distributed_lease` include 包装层，改为 runtime 本地直接实现并完成 lease/一致性定向回归。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -185,6 +186,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：四十二次扩展阶段完成（T79 已完成，mempool 已完成去 include 收敛）。
-- 下一步：继续推进 include 收敛，优先评估 `distributed_lease` 去 include 包装层的替换与回归范围。
+- 当前阶段：四十三次扩展阶段完成（T80 已完成，lease 已完成去 include 收敛）。
+- 下一步：继续推进 include 收敛，评估 `distributed_consensus` / `distributed_membership_sync` 剩余 include 复用入口的替换策略。
 - 最近更新：2026-02-13
