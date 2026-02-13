@@ -61,7 +61,7 @@
 - [x] BMS-57 收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验。
 - [x] BMS-58 新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）。
 - [x] BMS-59 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）。
-- [ ] BMS-60 回归验证、文档与 devlog 收口（阶段五首轮）。
+- [x] BMS-60 回归验证、文档与 devlog 收口（阶段五首轮）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -69,6 +69,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：阶段五推进中（BMS-56~BMS-59 已完成，BMS-60 待执行）。
-- 最近更新：完成 BMS-59（规则域按 module_id 独立工件装载切换，2026-02-13）。
-- 下一步：执行 BMS-60，完成阶段五首轮回归收口、文档与 devlog 闭环。
+- 当前阶段：阶段五首轮已收口（BMS-56~BMS-60 已完成）。
+- 最近更新：完成 BMS-60（阶段五首轮回归收口：rules/body/power/bootstrap + 独立工件同步校验，2026-02-13）。
+- 下一步：补充阶段五下一批任务拆解（`body/sensor/mobility` 按 `module_id` 独立工件装载切换）。

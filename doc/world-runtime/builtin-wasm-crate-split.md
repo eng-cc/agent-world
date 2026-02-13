@@ -130,6 +130,16 @@
   - 当前范围说明：
     - 本任务仅切换规则域（`runtime::tests::rules`）到独立工件装载；
     - 保持 bootstrap 与其他域先继续使用既有入口，待后续批次迁移。
+- 阶段五首轮回归收口（BMS-60，2026-02-13）：
+  - 已完成“rules/body/power/bootstrap + 同步校验”首轮回归：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+  - 首轮结论：
+    - 规则域切换到按 `module_id` 独立工件后，核心规则/身体/默认模块 bootstrap 路径回归通过。
+    - 独立工件目录与 hash 清单仍与源码构建产物保持一致。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -155,7 +165,7 @@
   - BMS-57：收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验（已完成）。
   - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）（已完成）。
   - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）（已完成规则域切换）。
-  - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog。
+  - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog（已完成）。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
