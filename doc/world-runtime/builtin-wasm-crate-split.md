@@ -44,9 +44,14 @@
   - `.tmp/builtin-wasm/<module-id>.wasm`
   - `.tmp/builtin-wasm/<module-id>.metadata.json`
 - runtime 装载工厂（草案）：
-  - `BuiltinModuleSandbox::with_fallback(Box<dyn ModuleSandbox>)`
+  - `BuiltinModuleSandbox::with_preferred_fallback(Box<dyn ModuleSandbox>)`
   - `fallback` 指向 `WasmExecutor`（加载 builtin wasm 产物）
   - 策略：优先命中 wasm 工件；builtin 仅在工件缺失或执行失败时兜底（保守切换）。
+- 阶段三下线路线（2026-02-13）：
+  - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
+  - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
+  - BMS-42：下线 `BuiltinModuleSandbox` 的 builtin 注册兜底能力，收敛到 wasm-only 执行链路。
+  - BMS-43：执行阶段三首轮回归收口，更新文档与 devlog。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -65,6 +70,7 @@
 - M14：完成 BMS-35（cutover 阶段回归收口与文档闭环）。
 - M15：完成 BMS-36（cutover 阶段二设计扩展与任务拆解）。
 - M16：完成 BMS-37~BMS-39（按模块域逐步删除 builtin fallback 与实现）。
+- M17：完成 BMS-40~BMS-43（阶段三首轮：物理删除 native builtin 老代码并收口接口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
@@ -77,3 +83,5 @@
 - runtime 双路径（wasm + builtin fallback）短期并行时，存在“同模块不同执行器”导致行为漂移风险：通过同输入对比测试与回放一致性测试覆盖。
 - 逐步删除 builtin 注册点过程中，存在测试夹具未同步导致模块缺失风险：先在测试入口灰度切换，保留 fallback 并补充缺失报错断言。
 - 删除 runtime 内 builtin 实现时，存在“无 wasmtime 构建路径”兼容风险：通过 feature 门控分阶段下线，并在每批任务执行双路径回归（with/without wasmtime）。
+- 物理删除 `runtime/builtin_modules/*` 旧实现后，存在隐藏引用或常量来源漂移风险：通过 `rg` 全量扫描 + 定向编译测试 + bootstrap/power 回归覆盖。
+- 下线 builtin 注册 API 时，存在测试夹具未同步导致不可执行风险：阶段三保持“每删一层就补对应测试迁移”的原子任务提交。
