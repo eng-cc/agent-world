@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use agent_world::runtime::WorldError;
+use super::super::error::WorldError;
 
 use super::super::membership_logic;
 

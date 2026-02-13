@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use agent_world::runtime::WorldError;
+use super::error::WorldError;
 use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
 
 use super::{

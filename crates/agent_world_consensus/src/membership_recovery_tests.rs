@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{DistributedNetwork, InMemoryNetwork, WorldError};
+use agent_world_net::{DistributedNetwork, InMemoryNetwork};
 
 use crate::{
-    FileMembershipRevocationAlertDeadLetterStore, FileMembershipRevocationAlertRecoveryStore,
-    FileMembershipRevocationCoordinatorStateStore,
+    error::WorldError, FileMembershipRevocationAlertDeadLetterStore,
+    FileMembershipRevocationAlertRecoveryStore, FileMembershipRevocationCoordinatorStateStore,
     InMemoryMembershipRevocationAlertDeadLetterStore,
     InMemoryMembershipRevocationAlertRecoveryStore,
     InMemoryMembershipRevocationCoordinatorStateStore,

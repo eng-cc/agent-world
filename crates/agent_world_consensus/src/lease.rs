@@ -1,6 +1,6 @@
 // Lease-based single-writer coordination for sequencer roles.
 
-use agent_world::runtime::blake3_hex;
+use super::util::blake3_hex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeaseState {

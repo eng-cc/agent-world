@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
+use super::super::error::WorldError;
 use super::replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackAlertStateStore,
     MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord,
@@ -14,7 +15,6 @@ use super::replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 use super::{normalized_schedule_key, MembershipSyncClient};
-use agent_world::runtime::WorldError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy {

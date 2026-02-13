@@ -2,9 +2,11 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use agent_world::runtime::{blake3_hex, WorldError};
 use agent_world_proto::distributed::{ActionBatch, ActionEnvelope};
 use serde::Serialize;
+
+use super::error::WorldError;
+use super::util::blake3_hex;
 
 #[derive(Debug, Clone)]
 pub struct ActionMempoolConfig {

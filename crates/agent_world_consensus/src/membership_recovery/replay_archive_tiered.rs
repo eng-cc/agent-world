@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
-use agent_world::runtime::WorldError;
+use super::super::error::WorldError;
 
 use super::super::membership_reconciliation::{
     MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,

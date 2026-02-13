@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use agent_world::runtime::WorldError;
+use super::error::WorldError;
 
 use super::membership::{
     MembershipDirectorySignerKeyring, MembershipSyncClient, MembershipSyncSubscription,
