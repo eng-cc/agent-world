@@ -296,6 +296,14 @@
 - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
 - 通过定向 `cargo check` + distributed observer replay 相关集成测试验证收口。
 
+### In Scope（三十三次扩展阶段）
+- 对 runtime 与 `agent_world_net` 剩余 `include!` 同源复用模块做 warning 基线评估：
+  - 扫描 `runtime` 侧全部 `include!` 入口，确认评估范围完整。
+  - 执行 `agent_world` 在 `--all-targets` / `--all-targets --features wasmtime` 的编译检查，验证无新增上下文特异 warning。
+  - 保持代码行为与导出 API 不变，不做额外门控扩散。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+- 通过编译检查与定向集成测试确认“无新增 warning”状态稳定。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -386,6 +394,8 @@
 - P67：三十一次扩展阶段回归验证与文档收口。
 - P68：完成 runtime `distributed_observer_replay` 孤立 dead_code warning 分层治理。
 - P69：三十二次扩展阶段回归验证与文档收口。
+- P70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估。
+- P71：三十三次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -412,3 +422,4 @@
 - recovery 导出分组后若 runtime 与 consensus 端的测试门控不一致，可能出现“`cargo check` 干净但联调测试缺类型”回归，需要保留 federated replay 相关定向测试作为回归门禁。
 - warning 分层治理若范围过大（全局 allow）可能掩盖真实回归；需要保持局部门控并持续用定向测试覆盖 membership/recovery 关键路径。
 - observer replay warning 治理若误扩散到共享源码层，可能影响 `agent_world_net` 端可见性语义；需将门控限定在 runtime 包装层并保留跨节点集成测试回归。
+- warning 基线评估若缺少 feature/target 维度，可能出现“当前无 warning、切换 feature 后回归”的盲区；需固定 `--all-targets` 与 `--features wasmtime` 双路径校验。
