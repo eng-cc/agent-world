@@ -62,6 +62,8 @@
 - [x] T59：完成二十七次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 - [x] T60：将 `agent_world::runtime::distributed_membership_sync::recovery` 改为路径模块复用 `agent_world_consensus/src/membership_recovery/mod.rs`（`#[path]` + alias 层），保持导出 API 不变。
 - [x] T61：完成二十八次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T62：删除 `agent_world::runtime/distributed_membership_sync/recovery/*` 未编译旧实现文件，收敛为 `recovery.rs` 单入口同源复用结构。
+- [x] T63：完成二十九次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -150,6 +152,6 @@
 - `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：二十八次扩展阶段已收口（T60~T61 全部完成）。
-- 下一步：继续清理 `agent_world::runtime/distributed_membership_sync/recovery/*` 未编译旧实现文件，收敛为纯同源复用结构并降低维护噪音。
+- 当前阶段：二十九次扩展阶段已收口（T62~T63 全部完成）。
+- 下一步：继续收敛 `distributed_membership_sync.rs` 中超长 recovery re-export 列表，按能力分组降低维护成本并清理无效导入 warning。
 - 最近更新：2026-02-13
