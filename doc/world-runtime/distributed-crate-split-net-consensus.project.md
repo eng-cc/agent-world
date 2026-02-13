@@ -92,6 +92,7 @@
 - [x] T89：将 runtime `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer` / `distributed_observer_replay` 切换为路径复用 `agent_world_net` 同源文件（保留 runtime alias 兼容层），减少 runtime 本地实现维护面。
 - [x] T90：将 runtime `distributed_storage` / `distributed_validation` 切换为路径复用 `agent_world_net` 同源文件（保留 `HeadValidationResult` 与 runtime alias 兼容层），进一步压缩 runtime 重复实现。
 - [x] T91：将 runtime `distributed_mempool` / `distributed_index` 切换为路径复用 `agent_world_consensus` / `agent_world_net` 同源文件，并在 net `index` 中补齐通用错误转换写法以兼容 runtime 别名上下文。
+- [x] T92：收敛 runtime `distributed_membership_sync` 的重复 recovery/reconciliation 单测面，迁移测试闭环到 `agent_world_consensus` crate，仅保留 runtime 侧核心 API 兼容测试。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -195,6 +196,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：五十四次扩展阶段完成（T91 已完成，runtime `distributed_mempool` / `distributed_index` 已切到同源路径复用）。
+- 当前阶段：五十五次扩展阶段完成（T92 已完成，membership recovery/reconciliation 详细单测责任已收敛到 `agent_world_consensus`）。
 - 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），在此基础上将 runtime alias 层进一步收敛为直接 re-export。
 - 最近更新：2026-02-13
