@@ -227,7 +227,7 @@
 - 阶段五第四轮路线（2026-02-13）：
   - BMS-67：扩展设计与任务拆解（下线单聚合工件兼容入口与同步脚本）（已完成）。
   - BMS-68：删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）（已完成）。
-  - BMS-69：执行阶段五第四轮回归收口，更新文档与 devlog。
+  - BMS-69：执行阶段五第四轮回归收口，更新文档与 devlog（已完成）。
   - 本轮实施约束：
     - 保持按 `module_id` 的独立工件目录与 hash 清单为唯一工件真相来源。
     - 删除 `m1_builtin_modules.wasm` 相关运行时入口与 `sync-m1-builtin-wasm-artifact.sh`，避免双轨维护。
@@ -246,6 +246,16 @@
     - `./scripts/check-include-warning-baseline.sh`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
     - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+- 阶段五第四轮回归收口（BMS-69，2026-02-13）：
+  - 回归与校验通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第四轮结论：
+    - 阶段五第四轮（BMS-67~BMS-69）已完成，单聚合工件兼容入口下线后回归保持通过。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致，per-module-only 路径稳定。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -280,6 +290,7 @@
 - M30：完成 BMS-66（阶段五第三轮回归收口）。
 - M31：完成 BMS-67（阶段五第四轮任务拆解）。
 - M32：完成 BMS-68（阶段五第四轮单聚合兼容入口下线）。
+- M33：完成 BMS-69（阶段五第四轮回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
