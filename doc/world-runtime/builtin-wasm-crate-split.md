@@ -7,6 +7,8 @@
   - 阶段 1：`源码分仓 + 产物构建`（BMS-0~BMS-31，已完成）。
   - 阶段 2：runtime 装载切换（外部 wasm 产物优先，builtin 仅兜底，逐步删除 builtin 注册）。
   - 阶段 3：逐域删除 runtime builtin fallback 与实现（以 wasm-only 运行为目标）。
+  - 阶段 4：产物接入收敛、文档去陈旧与工件策略决策（BMS-50~BMS-55，已完成）。
+  - 阶段 5：多模块独立 wasm 工件实施（BMS-56+，进行中）。
 
 ## 范围
 
@@ -88,6 +90,20 @@
     - 单工件同步与漂移校验机制可用。
     - bootstrap/tests 工件入口已收敛。
     - 后续工作可进入“多模块独立工件”实施阶段。
+- 阶段五实施拆解（BMS-56，2026-02-13）：
+  - 新增实施约束：
+    - 保持单聚合工件入口可用，直到分批迁移全部完成后再删除。
+    - 先收敛“模块清单单一来源”，再切 `bootstrap/runtime` 的按模块装载。
+    - 每一批迁移都要求“构建同步 + 哈希校验 + 回归测试”成组落地。
+  - 新增目标接口：
+    - 模块清单单一来源（供 `scripts/*` 与 runtime 共享模块 ID 列表）。
+    - 独立工件目录：`crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules/`。
+    - 独立 hash 清单：`crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`（一行一个模块工件）。
+  - 分批实施节奏（阶段五首轮）：
+    - BMS-57：收敛模块清单来源并补充一致性校验。
+    - BMS-58：落地独立工件同步脚本与 hash 清单，保留单聚合兼容入口。
+    - BMS-59：将 `bootstrap/runtime` 首批切到“按 module_id 装载独立工件”（规则域优先）。
+    - BMS-60：阶段五首轮回归收口（rules/body/power/bootstrap + 同步校验）。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -108,6 +124,12 @@
   - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码（已完成：统一入口为 `runtime/m1_builtin_wasm_artifact.rs`）。
   - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序（已完成：决策采用多模块独立工件，单聚合作为过渡兼容层）。
   - BMS-55：执行阶段四回归收口，更新文档与 devlog（已完成：阶段四任务全部收口）。
+- 阶段五首轮路线（2026-02-13）：
+  - BMS-56：扩展设计与任务拆解（阶段五启动：多模块独立 wasm 工件实施）（已完成）。
+  - BMS-57：收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验。
+  - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）。
+  - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）。
+  - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -130,6 +152,7 @@
 - M18：完成 BMS-44~BMS-46（阶段三第二轮：删除兼容 sandbox 层并收口导出）。
 - M19：完成 BMS-47~BMS-49（阶段三第三轮：删除 runtime builtin 常量兼容层并统一常量来源）。
 - M20：完成 BMS-50~BMS-55（阶段四：产物接入收敛、文档去陈旧与后续工件迁移决策）。
+- M21：完成 BMS-56（阶段五启动：实施方案与任务拆解）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
@@ -148,3 +171,4 @@
 - 删除 `runtime/builtin_modules.rs` 后，存在常量可见性与依赖方向变化风险：先在 wasm crate 补齐 `pub const` 导出，再执行 bootstrap/rules/power 路径回归。
 - 当前 runtime/测试仍依赖 `m1_builtin_modules.wasm` 单工件硬编码，存在“源码更新但工件未同步”风险：通过构建后哈希校验与预提交检查降低漂移概率。
 - 若切到多模块独立 wasm 工件，存在“加载入口与模块治理流程复杂度上升”风险：先做决策文档与 PoC，再按域分批迁移。
+- 多模块独立工件与单聚合工件并行期，存在“同模块双来源”误装载风险：通过模块清单单一来源与 hash 清单校验降低漂移概率。
