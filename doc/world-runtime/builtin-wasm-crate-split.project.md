@@ -36,7 +36,7 @@
 - [x] BMS-32 扩展设计与任务拆解（runtime cutover：WASM 优先 + builtin fallback + 渐进下线 builtin 注册）。
 - [x] BMS-33 实现 runtime 执行路径切换（WASM 优先 + builtin fallback）并补充验证。
 - [x] BMS-34 逐步下线一批 builtin 注册点（先 tests/demo）并补充验证。
-- [ ] BMS-35 回归验证、文档与 devlog 收口（cutover 阶段一期）。
+- [x] BMS-35 回归验证、文档与 devlog 收口（cutover 阶段一期）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -44,6 +44,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：进行中（BMS-0 ~ BMS-34 已完成，BMS-35 进入回归收口）
-- 最近更新：完成 BMS-34（tests/demo 首批 builtin 注册点下线与 wasm artifact 接入，2026-02-12）。
-- 下一步：执行 BMS-35，做 cutover 阶段一期回归与文档收口。
+- 当前阶段：cutover 阶段一期完成（BMS-0 ~ BMS-35 全部完成）
+- 最近更新：完成 BMS-35（cutover 阶段一期回归验证与文档收口，2026-02-13）。
+- 下一步：进入 cutover 阶段二，按模块域逐步删除 runtime builtin fallback 实现。
