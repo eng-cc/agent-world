@@ -71,6 +71,7 @@
 - `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
 - `doc/world-runtime/wasm-runtime-crate-split.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
 - `doc/world-runtime/wasm-runtime-crate-split-phase2.md`：WASM 拆分后测试加固（router/executor）
+- `doc/world-runtime/wasm-runtime-crate-split-phase3.md`：WASM 运行时激进迁移（工件/缓存类型下沉）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
@@ -82,6 +83,7 @@
 - **M6**：Agent 默认模块体系 V1（ADM-S1~S5，已完成）
 - **M7**：WASM 运行时拆 crate（WRS-1~WRS-4）
 - **M8**：WASM 拆分后测试加固（R2-0~R2-2）
+- **M9**：WASM 运行时激进迁移（R3-0~R3-2）
 
 ## 风险
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。

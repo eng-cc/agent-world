@@ -203,12 +203,18 @@
 - [x] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
 - [x] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
 
+### 11. WASM 运行时激进迁移（R3）
+- [x] 输出 R3 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.md`）
+- [x] 输出 R3 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.project.md`）
+- [ ] R3-1 迁移 `ModuleArtifact/ModuleCache` 到 `agent_world_wasm_abi` 并回归
+- [ ] R3-2 迁移 `agent_world_net::ModuleArtifact` 到 ABI 统一定义并回归
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS/R2 已完成）
-- 下一步：进入下一轮 wasm 运行时演进任务（待新阶段立项）
-- 最近更新：完成 R2-2 executor crate 单元测试补齐并收口 R2（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS/R2 已完成，R3 已启动）
+- 下一步：推进 R3-1（ModuleArtifact/ModuleCache 下沉到 ABI crate）
+- 最近更新：启动 R3 并完成文档任务（2026-02-13）
