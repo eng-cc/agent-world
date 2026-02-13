@@ -90,6 +90,7 @@
 - [x] T87：收敛 `distributed_consensus` 中的 lease 适配冗余，直接复用共享 `LeaseState` 类型并删除 runtime -> consensus 的字段级拷贝转换。
 - [x] T88：将 runtime `distributed_membership_sync` 从 `#[path]` 包装切到 `agent_world_consensus` 直接复用（删除 `reconciliation/recovery` 包装入口），并同步收敛 `distributed_consensus` 到 consensus 直接 re-export 与 DHT trait 对齐。
 - [x] T89：将 runtime `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer` / `distributed_observer_replay` 切换为路径复用 `agent_world_net` 同源文件（保留 runtime alias 兼容层），减少 runtime 本地实现维护面。
+- [x] T90：将 runtime `distributed_storage` / `distributed_validation` 切换为路径复用 `agent_world_net` 同源文件（保留 `HeadValidationResult` 与 runtime alias 兼容层），进一步压缩 runtime 重复实现。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -193,6 +194,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：五十二次扩展阶段完成（T89 已完成，runtime `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer` / `distributed_observer_replay` 已切到 `agent_world_net` 同源路径复用）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），为后续 runtime 直接 re-export 这些模块创造条件。
+- 当前阶段：五十三次扩展阶段完成（T90 已完成，runtime `distributed_storage` / `distributed_validation` 已切到 `agent_world_net` 同源路径复用）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），在此基础上将 runtime alias 层进一步收敛为直接 re-export。
 - 最近更新：2026-02-13
