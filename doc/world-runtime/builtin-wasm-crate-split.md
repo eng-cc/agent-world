@@ -150,6 +150,16 @@
     - `install_m1_agent_default_modules` 中 `sensor/mobility` 改为按 `module_id` 装载独立工件；`memory/storage_cargo` 与 power 域保持现状。
   - 当前范围说明：
     - 本任务仅覆盖 `body/sensor/mobility` 装载切换，不包含 `memory/storage_cargo` 与 power 域迁移。
+- 阶段五第二轮回归收口（BMS-63，2026-02-13）：
+  - 已完成第二轮收口回归：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第二轮结论：
+    - `rules` 与新增切换的 `body/sensor/mobility` 路径回归通过，`scenario/default bootstrap` 行为保持稳定。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -179,7 +189,7 @@
 - 阶段五第二轮路线（2026-02-13）：
   - BMS-61：扩展设计与任务拆解（`body/sensor/mobility` 按 `module_id` 独立工件装载）（已完成）。
   - BMS-62：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）（已完成）。
-  - BMS-63：执行阶段五第二轮回归收口，更新文档与 devlog。
+  - BMS-63：执行阶段五第二轮回归收口，更新文档与 devlog（已完成）。
   - 本轮实施约束：
     - 保持 `m1.memory.core` / `m1.storage.cargo` / power 域仍走既有入口，避免跨批次混改。
     - 第二轮仅涉及 `runtime::tests::body` 与 `install_m1_agent_default_modules` 的装载切换。
@@ -212,6 +222,7 @@
 - M24：完成 BMS-59（规则域按 module_id 独立工件装载切换）。
 - M25：完成 BMS-61（阶段五第二轮任务拆解）。
 - M26：完成 BMS-62（`body/sensor/mobility` 按 module_id 独立工件装载切换）。
+- M27：完成 BMS-63（阶段五第二轮回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
