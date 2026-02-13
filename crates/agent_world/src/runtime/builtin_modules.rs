@@ -1,4 +1,5 @@
 //! Built-in module implementations for development and testing.
+#![allow(dead_code, unused_imports)]
 
 use std::collections::BTreeMap;
 
@@ -31,15 +32,16 @@ pub const M1_STORAGE_CARGO_MODULE_ID: &str = "m1.storage.cargo";
 pub const M1_AGENT_DEFAULT_MODULE_VERSION: &str = "0.1.0";
 pub const M1_MEMORY_MAX_ENTRIES: usize = 256;
 
-pub use body_module::M1BodyModule;
-pub use default_modules::{M1MemoryModule, M1MobilityModule, M1SensorModule, M1StorageCargoModule};
+use body_module::M1BodyModule;
+use default_modules::{M1MemoryModule, M1MobilityModule, M1SensorModule, M1StorageCargoModule};
+use power_modules::{M1RadiationPowerModule, M1StoragePowerModule};
 pub use power_modules::{
-    M1RadiationPowerModule, M1StoragePowerModule, M1_POWER_HARVEST_BASE_PER_TICK,
-    M1_POWER_HARVEST_DISTANCE_BONUS_CAP, M1_POWER_HARVEST_DISTANCE_STEP_CM,
-    M1_POWER_MODULE_VERSION, M1_POWER_STORAGE_CAPACITY, M1_POWER_STORAGE_INITIAL_LEVEL,
-    M1_POWER_STORAGE_MOVE_COST_PER_KM, M1_RADIATION_POWER_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
+    M1_POWER_HARVEST_BASE_PER_TICK, M1_POWER_HARVEST_DISTANCE_BONUS_CAP,
+    M1_POWER_HARVEST_DISTANCE_STEP_CM, M1_POWER_MODULE_VERSION, M1_POWER_STORAGE_CAPACITY,
+    M1_POWER_STORAGE_INITIAL_LEVEL, M1_POWER_STORAGE_MOVE_COST_PER_KM,
+    M1_RADIATION_POWER_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
 };
-pub use rule_modules::{M1MoveRuleModule, M1TransferRuleModule, M1VisibilityRuleModule};
+use rule_modules::{M1MoveRuleModule, M1TransferRuleModule, M1VisibilityRuleModule};
 
 pub trait BuiltinModule {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure>;
@@ -48,31 +50,13 @@ pub trait BuiltinModule {
 pub struct BuiltinModuleSandbox {
     builtins: BTreeMap<String, Box<dyn BuiltinModule>>,
     fallback: Option<Box<dyn ModuleSandbox>>,
-    prefer_fallback: bool,
 }
 
 impl BuiltinModuleSandbox {
-    pub fn new() -> Self {
-        Self {
-            builtins: BTreeMap::new(),
-            fallback: None,
-            prefer_fallback: false,
-        }
-    }
-
-    pub fn with_fallback(fallback: Box<dyn ModuleSandbox>) -> Self {
-        Self {
-            builtins: BTreeMap::new(),
-            fallback: Some(fallback),
-            prefer_fallback: false,
-        }
-    }
-
     pub fn with_preferred_fallback(fallback: Box<dyn ModuleSandbox>) -> Self {
         Self {
             builtins: BTreeMap::new(),
             fallback: Some(fallback),
-            prefer_fallback: true,
         }
     }
 
@@ -88,25 +72,20 @@ impl BuiltinModuleSandbox {
 
 impl ModuleSandbox for BuiltinModuleSandbox {
     fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
-        if self.prefer_fallback {
-            if let Some(fallback) = self.fallback.as_mut() {
-                match fallback.call(request) {
-                    Ok(output) => return Ok(output),
-                    Err(fallback_failure) => {
-                        if let Some(module) = self.builtins.get_mut(&request.module_id) {
-                            return module.call(request);
-                        }
-                        return Err(fallback_failure);
+        if let Some(fallback) = self.fallback.as_mut() {
+            match fallback.call(request) {
+                Ok(output) => return Ok(output),
+                Err(fallback_failure) => {
+                    if let Some(module) = self.builtins.get_mut(&request.module_id) {
+                        return module.call(request);
                     }
+                    return Err(fallback_failure);
                 }
             }
         }
 
         if let Some(module) = self.builtins.get_mut(&request.module_id) {
             return module.call(request);
-        }
-        if let Some(fallback) = self.fallback.as_mut() {
-            return fallback.call(request);
         }
         Err(ModuleCallFailure {
             module_id: request.module_id.clone(),

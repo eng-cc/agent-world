@@ -152,7 +152,7 @@
 - [x] BMS-36 扩展设计与任务拆解（cutover 阶段二：逐域删除 runtime builtin fallback/实现）
 - [x] BMS-37 下线 `rule/body` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）
 - [x] BMS-38 下线 `sensor/mobility/memory/storage/power` 相关 builtin 测试注册与默认执行路径（wasm 工件优先）
-- [ ] BMS-39 清理 runtime 中不再使用的 builtin 模块实现导出与冗余回退路径，并完成回归收口
+- [x] BMS-39 清理 runtime 中不再使用的 builtin 模块实现导出与冗余回退路径，并完成回归收口
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -160,6 +160,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS cutover 阶段二进行中）
-- 下一步：执行 BMS-39，清理 runtime 中不再使用的 builtin 模块实现导出与冗余回退路径
-- 最近更新：完成 BMS-38（`sensor/mobility/memory/storage/power` 测试切换到 wasm 工件优先）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS cutover 阶段二完成）
+- 下一步：评估并决定是否启动 BMS 阶段三（物理删除剩余 native builtin 实现代码）
+- 最近更新：完成 BMS-39（移除 runtime builtin 实现导出并收敛 fallback 路径）（2026-02-13）
