@@ -69,6 +69,7 @@
 - `doc/world-runtime/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
 - `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
 - `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
+- `doc/world-runtime/wasm-runtime-crate-split.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
@@ -78,6 +79,7 @@
 - **M4**：受控升级（propose/shadow/approve/apply）最小闭环
 - **M5**：WASM 模块治理接入（注册表/路由/沙箱最小执行）
 - **M6**：Agent 默认模块体系 V1（ADM-S1~S5，已完成）
+- **M7**：WASM 运行时拆 crate（WRS-1~WRS-4）
 
 ## 风险
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。

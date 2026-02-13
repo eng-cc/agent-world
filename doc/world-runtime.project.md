@@ -190,12 +190,19 @@
 - [x] BMS-74 新增 `runtime::tests` 闭环场景测试，验证 `World + WasmExecutor + builtin wasm` 端到端链路
 - [x] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）
 
+### 9. WASM 运行时激进拆分（WRS）
+- [x] 输出 WRS 设计文档（`doc/world-runtime/wasm-runtime-crate-split.md`）
+- [x] 输出 WRS 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split.project.md`）
+- [ ] WRS-2 新建 ABI/Executor/Router 三 crate 并接入 `agent_world`
+- [ ] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
+- [ ] WRS-4 回归验证、文档与 devlog 收口
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七已完成）
-- 下一步：BMS 阶段七已收口；若继续推进需新增后续任务拆解
-- 最近更新：完成 BMS-75（阶段七回归收口）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七已完成，WRS 已启动）
+- 下一步：推进 WRS-2（ABI/Executor/Router 三 crate 落地与接入）
+- 最近更新：启动 WRS 并完成文档任务（2026-02-13）
