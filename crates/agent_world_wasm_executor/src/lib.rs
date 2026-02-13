@@ -568,25 +568,65 @@ mod tests {
     use super::*;
     use agent_world_wasm_abi::ModuleLimits;
 
-    #[test]
-    fn wasm_executor_rejects_output_limit_overflow() {
-        let executor = WasmExecutor::new(WasmExecutorConfig::default());
-        let request = ModuleCallRequest {
+    fn make_request(limits: ModuleLimits) -> ModuleCallRequest {
+        ModuleCallRequest {
             module_id: "m.test".to_string(),
             wasm_hash: "hash".to_string(),
             trace_id: "trace-1".to_string(),
             entrypoint: "call".to_string(),
             input: vec![],
-            limits: ModuleLimits {
-                max_mem_bytes: executor.config().max_mem_bytes,
-                max_gas: executor.config().max_fuel,
-                max_call_rate: 0,
-                max_output_bytes: 4,
-                max_effects: 0,
-                max_emits: 0,
-            },
+            limits,
             wasm_bytes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn fixed_sandbox_succeed_returns_cloned_output() {
+        let output = ModuleOutput {
+            new_state: Some(vec![1, 2, 3]),
+            effects: Vec::new(),
+            emits: Vec::new(),
+            output_bytes: 3,
         };
+        let mut sandbox = FixedSandbox::succeed(output.clone());
+        let request = make_request(ModuleLimits::default());
+
+        let first = sandbox.call(&request).unwrap();
+        assert_eq!(first, output);
+
+        let second = sandbox.call(&request).unwrap();
+        assert_eq!(second, output);
+    }
+
+    #[test]
+    fn fixed_sandbox_fail_returns_cloned_failure() {
+        let failure = ModuleCallFailure {
+            module_id: "m.test".to_string(),
+            trace_id: "trace-err".to_string(),
+            code: ModuleCallErrorCode::Trap,
+            detail: "boom".to_string(),
+        };
+        let mut sandbox = FixedSandbox::fail(failure.clone());
+        let request = make_request(ModuleLimits::default());
+
+        let first = sandbox.call(&request).unwrap_err();
+        assert_eq!(first, failure);
+
+        let second = sandbox.call(&request).unwrap_err();
+        assert_eq!(second, failure);
+    }
+
+    #[test]
+    fn wasm_executor_rejects_output_limit_overflow() {
+        let executor = WasmExecutor::new(WasmExecutorConfig::default());
+        let request = make_request(ModuleLimits {
+            max_mem_bytes: executor.config().max_mem_bytes,
+            max_gas: executor.config().max_fuel,
+            max_call_rate: 0,
+            max_output_bytes: 4,
+            max_effects: 0,
+            max_emits: 0,
+        });
         let output = ModuleOutput {
             new_state: None,
             effects: Vec::new(),
@@ -606,25 +646,55 @@ mod tests {
             max_fuel: 10,
             ..WasmExecutorConfig::default()
         });
-        let request = ModuleCallRequest {
-            module_id: "m.test".to_string(),
-            wasm_hash: "hash".to_string(),
-            trace_id: "trace-2".to_string(),
-            entrypoint: "call".to_string(),
-            input: vec![],
-            limits: ModuleLimits {
-                max_mem_bytes: executor.config().max_mem_bytes,
-                max_gas: 11,
-                max_call_rate: 0,
-                max_output_bytes: executor.config().max_output_bytes,
-                max_effects: 0,
-                max_emits: 0,
-            },
-            wasm_bytes: Vec::new(),
-        };
+        let request = make_request(ModuleLimits {
+            max_mem_bytes: executor.config().max_mem_bytes,
+            max_gas: 11,
+            max_call_rate: 0,
+            max_output_bytes: executor.config().max_output_bytes,
+            max_effects: 0,
+            max_emits: 0,
+        });
 
         let err = executor.validate_request_limits(&request).unwrap_err();
         assert_eq!(err.code, ModuleCallErrorCode::Timeout);
+    }
+
+    #[test]
+    fn wasm_executor_rejects_memory_limit_overflow_as_trap() {
+        let executor = WasmExecutor::new(WasmExecutorConfig {
+            max_mem_bytes: 64,
+            ..WasmExecutorConfig::default()
+        });
+        let request = make_request(ModuleLimits {
+            max_mem_bytes: 65,
+            max_gas: executor.config().max_fuel,
+            max_call_rate: 0,
+            max_output_bytes: executor.config().max_output_bytes,
+            max_effects: 0,
+            max_emits: 0,
+        });
+
+        let err = executor.validate_request_limits(&request).unwrap_err();
+        assert_eq!(err.code, ModuleCallErrorCode::Trap);
+    }
+
+    #[test]
+    fn wasm_executor_rejects_requested_output_limit_over_executor_max() {
+        let executor = WasmExecutor::new(WasmExecutorConfig {
+            max_output_bytes: 16,
+            ..WasmExecutorConfig::default()
+        });
+        let request = make_request(ModuleLimits {
+            max_mem_bytes: executor.config().max_mem_bytes,
+            max_gas: executor.config().max_fuel,
+            max_call_rate: 0,
+            max_output_bytes: 17,
+            max_effects: 0,
+            max_emits: 0,
+        });
+
+        let err = executor.validate_request_limits(&request).unwrap_err();
+        assert_eq!(err.code, ModuleCallErrorCode::OutputTooLarge);
     }
 
     #[cfg(feature = "wasmtime")]
@@ -642,5 +712,21 @@ mod tests {
 
         executor.compile_module_cached("hash-b", &wasm_b).unwrap();
         assert_eq!(executor.compiled_cache_len(), 1);
+    }
+
+    #[cfg(feature = "wasmtime")]
+    #[test]
+    fn wasm_executor_compiled_cache_zero_capacity_stays_empty() {
+        let executor = WasmExecutor::new(WasmExecutorConfig {
+            max_cache_entries: 0,
+            ..WasmExecutorConfig::default()
+        });
+        let wasm = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+
+        executor.compile_module_cached("hash-a", &wasm).unwrap();
+        assert_eq!(executor.compiled_cache_len(), 0);
+
+        executor.compile_module_cached("hash-b", &wasm).unwrap();
+        assert_eq!(executor.compiled_cache_len(), 0);
     }
 }

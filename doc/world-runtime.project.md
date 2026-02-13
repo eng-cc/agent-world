@@ -201,7 +201,7 @@
 - [x] 输出 R2 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.md`）
 - [x] 输出 R2 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.project.md`）
 - [x] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
-- [ ] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
+- [x] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -209,6 +209,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS 已完成，R2 已启动）
-- 下一步：推进 R2-2（executor crate 单元测试补齐）
-- 最近更新：完成 R2-1 router crate 单元测试补齐（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS/R2 已完成）
+- 下一步：进入下一轮 wasm 运行时演进任务（待新阶段立项）
+- 最近更新：完成 R2-2 executor crate 单元测试补齐并收口 R2（2026-02-13）
