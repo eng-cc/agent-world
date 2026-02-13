@@ -197,12 +197,18 @@
 - [x] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
 - [x] WRS-4 回归验证、文档与 devlog 收口
 
+### 10. WASM 拆分后测试加固（R2）
+- [x] 输出 R2 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.md`）
+- [x] 输出 R2 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.project.md`）
+- [ ] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
+- [ ] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段七与 WRS 阶段均已完成）
-- 下一步：如继续推进，需新建后续任务拆解
-- 最近更新：完成 WRS-3/WRS-4（builtin wasm 大文件拆分 + 回归收口）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS 已完成，R2 已启动）
+- 下一步：推进 R2-1（router crate 单元测试补齐）
+- 最近更新：启动 R2 并完成文档任务（2026-02-13）
