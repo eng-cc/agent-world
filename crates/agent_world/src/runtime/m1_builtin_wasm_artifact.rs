@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(all(test, feature = "wasmtime"))]
 use super::{world::World, WorldError};
 use super::{
     M1_BODY_MODULE_ID, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_MOVE_RULE_MODULE_ID,
@@ -6,23 +6,13 @@ use super::{
     M1_STORAGE_POWER_MODULE_ID, M1_TRANSFER_RULE_MODULE_ID, M1_VISIBILITY_RULE_MODULE_ID,
 };
 
-pub(crate) const M1_BUILTIN_WASM_ARTIFACT_BYTES: &[u8] =
-    include_bytes!("world/artifacts/m1_builtin_modules.wasm");
-pub(crate) const M1_BUILTIN_WASM_ARTIFACT_SHA256: &str =
-    include_str!("world/artifacts/m1_builtin_modules.wasm.sha256");
-
-#[cfg(test)]
+#[cfg(all(test, feature = "wasmtime"))]
 pub(crate) fn m1_builtin_module_ids_manifest() -> Vec<&'static str> {
     include_str!("world/artifacts/m1_builtin_module_ids.txt")
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
         .collect()
-}
-
-#[cfg(test)]
-pub(crate) fn m1_builtin_wasm_artifact_hash_hex() -> String {
-    super::util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT_BYTES)
 }
 
 pub(crate) fn m1_builtin_wasm_module_artifact_bytes(module_id: &str) -> Option<&'static [u8]> {
@@ -61,7 +51,7 @@ pub(crate) fn m1_builtin_wasm_module_artifact_bytes(module_id: &str) -> Option<&
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "wasmtime"))]
 pub(crate) fn register_m1_builtin_wasm_module_artifact(
     world: &mut World,
     module_id: &str,

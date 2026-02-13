@@ -33,16 +33,6 @@ fn apply_module_changes(world: &mut World, actor: &str, changes: ModuleChangeSet
 }
 
 #[test]
-fn embedded_m1_builtin_wasm_hash_manifest_matches_artifact() {
-    let expected = M1_BUILTIN_WASM_ARTIFACT_SHA256.trim();
-    assert_eq!(expected.len(), 64);
-    assert!(expected.chars().all(|ch| ch.is_ascii_hexdigit()));
-
-    let actual = m1_builtin_wasm_artifact_hash_hex();
-    assert_eq!(actual, expected);
-}
-
-#[test]
 fn m1_builtin_module_ids_manifest_matches_runtime_constants() {
     let expected = vec![
         M1_MOVE_RULE_MODULE_ID,
