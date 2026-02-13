@@ -13,7 +13,7 @@ check_log_wasmtime="$tmp_dir/agent_world_all_targets_wasmtime.check.log"
 warning_log="$tmp_dir/warnings.log"
 
 echo "+ rg -n \"include!\\(\" crates/agent_world/src/runtime | sort > $include_list"
-rg -n "include!\\(" crates/agent_world/src/runtime | sort > "$include_list"
+{ rg -n "include!\\(" crates/agent_world/src/runtime || true; } | sort > "$include_list"
 
 echo "+ env -u RUSTC_WRAPPER cargo check -p agent_world --all-targets"
 env -u RUSTC_WRAPPER cargo check -p agent_world --all-targets 2>&1 | tee "$check_log_default"

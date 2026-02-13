@@ -25,17 +25,11 @@ mod util {
     pub(super) use super::super::util::to_canonical_cbor;
 }
 
-mod membership_logic {
-    include!("distributed_membership_sync/logic.rs");
-}
+#[path = "distributed_membership_sync/logic.rs"]
+mod membership_logic;
 
-mod shared {
-    include!("../../../agent_world_consensus/src/membership.rs");
-}
-
-mod membership {
-    pub(super) use super::shared::*;
-}
+#[path = "../../../agent_world_consensus/src/membership.rs"]
+mod shared;
 
 pub use shared::*;
 
