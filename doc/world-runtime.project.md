@@ -200,7 +200,7 @@
 ### 10. WASM 拆分后测试加固（R2）
 - [x] 输出 R2 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.md`）
 - [x] 输出 R2 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.project.md`）
-- [ ] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
+- [x] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
 - [ ] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
 
 ## 依赖
@@ -210,5 +210,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS 已完成，R2 已启动）
-- 下一步：推进 R2-1（router crate 单元测试补齐）
-- 最近更新：启动 R2 并完成文档任务（2026-02-13）
+- 下一步：推进 R2-2（executor crate 单元测试补齐）
+- 最近更新：完成 R2-1 router crate 单元测试补齐（2026-02-13）

@@ -297,3 +297,269 @@ fn validate_rule(rule: &MatchRule, module_id: &str) -> Result<(), String> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn event_subscription(patterns: &[&str], filters: Option<JsonValue>) -> ModuleSubscription {
+        ModuleSubscription {
+            event_kinds: patterns.iter().map(|value| (*value).to_string()).collect(),
+            action_kinds: Vec::new(),
+            stage: Some(ModuleSubscriptionStage::PostEvent),
+            filters,
+        }
+    }
+
+    fn action_subscription(
+        stage: ModuleSubscriptionStage,
+        patterns: &[&str],
+        filters: Option<JsonValue>,
+    ) -> ModuleSubscription {
+        ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: patterns.iter().map(|value| (*value).to_string()).collect(),
+            stage: Some(stage),
+            filters,
+        }
+    }
+
+    #[test]
+    fn event_subscription_matches_wildcard_prefix_and_exact_patterns() {
+        let payload = json!({ "kind": "world.tick", "hp": 3 });
+
+        let wildcard = [event_subscription(&["*"], None)];
+        assert!(module_subscribes_to_event(
+            &wildcard,
+            "world.tick",
+            &payload
+        ));
+
+        let prefix = [event_subscription(&["world.*"], None)];
+        assert!(module_subscribes_to_event(&prefix, "world.tick", &payload));
+        assert!(!module_subscribes_to_event(
+            &prefix,
+            "action.move",
+            &payload
+        ));
+
+        let exact = [event_subscription(&["world.tick"], None)];
+        assert!(module_subscribes_to_event(&exact, "world.tick", &payload));
+        assert!(!module_subscribes_to_event(&exact, "world.idle", &payload));
+    }
+
+    #[test]
+    fn event_subscription_respects_filters_and_rejects_invalid_filter_schema() {
+        let payload = json!({ "status": "ok", "hp": 8 });
+
+        let match_status = [event_subscription(
+            &["world.tick"],
+            Some(json!({
+                "event": [
+                    { "path": "/status", "eq": "ok" }
+                ]
+            })),
+        )];
+        assert!(module_subscribes_to_event(
+            &match_status,
+            "world.tick",
+            &payload
+        ));
+
+        let mismatch_status = [event_subscription(
+            &["world.tick"],
+            Some(json!({
+                "event": [
+                    { "path": "/status", "eq": "bad" }
+                ]
+            })),
+        )];
+        assert!(!module_subscribes_to_event(
+            &mismatch_status,
+            "world.tick",
+            &payload
+        ));
+
+        let invalid_schema = [event_subscription(
+            &["world.tick"],
+            Some(json!({
+                "event": [
+                    { "path": "/status", "eq": "ok", "unknown": 1 }
+                ]
+            })),
+        )];
+        assert!(!module_subscribes_to_event(
+            &invalid_schema,
+            "world.tick",
+            &payload
+        ));
+    }
+
+    #[test]
+    fn action_subscription_checks_stage_and_filters() {
+        let subscription = action_subscription(
+            ModuleSubscriptionStage::PreAction,
+            &["action.move.*"],
+            Some(json!({
+                "action": {
+                    "all": [
+                        { "path": "/cost", "gte": 2.0 }
+                    ],
+                    "any": [
+                        { "path": "/kind", "re": "^move\\." },
+                        { "path": "/kind", "eq": "jump" }
+                    ]
+                }
+            })),
+        );
+
+        let matched = json!({ "cost": 3.0, "kind": "move.left" });
+        assert!(module_subscribes_to_action(
+            &[subscription.clone()],
+            ModuleSubscriptionStage::PreAction,
+            "action.move.step",
+            &matched,
+        ));
+
+        assert!(!module_subscribes_to_action(
+            &[subscription.clone()],
+            ModuleSubscriptionStage::PostAction,
+            "action.move.step",
+            &matched,
+        ));
+
+        let low_cost = json!({ "cost": 1.0, "kind": "move.left" });
+        assert!(!module_subscribes_to_action(
+            &[subscription.clone()],
+            ModuleSubscriptionStage::PreAction,
+            "action.move.step",
+            &low_cost,
+        ));
+
+        let kind_not_matched = json!({ "cost": 3.0, "kind": "scan" });
+        assert!(!module_subscribes_to_action(
+            &[subscription],
+            ModuleSubscriptionStage::PreAction,
+            "action.move.step",
+            &kind_not_matched,
+        ));
+    }
+
+    #[test]
+    fn validate_subscription_stage_rejects_invalid_combinations() {
+        let cases = vec![
+            (
+                ModuleSubscription {
+                    event_kinds: vec!["world.tick".to_string()],
+                    action_kinds: vec!["action.move".to_string()],
+                    stage: None,
+                    filters: None,
+                },
+                "cannot mix event_kinds and action_kinds",
+            ),
+            (
+                ModuleSubscription {
+                    event_kinds: Vec::new(),
+                    action_kinds: Vec::new(),
+                    stage: None,
+                    filters: None,
+                },
+                "requires event_kinds or action_kinds",
+            ),
+            (
+                ModuleSubscription {
+                    event_kinds: vec!["world.tick".to_string()],
+                    action_kinds: vec!["action.move".to_string()],
+                    stage: Some(ModuleSubscriptionStage::PostEvent),
+                    filters: None,
+                },
+                "post_event cannot include action_kinds",
+            ),
+            (
+                ModuleSubscription {
+                    event_kinds: vec!["world.tick".to_string()],
+                    action_kinds: Vec::new(),
+                    stage: Some(ModuleSubscriptionStage::PreAction),
+                    filters: None,
+                },
+                "action stage cannot include event_kinds",
+            ),
+        ];
+
+        for (subscription, expected) in cases {
+            let err = validate_subscription_stage(&subscription, "m.test").unwrap_err();
+            assert!(
+                err.contains(expected),
+                "expected error containing `{expected}`, got `{err}`"
+            );
+        }
+
+        let event_only = ModuleSubscription {
+            event_kinds: vec!["world.tick".to_string()],
+            action_kinds: Vec::new(),
+            stage: None,
+            filters: None,
+        };
+        validate_subscription_stage(&event_only, "m.test").unwrap();
+
+        let action_only = ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: vec!["action.move".to_string()],
+            stage: None,
+            filters: None,
+        };
+        validate_subscription_stage(&action_only, "m.test").unwrap();
+    }
+
+    #[test]
+    fn validate_subscription_filters_enforces_schema_and_rules() {
+        validate_subscription_filters(&None, "m.test").unwrap();
+        validate_subscription_filters(&Some(JsonValue::Null), "m.test").unwrap();
+
+        let valid = Some(json!({
+            "event": [
+                { "path": "/hp", "gt": 0.0 }
+            ],
+            "action": {
+                "all": [
+                    { "path": "/kind", "re": "^move\\." }
+                ]
+            }
+        }));
+        validate_subscription_filters(&valid, "m.test").unwrap();
+
+        let invalid_path = Some(json!({
+            "event": [
+                { "path": "hp", "eq": 1 }
+            ]
+        }));
+        let path_err = validate_subscription_filters(&invalid_path, "m.test").unwrap_err();
+        assert!(path_err.contains("path must start with '/'"));
+
+        let invalid_operator_count = Some(json!({
+            "event": [
+                { "path": "/hp", "eq": 1, "gt": 0.0 }
+            ]
+        }));
+        let operator_err =
+            validate_subscription_filters(&invalid_operator_count, "m.test").unwrap_err();
+        assert!(operator_err.contains("exactly one operator"));
+
+        let invalid_regex = Some(json!({
+            "action": [
+                { "path": "/kind", "re": "[" }
+            ]
+        }));
+        let regex_err = validate_subscription_filters(&invalid_regex, "m.test").unwrap_err();
+        assert!(regex_err.contains("regex invalid"));
+
+        let invalid_schema = Some(json!({
+            "event": [
+                { "path": "/kind", "eq": "ok", "unexpected": true }
+            ]
+        }));
+        let schema_err = validate_subscription_filters(&invalid_schema, "m.test").unwrap_err();
+        assert!(schema_err.contains("subscription filters invalid"));
+    }
+}
