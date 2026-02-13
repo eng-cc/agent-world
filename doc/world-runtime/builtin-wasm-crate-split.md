@@ -111,6 +111,14 @@
     - `scripts/build-builtin-wasm-modules.sh` 改为直接读取该清单文件，移除脚本内重复硬编码列表。
   - runtime 一致性校验：
     - `runtime` tests 新增 `m1_builtin_module_ids_manifest_matches_runtime_constants`，校验清单与模块常量一致。
+- 阶段五独立工件同步（BMS-58，2026-02-13）：
+  - 新增脚本：`scripts/sync-m1-builtin-wasm-artifacts.sh`
+    - `sync`：构建并回填 `runtime/world/artifacts/m1_builtin_modules/*.wasm` + `m1_builtin_modules.sha256`。
+    - `check`：校验“源码构建产物 hash == 独立工件 hash == 独立 hash 清单”。
+  - CI 接入：
+    - `scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`。
+  - 当前过渡状态：
+    - 单聚合工件与多工件目录并存，供后续 BMS-59 执行 runtime/bootstrap 装载切换。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -134,7 +142,7 @@
 - 阶段五首轮路线（2026-02-13）：
   - BMS-56：扩展设计与任务拆解（阶段五启动：多模块独立 wasm 工件实施）（已完成）。
   - BMS-57：收敛内置模块清单来源（脚本/runtime 共用）并补充一致性校验（已完成）。
-  - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）。
+  - BMS-58：新增独立工件同步脚本与 hash 清单（保留单聚合兼容入口）（已完成）。
   - BMS-59：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）。
   - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog。
 
@@ -161,6 +169,7 @@
 - M20：完成 BMS-50~BMS-55（阶段四：产物接入收敛、文档去陈旧与后续工件迁移决策）。
 - M21：完成 BMS-56（阶段五启动：实施方案与任务拆解）。
 - M22：完成 BMS-57（模块清单单一来源收敛与一致性校验）。
+- M23：完成 BMS-58（独立工件同步脚本与 hash 清单接入）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
