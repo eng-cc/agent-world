@@ -53,6 +53,12 @@
     - `sync`：构建 wasm -> 回填 `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.wasm` -> 刷新 `m1_builtin_modules.wasm.sha256`。
     - `check`：重建并校验“源码构建产物 hash == runtime 内嵌工件 hash == sha256 清单 hash”。
   - CI 接入：`scripts/ci-tests.sh` 新增 `./scripts/sync-m1-builtin-wasm-artifact.sh --check`，用于预提交防漂移。
+- 阶段四工件引用收敛（BMS-53，2026-02-13）：
+  - 新增统一入口：`crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`，集中维护：
+    - `m1_builtin_modules.wasm` 字节常量引用。
+    - `m1_builtin_modules.wasm.sha256` 清单常量引用。
+    - tests 安装夹具复用的工件注册辅助函数。
+  - `bootstrap/tests` 全部改为通过统一入口访问工件，去除分散 `include_bytes!/include_str!` 硬编码。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -70,7 +76,7 @@
   - BMS-50：扩展任务拆解，明确“产物接入收敛 + 文档去陈旧 + 渐进工件策略”的执行顺序。
   - BMS-51：清理过时文档描述（`BuiltinModuleSandbox`/`runtime/builtin_modules.rs` 等），统一到当前 wasm-only 事实。
   - BMS-52：补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验），避免源码与工件漂移。
-  - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码。
+  - BMS-53：收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码（已完成：统一入口为 `runtime/m1_builtin_wasm_artifact.rs`）。
   - BMS-54：评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批落地顺序。
   - BMS-55：执行阶段四回归收口，更新文档与 devlog。
 

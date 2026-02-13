@@ -3,11 +3,6 @@
 use super::super::*;
 use super::pos;
 
-const M1_BUILTIN_WASM_ARTIFACT: &[u8] =
-    include_bytes!("../world/artifacts/m1_builtin_modules.wasm");
-const M1_BUILTIN_WASM_ARTIFACT_SHA256: &str =
-    include_str!("../world/artifacts/m1_builtin_modules.wasm.sha256");
-
 fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)
 }
@@ -43,7 +38,7 @@ fn embedded_m1_builtin_wasm_hash_manifest_matches_artifact() {
     assert_eq!(expected.len(), 64);
     assert!(expected.chars().all(|ch| ch.is_ascii_hexdigit()));
 
-    let actual = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
+    let actual = m1_builtin_wasm_artifact_hash_hex();
     assert_eq!(actual, expected);
 }
 

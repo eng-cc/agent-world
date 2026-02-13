@@ -1,23 +1,21 @@
 use super::super::{
     util, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ProposalDecision,
-    WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
+    WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_BUILTIN_WASM_ARTIFACT_BYTES,
+    M1_BUILTIN_WASM_ARTIFACT_SHA256, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
     M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION, M1_RADIATION_POWER_MODULE_ID,
     M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
 };
 use super::World;
 
-const M1_BUILTIN_WASM_ARTIFACT: &[u8] = include_bytes!("artifacts/m1_builtin_modules.wasm");
-const M1_BUILTIN_WASM_ARTIFACT_SHA256: &str =
-    include_str!("artifacts/m1_builtin_modules.wasm.sha256");
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
-const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
-const M1_STORAGE_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
-const M1_SENSOR_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
-const M1_MOBILITY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
-const M1_MEMORY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
-const M1_STORAGE_CARGO_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT;
+const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
+const M1_STORAGE_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
+const M1_SENSOR_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
+const M1_MOBILITY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
+const M1_MEMORY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
+const M1_STORAGE_CARGO_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {
@@ -165,7 +163,7 @@ fn validate_m1_embedded_wasm_artifact() -> Result<(), WorldError> {
         });
     }
 
-    let actual = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
+    let actual = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT_BYTES);
     if actual != expected {
         return Err(WorldError::ModuleChangeInvalid {
             reason: format!(

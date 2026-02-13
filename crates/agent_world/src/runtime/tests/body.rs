@@ -5,15 +5,9 @@ use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry, CargoEntityK
 use crate::simulator::ResourceKind;
 
 #[cfg(feature = "wasmtime")]
-const M1_BUILTIN_WASM_ARTIFACT: &[u8] =
-    include_bytes!("../world/artifacts/m1_builtin_modules.wasm");
-
-#[cfg(feature = "wasmtime")]
 fn install_m1_body_module(world: &mut World) {
-    let wasm_hash = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
-    world
-        .register_module_artifact(wasm_hash.clone(), M1_BUILTIN_WASM_ARTIFACT)
-        .unwrap();
+    let wasm_hash = super::super::register_m1_builtin_wasm_artifact(world)
+        .expect("register embedded m1 builtin wasm artifact");
 
     let module_manifest = ModuleManifest {
         module_id: M1_BODY_MODULE_ID.to_string(),

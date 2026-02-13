@@ -36,6 +36,7 @@ mod events;
 mod governance;
 #[cfg(feature = "libp2p")]
 mod libp2p_net;
+mod m1_builtin_wasm_artifact;
 mod manifest;
 mod module_store;
 mod modules;
@@ -96,6 +97,14 @@ pub use modules::{
 
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
+
+#[cfg(test)]
+pub(crate) use m1_builtin_wasm_artifact::{
+    m1_builtin_wasm_artifact_hash_hex, register_m1_builtin_wasm_artifact,
+};
+pub(crate) use m1_builtin_wasm_artifact::{
+    M1_BUILTIN_WASM_ARTIFACT_BYTES, M1_BUILTIN_WASM_ARTIFACT_SHA256,
+};
 
 // Built-in module constants
 pub use agent_world_builtin_wasm::{

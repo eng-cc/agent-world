@@ -5,16 +5,9 @@ use crate::simulator::ResourceKind;
 use std::collections::BTreeMap;
 
 #[cfg(feature = "wasmtime")]
-const M1_BUILTIN_WASM_ARTIFACT: &[u8] =
-    include_bytes!("../world/artifacts/m1_builtin_modules.wasm");
-
-#[cfg(feature = "wasmtime")]
 fn register_m1_builtin_wasm_artifact(world: &mut World) -> String {
-    let wasm_hash = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT);
-    world
-        .register_module_artifact(wasm_hash.clone(), M1_BUILTIN_WASM_ARTIFACT)
-        .unwrap();
-    wasm_hash
+    super::super::register_m1_builtin_wasm_artifact(world)
+        .expect("register embedded m1 builtin wasm artifact")
 }
 
 #[cfg(feature = "wasmtime")]
