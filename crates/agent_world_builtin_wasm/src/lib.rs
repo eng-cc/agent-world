@@ -600,6 +600,9 @@ pub extern "C" fn call(input_ptr: i32, input_len: i32) -> (i32, i32) {
 }
 
 #[cfg(test)]
+mod closed_loop_tests;
+
+#[cfg(test)]
 mod tests {
     use super::memory_module::{MemoryModuleEntry, MemoryModuleState};
     use super::*;

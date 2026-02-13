@@ -259,12 +259,21 @@
     - 独立工件目录与 hash 清单继续与源码构建产物保持一致，per-module-only 路径稳定。
 - 阶段六闭环联测路线（2026-02-13）：
   - BMS-70：扩展设计与任务拆解（`agent_world_builtin_wasm` 闭环场景联测）（已完成）。
-  - BMS-71：新增闭环场景测试（单场景覆盖 `rule/body/sensor/mobility/memory/storage/power` 协作）。
+  - BMS-71：新增闭环场景测试（单场景覆盖 `rule/body/sensor/mobility/memory/storage/power` 协作）（已完成）。
   - BMS-72：执行回归验证与文档/devlog 收口。
   - 本轮实施约束：
     - 测试落在 `agent_world_builtin_wasm` crate 内，直接验证 wasm ABI 输入输出闭环，不引入跨 crate 依赖。
     - 场景至少包含：注册、移动、观测、转移、身体动作、存储扩容、能量更新等关键路径。
     - 回归最小覆盖包含：新闭环测试 + `agent_world_builtin_wasm` 包全量测试。
+- 阶段六闭环场景测试落地（BMS-71，2026-02-13）：
+  - 新增测试文件：`crates/agent_world_builtin_wasm/src/closed_loop_tests.rs`。
+  - 新增测试用例：`wasm_builtin_modules_support_closed_loop_world_scenario`，在单场景内串联：
+    - `AgentRegistered` / `AgentMoved` 事件驱动的位置与能量状态更新；
+    - `MoveAgent` / `QueryObservation` / `TransferResource` / `BodyAction` 动作链路；
+    - `BodyInterfaceExpanded`、`Observation`、`ResourceTransferred`、`BodyAttributesUpdated` 事件回灌；
+    - `m1.rule.*`、`m1.body.core`、`m1.sensor.basic`、`m1.mobility.basic`、`m1.memory.core`、`m1.storage.cargo`、`m1.power.*` 模块协作断言。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm closed_loop_tests::wasm_builtin_modules_support_closed_loop_world_scenario`
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
