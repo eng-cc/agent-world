@@ -65,35 +65,7 @@ pub mod distributed_provider_cache {
 }
 
 pub mod distributed_storage {
-    use agent_world_proto::distributed::{
-        BlobRef, BlockAnnounce, SnapshotManifest, WorldBlock, WorldHeadAnnounce,
-    };
-
-    #[derive(Debug, Clone)]
-    pub struct ExecutionWriteConfig {
-        pub codec: String,
-    }
-
-    impl Default for ExecutionWriteConfig {
-        fn default() -> Self {
-            Self {
-                codec: "dag-cbor".to_string(),
-            }
-        }
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct ExecutionWriteResult {
-        pub block: WorldBlock,
-        pub block_hash: String,
-        pub block_ref: BlobRef,
-        pub block_announce: BlockAnnounce,
-        pub head_announce: WorldHeadAnnounce,
-        pub snapshot_manifest: SnapshotManifest,
-        pub snapshot_manifest_ref: BlobRef,
-        pub journal_segments: Vec<BlobRef>,
-        pub journal_segments_ref: BlobRef,
-    }
+    pub use agent_world_proto::distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
 
     #[cfg(feature = "runtime_bridge")]
     pub use super::execution_storage::store_execution_result;

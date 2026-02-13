@@ -75,7 +75,8 @@
 - [x] T72：新增 include warning 基线检查脚本并接入 `scripts/ci-tests.sh`，统一 pre-commit/CI 门禁入口。
 - [x] T73：完成 `agent_world_net` 去除 `agent_world` 依赖并通过 `--features libp2p --lib` 回归；`agent_world` 首批模块切到直接依赖 `agent_world_net`（net/dht/client/gateway/index_store/provider_cache/dht_cache）。
 - [x] T74：将 `WorldError` 下沉到 `agent_world_proto` 并切换 `agent_world_net` 复用，收敛 net/runtime 错误类型重复定义。
-- [ ] T75：继续将执行产物索引相关公共依赖（`ExecutionWriteResult` 等）下沉到 `agent_world_proto`，收敛 `distributed_index/storage/validation` 双类型并清理剩余 include 包装层。
+- [x] T75：将执行产物索引相关公共依赖（`ExecutionWriteResult` / `ExecutionWriteConfig` / `SegmentConfig` / `JournalSegmentRef`）下沉到 `agent_world_proto`，收敛 runtime/net 双类型并将 `distributed_index` 收敛为 net 薄封装。
+- [ ] T76：继续清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层，评估并推进 `agent_world_net` 纯实现直连路径（避免 runtime include 共享源码）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -167,17 +168,20 @@
 - `crates/agent_world_consensus/Cargo.toml`
 - `crates/agent_world_proto/Cargo.toml`
 - `crates/agent_world_proto/src/lib.rs`
+- `crates/agent_world_proto/src/distributed_storage.rs`
 - `crates/agent_world_proto/src/world_error.rs`
 - `scripts/check-include-warning-baseline.sh`
 - `scripts/ci-tests.sh`
 - `crates/agent_world/Cargo.toml`
 - `crates/agent_world/src/runtime/error.rs`
 - `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world/src/runtime/distributed_storage.rs`
+- `crates/agent_world/src/runtime/segmenter.rs`
 - `crates/agent_world_net/Cargo.toml`
 - `crates/agent_world_net/src/lib.rs`
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：三十六次扩展阶段进行中（T74 完成，T75 待执行）。
-- 下一步：执行 T75，把 `ExecutionWriteResult` 等执行产物数据面继续下沉到 `agent_world_proto`，再推进剩余 include 包装层替换。
+- 当前阶段：三十七次扩展阶段进行中（T75 完成，T76 待执行）。
+- 下一步：执行 T76，清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层并推进 net 纯实现直连。
 - 最近更新：2026-02-13
