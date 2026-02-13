@@ -74,6 +74,9 @@
 - [x] BMS-70 扩展设计与任务拆解（阶段六：`agent_world_builtin_wasm` 闭环场景联测）。
 - [x] BMS-71 新增 `agent_world_builtin_wasm` 单场景闭环测试，覆盖规则/身体/默认模块/状态模块协作。
 - [x] BMS-72 回归验证、文档与 devlog 收口（阶段六闭环联测）。
+- [x] BMS-73 扩展设计与任务拆解（阶段七：`agent_world` 运行时 wasmtime 闭环联测）。
+- [ ] BMS-74 新增 `runtime::tests` 闭环场景测试，验证 `World + WasmExecutor + builtin wasm` 端到端链路。
+- [ ] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -81,6 +84,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：阶段六已完成（BMS-70~BMS-72 已完成）。
-- 最近更新：完成 BMS-72（阶段六回归收口，2026-02-13）。
-- 下一步：阶段六已收口；若继续推进需新增后续任务拆解。
+- 当前阶段：阶段七进行中（BMS-73 已完成，BMS-74~BMS-75 待执行）。
+- 最近更新：完成 BMS-73（阶段七运行时闭环联测任务拆解，2026-02-13）。
+- 下一步：执行 BMS-74（新增运行时闭环场景测试）并完成 BMS-75 回归收口。
