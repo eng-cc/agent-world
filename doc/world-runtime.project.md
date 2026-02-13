@@ -178,7 +178,7 @@
 - [x] BMS-62 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）
 - [x] BMS-63 回归验证、文档与 devlog 收口（阶段五第二轮）
 - [x] BMS-64 扩展设计与任务拆解（阶段五第三轮：`memory/storage_cargo + power` 按 `module_id` 独立工件装载）
-- [ ] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）
+- [x] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）
 - [ ] BMS-66 回归验证、文档与 devlog 收口（阶段五第三轮）
 
 ## 依赖
@@ -188,5 +188,5 @@
 
 ## 状态
 - 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段五第三轮推进中）
-- 下一步：执行 BMS-65（`memory/storage_cargo + power` 按 `module_id` 独立工件装载切换）
-- 最近更新：完成 BMS-64（阶段五第三轮设计与任务拆解）（2026-02-13）
+- 下一步：执行 BMS-66（阶段五第三轮回归收口）
+- 最近更新：完成 BMS-65（`memory/storage_cargo + power` 按 `module_id` 独立工件装载切换）（2026-02-13）

@@ -11,10 +11,6 @@ use super::World;
 
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
-const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
-const M1_STORAGE_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
-const M1_MEMORY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
-const M1_STORAGE_CARGO_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {
@@ -35,6 +31,10 @@ impl World {
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
         validate_m1_embedded_wasm_artifact()?;
+        let radiation_power_artifact =
+            m1_builtin_wasm_artifact_for_module(M1_RADIATION_POWER_MODULE_ID)?;
+        let storage_power_artifact =
+            m1_builtin_wasm_artifact_for_module(M1_STORAGE_POWER_MODULE_ID)?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -42,7 +42,7 @@ impl World {
             self,
             &mut changes,
             M1_RADIATION_POWER_MODULE_ID,
-            M1_RADIATION_POWER_ARTIFACT,
+            radiation_power_artifact,
             M1_POWER_MODULE_VERSION,
             m1_radiation_power_manifest,
         )?;
@@ -50,7 +50,7 @@ impl World {
             self,
             &mut changes,
             M1_STORAGE_POWER_MODULE_ID,
-            M1_STORAGE_POWER_ARTIFACT,
+            storage_power_artifact,
             M1_POWER_MODULE_VERSION,
             m1_storage_power_manifest,
         )?;
@@ -97,6 +97,9 @@ impl World {
         validate_m1_embedded_wasm_artifact()?;
         let sensor_artifact = m1_builtin_wasm_artifact_for_module(M1_SENSOR_MODULE_ID)?;
         let mobility_artifact = m1_builtin_wasm_artifact_for_module(M1_MOBILITY_MODULE_ID)?;
+        let memory_artifact = m1_builtin_wasm_artifact_for_module(M1_MEMORY_MODULE_ID)?;
+        let storage_cargo_artifact =
+            m1_builtin_wasm_artifact_for_module(M1_STORAGE_CARGO_MODULE_ID)?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -120,7 +123,7 @@ impl World {
             self,
             &mut changes,
             M1_MEMORY_MODULE_ID,
-            M1_MEMORY_ARTIFACT,
+            memory_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_memory_manifest,
         )?;
@@ -128,7 +131,7 @@ impl World {
             self,
             &mut changes,
             M1_STORAGE_CARGO_MODULE_ID,
-            M1_STORAGE_CARGO_ARTIFACT,
+            storage_cargo_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_storage_cargo_manifest,
         )?;
