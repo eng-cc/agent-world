@@ -351,6 +351,12 @@
   - 保持 `bootstrap_world_from_head` / `bootstrap_world_from_head_with_dht` / `bootstrap_world_from_dht` 对外签名与行为不变。
   - 通过 bootstrap 定向测试 + include warning 基线脚本验证收口。
 
+### In Scope（四十次扩展阶段）
+- 继续推进 T78，优先收敛低耦合 head follow 入口：
+  - `agent_world::runtime::distributed_head_follow.rs` 移除 `include!`，改为 runtime 本地直接实现。
+  - 保持 `HeadFollower` / `HeadUpdateDecision` 对外签名与行为不变，继续复用 runtime 本地 bootstrap/client/dht 链路。
+  - 通过 head_follow + observer_sync 定向测试与 include warning 基线脚本验证无回归。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -449,6 +455,7 @@
 - P75：完成执行产物索引数据面（`ExecutionWrite*` / `Segment*`）下沉到 `agent_world_proto` 并收敛 runtime/net 双类型。
 - P76：完成 runtime `distributed_storage` / `distributed_validation` 去 include 包装层收口。
 - P77：完成 runtime `distributed_bootstrap` 去 include 包装层收口。
+- P78：完成 runtime `distributed_head_follow` 去 include 包装层收口（T78 子步骤）。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
