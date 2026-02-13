@@ -56,6 +56,8 @@
 - [x] T53：完成二十四次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 - [x] T54：将 `agent_world::runtime` 的 `distributed_consensus` 改为直接复用 `agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
 - [x] T55：完成二十五次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T56：将 `agent_world::runtime` 的 `distributed_membership_sync` 主体改为直接复用 `agent_world_consensus/src/membership.rs`（`include!` + `shared` 包装），保持 runtime 的 `reconciliation/recovery` 导出 API 不变。
+- [x] T57：完成二十六次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -144,6 +146,6 @@
 - `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：二十五次扩展阶段已收口（T54~T55 全部完成）。
-- 下一步：继续推进 `distributed_membership_sync` runtime 模块收敛到“直接复用 `agent_world_consensus` 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
+- 当前阶段：二十六次扩展阶段已收口（T56~T57 全部完成）。
+- 下一步：继续推进 `distributed_membership_sync` 的 `reconciliation/recovery` 子模块去重（同源复用或直接 crate 依赖复用），并逐步消除 runtime 侧重复实现。
 - 最近更新：2026-02-13

@@ -1,14 +1,16 @@
-//! Distributed membership directory broadcast and sync helpers.
-use crate::membership_logic;
-use crate::quorum::{
+// Distributed membership directory broadcast and sync helpers.
+use super::distributed::{
+    topic_membership, topic_membership_reconcile, topic_membership_revocation,
+};
+use super::distributed_consensus::{
     ConsensusMembershipChange, ConsensusMembershipChangeRequest, ConsensusMembershipChangeResult,
     QuorumConsensus,
 };
-use agent_world::runtime::{DistributedDht, DistributedNetwork, NetworkSubscription, WorldError};
-use agent_world_proto::distributed::{
-    topic_membership, topic_membership_reconcile, topic_membership_revocation,
-};
-use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
+use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
+use super::distributed_net::{DistributedNetwork, NetworkSubscription};
+use super::error::WorldError;
+use super::membership_logic;
+pub(super) use super::util::to_canonical_cbor;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -19,15 +21,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 type HmacSha256 = Hmac<Sha256>;
-
-pub(super) fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
-    let mut buf = Vec::with_capacity(256);
-    let canonical_value = serde_cbor::value::to_value(value)?;
-    let mut serializer = serde_cbor::ser::Serializer::new(&mut buf);
-    serializer.self_describe()?;
-    canonical_value.serialize(&mut serializer)?;
-    Ok(buf)
-}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipDirectoryAnnounce {
     pub world_id: String,
