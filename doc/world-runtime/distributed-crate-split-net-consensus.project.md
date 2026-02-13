@@ -54,6 +54,8 @@
 - [x] T51：完成二十三次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 - [x] T52：将 `agent_world::runtime` 的 `distributed_bootstrap/head_follow/observer/observer_replay/storage/validation` 改为直接复用 `agent_world_net` 同源实现（`include!`），保持导出 API 不变。
 - [x] T53：完成二十四次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T54：将 `agent_world::runtime` 的 `distributed_consensus` 改为直接复用 `agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
+- [x] T55：完成二十五次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -137,8 +139,11 @@
 - `crates/agent_world_net/src/execution_storage.rs`
 - `crates/agent_world_net/src/head_validation.rs`
 - `crates/agent_world_net/src/util.rs`
+- `crates/agent_world/src/runtime/distributed_consensus.rs`
+- `crates/agent_world_consensus/src/quorum.rs`
+- `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：二十四次扩展阶段已收口（T52~T53 全部完成）。
-- 下一步：继续推进 `distributed_consensus` / `distributed_membership_sync` 等 runtime 模块收敛到“直接复用新 crate 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
+- 当前阶段：二十五次扩展阶段已收口（T54~T55 全部完成）。
+- 下一步：继续推进 `distributed_membership_sync` runtime 模块收敛到“直接复用 `agent_world_consensus` 同源实现”模式，并逐步推进到真正 crate 依赖复用（消除循环依赖）。
 - 最近更新：2026-02-13
