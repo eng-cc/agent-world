@@ -14,6 +14,7 @@ pub mod distributed {
 
 pub mod distributed_dht {
     pub use agent_world::runtime::InMemoryDht;
+    pub use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
 
     pub trait DistributedDht:
         agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
@@ -24,6 +25,17 @@ pub mod distributed_dht {
         T: agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
     {
     }
+}
+
+pub mod distributed_net {
+    pub use agent_world::runtime::{DistributedNetwork, NetworkSubscription};
+}
+
+pub mod distributed_consensus {
+    pub use super::quorum::{
+        ConsensusMembershipChange, ConsensusMembershipChangeRequest,
+        ConsensusMembershipChangeResult, QuorumConsensus,
+    };
 }
 
 pub mod distributed_lease {
@@ -51,6 +63,15 @@ pub mod util {
     pub fn read_json_from_path<T: DeserializeOwned>(path: &Path) -> Result<T, WorldError> {
         let bytes = fs::read(path)?;
         Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    pub fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
+        let mut buf = Vec::with_capacity(256);
+        let canonical_value = serde_cbor::value::to_value(value)?;
+        let mut serializer = serde_cbor::ser::Serializer::new(&mut buf);
+        serializer.self_describe()?;
+        canonical_value.serialize(&mut serializer)?;
+        Ok(buf)
     }
 }
 
