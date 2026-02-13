@@ -224,6 +224,14 @@
   - 第三轮结论：
     - `memory/storage_cargo + power` 完成按 `module_id` 独立工件装载后，`rules/body/default/power` 路径回归通过。
     - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
+- 阶段五第四轮路线（2026-02-13）：
+  - BMS-67：扩展设计与任务拆解（下线单聚合工件兼容入口与同步脚本）（已完成）。
+  - BMS-68：删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）。
+  - BMS-69：执行阶段五第四轮回归收口，更新文档与 devlog。
+  - 本轮实施约束：
+    - 保持按 `module_id` 的独立工件目录与 hash 清单为唯一工件真相来源。
+    - 删除 `m1_builtin_modules.wasm` 相关运行时入口与 `sync-m1-builtin-wasm-artifact.sh`，避免双轨维护。
+    - 回归最小覆盖需包含 `rules/body/agent_default_modules/power_bootstrap` 与独立工件同步校验。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -256,6 +264,7 @@
 - M28：完成 BMS-64（阶段五第三轮任务拆解）。
 - M29：完成 BMS-65（`memory/storage_cargo + power` 按 module_id 独立工件装载切换）。
 - M30：完成 BMS-66（阶段五第三轮回归收口）。
+- M31：完成 BMS-67（阶段五第四轮任务拆解）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。

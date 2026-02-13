@@ -180,6 +180,9 @@
 - [x] BMS-64 扩展设计与任务拆解（阶段五第三轮：`memory/storage_cargo + power` 按 `module_id` 独立工件装载）
 - [x] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）
 - [x] BMS-66 回归验证、文档与 devlog 收口（阶段五第三轮）
+- [x] BMS-67 扩展设计与任务拆解（阶段五第四轮：下线单聚合工件兼容入口）
+- [ ] BMS-68 删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）
+- [ ] BMS-69 回归验证、文档与 devlog 收口（阶段五第四轮）
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -187,6 +190,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段五第三轮已完成）
-- 下一步：若继续推进 BMS，先补充新一轮设计与任务拆解（BMS-67+）
-- 最近更新：完成 BMS-66（阶段五第三轮回归收口）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段五第四轮推进中）
+- 下一步：执行 BMS-68（删除单聚合工件兼容入口，切换到 per-module-only）
+- 最近更新：完成 BMS-67（阶段五第四轮设计与任务拆解）（2026-02-13）
