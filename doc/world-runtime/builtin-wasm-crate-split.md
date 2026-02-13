@@ -283,12 +283,20 @@
     - 规则/身体/默认模块/状态模块在 wasm 模块形态下的协作路径保持可用。
 - 阶段七运行时闭环联测路线（2026-02-13）：
   - BMS-73：扩展设计与任务拆解（`agent_world` 运行时 wasmtime 闭环联测）（已完成）。
-  - BMS-74：新增运行时闭环场景测试（`World + WasmExecutor + builtin wasm` 端到端链路）。
+  - BMS-74：新增运行时闭环场景测试（`World + WasmExecutor + builtin wasm` 端到端链路）（已完成）。
   - BMS-75：执行回归验证与文档/devlog 收口。
   - 本轮实施约束：
     - 测试落在 `runtime::tests`，以 `feature=wasmtime` 执行，覆盖真实 wasm 执行链路而非纯函数直调。
     - 场景至少覆盖：注册、移动、观测、转移、身体动作、接口扩容、memory/state 回灌。
     - 验收至少包含：新增运行时闭环测试通过 + `runtime::tests::agent_default_modules::` 回归通过。
+- 阶段七运行时闭环场景落地（BMS-74，2026-02-13）：
+  - 新增测试用例：
+    - `runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
+  - 关键实现：
+    - 在 `agent_default_modules` 测试夹具新增 builtin wasm 模块安装辅助，支持按治理链路安装 `m1.rule.transfer` 与 `m1.body.core`。
+    - 闭环场景串联 `register/query/transfer/move/expand/body_action`，并断言 memory/storage/power 模块状态回灌结果。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
