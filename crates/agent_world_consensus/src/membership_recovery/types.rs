@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::membership_reconciliation::{
+use super::super::membership_reconciliation::{
     MembershipRevocationAnomalyAlert, MembershipRevocationScheduledRunReport,
 };
 

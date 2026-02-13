@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use agent_world::runtime::WorldError;
 
+use super::super::membership_reconciliation::{
+    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
+};
 use super::replay_archive::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy,
     MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore,
@@ -29,9 +32,6 @@ use super::replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 use super::{normalized_schedule_key, MembershipSyncClient};
-use crate::membership_reconciliation::{
-    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
-};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
