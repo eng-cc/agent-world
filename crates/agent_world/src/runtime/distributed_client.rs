@@ -1,1 +1,1 @@
-include!("../../../agent_world_net/src/client.rs");
+pub use agent_world_net::DistributedClient;

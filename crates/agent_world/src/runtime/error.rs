@@ -115,3 +115,28 @@ impl From<io::Error> for WorldError {
         WorldError::Io(error.to_string())
     }
 }
+
+impl From<agent_world_net::WorldError> for WorldError {
+    fn from(error: agent_world_net::WorldError) -> Self {
+        match error {
+            agent_world_net::WorldError::NetworkProtocolUnavailable { protocol } => {
+                WorldError::NetworkProtocolUnavailable { protocol }
+            }
+            agent_world_net::WorldError::NetworkRequestFailed {
+                code,
+                message,
+                retryable,
+            } => WorldError::NetworkRequestFailed {
+                code,
+                message,
+                retryable,
+            },
+            agent_world_net::WorldError::DistributedValidationFailed { reason } => {
+                WorldError::DistributedValidationFailed { reason }
+            }
+            agent_world_net::WorldError::SignatureKeyInvalid => WorldError::SignatureKeyInvalid,
+            agent_world_net::WorldError::Io(message) => WorldError::Io(message),
+            agent_world_net::WorldError::Serde(message) => WorldError::Serde(message),
+        }
+    }
+}

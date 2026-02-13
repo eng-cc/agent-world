@@ -1,1 +1,1 @@
-include!("../../../agent_world_net/src/dht_cache.rs");
+pub use agent_world_net::{CachedDht, DhtCacheConfig};

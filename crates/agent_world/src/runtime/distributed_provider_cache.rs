@@ -1,1 +1,1 @@
-include!("../../../agent_world_net/src/provider_cache.rs");
+pub use agent_world_net::distributed_provider_cache::*;

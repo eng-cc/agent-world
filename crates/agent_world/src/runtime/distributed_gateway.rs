@@ -1,1 +1,1 @@
-include!("../../../agent_world_net/src/gateway.rs");
+pub use agent_world_net::{ActionGateway, NetworkGateway, SubmitActionReceipt};

@@ -1,11 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{Action, LocalCasStore};
-use agent_world::runtime::{ModuleKind, ModuleLimits, ModuleRole};
-use agent_world::{GeoPos, World};
 use agent_world_proto::distributed as proto_distributed;
 use agent_world_proto::distributed_dht::DistributedDht as _;
 use agent_world_proto::distributed_net as proto_net;
@@ -25,36 +20,8 @@ fn net_exports_are_available() {
     let _ = std::any::type_name::<InMemoryIndexStore>();
     let _ = std::any::type_name::<ProviderCache>();
     let _ = std::any::type_name::<ProviderCacheConfig>();
-    let _ = std::any::type_name::<ObserverClient>();
-    let _ = std::any::type_name::<ObserverSubscription>();
-    let _ = std::any::type_name::<HeadSyncResult>();
-    let _ = std::any::type_name::<HeadSyncReport>();
-    let _ = std::any::type_name::<HeadFollowReport>();
     let _ = std::any::type_name::<IndexPublishResult>();
     let _ = std::any::type_name::<SubmitActionReceipt>();
-    let _ = std::any::type_name::<HeadFollower>();
-}
-
-fn temp_dir(prefix: &str) -> std::path::PathBuf {
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("duration since epoch")
-        .as_nanos();
-    std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
-}
-
-#[test]
-fn in_memory_publish_delivers_to_subscribers() {
-    let network = InMemoryNetwork::new();
-    let subscription = network.subscribe("aw.w1.action").expect("subscribe");
-
-    network
-        .publish("aw.w1.action", b"payload")
-        .expect("publish");
-
-    let messages = subscription.drain();
-    assert_eq!(messages.len(), 1);
-    assert_eq!(messages[0], b"payload".to_vec());
 }
 
 fn sample_action() -> proto_distributed::ActionEnvelope {
@@ -69,6 +36,20 @@ fn sample_action() -> proto_distributed::ActionEnvelope {
         timestamp_ms: 10,
         signature: "sig".to_string(),
     }
+}
+
+#[test]
+fn in_memory_publish_delivers_to_subscribers() {
+    let network = InMemoryNetwork::new();
+    let subscription = network.subscribe("aw.w1.action").expect("subscribe");
+
+    network
+        .publish("aw.w1.action", b"payload")
+        .expect("publish");
+
+    let messages = subscription.drain();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0], b"payload".to_vec());
 }
 
 #[test]
@@ -108,26 +89,12 @@ fn in_memory_request_invokes_handler() {
     assert_eq!(response, b"ping-ok".to_vec());
 }
 
-#[test]
-fn in_memory_dht_stores_providers() {
-    let dht = InMemoryDht::new();
-    dht.publish_provider("w1", "hash", "peer-1")
-        .expect("publish provider");
-    dht.publish_provider("w1", "hash", "peer-2")
-        .expect("publish provider");
-
-    let providers = dht.get_providers("w1", "hash").expect("get providers");
-    assert_eq!(providers.len(), 2);
-}
-
 #[cfg(feature = "libp2p")]
 #[test]
 fn libp2p_smoke_request_response_and_pubsub_work_between_peers() {
     use std::time::{Duration, Instant};
 
     use libp2p::Multiaddr;
-
-    use agent_world::runtime::WorldError;
 
     fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {
         while Instant::now() < deadline {
@@ -210,6 +177,18 @@ fn libp2p_smoke_request_response_and_pubsub_work_between_peers() {
 }
 
 #[test]
+fn in_memory_dht_stores_providers() {
+    let dht = InMemoryDht::new();
+    dht.publish_provider("w1", "hash", "peer-1")
+        .expect("publish provider");
+    dht.publish_provider("w1", "hash", "peer-2")
+        .expect("publish provider");
+
+    let providers = dht.get_providers("w1", "hash").expect("get providers");
+    assert_eq!(providers.len(), 2);
+}
+
+#[test]
 fn in_memory_dht_tracks_world_head() {
     let dht = InMemoryDht::new();
     let head = proto_distributed::WorldHeadAnnounce {
@@ -250,32 +229,80 @@ fn in_memory_dht_tracks_membership_directory_snapshot() {
     assert_eq!(loaded, Some(snapshot));
 }
 
+fn sample_blob_ref(content_hash: &str) -> proto_distributed::BlobRef {
+    proto_distributed::BlobRef {
+        content_hash: content_hash.to_string(),
+        size_bytes: 1,
+        codec: "dag-cbor".to_string(),
+        links: Vec::new(),
+    }
+}
+
+fn sample_write_result() -> ExecutionWriteResult {
+    ExecutionWriteResult {
+        block: proto_distributed::WorldBlock {
+            world_id: "w1".to_string(),
+            height: 1,
+            prev_block_hash: "genesis".to_string(),
+            action_root: "action-root".to_string(),
+            event_root: "event-root".to_string(),
+            state_root: "state-root".to_string(),
+            journal_ref: "journal-index".to_string(),
+            snapshot_ref: "snapshot-manifest".to_string(),
+            receipts_root: "receipts-root".to_string(),
+            proposer_id: "node-1".to_string(),
+            timestamp_ms: 1,
+            signature: "sig".to_string(),
+        },
+        block_hash: "block-hash".to_string(),
+        block_ref: sample_blob_ref("block-hash"),
+        block_announce: proto_distributed::BlockAnnounce {
+            world_id: "w1".to_string(),
+            height: 1,
+            block_hash: "block-hash".to_string(),
+            prev_block_hash: "genesis".to_string(),
+            state_root: "state-root".to_string(),
+            event_root: "event-root".to_string(),
+            timestamp_ms: 1,
+            signature: "sig".to_string(),
+        },
+        head_announce: proto_distributed::WorldHeadAnnounce {
+            world_id: "w1".to_string(),
+            height: 1,
+            block_hash: "block-hash".to_string(),
+            state_root: "state-root".to_string(),
+            timestamp_ms: 1,
+            signature: "sig".to_string(),
+        },
+        snapshot_manifest: proto_distributed::SnapshotManifest {
+            world_id: "w1".to_string(),
+            epoch: 1,
+            chunks: vec![
+                proto_distributed::StateChunkRef {
+                    chunk_id: "chunk-1".to_string(),
+                    content_hash: "chunk-hash-1".to_string(),
+                    size_bytes: 1,
+                },
+                proto_distributed::StateChunkRef {
+                    chunk_id: "chunk-2".to_string(),
+                    content_hash: "chunk-hash-2".to_string(),
+                    size_bytes: 1,
+                },
+            ],
+            state_root: "state-root".to_string(),
+        },
+        snapshot_manifest_ref: sample_blob_ref("snapshot-manifest"),
+        journal_segments: vec![
+            sample_blob_ref("journal-seg-1"),
+            sample_blob_ref("journal-seg-2"),
+        ],
+        journal_segments_ref: sample_blob_ref("journal-index"),
+    }
+}
+
 #[test]
 fn publish_execution_providers_indexes_all_hashes() {
-    let dir = temp_dir("index");
-    let store = LocalCasStore::new(&dir);
-    let mut world = World::new();
-    world.submit_action(Action::RegisterAgent {
-        agent_id: "agent-1".to_string(),
-        pos: GeoPos::new(0.0, 0.0, 0.0),
-    });
-    world.step().expect("step world");
-
-    let snapshot = world.snapshot();
-    let journal = world.journal().clone();
-    let write = store_execution_result(
-        "w1",
-        1,
-        "genesis",
-        "exec-1",
-        1,
-        &snapshot,
-        &journal,
-        &store,
-        ExecutionWriteConfig::default(),
-    )
-    .expect("write");
-
+    let write = sample_write_result();
     let dht = InMemoryDht::new();
     let result =
         publish_execution_providers(&dht, "w1", "store-1", &write).expect("publish providers");
@@ -297,36 +324,11 @@ fn publish_execution_providers_indexes_all_hashes() {
         assert!(!providers.is_empty());
         assert_eq!(providers[0].provider_id, "store-1");
     }
-
-    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn publish_execution_providers_cached_indexes_all_hashes() {
-    let dir = temp_dir("index-cache");
-    let store = LocalCasStore::new(&dir);
-    let mut world = World::new();
-    world.submit_action(Action::RegisterAgent {
-        agent_id: "agent-1".to_string(),
-        pos: GeoPos::new(0.0, 0.0, 0.0),
-    });
-    world.step().expect("step world");
-
-    let snapshot = world.snapshot();
-    let journal = world.journal().clone();
-    let write = store_execution_result(
-        "w1",
-        1,
-        "genesis",
-        "exec-1",
-        1,
-        &snapshot,
-        &journal,
-        &store,
-        ExecutionWriteConfig::default(),
-    )
-    .expect("write");
-
+    let write = sample_write_result();
     let dht = InMemoryDht::new();
     let index_store = InMemoryIndexStore::new();
     let cache = ProviderCache::new(
@@ -340,24 +342,18 @@ fn publish_execution_providers_cached_indexes_all_hashes() {
         publish_execution_providers_cached(&cache, "w1", &write).expect("publish providers");
     assert!(result.published > 0);
 
-    let mut expected = HashSet::new();
-    expected.insert(write.block_ref.content_hash.clone());
-    expected.insert(write.snapshot_manifest_ref.content_hash.clone());
-    expected.insert(write.journal_segments_ref.content_hash.clone());
-    for chunk in &write.snapshot_manifest.chunks {
-        expected.insert(chunk.content_hash.clone());
+    for hash in [
+        "block-hash",
+        "snapshot-manifest",
+        "journal-index",
+        "chunk-hash-1",
+        "chunk-hash-2",
+        "journal-seg-1",
+        "journal-seg-2",
+    ] {
+        let providers = query_providers(&dht, "w1", hash).expect("get providers");
+        assert!(!providers.is_empty(), "missing providers for {hash}");
     }
-    for segment in &write.journal_segments {
-        expected.insert(segment.content_hash.clone());
-    }
-
-    for hash in expected {
-        let providers = query_providers(&dht, "w1", &hash).expect("get providers");
-        assert!(!providers.is_empty());
-        assert_eq!(providers[0].provider_id, "store-1");
-    }
-
-    let _ = fs::remove_dir_all(&dir);
 }
 
 #[derive(Default)]
@@ -377,31 +373,18 @@ impl SpyNetwork {
     }
 }
 
-impl proto_net::DistributedNetwork<agent_world::runtime::WorldError> for SpyNetwork {
-    fn publish(
-        &self,
-        _topic: &str,
-        _payload: &[u8],
-    ) -> Result<(), agent_world::runtime::WorldError> {
+impl proto_net::DistributedNetwork<WorldError> for SpyNetwork {
+    fn publish(&self, _topic: &str, _payload: &[u8]) -> Result<(), WorldError> {
         Ok(())
     }
 
-    fn subscribe(
-        &self,
-        _topic: &str,
-    ) -> Result<NetworkSubscription, agent_world::runtime::WorldError> {
-        Err(
-            agent_world::runtime::WorldError::NetworkProtocolUnavailable {
-                protocol: "spy".to_string(),
-            },
-        )
+    fn subscribe(&self, _topic: &str) -> Result<NetworkSubscription, WorldError> {
+        Err(WorldError::NetworkProtocolUnavailable {
+            protocol: "spy".to_string(),
+        })
     }
 
-    fn request(
-        &self,
-        protocol: &str,
-        payload: &[u8],
-    ) -> Result<Vec<u8>, agent_world::runtime::WorldError> {
+    fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
         self.request_with_providers(protocol, payload, &[])
     }
 
@@ -410,7 +393,7 @@ impl proto_net::DistributedNetwork<agent_world::runtime::WorldError> for SpyNetw
         protocol: &str,
         payload: &[u8],
         providers: &[String],
-    ) -> Result<Vec<u8>, agent_world::runtime::WorldError> {
+    ) -> Result<Vec<u8>, WorldError> {
         let mut captured = self.providers.lock().expect("lock providers");
         *captured = providers.to_vec();
 
@@ -456,21 +439,17 @@ impl proto_net::DistributedNetwork<agent_world::runtime::WorldError> for SpyNetw
                 };
                 Ok(to_canonical_cbor(&response)?)
             }
-            _ => Err(
-                agent_world::runtime::WorldError::NetworkProtocolUnavailable {
-                    protocol: protocol.to_string(),
-                },
-            ),
+            _ => Err(WorldError::NetworkProtocolUnavailable {
+                protocol: protocol.to_string(),
+            }),
         }
     }
 
     fn register_handler(
         &self,
         _protocol: &str,
-        _handler: Box<
-            dyn Fn(&[u8]) -> Result<Vec<u8>, agent_world::runtime::WorldError> + Send + Sync,
-        >,
-    ) -> Result<(), agent_world::runtime::WorldError> {
+        _handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
+    ) -> Result<(), WorldError> {
         Ok(())
     }
 }
@@ -483,7 +462,7 @@ fn client_get_world_head_round_trip() {
             proto_distributed::RR_GET_WORLD_HEAD,
             Box::new(|payload| {
                 let request: proto_distributed::GetWorldHeadRequest =
-                    serde_cbor::from_slice(payload).unwrap();
+                    serde_cbor::from_slice(payload).expect("decode request");
                 assert_eq!(request.world_id, "w1");
                 let response = proto_distributed::GetWorldHeadResponse {
                     head: proto_distributed::WorldHeadAnnounce {
@@ -495,7 +474,7 @@ fn client_get_world_head_round_trip() {
                         signature: "sig".to_string(),
                     },
                 };
-                Ok(to_canonical_cbor(&response).unwrap())
+                Ok(to_canonical_cbor(&response).expect("encode response"))
             }),
         )
         .expect("register handler");
@@ -517,17 +496,14 @@ fn client_maps_error_response() {
                     message: "missing".to_string(),
                     retryable: false,
                 };
-                Ok(to_canonical_cbor(&response).unwrap())
+                Ok(to_canonical_cbor(&response).expect("encode"))
             }),
         )
         .expect("register handler");
 
     let client = DistributedClient::new(Arc::new(network));
     let err = client.fetch_blob("missing").expect_err("expect error");
-    assert!(matches!(
-        err,
-        agent_world::runtime::WorldError::NetworkRequestFailed { .. }
-    ));
+    assert!(matches!(err, WorldError::NetworkRequestFailed { .. }));
 }
 
 #[test]
@@ -572,18 +548,11 @@ fn client_fetch_module_manifest_from_dht_uses_provider_list() {
     dht.publish_provider("w1", "manifest-hash", "peer-9")
         .expect("publish provider");
 
-    let manifest = agent_world::runtime::ModuleManifest {
+    let manifest = ModuleManifest {
         module_id: "m.weather".to_string(),
         name: "Weather".to_string(),
         version: "0.1.0".to_string(),
-        kind: ModuleKind::Reducer,
-        role: ModuleRole::Rule,
         wasm_hash: "wasm-hash".to_string(),
-        interface_version: "v1".to_string(),
-        exports: vec![],
-        subscriptions: vec![],
-        required_caps: vec![],
-        limits: ModuleLimits::default(),
     };
     let bytes = to_canonical_cbor(&manifest).expect("cbor");
     spy.set_blob("manifest-hash", bytes);

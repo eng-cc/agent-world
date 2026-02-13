@@ -1,4 +1,4 @@
-use agent_world::runtime::WorldError;
+use crate::error::WorldError;
 use serde::Serialize;
 
 pub(crate) fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {

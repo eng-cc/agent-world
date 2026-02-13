@@ -312,6 +312,14 @@
 - 保持代码行为与导出 API 不变，不改业务语义。
 - 通过脚本自检 + 分布式定向集成测试验证收口。
 
+### In Scope（三十五次扩展阶段）
+- 推进 `agent_world_net` 脱离对 `agent_world` 的硬依赖，并启动 runtime 对 net 的直接依赖切换：
+  - `agent_world_net` 移除 `agent_world` 依赖，保留纯网络能力导出（network/dht/client/index/cache/gateway）。
+  - 为 net crate 增加本地 `WorldError` 与最小 `modules/distributed_storage` 数据面，保证 `agent_world_net --features libp2p` 可独立编译和测试。
+  - `agent_world` 新增对 `agent_world_net` 的依赖，先将 `distributed_net/dht/client/gateway/index_store/provider_cache/dht_cache` 切到直接 re-export。
+  - 对 `distributed_index` 保持 runtime 本地实现，避免 `ExecutionWriteResult` 在 net/runtime 两侧类型尚未统一时产生签名断裂。
+- 保持对外 API 语义兼容，优先保障多节点与一致性回归通过。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -405,6 +413,7 @@
 - P70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估。
 - P71：三十三次扩展阶段回归验证与文档收口。
 - P72：完成 include warning 基线脚本化与 CI 接入收口。
+- P73：完成 `agent_world_net` 去除 `agent_world` 依赖与 runtime 首批直接依赖切换收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -433,3 +442,4 @@
 - observer replay warning 治理若误扩散到共享源码层，可能影响 `agent_world_net` 端可见性语义；需将门控限定在 runtime 包装层并保留跨节点集成测试回归。
 - warning 基线评估若缺少 feature/target 维度，可能出现“当前无 warning、切换 feature 后回归”的盲区；需固定 `--all-targets` 与 `--features wasmtime` 双路径校验。
 - warning 基线脚本若未和 CI/本地入口统一，可能出现“手工通过但流水线遗漏”的门禁漂移；需统一复用 `scripts/ci-tests.sh` 作为执行入口。
+- `agent_world` 切换到 `agent_world_net` 直接依赖后，`WorldError` 与 `ExecutionWriteResult` 若双定义并存，容易出现隐式签名不兼容；需通过显式 `From` 桥接与 runtime 本地 wrapper 稳定过渡。

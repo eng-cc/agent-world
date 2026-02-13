@@ -73,6 +73,8 @@
 - [x] T70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估（`--all-targets` / `--all-targets --features wasmtime`）。
 - [x] T71：确认本轮评估无新增上下文特异 warning，完成文档与日志收口。
 - [x] T72：新增 include warning 基线检查脚本并接入 `scripts/ci-tests.sh`，统一 pre-commit/CI 门禁入口。
+- [x] T73：完成 `agent_world_net` 去除 `agent_world` 依赖并通过 `--features libp2p --lib` 回归；`agent_world` 首批模块切到直接依赖 `agent_world_net`（net/dht/client/gateway/index_store/provider_cache/dht_cache）。
+- [ ] T74：将 net/runtime 公共依赖（错误类型与执行产物索引数据面）继续迁移到 `agent_world_proto`，收敛 `distributed_index/storage/validation` 的双类型并清理剩余 include 包装层。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -161,10 +163,17 @@
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world_consensus/src/quorum.rs`
 - `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/Cargo.toml`
 - `scripts/check-include-warning-baseline.sh`
 - `scripts/ci-tests.sh`
+- `crates/agent_world/Cargo.toml`
+- `crates/agent_world/src/runtime/error.rs`
+- `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world_net/Cargo.toml`
+- `crates/agent_world_net/src/lib.rs`
+- `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：三十四次扩展阶段已收口（T72 完成）。
-- 下一步：观察 CI 上 include warning 基线门禁稳定性，并在后续阶段将 warning 回归定位流程继续模板化。
+- 当前阶段：三十五次扩展阶段进行中（T73 完成，T74 待执行）。
+- 下一步：执行 T74，优先把 `WorldError` / `ExecutionWriteResult` 相关公共依赖下沉到 `agent_world_proto`，并继续替换剩余 include 包装层。
 - 最近更新：2026-02-13

@@ -1,1 +1,1 @@
-include!("../../../agent_world_net/src/index_store.rs");
+pub use agent_world_net::distributed_index_store::*;

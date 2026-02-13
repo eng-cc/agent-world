@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::WorldError;
+use crate::error::WorldError;
 use agent_world_proto::distributed as proto_distributed;
 
 use super::distributed_net::DistributedNetwork;

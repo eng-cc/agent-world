@@ -3,7 +3,6 @@ use agent_world::runtime::distributed::{
     FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
     RR_GET_BLOCK,
 };
-use agent_world::runtime::WorldError;
 use agent_world::runtime::{
     store_execution_result, Action, BlobStore, DistributedClient, ExecutionWriteConfig,
     HeadFollower, InMemoryNetwork, LocalCasStore, World,
@@ -95,7 +94,7 @@ fn head_follower_applies_and_ignores_heads() {
                         snapshot_ref: block2_snapshot.clone(),
                     },
                     _ => {
-                        return Err(WorldError::DistributedValidationFailed {
+                        return Err(agent_world_net::WorldError::DistributedValidationFailed {
                             reason: format!("unknown block height {}", request.height),
                         })
                     }

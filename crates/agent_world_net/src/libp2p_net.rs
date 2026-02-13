@@ -16,7 +16,7 @@ use libp2p::request_response::{self, ProtocolSupport};
 use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Transport as _};
 
-use agent_world::runtime::WorldError;
+use crate::error::WorldError;
 use agent_world_proto::distributed::{
     dht_membership_key, dht_provider_key, dht_world_head_key, DistributedErrorCode, ErrorResponse,
     WorldHeadAnnounce, RR_PROTOCOL_PREFIX,
