@@ -25,6 +25,7 @@
 - 继续迁移 `m1.power.storage` 到独立 crate。
 - 新增脚本封装，基于 `scripts/build-wasm-module.sh` 构建该 crate 产物。
 - 补充最小测试与回归命令，确保 crate 可编译、脚本可执行、产物可生成。
+- 补充 `agent_world_builtin_wasm` 闭环场景联测，覆盖规则/身体/默认模块/状态模块的协作行为。
 - 新增 runtime cutover 路径：
   - 在模块执行链路中接入“WASM 优先 + builtin fallback”。
   - 在测试/示例安装入口逐步下线 builtin 注册，改为安装 wasm 模块工件。
@@ -256,6 +257,14 @@
   - 第四轮结论：
     - 阶段五第四轮（BMS-67~BMS-69）已完成，单聚合工件兼容入口下线后回归保持通过。
     - 独立工件目录与 hash 清单继续与源码构建产物保持一致，per-module-only 路径稳定。
+- 阶段六闭环联测路线（2026-02-13）：
+  - BMS-70：扩展设计与任务拆解（`agent_world_builtin_wasm` 闭环场景联测）（已完成）。
+  - BMS-71：新增闭环场景测试（单场景覆盖 `rule/body/sensor/mobility/memory/storage/power` 协作）。
+  - BMS-72：执行回归验证与文档/devlog 收口。
+  - 本轮实施约束：
+    - 测试落在 `agent_world_builtin_wasm` crate 内，直接验证 wasm ABI 输入输出闭环，不引入跨 crate 依赖。
+    - 场景至少包含：注册、移动、观测、转移、身体动作、存储扩容、能量更新等关键路径。
+    - 回归最小覆盖包含：新闭环测试 + `agent_world_builtin_wasm` 包全量测试。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -291,6 +300,9 @@
 - M31：完成 BMS-67（阶段五第四轮任务拆解）。
 - M32：完成 BMS-68（阶段五第四轮单聚合兼容入口下线）。
 - M33：完成 BMS-69（阶段五第四轮回归收口）。
+- M34：完成 BMS-70（阶段六闭环联测任务拆解）。
+- M35：完成 BMS-71（闭环场景测试落地）。
+- M36：完成 BMS-72（阶段六回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
