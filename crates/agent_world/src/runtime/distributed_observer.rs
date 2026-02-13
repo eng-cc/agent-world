@@ -26,7 +26,7 @@ mod error {
     pub(super) use super::super::error::WorldError;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod util {
     pub(super) use super::super::util::*;
 }

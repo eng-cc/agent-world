@@ -98,7 +98,7 @@ fn verify_blob_hash(expected: &str, bytes: &[u8]) -> Result<(), WorldError> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::fs;
     use std::sync::Arc;

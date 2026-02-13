@@ -95,6 +95,7 @@
 - [x] T92：收敛 runtime `distributed_membership_sync` 的重复 recovery/reconciliation 单测面，迁移测试闭环到 `agent_world_consensus` crate，仅保留 runtime 侧核心 API 兼容测试。
 - [x] T93：进一步收敛 runtime `distributed_membership_sync::tests`，将大规模重复单测替换为最小运行时兼容 smoke tests，详细行为验证统一归口到 `agent_world_consensus::membership_tests`。
 - [x] T94：将 runtime `distributed_mempool` / `distributed_index` 从路径包装进一步收敛为 split crate 直接 re-export，减少 runtime alias 层代码与维护面。
+- [x] T95：为路径复用的 net 模块测试增加 `self_tests` 门控（仅在 `agent_world_net` 自测上下文启用），并同步收敛 runtime 包装层测试专用 alias 门控，消除 `--all-targets` include warning 基线噪音。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -198,6 +199,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：五十七次扩展阶段完成（T94 已完成，runtime `distributed_mempool` / `distributed_index` 已改为 split crate 直接 re-export）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），在此基础上继续清理 runtime 侧剩余 alias 包装模块。
+- 当前阶段：五十八次扩展阶段完成（T95 已完成，路径复用 net 模块测试已按 crate 上下文门控，include warning 基线恢复为零告警）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），在此基础上继续清理 runtime 侧剩余 alias 包装模块并逐步切到 split crate 直接依赖。
 - 最近更新：2026-02-13

@@ -243,7 +243,7 @@ fn hash_cbor<T: Serialize>(value: &T) -> Result<String, WorldError> {
     Ok(blake3_hex(&bytes))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};

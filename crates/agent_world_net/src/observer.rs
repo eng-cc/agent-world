@@ -250,7 +250,7 @@ impl ObserverClient {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::sync::Arc;
 

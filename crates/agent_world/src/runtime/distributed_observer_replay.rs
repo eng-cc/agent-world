@@ -14,12 +14,12 @@ mod distributed_dht {
     pub(super) use super::super::distributed_dht::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod distributed_net {
     pub(super) use super::super::distributed_net::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod distributed_storage {
     pub(super) use super::super::distributed_storage::*;
 }
@@ -36,7 +36,7 @@ mod segmenter {
     pub(super) use super::super::segmenter::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod util {
     pub(super) use super::super::util::*;
 }

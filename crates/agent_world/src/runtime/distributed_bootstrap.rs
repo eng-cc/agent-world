@@ -14,7 +14,7 @@ mod distributed_dht {
     pub(super) use super::super::distributed_dht::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod distributed_net {
     pub(super) use super::super::distributed_net::*;
 }
@@ -23,7 +23,7 @@ mod distributed_observer_replay {
     pub(super) use super::super::distributed_observer_replay::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod distributed_storage {
     pub(super) use super::super::distributed_storage::*;
 }
@@ -32,7 +32,7 @@ mod error {
     pub(super) use super::super::error::WorldError;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod util {
     pub(super) use super::super::util::*;
 }

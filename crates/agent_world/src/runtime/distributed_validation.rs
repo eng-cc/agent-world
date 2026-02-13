@@ -13,7 +13,7 @@ mod distributed {
     pub(super) use super::super::distributed::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod distributed_storage {
     pub(super) use super::super::distributed_storage::*;
 }
