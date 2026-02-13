@@ -2,11 +2,11 @@ use std::cmp::Reverse;
 
 use agent_world::runtime::WorldError;
 
-use crate::membership::{
+use super::membership::{
     MembershipDirectorySignerKeyring, MembershipSyncClient, MembershipSyncSubscription,
 };
-use crate::membership_logic;
-use crate::membership_reconciliation::{
+use super::membership_logic;
+use super::membership_reconciliation::{
     MembershipRevocationAlertDedupPolicy, MembershipRevocationAlertDedupState,
     MembershipRevocationAlertPolicy, MembershipRevocationAlertSink,
     MembershipRevocationAnomalyAlert, MembershipRevocationReconcilePolicy,

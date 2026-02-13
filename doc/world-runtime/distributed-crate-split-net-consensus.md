@@ -254,6 +254,16 @@
 - 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
 - 通过 workspace 级回归验证收口，确保 CI 路径可直接覆盖该切片。
 
+### In Scope（二十八次扩展阶段）
+- 继续推进 runtime 与 `agent_world_consensus` 的同源实现复用，覆盖 membership recovery 子模块：
+  - `agent_world::runtime::distributed_membership_sync::recovery.rs` 改为路径模块复用
+    `agent_world_consensus/src/membership_recovery/mod.rs`（`#[path] mod + pub use`）。
+  - `agent_world_consensus/src/membership_recovery/*` 调整为 `super::*` 相对导入（替换 `crate::*`），保证 recovery 共享源码在两侧 crate 均可编译。
+  - 在 runtime `distributed_membership_sync::recovery` 增加 `membership/membership_logic/membership_reconciliation`
+    alias 层，确保共享 recovery 模块解析路径稳定。
+- 保持 `agent_world` 对外 API 命名与行为语义兼容（`runtime` 导出名不变）。
+- 通过 workspace 级回归验证收口，确保 CI 路径可直接覆盖该切片。
+
 ### Out of Scope（本次不做）
 - 不在本轮强制把 `agent_world` 现有 runtime 实现文件全部物理迁移到新 crate。
 - 不做协议层额外重构（协议仍以 `agent_world_proto` 为主）。
@@ -334,6 +344,8 @@
 - P57：二十六次扩展阶段回归验证与文档收口。
 - P58：完成 runtime 与 `agent_world_consensus` 同源实现复用切片（distributed_membership_sync/reconciliation）。
 - P59：二十七次扩展阶段回归验证与文档收口。
+- P60：完成 runtime 与 `agent_world_consensus` 同源实现复用切片（distributed_membership_sync/recovery）。
+- P61：二十八次扩展阶段回归验证与文档收口。
 
 ## 风险
 - 仅做边界导出时，可能出现“新 crate 已存在但实现仍在 `agent_world`”的过渡期认知偏差。
@@ -355,3 +367,4 @@
 - membership recovery 下沉涉及 pending alert buffer/ack-retry/dead-letter 与落盘格式兼容，若 retry/backoff/capacity 判定或 legacy 解码偏差会导致漏告警或重复告警，需要保留 ack-retry 缓冲/丢弃、dead-letter 回放与持久化 round-trip 测试。
 - runtime 通过 `shared` 包装 include 共用 membership 文件时，若 alias 层与测试编译路径不一致，可能导致仅 `cargo check` 通过但 `cargo test` 失败，需要以 workspace 级测试作为收口门禁。
 - reconcile 子模块同源复用后，`membership_logic` 与 `to_canonical_cbor` 的可见性边界若调整不当，可能造成跨模块编译失败或测试回归，需要持续保持 `super::*` alias 的双上下文一致性。
+- recovery 子模块切换为 `#[path]` 复用后，若相对路径或父级 alias 发生漂移，可能导致仅单 crate 通过而 workspace 失败，需要维持 `membership_recovery/*` 的相对导入一致性并用 workspace 测试收口。

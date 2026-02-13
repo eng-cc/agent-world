@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use agent_world::runtime::WorldError;
 
+use super::super::membership_reconciliation::{
+    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
+    MembershipRevocationAnomalyAlert,
+};
 use super::{
     normalized_schedule_key, MembershipRevocationAlertDeadLetterStore,
     MembershipRevocationAlertDeliveryMetrics, MembershipRevocationAlertRecoveryStore,
@@ -15,10 +19,6 @@ use super::{
     MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationScheduleCoordinator,
     MembershipSyncClient,
-};
-use crate::membership_reconciliation::{
-    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
-    MembershipRevocationAnomalyAlert,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

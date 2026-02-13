@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use agent_world::runtime::WorldError;
 
+use super::super::membership_reconciliation::{
+    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
+    MembershipRevocationAnomalyAlert,
+};
 use super::replay_archive::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceAuditPruneReport,
     MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy,
@@ -24,10 +28,6 @@ use super::replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 use super::{normalized_schedule_key, MembershipSyncClient};
-use crate::membership_reconciliation::{
-    MembershipRevocationAlertSeverity, MembershipRevocationAlertSink,
-    MembershipRevocationAnomalyAlert,
-};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPolicy {

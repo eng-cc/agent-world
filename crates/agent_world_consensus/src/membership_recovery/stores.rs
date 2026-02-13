@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use agent_world::runtime::WorldError;
 
-use crate::membership_logic;
+use super::super::membership_logic;
 
 use super::types::{MembershipRevocationCoordinatorLeaseState, MembershipRevocationPendingAlert};
 
@@ -268,7 +268,7 @@ impl StoreBackedMembershipRevocationScheduleCoordinator {
     }
 }
 
-impl crate::membership_reconciliation::MembershipRevocationScheduleCoordinator
+impl super::super::membership_reconciliation::MembershipRevocationScheduleCoordinator
     for StoreBackedMembershipRevocationScheduleCoordinator
 {
     fn acquire(
@@ -326,7 +326,9 @@ fn decode_pending_alerts(
         return Ok(current);
     }
 
-    let legacy = serde_json::from_slice::<Vec<crate::MembershipRevocationAnomalyAlert>>(bytes)?;
+    let legacy = serde_json::from_slice::<
+        Vec<super::super::membership_reconciliation::MembershipRevocationAnomalyAlert>,
+    >(bytes)?;
     Ok(legacy
         .into_iter()
         .map(MembershipRevocationPendingAlert::from_legacy)
