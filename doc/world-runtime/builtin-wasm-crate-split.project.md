@@ -51,6 +51,12 @@
 - [x] BMS-47 扩展设计与任务拆解（阶段三第三轮：删除 runtime builtin 常量兼容层）。
 - [x] BMS-48 删除 `runtime/builtin_modules.rs` 常量层，统一引用 `agent_world_builtin_wasm` 常量导出。
 - [x] BMS-49 回归验证、文档与 devlog 收口（阶段三第三轮）。
+- [x] BMS-50 扩展设计与任务拆解（阶段四启动：产物接入收敛 + 文档去陈旧 + 工件策略决策）。
+- [ ] BMS-51 清理过时文档描述（`BuiltinModuleSandbox`/`runtime/builtin_modules.rs` 等），统一到 wasm-only 现状。
+- [ ] BMS-52 补齐 runtime 内嵌 wasm 工件同步机制（构建 -> 回填 -> 哈希校验）。
+- [ ] BMS-53 收敛 bootstrap/tests 的工件引用入口，减少 `include_bytes!(m1_builtin_modules.wasm)` 分散硬编码。
+- [ ] BMS-54 评估并决策“单聚合 wasm 工件 vs 多模块独立 wasm 工件”，输出迁移方案与分批顺序。
+- [ ] BMS-55 回归验证、文档与 devlog 收口（阶段四）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -58,6 +64,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：cutover 阶段三第三轮已完成（BMS-49 已收口）。
-- 最近更新：完成 BMS-49（阶段三第三轮回归验证与文档闭环，2026-02-13）。
-- 下一步：评估并拆解下一轮“逐步删除老 builtin 残留代码”任务（新里程碑待补充）。
+- 当前阶段：阶段四已启动（BMS-50 已完成，BMS-51~BMS-55 待执行）。
+- 最近更新：完成 BMS-50（阶段四任务拆解与风险补充，2026-02-13）。
+- 下一步：执行 BMS-51，先清理过时文档描述并统一到 wasm-only 现状。
