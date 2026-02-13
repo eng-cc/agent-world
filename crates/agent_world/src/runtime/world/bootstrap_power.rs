@@ -1,10 +1,11 @@
 use super::super::{
-    util, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ProposalDecision,
-    WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_BUILTIN_WASM_ARTIFACT_BYTES,
-    M1_BUILTIN_WASM_ARTIFACT_SHA256, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
-    M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION, M1_RADIATION_POWER_MODULE_ID,
-    M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
+    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation, ModuleChangeSet,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, ProposalDecision, WorldError, M1_AGENT_DEFAULT_MODULE_VERSION,
+    M1_BUILTIN_WASM_ARTIFACT_BYTES, M1_BUILTIN_WASM_ARTIFACT_SHA256, M1_MEMORY_MAX_ENTRIES,
+    M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
+    M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
+    M1_STORAGE_POWER_MODULE_ID,
 };
 use super::World;
 
@@ -12,8 +13,6 @@ const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
 const M1_RADIATION_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 const M1_STORAGE_POWER_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
-const M1_SENSOR_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
-const M1_MOBILITY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 const M1_MEMORY_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 const M1_STORAGE_CARGO_ARTIFACT: &[u8] = M1_BUILTIN_WASM_ARTIFACT_BYTES;
 
@@ -96,6 +95,8 @@ impl World {
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
         validate_m1_embedded_wasm_artifact()?;
+        let sensor_artifact = m1_builtin_wasm_artifact_for_module(M1_SENSOR_MODULE_ID)?;
+        let mobility_artifact = m1_builtin_wasm_artifact_for_module(M1_MOBILITY_MODULE_ID)?;
         let actor = actor.into();
         let mut changes = ModuleChangeSet::default();
 
@@ -103,7 +104,7 @@ impl World {
             self,
             &mut changes,
             M1_SENSOR_MODULE_ID,
-            M1_SENSOR_ARTIFACT,
+            sensor_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_sensor_manifest,
         )?;
@@ -111,7 +112,7 @@ impl World {
             self,
             &mut changes,
             M1_MOBILITY_MODULE_ID,
-            M1_MOBILITY_ARTIFACT,
+            mobility_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_mobility_manifest,
         )?;
@@ -173,6 +174,14 @@ fn validate_m1_embedded_wasm_artifact() -> Result<(), WorldError> {
     }
 
     Ok(())
+}
+
+fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<&'static [u8], WorldError> {
+    m1_builtin_wasm_module_artifact_bytes(module_id).ok_or_else(|| {
+        WorldError::ModuleChangeInvalid {
+            reason: format!("missing embedded wasm module artifact for module_id={module_id}"),
+        }
+    })
 }
 
 fn ensure_bootstrap_module(

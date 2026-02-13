@@ -63,7 +63,7 @@
 - [x] BMS-59 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（先规则域）。
 - [x] BMS-60 回归验证、文档与 devlog 收口（阶段五首轮）。
 - [x] BMS-61 扩展设计与任务拆解（阶段五第二轮：`body/sensor/mobility` 按 `module_id` 独立工件装载）。
-- [ ] BMS-62 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）。
+- [x] BMS-62 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）。
 - [ ] BMS-63 回归验证、文档与 devlog 收口（阶段五第二轮）。
 
 ## 依赖
@@ -72,6 +72,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：阶段五第二轮推进中（BMS-61 已完成，BMS-62~BMS-63 待执行）。
-- 最近更新：完成 BMS-61（阶段五第二轮设计与任务拆解：`body/sensor/mobility` 按 `module_id` 独立工件装载，2026-02-13）。
-- 下一步：执行 BMS-62，完成 `body/sensor/mobility` 装载链路切换。
+- 当前阶段：阶段五第二轮推进中（BMS-62 已完成，BMS-63 待执行）。
+- 最近更新：完成 BMS-62（`body/sensor/mobility` 按 `module_id` 独立工件装载切换，2026-02-13）。
+- 下一步：执行 BMS-63，完成阶段五第二轮回归收口、文档与 devlog 闭环。

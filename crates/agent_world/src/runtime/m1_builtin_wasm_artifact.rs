@@ -1,6 +1,5 @@
 #[cfg(test)]
 use super::{world::World, WorldError};
-#[cfg(test)]
 use super::{
     M1_BODY_MODULE_ID, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_MOVE_RULE_MODULE_ID,
     M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
@@ -26,14 +25,6 @@ pub(crate) fn m1_builtin_wasm_artifact_hash_hex() -> String {
     super::util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT_BYTES)
 }
 
-#[cfg(test)]
-pub(crate) fn register_m1_builtin_wasm_artifact(world: &mut World) -> Result<String, WorldError> {
-    let wasm_hash = m1_builtin_wasm_artifact_hash_hex();
-    world.register_module_artifact(wasm_hash.clone(), M1_BUILTIN_WASM_ARTIFACT_BYTES)?;
-    Ok(wasm_hash)
-}
-
-#[cfg(test)]
 pub(crate) fn m1_builtin_wasm_module_artifact_bytes(module_id: &str) -> Option<&'static [u8]> {
     match module_id {
         M1_MOVE_RULE_MODULE_ID => Some(include_bytes!(

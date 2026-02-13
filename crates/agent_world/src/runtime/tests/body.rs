@@ -6,8 +6,9 @@ use crate::simulator::ResourceKind;
 
 #[cfg(feature = "wasmtime")]
 fn install_m1_body_module(world: &mut World) {
-    let wasm_hash = super::super::register_m1_builtin_wasm_artifact(world)
-        .expect("register embedded m1 builtin wasm artifact");
+    let wasm_hash =
+        super::super::register_m1_builtin_wasm_module_artifact(world, M1_BODY_MODULE_ID)
+            .expect("register embedded m1 builtin wasm module artifact");
 
     let module_manifest = ModuleManifest {
         module_id: M1_BODY_MODULE_ID.to_string(),

@@ -140,6 +140,16 @@
   - 首轮结论：
     - 规则域切换到按 `module_id` 独立工件后，核心规则/身体/默认模块 bootstrap 路径回归通过。
     - 独立工件目录与 hash 清单仍与源码构建产物保持一致。
+- 阶段五第二轮装载切换（BMS-62，2026-02-13）：
+  - `body` 与默认模块 bootstrap（`sensor/mobility`）安装链路改为按 `module_id` 选取独立工件：
+    - `m1.body.core`
+    - `m1.sensor.basic`
+    - `m1.mobility.basic`
+  - 切换入口：
+    - `runtime::tests::body` 的 `install_m1_body_module` 改为按 `module_id` 注册独立工件。
+    - `install_m1_agent_default_modules` 中 `sensor/mobility` 改为按 `module_id` 装载独立工件；`memory/storage_cargo` 与 power 域保持现状。
+  - 当前范围说明：
+    - 本任务仅覆盖 `body/sensor/mobility` 装载切换，不包含 `memory/storage_cargo` 与 power 域迁移。
 - 阶段三下线路线（2026-02-13）：
   - BMS-40：补充阶段三任务拆解，明确“先删实现、后删接口、最后收口”节奏。
   - BMS-41：物理删除 `runtime/builtin_modules/` 下 `rule/body/default/power` native 实现文件，仅保留模块 ID/版本/参数常量。
@@ -168,7 +178,7 @@
   - BMS-60：执行阶段五首轮回归收口，更新文档与 devlog（已完成）。
 - 阶段五第二轮路线（2026-02-13）：
   - BMS-61：扩展设计与任务拆解（`body/sensor/mobility` 按 `module_id` 独立工件装载）（已完成）。
-  - BMS-62：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）。
+  - BMS-62：`bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）（已完成）。
   - BMS-63：执行阶段五第二轮回归收口，更新文档与 devlog。
   - 本轮实施约束：
     - 保持 `m1.memory.core` / `m1.storage.cargo` / power 域仍走既有入口，避免跨批次混改。
@@ -201,6 +211,7 @@
 - M23：完成 BMS-58（独立工件同步脚本与 hash 清单接入）。
 - M24：完成 BMS-59（规则域按 module_id 独立工件装载切换）。
 - M25：完成 BMS-61（阶段五第二轮任务拆解）。
+- M26：完成 BMS-62（`body/sensor/mobility` 按 module_id 独立工件装载切换）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
