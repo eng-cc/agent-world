@@ -7,10 +7,10 @@
 - [x] 输出项目管理文档（本文件）
 
 ### B2 模块实现
-- [x] 新增低效率辐射发电模块（builtin，WASM 预置形态）
-- [x] 新增基础储能模块（builtin，含连续移动约束）
-- [x] 导出模块 ID/默认参数常量，供治理安装与测试复用
-- [x] 将电力 builtin 拆分到 `runtime/builtin_modules/power_modules.rs`，避免单文件超 1200 行
+- [x] 新增低效率辐射发电模块（`m1.power.radiation_harvest`，wasm 工件语义）
+- [x] 新增基础储能模块（`m1.power.storage`，含连续移动约束）
+- [x] 导出模块 ID/默认参数常量（`agent_world_builtin_wasm`），供治理安装与测试复用
+- [x] 完成默认电力模块安装入口与测试闭环
 
 ### B3 运行时接入
 - [x] 新增 `World` 一键安装入口（register + activate + governance apply）
@@ -25,9 +25,9 @@
 
 ## 依赖
 - runtime 模块治理链路（`propose -> shadow -> approve -> apply`）
-- `BuiltinModuleSandbox` 与 `ModuleSandbox` 执行接口
+- `ModuleSandbox` 抽象与 wasm-only 执行链路（`WasmExecutor`）
 - `WorldEventBody::ModuleEmitted/ModuleStateUpdated` 事件语义
 
 ## 状态
 - 当前阶段：B4 完成
-- 最近更新：完成出厂电力模块（辐射发电 + 储能）实现、结构拆分与测试闭环（2026-02-07）
+- 最近更新：完成 BMS-51 文档口径清理，统一到 wasm-only 现状（2026-02-13）

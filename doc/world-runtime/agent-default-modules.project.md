@@ -30,10 +30,11 @@
 
 ## 依赖
 - 现有模块治理链路（`propose -> shadow -> approve -> apply`）
-- 内置模块沙箱（`BuiltinModuleSandbox`）与模块清单结构
+- wasm-only 执行链路（`WasmExecutor`）与模块工件安装入口
+- `agent_world_builtin_wasm` 模块常量导出与模块清单结构
 - Agent 资源账本与动作路由（pre_action/post_event）
 
 ## 状态
 - 当前阶段：ADM-S5 完成（默认模块体系 V1 收口）
 - 下一阶段：接口模块来源机制分册定稿（制造/交易/回收/奖励）
-- 最近更新：补齐低电降级顺序与回放一致性测试，完成 ADM-S5（2026-02-08）
+- 最近更新：完成 BMS-51 文档口径清理，统一到 wasm-only 现状（2026-02-13）
