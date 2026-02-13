@@ -7,14 +7,13 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use agent_world::runtime::WorldError;
-use agent_world_proto::distributed::topic_membership_reconcile;
-
-use crate::membership::{
+use super::distributed::topic_membership_reconcile;
+use super::error::WorldError;
+use super::membership::{
     to_canonical_cbor, MembershipDirectorySignerKeyring, MembershipSyncClient,
     MembershipSyncSubscription,
 };
-use crate::membership_logic;
+use super::membership_logic;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationCheckpointAnnounce {

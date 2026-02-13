@@ -33,6 +33,10 @@ mod shared {
     include!("../../../agent_world_consensus/src/membership.rs");
 }
 
+mod membership {
+    pub(super) use super::shared::*;
+}
+
 pub use shared::*;
 
 #[cfg(test)]
