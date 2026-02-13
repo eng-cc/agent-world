@@ -64,6 +64,8 @@
 - [x] T61：完成二十八次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
 - [x] T62：删除 `agent_world::runtime/distributed_membership_sync/recovery/*` 未编译旧实现文件，收敛为 `recovery.rs` 单入口同源复用结构。
 - [x] T63：完成二十九次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T64：收敛 `distributed_membership_sync.rs` 中超长 recovery re-export 清单（拆分 `recovery_exports.rs` 并按能力分组维护）。
+- [x] T65：清理 membership recovery composite cursor 相关无效导入 warning（测试门控导出 + recovery 包装层 warning 降噪），并完成定向回归验证。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -71,6 +73,8 @@
 - `crates/agent_world/src/runtime/libp2p_net.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
+- `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
+- `crates/agent_world/src/runtime/distributed_membership_sync/recovery_exports.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_client.rs`
 - `crates/agent_world/src/runtime/distributed_gateway.rs`
@@ -152,6 +156,6 @@
 - `crates/agent_world_consensus/src/lib.rs`
 
 ## 状态
-- 当前阶段：二十九次扩展阶段已收口（T62~T63 全部完成）。
-- 下一步：继续收敛 `distributed_membership_sync.rs` 中超长 recovery re-export 列表，按能力分组降低维护成本并清理无效导入 warning。
+- 当前阶段：三十次扩展阶段已收口（T64~T65 全部完成）。
+- 下一步：评估 `distributed_membership_sync` 同源共享模块中的 `dead_code` warning 是否需要按运行时上下文进一步分层治理，避免 warning 噪音继续累积。
 - 最近更新：2026-02-13
