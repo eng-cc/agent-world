@@ -65,6 +65,9 @@
 - [x] BMS-61 扩展设计与任务拆解（阶段五第二轮：`body/sensor/mobility` 按 `module_id` 独立工件装载）。
 - [x] BMS-62 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`body/sensor/mobility`）。
 - [x] BMS-63 回归验证、文档与 devlog 收口（阶段五第二轮）。
+- [x] BMS-64 扩展设计与任务拆解（阶段五第三轮：`memory/storage_cargo + power` 按 `module_id` 独立工件装载）。
+- [ ] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）。
+- [ ] BMS-66 回归验证、文档与 devlog 收口（阶段五第三轮）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -72,6 +75,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：阶段五第二轮已收口（BMS-61~BMS-63 已完成）。
-- 最近更新：完成 BMS-63（阶段五第二轮回归收口：rules/body/agent_default/power_bootstrap + 同步校验，2026-02-13）。
-- 下一步：补充阶段五下一批任务拆解（`memory/storage_cargo` 与 power 域按 `module_id` 独立工件装载）。
+- 当前阶段：阶段五第三轮推进中（BMS-64 已完成，BMS-65~BMS-66 待执行）。
+- 最近更新：完成 BMS-64（阶段五第三轮设计与任务拆解：`memory/storage_cargo + power` 按 `module_id` 独立工件装载，2026-02-13）。
+- 下一步：执行 BMS-65，完成 `memory/storage_cargo + power` 装载链路切换。
