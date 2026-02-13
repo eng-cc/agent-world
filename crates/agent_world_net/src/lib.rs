@@ -23,6 +23,31 @@ pub mod distributed_net {
     pub use super::network::*;
 }
 
+pub mod distributed_dht {
+    pub use super::dht::*;
+}
+
+pub mod distributed_index_store {
+    pub use super::index_store::*;
+}
+
+pub mod distributed_provider_cache {
+    pub use super::provider_cache::*;
+}
+
+pub mod distributed_storage {
+    pub use super::execution_storage::store_execution_result;
+    pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult};
+}
+
+pub mod error {
+    pub use agent_world::runtime::WorldError;
+}
+
+pub mod modules {
+    pub use agent_world::runtime::{ModuleArtifact, ModuleManifest};
+}
+
 pub use agent_world::runtime::{ExecutionWriteConfig, ExecutionWriteResult, HeadValidationResult};
 use agent_world_proto::distributed_dht as proto_dht;
 use agent_world_proto::distributed_net as proto_net;
