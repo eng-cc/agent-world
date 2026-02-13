@@ -845,7 +845,9 @@ impl MembershipSyncClient {
         announce: &MembershipDirectoryAnnounce,
     ) -> Result<(), WorldError> {
         let payload = to_canonical_cbor(announce)?;
-        self.network.publish(&topic_membership(world_id), &payload)
+        self.network
+            .publish(&topic_membership(world_id), &payload)?;
+        Ok(())
     }
 
     fn publish_revocation(
@@ -855,7 +857,8 @@ impl MembershipSyncClient {
     ) -> Result<(), WorldError> {
         let payload = to_canonical_cbor(announce)?;
         self.network
-            .publish(&topic_membership_revocation(world_id), &payload)
+            .publish(&topic_membership_revocation(world_id), &payload)?;
+        Ok(())
     }
 
     pub fn drain_announcements(

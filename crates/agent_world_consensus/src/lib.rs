@@ -17,12 +17,12 @@ pub mod distributed_dht {
     pub use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
 
     pub trait DistributedDht:
-        agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
+        agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
     {
     }
 
     impl<T> DistributedDht for T where
-        T: agent_world_proto::distributed_dht::DistributedDht<agent_world::runtime::WorldError>
+        T: agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
     {
     }
 }

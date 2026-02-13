@@ -5,7 +5,7 @@ use agent_world::runtime::distributed::{
 };
 use agent_world::runtime::{
     store_execution_result, Action, BlobStore, DistributedClient, ExecutionWriteConfig,
-    HeadFollower, InMemoryNetwork, LocalCasStore, ObserverClient, World, WorldError,
+    HeadFollower, InMemoryNetwork, LocalCasStore, ObserverClient, World,
 };
 use std::fs;
 use std::sync::Arc;
@@ -63,7 +63,7 @@ fn observer_sync_heads_bootstraps_world() {
             Box::new(move |payload| {
                 let request: GetBlockRequest = serde_cbor::from_slice(payload).unwrap();
                 if request.height != 1 {
-                    return Err(WorldError::DistributedValidationFailed {
+                    return Err(agent_world_net::WorldError::DistributedValidationFailed {
                         reason: format!("unknown block height {}", request.height),
                     });
                 }
@@ -203,7 +203,7 @@ fn observer_follow_heads_reports_last_applied() {
                         snapshot_ref: snapshot2_ref.clone(),
                     },
                     _ => {
-                        return Err(WorldError::DistributedValidationFailed {
+                        return Err(agent_world_net::WorldError::DistributedValidationFailed {
                             reason: format!("unknown block height {}", request.height),
                         })
                     }

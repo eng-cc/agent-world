@@ -8,6 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 agent_world_builtin_wasm = { path = "../agent_world_builtin_wasm" }
+agent_world_net = { path = "../agent_world_net", default-features = false }
 agent_world_proto = { path = "../agent_world_proto" }
 hmac = "0.12"
 hex = "0.4"
