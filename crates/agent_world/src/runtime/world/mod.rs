@@ -3,6 +3,7 @@
 mod actions;
 mod audit;
 mod body;
+mod bootstrap_economy;
 mod bootstrap_power;
 mod economy;
 mod effects;

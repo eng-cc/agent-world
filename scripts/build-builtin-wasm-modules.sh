@@ -18,6 +18,9 @@ Usage:
 
 Options:
   --module-id <id>   Build only one module id (repeatable). Default: build all known ids.
+  --module-ids-path <p>
+                     Builtin module id manifest path
+                     Default: crates/.../m1_builtin_module_ids.txt
   --out-dir <dir>    Output directory. Default: .tmp/builtin-wasm
   --profile <name>   Cargo profile for wasm build suite. Default: release
   --dry-run          Resolve paths only, do not execute cargo build
@@ -49,6 +52,11 @@ while [[ $# -gt 0 ]]; do
     --out-dir)
       [[ $# -ge 2 ]] || { echo "error: --out-dir requires a value" >&2; exit 2; }
       OUT_DIR="$2"
+      shift 2
+      ;;
+    --module-ids-path)
+      [[ $# -ge 2 ]] || { echo "error: --module-ids-path requires a value" >&2; exit 2; }
+      MODULE_IDS_PATH="$2"
       shift 2
       ;;
     --profile)

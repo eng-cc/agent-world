@@ -279,6 +279,14 @@ V1 需要覆盖以下测试组：
     - `economy.recipe_execution_plan`
   - 非法模块输出（缺失 emit / 多 emit / 解码失败）统一记录 `ModuleCallFailed(InvalidOutput)`
 - 已覆盖 runtime 定向测试：建造时序、排产时序、产线容量限流、库存与电力扣减、完工产出入账。
+- 已提供内置 M4 工业模块包（WASM 工件 + 治理安装入口）：
+  - 工厂模块：`m4.factory.miner.mk1`、`m4.factory.smelter.mk1`、`m4.factory.assembler.mk1`
+  - 配方模块：`m4.recipe.smelter.iron_ingot`、`m4.recipe.smelter.copper_wire`、`m4.recipe.assembler.gear`、`m4.recipe.assembler.control_chip`、`m4.recipe.assembler.motor_mk1`、`m4.recipe.assembler.logistics_drone`
+  - 制成品模块：`m4.product.material.iron_ingot`、`m4.product.component.control_chip`、`m4.product.component.motor_mk1`、`m4.product.finished.logistics_drone`
+- 已在 runtime 提供一键治理装载：
+  - `World::install_m4_economy_bootstrap_modules(actor)`
+  - 模块 manifest 统一使用 `M4_ECONOMY_MODULE_VERSION = 0.1.0`，并受 `ModuleLimits` 约束
+- 已完成真实 wasm 执行链路回归：基础资源 -> 熔炼/装配 -> `logistics_drone` 终端制成品。
 
 ## 里程碑
 

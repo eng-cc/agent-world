@@ -5,11 +5,13 @@ use serde_json::Value;
 #[cfg(test)]
 use std::collections::BTreeMap;
 
+mod economy_modules;
 mod memory_module;
 mod power_modules;
 mod rule_body_modules;
 mod storage_cargo_module;
 
+use economy_modules::build_economy_module_output;
 use memory_module::build_memory_module_output;
 use power_modules::{build_radiation_power_module_output, build_storage_power_module_output};
 #[cfg(test)]
@@ -32,6 +34,20 @@ pub const M1_RADIATION_POWER_MODULE_ID: &str = "m1.power.radiation_harvest";
 pub const M1_STORAGE_POWER_MODULE_ID: &str = "m1.power.storage";
 pub const M1_AGENT_DEFAULT_MODULE_VERSION: &str = "0.1.0";
 pub const M1_POWER_MODULE_VERSION: &str = "0.1.0";
+pub const M4_ECONOMY_MODULE_VERSION: &str = "0.1.0";
+pub const M4_FACTORY_MINER_MODULE_ID: &str = "m4.factory.miner.mk1";
+pub const M4_FACTORY_SMELTER_MODULE_ID: &str = "m4.factory.smelter.mk1";
+pub const M4_FACTORY_ASSEMBLER_MODULE_ID: &str = "m4.factory.assembler.mk1";
+pub const M4_RECIPE_SMELT_IRON_MODULE_ID: &str = "m4.recipe.smelter.iron_ingot";
+pub const M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID: &str = "m4.recipe.smelter.copper_wire";
+pub const M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID: &str = "m4.recipe.assembler.gear";
+pub const M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID: &str = "m4.recipe.assembler.control_chip";
+pub const M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID: &str = "m4.recipe.assembler.motor_mk1";
+pub const M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID: &str = "m4.recipe.assembler.logistics_drone";
+pub const M4_PRODUCT_IRON_INGOT_MODULE_ID: &str = "m4.product.material.iron_ingot";
+pub const M4_PRODUCT_CONTROL_CHIP_MODULE_ID: &str = "m4.product.component.control_chip";
+pub const M4_PRODUCT_MOTOR_MODULE_ID: &str = "m4.product.component.motor_mk1";
+pub const M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID: &str = "m4.product.finished.logistics_drone";
 pub const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
 pub const M1_MEMORY_MAX_ENTRIES: usize = 256;
 pub const M1_POWER_STORAGE_CAPACITY: i64 = 12;
@@ -141,6 +157,9 @@ fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
     let Some(input) = decode_input(input_bytes) else {
         return encode_output(empty_output());
     };
+    if let Some(output) = build_economy_module_output(&input) {
+        return output;
+    }
     match input.ctx.module_id.as_str() {
         M1_MOVE_RULE_MODULE_ID => build_move_rule_output(&input),
         M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(&input),

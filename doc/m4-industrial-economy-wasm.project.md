@@ -36,6 +36,26 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
+### E6 内置 M4 工业模块包与治理装载
+- [x] 在 `agent_world_builtin_wasm` 增加内置 M4 模块（工厂/配方/制成品）：
+  - 工厂：`m4.factory.{miner,smelter,assembler}.mk1`
+  - 配方：`m4.recipe.smelter.*` + `m4.recipe.assembler.*`
+  - 制成品：`m4.product.*`
+- [x] 在 runtime 增加 `m4` 嵌入工件注册层与内置清单
+  - `runtime/m4_builtin_wasm_artifact.rs`
+  - `runtime/world/artifacts/m4_builtin_module_ids.txt`
+  - `runtime/world/artifacts/m4_builtin_modules/`
+- [x] 新增治理安装入口：`World::install_m4_economy_bootstrap_modules`
+- [x] 新增 m4 工件同步脚本与 CI 校验：
+  - `scripts/sync-m4-builtin-wasm-artifacts.sh`
+  - `scripts/ci-tests.sh` 增加 m4 工件一致性检查
+- [x] 新增 runtime 闭环测试：
+  - 清单一致性、安装幂等、停用后重激活
+  - 基于 `WasmExecutor` 的“基础资源 -> 中间件 -> 终端制成品（logistics_drone）”链路
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy_bootstrap -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -44,6 +64,6 @@
 
 ## 状态
 
-- 当前阶段：E5 完成（模块在线评估已接入 runtime）。
-- 下一步：补充 wasm 经济模块治理模板与默认示例工件（recipe/factory/product）。
-- 最近更新：完成模块驱动建造/排产求值接线与测试（2026-02-14）。
+- 当前阶段：E6 完成（内置 M4 模块包 + 治理装载 + 闭环测试完成）。
+- 下一步：补齐 Product 模块在线校验动作（将 `ProductModuleApi::validate_product_state` 接入 runtime 主流程）。
+- 最近更新：完成 m4 内置工厂/配方/制成品 wasm 工件、治理安装入口与资源到制成品链路回归（2026-02-14）。

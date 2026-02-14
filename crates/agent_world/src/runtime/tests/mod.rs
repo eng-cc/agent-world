@@ -13,6 +13,7 @@ mod audit;
 mod basic;
 mod body;
 mod economy;
+mod economy_bootstrap;
 mod effects;
 mod governance;
 mod modules;

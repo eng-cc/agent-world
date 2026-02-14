@@ -114,6 +114,7 @@ read_module_ids
 mkdir -p "$OUT_DIR"
 
 "$ROOT_DIR/scripts/build-builtin-wasm-modules.sh" \
+  --module-ids-path "$MODULE_IDS_PATH" \
   --out-dir "$OUT_DIR" \
   --profile "$PROFILE"
 

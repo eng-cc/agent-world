@@ -16,6 +16,7 @@ mod error;
 mod events;
 mod governance;
 mod m1_builtin_wasm_artifact;
+mod m4_builtin_wasm_artifact;
 mod manifest;
 mod module_store;
 mod modules;
@@ -84,6 +85,9 @@ pub(crate) use m1_builtin_wasm_artifact::m1_builtin_wasm_module_artifact_bytes;
 pub(crate) use m1_builtin_wasm_artifact::{
     m1_builtin_module_ids_manifest, register_m1_builtin_wasm_module_artifact,
 };
+#[cfg(all(test, feature = "wasmtime"))]
+pub(crate) use m4_builtin_wasm_artifact::m4_builtin_module_ids_manifest;
+pub(crate) use m4_builtin_wasm_artifact::m4_builtin_wasm_module_artifact_bytes;
 
 // Built-in module constants
 pub use agent_world_builtin_wasm::{
@@ -94,6 +98,13 @@ pub use agent_world_builtin_wasm::{
     M1_POWER_STORAGE_INITIAL_LEVEL, M1_POWER_STORAGE_MOVE_COST_PER_KM,
     M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
     M1_STORAGE_POWER_MODULE_ID, M1_TRANSFER_RULE_MODULE_ID, M1_VISIBILITY_RULE_MODULE_ID,
+    M4_ECONOMY_MODULE_VERSION, M4_FACTORY_ASSEMBLER_MODULE_ID, M4_FACTORY_MINER_MODULE_ID,
+    M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
+    M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
+    M4_PRODUCT_MOTOR_MODULE_ID, M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID, M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID, M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
+    M4_RECIPE_SMELT_IRON_MODULE_ID,
 };
 
 // Module store
