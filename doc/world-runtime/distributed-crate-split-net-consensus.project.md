@@ -100,6 +100,7 @@
 - [x] T97：将 observer 的 head 同步报告/跟随循环抽象下沉到 `agent_world_net::observer_flow`，并将 runtime `distributed_observer` 从路径包装切换为本地薄适配（复用 net 下沉能力）。
 - [x] T98：将 observer replay 的 manifest/journal 拉取编排抽象下沉到 `agent_world_net::observer_replay_flow`，并将 runtime `distributed_observer_replay` 从路径包装切换为本地薄适配。
 - [x] T99：将 runtime `distributed_bootstrap` 从路径包装切换为本地薄适配（复用 runtime replay 校验链路），进一步收敛跨 crate 路径耦合点。
+- [x] T100：将 runtime `distributed_storage` / `distributed_validation` 从路径包装切换为本地实现（复用 proto 下沉类型），并补齐 storage/validation 定向回归。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -206,6 +207,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：六十二次扩展阶段完成（T99 已完成，`distributed_bootstrap` 已去除路径包装并收敛为 runtime 薄适配）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先收敛 runtime `distributed_storage` / `distributed_validation` 剩余路径包装模块并逐步切到 split crate 直接依赖。
+- 当前阶段：六十三次扩展阶段完成（T100 已完成，`distributed_storage` / `distributed_validation` 已去除路径包装并收敛为 runtime 本地实现）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先将 storage/validation 复用逻辑进一步下沉到 split crate 的可编译抽象层并逐步切到直接依赖。
 - 最近更新：2026-02-14
