@@ -1,33 +1,93 @@
-mod blob_store {
-    pub(super) use super::super::blob_store::*;
+use agent_world_net::HeadTracker;
+pub use agent_world_net::HeadUpdateDecision;
+
+use super::blob_store::BlobStore;
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::error::WorldError;
+use super::world::World;
+
+#[derive(Debug, Clone)]
+pub struct HeadFollower {
+    tracker: HeadTracker,
 }
 
-mod distributed {
-    pub(super) use super::super::distributed::*;
+impl HeadFollower {
+    pub fn new(world_id: impl Into<String>) -> Self {
+        Self {
+            tracker: HeadTracker::new(world_id),
+        }
+    }
+
+    pub fn world_id(&self) -> &str {
+        self.tracker.world_id()
+    }
+
+    pub fn current_head(&self) -> Option<&WorldHeadAnnounce> {
+        self.tracker.current_head()
+    }
+
+    pub fn select_best_head(&self, heads: &[WorldHeadAnnounce]) -> Option<WorldHeadAnnounce> {
+        self.tracker.select_best_head(heads)
+    }
+
+    pub fn apply_head(
+        &mut self,
+        head: &WorldHeadAnnounce,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        match self.tracker.decide_head(head)? {
+            HeadUpdateDecision::Apply => {
+                let world = bootstrap_world_from_head(head, client, store)?;
+                self.tracker.record_applied(head);
+                Ok(Some(world))
+            }
+            HeadUpdateDecision::IgnoreDuplicate | HeadUpdateDecision::IgnoreStale => Ok(None),
+        }
+    }
+
+    pub fn apply_head_with_dht(
+        &mut self,
+        head: &WorldHeadAnnounce,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        match self.tracker.decide_head(head)? {
+            HeadUpdateDecision::Apply => {
+                let world = bootstrap_world_from_head_with_dht(head, dht, client, store)?;
+                self.tracker.record_applied(head);
+                Ok(Some(world))
+            }
+            HeadUpdateDecision::IgnoreDuplicate | HeadUpdateDecision::IgnoreStale => Ok(None),
+        }
+    }
+
+    pub fn sync_from_heads(
+        &mut self,
+        heads: &[WorldHeadAnnounce],
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        let Some(best) = self.select_best_head(heads) else {
+            return Ok(None);
+        };
+        self.apply_head(&best, client, store)
+    }
+
+    pub fn sync_from_heads_with_dht(
+        &mut self,
+        heads: &[WorldHeadAnnounce],
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &impl BlobStore,
+    ) -> Result<Option<World>, WorldError> {
+        let Some(best) = self.select_best_head(heads) else {
+            return Ok(None);
+        };
+        self.apply_head_with_dht(&best, dht, client, store)
+    }
 }
-
-mod distributed_bootstrap {
-    pub(super) use super::super::distributed_bootstrap::*;
-}
-
-mod distributed_client {
-    pub(super) use super::super::distributed_client::*;
-}
-
-mod distributed_dht {
-    pub(super) use super::super::distributed_dht::*;
-}
-
-mod error {
-    pub(super) use super::super::error::WorldError;
-}
-
-mod world {
-    pub(super) use super::super::world::World;
-}
-
-#[path = "../../../agent_world_net/src/head_follow.rs"]
-#[allow(dead_code, unused_imports)]
-mod shared;
-
-pub use shared::*;

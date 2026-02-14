@@ -96,6 +96,7 @@
 - [x] T93：进一步收敛 runtime `distributed_membership_sync::tests`，将大规模重复单测替换为最小运行时兼容 smoke tests，详细行为验证统一归口到 `agent_world_consensus::membership_tests`。
 - [x] T94：将 runtime `distributed_mempool` / `distributed_index` 从路径包装进一步收敛为 split crate 直接 re-export，减少 runtime alias 层代码与维护面。
 - [x] T95：为路径复用的 net 模块测试增加 `self_tests` 门控（仅在 `agent_world_net` 自测上下文启用），并同步收敛 runtime 包装层测试专用 alias 门控，消除 `--all-targets` include warning 基线噪音。
+- [x] T96：将 `distributed_head_follow` 的 head 选择/判定状态机下沉到 `agent_world_net::HeadTracker`，runtime 改为本地薄适配（保留 bootstrap/world 依赖），并去除该入口的路径包装。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -122,6 +123,7 @@
 - `crates/agent_world_net/src/provider_cache.rs`
 - `crates/agent_world_net/src/dht_cache.rs`
 - `crates/agent_world_net/src/head_follow.rs`
+- `crates/agent_world_net/src/head_tracking.rs`
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/observer_replay.rs`
 - `crates/agent_world_net/src/bootstrap.rs`
@@ -199,6 +201,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：五十八次扩展阶段完成（T95 已完成，路径复用 net 模块测试已按 crate 上下文门控，include warning 基线恢复为零告警）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），在此基础上继续清理 runtime 侧剩余 alias 包装模块并逐步切到 split crate 直接依赖。
-- 最近更新：2026-02-13
+- 当前阶段：五十九次扩展阶段完成（T96 已完成，`distributed_head_follow` 已去除路径包装并改为 `HeadTracker` + runtime 薄适配）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先将 `distributed_observer` / `distributed_observer_replay` 的纯状态/编排逻辑继续下沉并收敛 runtime 包装层。
+- 最近更新：2026-02-14

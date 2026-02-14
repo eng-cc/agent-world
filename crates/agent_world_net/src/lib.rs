@@ -10,6 +10,7 @@ mod execution_storage;
 mod gateway;
 #[cfg(feature = "runtime_bridge")]
 mod head_follow;
+mod head_tracking;
 #[cfg(feature = "runtime_bridge")]
 mod head_validation;
 mod index;
@@ -49,6 +50,7 @@ pub mod distributed_bootstrap {
 #[cfg(feature = "runtime_bridge")]
 pub mod distributed_head_follow {
     pub use super::head_follow::*;
+    pub use super::head_tracking::HeadUpdateDecision;
 }
 
 #[cfg(feature = "runtime_bridge")]
@@ -102,6 +104,7 @@ pub use dht_cache::{CachedDht, DhtCacheConfig};
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
 pub use error::WorldError;
 pub use gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
+pub use head_tracking::{HeadTracker, HeadUpdateDecision};
 pub use index::{
     publish_execution_providers, publish_execution_providers_cached, publish_world_head,
     query_providers, IndexPublishResult,
@@ -120,7 +123,7 @@ pub use bootstrap::{
 #[cfg(feature = "runtime_bridge")]
 pub use distributed_storage::store_execution_result;
 #[cfg(feature = "runtime_bridge")]
-pub use head_follow::{HeadFollower, HeadUpdateDecision};
+pub use head_follow::HeadFollower;
 #[cfg(feature = "runtime_bridge")]
 pub use head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
 #[cfg(feature = "runtime_bridge")]
