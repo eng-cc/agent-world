@@ -98,6 +98,7 @@
 - [x] T95：为路径复用的 net 模块测试增加 `self_tests` 门控（仅在 `agent_world_net` 自测上下文启用），并同步收敛 runtime 包装层测试专用 alias 门控，消除 `--all-targets` include warning 基线噪音。
 - [x] T96：将 `distributed_head_follow` 的 head 选择/判定状态机下沉到 `agent_world_net::HeadTracker`，runtime 改为本地薄适配（保留 bootstrap/world 依赖），并去除该入口的路径包装。
 - [x] T97：将 observer 的 head 同步报告/跟随循环抽象下沉到 `agent_world_net::observer_flow`，并将 runtime `distributed_observer` 从路径包装切换为本地薄适配（复用 net 下沉能力）。
+- [x] T98：将 observer replay 的 manifest/journal 拉取编排抽象下沉到 `agent_world_net::observer_replay_flow`，并将 runtime `distributed_observer_replay` 从路径包装切换为本地薄适配。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -128,6 +129,7 @@
 - `crates/agent_world_net/src/head_tracking.rs`
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/observer_replay.rs`
+- `crates/agent_world_net/src/replay_flow.rs`
 - `crates/agent_world_net/src/bootstrap.rs`
 - `crates/agent_world_consensus/src/lib.rs`
 - `crates/agent_world_consensus/src/quorum.rs`
@@ -203,6 +205,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：六十次扩展阶段完成（T97 已完成，`distributed_observer` 已去除路径包装并复用 net 下沉的 observer_flow 抽象）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先收敛 `distributed_observer_replay` 的路径包装并把可独立校验编排继续下沉到 split crate。
+- 当前阶段：六十一次扩展阶段完成（T98 已完成，`distributed_observer_replay` 已去除路径包装并复用 net 下沉的 observer replay flow 抽象）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先收敛剩余路径包装模块并逐步切到 split crate 直接依赖。
 - 最近更新：2026-02-14

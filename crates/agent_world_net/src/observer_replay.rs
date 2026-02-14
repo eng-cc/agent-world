@@ -4,7 +4,7 @@ use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
 use super::distributed_validation::{validate_head_update, HeadValidationResult};
 use super::error::WorldError;
-use super::segmenter::JournalSegmentRef;
+use super::replay_flow::load_manifest_and_segments;
 
 pub fn replay_validate_head(
     world_id: &str,
@@ -36,23 +36,14 @@ pub fn replay_validate_with_head(
 ) -> Result<HeadValidationResult, WorldError> {
     let block_response = client.get_block_response(&head.world_id, head.height)?;
     let block = block_response.block;
-
-    let manifest_bytes = client.fetch_blob(&block_response.snapshot_ref)?;
-    verify_blob_hash(&block_response.snapshot_ref, &manifest_bytes)?;
-    let manifest: SnapshotManifest = serde_cbor::from_slice(&manifest_bytes)?;
-
-    let segments_bytes = client.fetch_blob(&block_response.journal_ref)?;
-    verify_blob_hash(&block_response.journal_ref, &segments_bytes)?;
-    let segments: Vec<JournalSegmentRef> = serde_cbor::from_slice(&segments_bytes)?;
-
-    for chunk in &manifest.chunks {
-        let bytes = client.fetch_blob(&chunk.content_hash)?;
-        store.put(&chunk.content_hash, &bytes)?;
-    }
-    for segment in &segments {
-        let bytes = client.fetch_blob(&segment.content_hash)?;
-        store.put(&segment.content_hash, &bytes)?;
-    }
+    let (manifest, segments) = load_manifest_and_segments(
+        &block_response.snapshot_ref,
+        &block_response.journal_ref,
+        |content_hash| client.fetch_blob(content_hash),
+        verify_blob_hash,
+        |content_hash, bytes| store.put(content_hash, bytes),
+        WorldError::from,
+    )?;
 
     validate_head_update(head, &block, &manifest, &segments, store)
 }
@@ -65,25 +56,14 @@ pub fn replay_validate_with_head_and_dht(
 ) -> Result<HeadValidationResult, WorldError> {
     let block_response = client.get_block_response(&head.world_id, head.height)?;
     let block = block_response.block;
-
-    let manifest_bytes =
-        client.fetch_blob_from_dht(&head.world_id, &block_response.snapshot_ref, dht)?;
-    verify_blob_hash(&block_response.snapshot_ref, &manifest_bytes)?;
-    let manifest: SnapshotManifest = serde_cbor::from_slice(&manifest_bytes)?;
-
-    let segments_bytes =
-        client.fetch_blob_from_dht(&head.world_id, &block_response.journal_ref, dht)?;
-    verify_blob_hash(&block_response.journal_ref, &segments_bytes)?;
-    let segments: Vec<JournalSegmentRef> = serde_cbor::from_slice(&segments_bytes)?;
-
-    for chunk in &manifest.chunks {
-        let bytes = client.fetch_blob_from_dht(&head.world_id, &chunk.content_hash, dht)?;
-        store.put(&chunk.content_hash, &bytes)?;
-    }
-    for segment in &segments {
-        let bytes = client.fetch_blob_from_dht(&head.world_id, &segment.content_hash, dht)?;
-        store.put(&segment.content_hash, &bytes)?;
-    }
+    let (manifest, segments) = load_manifest_and_segments(
+        &block_response.snapshot_ref,
+        &block_response.journal_ref,
+        |content_hash| client.fetch_blob_from_dht(&head.world_id, content_hash, dht),
+        verify_blob_hash,
+        |content_hash, bytes| store.put(content_hash, bytes),
+        WorldError::from,
+    )?;
 
     validate_head_update(head, &block, &manifest, &segments, store)
 }

@@ -22,6 +22,7 @@ mod observer;
 #[cfg(feature = "runtime_bridge")]
 mod observer_replay;
 mod provider_cache;
+mod replay_flow;
 mod util;
 
 #[cfg(feature = "libp2p")]
@@ -72,6 +73,10 @@ pub mod observer_flow {
         compose_head_sync_report, follow_head_sync, HeadFollowReport, HeadSyncReport,
         HeadSyncResult,
     };
+}
+
+pub mod observer_replay_flow {
+    pub use super::replay_flow::load_manifest_and_segments;
 }
 
 pub mod distributed_storage {

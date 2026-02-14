@@ -1,48 +1,83 @@
-mod blob_store {
-    pub(super) use super::super::blob_store::*;
+use agent_world_net::observer_replay_flow::load_manifest_and_segments;
+
+use super::blob_store::{blake3_hex, BlobStore};
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_validation::{validate_head_update, HeadValidationResult};
+use super::error::WorldError;
+
+pub fn replay_validate_head(
+    world_id: &str,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let head = client.get_world_head(world_id)?;
+    replay_validate_with_head(&head, client, store)
 }
 
-mod distributed {
-    pub(super) use super::super::distributed::*;
+#[allow(dead_code)]
+pub fn replay_validate_head_with_dht(
+    world_id: &str,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let head =
+        dht.get_world_head(world_id)?
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!("world head not found for {world_id}"),
+            })?;
+    replay_validate_with_head_and_dht(&head, dht, client, store)
 }
 
-mod distributed_client {
-    pub(super) use super::super::distributed_client::*;
+pub fn replay_validate_with_head(
+    head: &WorldHeadAnnounce,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let block_response = client.get_block_response(&head.world_id, head.height)?;
+    let block = block_response.block;
+    let (manifest, segments) = load_manifest_and_segments(
+        &block_response.snapshot_ref,
+        &block_response.journal_ref,
+        |content_hash| client.fetch_blob(content_hash).map_err(WorldError::from),
+        verify_blob_hash,
+        |content_hash, bytes| store.put(content_hash, bytes),
+        WorldError::from,
+    )?;
+    validate_head_update(head, &block, &manifest, &segments, store)
 }
 
-mod distributed_dht {
-    pub(super) use super::super::distributed_dht::*;
+pub fn replay_validate_with_head_and_dht(
+    head: &WorldHeadAnnounce,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<HeadValidationResult, WorldError> {
+    let block_response = client.get_block_response(&head.world_id, head.height)?;
+    let block = block_response.block;
+    let (manifest, segments) = load_manifest_and_segments(
+        &block_response.snapshot_ref,
+        &block_response.journal_ref,
+        |content_hash| {
+            client
+                .fetch_blob_from_dht(&head.world_id, content_hash, dht)
+                .map_err(WorldError::from)
+        },
+        verify_blob_hash,
+        |content_hash, bytes| store.put(content_hash, bytes),
+        WorldError::from,
+    )?;
+    validate_head_update(head, &block, &manifest, &segments, store)
 }
 
-#[cfg(all(test, feature = "self_tests"))]
-mod distributed_net {
-    pub(super) use super::super::distributed_net::*;
+fn verify_blob_hash(expected: &str, bytes: &[u8]) -> Result<(), WorldError> {
+    let actual = blake3_hex(bytes);
+    if actual != expected {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("blob hash mismatch: expected={expected}, actual={actual}"),
+        });
+    }
+    Ok(())
 }
-
-#[cfg(all(test, feature = "self_tests"))]
-mod distributed_storage {
-    pub(super) use super::super::distributed_storage::*;
-}
-
-mod distributed_validation {
-    pub(super) use super::super::distributed_validation::*;
-}
-
-mod error {
-    pub(super) use super::super::error::WorldError;
-}
-
-mod segmenter {
-    pub(super) use super::super::segmenter::*;
-}
-
-#[cfg(all(test, feature = "self_tests"))]
-mod util {
-    pub(super) use super::super::util::*;
-}
-
-#[path = "../../../agent_world_net/src/observer_replay.rs"]
-#[allow(dead_code, unused_imports)]
-mod shared;
-
-pub use shared::*;
