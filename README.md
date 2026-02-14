@@ -39,6 +39,22 @@
 3. 启动 UI：  
    `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5010`
 
+## Workspace Crate 架构分工
+- `agent_world_proto`：协议与共享数据模型层。承载跨 crate 的协议类型、元数据、统一错误模型等，不放业务执行逻辑。
+- `agent_world_net`：网络与传输层，承载`libp2p`适配等跨节点通信基础网络能力。
+- `agent_world_consensus`：共识与成员协同层，承载共识、区块链出块等一致性与治理流程。
+- `agent_world_distfs`: 分布式文件系统，基于网络和共识层构建，对外提供标准的文件读写接口。
+- `agent_world_wasm_abi`：WASM ABI 契约层。承载模块清单、事件/调用输入输出、模块工件元信息等跨运行时的稳定结构定义。
+- `agent_world_wasm_executor`：WASM 执行层。承载模块执行器抽象与后端实现（如 `wasmtime` feature），负责受控执行与错误映射。
+- `agent_world_wasm_router`：WASM 路由层。承载事件/动作到模块的订阅匹配与路由策略，保持运行时分发逻辑集中。
+- `agent_world_wasm_store`：WASM 存储层。承载模块工件与清单的持久化读写能力，作为运行时模块仓库的底座。
+- `agent_world_builtin_wasm`：内置模块工件层。提供内置 M1 模块（规则/身体/感知/移动/记忆/存储/电力）的 WASM 工件与常量。
+- `agent_world`：核心运行时与模拟层。组合各个基础模块的能力实现模拟。
+- `agent_world_viewer`：可视化与交互层。基于 Bevy/egui 提供世界状态可视化、在线/离线观察与调试入口。
+
+推荐依赖方向（从底到顶）：
+- 约束：`agent_world_proto` 不依赖业务 crate；各基础模块crate不反向依赖 `agent_world`。
+- `agent_world`尽量只做最上层的事情，把基础功能下沉到基础crate自行闭环。
 
 ## 路线图（TODO）
 
