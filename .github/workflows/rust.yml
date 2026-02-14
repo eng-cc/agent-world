@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+      - name: Install Rust wasm32 target
+        run: rustup target add wasm32-unknown-unknown
       - name: Install system deps
         run: |
           sudo apt-get update
@@ -42,6 +44,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+      - name: Install Rust wasm32 target
+        run: rustup target add wasm32-unknown-unknown
       - name: Install system deps
         run: |
           sudo apt-get update
