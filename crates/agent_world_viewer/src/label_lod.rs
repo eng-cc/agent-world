@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::{SelectionKind, Viewer3dCamera, Viewer3dConfig, ViewerSelection};
+use super::{SelectionKind, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, ViewerSelection};
 
 const LABEL_COLOR_R: f32 = 0.9;
 const LABEL_COLOR_G: f32 = 0.9;
@@ -53,6 +53,7 @@ struct LabelCandidate {
 
 pub(super) fn update_label_lod(
     config: Res<Viewer3dConfig>,
+    camera_mode: Res<ViewerCameraMode>,
     selection: Res<ViewerSelection>,
     mut params: LabelLodParams,
     mut stats: ResMut<LabelLodStats>,
@@ -66,14 +67,8 @@ pub(super) fn update_label_lod(
     let camera_right = camera_rotation * Vec3::X;
     let camera_up = camera_rotation * Vec3::Y;
 
-    let fade_start = config.label_lod.fade_start_distance.max(0.0);
-    let fade_end = config
-        .label_lod
-        .fade_end_distance
-        .max(fade_start + f32::EPSILON);
-    let max_visible_labels = config.label_lod.max_visible_labels.max(1);
-    let occlusion_cell_span = config.label_lod.occlusion_cell_span.max(0.5);
-    let occlusion_cap = config.label_lod.occlusion_cap_per_cell.max(1);
+    let (fade_start, fade_end, max_visible_labels, occlusion_cell_span, occlusion_cap) =
+        label_lod_params_for_mode(*camera_mode, &config);
     let selected = selection
         .current
         .as_ref()
@@ -208,6 +203,37 @@ fn selected_label_bias(name: Option<&str>, selected: Option<(SelectionKind, &str
     }
 }
 
+fn label_lod_params_for_mode(
+    mode: ViewerCameraMode,
+    config: &Viewer3dConfig,
+) -> (f32, f32, usize, f32, usize) {
+    let base_fade_start = config.label_lod.fade_start_distance.max(0.0);
+    let base_fade_end = config
+        .label_lod
+        .fade_end_distance
+        .max(base_fade_start + f32::EPSILON);
+    let base_max_visible = config.label_lod.max_visible_labels.max(1);
+    let base_cell_span = config.label_lod.occlusion_cell_span.max(0.5);
+    let base_occlusion_cap = config.label_lod.occlusion_cap_per_cell.max(1);
+
+    match mode {
+        ViewerCameraMode::TwoD => (
+            base_fade_start * 1.15,
+            base_fade_end * 2.0,
+            (base_max_visible.saturating_mul(2)).min(220),
+            base_cell_span * 1.25,
+            (base_occlusion_cap + 1).min(8),
+        ),
+        ViewerCameraMode::ThreeD => (
+            base_fade_start,
+            base_fade_end,
+            base_max_visible,
+            base_cell_span,
+            base_occlusion_cap,
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,6 +267,7 @@ mod tests {
         let mut app = App::new();
         app.add_systems(Update, update_label_lod);
         app.insert_resource(Viewer3dConfig::default());
+        app.insert_resource(ViewerCameraMode::ThreeD);
         app.insert_resource(ViewerSelection::default());
         app.insert_resource(LabelLodStats::default());
 
@@ -290,6 +317,7 @@ mod tests {
         config.label_lod.max_visible_labels = 1;
         config.label_lod.occlusion_cap_per_cell = 1;
         app.insert_resource(config);
+        app.insert_resource(ViewerCameraMode::ThreeD);
         app.insert_resource(LabelLodStats::default());
 
         let selected_entity = app.world_mut().spawn_empty().id();
@@ -335,6 +363,25 @@ mod tests {
 
         let stats = app.world().resource::<LabelLodStats>();
         assert!(stats.degraded());
+    }
+
+    #[test]
+    fn label_lod_params_two_d_are_more_permissive() {
+        let mut config = Viewer3dConfig::default();
+        config.label_lod.fade_start_distance = 40.0;
+        config.label_lod.fade_end_distance = 90.0;
+        config.label_lod.max_visible_labels = 20;
+        config.label_lod.occlusion_cell_span = 6.0;
+        config.label_lod.occlusion_cap_per_cell = 2;
+
+        let three_d = label_lod_params_for_mode(ViewerCameraMode::ThreeD, &config);
+        let two_d = label_lod_params_for_mode(ViewerCameraMode::TwoD, &config);
+
+        assert!(two_d.0 > three_d.0);
+        assert!(two_d.1 > three_d.1);
+        assert!(two_d.2 > three_d.2);
+        assert!(two_d.3 > three_d.3);
+        assert!(two_d.4 > three_d.4);
     }
 
     fn spawn_label(world: &mut World, name: &str, position: Vec3) {
