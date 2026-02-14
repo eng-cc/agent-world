@@ -97,16 +97,7 @@ pub mod error {
 }
 
 pub mod modules {
-    pub use agent_world_wasm_abi::ModuleArtifact;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-    pub struct ModuleManifest {
-        pub module_id: String,
-        pub name: String,
-        pub version: String,
-        pub wasm_hash: String,
-    }
+    pub use agent_world_wasm_abi::{ModuleArtifact, ModuleManifest};
 }
 
 pub use agent_world_proto::distributed_dht as proto_dht;

@@ -1,4 +1,5 @@
-use agent_world::*;
+use agent_world::runtime::*;
+use agent_world::GeoPos;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

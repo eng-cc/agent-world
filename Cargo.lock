@@ -140,8 +140,7 @@ name = "agent_world"
 version = "0.1.0"
 dependencies = [
  "agent_world_builtin_wasm",
- "agent_world_consensus",
- "agent_world_net",
+ "agent_world_distfs",
  "agent_world_proto",
  "agent_world_wasm_abi",
  "agent_world_wasm_executor",
@@ -149,10 +148,8 @@ dependencies = [
  "agent_world_wasm_store",
  "async-openai",
  "blake3",
- "futures",
  "hex",
  "hmac",
- "libp2p",
  "reqwest",
  "serde",
  "serde_cbor",
@@ -184,6 +181,17 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "agent_world_distfs"
+version = "0.1.0"
+dependencies = [
+ "agent_world_proto",
+ "blake3",
+ "serde",
+ "serde_cbor",
+ "serde_json",
 ]
 
 [[package]]

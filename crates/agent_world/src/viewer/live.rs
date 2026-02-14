@@ -15,9 +15,9 @@ use crate::simulator::{
 use sha2::{Digest, Sha256};
 
 use super::protocol::{
-    PromptControlAck, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
-    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerEventKind,
-    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, PromptControlAck, PromptControlApplyRequest, PromptControlCommand,
+    PromptControlError, PromptControlOperation, PromptControlRollbackRequest, ViewerControl,
+    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -996,7 +996,9 @@ impl ViewerLiveSession {
 
     fn event_allowed(&self, event: &crate::simulator::WorldEvent) -> bool {
         match &self.event_filters {
-            Some(filters) => filters.iter().any(|filter| filter.matches(&event.kind)),
+            Some(filters) => filters
+                .iter()
+                .any(|filter| viewer_event_kind_matches(filter, &event.kind)),
             None => true,
         }
     }

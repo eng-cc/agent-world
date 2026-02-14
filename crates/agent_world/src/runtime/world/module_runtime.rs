@@ -7,11 +7,10 @@ use agent_world_wasm_router::{
 
 use super::super::util::to_canonical_cbor;
 use super::super::{
-    Action, ActionEnvelope, DistributedClient, DistributedDht, DomainEvent, EffectOrigin,
-    ModuleArtifact, ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin,
-    ModuleCallRequest, ModuleContext, ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind,
-    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleSubscriptionStage, WorldError, WorldEvent,
-    WorldEventBody,
+    Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleCallErrorCode,
+    ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext,
+    ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleRegistry, ModuleSubscriptionStage, WorldError, WorldEvent, WorldEventBody,
 };
 use super::World;
 
@@ -62,57 +61,6 @@ impl World {
         };
         self.module_cache.insert(artifact.clone());
         Ok(artifact)
-    }
-
-    pub fn load_module_with_fetch(
-        &mut self,
-        world_id: &str,
-        wasm_hash: &str,
-        client: &DistributedClient,
-        dht: &impl DistributedDht,
-    ) -> Result<ModuleArtifact, WorldError> {
-        if let Some(artifact) = self.module_cache.get(wasm_hash) {
-            return Ok(artifact);
-        }
-
-        if !self.module_artifact_bytes.contains_key(wasm_hash) {
-            let artifact = client.fetch_module_artifact_from_dht(world_id, wasm_hash, dht)?;
-            self.register_module_artifact(artifact.wasm_hash.clone(), &artifact.bytes)?;
-        }
-
-        self.load_module(wasm_hash)
-    }
-
-    pub fn prefetch_active_modules_with_fetch(
-        &mut self,
-        world_id: &str,
-        client: &DistributedClient,
-        dht: &impl DistributedDht,
-    ) -> Result<usize, WorldError> {
-        let active_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
-        let mut loaded = 0usize;
-        for module_id in active_ids {
-            let manifest = self.active_module_manifest(&module_id)?.clone();
-            self.load_module_with_fetch(world_id, &manifest.wasm_hash, client, dht)?;
-            loaded = loaded.saturating_add(1);
-        }
-        Ok(loaded)
-    }
-
-    pub(super) fn ensure_module_changes_with_fetch(
-        &mut self,
-        world_id: &str,
-        changes: &super::super::ModuleChangeSet,
-        client: &DistributedClient,
-        dht: &impl DistributedDht,
-    ) -> Result<(), WorldError> {
-        for module in &changes.register {
-            self.load_module_with_fetch(world_id, &module.wasm_hash, client, dht)?;
-        }
-        for upgrade in &changes.upgrade {
-            self.load_module_with_fetch(world_id, &upgrade.manifest.wasm_hash, client, dht)?;
-        }
-        Ok(())
     }
 
     pub fn validate_module_output_limits(

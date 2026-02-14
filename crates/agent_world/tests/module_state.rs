@@ -1,9 +1,10 @@
-use agent_world::{
-    Action, FixedSandbox, GeoPos, Manifest, ModuleActivation, ModuleCallErrorCode,
-    ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind,
-    ModuleLimits, ModuleManifest, ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription,
-    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError, WorldEventBody,
+use agent_world::runtime::{
+    Action, FixedSandbox, Manifest, ModuleActivation, ModuleCallErrorCode, ModuleCallFailure,
+    ModuleCallInput, ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleOutput, ModuleRole, ModuleSandbox, ModuleSubscription, ModuleSubscriptionStage,
+    PolicySet, ProposalDecision, World, WorldError, WorldEventBody,
 };
+use agent_world::GeoPos;
 use sha2::{Digest, Sha256};
 
 fn pos(x: f64, y: f64) -> GeoPos {

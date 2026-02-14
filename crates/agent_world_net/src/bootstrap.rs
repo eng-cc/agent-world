@@ -47,9 +47,9 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use agent_world::runtime::World;
     use agent_world::runtime::{Action, LocalCasStore};
     use agent_world::GeoPos;
-    use agent_world::World;
     use agent_world_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
         RR_GET_BLOCK,

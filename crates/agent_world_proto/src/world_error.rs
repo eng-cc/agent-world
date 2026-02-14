@@ -15,6 +15,16 @@ pub enum WorldError {
     DistributedValidationFailed {
         reason: String,
     },
+    BlobNotFound {
+        content_hash: String,
+    },
+    BlobHashMismatch {
+        expected: String,
+        actual: String,
+    },
+    BlobHashInvalid {
+        content_hash: String,
+    },
     SignatureKeyInvalid,
     Io(String),
     Serde(String),

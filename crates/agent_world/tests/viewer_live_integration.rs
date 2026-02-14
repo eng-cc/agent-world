@@ -5,11 +5,11 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
     PromptControlApplyRequest, PromptControlCommand, ViewerControl, ViewerLiveServer,
     ViewerLiveServerConfig, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
-use agent_world::WorldScenario;
 
 #[test]
 fn live_server_accepts_client_and_emits_snapshot_and_event() {

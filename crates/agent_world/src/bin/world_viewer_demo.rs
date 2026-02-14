@@ -1,8 +1,8 @@
 use std::env;
 use std::process;
 
+use agent_world::simulator::WorldScenario;
 use agent_world::viewer::generate_viewer_demo;
-use agent_world::WorldScenario;
 
 fn main() {
     let mut args = env::args().skip(1);

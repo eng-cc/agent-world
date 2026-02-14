@@ -2,8 +2,8 @@ use std::env;
 use std::process;
 use std::time::Duration;
 
+use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig};
-use agent_world::WorldScenario;
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {

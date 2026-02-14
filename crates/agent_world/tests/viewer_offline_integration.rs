@@ -5,11 +5,11 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
     generate_viewer_demo, ViewerControl, ViewerRequest, ViewerResponse, ViewerServer,
     ViewerServerConfig, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
-use agent_world::WorldScenario;
 
 #[test]
 fn offline_server_accepts_client_and_emits_snapshot_and_event() {

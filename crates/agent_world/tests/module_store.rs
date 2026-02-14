@@ -1,4 +1,4 @@
-use agent_world::*;
+use agent_world::runtime::*;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;

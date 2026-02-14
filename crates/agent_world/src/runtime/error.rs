@@ -86,7 +86,7 @@ pub enum WorldError {
         protocol: String,
     },
     NetworkRequestFailed {
-        code: super::distributed::DistributedErrorCode,
+        code: agent_world_proto::distributed::DistributedErrorCode,
         message: String,
         retryable: bool,
     },
@@ -116,13 +116,13 @@ impl From<io::Error> for WorldError {
     }
 }
 
-impl From<agent_world_net::WorldError> for WorldError {
-    fn from(error: agent_world_net::WorldError) -> Self {
+impl From<agent_world_proto::world_error::WorldError> for WorldError {
+    fn from(error: agent_world_proto::world_error::WorldError) -> Self {
         match error {
-            agent_world_net::WorldError::NetworkProtocolUnavailable { protocol } => {
+            agent_world_proto::world_error::WorldError::NetworkProtocolUnavailable { protocol } => {
                 WorldError::NetworkProtocolUnavailable { protocol }
             }
-            agent_world_net::WorldError::NetworkRequestFailed {
+            agent_world_proto::world_error::WorldError::NetworkRequestFailed {
                 code,
                 message,
                 retryable,
@@ -131,12 +131,25 @@ impl From<agent_world_net::WorldError> for WorldError {
                 message,
                 retryable,
             },
-            agent_world_net::WorldError::DistributedValidationFailed { reason } => {
+            agent_world_proto::world_error::WorldError::DistributedValidationFailed { reason } => {
                 WorldError::DistributedValidationFailed { reason }
             }
-            agent_world_net::WorldError::SignatureKeyInvalid => WorldError::SignatureKeyInvalid,
-            agent_world_net::WorldError::Io(message) => WorldError::Io(message),
-            agent_world_net::WorldError::Serde(message) => WorldError::Serde(message),
+            agent_world_proto::world_error::WorldError::BlobNotFound { content_hash } => {
+                WorldError::BlobNotFound { content_hash }
+            }
+            agent_world_proto::world_error::WorldError::BlobHashMismatch { expected, actual } => {
+                WorldError::BlobHashMismatch { expected, actual }
+            }
+            agent_world_proto::world_error::WorldError::BlobHashInvalid { content_hash } => {
+                WorldError::BlobHashInvalid { content_hash }
+            }
+            agent_world_proto::world_error::WorldError::SignatureKeyInvalid => {
+                WorldError::SignatureKeyInvalid
+            }
+            agent_world_proto::world_error::WorldError::Io(message) => WorldError::Io(message),
+            agent_world_proto::world_error::WorldError::Serde(message) => {
+                WorldError::Serde(message)
+            }
         }
     }
 }

@@ -1,10 +1,11 @@
 //! Snapshot/journal segmentation helpers for distributed storage.
 
-use super::blob_store::{blake3_hex, BlobStore};
-use super::distributed::{SnapshotManifest, StateChunkRef};
+use agent_world_distfs as distfs;
+use agent_world_proto::distributed::SnapshotManifest;
+
+use super::blob_store::BlobStore;
 use super::error::WorldError;
 use super::snapshot::{Journal, Snapshot};
-use super::util::to_canonical_cbor;
 
 pub use agent_world_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
 
@@ -15,26 +16,9 @@ pub fn segment_snapshot(
     store: &impl BlobStore,
     config: SegmentConfig,
 ) -> Result<SnapshotManifest, WorldError> {
-    let bytes = to_canonical_cbor(snapshot)?;
-    let state_root = blake3_hex(&bytes);
-    let chunk_size = config.snapshot_chunk_bytes.max(1);
-    let mut chunks = Vec::new();
-
-    for (index, chunk) in bytes.chunks(chunk_size).enumerate() {
-        let content_hash = store.put_bytes(chunk)?;
-        chunks.push(StateChunkRef {
-            chunk_id: format!("{epoch}-{index:04}"),
-            content_hash,
-            size_bytes: chunk.len() as u64,
-        });
-    }
-
-    Ok(SnapshotManifest {
-        world_id: world_id.to_string(),
-        epoch,
-        chunks,
-        state_root,
-    })
+    Ok(distfs::segment_snapshot(
+        snapshot, world_id, epoch, store, config,
+    )?)
 }
 
 pub fn segment_journal(
@@ -42,27 +26,12 @@ pub fn segment_journal(
     store: &impl BlobStore,
     config: SegmentConfig,
 ) -> Result<Vec<JournalSegmentRef>, WorldError> {
-    if journal.events.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let max_events = config.journal_events_per_segment.max(1);
-    let mut segments = Vec::new();
-
-    for chunk in journal.events.chunks(max_events) {
-        let from_event_id = chunk.first().map(|event| event.id).unwrap_or(0);
-        let to_event_id = chunk.last().map(|event| event.id).unwrap_or(0);
-        let bytes = to_canonical_cbor(&chunk)?;
-        let content_hash = store.put_bytes(&bytes)?;
-        segments.push(JournalSegmentRef {
-            from_event_id,
-            to_event_id,
-            content_hash,
-            size_bytes: bytes.len() as u64,
-        });
-    }
-
-    Ok(segments)
+    Ok(distfs::segment_journal(
+        &journal.events,
+        store,
+        config,
+        |event| event.id,
+    )?)
 }
 
 #[cfg(test)]
@@ -75,7 +44,7 @@ mod tests {
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("duration")
             .as_nanos();
         std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
     }
