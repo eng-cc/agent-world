@@ -1,6 +1,7 @@
 use agent_world::simulator::WorldScenarioSpec;
-use agent_world::simulator::{ResourceKind, WorldConfig};
-use agent_world::{build_world_model, WorldInitConfig, WorldScenario};
+use agent_world::simulator::{
+    build_world_model, ResourceKind, WorldConfig, WorldInitConfig, WorldScenario,
+};
 use std::collections::BTreeMap;
 use std::path::Path;
 

@@ -1,9 +1,9 @@
-use agent_world::GeoPos;
-use agent_world::{
+use agent_world::runtime::{
     Action, CapabilityGrant, FixedSandbox, Manifest, ModuleActivation, ModuleChangeSet, ModuleEmit,
-    ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription,
-    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleOutput, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError, WorldEventBody,
 };
+use agent_world::GeoPos;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
@@ -100,7 +100,7 @@ fn module_subscription_event_filters_by_agent_id() {
         pos: pos(1.0, 1.0),
     });
 
-    let output = agent_world::ModuleOutput {
+    let output = ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: vec![ModuleEmit {
@@ -116,7 +116,7 @@ fn module_subscription_event_filters_by_agent_id() {
         .journal()
         .events
         .iter()
-        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .filter(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
 }
@@ -182,7 +182,7 @@ fn module_subscription_action_filters_by_agent_id() {
         pos: pos(1.0, 1.0),
     });
 
-    let output = agent_world::ModuleOutput {
+    let output = ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: vec![ModuleEmit {
@@ -198,7 +198,7 @@ fn module_subscription_action_filters_by_agent_id() {
         .journal()
         .events
         .iter()
-        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .filter(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
 }
@@ -456,7 +456,7 @@ fn module_subscription_any_matches() {
         pos: pos(1.0, 1.0),
     });
 
-    let output = agent_world::ModuleOutput {
+    let output = ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: vec![ModuleEmit {
@@ -472,7 +472,7 @@ fn module_subscription_any_matches() {
         .journal()
         .events
         .iter()
-        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .filter(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
 }
@@ -541,7 +541,7 @@ fn module_subscription_numeric_range_matches() {
         pos: pos(-5.0, 0.0),
     });
 
-    let output = agent_world::ModuleOutput {
+    let output = ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: vec![ModuleEmit {
@@ -557,7 +557,7 @@ fn module_subscription_numeric_range_matches() {
         .journal()
         .events
         .iter()
-        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .filter(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
 }
@@ -625,7 +625,7 @@ fn module_subscription_regex_matches() {
         pos: pos(1.0, 1.0),
     });
 
-    let output = agent_world::ModuleOutput {
+    let output = ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: vec![ModuleEmit {
@@ -641,7 +641,7 @@ fn module_subscription_regex_matches() {
         .journal()
         .events
         .iter()
-        .filter(|event| matches!(event.body, agent_world::WorldEventBody::ModuleEmitted(_)))
+        .filter(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)))
         .count();
     assert_eq!(emit_count, 1);
 }

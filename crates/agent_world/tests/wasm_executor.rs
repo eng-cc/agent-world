@@ -1,10 +1,11 @@
 #![cfg(feature = "wasmtime")]
 
-use agent_world::{
-    Action, GeoPos, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
-    ProposalDecision, WasmExecutor, WasmExecutorConfig, World, WorldEventBody,
+use agent_world::runtime::{
+    Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision,
+    WasmExecutor, WasmExecutorConfig, World, WorldEventBody,
 };
+use agent_world::GeoPos;
 use sha2::{Digest, Sha256};
 
 const WASM_EXECUTOR_TEST_MODULE: &[u8] = &[
