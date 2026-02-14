@@ -11,6 +11,7 @@ use agent_world::viewer::{
     ViewerServerConfig, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn offline_server_accepts_client_and_emits_snapshot_and_event() {
     let temp_dir = make_temp_dir("viewer-offline");

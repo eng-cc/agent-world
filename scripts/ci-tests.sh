@@ -43,22 +43,43 @@ run_cargo() {
   fi
 }
 
-run_required() {
+run_agent_world_required_tier_tests() {
+  run_cargo test -p agent_world --features test_tier_required \
+    --test module_input_cbor \
+    --test module_lifecycle \
+    --test module_state \
+    --test module_store \
+    --test module_subscription_filters \
+    --test viewer_offline_integration \
+    --test world_init_demo
+}
+
+run_agent_world_full_tier_tests() {
+  run_cargo test -p agent_world --features test_tier_full \
+    --test module_input_cbor \
+    --test module_lifecycle \
+    --test module_state \
+    --test module_store \
+    --test module_subscription_filters \
+    --test viewer_offline_integration \
+    --test world_init_demo
+
+  run_cargo test -p agent_world --features "test_tier_full,wasmtime" --test wasm_executor
+  run_cargo test -p agent_world --features "test_tier_full,viewer_live_integration" --test viewer_live_integration
+}
+
+run_required_gate_checks() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
   run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
   run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
-  run_cargo test
-}
-
-run_full_only() {
-  run_cargo test -p agent_world_net --features libp2p --lib
-  run_cargo test -p agent_world --features wasmtime
-  run_cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration
-  run_cargo test -p agent_world --test viewer_offline_integration
 }
 
 echo "+ ci test tier: $tier"
-run_required
-if [[ "$tier" == "full" ]]; then
-  run_full_only
+run_required_gate_checks
+if [[ "$tier" == "required" ]]; then
+  run_agent_world_required_tier_tests
+else
+  run_agent_world_full_tier_tests
+  run_cargo test -p agent_world --features wasmtime --lib --bins
+  run_cargo test -p agent_world_net --features libp2p --lib
 fi

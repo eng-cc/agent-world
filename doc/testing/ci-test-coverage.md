@@ -36,13 +36,13 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
   - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
   - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-  - `env -u RUSTC_WRAPPER cargo test`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required --test module_input_cbor --test module_lifecycle --test module_state --test module_store --test module_subscription_filters --test viewer_offline_integration --test world_init_demo`
 - `full` 追加覆盖：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full --test module_input_cbor --test module_lifecycle --test module_state --test module_store --test module_subscription_filters --test viewer_offline_integration --test world_init_demo`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full,wasmtime --test wasm_executor`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full,viewer_live_integration --test viewer_live_integration`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime --lib --bins`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
-- 说明：`scripts/ci-tests.sh` 默认不再包含 builtin wasm 二进制 hash 漂移校验（`sync-m1/m4-builtin-wasm-artifacts.sh --check`），避免频繁阻断常规代码改动；需要时手动运行。
 - CI 需安装系统依赖（Wayland/X11/ALSA/UDev）以编译 `agent_world_viewer`。
 - `egui` snapshot 测试在渲染器初始化失败时输出 skip 日志并提前返回，不影响其他 `cargo test` 用例。
 

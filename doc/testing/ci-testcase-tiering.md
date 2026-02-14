@@ -8,7 +8,8 @@
 ## 范围
 
 ### In Scope
-- `scripts/ci-tests.sh` 的 `required` 级别改为执行显式 test case 列表（带 `--exact`）。
+- 为 test case 增加 feature 标签（`test_tier_required` / `test_tier_full`）。
+- `scripts/ci-tests.sh` 的 `required` 级别改为执行显式 smoke test target 列表（按 feature 过滤）。
 - 保持 `full` 级别的扩展回归（`libp2p`、`wasmtime`、viewer 联测）不变。
 - 文档补充“命令级分层 + case 级筛选”的执行策略。
 
@@ -21,8 +22,13 @@
 - 统一入口：`scripts/ci-tests.sh [required|full]`
 - `required` 固定包含：
   - 静态门禁（fmt、工件一致性）
-  - 关键 smoke case（运行时、模块仓库、网络、执行器、viewer）
-- `full`：`required` + 特性/联测全量回归。
+  - `agent_world` 的 `test_tier_required` 用例（模块路由、模块生命周期、状态、仓库、订阅过滤、offline viewer、world init）
+- `full` 固定包含：
+  - `agent_world` 的 `test_tier_full` 用例（在 `required` 之上追加更重 case）
+  - 扩展回归：`wasmtime`（`--lib --bins`）、`libp2p`、viewer live 联测。
+- 标签约定：
+  - `#[cfg(feature = "test_tier_required")]`：必跑门禁 case。
+  - `#[cfg(feature = "test_tier_full")]`：全量回归 case。
 
 ## 里程碑
 - **T1**：设计文档与项目管理文档。
@@ -31,4 +37,4 @@
 
 ## 风险
 - smoke case 清单过窄会引入覆盖盲区；需要后续依据回归历史持续增补。
-- 用例名变更后 `--exact` 会直接失败；需在重构测试名称时同步更新脚本。
+- feature 标签与脚本目标若不同步，会造成“case 已标记但未被门禁执行”；需变更时同步回写脚本与文档。

@@ -1,9 +1,14 @@
 use agent_world::runtime::*;
-use agent_world::GeoPos;
-use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
-use agent_world_wasm_executor::FixedSandbox;
-use serde_json::json;
 use sha2::{Digest, Sha256};
+
+#[cfg(feature = "test_tier_full")]
+use agent_world::GeoPos;
+#[cfg(feature = "test_tier_full")]
+use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
+#[cfg(feature = "test_tier_full")]
+use agent_world_wasm_executor::FixedSandbox;
+#[cfg(feature = "test_tier_full")]
+use serde_json::json;
 
 fn manifest_with_changes(changes: ModuleChangeSet) -> Manifest {
     let mut content = serde_json::Map::new();
@@ -23,6 +28,7 @@ fn wasm_hash(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn governance_module_happy_path_updates_registry() {
     let mut world = World::new();
@@ -85,6 +91,7 @@ fn governance_module_happy_path_updates_registry() {
     assert_eq!(module_events, 2);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn shadow_failure_blocks_apply() {
     let mut world = World::new();
@@ -122,6 +129,7 @@ fn shadow_failure_blocks_apply() {
     assert!(!has_module_events);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_routing_emits_event() {
     let mut world = World::new();
@@ -206,6 +214,7 @@ fn module_routing_emits_event() {
     assert!(has_emit);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn replay_preserves_module_events() {
     let mut world = World::new();

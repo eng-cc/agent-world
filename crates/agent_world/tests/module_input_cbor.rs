@@ -1,13 +1,16 @@
 use agent_world::runtime::{
-    Action, ActionEnvelope, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
-    ProposalDecision, World, WorldEvent,
+    Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision, World,
+    WorldEvent,
 };
 use agent_world::GeoPos;
 use agent_world_wasm_abi::{
     ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleOutput, ModuleSandbox,
 };
 use sha2::{Digest, Sha256};
+
+#[cfg(feature = "test_tier_full")]
+use agent_world::runtime::ActionEnvelope;
 
 fn pos(x: f64, y: f64) -> GeoPos {
     GeoPos {
@@ -73,6 +76,7 @@ fn apply_module_manifest(world: &mut World, module_manifest: ModuleManifest) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn module_route_encodes_event_input_as_cbor() {
     let mut world = World::new();
@@ -135,6 +139,7 @@ fn module_route_encodes_event_input_as_cbor() {
     assert_eq!(decoded_event.id, event.id);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_route_encodes_action_input_as_cbor() {
     let mut world = World::new();
@@ -200,6 +205,7 @@ fn module_route_encodes_action_input_as_cbor() {
     assert_eq!(decoded_action.id, envelope.id);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_route_pure_input_omits_state() {
     let mut world = World::new();

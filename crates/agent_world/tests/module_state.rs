@@ -1,15 +1,20 @@
 use agent_world::runtime::{
     Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision, World,
-    WorldError, WorldEventBody,
+    WorldEventBody,
 };
 use agent_world::GeoPos;
 use agent_world_wasm_abi::{
-    ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleOutput,
-    ModuleSandbox,
+    ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleOutput, ModuleSandbox,
 };
-use agent_world_wasm_executor::FixedSandbox;
 use sha2::{Digest, Sha256};
+
+#[cfg(feature = "test_tier_full")]
+use agent_world::runtime::WorldError;
+#[cfg(feature = "test_tier_full")]
+use agent_world_wasm_abi::ModuleCallErrorCode;
+#[cfg(feature = "test_tier_full")]
+use agent_world_wasm_executor::FixedSandbox;
 
 fn pos(x: f64, y: f64) -> GeoPos {
     GeoPos {
@@ -80,6 +85,7 @@ fn apply_module_manifest(world: &mut World, module_manifest: ModuleManifest) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn reducer_state_updates_and_is_reused() {
     let mut world = World::new();
@@ -156,6 +162,7 @@ fn reducer_state_updates_and_is_reused() {
     );
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn pure_module_new_state_is_rejected() {
     let mut world = World::new();

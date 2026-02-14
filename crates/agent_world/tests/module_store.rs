@@ -1,8 +1,10 @@
 use agent_world::runtime::*;
-use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(feature = "test_tier_full")]
+use serde_json::json;
 
 fn wasm_hash(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -10,6 +12,7 @@ fn wasm_hash(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn module_store_roundtrip() {
     let unique = SystemTime::now()
@@ -66,6 +69,7 @@ fn module_store_roundtrip() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_store_rejects_version_mismatch() {
     let unique = SystemTime::now()
@@ -91,6 +95,7 @@ fn module_store_rejects_version_mismatch() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_module_store_roundtrip() {
     let unique = SystemTime::now()
@@ -160,6 +165,7 @@ fn world_module_store_roundtrip() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_save_to_dir_with_modules_roundtrip() {
     let unique = SystemTime::now()

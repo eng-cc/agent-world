@@ -1,5 +1,6 @@
 use std::process::Command;
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn world_init_demo_runs_summary_only() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -13,6 +14,7 @@ fn world_init_demo_runs_summary_only() {
     assert!(stdout.contains("scenario: minimal"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_llm_bootstrap_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -26,6 +28,7 @@ fn world_init_demo_runs_llm_bootstrap_summary() {
     assert!(stdout.contains("scenario: llm_bootstrap"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_asteroid_fragment_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -40,6 +43,7 @@ fn world_init_demo_runs_asteroid_fragment_summary() {
     assert!(stdout.contains("asteroid_fragment_fragments:"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_asteroid_fragment_detail_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -54,6 +58,7 @@ fn world_init_demo_runs_asteroid_fragment_detail_summary() {
     assert!(stdout.contains("asteroid_fragment_fragments:"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_asteroid_fragment_twin_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -68,6 +73,7 @@ fn world_init_demo_runs_asteroid_fragment_twin_summary() {
     assert!(stdout.contains("asteroid_fragment_fragments:"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_asteroid_fragment_triad_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -82,6 +88,7 @@ fn world_init_demo_runs_asteroid_fragment_triad_summary() {
     assert!(stdout.contains("asteroid_fragment_fragments:"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_triad_summary() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");
@@ -95,6 +102,7 @@ fn world_init_demo_runs_triad_summary() {
     assert!(stdout.contains("scenario: triad_region_bootstrap"));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn world_init_demo_runs_from_scenario_file() {
     let bin = env!("CARGO_BIN_EXE_world_init_demo");

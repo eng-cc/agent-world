@@ -1,13 +1,16 @@
 use agent_world::runtime::{
     Action, CapabilityGrant, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
-    ProposalDecision, World, WorldError, WorldEventBody,
+    ModuleManifest, ModuleRole, ModuleSubscription, PolicySet, ProposalDecision, World,
+    WorldEventBody,
 };
 use agent_world::GeoPos;
 use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
 use agent_world_wasm_executor::FixedSandbox;
 use serde_json::json;
 use sha2::{Digest, Sha256};
+
+#[cfg(feature = "test_tier_full")]
+use agent_world::runtime::{ModuleSubscriptionStage, WorldError};
 
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -41,6 +44,7 @@ fn pos(x: f64, y: f64) -> GeoPos {
     }
 }
 
+#[cfg(feature = "test_tier_required")]
 #[test]
 fn module_subscription_event_filters_by_agent_id() {
     let mut world = World::new();
@@ -123,6 +127,7 @@ fn module_subscription_event_filters_by_agent_id() {
     assert_eq!(emit_count, 1);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_action_filters_by_agent_id() {
     let mut world = World::new();
@@ -205,6 +210,7 @@ fn module_subscription_action_filters_by_agent_id() {
     assert_eq!(emit_count, 1);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_invalid_filter_is_rejected() {
     let mut world = World::new();
@@ -271,6 +277,7 @@ fn module_subscription_invalid_filter_is_rejected() {
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_rejects_mixed_kinds_without_stage() {
     let mut world = World::new();
@@ -333,6 +340,7 @@ fn module_subscription_rejects_mixed_kinds_without_stage() {
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_rejects_action_kinds_in_post_event_stage() {
     let mut world = World::new();
@@ -395,6 +403,7 @@ fn module_subscription_rejects_action_kinds_in_post_event_stage() {
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_any_matches() {
     let mut world = World::new();
@@ -479,6 +488,7 @@ fn module_subscription_any_matches() {
     assert_eq!(emit_count, 1);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_numeric_range_matches() {
     let mut world = World::new();
@@ -564,6 +574,7 @@ fn module_subscription_numeric_range_matches() {
     assert_eq!(emit_count, 1);
 }
 
+#[cfg(feature = "test_tier_full")]
 #[test]
 fn module_subscription_regex_matches() {
     let mut world = World::new();

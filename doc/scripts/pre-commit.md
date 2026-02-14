@@ -5,7 +5,7 @@
 - 以单一脚本形式减少重复维护，降低遗漏风险。
 
 ## 范围
-- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）与 `required` 级别测试（格式化校验、工件一致性、默认测试集）。
+- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）与 `required` 级别测试（格式化校验、工件一致性、feature 标签驱动的 smoke case）。
 - **范围外**：lint 或其它包的静态检查。
 - **范围外**：`libp2p`/`wasmtime` 特性回归与 viewer 在线/离线联测（由 `full` 级别承担）。
 
@@ -15,6 +15,9 @@
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
   - 再调用统一测试清单脚本 `scripts/ci-tests.sh required`。
+- 用例分级标签：
+  - `test_tier_required`：本地提交与 PR 必跑 case。
+  - `test_tier_full`：每日定时全量回归 case。
 - 统一脚本支持两级：
   - `required`：本地提交与 PR 必跑。
   - `full`：每日定时与手动触发全量回归。
