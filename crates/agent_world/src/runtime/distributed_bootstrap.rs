@@ -1,48 +1,42 @@
-mod blob_store {
-    pub(super) use super::super::blob_store::*;
+use super::blob_store::BlobStore;
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_observer_replay::{
+    replay_validate_with_head, replay_validate_with_head_and_dht,
+};
+use super::error::WorldError;
+use super::world::World;
+
+pub fn bootstrap_world_from_head(
+    head: &WorldHeadAnnounce,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<World, WorldError> {
+    let result = replay_validate_with_head(head, client, store)?;
+    World::from_snapshot(result.snapshot, result.journal)
 }
 
-mod distributed {
-    pub(super) use super::super::distributed::*;
+pub fn bootstrap_world_from_head_with_dht(
+    head: &WorldHeadAnnounce,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<World, WorldError> {
+    let result = replay_validate_with_head_and_dht(head, dht, client, store)?;
+    World::from_snapshot(result.snapshot, result.journal)
 }
 
-mod distributed_client {
-    pub(super) use super::super::distributed_client::*;
+pub fn bootstrap_world_from_dht(
+    world_id: &str,
+    dht: &impl DistributedDht,
+    client: &DistributedClient,
+    store: &impl BlobStore,
+) -> Result<World, WorldError> {
+    let head =
+        dht.get_world_head(world_id)?
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!("world head not found for {world_id}"),
+            })?;
+    bootstrap_world_from_head_with_dht(&head, dht, client, store)
 }
-
-mod distributed_dht {
-    pub(super) use super::super::distributed_dht::*;
-}
-
-#[cfg(all(test, feature = "self_tests"))]
-mod distributed_net {
-    pub(super) use super::super::distributed_net::*;
-}
-
-mod distributed_observer_replay {
-    pub(super) use super::super::distributed_observer_replay::*;
-}
-
-#[cfg(all(test, feature = "self_tests"))]
-mod distributed_storage {
-    pub(super) use super::super::distributed_storage::*;
-}
-
-mod error {
-    pub(super) use super::super::error::WorldError;
-}
-
-#[cfg(all(test, feature = "self_tests"))]
-mod util {
-    pub(super) use super::super::util::*;
-}
-
-mod world {
-    pub(super) use super::super::world::World;
-}
-
-#[path = "../../../agent_world_net/src/bootstrap.rs"]
-#[allow(dead_code, unused_imports)]
-mod shared;
-
-pub use shared::*;
