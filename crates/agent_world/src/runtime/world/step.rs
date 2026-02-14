@@ -4,6 +4,7 @@ use super::super::{
     ActionEnvelope, CausedBy, ModuleSubscriptionStage, RejectReason, RuleVerdict, WorldError,
     WorldEventBody,
 };
+use super::economy::EconomyActionResolution;
 use super::World;
 
 impl World {
@@ -24,8 +25,33 @@ impl World {
     pub fn step_with_modules(&mut self, sandbox: &mut dyn ModuleSandbox) -> Result<(), WorldError> {
         self.state.time = self.state.time.saturating_add(1);
         while let Some(envelope) = self.pending_actions.pop_front() {
-            let decision = self.evaluate_rule_decisions(&envelope, sandbox)?;
             let mut action_envelope = envelope.clone();
+            match self.resolve_module_backed_economy_action(&envelope, sandbox)? {
+                EconomyActionResolution::Resolved(action) => {
+                    action_envelope.action = action;
+                }
+                EconomyActionResolution::Rejected(reason) => {
+                    self.append_event(
+                        WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
+                            action_id: envelope.id,
+                            reason,
+                        }),
+                        Some(CausedBy::Action(envelope.id)),
+                    )?;
+                    self.route_action_to_modules_with_stage(
+                        &envelope,
+                        ModuleSubscriptionStage::PostAction,
+                        sandbox,
+                    )?;
+                    if let Some(event) = self.journal.events.last() {
+                        let event = event.clone();
+                        self.route_event_to_modules(&event, sandbox)?;
+                    }
+                    continue;
+                }
+            }
+
+            let decision = self.evaluate_rule_decisions(&action_envelope, sandbox)?;
             if decision.verdict == RuleVerdict::Modify {
                 if let Some(override_action) = decision.override_action.clone() {
                     self.record_action_override(

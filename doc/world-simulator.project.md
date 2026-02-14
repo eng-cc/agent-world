@@ -213,4 +213,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 M4 工业生产链 runtime 最小执行闭环（BuildFactory/ScheduleRecipe + 建造/排产事件与状态队列，2026-02-14）
+- 最近更新：完成 M4 工业生产链模块驱动求值接线（BuildFactoryWithModule/ScheduleRecipeWithModule，2026-02-14）

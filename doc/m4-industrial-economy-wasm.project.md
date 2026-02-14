@@ -25,6 +25,17 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
+### E5 模块在线评估接线
+- [x] 新增模块驱动动作：`BuildFactoryWithModule` / `ScheduleRecipeWithModule`
+- [x] 在 `step_with_modules` 中接入“先模块求值，再落地动作”流程
+- [x] 新增经济模块输出契约（emit kind）解析：
+  - `economy.factory_build_decision`
+  - `economy.recipe_execution_plan`
+- [x] 增加模块输出校验（缺失 emit / 多 emit / 非法输出 -> `ModuleCallFailed`）
+- [x] 新增模块驱动经济闭环测试（建造通过、排产通过、模块拒绝）
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -33,6 +44,6 @@
 
 ## 状态
 
-- 当前阶段：E4 完成（runtime 最小执行闭环已落地）。
-- 下一步：接入基于 wasm 模块的 recipe/factory 在线评估与治理装载模板。
-- 最近更新：完成 runtime 建造/排产闭环实现与测试（2026-02-14）。
+- 当前阶段：E5 完成（模块在线评估已接入 runtime）。
+- 下一步：补充 wasm 经济模块治理模板与默认示例工件（recipe/factory/product）。
+- 最近更新：完成模块驱动建造/排产求值接线与测试（2026-02-14）。

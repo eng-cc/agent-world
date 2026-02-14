@@ -82,11 +82,25 @@ pub enum Action {
         site_id: String,
         spec: FactoryModuleSpec,
     },
+    BuildFactoryWithModule {
+        builder_agent_id: String,
+        site_id: String,
+        module_id: String,
+        spec: FactoryModuleSpec,
+    },
     ScheduleRecipe {
         requester_agent_id: String,
         factory_id: String,
         recipe_id: String,
         plan: RecipeExecutionPlan,
+    },
+    ScheduleRecipeWithModule {
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        module_id: String,
+        desired_batches: u32,
+        deterministic_seed: u64,
     },
 }
 

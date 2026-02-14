@@ -271,6 +271,13 @@ V1 需要覆盖以下测试组：
   - 新事件：`FactoryBuildStarted`、`FactoryBuilt`、`RecipeStarted`、`RecipeCompleted`
   - 新状态：材料库存、工厂实例、建造队列、配方队列
   - 新流程：`step` 每 tick 自动结算到期建造与排产任务
+- runtime 已接入模块在线评估路径：
+  - 新动作：`BuildFactoryWithModule`、`ScheduleRecipeWithModule`
+  - 执行流程：`step_with_modules` 中先调用指定 WASM 模块求值，再转为 `BuildFactory/ScheduleRecipe` 落地
+  - 模块输出契约（emit kind）：
+    - `economy.factory_build_decision`
+    - `economy.recipe_execution_plan`
+  - 非法模块输出（缺失 emit / 多 emit / 解码失败）统一记录 `ModuleCallFailed(InvalidOutput)`
 - 已覆盖 runtime 定向测试：建造时序、排产时序、产线容量限流、库存与电力扣减、完工产出入账。
 
 ## 里程碑

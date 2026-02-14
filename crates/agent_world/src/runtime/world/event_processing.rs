@@ -294,6 +294,14 @@ impl World {
                     ready_at,
                 }))
             }
+            Action::BuildFactoryWithModule { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["build_factory_with_module requires module runtime".to_string()],
+                    },
+                }))
+            }
             Action::ScheduleRecipe {
                 requester_agent_id,
                 factory_id,
@@ -406,6 +414,16 @@ impl World {
                     power_required: plan.power_required,
                     duration_ticks,
                     ready_at,
+                }))
+            }
+            Action::ScheduleRecipeWithModule { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "schedule_recipe_with_module requires module runtime".to_string()
+                        ],
+                    },
                 }))
             }
         }

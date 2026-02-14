@@ -1,7 +1,16 @@
 use super::pos;
-use crate::runtime::{Action, DomainEvent, RejectReason, World, WorldEventBody};
+use crate::runtime::{
+    util, Action, CapabilityGrant, DomainEvent, ModuleActivation, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRole, PolicySet, ProposalDecision, RejectReason, World,
+    WorldEventBody,
+};
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
+use agent_world_wasm_abi::{
+    FactoryBuildDecision, FactoryModuleSpec, MaterialStack, ModuleEmit, ModuleOutput,
+    RecipeExecutionPlan,
+};
+use agent_world_wasm_executor::FixedSandbox;
+use serde_json::json;
 
 fn factory_spec(factory_id: &str, build_time_ticks: u32, recipe_slots: u16) -> FactoryModuleSpec {
     FactoryModuleSpec {
@@ -19,6 +28,70 @@ fn factory_spec(factory_id: &str, build_time_ticks: u32, recipe_slots: u16) -> F
         throughput_bps: 10_000,
         maintenance_per_tick: 1,
     }
+}
+
+fn activate_pure_module(world: &mut World, module_id: &str, wasm_seed: &[u8]) {
+    world.set_policy(PolicySet::allow_all());
+    world.add_capability(CapabilityGrant::allow_all("cap.economy"));
+
+    let wasm_hash = util::sha256_hex(wasm_seed);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_seed)
+        .expect("register module artifact");
+
+    let manifest = ModuleManifest {
+        module_id: module_id.to_string(),
+        name: format!("module-{module_id}"),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["call".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: Vec::new(),
+        limits: ModuleLimits {
+            max_mem_bytes: 1024 * 1024,
+            max_gas: 1_000_000,
+            max_call_rate: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_effects: 0,
+            max_emits: 8,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: manifest.module_id.clone(),
+            version: manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(changes).expect("serialize module changes"),
+    );
+    let proposal_id = world
+        .propose_manifest_update(
+            crate::runtime::Manifest {
+                version: 2,
+                content: serde_json::Value::Object(content),
+            },
+            "tester",
+        )
+        .expect("propose module activation");
+    world
+        .shadow_proposal(proposal_id)
+        .expect("shadow module proposal");
+    world
+        .approve_proposal(proposal_id, "tester", ProposalDecision::Approve)
+        .expect("approve module proposal");
+    world
+        .apply_proposal(proposal_id)
+        .expect("apply module proposal");
 }
 
 #[test]
@@ -271,6 +344,215 @@ fn build_factory_rejects_when_materials_insufficient() {
                 assert_eq!(*available, 3);
             }
             other => panic!("expected InsufficientMaterial reject reason, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn build_factory_with_module_uses_module_decision() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+
+    world
+        .set_material_balance("steel_plate", 9)
+        .expect("seed steel");
+    world
+        .set_material_balance("circuit_board", 2)
+        .expect("seed circuits");
+
+    activate_pure_module(&mut world, "m4.factory.basic", b"factory-module");
+
+    world.submit_action(Action::BuildFactoryWithModule {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        module_id: "m4.factory.basic".to_string(),
+        spec: factory_spec("factory.module", 5, 1),
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "economy.factory_build_decision".to_string(),
+            payload: serde_json::to_value(FactoryBuildDecision::accepted(
+                vec![
+                    MaterialStack::new("steel_plate", 8),
+                    MaterialStack::new("circuit_board", 2),
+                ],
+                1,
+            ))
+            .expect("serialize factory build decision"),
+        }],
+        output_bytes: 256,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("start factory build with module");
+
+    assert_eq!(world.material_balance("steel_plate"), 1);
+    assert_eq!(world.material_balance("circuit_board"), 0);
+    assert_eq!(world.pending_factory_builds_len(), 1);
+
+    let started = world
+        .journal()
+        .events
+        .last()
+        .expect("factory build started event");
+    match &started.body {
+        WorldEventBody::Domain(DomainEvent::FactoryBuildStarted { spec, .. }) => {
+            assert_eq!(spec.build_time_ticks, 1);
+            assert_eq!(spec.build_cost[0].amount, 8);
+        }
+        other => panic!("expected FactoryBuildStarted, got {other:?}"),
+    }
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("complete factory build");
+    assert!(world.has_factory("factory.module"));
+}
+
+#[test]
+fn schedule_recipe_with_module_uses_module_plan() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+
+    world
+        .set_material_balance("steel_plate", 10)
+        .expect("seed steel");
+    world
+        .set_material_balance("circuit_board", 2)
+        .expect("seed circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.recipe.module", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("build complete");
+
+    world
+        .set_material_balance("iron_ingot", 7)
+        .expect("seed ingot");
+    world.set_resource_balance(ResourceKind::Electricity, 30);
+    activate_pure_module(&mut world, "m4.recipe.motor", b"recipe-module");
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.recipe.module".to_string(),
+        recipe_id: "recipe.motor.mk1".to_string(),
+        module_id: "m4.recipe.motor".to_string(),
+        desired_batches: 2,
+        deterministic_seed: 42,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "economy.recipe_execution_plan".to_string(),
+            payload: serde_json::to_value(RecipeExecutionPlan::accepted(
+                2,
+                vec![MaterialStack::new("iron_ingot", 6)],
+                vec![MaterialStack::new("motor_mk1", 2)],
+                vec![MaterialStack::new("metal_scrap", 1)],
+                9,
+                1,
+            ))
+            .expect("serialize recipe execution plan"),
+        }],
+        output_bytes: 256,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("start recipe with module");
+
+    assert_eq!(world.material_balance("iron_ingot"), 1);
+    assert_eq!(world.resource_balance(ResourceKind::Electricity), 21);
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("complete recipe with module");
+    assert_eq!(world.material_balance("motor_mk1"), 2);
+    assert_eq!(world.material_balance("metal_scrap"), 1);
+}
+
+#[test]
+fn schedule_recipe_with_module_rejects_when_module_denies() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+
+    world
+        .set_material_balance("steel_plate", 10)
+        .expect("seed steel");
+    world
+        .set_material_balance("circuit_board", 2)
+        .expect("seed circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.recipe.reject", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("build complete");
+    activate_pure_module(&mut world, "m4.recipe.reject", b"recipe-reject-module");
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.recipe.reject".to_string(),
+        recipe_id: "recipe.fail".to_string(),
+        module_id: "m4.recipe.reject".to_string(),
+        desired_batches: 1,
+        deterministic_seed: 7,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "economy.recipe_execution_plan".to_string(),
+            payload: json!({
+                "accepted_batches": 0,
+                "consume": [],
+                "produce": [],
+                "byproducts": [],
+                "power_required": 0,
+                "duration_ticks": 0,
+                "reject_reason": "insufficient pressure"
+            }),
+        }],
+        output_bytes: 256,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("module denial should turn into action rejected");
+
+    let rejected = world.journal().events.last().expect("rejection event");
+    match &rejected.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("recipe module denied: insufficient pressure")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
         },
         other => panic!("expected ActionRejected, got {other:?}"),
     }

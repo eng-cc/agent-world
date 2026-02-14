@@ -529,7 +529,10 @@ impl World {
         Ok(())
     }
 
-    fn active_module_manifest(&self, module_id: &str) -> Result<&ModuleManifest, WorldError> {
+    pub(super) fn active_module_manifest(
+        &self,
+        module_id: &str,
+    ) -> Result<&ModuleManifest, WorldError> {
         let version = self.module_registry.active.get(module_id).ok_or_else(|| {
             WorldError::ModuleChangeInvalid {
                 reason: format!("module not active {module_id}"),
@@ -846,6 +849,8 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",
+        Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",
         Action::ScheduleRecipe { .. } => "action.economy.schedule_recipe",
+        Action::ScheduleRecipeWithModule { .. } => "action.economy.schedule_recipe_with_module",
     }
 }
