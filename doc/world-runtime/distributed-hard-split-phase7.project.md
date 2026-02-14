@@ -6,7 +6,7 @@
 - [x] R7-3：拆分 `agent_world` 大 facade，收敛导出边界并清理跨层 re-export。
 - [x] R7-4：将 viewer 协议并入 `agent_world_proto`，完成 server/viewer 双端适配。
 - [x] R7-5：收敛 WASM ABI 边界（移除 net 侧重复 `ModuleManifest`，明确运行时缓存归属）。
-- [ ] R7-6：拆分所有超 1200 行 Rust 文件并完成回归。
+- [x] R7-6：拆分所有超 1200 行 Rust 文件并完成回归。
 
 ## 依赖
 - `crates/agent_world`
@@ -18,6 +18,6 @@
 - `doc/world-runtime.project.md`
 
 ## 状态
-- 当前阶段：R7-5 已完成，R7-6 待执行。
-- 下一步：执行 R7-6，拆分全部超 1200 行 Rust 文件并完成回归。
+- 当前阶段：R7 全部任务已完成（R7-1 ~ R7-6）。
+- 下一步：按新的拆分阶段需求立项并进入下一阶段。
 - 最近更新：2026-02-14

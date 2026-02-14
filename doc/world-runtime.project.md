@@ -232,7 +232,7 @@
 - [x] R7-3 拆分 `agent_world` 大 facade，收敛导出边界
 - [x] R7-4 Viewer 协议并入 `agent_world_proto` 并完成双端适配
 - [x] R7-5 收敛 WASM ABI 边界（去 net 重复 `ModuleManifest`）
-- [ ] R7-6 拆分全部超 1200 行 Rust 文件并回归
+- [x] R7-6 拆分全部超 1200 行 Rust 文件并回归
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -240,6 +240,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：R7（分布式能力彻底拆分）进行中，R7-5 完成。
-- 下一步：执行 R7-6（拆分全部超 1200 行 Rust 文件并回归）。
-- 最近更新：完成 R7-5（移除 `agent_world_net` 重复 `ModuleManifest`，统一复用 `agent_world_wasm_abi::ModuleManifest`，2026-02-14）
+- 当前阶段：R7（分布式能力彻底拆分）已完成（R7-1 ~ R7-6）。
+- 下一步：按下一阶段拆分目标补充设计与项目管理任务。
+- 最近更新：完成 R7-6（拆分全部超 1200 行 Rust 文件并回归通过，2026-02-14）
