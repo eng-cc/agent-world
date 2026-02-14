@@ -10,7 +10,8 @@ use serde::Serialize;
 use super::super::util::to_canonical_cbor;
 use super::super::{
     Action, ActionEnvelope, ActionId, DomainEvent, RejectReason, WorldError, WorldEvent,
-    WorldEventBody,
+    WorldEventBody, M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
+    M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -18,6 +19,15 @@ use crate::simulator::ResourceKind;
 const FACTORY_BUILD_DECISION_EMIT_KIND: &str = "economy.factory_build_decision";
 const RECIPE_EXECUTION_PLAN_EMIT_KIND: &str = "economy.recipe_execution_plan";
 const PRODUCT_VALIDATION_EMIT_KIND: &str = "economy.product_validation";
+
+#[derive(Debug, Clone, Serialize)]
+struct ProductValidationModuleCallRequest {
+    product_id: String,
+    stack: MaterialStack,
+    deterministic_seed: u64,
+    kind: String,
+    amount: i64,
+}
 
 pub(super) enum EconomyActionResolution {
     Resolved(Action),
@@ -277,6 +287,114 @@ impl World {
         Ok(emitted)
     }
 
+    pub(super) fn process_due_economy_jobs_with_modules(
+        &mut self,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<Vec<WorldEvent>, WorldError> {
+        let now = self.state.time;
+        let mut emitted = Vec::new();
+
+        let mut due_builds: Vec<_> = self
+            .state
+            .pending_factory_builds
+            .values()
+            .filter(|job| job.ready_at <= now)
+            .cloned()
+            .collect();
+        due_builds.sort_by_key(|job| (job.ready_at, job.job_id));
+
+        for job in due_builds {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::FactoryBuilt {
+                    job_id: job.job_id,
+                    builder_agent_id: job.builder_agent_id,
+                    site_id: job.site_id,
+                    spec: job.spec,
+                }),
+                None,
+            )?;
+            if let Some(event) = self.journal.events.last() {
+                emitted.push(event.clone());
+            }
+        }
+
+        let mut due_recipes: Vec<_> = self
+            .state
+            .pending_recipe_jobs
+            .values()
+            .filter(|job| job.ready_at <= now)
+            .cloned()
+            .collect();
+        due_recipes.sort_by_key(|job| (job.ready_at, job.job_id));
+
+        for job in due_recipes {
+            let mut committed_produce = job.produce.clone();
+            let mut committed_byproducts = job.byproducts.clone();
+
+            for (index, stack) in job.produce.iter().enumerate() {
+                let Some(module_id) = self.resolve_product_module_for_stack(stack.kind.as_str())
+                else {
+                    continue;
+                };
+                let request = ProductValidationRequest {
+                    product_id: stack.kind.clone(),
+                    stack: stack.clone(),
+                    deterministic_seed: job
+                        .job_id
+                        .wrapping_mul(1_000_003)
+                        .wrapping_add(index as u64)
+                        .wrapping_add(self.state.time),
+                };
+                let decision = self.evaluate_product_with_module(
+                    module_id.as_str(),
+                    job.job_id,
+                    &request,
+                    sandbox,
+                )?;
+                let validation_event = self.action_to_event(&ActionEnvelope {
+                    id: job.job_id,
+                    action: Action::ValidateProduct {
+                        requester_agent_id: job.requester_agent_id.clone(),
+                        module_id,
+                        stack: stack.clone(),
+                        decision,
+                    },
+                })?;
+                let rejected = matches!(
+                    validation_event,
+                    WorldEventBody::Domain(DomainEvent::ActionRejected { .. })
+                );
+                self.append_event(validation_event, None)?;
+                if let Some(event) = self.journal.events.last() {
+                    emitted.push(event.clone());
+                }
+                if rejected {
+                    committed_produce.clear();
+                    committed_byproducts.clear();
+                    break;
+                }
+            }
+
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::RecipeCompleted {
+                    job_id: job.job_id,
+                    requester_agent_id: job.requester_agent_id,
+                    factory_id: job.factory_id,
+                    recipe_id: job.recipe_id,
+                    accepted_batches: job.accepted_batches,
+                    produce: committed_produce,
+                    byproducts: committed_byproducts,
+                }),
+                None,
+            )?;
+            if let Some(event) = self.journal.events.last() {
+                emitted.push(event.clone());
+            }
+        }
+
+        Ok(emitted)
+    }
+
     fn evaluate_factory_build_with_module(
         &mut self,
         module_id: &str,
@@ -333,7 +451,16 @@ impl World {
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<ProductValidationDecision, WorldError> {
         let trace_id = format!("action-{action_id}-{module_id}-product");
-        let output = self.execute_economy_module_call(module_id, &trace_id, request, sandbox)?;
+        // Keep backward compatibility for product modules that decode legacy stack-only payloads.
+        let wire_request = ProductValidationModuleCallRequest {
+            product_id: request.product_id.clone(),
+            stack: request.stack.clone(),
+            deterministic_seed: request.deterministic_seed,
+            kind: request.stack.kind.clone(),
+            amount: request.stack.amount,
+        };
+        let output =
+            self.execute_economy_module_call(module_id, &trace_id, &wire_request, sandbox)?;
         if !output.effects.is_empty() {
             return self.economy_module_output_invalid(
                 module_id,
@@ -342,6 +469,32 @@ impl World {
             );
         }
         self.extract_economy_emit(module_id, &trace_id, &output, PRODUCT_VALIDATION_EMIT_KIND)
+    }
+
+    fn resolve_product_module_for_stack(&self, product_kind: &str) -> Option<String> {
+        if let Some(module_id) = Self::builtin_product_module_for_kind(product_kind) {
+            if self.module_registry.active.contains_key(module_id) {
+                return Some(module_id.to_string());
+            }
+        }
+        let suffix = format!(".{product_kind}");
+        self.module_registry
+            .active
+            .keys()
+            .find(|module_id| {
+                module_id.contains(".product.") && module_id.ends_with(suffix.as_str())
+            })
+            .cloned()
+    }
+
+    fn builtin_product_module_for_kind(product_kind: &str) -> Option<&'static str> {
+        match product_kind {
+            "iron_ingot" => Some(M4_PRODUCT_IRON_INGOT_MODULE_ID),
+            "control_chip" => Some(M4_PRODUCT_CONTROL_CHIP_MODULE_ID),
+            "motor_mk1" => Some(M4_PRODUCT_MOTOR_MODULE_ID),
+            "logistics_drone" => Some(M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID),
+            _ => None,
+        }
     }
 
     fn execute_economy_module_call<T: Serialize>(

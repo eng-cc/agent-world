@@ -106,7 +106,7 @@ impl World {
                 self.route_event_to_modules(&event, sandbox)?;
             }
         }
-        for event in self.process_due_economy_jobs()? {
+        for event in self.process_due_economy_jobs_with_modules(sandbox)? {
             self.route_event_to_modules(&event, sandbox)?;
         }
         Ok(())

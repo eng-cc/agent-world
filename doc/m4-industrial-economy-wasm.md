@@ -246,6 +246,7 @@ pub trait FactoryModuleApi {
 - `action.economy.build_factory`
 - `action.economy.schedule_recipe`
 - `action.economy.validate_product`
+- `action.economy.validate_product_with_module`
 - `action.economy.transfer_inventory`
 - `action.economy.maintain_factory`
 
@@ -299,6 +300,10 @@ V1 需要覆盖以下测试组：
   - 新事件：`ProductValidated`
   - 模块输出契约（emit kind）：`economy.product_validation`
   - 模块拒绝统一映射为 `ActionRejected(RuleDenied)`，并保留模块 notes
+- runtime 已接入 Product 校验自动闭环：
+  - `step_with_modules` 的配方完工结算阶段会自动对产出执行 Product 模块校验（若存在匹配模块）
+  - 产物模块解析策略：内置 `m4.product.*` 显式映射优先，随后按 `*.product.*.<product_kind>` 后缀规则匹配扩展模块
+  - 若任一产物校验失败，则该配方批次产物与副产物均不入账（输入与能耗仍按已执行批次扣减）
 - 已覆盖 runtime 定向测试：建造时序、排产时序、产线容量限流、库存与电力扣减、完工产出入账。
 - 已提供内置 M4 工业模块包（WASM 工件 + 治理安装入口）：
   - 工厂模块：`m4.factory.miner.mk1`、`m4.factory.smelter.mk1`、`m4.factory.assembler.mk1`

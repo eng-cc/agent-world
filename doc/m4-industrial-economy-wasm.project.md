@@ -72,12 +72,15 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy -- --nocapture`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
-### E8 Product 校验自动闭环（下一任务）
-- [ ] 在配方完工路径自动触发产物校验（而非仅手动动作）
-- [ ] 建立“产物 -> Product 模块”解析策略（内置规则 + 扩展钩子）
-- [ ] 在账本提交前阻断未通过校验的产物入库
-- [ ] 增加端到端测试：`ScheduleRecipeWithModule` 完工后自动 Product 校验并落账
-- [ ] 回写设计文档、项目文档、devlog 并提交
+### E8 Product 校验自动闭环
+- [x] 在配方完工路径自动触发产物校验（而非仅手动动作）
+- [x] 建立“产物 -> Product 模块”解析策略（内置规则 + 扩展钩子）
+- [x] 在账本提交前阻断未通过校验的产物入库
+- [x] 增加端到端测试：`ScheduleRecipeWithModule` 完工后自动 Product 校验并落账
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+- [x] 回写设计文档、项目文档、devlog 并提交
 
 ## 依赖
 
@@ -87,6 +90,6 @@
 
 ## 状态
 
-- 当前阶段：E7 完成（Product 模块在线校验动作 + runtime 接线 + 测试回归通过）。
-- 下一步：E8 Product 校验自动闭环（配方完工自动触发校验与入账门禁）。
-- 最近更新：完成 `evaluate_product` ABI 升级与 `ValidateProductWithModule -> ValidateProduct` 主流程接入（2026-02-14）。
+- 当前阶段：E8 完成（Product 校验自动闭环 + 入账门禁 + 端到端回归通过）。
+- 下一步：M4-E5（玩家/AI 自定义模块治理模板与扩展接口）按主线节奏推进。
+- 最近更新：完成 `step_with_modules` 配方完工自动 Product 校验与失败阻断入账（2026-02-14）。

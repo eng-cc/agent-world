@@ -559,6 +559,216 @@ fn schedule_recipe_with_module_rejects_when_module_denies() {
 }
 
 #[test]
+fn schedule_recipe_with_module_auto_validates_outputs_before_commit() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+
+    world
+        .set_material_balance("steel_plate", 10)
+        .expect("seed steel");
+    world
+        .set_material_balance("circuit_board", 2)
+        .expect("seed circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.recipe.auto_validate", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("build complete");
+
+    world
+        .set_material_balance("motor_mk1", 2)
+        .expect("seed motor");
+    world
+        .set_material_balance("control_chip", 1)
+        .expect("seed chip");
+    world
+        .set_material_balance("chassis_plate", 1)
+        .expect("seed chassis");
+    world.set_resource_balance(ResourceKind::Electricity, 40);
+
+    activate_pure_module(&mut world, "m4.recipe.logistics_drone", b"recipe-module");
+    activate_pure_module(&mut world, "m4.product.logistics_drone", b"product-module");
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.recipe.auto_validate".to_string(),
+        recipe_id: "recipe.assembler.logistics_drone".to_string(),
+        module_id: "m4.recipe.logistics_drone".to_string(),
+        desired_batches: 1,
+        deterministic_seed: 20260214,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![
+            ModuleEmit {
+                kind: "economy.recipe_execution_plan".to_string(),
+                payload: serde_json::to_value(RecipeExecutionPlan::accepted(
+                    1,
+                    vec![
+                        MaterialStack::new("motor_mk1", 2),
+                        MaterialStack::new("control_chip", 1),
+                        MaterialStack::new("chassis_plate", 1),
+                    ],
+                    vec![MaterialStack::new("logistics_drone", 1)],
+                    vec![MaterialStack::new("assembly_scrap", 1)],
+                    10,
+                    1,
+                ))
+                .expect("serialize recipe execution plan"),
+            },
+            ModuleEmit {
+                kind: "economy.product_validation".to_string(),
+                payload: serde_json::to_value(ProductValidationDecision::accepted(
+                    "logistics_drone",
+                    32,
+                    true,
+                    vec!["fleet_grade".to_string()],
+                ))
+                .expect("serialize product validation decision"),
+            },
+        ],
+        output_bytes: 512,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("start recipe with module");
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("complete recipe with automatic product validation");
+    assert_eq!(world.pending_recipe_jobs_len(), 0);
+    assert_eq!(world.material_balance("logistics_drone"), 1);
+    assert_eq!(world.material_balance("assembly_scrap"), 1);
+
+    let has_product_validated = world.journal().events.iter().any(|event| {
+        matches!(
+            &event.body,
+            WorldEventBody::Domain(DomainEvent::ProductValidated {
+                module_id,
+                stack,
+                ..
+            }) if module_id == "m4.product.logistics_drone" && stack.kind == "logistics_drone"
+        )
+    });
+    assert!(has_product_validated);
+}
+
+#[test]
+fn schedule_recipe_with_module_blocks_commit_when_product_validation_fails() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+
+    world
+        .set_material_balance("steel_plate", 10)
+        .expect("seed steel");
+    world
+        .set_material_balance("circuit_board", 2)
+        .expect("seed circuits");
+    world.submit_action(Action::BuildFactory {
+        builder_agent_id: "builder-a".to_string(),
+        site_id: "site-1".to_string(),
+        spec: factory_spec("factory.recipe.auto_reject", 1, 1),
+    });
+    world.step().expect("start build");
+    world.step().expect("build complete");
+
+    world
+        .set_material_balance("motor_mk1", 2)
+        .expect("seed motor");
+    world
+        .set_material_balance("control_chip", 1)
+        .expect("seed chip");
+    world
+        .set_material_balance("chassis_plate", 1)
+        .expect("seed chassis");
+    world.set_resource_balance(ResourceKind::Electricity, 40);
+
+    activate_pure_module(&mut world, "m4.recipe.logistics_drone", b"recipe-module");
+    activate_pure_module(&mut world, "m4.product.logistics_drone", b"product-module");
+
+    world.submit_action(Action::ScheduleRecipeWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        factory_id: "factory.recipe.auto_reject".to_string(),
+        recipe_id: "recipe.assembler.logistics_drone".to_string(),
+        module_id: "m4.recipe.logistics_drone".to_string(),
+        desired_batches: 1,
+        deterministic_seed: 20260214,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![
+            ModuleEmit {
+                kind: "economy.recipe_execution_plan".to_string(),
+                payload: serde_json::to_value(RecipeExecutionPlan::accepted(
+                    1,
+                    vec![
+                        MaterialStack::new("motor_mk1", 2),
+                        MaterialStack::new("control_chip", 1),
+                        MaterialStack::new("chassis_plate", 1),
+                    ],
+                    vec![MaterialStack::new("logistics_drone", 1)],
+                    vec![MaterialStack::new("assembly_scrap", 1)],
+                    10,
+                    1,
+                ))
+                .expect("serialize recipe execution plan"),
+            },
+            ModuleEmit {
+                kind: "economy.product_validation".to_string(),
+                payload: serde_json::to_value(ProductValidationDecision::rejected(
+                    "logistics_drone",
+                    0,
+                    true,
+                    vec!["fleet_grade".to_string()],
+                    vec!["stack exceeds limit".to_string()],
+                ))
+                .expect("serialize rejected product validation"),
+            },
+        ],
+        output_bytes: 512,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("start recipe with module");
+    assert_eq!(world.pending_recipe_jobs_len(), 1);
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("settle recipe with product rejection");
+    assert_eq!(world.pending_recipe_jobs_len(), 0);
+    assert_eq!(world.material_balance("logistics_drone"), 0);
+    assert_eq!(world.material_balance("assembly_scrap"), 0);
+
+    let has_rejected = world.journal().events.iter().any(|event| {
+        matches!(
+            &event.body,
+            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                reason: RejectReason::RuleDenied { notes },
+                ..
+            }) if notes.iter().any(|note| note.contains("stack exceeds limit"))
+        )
+    });
+    assert!(has_rejected);
+}
+
+#[test]
 fn validate_product_with_module_uses_module_decision() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

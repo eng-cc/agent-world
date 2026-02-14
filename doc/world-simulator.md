@@ -385,6 +385,7 @@
 - runtime 已落地工业生产链最小执行闭环：`BuildFactory` / `ScheduleRecipe` + 建造/排产开始与完成事件（详见分册状态）。
 - runtime 已接入模块驱动求值动作：`BuildFactoryWithModule` / `ScheduleRecipeWithModule`（`step_with_modules` 先求值再落地）。
 - runtime 已接入 Product 模块在线校验动作：`ValidateProductWithModule` / `ValidateProduct`，并新增 `ProductValidated` 事件。
+- runtime 已在配方完工结算阶段接入自动 Product 校验与入账门禁：未通过校验的产物不会进入库存。
 - runtime 已提供内置 M4 工业模块治理装载入口：`World::install_m4_economy_bootstrap_modules`，默认内置工厂/配方/制成品示例模块与嵌入工件。
 
 ## 分册索引
