@@ -1,4 +1,4 @@
-#![cfg(feature = "wasmtime")]
+#![cfg(all(feature = "wasmtime", feature = "test_tier_full"))]
 
 use agent_world::runtime::{
     Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
@@ -91,7 +91,6 @@ fn apply_module_manifest(world: &mut World, module_manifest: ModuleManifest) {
     world.apply_proposal(proposal_id).unwrap();
 }
 
-#[cfg(feature = "test_tier_full")]
 #[test]
 fn wasm_executor_runs_module_and_emits_event() {
     let mut world = World::new();
@@ -120,7 +119,6 @@ fn wasm_executor_runs_module_and_emits_event() {
     assert!(has_emit);
 }
 
-#[cfg(feature = "test_tier_full")]
 #[test]
 fn wasm_executor_replay_preserves_module_emits() {
     let mut world = World::new();

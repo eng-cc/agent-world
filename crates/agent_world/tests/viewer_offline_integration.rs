@@ -1,3 +1,5 @@
+#![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
+
 use std::fs;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};

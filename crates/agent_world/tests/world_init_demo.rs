@@ -1,3 +1,5 @@
+#![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
+
 use std::process::Command;
 
 #[cfg(feature = "test_tier_required")]

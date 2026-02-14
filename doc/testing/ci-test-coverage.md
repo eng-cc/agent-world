@@ -36,11 +36,9 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
   - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
   - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required --test module_input_cbor --test module_lifecycle --test module_state --test module_store --test module_subscription_filters --test viewer_offline_integration --test world_init_demo`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`
 - `full` 追加覆盖：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full --test module_input_cbor --test module_lifecycle --test module_state --test module_store --test module_subscription_filters --test viewer_offline_integration --test world_init_demo`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full,wasmtime --test wasm_executor`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full,viewer_live_integration --test viewer_live_integration`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_full,wasmtime,viewer_live_integration`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime --lib --bins`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib`
 - CI 需安装系统依赖（Wayland/X11/ALSA/UDev）以编译 `agent_world_viewer`。

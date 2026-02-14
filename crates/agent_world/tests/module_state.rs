@@ -1,3 +1,5 @@
+#![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
+
 use agent_world::runtime::{
     Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision, World,

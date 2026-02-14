@@ -7,6 +7,7 @@
 - [x] T2 改造 `scripts/ci-tests.sh`：`required` 执行 test case 级 smoke 清单
 - [x] T2 通过 `test_tier_required` / `test_tier_full` feature 标签区分测试等级
 - [x] T2 保持 `full` 回归路径（特性/联测）
+- [x] T2.1 移除 `scripts/ci-tests.sh` 中硬编码 `--test` 清单，改为 `--tests + feature` 自动过滤
 - [x] T3 文档回写（`doc/testing/ci-test-coverage.md`、`doc/scripts/pre-commit.md`）
 - [x] T3 更新任务日志
 - [x] T3 运行验证并提交

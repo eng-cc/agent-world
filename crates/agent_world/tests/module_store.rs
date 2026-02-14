@@ -1,3 +1,5 @@
+#![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
+
 use agent_world::runtime::*;
 use sha2::{Digest, Sha256};
 use std::fs;

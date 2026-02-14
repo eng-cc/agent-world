@@ -44,28 +44,11 @@ run_cargo() {
 }
 
 run_agent_world_required_tier_tests() {
-  run_cargo test -p agent_world --features test_tier_required \
-    --test module_input_cbor \
-    --test module_lifecycle \
-    --test module_state \
-    --test module_store \
-    --test module_subscription_filters \
-    --test viewer_offline_integration \
-    --test world_init_demo
+  run_cargo test -p agent_world --tests --features test_tier_required
 }
 
 run_agent_world_full_tier_tests() {
-  run_cargo test -p agent_world --features test_tier_full \
-    --test module_input_cbor \
-    --test module_lifecycle \
-    --test module_state \
-    --test module_store \
-    --test module_subscription_filters \
-    --test viewer_offline_integration \
-    --test world_init_demo
-
-  run_cargo test -p agent_world --features "test_tier_full,wasmtime" --test wasm_executor
-  run_cargo test -p agent_world --features "test_tier_full,viewer_live_integration" --test viewer_live_integration
+  run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration"
 }
 
 run_required_gate_checks() {

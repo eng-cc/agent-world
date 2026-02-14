@@ -9,7 +9,7 @@
 
 ### In Scope
 - 为 test case 增加 feature 标签（`test_tier_required` / `test_tier_full`）。
-- `scripts/ci-tests.sh` 的 `required` 级别改为执行显式 smoke test target 列表（按 feature 过滤）。
+- `scripts/ci-tests.sh` 的 `required` 级别改为执行 `--tests`，由 feature 标签自动过滤 smoke case。
 - 保持 `full` 级别的扩展回归（`libp2p`、`wasmtime`、viewer 联测）不变。
 - 文档补充“命令级分层 + case 级筛选”的执行策略。
 

@@ -1,4 +1,4 @@
-#![cfg(feature = "viewer_live_integration")]
+#![cfg(all(feature = "viewer_live_integration", feature = "test_tier_full"))]
 
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
@@ -11,7 +11,6 @@ use agent_world::viewer::{
     ViewerLiveServerConfig, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
-#[cfg(feature = "test_tier_full")]
 #[test]
 fn live_server_accepts_client_and_emits_snapshot_and_event() {
     let port = find_free_port();
