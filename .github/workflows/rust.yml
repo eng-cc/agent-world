@@ -2,42 +2,64 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
 
 jobs:
-  build:
-
+  required-gate:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-
     steps:
-    - uses: actions/checkout@v6
-    - name: Install Rust wasm target
-      run: rustup target add wasm32-unknown-unknown
-    - name: Install system deps
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          pkg-config \
-          libwayland-dev \
-          wayland-protocols \
-          libxkbcommon-dev \
-          libx11-dev \
-          libxi-dev \
-          libxcursor-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libasound2-dev \
-          libudev-dev \
-          ripgrep
-    - name: Format check
-      run: env -u RUSTC_WRAPPER cargo fmt --all -- --check
-    - name: Build
-      run: env -u RUSTC_WRAPPER cargo build --verbose
-    - name: Run CI test suite
-      run: CI_VERBOSE=1 ./scripts/ci-tests.sh
+      - uses: actions/checkout@v6
+      - name: Install Rust wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libwayland-dev \
+            wayland-protocols \
+            libxkbcommon-dev \
+            libx11-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libasound2-dev \
+            libudev-dev
+      - name: Run required test tier
+        run: CI_VERBOSE=1 ./scripts/ci-tests.sh required
+
+  full-regression:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libwayland-dev \
+            wayland-protocols \
+            libxkbcommon-dev \
+            libx11-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libasound2-dev \
+            libudev-dev
+      - name: Run full test tier
+        run: CI_VERBOSE=1 ./scripts/ci-tests.sh full
