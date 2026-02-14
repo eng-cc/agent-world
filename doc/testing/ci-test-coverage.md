@@ -29,10 +29,17 @@
 - 验证 `HelloAck` / `Snapshot` / `Event` 消息能被正常接收。
 
 ### CI 任务
-- 统一测试清单脚本：`scripts/ci-tests.sh`（CI 与 pre-commit 共用）。
-- CI 运行：`CI_VERBOSE=1 ./scripts/ci-tests.sh`。
-- 脚本覆盖：
+- 统一测试清单脚本：`scripts/ci-tests.sh`（分级参数：`required` / `full`）。
+- 本地与 PR 门禁：`CI_VERBOSE=1 ./scripts/ci-tests.sh required`。
+- 每日定时全量：`CI_VERBOSE=1 ./scripts/ci-tests.sh full`。
+- `required` 覆盖：
+  - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
+  - `./scripts/check-include-warning-baseline.sh`
+  - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+  - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
   - `env -u RUSTC_WRAPPER cargo test`
+- `full` 追加覆盖：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`

@@ -1,23 +1,24 @@
 # Pre-commit Checks（本地提交前测试脚本）
 
 ## 目标
-- 在本地提交前复现 CI 测试清单，确保本地与 CI 一致。
+- 在本地提交前执行必跑门禁（required tier），尽快反馈常见回归。
 - 以单一脚本形式减少重复维护，降低遗漏风险。
 
 ## 范围
-- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）与 CI 测试清单（含格式化校验、全量测试、wasmtime 特性测试、viewer 联测）。
+- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）与 `required` 级别测试（格式化校验、warning 基线、工件一致性、默认测试集）。
 - **范围外**：lint 或其它包的静态检查。
+- **范围外**：`libp2p`/`wasmtime` 特性回归与 viewer 在线/离线联测（由 `full` 级别承担）。
 
 ## 接口 / 数据
 - 脚本路径：`scripts/pre-commit.sh`
 - 运行命令：`./scripts/pre-commit.sh`
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
-- 再调用统一测试清单脚本 `scripts/ci-tests.sh`（与 CI 共用）。
-- CI 格式化校验：`scripts/ci-tests.sh` 与 `.github/workflows/rust.yml` 会执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
-- 内置 wasm 二进制 hash 漂移检查已从默认 pre-commit/CI 测试清单移除（避免频繁阻断业务改动）；如需手动校验可执行：
-  - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
-  - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
+  - 再调用统一测试清单脚本 `scripts/ci-tests.sh required`。
+- 统一脚本支持两级：
+  - `required`：本地提交与 PR 必跑。
+  - `full`：每日定时与手动触发全量回归。
+- CI 格式化校验仍由 `scripts/ci-tests.sh` 统一执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
 
 ## Git Hook
 - **注意**：Git hooks 不会随仓库内容一并版本化；克隆到新仓库（或重新初始化 `.git`）后，默认不会自动带上 `pre-commit` hook，需要手动重新注册。
@@ -53,5 +54,5 @@ test -x .git/hooks/pre-commit && echo "pre-commit hook installed"
 - **M3**：补充“新仓库需重新注册 hook”文档与操作步骤。
 
 ## 风险
-- **执行耗时**：全量测试与集成测试耗时较长，需控制在本地可接受范围。
+- **覆盖时延**：重型回归从提交路径迁移到定时任务后，问题发现时间可能延后至每日任务窗口。
 - **环境差异**：本地与 CI 依赖不同可能造成结果不一致。

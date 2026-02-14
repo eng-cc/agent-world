@@ -18,4 +18,4 @@ else
   echo "+ no staged Rust files, skip rustfmt"
 fi
 
-./scripts/ci-tests.sh
+./scripts/ci-tests.sh required
