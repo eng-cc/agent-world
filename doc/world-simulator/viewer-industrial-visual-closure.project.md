@@ -24,12 +24,13 @@
 - [x] IVC.3 告警对象跳转联动与回归
 
 ### IVD 产品化表现层（缺口 7）
-- [ ] IVD.1 视觉层级与语义色板统一
-- [ ] IVD.2 关键状态动效/过渡（可开关）
-- [ ] IVD.3 截图闭环与视觉回归收口
+- [x] IVD.1 视觉层级与语义色板统一
+- [x] IVD.2 关键状态动效/过渡（可开关）
+- [x] IVD.3 截图闭环与视觉回归收口
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/agent_world_viewer/src/egui_observe_section_card.rs`
 - `crates/agent_world_viewer/src/ui_text.rs`
 - `crates/agent_world_viewer/src/ui_locale_text.rs`
 - `crates/agent_world_viewer/src/world_overlay.rs`
@@ -37,6 +38,6 @@
 - `doc/world-simulator/viewer-open-world-sandbox-readiness.md`
 
 ## 状态
-- 当前阶段：IVC（多尺度导航 + 告警根因）完成
-- 下一阶段：进入 IVD（产品化表现层）
-- 最近更新：完成 IVC（Ops Navigator + 根因聚合 + 可开关导航区块 + `agent_world_viewer` 全量回归 193 tests，2026-02-14）
+- 当前阶段：IVD（产品化表现层）完成
+- 下一阶段：工业风可视化缺口收敛任务 A~D 已全部收口，转入后续可玩化增量任务
+- 最近更新：完成 IVD（语义色板卡片 + 可开关动效 + 截图闭环 + `agent_world_viewer` 全量回归 196 tests，2026-02-14）

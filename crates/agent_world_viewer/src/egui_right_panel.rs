@@ -43,6 +43,11 @@ use crate::{
 };
 use crate::{prompt_ops_panel::render_prompt_ops_section, prompt_ops_panel::PromptOpsDraftState};
 
+#[path = "egui_observe_section_card.rs"]
+mod egui_observe_section_card;
+
+use egui_observe_section_card::render_observe_section_card;
+
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
 const MIN_PANEL_WIDTH: f32 = 240.0;
 const MAX_PANEL_WIDTH: f32 = 420.0;
@@ -50,17 +55,25 @@ const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
+const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
+const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
+
+fn env_toggle_enabled(raw: Option<&str>) -> bool {
+    raw.map(|value| value.trim().to_ascii_lowercase())
+        .map(|value| matches!(value.as_str(), "1" | "true" | "yes" | "on"))
+        .unwrap_or(false)
+}
 
 fn is_ops_nav_panel_enabled() -> bool {
-    std::env::var(OPS_NAV_PANEL_ENV)
-        .ok()
-        .map(|value| {
-            matches!(
-                value.trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "yes" | "on"
-            )
-        })
-        .unwrap_or(false)
+    env_toggle_enabled(std::env::var(OPS_NAV_PANEL_ENV).ok().as_deref())
+}
+
+fn is_product_style_enabled() -> bool {
+    env_toggle_enabled(std::env::var(PRODUCT_STYLE_ENV).ok().as_deref())
+}
+
+fn is_product_style_motion_enabled() -> bool {
+    env_toggle_enabled(std::env::var(PRODUCT_STYLE_MOTION_ENV).ok().as_deref())
 }
 
 fn adaptive_panel_default_width(available_width: f32) -> f32 {
@@ -1087,11 +1100,16 @@ fn render_text_sections(
     ));
     sections.push((if locale.is_zh() { "事件" } else { "Events" }, events));
 
+    let product_style = is_product_style_enabled();
+    let product_style_motion = product_style && is_product_style_motion_enabled();
     for (title, content) in sections {
-        ui.group(|ui| {
-            ui.strong(title);
-            ui.add(egui::Label::new(content).wrap().selectable(true));
-        });
+        render_observe_section_card(
+            ui,
+            title,
+            content.as_str(),
+            product_style,
+            product_style_motion,
+        );
     }
 
     if let Some(current) = selection.current.as_ref() {

@@ -1,3 +1,4 @@
+use super::egui_observe_section_card::{section_tone, ObserveSectionTone};
 use super::*;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use agent_world::geometry::GeoPos;
@@ -323,6 +324,41 @@ fn adaptive_panel_width_clamps_to_bounds() {
     assert_eq!(adaptive_panel_default_width(10_000.0), MAX_PANEL_WIDTH);
     assert_eq!(adaptive_panel_default_width(1200.0), 264.0);
     assert_eq!(adaptive_panel_default_width(1500.0), 330.0);
+}
+
+#[test]
+fn env_toggle_enabled_parses_truthy_values() {
+    assert!(env_toggle_enabled(Some("1")));
+    assert!(env_toggle_enabled(Some(" true ")));
+    assert!(env_toggle_enabled(Some("YES")));
+    assert!(env_toggle_enabled(Some("on")));
+}
+
+#[test]
+fn env_toggle_enabled_rejects_falsy_values() {
+    assert!(!env_toggle_enabled(None));
+    assert!(!env_toggle_enabled(Some("0")));
+    assert!(!env_toggle_enabled(Some("false")));
+    assert!(!env_toggle_enabled(Some("off")));
+    assert!(!env_toggle_enabled(Some("")));
+}
+
+#[test]
+fn section_tone_maps_titles_for_zh_and_en() {
+    assert_eq!(section_tone("World Summary"), ObserveSectionTone::World);
+    assert_eq!(section_tone("Agent Activity"), ObserveSectionTone::Activity);
+    assert_eq!(
+        section_tone("Industrial Ops"),
+        ObserveSectionTone::Industrial
+    );
+    assert_eq!(
+        section_tone("Economy Dashboard"),
+        ObserveSectionTone::Economy
+    );
+    assert_eq!(section_tone("Ops Navigator"), ObserveSectionTone::Ops);
+    assert_eq!(section_tone("选中详情"), ObserveSectionTone::Details);
+    assert_eq!(section_tone("事件"), ObserveSectionTone::Events);
+    assert_eq!(section_tone("Random Title"), ObserveSectionTone::Default);
 }
 
 #[test]
