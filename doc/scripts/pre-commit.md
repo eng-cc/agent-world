@@ -13,8 +13,11 @@
 - 运行命令：`./scripts/pre-commit.sh`
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
-  - 再调用统一测试清单脚本 `scripts/ci-tests.sh`（与 CI 共用）。
+- 再调用统一测试清单脚本 `scripts/ci-tests.sh`（与 CI 共用）。
 - CI 格式化校验：`scripts/ci-tests.sh` 与 `.github/workflows/rust.yml` 会执行 `env -u RUSTC_WRAPPER cargo fmt --all -- --check`。
+- 内置 wasm 二进制 hash 漂移检查已从默认 pre-commit/CI 测试清单移除（避免频繁阻断业务改动）；如需手动校验可执行：
+  - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+  - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
 
 ## Git Hook
 - **注意**：Git hooks 不会随仓库内容一并版本化；克隆到新仓库（或重新初始化 `.git`）后，默认不会自动带上 `pre-commit` hook，需要手动重新注册。

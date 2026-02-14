@@ -36,6 +36,7 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_live_integration --features viewer_live_integration`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world --test viewer_offline_integration`
+- 说明：`scripts/ci-tests.sh` 默认不再包含 builtin wasm 二进制 hash 漂移校验（`sync-m1/m4-builtin-wasm-artifacts.sh --check`），避免频繁阻断常规代码改动；需要时手动运行。
 - CI 需安装系统依赖（Wayland/X11/ALSA/UDev）以编译 `agent_world_viewer`。
 - `egui` snapshot 测试在渲染器初始化失败时输出 skip 日志并提前返回，不影响其他 `cargo test` 用例。
 

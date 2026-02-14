@@ -12,6 +12,7 @@
 - [x] 提交前新增代码格式化时机（`cargo fmt --all`）
 - [x] CI 增加格式化检查（`cargo fmt --all -- --check`）
 - [x] 文档补充：新仓库需重新注册 pre-commit hook（2026-02-07）
+- [x] 移除默认 pre-commit/CI 的 builtin wasm hash 校验（改为手动按需执行，2026-02-14）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
@@ -19,4 +20,4 @@
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：补充“新仓库需重新注册 hook”文档与操作步骤（2026-02-07）
+- 最近更新：移除默认 `sync-m1/m4-builtin-wasm-artifacts --check` 以降低提交阻塞，保留手动校验入口（2026-02-14）

@@ -10,6 +10,7 @@
 - [x] T6 CI 与 pre-commit 接入统一脚本
 - [x] T7 文档同步（ci-test-coverage/pre-commit/visualization）
 - [x] T8 `egui` snapshot 测试在 `wgpu` 不可用时自动 skip
+- [x] T9 移除默认 CI/pre-commit 的 builtin wasm hash 校验（改为手动触发）
 - [x] 提交到 git
 
 ## 依赖
@@ -19,3 +20,4 @@
 
 ## 状态
 - 当前阶段：T8 完成
+- 当前阶段：T9 完成

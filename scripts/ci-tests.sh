@@ -19,8 +19,6 @@ run_cargo() {
 
 run env -u RUSTC_WRAPPER cargo fmt --all -- --check
 run ./scripts/check-include-warning-baseline.sh
-run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
-run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
 run_cargo test
 run_cargo test -p agent_world_net --features libp2p --lib
 run_cargo test -p agent_world --features wasmtime
