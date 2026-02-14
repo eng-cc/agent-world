@@ -1,6 +1,6 @@
 use super::super::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason, WorldError, WorldEvent,
-    WorldEventBody, WorldEventId, WorldTime,
+    Action, ActionEnvelope, CausedBy, DomainEvent, MaterialLedgerId, MaterialStack, RejectReason,
+    WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::World;
@@ -259,6 +259,11 @@ impl World {
                         },
                     }));
                 }
+                let preferred_consume_ledger = MaterialLedgerId::agent(builder_agent_id.clone());
+                let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
+                    preferred_consume_ledger,
+                    &spec.build_cost,
+                );
                 for stack in &spec.build_cost {
                     if stack.amount <= 0 {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -271,7 +276,8 @@ impl World {
                             },
                         }));
                     }
-                    let available = self.material_balance(stack.kind.as_str());
+                    let available =
+                        self.ledger_material_balance(&consume_ledger, stack.kind.as_str());
                     if available < stack.amount {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                             action_id,
@@ -291,6 +297,7 @@ impl World {
                     builder_agent_id: builder_agent_id.clone(),
                     site_id: site_id.clone(),
                     spec: spec.clone(),
+                    consume_ledger,
                     ready_at,
                 }))
             }
@@ -356,6 +363,16 @@ impl World {
                         },
                     }));
                 }
+                let preferred_consume_ledger = factory.input_ledger.clone();
+                let consume_ledger = self.select_material_consume_ledger_with_world_fallback(
+                    preferred_consume_ledger,
+                    &plan.consume,
+                );
+                let output_ledger = if consume_ledger == MaterialLedgerId::world() {
+                    MaterialLedgerId::world()
+                } else {
+                    factory.output_ledger.clone()
+                };
                 for stack in &plan.consume {
                     if stack.amount <= 0 {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -368,7 +385,8 @@ impl World {
                             },
                         }));
                     }
-                    let available = self.material_balance(stack.kind.as_str());
+                    let available =
+                        self.ledger_material_balance(&consume_ledger, stack.kind.as_str());
                     if available < stack.amount {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                             action_id,
@@ -413,6 +431,8 @@ impl World {
                     byproducts: plan.byproducts.clone(),
                     power_required: plan.power_required,
                     duration_ticks,
+                    consume_ledger,
+                    output_ledger,
                     ready_at,
                 }))
             }
@@ -510,6 +530,18 @@ impl World {
                     },
                 }))
             }
+        }
+    }
+
+    fn select_material_consume_ledger_with_world_fallback(
+        &self,
+        preferred_ledger: MaterialLedgerId,
+        consume: &[MaterialStack],
+    ) -> MaterialLedgerId {
+        if self.has_materials_in_ledger(&preferred_ledger, consume) {
+            preferred_ledger
+        } else {
+            MaterialLedgerId::world()
         }
     }
 

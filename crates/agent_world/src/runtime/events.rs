@@ -10,7 +10,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
-use super::types::{ActionId, WorldTime};
+use super::types::{ActionId, MaterialLedgerId, WorldTime};
+
+fn default_world_material_ledger() -> MaterialLedgerId {
+    MaterialLedgerId::world()
+}
 
 /// An envelope wrapping an action with its ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -171,6 +175,8 @@ pub enum DomainEvent {
         builder_agent_id: String,
         site_id: String,
         spec: FactoryModuleSpec,
+        #[serde(default = "default_world_material_ledger")]
+        consume_ledger: MaterialLedgerId,
         ready_at: WorldTime,
     },
     FactoryBuilt {
@@ -190,6 +196,10 @@ pub enum DomainEvent {
         byproducts: Vec<MaterialStack>,
         power_required: i64,
         duration_ticks: u32,
+        #[serde(default = "default_world_material_ledger")]
+        consume_ledger: MaterialLedgerId,
+        #[serde(default = "default_world_material_ledger")]
+        output_ledger: MaterialLedgerId,
         ready_at: WorldTime,
     },
     RecipeCompleted {
@@ -200,6 +210,8 @@ pub enum DomainEvent {
         accepted_batches: u32,
         produce: Vec<MaterialStack>,
         byproducts: Vec<MaterialStack>,
+        #[serde(default = "default_world_material_ledger")]
+        output_ledger: MaterialLedgerId,
     },
     ProductValidated {
         requester_agent_id: String,

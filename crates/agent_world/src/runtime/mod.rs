@@ -37,7 +37,9 @@ mod tests;
 // Re-export all public types
 
 // Types
-pub use types::{ActionId, IntentSeq, PatchPath, ProposalId, WorldEventId, WorldTime};
+pub use types::{
+    ActionId, IntentSeq, MaterialLedgerId, PatchPath, ProposalId, WorldEventId, WorldTime,
+};
 
 // Agent cell
 pub use agent_cell::AgentCell;

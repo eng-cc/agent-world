@@ -9,7 +9,17 @@ use std::collections::BTreeMap;
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
 use super::events::DomainEvent;
-use super::types::{ActionId, WorldTime};
+use super::types::{ActionId, MaterialLedgerId, WorldTime};
+
+fn default_world_material_ledger() -> MaterialLedgerId {
+    MaterialLedgerId::world()
+}
+
+fn default_material_ledgers() -> BTreeMap<MaterialLedgerId, BTreeMap<String, i64>> {
+    let mut ledgers = BTreeMap::new();
+    ledgers.insert(MaterialLedgerId::world(), BTreeMap::new());
+    ledgers
+}
 
 /// Persisted factory instance state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -18,6 +28,10 @@ pub struct FactoryState {
     pub site_id: String,
     pub builder_agent_id: String,
     pub spec: FactoryModuleSpec,
+    #[serde(default = "default_world_material_ledger")]
+    pub input_ledger: MaterialLedgerId,
+    #[serde(default = "default_world_material_ledger")]
+    pub output_ledger: MaterialLedgerId,
     pub built_at: WorldTime,
 }
 
@@ -28,6 +42,8 @@ pub struct FactoryBuildJobState {
     pub builder_agent_id: String,
     pub site_id: String,
     pub spec: FactoryModuleSpec,
+    #[serde(default = "default_world_material_ledger")]
+    pub consume_ledger: MaterialLedgerId,
     pub ready_at: WorldTime,
 }
 
@@ -44,6 +60,10 @@ pub struct RecipeJobState {
     pub byproducts: Vec<MaterialStack>,
     pub power_required: i64,
     pub duration_ticks: u32,
+    #[serde(default = "default_world_material_ledger")]
+    pub consume_ledger: MaterialLedgerId,
+    #[serde(default = "default_world_material_ledger")]
+    pub output_ledger: MaterialLedgerId,
     pub ready_at: WorldTime,
 }
 
@@ -56,6 +76,8 @@ pub struct WorldState {
     pub resources: BTreeMap<ResourceKind, i64>,
     #[serde(default)]
     pub materials: BTreeMap<String, i64>,
+    #[serde(default = "default_material_ledgers")]
+    pub material_ledgers: BTreeMap<MaterialLedgerId, BTreeMap<String, i64>>,
     #[serde(default)]
     pub factories: BTreeMap<String, FactoryState>,
     #[serde(default)]
@@ -73,6 +95,7 @@ impl Default for WorldState {
             agents: BTreeMap::new(),
             resources: BTreeMap::new(),
             materials: BTreeMap::new(),
+            material_ledgers: default_material_ledgers(),
             factories: BTreeMap::new(),
             pending_factory_builds: BTreeMap::new(),
             pending_recipe_jobs: BTreeMap::new(),
@@ -82,11 +105,30 @@ impl Default for WorldState {
 }
 
 impl WorldState {
+    pub fn migrate_legacy_material_ledgers(&mut self) {
+        self.material_ledgers
+            .entry(MaterialLedgerId::world())
+            .or_default();
+
+        let world_ledger = self
+            .material_ledgers
+            .get(&MaterialLedgerId::world())
+            .cloned()
+            .unwrap_or_default();
+        if world_ledger.is_empty() && !self.materials.is_empty() {
+            self.material_ledgers
+                .insert(MaterialLedgerId::world(), self.materials.clone());
+        }
+
+        sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
+    }
+
     pub fn apply_domain_event(
         &mut self,
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        self.migrate_legacy_material_ledgers();
         match event {
             DomainEvent::AgentRegistered { agent_id, pos } => {
                 let state = AgentState::new(agent_id, *pos);
@@ -220,13 +262,19 @@ impl WorldState {
                 builder_agent_id,
                 site_id,
                 spec,
+                consume_ledger,
                 ready_at,
             } => {
                 for stack in &spec.build_cost {
-                    remove_material_balance(&mut self.materials, stack.kind.as_str(), stack.amount)
-                        .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                            reason: format!("factory build consume failed: {reason}"),
-                        })?;
+                    remove_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        consume_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("factory build consume failed: {reason}"),
+                    })?;
                 }
                 self.pending_factory_builds.insert(
                     *job_id,
@@ -235,6 +283,7 @@ impl WorldState {
                         builder_agent_id: builder_agent_id.clone(),
                         site_id: site_id.clone(),
                         spec: spec.clone(),
+                        consume_ledger: consume_ledger.clone(),
                         ready_at: *ready_at,
                     },
                 );
@@ -249,6 +298,7 @@ impl WorldState {
                 spec,
             } => {
                 self.pending_factory_builds.remove(job_id);
+                let site_ledger = MaterialLedgerId::site(site_id.clone());
                 self.factories.insert(
                     spec.factory_id.clone(),
                     FactoryState {
@@ -256,6 +306,8 @@ impl WorldState {
                         site_id: site_id.clone(),
                         builder_agent_id: builder_agent_id.clone(),
                         spec: spec.clone(),
+                        input_ledger: site_ledger.clone(),
+                        output_ledger: site_ledger,
                         built_at: now,
                     },
                 );
@@ -274,13 +326,20 @@ impl WorldState {
                 byproducts,
                 power_required,
                 duration_ticks,
+                consume_ledger,
+                output_ledger,
                 ready_at,
             } => {
                 for stack in consume {
-                    remove_material_balance(&mut self.materials, stack.kind.as_str(), stack.amount)
-                        .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                            reason: format!("recipe consume failed: {reason}"),
-                        })?;
+                    remove_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        consume_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe consume failed: {reason}"),
+                    })?;
                 }
                 remove_resource_balance(
                     &mut self.resources,
@@ -303,6 +362,8 @@ impl WorldState {
                         byproducts: byproducts.clone(),
                         power_required: *power_required,
                         duration_ticks: *duration_ticks,
+                        consume_ledger: consume_ledger.clone(),
+                        output_ledger: output_ledger.clone(),
                         ready_at: *ready_at,
                     },
                 );
@@ -315,20 +376,31 @@ impl WorldState {
                 requester_agent_id,
                 produce,
                 byproducts,
+                output_ledger,
                 ..
             } => {
                 self.pending_recipe_jobs.remove(job_id);
                 for stack in produce {
-                    add_material_balance(&mut self.materials, stack.kind.as_str(), stack.amount)
-                        .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                            reason: format!("recipe produce failed: {reason}"),
-                        })?;
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        output_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe produce failed: {reason}"),
+                    })?;
                 }
                 for stack in byproducts {
-                    add_material_balance(&mut self.materials, stack.kind.as_str(), stack.amount)
-                        .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                            reason: format!("recipe byproduct failed: {reason}"),
-                        })?;
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        output_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe byproduct failed: {reason}"),
+                    })?;
                 }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
                     cell.last_active = now;
@@ -342,6 +414,7 @@ impl WorldState {
                 }
             }
         }
+        sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
         Ok(())
     }
 
@@ -389,6 +462,16 @@ fn add_material_balance(
     Ok(())
 }
 
+fn add_material_balance_for_ledger(
+    ledgers: &mut BTreeMap<MaterialLedgerId, BTreeMap<String, i64>>,
+    ledger: &MaterialLedgerId,
+    kind: &str,
+    amount: i64,
+) -> Result<(), String> {
+    let balances = ledgers.entry(ledger.clone()).or_default();
+    add_material_balance(balances, kind, amount)
+}
+
 fn remove_material_balance(
     balances: &mut BTreeMap<String, i64>,
     kind: &str,
@@ -410,6 +493,27 @@ fn remove_material_balance(
         balances.insert(kind.to_string(), next);
     }
     Ok(())
+}
+
+fn remove_material_balance_for_ledger(
+    ledgers: &mut BTreeMap<MaterialLedgerId, BTreeMap<String, i64>>,
+    ledger: &MaterialLedgerId,
+    kind: &str,
+    amount: i64,
+) -> Result<(), String> {
+    let balances = ledgers.entry(ledger.clone()).or_default();
+    remove_material_balance(balances, kind, amount)
+}
+
+fn sync_legacy_world_materials(
+    ledgers: &BTreeMap<MaterialLedgerId, BTreeMap<String, i64>>,
+    legacy_world_materials: &mut BTreeMap<String, i64>,
+) {
+    let world_materials = ledgers
+        .get(&MaterialLedgerId::world())
+        .cloned()
+        .unwrap_or_default();
+    *legacy_world_materials = world_materials;
 }
 
 fn remove_resource_balance(

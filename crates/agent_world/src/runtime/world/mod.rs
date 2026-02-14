@@ -68,7 +68,8 @@ impl World {
         Self::new_with_state(WorldState::default())
     }
 
-    pub fn new_with_state(state: WorldState) -> Self {
+    pub fn new_with_state(mut state: WorldState) -> Self {
+        state.migrate_legacy_material_ledgers();
         Self {
             manifest: Manifest::default(),
             module_registry: ModuleRegistry::default(),

@@ -9,8 +9,8 @@ use serde::Serialize;
 
 use super::super::util::to_canonical_cbor;
 use super::super::{
-    Action, ActionEnvelope, ActionId, DomainEvent, RejectReason, WorldError, WorldEvent,
-    WorldEventBody, M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
+    Action, ActionEnvelope, ActionId, DomainEvent, MaterialLedgerId, RejectReason, WorldError,
+    WorldEvent, WorldEventBody, M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
     M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID,
 };
 use super::World;
@@ -70,6 +70,11 @@ impl World {
                         },
                     ));
                 }
+                let preferred_ledger = MaterialLedgerId::agent(builder_agent_id.clone());
+                let request_ledger = self.select_material_consume_ledger_for_module_request(
+                    preferred_ledger,
+                    &spec.build_cost,
+                );
                 let request = FactoryBuildRequest {
                     factory_id: spec.factory_id.clone(),
                     site_id: site_id.clone(),
@@ -80,7 +85,7 @@ impl World {
                         .map(|stack| {
                             MaterialStack::new(
                                 stack.kind.clone(),
-                                self.material_balance(stack.kind.as_str()),
+                                self.ledger_material_balance(&request_ledger, stack.kind.as_str()),
                             )
                         })
                         .collect(),
@@ -142,12 +147,22 @@ impl World {
                         },
                     ));
                 }
+                let preferred_ledger = self
+                    .state
+                    .factories
+                    .get(factory_id)
+                    .map(|factory| factory.input_ledger.clone())
+                    .unwrap_or_else(MaterialLedgerId::world);
+                let mut available_inputs = self.ledger_material_stacks(&preferred_ledger);
+                if available_inputs.is_empty() && preferred_ledger != MaterialLedgerId::world() {
+                    available_inputs = self.material_stacks();
+                }
 
                 let request = RecipeExecutionRequest {
                     recipe_id: recipe_id.clone(),
                     factory_id: factory_id.clone(),
                     desired_batches: *desired_batches,
-                    available_inputs: self.material_stacks(),
+                    available_inputs,
                     available_power: self.resource_balance(ResourceKind::Electricity),
                     deterministic_seed: *deterministic_seed,
                 };
@@ -276,6 +291,7 @@ impl World {
                     accepted_batches: job.accepted_batches,
                     produce: job.produce,
                     byproducts: job.byproducts,
+                    output_ledger: job.output_ledger,
                 }),
                 None,
             )?;
@@ -384,6 +400,7 @@ impl World {
                     accepted_batches: job.accepted_batches,
                     produce: committed_produce,
                     byproducts: committed_byproducts,
+                    output_ledger: job.output_ledger,
                 }),
                 None,
             )?;
@@ -599,11 +616,18 @@ impl World {
     }
 
     fn material_stacks(&self) -> Vec<MaterialStack> {
-        self.state
-            .materials
-            .iter()
-            .filter(|(_, amount)| **amount > 0)
-            .map(|(kind, amount)| MaterialStack::new(kind.clone(), *amount))
-            .collect()
+        self.ledger_material_stacks(&MaterialLedgerId::world())
+    }
+
+    fn select_material_consume_ledger_for_module_request(
+        &self,
+        preferred_ledger: MaterialLedgerId,
+        consume: &[MaterialStack],
+    ) -> MaterialLedgerId {
+        if self.has_materials_in_ledger(&preferred_ledger, consume) {
+            preferred_ledger
+        } else {
+            MaterialLedgerId::world()
+        }
     }
 }

@@ -83,3 +83,18 @@ fn scheduler_round_robin() {
     assert_eq!(second.agent_id, "agent-2");
     assert!(world.schedule_next().is_none());
 }
+
+#[test]
+fn new_world_migrates_legacy_world_materials_into_material_ledgers() {
+    let mut state = WorldState::default();
+    state.material_ledgers.clear();
+    state.materials.insert("iron_ingot".to_string(), 7);
+
+    let world = World::new_with_state(state);
+
+    assert_eq!(
+        world.ledger_material_balance(&MaterialLedgerId::world(), "iron_ingot"),
+        7
+    );
+    assert_eq!(world.material_balance("iron_ingot"), 7);
+}
