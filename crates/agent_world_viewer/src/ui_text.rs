@@ -1130,6 +1130,8 @@ fn event_activity_for_module_visual(event: &WorldEvent, entity_id: &str) -> Opti
 
 #[path = "ui_text_activity.rs"]
 mod ui_text_activity;
+#[path = "ui_text_economy.rs"]
+mod ui_text_economy;
 #[path = "ui_text_industrial.rs"]
 mod ui_text_industrial;
 
@@ -1143,6 +1145,13 @@ pub(super) fn industrial_ops_summary(
     events: &[WorldEvent],
 ) -> Option<String> {
     ui_text_industrial::industrial_ops_summary(snapshot, events)
+}
+
+pub(super) fn economy_dashboard_summary(
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> Option<String> {
+    ui_text_economy::economy_dashboard_summary(snapshot, events)
 }
 
 #[cfg(test)]

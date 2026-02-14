@@ -23,15 +23,15 @@ use crate::timeline_controls::{
     timeline_seek_action, TimelineMarkKindPublic, TimelineUiState,
 };
 use crate::ui_locale_text::{
-    localize_agent_activity_block, localize_details_block, localize_events_summary_block,
-    localize_industrial_ops_block, localize_world_summary_block, map_link_message_for_locale,
-    overlay_button_label, overlay_chunk_legend_label, overlay_chunk_legend_title,
-    overlay_grid_line_width_hint, overlay_loading, seek_button_label, status_line,
-    timeline_insights, timeline_jump_label, timeline_mode_label, timeline_status_line,
+    localize_agent_activity_block, localize_details_block, localize_economy_dashboard_block,
+    localize_events_summary_block, localize_industrial_ops_block, localize_world_summary_block,
+    map_link_message_for_locale, overlay_button_label, overlay_chunk_legend_label,
+    overlay_chunk_legend_title, overlay_grid_line_width_hint, overlay_loading, seek_button_label,
+    status_line, timeline_insights, timeline_jump_label, timeline_mode_label, timeline_status_line,
 };
 use crate::ui_text::{
-    agent_activity_summary, events_summary, industrial_ops_summary, selection_details_summary,
-    world_summary,
+    agent_activity_summary, economy_dashboard_summary, events_summary, industrial_ops_summary,
+    selection_details_summary, world_summary,
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
@@ -995,6 +995,8 @@ fn render_text_sections(
     );
     let industrial = industrial_ops_summary(state.snapshot.as_ref(), &state.events)
         .map(|text| localize_industrial_ops_block(text, locale));
+    let economy = economy_dashboard_summary(state.snapshot.as_ref(), &state.events)
+        .map(|text| localize_economy_dashboard_block(text, locale));
     let details = localize_details_block(
         selection_details_summary(
             selection,
@@ -1033,6 +1035,16 @@ fn render_text_sections(
                 "Industrial Ops"
             },
             industrial,
+        ));
+    }
+    if let Some(economy) = economy {
+        sections.push((
+            if locale.is_zh() {
+                "经营看板"
+            } else {
+                "Economy Dashboard"
+            },
+            economy,
         ));
     }
     sections.push((

@@ -14,9 +14,9 @@
 - [x] IVA.4 单测与回归（`agent_world_viewer`）
 
 ### IVB 经营面板（缺口 3）
-- [ ] IVB.1 经营指标口径定义（供需/成本/收益/库存健康）
-- [ ] IVB.2 面板落地与阈值提示
-- [ ] IVB.3 单测与回归
+- [x] IVB.1 经营指标口径定义（供需/成本/收益/库存健康）
+- [x] IVB.2 面板落地与阈值提示
+- [x] IVB.3 单测与回归
 
 ### IVC 多尺度导航 + 告警根因（缺口 5、6）
 - [ ] IVC.1 世界/区域/节点三级导航与快速聚焦
@@ -37,6 +37,6 @@
 - `doc/world-simulator/viewer-open-world-sandbox-readiness.md`
 
 ## 状态
-- 当前阶段：IVA（产线 + 物流）完成
-- 下一阶段：进入 IVB（经营面板）
-- 最近更新：完成 IVA（工业链路摘要 + 中文本地化 + `agent_world_viewer` 全量回归 187 tests，2026-02-14）
+- 当前阶段：IVB（经营面板）完成
+- 下一阶段：进入 IVC（多尺度导航 + 告警根因）
+- 最近更新：完成 IVB（Economy Dashboard + 中文本地化 + `agent_world_viewer` 全量回归 190 tests，2026-02-14）

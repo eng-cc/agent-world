@@ -496,6 +496,33 @@ pub(super) fn localize_industrial_ops_block(text: String, locale: UiLocale) -> S
     converted
 }
 
+pub(super) fn localize_economy_dashboard_block(text: String, locale: UiLocale) -> String {
+    if !locale.is_zh() {
+        return text;
+    }
+
+    let mut converted = text;
+    converted = converted.replace("Economy Dashboard:", "经营看板:");
+    converted = converted.replace("Supply & Demand:", "供需:");
+    converted = converted.replace("Insufficient Rejects(Recent):", "近期资源不足拒绝:");
+    converted = converted.replace("Cost & Revenue Proxy:", "成本与收益代理:");
+    converted = converted.replace("Transfer Events(Recent):", "近期传输事件:");
+    converted = converted.replace("Power Trades(Recent):", "近期电力交易:");
+    converted = converted.replace("Power Trade Settlement(Recent):", "近期电力结算:");
+    converted = converted.replace("Refine Electricity Cost(Recent):", "近期精炼电力成本:");
+    converted = converted.replace("Power Loss(Recent):", "近期电力损耗:");
+    converted = converted.replace("Outbound Value Proxy(Recent):", "近期外流价值代理:");
+    converted = converted.replace("Margin Proxy(Recent):", "近期利润代理:");
+    converted = converted.replace("stock=", "库存=");
+    converted = converted.replace("flow=", "流量=");
+    converted = converted.replace("shortfall=", "缺口=");
+    converted = converted.replace("health=", "健康=");
+    converted = converted.replace("critical", "高风险");
+    converted = converted.replace("warn", "告警");
+    converted = converted.replace("stable", "稳定");
+    converted
+}
+
 pub(super) fn localize_details_block(text: String, locale: UiLocale) -> String {
     if !locale.is_zh() {
         return text;
@@ -622,5 +649,20 @@ mod tests {
         assert!(text.contains("工厂可视实体: 1"));
         assert!(text.contains("物流路由:"));
         assert!(text.contains("活跃路由: 2"));
+    }
+
+    #[test]
+    fn localize_economy_dashboard_block_supports_zh() {
+        let text = localize_economy_dashboard_block(
+            "Economy Dashboard:\nSupply & Demand:\n- Electricity: stock=12 flow=4 shortfall=1 health=warn\nCost & Revenue Proxy:\n- Margin Proxy(Recent): 8"
+                .to_string(),
+            UiLocale::ZhCn,
+        );
+        assert!(text.contains("经营看板:"));
+        assert!(text.contains("供需:"));
+        assert!(text.contains("库存=12"));
+        assert!(text.contains("健康=告警"));
+        assert!(text.contains("成本与收益代理:"));
+        assert!(text.contains("近期利润代理: 8"));
     }
 }

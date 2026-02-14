@@ -113,7 +113,7 @@
 - [x] 输出 Viewer 工业风可视化缺口收敛设计文档（`doc/world-simulator/viewer-industrial-visual-closure.md`）
 - [x] 输出 Viewer 工业风可视化缺口收敛项目管理文档（`doc/world-simulator/viewer-industrial-visual-closure.project.md`）
 - [x] 工业风缺口收敛任务 A（产线 + 物流可视化）
-- [ ] 工业风缺口收敛任务 B（经营面板）
+- [x] 工业风缺口收敛任务 B（经营面板）
 - [ ] 工业风缺口收敛任务 C（多尺度导航 + 告警根因）
 - [ ] 工业风缺口收敛任务 D（产品化表现层）
 
