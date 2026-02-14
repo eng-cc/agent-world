@@ -120,6 +120,7 @@
 - [x] 输出 Viewer 2D 可视化精修项目管理文档（`doc/world-simulator/viewer-2d-visual-polish.project.md`）
 - [x] Viewer 2D 可视化精修任务 1（地图符号层）
 - [x] Viewer 2D 可视化精修任务 2（标签可读性增强）
+- [ ] Viewer 2D 可视化精修任务 3（流向层工业化表达）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

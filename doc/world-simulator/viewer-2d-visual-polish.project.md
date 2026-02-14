@@ -17,6 +17,11 @@
 - [x] V2D2.2 单测补齐（2D 配置与可见性行为）
 - [x] V2D2.3 回归验证与截图闭环
 
+### V2D3 流向层工业化表达（2D）
+- [ ] V2D3.1 Flow Overlay 增加 2D 渲染参数分支（平面化/线宽增强）
+- [ ] V2D3.2 Flow 终点箭头头部渲染（Power/Trade）
+- [ ] V2D3.3 单测补齐与截图闭环
+
 ## 依赖
 - `crates/agent_world_viewer/src/scene_helpers.rs`
 - `crates/agent_world_viewer/src/scene_helpers_entities.rs`
@@ -26,6 +31,6 @@
 - `doc/world-simulator/viewer-dual-view-2d-3d.md`
 
 ## 状态
-- 当前阶段：V2D0~V2D2 已完成。
-- 下一阶段：按新反馈进入下一轮 2D 精修任务（如需）。
-- 最近更新：完成 V2D2（2D 标签 LOD 可读性增强 + 回归测试 + 截图闭环，2026-02-15）。
+- 当前阶段：V2D0~V2D2 已完成，进入 V2D3。
+- 下一阶段：完成流向层工业化表达并收口验证。
+- 最近更新：新增 V2D3（2D flow overlay 平面化 + 方向箭头，2026-02-15）。
