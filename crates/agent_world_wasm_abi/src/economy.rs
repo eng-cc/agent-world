@@ -1,0 +1,251 @@
+use serde::{Deserialize, Serialize};
+
+/// Category of economy module in M4 industrial pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EconomyModuleKind {
+    Recipe,
+    Product,
+    Factory,
+}
+
+/// Generic stack of materials/resources used by economy modules.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialStack {
+    pub kind: String,
+    pub amount: i64,
+}
+
+impl MaterialStack {
+    pub fn new(kind: impl Into<String>, amount: i64) -> Self {
+        Self {
+            kind: kind.into(),
+            amount,
+        }
+    }
+}
+
+/// Static recipe definition emitted by a recipe module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeModuleSpec {
+    pub recipe_id: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub inputs: Vec<MaterialStack>,
+    #[serde(default)]
+    pub outputs: Vec<MaterialStack>,
+    #[serde(default)]
+    pub byproducts: Vec<MaterialStack>,
+    pub cycle_ticks: u32,
+    pub power_per_cycle: i64,
+    #[serde(default)]
+    pub allowed_factory_tags: Vec<String>,
+    pub min_factory_tier: u8,
+}
+
+/// Static product metadata emitted by a product module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProductModuleSpec {
+    pub product_id: String,
+    pub display_name: String,
+    pub category: String,
+    pub stack_limit: u32,
+    pub decay_per_tick_bps: u32,
+    #[serde(default)]
+    pub quality_levels: Vec<String>,
+    pub tradable: bool,
+}
+
+/// Static factory metadata emitted by a factory module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FactoryModuleSpec {
+    pub factory_id: String,
+    pub display_name: String,
+    pub tier: u8,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub build_cost: Vec<MaterialStack>,
+    pub build_time_ticks: u32,
+    pub base_power_draw: i64,
+    pub recipe_slots: u16,
+    pub throughput_bps: u32,
+    pub maintenance_per_tick: i64,
+}
+
+/// Runtime request for evaluating a recipe batch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeExecutionRequest {
+    pub recipe_id: String,
+    pub factory_id: String,
+    pub desired_batches: u32,
+    #[serde(default)]
+    pub available_inputs: Vec<MaterialStack>,
+    pub available_power: i64,
+    pub deterministic_seed: u64,
+}
+
+/// Runtime plan returned by recipe module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeExecutionPlan {
+    pub accepted_batches: u32,
+    #[serde(default)]
+    pub consume: Vec<MaterialStack>,
+    #[serde(default)]
+    pub produce: Vec<MaterialStack>,
+    #[serde(default)]
+    pub byproducts: Vec<MaterialStack>,
+    pub power_required: i64,
+    pub duration_ticks: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reject_reason: Option<String>,
+}
+
+impl RecipeExecutionPlan {
+    pub fn accepted(
+        accepted_batches: u32,
+        consume: Vec<MaterialStack>,
+        produce: Vec<MaterialStack>,
+        byproducts: Vec<MaterialStack>,
+        power_required: i64,
+        duration_ticks: u32,
+    ) -> Self {
+        Self {
+            accepted_batches,
+            consume,
+            produce,
+            byproducts,
+            power_required,
+            duration_ticks,
+            reject_reason: None,
+        }
+    }
+
+    pub fn rejected(reason: impl Into<String>) -> Self {
+        Self {
+            accepted_batches: 0,
+            consume: Vec::new(),
+            produce: Vec::new(),
+            byproducts: Vec::new(),
+            power_required: 0,
+            duration_ticks: 0,
+            reject_reason: Some(reason.into()),
+        }
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        self.reject_reason.is_some()
+    }
+}
+
+/// Runtime request for validating/estimating factory build.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FactoryBuildRequest {
+    pub factory_id: String,
+    pub site_id: String,
+    pub builder: String,
+    #[serde(default)]
+    pub available_inputs: Vec<MaterialStack>,
+    pub available_power: i64,
+}
+
+/// Runtime decision returned by factory module for build action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FactoryBuildDecision {
+    pub accepted: bool,
+    #[serde(default)]
+    pub consume: Vec<MaterialStack>,
+    pub duration_ticks: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reject_reason: Option<String>,
+}
+
+impl FactoryBuildDecision {
+    pub fn accepted(consume: Vec<MaterialStack>, duration_ticks: u32) -> Self {
+        Self {
+            accepted: true,
+            consume,
+            duration_ticks,
+            reject_reason: None,
+        }
+    }
+
+    pub fn rejected(reason: impl Into<String>) -> Self {
+        Self {
+            accepted: false,
+            consume: Vec::new(),
+            duration_ticks: 0,
+            reject_reason: Some(reason.into()),
+        }
+    }
+}
+
+/// Author-facing interface contract for recipe modules.
+pub trait RecipeModuleApi {
+    fn describe_recipe(&self) -> RecipeModuleSpec;
+    fn evaluate_recipe(&self, req: RecipeExecutionRequest) -> RecipeExecutionPlan;
+}
+
+/// Author-facing interface contract for product modules.
+pub trait ProductModuleApi {
+    fn describe_product(&self) -> ProductModuleSpec;
+    fn validate_product_state(&self, stack: &MaterialStack) -> Result<(), String>;
+}
+
+/// Author-facing interface contract for factory modules.
+pub trait FactoryModuleApi {
+    fn describe_factory(&self) -> FactoryModuleSpec;
+    fn evaluate_build(&self, req: FactoryBuildRequest) -> FactoryBuildDecision;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn economy_module_kind_serializes_snake_case() {
+        let value = serde_json::to_string(&EconomyModuleKind::Recipe)
+            .expect("serialize economy module kind");
+        assert_eq!(value, "\"recipe\"");
+    }
+
+    #[test]
+    fn recipe_module_spec_round_trips_json() {
+        let spec = RecipeModuleSpec {
+            recipe_id: "recipe.motor.mk1".to_string(),
+            display_name: "Motor MK1".to_string(),
+            inputs: vec![MaterialStack::new("gear", 2), MaterialStack::new("wire", 4)],
+            outputs: vec![MaterialStack::new("motor", 1)],
+            byproducts: vec![MaterialStack::new("scrap", 1)],
+            cycle_ticks: 12,
+            power_per_cycle: 30,
+            allowed_factory_tags: vec!["assembly".to_string()],
+            min_factory_tier: 2,
+        };
+
+        let json = serde_json::to_vec(&spec).expect("serialize recipe module spec");
+        let decoded: RecipeModuleSpec =
+            serde_json::from_slice(&json).expect("deserialize recipe module spec");
+        assert_eq!(decoded, spec);
+    }
+
+    #[test]
+    fn rejected_recipe_plan_has_empty_effective_output() {
+        let plan = RecipeExecutionPlan::rejected("missing power");
+        assert!(plan.is_rejected());
+        assert_eq!(plan.accepted_batches, 0);
+        assert!(plan.consume.is_empty());
+        assert!(plan.produce.is_empty());
+        assert_eq!(plan.reject_reason.as_deref(), Some("missing power"));
+    }
+
+    #[test]
+    fn accepted_factory_build_decision_omits_reject_reason() {
+        let decision = FactoryBuildDecision::accepted(vec![MaterialStack::new("steel", 20)], 60);
+        assert!(decision.accepted);
+        assert!(decision.reject_reason.is_none());
+
+        let json = serde_json::to_value(&decision).expect("serialize factory build decision");
+        assert!(json.get("reject_reason").is_none());
+    }
+}

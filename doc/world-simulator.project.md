@@ -48,6 +48,7 @@
 
 ### 4. 社会系统（电力/硬件/数据）
 - [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本；M4.1~M4.3 已在 `doc/m4-power-system*.md` 完成，后续聚焦 M4.4）
+- [x] 输出 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册（`doc/m4-industrial-economy-wasm.md`、`doc/m4-industrial-economy-wasm.project.md`）
 - [ ] 硬件生产/维修/折旧/回收（稀缺性与供应链）
 - [ ] 数据获取/存储/交易/访问控制（许可、隐私、污染与溯源）
 - [ ] 交易与定价：电价、算力、存储、带宽、数据访问
@@ -212,4 +213,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 KWT-3，Rust->Wasm 编译套件阶段收口（2026-02-12）
+- 最近更新：新增 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册设计（2026-02-14）

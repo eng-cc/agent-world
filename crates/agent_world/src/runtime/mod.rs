@@ -68,9 +68,12 @@ pub use manifest::{
 
 // Modules
 pub use modules::{
-    ModuleActivation, ModuleArtifact, ModuleCache, ModuleChangeSet, ModuleDeactivation,
-    ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRecord,
-    ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade,
+    EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,
+    FactoryModuleSpec, MaterialStack, ModuleActivation, ModuleArtifact, ModuleCache,
+    ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits,
+    ModuleManifest, ModuleRecord, ModuleRegistry, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, ModuleUpgrade, ProductModuleApi, ProductModuleSpec,
+    RecipeExecutionPlan, RecipeExecutionRequest, RecipeModuleApi, RecipeModuleSpec,
 };
 
 // Blob store

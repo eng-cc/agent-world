@@ -381,6 +381,7 @@
 - 电力子系统已完成 **M4.1~M4.3**：基础电力状态管理、发电/储能设施、跨 Location 传输与交易基础接口。
 - 电价与市场机制（M4.4）仍为可选后续。
 - 详细设计与任务状态以 `doc/m4-power-system.md` 与 `doc/m4-power-system.project.md` 为准。
+- 工业生产链与 Recipe/Product/Factory 全 WASM 化接口设计见 `doc/m4-industrial-economy-wasm.md` 与 `doc/m4-industrial-economy-wasm.project.md`。
 
 ## 分册索引
 - 世界初始化：`doc/world-simulator/world-initialization.md`
