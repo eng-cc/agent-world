@@ -19,9 +19,9 @@
 - [x] IVB.3 单测与回归
 
 ### IVC 多尺度导航 + 告警根因（缺口 5、6）
-- [ ] IVC.1 世界/区域/节点三级导航与快速聚焦
-- [ ] IVC.2 告警等级与根因链摘要
-- [ ] IVC.3 告警对象跳转联动与回归
+- [x] IVC.1 世界/区域/节点三级导航与快速聚焦
+- [x] IVC.2 告警等级与根因链摘要
+- [x] IVC.3 告警对象跳转联动与回归
 
 ### IVD 产品化表现层（缺口 7）
 - [ ] IVD.1 视觉层级与语义色板统一
@@ -37,6 +37,6 @@
 - `doc/world-simulator/viewer-open-world-sandbox-readiness.md`
 
 ## 状态
-- 当前阶段：IVB（经营面板）完成
-- 下一阶段：进入 IVC（多尺度导航 + 告警根因）
-- 最近更新：完成 IVB（Economy Dashboard + 中文本地化 + `agent_world_viewer` 全量回归 190 tests，2026-02-14）
+- 当前阶段：IVC（多尺度导航 + 告警根因）完成
+- 下一阶段：进入 IVD（产品化表现层）
+- 最近更新：完成 IVC（Ops Navigator + 根因聚合 + 可开关导航区块 + `agent_world_viewer` 全量回归 193 tests，2026-02-14）

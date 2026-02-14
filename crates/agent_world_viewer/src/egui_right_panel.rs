@@ -24,14 +24,15 @@ use crate::timeline_controls::{
 };
 use crate::ui_locale_text::{
     localize_agent_activity_block, localize_details_block, localize_economy_dashboard_block,
-    localize_events_summary_block, localize_industrial_ops_block, localize_world_summary_block,
-    map_link_message_for_locale, overlay_button_label, overlay_chunk_legend_label,
-    overlay_chunk_legend_title, overlay_grid_line_width_hint, overlay_loading, seek_button_label,
-    status_line, timeline_insights, timeline_jump_label, timeline_mode_label, timeline_status_line,
+    localize_events_summary_block, localize_industrial_ops_block, localize_ops_navigation_block,
+    localize_world_summary_block, map_link_message_for_locale, overlay_button_label,
+    overlay_chunk_legend_label, overlay_chunk_legend_title, overlay_grid_line_width_hint,
+    overlay_loading, seek_button_label, status_line, timeline_insights, timeline_jump_label,
+    timeline_mode_label, timeline_status_line,
 };
 use crate::ui_text::{
     agent_activity_summary, economy_dashboard_summary, events_summary, industrial_ops_summary,
-    selection_details_summary, world_summary,
+    ops_navigation_alert_summary, selection_details_summary, world_summary,
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
@@ -48,6 +49,19 @@ const MAX_PANEL_WIDTH: f32 = 420.0;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
+const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
+
+fn is_ops_nav_panel_enabled() -> bool {
+    std::env::var(OPS_NAV_PANEL_ENV)
+        .ok()
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
 
 fn adaptive_panel_default_width(available_width: f32) -> f32 {
     let width = if available_width.is_finite() {
@@ -997,6 +1011,12 @@ fn render_text_sections(
         .map(|text| localize_industrial_ops_block(text, locale));
     let economy = economy_dashboard_summary(state.snapshot.as_ref(), &state.events)
         .map(|text| localize_economy_dashboard_block(text, locale));
+    let ops_navigation = if is_ops_nav_panel_enabled() {
+        ops_navigation_alert_summary(state.snapshot.as_ref(), &state.events)
+            .map(|text| localize_ops_navigation_block(text, locale))
+    } else {
+        None
+    };
     let details = localize_details_block(
         selection_details_summary(
             selection,
@@ -1045,6 +1065,16 @@ fn render_text_sections(
                 "Economy Dashboard"
             },
             economy,
+        ));
+    }
+    if let Some(ops_navigation) = ops_navigation {
+        sections.push((
+            if locale.is_zh() {
+                "运营导航"
+            } else {
+                "Ops Navigator"
+            },
+            ops_navigation,
         ));
     }
     sections.push((

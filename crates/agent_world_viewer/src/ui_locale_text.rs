@@ -523,6 +523,28 @@ pub(super) fn localize_economy_dashboard_block(text: String, locale: UiLocale) -
     converted
 }
 
+pub(super) fn localize_ops_navigation_block(text: String, locale: UiLocale) -> String {
+    if !locale.is_zh() {
+        return text;
+    }
+
+    let mut converted = text;
+    converted = converted.replace("Ops Navigator:", "运营导航:");
+    converted = converted.replace("World:", "世界层:");
+    converted = converted.replace("Activity Events(Recent):", "近期活动事件:");
+    converted = converted.replace("Alert Events(Recent):", "近期告警事件:");
+    converted = converted.replace("Region Hotspots:", "区域热点:");
+    converted = converted.replace("Node Hotspots:", "节点热点:");
+    converted = converted.replace("Alert Root Causes:", "告警根因:");
+    converted = converted.replace("events=", "事件=");
+    converted = converted.replace("alerts=", "告警=");
+    converted = converted.replace("score=", "评分=");
+    converted = converted.replace("chunk", "分块");
+    converted = converted.replace("location::", "地点::");
+    converted = converted.replace("agent::", "Agent::");
+    converted
+}
+
 pub(super) fn localize_details_block(text: String, locale: UiLocale) -> String {
     if !locale.is_zh() {
         return text;
@@ -664,5 +686,22 @@ mod tests {
         assert!(text.contains("健康=告警"));
         assert!(text.contains("成本与收益代理:"));
         assert!(text.contains("近期利润代理: 8"));
+    }
+
+    #[test]
+    fn localize_ops_navigation_block_supports_zh() {
+        let text = localize_ops_navigation_block(
+            "Ops Navigator:\nWorld:\n- Activity Events(Recent): 5\nRegion Hotspots:\n- chunk(0,0,0): events=3 alerts=1\nNode Hotspots:\n- location::loc-a: score=2\nAlert Root Causes:\n- InsufficientResource: 1"
+                .to_string(),
+            UiLocale::ZhCn,
+        );
+        assert!(text.contains("运营导航:"));
+        assert!(text.contains("世界层:"));
+        assert!(text.contains("近期活动事件: 5"));
+        assert!(text.contains("区域热点:"));
+        assert!(text.contains("分块(0,0,0): 事件=3 告警=1"));
+        assert!(text.contains("节点热点:"));
+        assert!(text.contains("地点::loc-a: 评分=2"));
+        assert!(text.contains("告警根因:"));
     }
 }

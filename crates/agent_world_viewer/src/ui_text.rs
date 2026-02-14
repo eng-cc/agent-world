@@ -1134,6 +1134,8 @@ mod ui_text_activity;
 mod ui_text_economy;
 #[path = "ui_text_industrial.rs"]
 mod ui_text_industrial;
+#[path = "ui_text_ops_navigation.rs"]
+mod ui_text_ops_navigation;
 
 use ui_text_activity::{
     event_activity_for_owner, event_activity_for_power_plant, event_activity_for_power_storage,
@@ -1152,6 +1154,13 @@ pub(super) fn economy_dashboard_summary(
     events: &[WorldEvent],
 ) -> Option<String> {
     ui_text_economy::economy_dashboard_summary(snapshot, events)
+}
+
+pub(super) fn ops_navigation_alert_summary(
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> Option<String> {
+    ui_text_ops_navigation::ops_navigation_alert_summary(snapshot, events)
 }
 
 #[cfg(test)]
