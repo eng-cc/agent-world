@@ -2,6 +2,7 @@
 
 use super::super::*;
 use super::pos;
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 
 fn has_active(world: &World, module_id: &str) -> bool {
     world.module_registry().active.contains_key(module_id)

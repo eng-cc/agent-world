@@ -1,5 +1,9 @@
 use std::collections::BTreeSet;
 
+use agent_world_wasm_abi::{
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest,
+    ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox, ModuleStateUpdate,
+};
 use agent_world_wasm_router::{
     module_subscribes_to_action, module_subscribes_to_event, validate_subscription_filters,
     validate_subscription_stage,
@@ -7,10 +11,9 @@ use agent_world_wasm_router::{
 
 use super::super::util::to_canonical_cbor;
 use super::super::{
-    Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleCallErrorCode,
-    ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext,
-    ModuleEmitEvent, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleSubscriptionStage, WorldError, WorldEvent, WorldEventBody,
+    Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleEvent,
+    ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
+    ModuleSubscriptionStage, WorldError, WorldEvent, WorldEventBody,
 };
 use super::World;
 
@@ -94,8 +97,8 @@ impl World {
         module_id: &str,
         trace_id: impl Into<String>,
         input: Vec<u8>,
-        sandbox: &mut dyn super::super::ModuleSandbox,
-    ) -> Result<super::super::ModuleOutput, WorldError> {
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, WorldError> {
         let trace_id = trace_id.into();
         let manifest = self.active_module_manifest(module_id)?.clone();
         let wasm_hash = manifest.wasm_hash.clone();
@@ -131,7 +134,7 @@ impl World {
     pub fn route_event_to_modules(
         &mut self,
         event: &WorldEvent,
-        sandbox: &mut dyn super::super::ModuleSandbox,
+        sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let event_kind = event_kind_label(&event.body);
         let event_value = serde_json::to_value(event)?;
@@ -201,7 +204,7 @@ impl World {
     pub fn route_action_to_modules(
         &mut self,
         envelope: &ActionEnvelope,
-        sandbox: &mut dyn super::super::ModuleSandbox,
+        sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
         self.route_action_to_modules_with_stage(
             envelope,
@@ -214,7 +217,7 @@ impl World {
         &mut self,
         envelope: &ActionEnvelope,
         stage: ModuleSubscriptionStage,
-        sandbox: &mut dyn super::super::ModuleSandbox,
+        sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
         let action_value = serde_json::to_value(envelope)?;
@@ -678,7 +681,7 @@ impl World {
         module_id: &str,
         trace_id: &str,
         manifest: &ModuleManifest,
-        output: &super::super::ModuleOutput,
+        output: &ModuleOutput,
     ) -> Result<(), WorldError> {
         if manifest.kind == ModuleKind::Pure && output.new_state.is_some() {
             return self.module_call_failed(ModuleCallFailure {
@@ -770,7 +773,7 @@ impl World {
         }
 
         if let Some(state) = &output.new_state {
-            let update = super::super::ModuleStateUpdate {
+            let update = ModuleStateUpdate {
                 module_id: module_id.to_string(),
                 trace_id: trace_id.to_string(),
                 state: state.clone(),

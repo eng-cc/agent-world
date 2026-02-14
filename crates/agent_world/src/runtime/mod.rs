@@ -21,7 +21,6 @@ mod module_store;
 mod modules;
 mod policy;
 mod rules;
-mod sandbox;
 mod segmenter;
 mod signer;
 mod snapshot;
@@ -111,14 +110,6 @@ pub use rules::{
 
 // Signer
 pub use signer::ReceiptSigner;
-
-// Sandbox
-pub use sandbox::{
-    FixedSandbox, ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin,
-    ModuleCallRequest, ModuleContext, ModuleEffectIntent, ModuleEmit, ModuleEmitEvent,
-    ModuleOutput, ModuleSandbox, ModuleStateUpdate, WasmEngineKind, WasmExecutor,
-    WasmExecutorConfig,
-};
 
 // Snapshot
 pub use snapshot::{

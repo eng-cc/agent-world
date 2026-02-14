@@ -8,7 +8,7 @@ mod replay;
 mod step;
 mod types;
 
-use crate::runtime::{
+use agent_world_wasm_abi::{
     ModuleCallInput, ModuleCallOrigin, ModuleCallRequest, ModuleContext, ModuleLimits,
     ModuleOutput, ModuleSandbox,
 };

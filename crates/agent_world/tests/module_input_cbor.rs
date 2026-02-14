@@ -1,10 +1,12 @@
 use agent_world::runtime::{
-    Action, ActionEnvelope, Manifest, ModuleActivation, ModuleCallFailure, ModuleCallInput,
-    ModuleCallRequest, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest, ModuleOutput,
-    ModuleRole, ModuleSandbox, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
+    Action, ActionEnvelope, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
+    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
     ProposalDecision, World, WorldEvent,
 };
 use agent_world::GeoPos;
+use agent_world_wasm_abi::{
+    ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleOutput, ModuleSandbox,
+};
 use sha2::{Digest, Sha256};
 
 fn pos(x: f64, y: f64) -> GeoPos {

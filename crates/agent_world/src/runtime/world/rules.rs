@@ -1,6 +1,9 @@
+use agent_world_wasm_abi::{
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
+};
+
 use super::super::{
-    merge_rule_decisions, ActionEnvelope, ActionOverrideRecord, CausedBy, ModuleCallErrorCode,
-    ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox, ModuleSubscriptionStage,
+    merge_rule_decisions, ActionEnvelope, ActionOverrideRecord, CausedBy, ModuleSubscriptionStage,
     ResourceDelta, RuleDecision, RuleDecisionMergeError, RuleDecisionRecord, RuleVerdict,
     WorldError, WorldEventBody, WorldEventId,
 };

@@ -234,12 +234,18 @@
 - [x] R7-5 收敛 WASM ABI 边界（去 net 重复 `ModuleManifest`）
 - [x] R7-6 拆分全部超 1200 行 Rust 文件并回归
 
+### 16. WASM 运行时边界收敛（R8）
+- [x] 输出 R8 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase8.md`）
+- [x] 输出 R8 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase8.project.md`）
+- [x] R8-1 删除 `runtime/sandbox.rs` 门面并切换调用方到 `agent_world_wasm_abi` / `agent_world_wasm_executor`
+- [x] R8-2 回归验证（`agent_world` 编译与测试，`--features wasmtime`）
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：R7（分布式能力彻底拆分）已完成（R7-1 ~ R7-6）。
-- 下一步：按下一阶段拆分目标补充设计与项目管理任务。
-- 最近更新：完成 R7-6（拆分全部超 1200 行 Rust 文件并回归通过，2026-02-14）
+- 当前阶段：R8（WASM 运行时边界收敛）已完成（R8-0 ~ R8-2）。
+- 下一步：若继续推进 sandbox crate 化，立项 R9（执行器/门面进一步拆分与外部调用方收口）。
+- 最近更新：完成 R8（移除 runtime sandbox 门面并回归通过，2026-02-14）

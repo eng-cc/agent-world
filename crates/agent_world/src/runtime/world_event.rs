@@ -1,5 +1,6 @@
 //! World event types that wrap all event kinds.
 
+use agent_world_wasm_abi::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
 use serde::{Deserialize, Serialize};
 
 use super::audit::AuditEventKind;
@@ -10,7 +11,6 @@ use super::manifest::ManifestUpdate;
 use super::modules::ModuleEvent;
 use super::policy::PolicyDecisionRecord;
 use super::rules::{ActionOverrideRecord, RuleDecisionRecord};
-use super::sandbox::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
 use super::snapshot::{RollbackEvent, SnapshotMeta};
 use super::types::{WorldEventId, WorldTime};
 

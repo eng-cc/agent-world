@@ -1,5 +1,7 @@
 use agent_world::runtime::*;
 use agent_world::GeoPos;
+use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
+use agent_world_wasm_executor::FixedSandbox;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

@@ -2,8 +2,8 @@
 
 use std::io;
 
-use super::sandbox::ModuleCallErrorCode;
 use super::types::ProposalId;
+use agent_world_wasm_abi::ModuleCallErrorCode;
 
 /// Errors that can occur in world operations.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -3,6 +3,8 @@ use super::pos;
 use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry, CargoEntityKind};
 #[cfg(feature = "wasmtime")]
 use crate::simulator::ResourceKind;
+#[cfg(feature = "wasmtime")]
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 
 #[cfg(feature = "wasmtime")]
 fn install_m1_body_module(world: &mut World) {

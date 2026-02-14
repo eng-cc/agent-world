@@ -1,5 +1,12 @@
 use super::super::*;
 use super::pos;
+use agent_world_wasm_abi::{
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEffectIntent, ModuleEmit,
+    ModuleOutput, ModuleSandbox,
+};
+use agent_world_wasm_executor::FixedSandbox;
+#[cfg(not(feature = "wasmtime"))]
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde_json::json;
 
 #[test]

@@ -4,6 +4,7 @@ use super::super::*;
 use super::pos;
 use crate::models::{CargoEntityEntry, CargoEntityKind};
 use crate::simulator::ResourceKind;
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 
 fn default_module_sandbox() -> WasmExecutor {
     WasmExecutor::new(WasmExecutorConfig::default())

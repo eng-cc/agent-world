@@ -2,6 +2,13 @@ use super::super::*;
 use super::pos;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
+use agent_world_wasm_abi::{
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput,
+    ModuleSandbox,
+};
+use agent_world_wasm_executor::FixedSandbox;
+#[cfg(feature = "wasmtime")]
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use std::collections::BTreeMap;
 
 #[cfg(feature = "wasmtime")]

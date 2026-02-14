@@ -1,9 +1,11 @@
 use agent_world::runtime::{
-    Action, CapabilityGrant, FixedSandbox, Manifest, ModuleActivation, ModuleChangeSet, ModuleEmit,
-    ModuleKind, ModuleLimits, ModuleManifest, ModuleOutput, ModuleRole, ModuleSubscription,
-    ModuleSubscriptionStage, PolicySet, ProposalDecision, World, WorldError, WorldEventBody,
+    Action, CapabilityGrant, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
+    ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet,
+    ProposalDecision, World, WorldError, WorldEventBody,
 };
 use agent_world::GeoPos;
+use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
+use agent_world_wasm_executor::FixedSandbox;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

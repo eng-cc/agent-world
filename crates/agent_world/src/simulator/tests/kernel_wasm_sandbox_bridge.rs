@@ -1,5 +1,5 @@
 use super::*;
-use crate::runtime::{
+use agent_world_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEmit,
     ModuleLimits, ModuleOutput, ModuleSandbox,
 };

@@ -1,6 +1,8 @@
+use agent_world_wasm_abi::ModuleSandbox;
+
 use super::super::{
-    ActionEnvelope, CausedBy, ModuleSandbox, ModuleSubscriptionStage, RejectReason, RuleVerdict,
-    WorldError, WorldEventBody,
+    ActionEnvelope, CausedBy, ModuleSubscriptionStage, RejectReason, RuleVerdict, WorldError,
+    WorldEventBody,
 };
 use super::World;
 

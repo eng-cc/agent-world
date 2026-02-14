@@ -2,10 +2,11 @@
 
 use agent_world::runtime::{
     Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision,
-    WasmExecutor, WasmExecutorConfig, World, WorldEventBody,
+    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision, World,
+    WorldEventBody,
 };
 use agent_world::GeoPos;
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use sha2::{Digest, Sha256};
 
 const WASM_EXECUTOR_TEST_MODULE: &[u8] = &[
