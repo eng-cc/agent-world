@@ -6,5 +6,6 @@ pub use agent_world_wasm_abi::{
     ModuleChangeSet, ModuleDeactivation, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits,
     ModuleManifest, ModuleRecord, ModuleRegistry, ModuleRole, ModuleSubscription,
     ModuleSubscriptionStage, ModuleUpgrade, ProductModuleApi, ProductModuleSpec,
-    RecipeExecutionPlan, RecipeExecutionRequest, RecipeModuleApi, RecipeModuleSpec,
+    ProductValidationDecision, ProductValidationRequest, RecipeExecutionPlan,
+    RecipeExecutionRequest, RecipeModuleApi, RecipeModuleSpec,
 };

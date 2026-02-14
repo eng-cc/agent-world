@@ -56,6 +56,62 @@ pub struct ProductModuleSpec {
     pub tradable: bool,
 }
 
+/// Runtime request for validating a product stack by product module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProductValidationRequest {
+    pub product_id: String,
+    pub stack: MaterialStack,
+    pub deterministic_seed: u64,
+}
+
+/// Runtime decision returned by product module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProductValidationDecision {
+    pub product_id: String,
+    pub accepted: bool,
+    #[serde(default)]
+    pub notes: Vec<String>,
+    pub stack_limit: u32,
+    pub tradable: bool,
+    #[serde(default)]
+    pub quality_levels: Vec<String>,
+}
+
+impl ProductValidationDecision {
+    pub fn accepted(
+        product_id: impl Into<String>,
+        stack_limit: u32,
+        tradable: bool,
+        quality_levels: Vec<String>,
+    ) -> Self {
+        Self {
+            product_id: product_id.into(),
+            accepted: true,
+            notes: Vec::new(),
+            stack_limit,
+            tradable,
+            quality_levels,
+        }
+    }
+
+    pub fn rejected(
+        product_id: impl Into<String>,
+        stack_limit: u32,
+        tradable: bool,
+        quality_levels: Vec<String>,
+        notes: Vec<String>,
+    ) -> Self {
+        Self {
+            product_id: product_id.into(),
+            accepted: false,
+            notes,
+            stack_limit,
+            tradable,
+            quality_levels,
+        }
+    }
+}
+
 /// Static factory metadata emitted by a factory module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FactoryModuleSpec {
@@ -189,7 +245,7 @@ pub trait RecipeModuleApi {
 /// Author-facing interface contract for product modules.
 pub trait ProductModuleApi {
     fn describe_product(&self) -> ProductModuleSpec;
-    fn validate_product_state(&self, stack: &MaterialStack) -> Result<(), String>;
+    fn evaluate_product(&self, req: ProductValidationRequest) -> ProductValidationDecision;
 }
 
 /// Author-facing interface contract for factory modules.
@@ -247,5 +303,19 @@ mod tests {
 
         let json = serde_json::to_value(&decision).expect("serialize factory build decision");
         assert!(json.get("reject_reason").is_none());
+    }
+
+    #[test]
+    fn rejected_product_validation_keeps_notes() {
+        let decision = ProductValidationDecision::rejected(
+            "motor_mk1",
+            128,
+            true,
+            vec!["industrial".to_string()],
+            vec!["stack exceeds limit".to_string()],
+        );
+        assert!(!decision.accepted);
+        assert_eq!(decision.notes.len(), 1);
+        assert_eq!(decision.notes[0], "stack exceeds limit");
     }
 }

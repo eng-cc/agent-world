@@ -204,6 +204,21 @@ pub struct FactoryBuildDecision {
     pub duration_ticks: u32,
     pub reject_reason: Option<String>,
 }
+
+pub struct ProductValidationRequest {
+    pub product_id: String,
+    pub stack: MaterialStack,
+    pub deterministic_seed: u64,
+}
+
+pub struct ProductValidationDecision {
+    pub product_id: String,
+    pub accepted: bool,
+    pub notes: Vec<String>,
+    pub stack_limit: u32,
+    pub tradable: bool,
+    pub quality_levels: Vec<String>,
+}
 ```
 
 ### 4) Rust Trait 约定（模块作者侧）
@@ -216,7 +231,7 @@ pub trait RecipeModuleApi {
 
 pub trait ProductModuleApi {
     fn describe_product(&self) -> ProductModuleSpec;
-    fn validate_product_state(&self, current: &MaterialStack) -> Result<(), String>;
+    fn evaluate_product(&self, req: ProductValidationRequest) -> ProductValidationDecision;
 }
 
 pub trait FactoryModuleApi {
@@ -230,6 +245,7 @@ pub trait FactoryModuleApi {
 ### 动作
 - `action.economy.build_factory`
 - `action.economy.schedule_recipe`
+- `action.economy.validate_product`
 - `action.economy.transfer_inventory`
 - `action.economy.maintain_factory`
 
@@ -237,7 +253,7 @@ pub trait FactoryModuleApi {
 - `domain.economy.factory_built`
 - `domain.economy.recipe_started`
 - `domain.economy.recipe_completed`
-- `domain.economy.product_quality_assessed`
+- `domain.economy.product_validated`
 - `domain.economy.factory_degraded`
 
 所有事件要求可回放，且由模块输出到统一审计链路。
@@ -278,6 +294,11 @@ V1 需要覆盖以下测试组：
     - `economy.factory_build_decision`
     - `economy.recipe_execution_plan`
   - 非法模块输出（缺失 emit / 多 emit / 解码失败）统一记录 `ModuleCallFailed(InvalidOutput)`
+- runtime 已接入 Product 模块在线校验路径：
+  - 新动作：`ValidateProductWithModule`（模块求值）-> `ValidateProduct`（落地）
+  - 新事件：`ProductValidated`
+  - 模块输出契约（emit kind）：`economy.product_validation`
+  - 模块拒绝统一映射为 `ActionRejected(RuleDenied)`，并保留模块 notes
 - 已覆盖 runtime 定向测试：建造时序、排产时序、产线容量限流、库存与电力扣减、完工产出入账。
 - 已提供内置 M4 工业模块包（WASM 工件 + 治理安装入口）：
   - 工厂模块：`m4.factory.miner.mk1`、`m4.factory.smelter.mk1`、`m4.factory.assembler.mk1`

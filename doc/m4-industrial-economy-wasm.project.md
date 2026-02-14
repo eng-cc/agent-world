@@ -56,6 +56,29 @@
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy_bootstrap -- --nocapture`
 - [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
 
+### E7 Product 模块在线校验接线
+- [x] 在 ABI 新增 `ProductValidationRequest` / `ProductValidationDecision`
+- [x] 将 `ProductModuleApi` 统一为 `evaluate_product(req) -> ProductValidationDecision`
+- [x] 在 runtime 动作层新增：
+  - `ValidateProduct`
+  - `ValidateProductWithModule`
+- [x] 在 runtime 事件层新增：`ProductValidated`
+- [x] 在 `step_with_modules` 接入 Product 模块求值与落地动作转换
+- [x] 新增 Product 模块输出契约（emit kind）：`economy.product_validation`
+- [x] 增加模块拒绝与非法输入校验（统一映射 `ActionRejected(RuleDenied)`）
+- [x] 新增 runtime 测试：模块通过/拒绝两条路径
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world_wasm_abi`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
+### E8 Product 校验自动闭环（下一任务）
+- [ ] 在配方完工路径自动触发产物校验（而非仅手动动作）
+- [ ] 建立“产物 -> Product 模块”解析策略（内置规则 + 扩展钩子）
+- [ ] 在账本提交前阻断未通过校验的产物入库
+- [ ] 增加端到端测试：`ScheduleRecipeWithModule` 完工后自动 Product 校验并落账
+- [ ] 回写设计文档、项目文档、devlog 并提交
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -64,6 +87,6 @@
 
 ## 状态
 
-- 当前阶段：E6 完成（内置 M4 模块包 + 治理装载 + 闭环测试完成）。
-- 下一步：补齐 Product 模块在线校验动作（将 `ProductModuleApi::validate_product_state` 接入 runtime 主流程）。
-- 最近更新：完成 m4 内置工厂/配方/制成品 wasm 工件、治理安装入口与资源到制成品链路回归（2026-02-14）。
+- 当前阶段：E7 完成（Product 模块在线校验动作 + runtime 接线 + 测试回归通过）。
+- 下一步：E8 Product 校验自动闭环（配方完工自动触发校验与入账门禁）。
+- 最近更新：完成 `evaluate_product` ABI 升级与 `ValidateProductWithModule -> ValidateProduct` 主流程接入（2026-02-14）。

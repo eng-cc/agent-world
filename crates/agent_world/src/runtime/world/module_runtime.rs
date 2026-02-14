@@ -820,6 +820,7 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
+            DomainEvent::ProductValidated { .. } => "domain.economy.product_validated",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
@@ -852,5 +853,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",
         Action::ScheduleRecipe { .. } => "action.economy.schedule_recipe",
         Action::ScheduleRecipeWithModule { .. } => "action.economy.schedule_recipe_with_module",
+        Action::ValidateProduct { .. } => "action.economy.validate_product",
+        Action::ValidateProductWithModule { .. } => "action.economy.validate_product_with_module",
     }
 }

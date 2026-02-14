@@ -3,7 +3,9 @@
 use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::ResourceKind;
-use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
+use agent_world_wasm_abi::{
+    FactoryModuleSpec, MaterialStack, ProductValidationDecision, RecipeExecutionPlan,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -102,6 +104,18 @@ pub enum Action {
         desired_batches: u32,
         deterministic_seed: u64,
     },
+    ValidateProduct {
+        requester_agent_id: String,
+        module_id: String,
+        stack: MaterialStack,
+        decision: ProductValidationDecision,
+    },
+    ValidateProductWithModule {
+        requester_agent_id: String,
+        module_id: String,
+        stack: MaterialStack,
+        deterministic_seed: u64,
+    },
 }
 
 /// Domain events that describe state changes.
@@ -187,6 +201,15 @@ pub enum DomainEvent {
         produce: Vec<MaterialStack>,
         byproducts: Vec<MaterialStack>,
     },
+    ProductValidated {
+        requester_agent_id: String,
+        module_id: String,
+        stack: MaterialStack,
+        stack_limit: u32,
+        tradable: bool,
+        quality_levels: Vec<String>,
+        notes: Vec<String>,
+    },
 }
 
 impl DomainEvent {
@@ -211,6 +234,9 @@ impl DomainEvent {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
             DomainEvent::RecipeCompleted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::ProductValidated {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
         }

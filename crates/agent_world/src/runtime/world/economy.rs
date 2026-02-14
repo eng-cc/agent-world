@@ -1,7 +1,8 @@
 use agent_world_wasm_abi::{
     FactoryBuildDecision, FactoryBuildRequest, MaterialStack, ModuleCallErrorCode,
     ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleContext, ModuleKind, ModuleOutput,
-    ModuleSandbox, RecipeExecutionPlan, RecipeExecutionRequest,
+    ModuleSandbox, ProductValidationDecision, ProductValidationRequest, RecipeExecutionPlan,
+    RecipeExecutionRequest,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -16,6 +17,7 @@ use crate::simulator::ResourceKind;
 
 const FACTORY_BUILD_DECISION_EMIT_KIND: &str = "economy.factory_build_decision";
 const RECIPE_EXECUTION_PLAN_EMIT_KIND: &str = "economy.recipe_execution_plan";
+const PRODUCT_VALIDATION_EMIT_KIND: &str = "economy.product_validation";
 
 pub(super) enum EconomyActionResolution {
     Resolved(Action),
@@ -161,6 +163,58 @@ impl World {
                     plan,
                 }))
             }
+            Action::ValidateProductWithModule {
+                requester_agent_id,
+                module_id,
+                stack,
+                deterministic_seed,
+            } => {
+                if module_id.trim().is_empty() {
+                    return Ok(EconomyActionResolution::Rejected(
+                        RejectReason::RuleDenied {
+                            notes: vec!["product module_id cannot be empty".to_string()],
+                        },
+                    ));
+                }
+                if stack.amount <= 0 {
+                    return Ok(EconomyActionResolution::Rejected(
+                        RejectReason::RuleDenied {
+                            notes: vec!["product stack amount must be > 0".to_string()],
+                        },
+                    ));
+                }
+                let request = ProductValidationRequest {
+                    product_id: stack.kind.clone(),
+                    stack: stack.clone(),
+                    deterministic_seed: *deterministic_seed,
+                };
+                let decision = self.evaluate_product_with_module(
+                    module_id.as_str(),
+                    envelope.id,
+                    &request,
+                    sandbox,
+                )?;
+                if !decision.accepted {
+                    let notes = if decision.notes.is_empty() {
+                        vec![format!("product module denied: {}", decision.product_id)]
+                    } else {
+                        decision
+                            .notes
+                            .iter()
+                            .map(|note| format!("product module denied: {note}"))
+                            .collect()
+                    };
+                    return Ok(EconomyActionResolution::Rejected(
+                        RejectReason::RuleDenied { notes },
+                    ));
+                }
+                Ok(EconomyActionResolution::Resolved(Action::ValidateProduct {
+                    requester_agent_id: requester_agent_id.clone(),
+                    module_id: module_id.clone(),
+                    stack: stack.clone(),
+                    decision,
+                }))
+            }
             _ => Ok(EconomyActionResolution::Resolved(envelope.action.clone())),
         }
     }
@@ -269,6 +323,25 @@ impl World {
             &output,
             RECIPE_EXECUTION_PLAN_EMIT_KIND,
         )
+    }
+
+    fn evaluate_product_with_module(
+        &mut self,
+        module_id: &str,
+        action_id: ActionId,
+        request: &ProductValidationRequest,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ProductValidationDecision, WorldError> {
+        let trace_id = format!("action-{action_id}-{module_id}-product");
+        let output = self.execute_economy_module_call(module_id, &trace_id, request, sandbox)?;
+        if !output.effects.is_empty() {
+            return self.economy_module_output_invalid(
+                module_id,
+                &trace_id,
+                "product module output must not contain effects",
+            );
+        }
+        self.extract_economy_emit(module_id, &trace_id, &output, PRODUCT_VALIDATION_EMIT_KIND)
     }
 
     fn execute_economy_module_call<T: Serialize>(

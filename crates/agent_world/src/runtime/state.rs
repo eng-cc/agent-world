@@ -334,6 +334,13 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
+            DomainEvent::ProductValidated {
+                requester_agent_id, ..
+            } => {
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
         }
         Ok(())
     }

@@ -7,7 +7,7 @@ use crate::runtime::{
 use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{
     FactoryBuildDecision, FactoryModuleSpec, MaterialStack, ModuleEmit, ModuleOutput,
-    RecipeExecutionPlan,
+    ProductValidationDecision, RecipeExecutionPlan,
 };
 use agent_world_wasm_executor::FixedSandbox;
 use serde_json::json;
@@ -551,6 +551,122 @@ fn schedule_recipe_with_module_rejects_when_module_denies() {
                 assert!(notes
                     .iter()
                     .any(|note| note.contains("recipe module denied: insufficient pressure")));
+            }
+            other => panic!("expected RuleDenied, got {other:?}"),
+        },
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn validate_product_with_module_uses_module_decision() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+    activate_pure_module(&mut world, "m4.product.logistics_drone", b"product-module");
+
+    world.submit_action(Action::ValidateProductWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        module_id: "m4.product.logistics_drone".to_string(),
+        stack: MaterialStack::new("logistics_drone", 1),
+        deterministic_seed: 20260214,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "economy.product_validation".to_string(),
+            payload: serde_json::to_value(ProductValidationDecision::accepted(
+                "logistics_drone",
+                32,
+                true,
+                vec!["fleet_grade".to_string()],
+            ))
+            .expect("serialize product validation decision"),
+        }],
+        output_bytes: 256,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("validate product with module");
+
+    let validated = world
+        .journal()
+        .events
+        .last()
+        .expect("product validated event");
+    match &validated.body {
+        WorldEventBody::Domain(DomainEvent::ProductValidated {
+            requester_agent_id,
+            module_id,
+            stack,
+            stack_limit,
+            tradable,
+            quality_levels,
+            ..
+        }) => {
+            assert_eq!(requester_agent_id, "builder-a");
+            assert_eq!(module_id, "m4.product.logistics_drone");
+            assert_eq!(stack.kind, "logistics_drone");
+            assert_eq!(stack.amount, 1);
+            assert_eq!(*stack_limit, 32);
+            assert!(*tradable);
+            assert_eq!(quality_levels, &vec!["fleet_grade".to_string()]);
+        }
+        other => panic!("expected ProductValidated, got {other:?}"),
+    }
+}
+
+#[test]
+fn validate_product_with_module_rejects_when_module_denies() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "builder-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agent");
+    activate_pure_module(&mut world, "m4.product.logistics_drone", b"product-module");
+
+    world.submit_action(Action::ValidateProductWithModule {
+        requester_agent_id: "builder-a".to_string(),
+        module_id: "m4.product.logistics_drone".to_string(),
+        stack: MaterialStack::new("logistics_drone", 99),
+        deterministic_seed: 20260214,
+    });
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "economy.product_validation".to_string(),
+            payload: serde_json::to_value(ProductValidationDecision::rejected(
+                "logistics_drone",
+                32,
+                true,
+                vec!["fleet_grade".to_string()],
+                vec!["stack exceeds limit".to_string()],
+            ))
+            .expect("serialize rejected product validation"),
+        }],
+        output_bytes: 256,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("module denial should turn into action rejected");
+
+    let rejected = world.journal().events.last().expect("rejection event");
+    match &rejected.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("product module denied: stack exceeds limit")));
             }
             other => panic!("expected RuleDenied, got {other:?}"),
         },
