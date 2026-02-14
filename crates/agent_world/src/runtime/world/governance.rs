@@ -1,8 +1,7 @@
 use super::super::util::hash_json;
 use super::super::{
-    apply_manifest_patch, DistributedClient, DistributedDht, GovernanceEvent, Manifest,
-    ManifestPatch, ManifestUpdate, Proposal, ProposalDecision, ProposalId, ProposalStatus,
-    WorldError, WorldEventBody,
+    apply_manifest_patch, GovernanceEvent, Manifest, ManifestPatch, ManifestUpdate, Proposal,
+    ProposalDecision, ProposalId, ProposalStatus, WorldError, WorldEventBody,
 };
 use super::World;
 
@@ -86,41 +85,6 @@ impl World {
         Ok(manifest_hash)
     }
 
-    pub fn shadow_proposal_with_fetch(
-        &mut self,
-        proposal_id: ProposalId,
-        world_id: &str,
-        client: &DistributedClient,
-        dht: &impl DistributedDht,
-    ) -> Result<String, WorldError> {
-        let (status, manifest) = {
-            let proposal = self
-                .proposals
-                .get(&proposal_id)
-                .ok_or(WorldError::ProposalNotFound { proposal_id })?;
-            (proposal.status.clone(), proposal.manifest.clone())
-        };
-        if !matches!(status, ProposalStatus::Proposed) {
-            return Err(WorldError::ProposalInvalidState {
-                proposal_id,
-                expected: "proposed".to_string(),
-                found: status.label(),
-            });
-        }
-        if let Some(changes) = manifest.module_changes()? {
-            self.ensure_module_changes_with_fetch(world_id, &changes, client, dht)?;
-            self.validate_module_changes(&changes)?;
-            self.shadow_validate_module_changes(&changes)?;
-        }
-        let manifest_hash = hash_json(&manifest)?;
-        let event = GovernanceEvent::ShadowReport {
-            proposal_id,
-            manifest_hash: manifest_hash.clone(),
-        };
-        self.append_event(WorldEventBody::Governance(event), None)?;
-        Ok(manifest_hash)
-    }
-
     pub fn approve_proposal(
         &mut self,
         proposal_id: ProposalId,
@@ -179,63 +143,6 @@ impl World {
 
         let module_changes = manifest.module_changes()?;
         if let Some(changes) = &module_changes {
-            self.validate_module_changes(changes)?;
-        }
-        let applied_manifest = if module_changes.is_some() {
-            manifest.without_module_changes()?
-        } else {
-            manifest.clone()
-        };
-        let applied_hash = hash_json(&applied_manifest)?;
-
-        let event = GovernanceEvent::Applied {
-            proposal_id,
-            manifest_hash: Some(applied_hash.clone()),
-        };
-        self.append_event(WorldEventBody::Governance(event), None)?;
-        if let Some(changes) = module_changes {
-            self.apply_module_changes(proposal_id, &changes, &actor)?;
-        }
-        let update = ManifestUpdate {
-            manifest: applied_manifest,
-            manifest_hash: applied_hash.clone(),
-        };
-        self.append_event(WorldEventBody::ManifestUpdated(update), None)?;
-        Ok(applied_hash)
-    }
-
-    pub fn apply_proposal_with_fetch(
-        &mut self,
-        proposal_id: ProposalId,
-        world_id: &str,
-        client: &DistributedClient,
-        dht: &impl DistributedDht,
-    ) -> Result<String, WorldError> {
-        let (status, manifest, actor) = {
-            let proposal = self
-                .proposals
-                .get(&proposal_id)
-                .ok_or(WorldError::ProposalNotFound { proposal_id })?;
-            (
-                proposal.status.clone(),
-                proposal.manifest.clone(),
-                proposal.author.clone(),
-            )
-        };
-        let (manifest, actor) = match &status {
-            ProposalStatus::Approved { .. } => (manifest, actor),
-            other => {
-                return Err(WorldError::ProposalInvalidState {
-                    proposal_id,
-                    expected: "approved".to_string(),
-                    found: other.label(),
-                })
-            }
-        };
-
-        let module_changes = manifest.module_changes()?;
-        if let Some(changes) = &module_changes {
-            self.ensure_module_changes_with_fetch(world_id, changes, client, dht)?;
             self.validate_module_changes(changes)?;
         }
         let applied_manifest = if module_changes.is_some() {

@@ -8,9 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 agent_world_builtin_wasm = { path = "../agent_world_builtin_wasm" }
-agent_world_consensus = { path = "../agent_world_consensus" }
 agent_world_distfs = { path = "../agent_world_distfs" }
-agent_world_net = { path = "../agent_world_net", default-features = false }
 agent_world_proto = { path = "../agent_world_proto" }
 agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }
 agent_world_wasm_executor = { path = "../agent_world_wasm_executor", default-features = false }
@@ -27,12 +25,9 @@ reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], def
 toml = "0.8"
 async-openai = { version = "0.32.4", default-features = false, features = ["responses", "rustls"] }
 tokio = { version = "1", features = ["rt", "time"] }
-futures = { version = "0.3", optional = true }
-libp2p = { version = "0.53", optional = true, default-features = false, features = ["async-std", "cbor", "dns", "gossipsub", "kad", "macros", "noise", "request-response", "tcp", "yamux"] }
 
 [features]
 default = []
 wasmtime = ["agent_world_wasm_executor/wasmtime"]
 viewer_live_integration = []
-libp2p = ["dep:libp2p", "dep:futures"]
 self_tests = []

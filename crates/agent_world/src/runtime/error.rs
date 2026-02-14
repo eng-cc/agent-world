@@ -86,7 +86,7 @@ pub enum WorldError {
         protocol: String,
     },
     NetworkRequestFailed {
-        code: super::distributed::DistributedErrorCode,
+        code: agent_world_proto::distributed::DistributedErrorCode,
         message: String,
         retryable: bool,
     },

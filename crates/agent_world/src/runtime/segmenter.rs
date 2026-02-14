@@ -1,9 +1,9 @@
 //! Snapshot/journal segmentation helpers for distributed storage.
 
 use agent_world_distfs as distfs;
+use agent_world_proto::distributed::SnapshotManifest;
 
 use super::blob_store::BlobStore;
-use super::distributed::SnapshotManifest;
 use super::error::WorldError;
 use super::snapshot::{Journal, Snapshot};
 
