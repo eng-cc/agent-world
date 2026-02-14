@@ -11,8 +11,8 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    PromptControlError, ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse,
-    ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, PromptControlError, ViewerControl, ViewerEventKind, ViewerRequest,
+    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -295,7 +295,9 @@ impl<'a> ViewerSession<'a> {
 
     fn event_allowed(&self, event: &WorldEvent) -> bool {
         match &self.event_filters {
-            Some(filters) => filters.iter().any(|filter| filter.matches(&event.kind)),
+            Some(filters) => filters
+                .iter()
+                .any(|filter| viewer_event_kind_matches(filter, &event.kind)),
             None => true,
         }
     }

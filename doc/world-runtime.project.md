@@ -230,7 +230,7 @@
 - [x] R7-1 新建 `agent_world_distfs` 并迁移 CAS/分片/组装能力，接入 runtime 基础路径
 - [x] R7-2 删除 `agent_world` 内分布式实现文件并切换调用方到 split crates
 - [x] R7-3 拆分 `agent_world` 大 facade，收敛导出边界
-- [ ] R7-4 Viewer 协议并入 `agent_world_proto` 并完成双端适配
+- [x] R7-4 Viewer 协议并入 `agent_world_proto` 并完成双端适配
 - [ ] R7-5 收敛 WASM ABI 边界（去 net 重复 `ModuleManifest`）
 - [ ] R7-6 拆分全部超 1200 行 Rust 文件并回归
 
@@ -240,6 +240,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：R7（分布式能力彻底拆分）进行中，R7-3 完成。
-- 下一步：执行 R7-4（Viewer 协议并入 `agent_world_proto` 并完成双端适配）。
-- 最近更新：完成 R7-3（移除 `agent_world` 根级 runtime/simulator 大 facade re-export，调用方切为显式模块路径，2026-02-14）
+- 当前阶段：R7（分布式能力彻底拆分）进行中，R7-4 完成。
+- 下一步：执行 R7-5（收敛 WASM ABI 边界，移除 net 侧重复 `ModuleManifest`）。
+- 最近更新：完成 R7-4（viewer 协议迁移到 `agent_world_proto`，`agent_world` 通过类型别名桥接，2026-02-14）
