@@ -82,13 +82,8 @@ pub mod error {
 }
 
 pub mod modules {
+    pub use agent_world_wasm_abi::ModuleArtifact;
     use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct ModuleArtifact {
-        pub wasm_hash: String,
-        pub bytes: Vec<u8>,
-    }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
     pub struct ModuleManifest {
