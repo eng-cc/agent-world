@@ -17,6 +17,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+    - name: Install Rust wasm target
+      run: rustup target add wasm32-unknown-unknown
     - name: Install system deps
       run: |
         sudo apt-get update
