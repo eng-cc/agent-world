@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
-use agent_world::runtime::WorldError;
+use super::super::error::WorldError;
 
 use super::{
     normalized_schedule_key, validate_coordinator_lease_ttl_ms,

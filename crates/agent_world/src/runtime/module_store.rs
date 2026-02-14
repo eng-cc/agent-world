@@ -1,138 +1,69 @@
 //! Module storage persistence for artifacts and registry.
 
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fs;
+use agent_world_wasm_store::{ModuleStore as InnerModuleStore, ModuleStoreError};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::error::WorldError;
-use super::modules::{ModuleManifest, ModuleRecord, ModuleRegistry};
-use super::util::{read_json_from_path, write_json_to_path};
-
-const REGISTRY_VERSION: u64 = 1;
-const REGISTRY_FILE: &str = "module_registry.json";
-const MODULES_DIR: &str = "modules";
-
-/// On-disk registry representation.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct ModuleRegistryFile {
-    pub version: u64,
-    pub updated_at: i64,
-    pub records: BTreeMap<String, ModuleRecord>,
-    pub active: BTreeMap<String, String>,
-}
+use super::modules::{ModuleManifest, ModuleRegistry};
 
 /// File-based module store for artifacts, meta, and registry.
 #[derive(Debug, Clone)]
 pub struct ModuleStore {
-    root: PathBuf,
-    registry_path: PathBuf,
-    modules_dir: PathBuf,
+    inner: InnerModuleStore,
 }
 
 impl ModuleStore {
     pub fn new(root: impl AsRef<Path>) -> Self {
-        let root = root.as_ref().to_path_buf();
-        let registry_path = root.join(REGISTRY_FILE);
-        let modules_dir = root.join(MODULES_DIR);
         Self {
-            root,
-            registry_path,
-            modules_dir,
+            inner: InnerModuleStore::new(root),
         }
     }
 
     pub fn root(&self) -> &Path {
-        &self.root
+        self.inner.root()
     }
 
     pub fn registry_path(&self) -> &Path {
-        &self.registry_path
+        self.inner.registry_path()
     }
 
     pub fn modules_dir(&self) -> &Path {
-        &self.modules_dir
+        self.inner.modules_dir()
     }
 
     pub fn write_artifact(&self, wasm_hash: &str, bytes: &[u8]) -> Result<PathBuf, WorldError> {
-        self.ensure_dirs()?;
-        let path = self.modules_dir.join(format!("{wasm_hash}.wasm"));
-        write_bytes_atomic(&path, bytes)?;
-        Ok(path)
+        self.inner
+            .write_artifact(wasm_hash, bytes)
+            .map_err(map_store_error)
     }
 
     pub fn read_artifact(&self, wasm_hash: &str) -> Result<Vec<u8>, WorldError> {
-        let path = self.modules_dir.join(format!("{wasm_hash}.wasm"));
-        Ok(fs::read(path)?)
+        self.inner.read_artifact(wasm_hash).map_err(map_store_error)
     }
 
     pub fn write_meta(&self, manifest: &ModuleManifest) -> Result<PathBuf, WorldError> {
-        self.ensure_dirs()?;
-        let path = self
-            .modules_dir
-            .join(format!("{}.meta.json", manifest.wasm_hash));
-        write_json_atomic(manifest, &path)?;
-        Ok(path)
+        self.inner.write_meta(manifest).map_err(map_store_error)
     }
 
     pub fn read_meta(&self, wasm_hash: &str) -> Result<ModuleManifest, WorldError> {
-        let path = self.modules_dir.join(format!("{wasm_hash}.meta.json"));
-        read_json_from_path(&path)
+        self.inner.read_meta(wasm_hash).map_err(map_store_error)
     }
 
     pub fn save_registry(&self, registry: &ModuleRegistry) -> Result<(), WorldError> {
-        self.ensure_dirs()?;
-        let file = ModuleRegistryFile {
-            version: REGISTRY_VERSION,
-            updated_at: now_unix(),
-            records: registry.records.clone(),
-            active: registry.active.clone(),
-        };
-        write_json_atomic(&file, &self.registry_path)
+        self.inner.save_registry(registry).map_err(map_store_error)
     }
 
     pub fn load_registry(&self) -> Result<ModuleRegistry, WorldError> {
-        if !self.registry_path.exists() {
-            return Ok(ModuleRegistry::default());
-        }
-        let file: ModuleRegistryFile = read_json_from_path(&self.registry_path)?;
-        if file.version != REGISTRY_VERSION {
-            return Err(WorldError::ModuleStoreVersionMismatch {
-                expected: REGISTRY_VERSION,
-                found: file.version,
-            });
-        }
-        Ok(ModuleRegistry {
-            records: file.records,
-            active: file.active,
-        })
-    }
-
-    fn ensure_dirs(&self) -> Result<(), WorldError> {
-        fs::create_dir_all(&self.root)?;
-        fs::create_dir_all(&self.modules_dir)?;
-        Ok(())
+        self.inner.load_registry().map_err(map_store_error)
     }
 }
 
-fn now_unix() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs() as i64)
-        .unwrap_or(0)
-}
-
-fn write_json_atomic<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
-    let tmp = path.with_extension("tmp");
-    write_json_to_path(value, &tmp)?;
-    fs::rename(tmp, path)?;
-    Ok(())
-}
-
-fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<(), WorldError> {
-    let tmp = path.with_extension("tmp");
-    fs::write(&tmp, bytes)?;
-    fs::rename(tmp, path)?;
-    Ok(())
+fn map_store_error(error: ModuleStoreError) -> WorldError {
+    match error {
+        ModuleStoreError::VersionMismatch { expected, found } => {
+            WorldError::ModuleStoreVersionMismatch { expected, found }
+        }
+        ModuleStoreError::Io(message) => WorldError::Io(message),
+        ModuleStoreError::Serde(message) => WorldError::Serde(message),
+    }
 }

@@ -69,6 +69,12 @@
 - `doc/world-runtime/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
 - `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
 - `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
+- `doc/world-runtime/wasm-runtime-crate-split.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
+- `doc/world-runtime/wasm-runtime-crate-split-phase2.md`：WASM 拆分后测试加固（router/executor）
+- `doc/world-runtime/wasm-runtime-crate-split-phase3.md`：WASM 运行时激进迁移（工件/缓存类型下沉）
+- `doc/world-runtime/wasm-runtime-crate-split-phase4.md`：WASM 运行时激进迁移（模块清单/变更计划类型下沉）
+- `doc/world-runtime/wasm-runtime-crate-split-phase5.md`：WASM 运行时激进迁移（模块注册表/生命周期事件类型下沉）
+- `doc/world-runtime/wasm-runtime-crate-split-phase6.md`：WASM 运行时激进迁移（模块存储实现拆 crate）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
@@ -78,6 +84,12 @@
 - **M4**：受控升级（propose/shadow/approve/apply）最小闭环
 - **M5**：WASM 模块治理接入（注册表/路由/沙箱最小执行）
 - **M6**：Agent 默认模块体系 V1（ADM-S1~S5，已完成）
+- **M7**：WASM 运行时拆 crate（WRS-1~WRS-4）
+- **M8**：WASM 拆分后测试加固（R2-0~R2-2）
+- **M9**：WASM 运行时激进迁移（R3-0~R3-2）
+- **M10**：WASM 运行时激进迁移（R4-0~R4-1）
+- **M11**：WASM 运行时激进迁移（R5-0~R5-1）
+- **M12**：WASM 运行时激进迁移（R6-0~R6-1）
 
 ## 风险
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。

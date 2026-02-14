@@ -1,13 +1,13 @@
 use serde::Serialize;
 
-use agent_world::runtime::WorldError;
+use super::error::WorldError;
 use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
 
+use super::util::to_canonical_cbor;
 use super::{
     MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,
     MembershipRevocationSyncPolicy, MembershipSnapshotRestorePolicy,
 };
-use crate::membership::to_canonical_cbor;
 
 #[derive(Serialize)]
 struct MembershipDirectorySigningPayload<'a> {

@@ -17,7 +17,7 @@ pub fn publish_world_head(
     dht: &impl DistributedDht,
     head: &WorldHeadAnnounce,
 ) -> Result<(), WorldError> {
-    dht.put_world_head(&head.world_id, head)
+    Ok(dht.put_world_head(&head.world_id, head)?)
 }
 
 pub fn publish_execution_providers(
@@ -64,7 +64,7 @@ pub fn query_providers(
     world_id: &str,
     content_hash: &str,
 ) -> Result<Vec<ProviderRecord>, WorldError> {
-    dht.get_providers(world_id, content_hash)
+    Ok(dht.get_providers(world_id, content_hash)?)
 }
 
 fn collect_execution_hashes(result: &ExecutionWriteResult) -> HashSet<String> {

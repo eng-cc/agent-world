@@ -2,8 +2,7 @@ use super::super::{
     m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation, ModuleChangeSet,
     ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
     ModuleSubscriptionStage, ProposalDecision, WorldError, M1_AGENT_DEFAULT_MODULE_VERSION,
-    M1_BUILTIN_WASM_ARTIFACT_BYTES, M1_BUILTIN_WASM_ARTIFACT_SHA256, M1_MEMORY_MAX_ENTRIES,
-    M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
+    M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
     M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
     M1_STORAGE_POWER_MODULE_ID,
 };
@@ -30,7 +29,6 @@ impl World {
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
-        validate_m1_embedded_wasm_artifact()?;
         let radiation_power_artifact =
             m1_builtin_wasm_artifact_for_module(M1_RADIATION_POWER_MODULE_ID)?;
         let storage_power_artifact =
@@ -94,7 +92,6 @@ impl World {
         &mut self,
         actor: impl Into<String>,
     ) -> Result<(), WorldError> {
-        validate_m1_embedded_wasm_artifact()?;
         let sensor_artifact = m1_builtin_wasm_artifact_for_module(M1_SENSOR_MODULE_ID)?;
         let mobility_artifact = m1_builtin_wasm_artifact_for_module(M1_MOBILITY_MODULE_ID)?;
         let memory_artifact = m1_builtin_wasm_artifact_for_module(M1_MEMORY_MODULE_ID)?;
@@ -157,26 +154,6 @@ impl World {
 
         Ok(())
     }
-}
-
-fn validate_m1_embedded_wasm_artifact() -> Result<(), WorldError> {
-    let expected = M1_BUILTIN_WASM_ARTIFACT_SHA256.trim();
-    if expected.len() != 64 || !expected.chars().all(|ch| ch.is_ascii_hexdigit()) {
-        return Err(WorldError::ModuleChangeInvalid {
-            reason: "invalid embedded wasm hash file: expected 64-char hex sha256".to_string(),
-        });
-    }
-
-    let actual = util::sha256_hex(M1_BUILTIN_WASM_ARTIFACT_BYTES);
-    if actual != expected {
-        return Err(WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "embedded wasm artifact hash mismatch: expected={expected}, actual={actual}"
-            ),
-        });
-    }
-
-    Ok(())
 }
 
 fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<&'static [u8], WorldError> {

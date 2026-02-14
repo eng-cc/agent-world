@@ -98,14 +98,10 @@ pub use modules::{
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
 
-#[cfg(test)]
+pub(crate) use m1_builtin_wasm_artifact::m1_builtin_wasm_module_artifact_bytes;
+#[cfg(all(test, feature = "wasmtime"))]
 pub(crate) use m1_builtin_wasm_artifact::{
-    m1_builtin_module_ids_manifest, m1_builtin_wasm_artifact_hash_hex,
-    register_m1_builtin_wasm_module_artifact,
-};
-pub(crate) use m1_builtin_wasm_artifact::{
-    m1_builtin_wasm_module_artifact_bytes, M1_BUILTIN_WASM_ARTIFACT_BYTES,
-    M1_BUILTIN_WASM_ARTIFACT_SHA256,
+    m1_builtin_module_ids_manifest, register_m1_builtin_wasm_module_artifact,
 };
 
 // Built-in module constants

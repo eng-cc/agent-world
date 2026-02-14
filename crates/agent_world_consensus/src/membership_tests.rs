@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use agent_world::runtime::{InMemoryDht, InMemoryNetwork};
+use agent_world_net::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 use agent_world_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 
 use crate::membership::{
@@ -83,8 +83,7 @@ fn membership_keyring_sign_and_verify_round_trip() {
 
 #[test]
 fn publish_and_drain_membership_change_announcement() {
-    let network: Arc<dyn agent_world::runtime::DistributedNetwork + Send + Sync> =
-        Arc::new(InMemoryNetwork::new());
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let sync_client = MembershipSyncClient::new(Arc::clone(&network));
     let subscription = sync_client.subscribe("w1").expect("subscribe");
 
@@ -118,8 +117,7 @@ fn publish_and_drain_membership_change_announcement() {
 
 #[test]
 fn restore_membership_from_dht_applies_replace_snapshot() {
-    let network: Arc<dyn agent_world::runtime::DistributedNetwork + Send + Sync> =
-        Arc::new(InMemoryNetwork::new());
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let dht = InMemoryDht::new();
     let sync_client = MembershipSyncClient::new(Arc::clone(&network));
     let mut consensus = sample_consensus();

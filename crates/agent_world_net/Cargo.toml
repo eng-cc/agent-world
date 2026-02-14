@@ -7,12 +7,14 @@ edition = "2021"
 path = "src/lib.rs"
 
 [features]
-default = []
+default = ["self_tests"]
 libp2p = ["dep:libp2p", "dep:futures", "dep:async-std"]
 runtime_bridge = []
+self_tests = []
 
 [dependencies]
 agent_world_proto = { path = "../agent_world_proto" }
+agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }
 serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
 futures = { version = "0.3", optional = true }

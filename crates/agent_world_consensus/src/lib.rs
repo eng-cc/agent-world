@@ -13,22 +13,11 @@ pub mod distributed {
 }
 
 pub mod distributed_dht {
-    pub use agent_world::runtime::InMemoryDht;
-    pub use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
-
-    pub trait DistributedDht:
-        agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
-    {
-    }
-
-    impl<T> DistributedDht for T where
-        T: agent_world_proto::distributed_dht::DistributedDht<agent_world_net::WorldError>
-    {
-    }
+    pub use agent_world_net::{DistributedDht, InMemoryDht, MembershipDirectorySnapshot};
 }
 
 pub mod distributed_net {
-    pub use agent_world::runtime::{DistributedNetwork, NetworkSubscription};
+    pub use agent_world_net::{DistributedNetwork, NetworkSubscription};
 }
 
 pub mod distributed_consensus {
@@ -43,7 +32,7 @@ pub mod distributed_lease {
 }
 
 pub mod error {
-    pub use agent_world::runtime::WorldError;
+    pub use agent_world_proto::world_error::WorldError;
 }
 
 pub mod util {
@@ -72,6 +61,10 @@ pub mod util {
         serializer.self_describe()?;
         canonical_value.serialize(&mut serializer)?;
         Ok(buf)
+    }
+
+    pub fn blake3_hex(bytes: &[u8]) -> String {
+        blake3::hash(bytes).to_hex().to_string()
     }
 }
 

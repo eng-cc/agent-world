@@ -1,0 +1,14 @@
+[package]
+name = "agent_world_wasm_executor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }
+serde_cbor = "0.11"
+
+wasmtime = { version = "41", optional = true }
+
+[features]
+default = []
+wasmtime = ["dep:wasmtime"]

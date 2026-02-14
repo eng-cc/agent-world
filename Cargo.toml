@@ -5,6 +5,10 @@ members = [
     "crates/agent_world_consensus",
     "crates/agent_world_net",
     "crates/agent_world_proto",
+    "crates/agent_world_wasm_abi",
+    "crates/agent_world_wasm_executor",
+    "crates/agent_world_wasm_router",
+    "crates/agent_world_wasm_store",
     "crates/agent_world_viewer",
 ]
 resolver = "2"

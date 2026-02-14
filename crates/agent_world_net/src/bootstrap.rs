@@ -41,7 +41,7 @@ pub fn bootstrap_world_from_dht(
     bootstrap_world_from_head_with_dht(&head, dht, client, store)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::fs;
     use std::sync::Arc;

@@ -78,7 +78,29 @@
 - [x] T75：将执行产物索引相关公共依赖（`ExecutionWriteResult` / `ExecutionWriteConfig` / `SegmentConfig` / `JournalSegmentRef`）下沉到 `agent_world_proto`，收敛 runtime/net 双类型并将 `distributed_index` 收敛为 net 薄封装。
 - [x] T76：清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层，改为 runtime 本地直接实现并保持 include warning 基线无回归。
 - [x] T77：清理 `distributed_bootstrap` include 包装层，改为 runtime 本地直接实现并完成 bootstrap 定向回归。
-- [ ] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口。
+- [x] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口（已完成：`distributed_head_follow.rs` / `distributed_observer.rs` / `distributed_observer_replay.rs` 均去除 include 包装）。
+- [x] T79：继续清理 `distributed_mempool` include 包装层，改为 runtime 本地直接实现并完成 mempool/多节点定向回归。
+- [x] T80：继续清理 `distributed_lease` include 包装层，改为 runtime 本地直接实现并完成 lease/一致性定向回归。
+- [x] T81：解耦 `agent_world_consensus` 对 `agent_world` 依赖，切换到 `agent_world_net`/`agent_world_proto::WorldError` 闭环，并补齐 runtime recovery 同源包装兼容层与定向回归。
+- [x] T82：将 `agent_world::runtime::distributed_consensus` 从 include 复用切到直接依赖 `agent_world_consensus`（包装适配层保留 runtime 错误语义），并完成 membership 定向回归。
+- [x] T83：将 `distributed_membership_sync` / `reconciliation` 的 `include!` 宏收敛为路径模块包装（`#[path]`），并修正 include warning 基线脚本在 0 include 场景下的兼容性。
+- [x] T84：将 runtime `distributed_membership_sync` 的 `membership_logic` 切换为路径复用 `agent_world_consensus/src/membership_logic.rs`，并删除 runtime 本地重复实现文件。
+- [x] T85：将 `distributed_mempool` 从 runtime 本地实现切换为 `agent_world_consensus::ActionMempool` 薄包装，复用 consensus crate 闭环能力并保持 runtime 导出签名不变。
+- [x] T86：将 `distributed_lease` 从 runtime 本地实现切换为 `agent_world_consensus` 直接复用（re-export），去除 runtime 侧重复 lease 逻辑。
+- [x] T87：收敛 `distributed_consensus` 中的 lease 适配冗余，直接复用共享 `LeaseState` 类型并删除 runtime -> consensus 的字段级拷贝转换。
+- [x] T88：将 runtime `distributed_membership_sync` 从 `#[path]` 包装切到 `agent_world_consensus` 直接复用（删除 `reconciliation/recovery` 包装入口），并同步收敛 `distributed_consensus` 到 consensus 直接 re-export 与 DHT trait 对齐。
+- [x] T89：将 runtime `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer` / `distributed_observer_replay` 切换为路径复用 `agent_world_net` 同源文件（保留 runtime alias 兼容层），减少 runtime 本地实现维护面。
+- [x] T90：将 runtime `distributed_storage` / `distributed_validation` 切换为路径复用 `agent_world_net` 同源文件（保留 `HeadValidationResult` 与 runtime alias 兼容层），进一步压缩 runtime 重复实现。
+- [x] T91：将 runtime `distributed_mempool` / `distributed_index` 切换为路径复用 `agent_world_consensus` / `agent_world_net` 同源文件，并在 net `index` 中补齐通用错误转换写法以兼容 runtime 别名上下文。
+- [x] T92：收敛 runtime `distributed_membership_sync` 的重复 recovery/reconciliation 单测面，迁移测试闭环到 `agent_world_consensus` crate，仅保留 runtime 侧核心 API 兼容测试。
+- [x] T93：进一步收敛 runtime `distributed_membership_sync::tests`，将大规模重复单测替换为最小运行时兼容 smoke tests，详细行为验证统一归口到 `agent_world_consensus::membership_tests`。
+- [x] T94：将 runtime `distributed_mempool` / `distributed_index` 从路径包装进一步收敛为 split crate 直接 re-export，减少 runtime alias 层代码与维护面。
+- [x] T95：为路径复用的 net 模块测试增加 `self_tests` 门控（仅在 `agent_world_net` 自测上下文启用），并同步收敛 runtime 包装层测试专用 alias 门控，消除 `--all-targets` include warning 基线噪音。
+- [x] T96：将 `distributed_head_follow` 的 head 选择/判定状态机下沉到 `agent_world_net::HeadTracker`，runtime 改为本地薄适配（保留 bootstrap/world 依赖），并去除该入口的路径包装。
+- [x] T97：将 observer 的 head 同步报告/跟随循环抽象下沉到 `agent_world_net::observer_flow`，并将 runtime `distributed_observer` 从路径包装切换为本地薄适配（复用 net 下沉能力）。
+- [x] T98：将 observer replay 的 manifest/journal 拉取编排抽象下沉到 `agent_world_net::observer_replay_flow`，并将 runtime `distributed_observer_replay` 从路径包装切换为本地薄适配。
+- [x] T99：将 runtime `distributed_bootstrap` 从路径包装切换为本地薄适配（复用 runtime replay 校验链路），进一步收敛跨 crate 路径耦合点。
+- [x] T100：将 runtime `distributed_storage` / `distributed_validation` 从路径包装切换为本地实现（复用 proto 下沉类型），并补齐 storage/validation 定向回归。
 
 ## 依赖
 - `crates/agent_world/src/runtime/mod.rs`
@@ -86,8 +108,6 @@
 - `crates/agent_world/src/runtime/libp2p_net.rs`
 - `crates/agent_world/src/runtime/distributed_consensus.rs`
 - `crates/agent_world/src/runtime/distributed_membership_sync.rs`
-- `crates/agent_world/src/runtime/distributed_membership_sync/recovery.rs`
-- `crates/agent_world/src/runtime/distributed_membership_sync/recovery_exports.rs`
 - `crates/agent_world/src/runtime/distributed_dht.rs`
 - `crates/agent_world/src/runtime/distributed_client.rs`
 - `crates/agent_world/src/runtime/distributed_gateway.rs`
@@ -107,8 +127,11 @@
 - `crates/agent_world_net/src/provider_cache.rs`
 - `crates/agent_world_net/src/dht_cache.rs`
 - `crates/agent_world_net/src/head_follow.rs`
+- `crates/agent_world_net/src/head_sync.rs`
+- `crates/agent_world_net/src/head_tracking.rs`
 - `crates/agent_world_net/src/observer.rs`
 - `crates/agent_world_net/src/observer_replay.rs`
+- `crates/agent_world_net/src/replay_flow.rs`
 - `crates/agent_world_net/src/bootstrap.rs`
 - `crates/agent_world_consensus/src/lib.rs`
 - `crates/agent_world_consensus/src/quorum.rs`
@@ -184,6 +207,6 @@
 - `crates/agent_world_net/src/tests.rs`
 
 ## 状态
-- 当前阶段：三十九次扩展阶段进行中（T77 完成，T78 待执行）。
-- 下一步：执行 T78，推进 head_follow/observer 链路 include 替换策略并做低耦合入口收敛。
-- 最近更新：2026-02-13
+- 当前阶段：六十三次扩展阶段完成（T100 已完成，`distributed_storage` / `distributed_validation` 已去除路径包装并收敛为 runtime 本地实现）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先将 storage/validation 复用逻辑进一步下沉到 split crate 的可编译抽象层并逐步切到直接依赖。
+- 最近更新：2026-02-14

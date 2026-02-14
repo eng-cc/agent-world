@@ -10,6 +10,8 @@ mod execution_storage;
 mod gateway;
 #[cfg(feature = "runtime_bridge")]
 mod head_follow;
+mod head_sync;
+mod head_tracking;
 #[cfg(feature = "runtime_bridge")]
 mod head_validation;
 mod index;
@@ -20,6 +22,7 @@ mod observer;
 #[cfg(feature = "runtime_bridge")]
 mod observer_replay;
 mod provider_cache;
+mod replay_flow;
 mod util;
 
 #[cfg(feature = "libp2p")]
@@ -49,6 +52,7 @@ pub mod distributed_bootstrap {
 #[cfg(feature = "runtime_bridge")]
 pub mod distributed_head_follow {
     pub use super::head_follow::*;
+    pub use super::head_tracking::HeadUpdateDecision;
 }
 
 #[cfg(feature = "runtime_bridge")]
@@ -62,6 +66,17 @@ pub mod distributed_index_store {
 
 pub mod distributed_provider_cache {
     pub use super::provider_cache::*;
+}
+
+pub mod observer_flow {
+    pub use super::head_sync::{
+        compose_head_sync_report, follow_head_sync, HeadFollowReport, HeadSyncReport,
+        HeadSyncResult,
+    };
+}
+
+pub mod observer_replay_flow {
+    pub use super::replay_flow::load_manifest_and_segments;
 }
 
 pub mod distributed_storage {
@@ -82,13 +97,8 @@ pub mod error {
 }
 
 pub mod modules {
+    pub use agent_world_wasm_abi::ModuleArtifact;
     use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct ModuleArtifact {
-        pub wasm_hash: String,
-        pub bytes: Vec<u8>,
-    }
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
     pub struct ModuleManifest {
@@ -107,6 +117,7 @@ pub use dht_cache::{CachedDht, DhtCacheConfig};
 pub use distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
 pub use error::WorldError;
 pub use gateway::{ActionGateway, NetworkGateway, SubmitActionReceipt};
+pub use head_tracking::{HeadTracker, HeadUpdateDecision};
 pub use index::{
     publish_execution_providers, publish_execution_providers_cached, publish_world_head,
     query_providers, IndexPublishResult,
@@ -125,7 +136,7 @@ pub use bootstrap::{
 #[cfg(feature = "runtime_bridge")]
 pub use distributed_storage::store_execution_result;
 #[cfg(feature = "runtime_bridge")]
-pub use head_follow::{HeadFollower, HeadUpdateDecision};
+pub use head_follow::HeadFollower;
 #[cfg(feature = "runtime_bridge")]
 pub use head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
 #[cfg(feature = "runtime_bridge")]

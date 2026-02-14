@@ -25,6 +25,7 @@
 - 继续迁移 `m1.power.storage` 到独立 crate。
 - 新增脚本封装，基于 `scripts/build-wasm-module.sh` 构建该 crate 产物。
 - 补充最小测试与回归命令，确保 crate 可编译、脚本可执行、产物可生成。
+- 补充 `agent_world_builtin_wasm` 闭环场景联测，覆盖规则/身体/默认模块/状态模块的协作行为。
 - 新增 runtime cutover 路径：
   - 在模块执行链路中接入“WASM 优先 + builtin fallback”。
   - 在测试/示例安装入口逐步下线 builtin 注册，改为安装 wasm 模块工件。
@@ -224,6 +225,85 @@
   - 第三轮结论：
     - `memory/storage_cargo + power` 完成按 `module_id` 独立工件装载后，`rules/body/default/power` 路径回归通过。
     - 独立工件目录与 hash 清单继续与源码构建产物保持一致。
+- 阶段五第四轮路线（2026-02-13）：
+  - BMS-67：扩展设计与任务拆解（下线单聚合工件兼容入口与同步脚本）（已完成）。
+  - BMS-68：删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）（已完成）。
+  - BMS-69：执行阶段五第四轮回归收口，更新文档与 devlog（已完成）。
+  - 本轮实施约束：
+    - 保持按 `module_id` 的独立工件目录与 hash 清单为唯一工件真相来源。
+    - 删除 `m1_builtin_modules.wasm` 相关运行时入口与 `sync-m1-builtin-wasm-artifact.sh`，避免双轨维护。
+    - 回归最小覆盖需包含 `rules/body/agent_default_modules/power_bootstrap` 与独立工件同步校验。
+- 阶段五第四轮兼容入口下线（BMS-68，2026-02-13）：
+  - runtime 清理：
+    - 删除 `m1_builtin_modules.wasm` 单聚合工件常量入口与 hash 校验路径。
+    - `install_m1_power_bootstrap_modules` / `install_m1_agent_default_modules` 保留按 `module_id` 独立工件装载。
+    - `runtime::tests::power_bootstrap` 删除单聚合工件 hash 对齐测试，保留模块清单一致性与 bootstrap 行为测试。
+  - 脚本与工件清理：
+    - 删除脚本：`scripts/sync-m1-builtin-wasm-artifact.sh`。
+    - `scripts/ci-tests.sh` 删除对上述脚本的 `--check` 调用，统一走 `sync-m1-builtin-wasm-artifacts.sh --check`。
+    - 删除单聚合工件文件：`runtime/world/artifacts/m1_builtin_modules.wasm` 与 `.sha256`。
+  - 验证通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `./scripts/check-include-warning-baseline.sh`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+- 阶段五第四轮回归收口（BMS-69，2026-02-13）：
+  - 回归与校验通过：
+    - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::rules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::body::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::power_bootstrap::`
+  - 第四轮结论：
+    - 阶段五第四轮（BMS-67~BMS-69）已完成，单聚合工件兼容入口下线后回归保持通过。
+    - 独立工件目录与 hash 清单继续与源码构建产物保持一致，per-module-only 路径稳定。
+- 阶段六闭环联测路线（2026-02-13）：
+  - BMS-70：扩展设计与任务拆解（`agent_world_builtin_wasm` 闭环场景联测）（已完成）。
+  - BMS-71：新增闭环场景测试（单场景覆盖 `rule/body/sensor/mobility/memory/storage/power` 协作）（已完成）。
+  - BMS-72：执行回归验证与文档/devlog 收口（已完成）。
+  - 本轮实施约束：
+    - 测试落在 `agent_world_builtin_wasm` crate 内，直接验证 wasm ABI 输入输出闭环，不引入跨 crate 依赖。
+    - 场景至少包含：注册、移动、观测、转移、身体动作、存储扩容、能量更新等关键路径。
+    - 回归最小覆盖包含：新闭环测试 + `agent_world_builtin_wasm` 包全量测试。
+- 阶段六闭环场景测试落地（BMS-71，2026-02-13）：
+  - 新增测试文件：`crates/agent_world_builtin_wasm/src/closed_loop_tests.rs`。
+  - 新增测试用例：`wasm_builtin_modules_support_closed_loop_world_scenario`，在单场景内串联：
+    - `AgentRegistered` / `AgentMoved` 事件驱动的位置与能量状态更新；
+    - `MoveAgent` / `QueryObservation` / `TransferResource` / `BodyAction` 动作链路；
+    - `BodyInterfaceExpanded`、`Observation`、`ResourceTransferred`、`BodyAttributesUpdated` 事件回灌；
+    - `m1.rule.*`、`m1.body.core`、`m1.sensor.basic`、`m1.mobility.basic`、`m1.memory.core`、`m1.storage.cargo`、`m1.power.*` 模块协作断言。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm closed_loop_tests::wasm_builtin_modules_support_closed_loop_world_scenario`
+- 阶段六回归收口（BMS-72，2026-02-13）：
+  - 回归与校验通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+    - `env -u RUSTC_WRAPPER cargo check -p agent_world_builtin_wasm --target wasm32-unknown-unknown`
+  - 阶段六结论：
+    - `agent_world_builtin_wasm` 现已具备“单场景跨模块闭环联测 + 包级回归”双层验证。
+    - 规则/身体/默认模块/状态模块在 wasm 模块形态下的协作路径保持可用。
+- 阶段七运行时闭环联测路线（2026-02-13）：
+  - BMS-73：扩展设计与任务拆解（`agent_world` 运行时 wasmtime 闭环联测）（已完成）。
+  - BMS-74：新增运行时闭环场景测试（`World + WasmExecutor + builtin wasm` 端到端链路）（已完成）。
+  - BMS-75：执行回归验证与文档/devlog 收口（已完成）。
+  - 本轮实施约束：
+    - 测试落在 `runtime::tests`，以 `feature=wasmtime` 执行，覆盖真实 wasm 执行链路而非纯函数直调。
+    - 场景至少覆盖：注册、移动、观测、转移、身体动作、接口扩容、memory/state 回灌。
+    - 验收至少包含：新增运行时闭环测试通过 + `runtime::tests::agent_default_modules::` 回归通过。
+- 阶段七运行时闭环场景落地（BMS-74，2026-02-13）：
+  - 新增测试用例：
+    - `runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
+  - 关键实现：
+    - 在 `agent_default_modules` 测试夹具新增 builtin wasm 模块安装辅助，支持按治理链路安装 `m1.rule.transfer` 与 `m1.body.core`。
+    - 闭环场景串联 `register/query/transfer/move/expand/body_action`，并断言 memory/storage/power 模块状态回灌结果。
+  - 验证通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::scenario_modules_with_transfer_and_body_keep_wasm_closed_loop_consistent`
+- 阶段七回归收口（BMS-75，2026-02-13）：
+  - 回归与校验通过：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world --features wasmtime runtime::tests::agent_default_modules::`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world_builtin_wasm`
+  - 阶段七结论：
+    - 运行时层面已具备“wasmtime 执行链路 + builtin wasm 模块协作”的单场景闭环验证。
+    - `agent_world_builtin_wasm` 与 `agent_world runtime::tests` 两层闭环联测均保持通过，builtin wasm 回归口径形成闭环。
 
 ## 里程碑
 - M1：完成 BMS-1（独立 crate 初始化与 `m1.rule.move` wasm 模块样板）。
@@ -256,6 +336,15 @@
 - M28：完成 BMS-64（阶段五第三轮任务拆解）。
 - M29：完成 BMS-65（`memory/storage_cargo + power` 按 module_id 独立工件装载切换）。
 - M30：完成 BMS-66（阶段五第三轮回归收口）。
+- M31：完成 BMS-67（阶段五第四轮任务拆解）。
+- M32：完成 BMS-68（阶段五第四轮单聚合兼容入口下线）。
+- M33：完成 BMS-69（阶段五第四轮回归收口）。
+- M34：完成 BMS-70（阶段六闭环联测任务拆解）。
+- M35：完成 BMS-71（闭环场景测试落地）。
+- M36：完成 BMS-72（阶段六回归收口）。
+- M37：完成 BMS-73（阶段七运行时闭环联测任务拆解）。
+- M38：完成 BMS-74（运行时闭环场景测试落地）。
+- M39：完成 BMS-75（阶段七回归收口）。
 
 ## 风险
 - Rust 侧 wasm ABI 与 runtime 执行器签名（`(i32, i32) -> (i32, i32)`）存在兼容细节：通过定向测试覆盖。
@@ -272,6 +361,6 @@
 - 下线 builtin 注册 API 时，存在测试夹具未同步导致不可执行风险：阶段三保持“每删一层就补对应测试迁移”的原子任务提交。
 - 删除 `BuiltinModuleSandbox` 导出后，存在下游调用方编译失败风险：先 `rg` 扫描确认无代码引用，再执行 wasm 路径回归。
 - 删除 `runtime/builtin_modules.rs` 后，存在常量可见性与依赖方向变化风险：先在 wasm crate 补齐 `pub const` 导出，再执行 bootstrap/rules/power 路径回归。
-- 当前 runtime/测试仍依赖 `m1_builtin_modules.wasm` 单工件硬编码，存在“源码更新但工件未同步”风险：通过构建后哈希校验与预提交检查降低漂移概率。
+- 旧工具链若继续引用 `m1_builtin_modules.wasm` 单工件，会在入口下线后失效：通过统一 `sync-m1-builtin-wasm-artifacts.sh` 与 per-module 清单降低迁移风险。
 - 若切到多模块独立 wasm 工件，存在“加载入口与模块治理流程复杂度上升”风险：先做决策文档与 PoC，再按域分批迁移。
 - 多模块独立工件与单聚合工件并行期，存在“同模块双来源”误装载风险：通过模块清单单一来源与 hash 清单校验降低漂移概率。

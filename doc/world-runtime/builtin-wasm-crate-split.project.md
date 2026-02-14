@@ -68,6 +68,15 @@
 - [x] BMS-64 扩展设计与任务拆解（阶段五第三轮：`memory/storage_cargo + power` 按 `module_id` 独立工件装载）。
 - [x] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）。
 - [x] BMS-66 回归验证、文档与 devlog 收口（阶段五第三轮）。
+- [x] BMS-67 扩展设计与任务拆解（阶段五第四轮：下线单聚合工件兼容入口）。
+- [x] BMS-68 删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）。
+- [x] BMS-69 回归验证、文档与 devlog 收口（阶段五第四轮）。
+- [x] BMS-70 扩展设计与任务拆解（阶段六：`agent_world_builtin_wasm` 闭环场景联测）。
+- [x] BMS-71 新增 `agent_world_builtin_wasm` 单场景闭环测试，覆盖规则/身体/默认模块/状态模块协作。
+- [x] BMS-72 回归验证、文档与 devlog 收口（阶段六闭环联测）。
+- [x] BMS-73 扩展设计与任务拆解（阶段七：`agent_world` 运行时 wasmtime 闭环联测）。
+- [x] BMS-74 新增 `runtime::tests` 闭环场景测试，验证 `World + WasmExecutor + builtin wasm` 端到端链路。
+- [x] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）。
 
 ## 依赖
 - `tools/wasm_build_suite`
@@ -75,6 +84,6 @@
 - `crates/agent_world`（现有 builtin 行为作为对照）
 
 ## 状态
-- 当前阶段：阶段五第三轮已完成（BMS-64~BMS-66）。
-- 最近更新：完成 BMS-66（阶段五第三轮回归收口，2026-02-13）。
-- 下一步：若继续推进阶段五后续任务，先补充新一轮设计与任务拆解（BMS-67+）。
+- 当前阶段：阶段七已完成（BMS-73~BMS-75 已完成）。
+- 最近更新：完成 BMS-75（阶段七回归收口，2026-02-13）。
+- 下一步：阶段七已收口；若继续推进需新增后续任务拆解。

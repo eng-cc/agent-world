@@ -180,6 +180,49 @@
 - [x] BMS-64 扩展设计与任务拆解（阶段五第三轮：`memory/storage_cargo + power` 按 `module_id` 独立工件装载）
 - [x] BMS-65 `bootstrap/runtime` 切换到“按 module_id 选择独立工件”（`memory/storage_cargo + power`）
 - [x] BMS-66 回归验证、文档与 devlog 收口（阶段五第三轮）
+- [x] BMS-67 扩展设计与任务拆解（阶段五第四轮：下线单聚合工件兼容入口）
+- [x] BMS-68 删除单聚合工件兼容入口（runtime/脚本/校验路径切换到 per-module-only）
+- [x] BMS-69 回归验证、文档与 devlog 收口（阶段五第四轮）
+- [x] BMS-70 扩展设计与任务拆解（阶段六：`agent_world_builtin_wasm` 闭环场景联测）
+- [x] BMS-71 新增 `agent_world_builtin_wasm` 单场景闭环测试，覆盖规则/身体/默认模块/状态模块协作
+- [x] BMS-72 回归验证、文档与 devlog 收口（阶段六闭环联测）
+- [x] BMS-73 扩展设计与任务拆解（阶段七：`agent_world` 运行时 wasmtime 闭环联测）
+- [x] BMS-74 新增 `runtime::tests` 闭环场景测试，验证 `World + WasmExecutor + builtin wasm` 端到端链路
+- [x] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）
+
+### 9. WASM 运行时激进拆分（WRS）
+- [x] 输出 WRS 设计文档（`doc/world-runtime/wasm-runtime-crate-split.md`）
+- [x] 输出 WRS 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split.project.md`）
+- [x] WRS-2 新建 ABI/Executor/Router 三 crate 并接入 `agent_world`
+- [x] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
+- [x] WRS-4 回归验证、文档与 devlog 收口
+
+### 10. WASM 拆分后测试加固（R2）
+- [x] 输出 R2 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.md`）
+- [x] 输出 R2 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.project.md`）
+- [x] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
+- [x] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
+
+### 11. WASM 运行时激进迁移（R3）
+- [x] 输出 R3 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.md`）
+- [x] 输出 R3 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.project.md`）
+- [x] R3-1 迁移 `ModuleArtifact/ModuleCache` 到 `agent_world_wasm_abi` 并回归
+- [x] R3-2 迁移 `agent_world_net::ModuleArtifact` 到 ABI 统一定义并回归
+
+### 12. WASM 运行时激进迁移（R4）
+- [x] 输出 R4 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase4.md`）
+- [x] 输出 R4 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase4.project.md`）
+- [x] R4-1 迁移模块清单与变更计划类型到 `agent_world_wasm_abi` 并回归
+
+### 13. WASM 运行时激进迁移（R5）
+- [x] 输出 R5 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.md`）
+- [x] 输出 R5 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.project.md`）
+- [x] R5-1 迁移模块注册表与生命周期事件类型到 `agent_world_wasm_abi` 并回归
+
+### 14. WASM 运行时激进迁移（R6）
+- [x] 输出 R6 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.md`）
+- [x] 输出 R6 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.project.md`）
+- [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
@@ -187,6 +230,6 @@
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS 阶段五第三轮已完成）
-- 下一步：若继续推进 BMS，先补充新一轮设计与任务拆解（BMS-67+）
-- 最近更新：完成 BMS-66（阶段五第三轮回归收口）（2026-02-13）
+- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS/R2/R3/R4 已完成）
+- 下一步：进入下一轮 wasm 运行时迁移立项（按需推进）
+- 最近更新：完成 R4-1（模块清单与变更计划类型下沉到 ABI crate，2026-02-14）

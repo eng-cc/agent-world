@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world::runtime::{DistributedNetwork, InMemoryNetwork};
+use agent_world_net::{DistributedNetwork, InMemoryNetwork};
 
 use crate::{
     InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleCoordinator,
