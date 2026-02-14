@@ -217,7 +217,7 @@
 ### 13. WASM 运行时激进迁移（R5）
 - [x] 输出 R5 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.md`）
 - [x] 输出 R5 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.project.md`）
-- [ ] R5-1 迁移模块注册表与生命周期事件类型到 `agent_world_wasm_abi` 并回归
+- [x] R5-1 迁移模块注册表与生命周期事件类型到 `agent_world_wasm_abi` 并回归
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）

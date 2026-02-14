@@ -244,6 +244,60 @@ pub struct ModuleUpgrade {
     pub manifest: ModuleManifest,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModuleRegistry {
+    pub records: BTreeMap<String, ModuleRecord>,
+    pub active: BTreeMap<String, String>,
+}
+
+impl ModuleRegistry {
+    pub fn record_key(module_id: &str, version: &str) -> String {
+        format!("{module_id}@{version}")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleRecord {
+    pub manifest: ModuleManifest,
+    pub registered_at: u64,
+    pub registered_by: String,
+    pub audit_event_id: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleEvent {
+    pub proposal_id: u64,
+    #[serde(flatten)]
+    pub kind: ModuleEventKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum ModuleEventKind {
+    RegisterModule {
+        module: ModuleManifest,
+        registered_by: String,
+    },
+    ActivateModule {
+        module_id: String,
+        version: String,
+        activated_by: String,
+    },
+    DeactivateModule {
+        module_id: String,
+        reason: String,
+        deactivated_by: String,
+    },
+    UpgradeModule {
+        module_id: String,
+        from_version: String,
+        to_version: String,
+        wasm_hash: String,
+        manifest: ModuleManifest,
+        upgraded_by: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleEffectIntent {
     pub kind: String,
@@ -405,5 +459,28 @@ mod tests {
             version: "v1".to_string(),
         });
         assert!(!changes.is_empty());
+    }
+
+    #[test]
+    fn module_registry_record_key_uses_module_and_version() {
+        assert_eq!(
+            ModuleRegistry::record_key("m.rule", "1.2.3"),
+            "m.rule@1.2.3"
+        );
+    }
+
+    #[test]
+    fn module_event_kind_serialization_keeps_tag_format() {
+        let kind = ModuleEventKind::DeactivateModule {
+            module_id: "m.rule".to_string(),
+            reason: "manual".to_string(),
+            deactivated_by: "tester".to_string(),
+        };
+
+        let json = serde_json::to_value(&kind).expect("serialize module event kind");
+        assert_eq!(json["type"], "DeactivateModule");
+        assert_eq!(json["data"]["module_id"], "m.rule");
+        assert_eq!(json["data"]["reason"], "manual");
+        assert_eq!(json["data"]["deactivated_by"], "tester");
     }
 }
