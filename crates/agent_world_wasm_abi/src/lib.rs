@@ -167,6 +167,83 @@ impl Default for ModuleSubscriptionStage {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModuleRole {
+    Rule,
+    Domain,
+    Body,
+    AgentInternal,
+}
+
+impl Default for ModuleRole {
+    fn default() -> Self {
+        ModuleRole::Domain
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleManifest {
+    pub module_id: String,
+    pub name: String,
+    pub version: String,
+    pub kind: ModuleKind,
+    #[serde(default)]
+    pub role: ModuleRole,
+    pub wasm_hash: String,
+    pub interface_version: String,
+    #[serde(default)]
+    pub exports: Vec<String>,
+    #[serde(default)]
+    pub subscriptions: Vec<ModuleSubscription>,
+    #[serde(default)]
+    pub required_caps: Vec<String>,
+    #[serde(default)]
+    pub limits: ModuleLimits,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ModuleChangeSet {
+    #[serde(default)]
+    pub register: Vec<ModuleManifest>,
+    #[serde(default)]
+    pub activate: Vec<ModuleActivation>,
+    #[serde(default)]
+    pub deactivate: Vec<ModuleDeactivation>,
+    #[serde(default)]
+    pub upgrade: Vec<ModuleUpgrade>,
+}
+
+impl ModuleChangeSet {
+    pub fn is_empty(&self) -> bool {
+        self.register.is_empty()
+            && self.activate.is_empty()
+            && self.deactivate.is_empty()
+            && self.upgrade.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleActivation {
+    pub module_id: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleDeactivation {
+    pub module_id: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleUpgrade {
+    pub module_id: String,
+    pub from_version: String,
+    pub to_version: String,
+    pub wasm_hash: String,
+    pub manifest: ModuleManifest,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleEffectIntent {
     pub kind: String,
@@ -316,5 +393,17 @@ mod tests {
         assert!(cache.get("c").is_some());
         assert!(cache.get("a").is_none());
         assert!(cache.get("b").is_none());
+    }
+
+    #[test]
+    fn module_change_set_is_empty_checks_all_sections() {
+        let mut changes = ModuleChangeSet::default();
+        assert!(changes.is_empty());
+
+        changes.activate.push(ModuleActivation {
+            module_id: "m.test".to_string(),
+            version: "v1".to_string(),
+        });
+        assert!(!changes.is_empty());
     }
 }
