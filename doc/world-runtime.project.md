@@ -224,12 +224,22 @@
 - [x] 输出 R6 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.project.md`）
 - [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
+### 15. 分布式能力彻底拆分（R7）
+- [x] 输出 R7 设计文档（`doc/world-runtime/distributed-hard-split-phase7.md`）
+- [x] 输出 R7 项目管理文档（`doc/world-runtime/distributed-hard-split-phase7.project.md`）
+- [x] R7-1 新建 `agent_world_distfs` 并迁移 CAS/分片/组装能力，接入 runtime 基础路径
+- [ ] R7-2 删除 `agent_world` 内分布式实现文件并切换调用方到 split crates
+- [ ] R7-3 拆分 `agent_world` 大 facade，收敛导出边界
+- [ ] R7-4 Viewer 协议并入 `agent_world_proto` 并完成双端适配
+- [ ] R7-5 收敛 WASM ABI 边界（去 net 重复 `ModuleManifest`）
+- [ ] R7-6 拆分全部超 1200 行 Rust 文件并回归
+
 ## 依赖
 - Rust workspace（`crates/agent_world`）
 - 事件日志/快照的本地存储方案（文件或 KV）
 - （可选）测试基架与 replay harness
 
 ## 状态
-- 当前阶段：M5 + ADM-S5（默认模块体系 V1 收口完成，BMS/WRS/R2/R3/R4 已完成）
-- 下一步：进入下一轮 wasm 运行时迁移立项（按需推进）
-- 最近更新：完成 R4-1（模块清单与变更计划类型下沉到 ABI crate，2026-02-14）
+- 当前阶段：R7（分布式能力彻底拆分）已启动，R7-1 完成。
+- 下一步：执行 R7-2（删除 `agent_world` 分布式实现文件并切换调用路径）。
+- 最近更新：完成 R7-1（新增 `agent_world_distfs` 并接入 runtime 基础路径，2026-02-14）

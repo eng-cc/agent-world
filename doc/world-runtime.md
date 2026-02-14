@@ -75,6 +75,7 @@
 - `doc/world-runtime/wasm-runtime-crate-split-phase4.md`：WASM 运行时激进迁移（模块清单/变更计划类型下沉）
 - `doc/world-runtime/wasm-runtime-crate-split-phase5.md`：WASM 运行时激进迁移（模块注册表/生命周期事件类型下沉）
 - `doc/world-runtime/wasm-runtime-crate-split-phase6.md`：WASM 运行时激进迁移（模块存储实现拆 crate）
+- `doc/world-runtime/distributed-hard-split-phase7.md`：分布式能力彻底拆分（distfs + runtime distributed 清理 + viewer 协议下沉 + ABI 边界收敛）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
@@ -90,6 +91,7 @@
 - **M10**：WASM 运行时激进迁移（R4-0~R4-1）
 - **M11**：WASM 运行时激进迁移（R5-0~R5-1）
 - **M12**：WASM 运行时激进迁移（R6-0~R6-1）
+- **M13**：分布式能力彻底拆分（R7-1~R7-6）
 
 ## 风险
 - **“所有优点”带来的复杂度**：治理、收据、能力边界会显著增加实现成本。

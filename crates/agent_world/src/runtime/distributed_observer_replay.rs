@@ -43,7 +43,7 @@ pub fn replay_validate_with_head(
         &block_response.journal_ref,
         |content_hash| client.fetch_blob(content_hash).map_err(WorldError::from),
         verify_blob_hash,
-        |content_hash, bytes| store.put(content_hash, bytes),
+        |content_hash, bytes| store.put(content_hash, bytes).map_err(WorldError::from),
         WorldError::from,
     )?;
     validate_head_update(head, &block, &manifest, &segments, store)
@@ -66,7 +66,7 @@ pub fn replay_validate_with_head_and_dht(
                 .map_err(WorldError::from)
         },
         verify_blob_hash,
-        |content_hash, bytes| store.put(content_hash, bytes),
+        |content_hash, bytes| store.put(content_hash, bytes).map_err(WorldError::from),
         WorldError::from,
     )?;
     validate_head_update(head, &block, &manifest, &segments, store)
