@@ -7,6 +7,10 @@ use super::distributed_dht::DistributedDht;
 use super::distributed_head_follow::HeadFollower;
 use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
+use super::head_sync::{
+    compose_head_sync_report, follow_head_sync, HeadFollowReport as GenericHeadFollowReport,
+    HeadSyncReport as GenericHeadSyncReport, HeadSyncResult as GenericHeadSyncResult,
+};
 use super::world::World;
 
 #[derive(Debug, Clone)]
@@ -15,24 +19,9 @@ pub struct ObserverSubscription {
     pub head_sub: NetworkSubscription,
 }
 
-#[derive(Debug)]
-pub struct HeadSyncResult {
-    pub head: WorldHeadAnnounce,
-    pub world: World,
-}
-
-#[derive(Debug)]
-pub struct HeadSyncReport {
-    pub drained: usize,
-    pub applied: Option<HeadSyncResult>,
-}
-
-#[derive(Debug)]
-pub struct HeadFollowReport {
-    pub rounds: usize,
-    pub drained: usize,
-    pub applied: Option<HeadSyncResult>,
-}
+pub type HeadSyncResult = GenericHeadSyncResult<World>;
+pub type HeadSyncReport = GenericHeadSyncReport<World>;
+pub type HeadFollowReport = GenericHeadFollowReport<World>;
 
 #[derive(Clone)]
 pub struct ObserverClient {
@@ -95,18 +84,11 @@ impl ObserverClient {
         let heads = self.drain_heads(subscription)?;
         let drained = heads.len();
         let world = follower.sync_from_heads(&heads, client, store)?;
-        let applied = world
-            .map(|world| {
-                follower
-                    .current_head()
-                    .cloned()
-                    .ok_or_else(|| WorldError::DistributedValidationFailed {
-                        reason: "head follower did not record applied head".to_string(),
-                    })
-                    .map(|head| HeadSyncResult { head, world })
-            })
-            .transpose()?;
-        Ok(HeadSyncReport { drained, applied })
+        compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+            WorldError::DistributedValidationFailed {
+                reason: "head follower did not record applied head".to_string(),
+            }
+        })
     }
 
     pub fn sync_heads_with_result(
@@ -153,18 +135,11 @@ impl ObserverClient {
         let heads = self.drain_heads(subscription)?;
         let drained = heads.len();
         let world = follower.sync_from_heads_with_dht(&heads, dht, client, store)?;
-        let applied = world
-            .map(|world| {
-                follower
-                    .current_head()
-                    .cloned()
-                    .ok_or_else(|| WorldError::DistributedValidationFailed {
-                        reason: "head follower did not record applied head".to_string(),
-                    })
-                    .map(|head| HeadSyncResult { head, world })
-            })
-            .transpose()?;
-        Ok(HeadSyncReport { drained, applied })
+        compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+            WorldError::DistributedValidationFailed {
+                reason: "head follower did not record applied head".to_string(),
+            }
+        })
     }
 
     pub fn sync_heads_with_dht_result(
@@ -197,24 +172,8 @@ impl ObserverClient {
         store: &impl BlobStore,
         max_rounds: usize,
     ) -> Result<HeadFollowReport, WorldError> {
-        let mut rounds = 0;
-        let mut drained = 0;
-        let mut applied: Option<HeadSyncResult> = None;
-        for _ in 0..max_rounds {
-            let report = self.sync_heads_report(subscription, follower, client, store)?;
-            rounds += 1;
-            drained += report.drained;
-            if report.applied.is_some() {
-                applied = report.applied;
-            }
-            if report.drained == 0 {
-                break;
-            }
-        }
-        Ok(HeadFollowReport {
-            rounds,
-            drained,
-            applied,
+        follow_head_sync(max_rounds, || {
+            self.sync_heads_report(subscription, follower, client, store)
         })
     }
 
@@ -227,25 +186,8 @@ impl ObserverClient {
         store: &impl BlobStore,
         max_rounds: usize,
     ) -> Result<HeadFollowReport, WorldError> {
-        let mut rounds = 0;
-        let mut drained = 0;
-        let mut applied: Option<HeadSyncResult> = None;
-        for _ in 0..max_rounds {
-            let report =
-                self.sync_heads_with_dht_report(subscription, follower, dht, client, store)?;
-            rounds += 1;
-            drained += report.drained;
-            if report.applied.is_some() {
-                applied = report.applied;
-            }
-            if report.drained == 0 {
-                break;
-            }
-        }
-        Ok(HeadFollowReport {
-            rounds,
-            drained,
-            applied,
+        follow_head_sync(max_rounds, || {
+            self.sync_heads_with_dht_report(subscription, follower, dht, client, store)
         })
     }
 }

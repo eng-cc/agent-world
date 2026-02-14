@@ -10,6 +10,7 @@ mod execution_storage;
 mod gateway;
 #[cfg(feature = "runtime_bridge")]
 mod head_follow;
+mod head_sync;
 mod head_tracking;
 #[cfg(feature = "runtime_bridge")]
 mod head_validation;
@@ -64,6 +65,13 @@ pub mod distributed_index_store {
 
 pub mod distributed_provider_cache {
     pub use super::provider_cache::*;
+}
+
+pub mod observer_flow {
+    pub use super::head_sync::{
+        compose_head_sync_report, follow_head_sync, HeadFollowReport, HeadSyncReport,
+        HeadSyncResult,
+    };
 }
 
 pub mod distributed_storage {
