@@ -135,7 +135,9 @@ pub use snapshot::{
 };
 
 // State
-pub use state::{FactoryBuildJobState, FactoryState, RecipeJobState, WorldState};
+pub use state::{
+    FactoryBuildJobState, FactoryState, MaterialTransitJobState, RecipeJobState, WorldState,
+};
 
 // World
 pub use world::{M1ScenarioBootstrapConfig, World};

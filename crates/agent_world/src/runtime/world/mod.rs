@@ -9,6 +9,7 @@ mod economy;
 mod effects;
 mod event_processing;
 mod governance;
+mod logistics;
 mod module_runtime;
 mod persistence;
 mod policy;

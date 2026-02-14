@@ -19,6 +19,7 @@ impl World {
             self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
         }
         let _ = self.process_due_economy_jobs()?;
+        let _ = self.process_due_material_transits()?;
         Ok(())
     }
 
@@ -107,6 +108,9 @@ impl World {
             }
         }
         for event in self.process_due_economy_jobs_with_modules(sandbox)? {
+            self.route_event_to_modules(&event, sandbox)?;
+        }
+        for event in self.process_due_material_transits()? {
             self.route_event_to_modules(&event, sandbox)?;
         }
         Ok(())

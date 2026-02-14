@@ -331,6 +331,203 @@ fn schedule_recipe_reads_and_writes_site_material_ledger() {
 }
 
 #[test]
+fn transfer_material_distance_zero_moves_immediately() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "operator-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register operator");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "iron_ingot", 20)
+        .expect("seed source");
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-b"),
+        kind: "iron_ingot".to_string(),
+        amount: 8,
+        distance_km: 0,
+    });
+    world.step().expect("transfer material");
+
+    assert_eq!(
+        world.ledger_material_balance(&MaterialLedgerId::site("site-a"), "iron_ingot"),
+        12
+    );
+    assert_eq!(
+        world.ledger_material_balance(&MaterialLedgerId::site("site-b"), "iron_ingot"),
+        8
+    );
+    assert_eq!(world.pending_material_transits_len(), 0);
+    assert!(matches!(
+        world
+            .journal()
+            .events
+            .last()
+            .expect("material transfer event")
+            .body,
+        WorldEventBody::Domain(DomainEvent::MaterialTransferred { .. })
+    ));
+}
+
+#[test]
+fn transfer_material_cross_site_creates_transit_and_applies_loss() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "operator-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register operator");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "copper_wire", 100)
+        .expect("seed source");
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-b"),
+        kind: "copper_wire".to_string(),
+        amount: 100,
+        distance_km: 200,
+    });
+    world.step().expect("start transit");
+
+    assert_eq!(
+        world.ledger_material_balance(&MaterialLedgerId::site("site-a"), "copper_wire"),
+        0
+    );
+    assert_eq!(world.pending_material_transits_len(), 1);
+    assert!(matches!(
+        world
+            .journal()
+            .events
+            .last()
+            .expect("transit started event")
+            .body,
+        WorldEventBody::Domain(DomainEvent::MaterialTransitStarted { .. })
+    ));
+
+    world.step().expect("tick before completion");
+    assert_eq!(world.pending_material_transits_len(), 1);
+    world.step().expect("transit completion");
+    assert_eq!(world.pending_material_transits_len(), 0);
+    assert_eq!(
+        world.ledger_material_balance(&MaterialLedgerId::site("site-b"), "copper_wire"),
+        90
+    );
+    assert!(matches!(
+        world
+            .journal()
+            .events
+            .last()
+            .expect("transit completed event")
+            .body,
+        WorldEventBody::Domain(DomainEvent::MaterialTransitCompleted {
+            received_amount: 90,
+            loss_amount: 10,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn transfer_material_rejects_when_distance_exceeds_limit() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "operator-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register operator");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "iron_ingot", 20)
+        .expect("seed source");
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-b"),
+        kind: "iron_ingot".to_string(),
+        amount: 5,
+        distance_km: 20_001,
+    });
+    world.step().expect("reject out of range");
+
+    match &world.journal().events.last().expect("reject event").body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(
+                reason,
+                RejectReason::MaterialTransferDistanceExceeded {
+                    distance_km: 20_001,
+                    max_distance_km: 10_000
+                }
+            ));
+        }
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn transfer_material_rejects_when_inflight_capacity_exceeded() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "operator-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register operator");
+
+    world
+        .set_ledger_material_balance(MaterialLedgerId::site("site-a"), "iron_ingot", 30)
+        .expect("seed source");
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-b"),
+        kind: "iron_ingot".to_string(),
+        amount: 10,
+        distance_km: 100,
+    });
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-c"),
+        kind: "iron_ingot".to_string(),
+        amount: 10,
+        distance_km: 100,
+    });
+    world.submit_action(Action::TransferMaterial {
+        requester_agent_id: "operator-a".to_string(),
+        from_ledger: MaterialLedgerId::site("site-a"),
+        to_ledger: MaterialLedgerId::site("site-d"),
+        kind: "iron_ingot".to_string(),
+        amount: 10,
+        distance_km: 100,
+    });
+
+    world.step().expect("process transfer actions");
+    assert_eq!(world.pending_material_transits_len(), 2);
+    match &world
+        .journal()
+        .events
+        .last()
+        .expect("third transfer reject")
+        .body
+    {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+            assert!(matches!(
+                reason,
+                RejectReason::MaterialTransitCapacityExceeded {
+                    in_flight: 2,
+                    max_in_flight: 2
+                }
+            ));
+        }
+        other => panic!("expected ActionRejected, got {other:?}"),
+    }
+}
+
+#[test]
 fn schedule_recipe_rejects_when_factory_slots_are_full() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

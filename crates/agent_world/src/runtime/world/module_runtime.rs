@@ -816,6 +816,9 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
                 "domain.body_interface_expand_rejected"
             }
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
+            DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
+            DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
+            DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
             DomainEvent::FactoryBuildStarted { .. } => "domain.economy.factory_build_started",
             DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
@@ -848,6 +851,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::EmitBodyAttributes { .. } => "action.emit_body_attributes",
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::TransferResource { .. } => "action.transfer_resource",
+        Action::TransferMaterial { .. } => "action.transfer_material",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",
         Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",

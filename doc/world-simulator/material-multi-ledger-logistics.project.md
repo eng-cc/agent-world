@@ -13,12 +13,12 @@
 - [x] 任务日志与 commit
 
 ### 任务2：物流动作与约束（对应原 5/6/7/8/9）
-- [ ] 新增 `TransferMaterial` 动作与拒绝原因
-- [ ] 新增 `MaterialTransferred`/`MaterialTransitStarted`/`MaterialTransitCompleted` 事件
-- [ ] 新增 `MaterialTransitJob` 在途队列与 step 结算
-- [ ] 落地距离/损耗/延迟/吞吐约束
-- [ ] 回归测试：即时转移、跨站延迟、超距拒绝、吞吐拒绝
-- [ ] 任务日志与 commit
+- [x] 新增 `TransferMaterial` 动作与拒绝原因
+- [x] 新增 `MaterialTransferred`/`MaterialTransitStarted`/`MaterialTransitCompleted` 事件
+- [x] 新增 `MaterialTransitJob` 在途队列与 step 结算
+- [x] 落地距离/损耗/延迟/吞吐约束
+- [x] 回归测试：即时转移、跨站延迟、超距拒绝、吞吐拒绝
+- [x] 任务日志与 commit
 
 ### 任务3：ABI 兼容、场景与收口（对应原 10/12 + 回归）
 - [ ] ABI 请求新增 `available_inputs_by_ledger`（兼容旧字段）
@@ -35,6 +35,6 @@
 - `doc/world-simulator/scenario-files.md`
 
 ## 状态
-- 当前阶段：任务1 完成
-- 下一阶段：任务2（物流动作与约束）
-- 最近更新：完成多账本基础迁移（状态模型/API/账本路由/回归测试，2026-02-14）
+- 当前阶段：任务2 完成
+- 下一阶段：任务3（ABI 兼容、场景与收口）
+- 最近更新：完成物流动作与约束（在途队列、距离损耗延迟、容量限制与回归测试，2026-02-14）

@@ -3,6 +3,10 @@ use super::super::{
     WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
+use super::logistics::{
+    MATERIAL_TRANSFER_LOSS_PER_KM_BPS, MATERIAL_TRANSFER_MAX_DISTANCE_KM,
+    MATERIAL_TRANSFER_MAX_INFLIGHT, MATERIAL_TRANSFER_SPEED_KM_PER_TICK,
+};
 use super::World;
 use crate::geometry::space_distance_cm;
 use crate::simulator::ResourceKind;
@@ -158,6 +162,112 @@ impl World {
                         notes: vec!["transfer requires rule module".to_string()],
                     },
                 }))
+            }
+            Action::TransferMaterial {
+                requester_agent_id,
+                from_ledger,
+                to_ledger,
+                kind,
+                amount,
+                distance_km,
+            } => {
+                if !self.state.agents.contains_key(requester_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: requester_agent_id.clone(),
+                        },
+                    }));
+                }
+                if from_ledger == to_ledger {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["from_ledger and to_ledger cannot be the same".to_string()],
+                        },
+                    }));
+                }
+                if kind.trim().is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["material kind cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if *amount <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount { amount: *amount },
+                    }));
+                }
+                if *distance_km < 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["distance_km must be >= 0".to_string()],
+                        },
+                    }));
+                }
+                if *distance_km > MATERIAL_TRANSFER_MAX_DISTANCE_KM {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::MaterialTransferDistanceExceeded {
+                            distance_km: *distance_km,
+                            max_distance_km: MATERIAL_TRANSFER_MAX_DISTANCE_KM,
+                        },
+                    }));
+                }
+                let available = self.ledger_material_balance(from_ledger, kind.as_str());
+                if available < *amount {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientMaterial {
+                            material_kind: kind.clone(),
+                            requested: *amount,
+                            available,
+                        },
+                    }));
+                }
+
+                if *distance_km == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::MaterialTransferred {
+                        requester_agent_id: requester_agent_id.clone(),
+                        from_ledger: from_ledger.clone(),
+                        to_ledger: to_ledger.clone(),
+                        kind: kind.clone(),
+                        amount: *amount,
+                        distance_km: *distance_km,
+                    }));
+                }
+
+                if self.state.pending_material_transits.len() >= MATERIAL_TRANSFER_MAX_INFLIGHT {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::MaterialTransitCapacityExceeded {
+                            in_flight: self.state.pending_material_transits.len(),
+                            max_in_flight: MATERIAL_TRANSFER_MAX_INFLIGHT,
+                        },
+                    }));
+                }
+
+                let transit_ticks = ((*distance_km + MATERIAL_TRANSFER_SPEED_KM_PER_TICK - 1)
+                    / MATERIAL_TRANSFER_SPEED_KM_PER_TICK)
+                    .max(1) as u64;
+                let ready_at = self.state.time.saturating_add(transit_ticks);
+                Ok(WorldEventBody::Domain(
+                    DomainEvent::MaterialTransitStarted {
+                        job_id: action_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        from_ledger: from_ledger.clone(),
+                        to_ledger: to_ledger.clone(),
+                        kind: kind.clone(),
+                        amount: *amount,
+                        distance_km: *distance_km,
+                        loss_bps: MATERIAL_TRANSFER_LOSS_PER_KM_BPS,
+                        ready_at,
+                    },
+                ))
             }
             Action::EmitResourceTransfer {
                 from_agent_id,

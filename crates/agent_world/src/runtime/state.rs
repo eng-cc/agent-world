@@ -67,6 +67,20 @@ pub struct RecipeJobState {
     pub ready_at: WorldTime,
 }
 
+/// In-flight material transit tracked by job id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MaterialTransitJobState {
+    pub job_id: ActionId,
+    pub requester_agent_id: String,
+    pub from_ledger: MaterialLedgerId,
+    pub to_ledger: MaterialLedgerId,
+    pub kind: String,
+    pub amount: i64,
+    pub distance_km: i64,
+    pub loss_bps: i64,
+    pub ready_at: WorldTime,
+}
+
 /// The mutable state of the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldState {
@@ -85,6 +99,8 @@ pub struct WorldState {
     #[serde(default)]
     pub pending_recipe_jobs: BTreeMap<ActionId, RecipeJobState>,
     #[serde(default)]
+    pub pending_material_transits: BTreeMap<ActionId, MaterialTransitJobState>,
+    #[serde(default)]
     pub module_states: BTreeMap<String, Vec<u8>>,
 }
 
@@ -99,6 +115,7 @@ impl Default for WorldState {
             factories: BTreeMap::new(),
             pending_factory_builds: BTreeMap::new(),
             pending_recipe_jobs: BTreeMap::new(),
+            pending_material_transits: BTreeMap::new(),
             module_states: BTreeMap::new(),
         }
     }
@@ -255,6 +272,98 @@ impl WorldState {
 
                     self.agents.insert(from_agent_id.clone(), from);
                     self.agents.insert(to_agent_id.clone(), to);
+                }
+            }
+            DomainEvent::MaterialTransferred {
+                requester_agent_id,
+                from_ledger,
+                to_ledger,
+                kind,
+                amount,
+                ..
+            } => {
+                remove_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    from_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transfer remove failed: {reason}"),
+                })?;
+                add_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    to_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transfer add failed: {reason}"),
+                })?;
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::MaterialTransitStarted {
+                job_id,
+                requester_agent_id,
+                from_ledger,
+                to_ledger,
+                kind,
+                amount,
+                distance_km,
+                loss_bps,
+                ready_at,
+            } => {
+                remove_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    from_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transit reserve failed: {reason}"),
+                })?;
+                self.pending_material_transits.insert(
+                    *job_id,
+                    MaterialTransitJobState {
+                        job_id: *job_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        from_ledger: from_ledger.clone(),
+                        to_ledger: to_ledger.clone(),
+                        kind: kind.clone(),
+                        amount: *amount,
+                        distance_km: *distance_km,
+                        loss_bps: *loss_bps,
+                        ready_at: *ready_at,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::MaterialTransitCompleted {
+                job_id,
+                requester_agent_id,
+                to_ledger,
+                kind,
+                received_amount,
+                ..
+            } => {
+                self.pending_material_transits.remove(job_id);
+                if *received_amount > 0 {
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        to_ledger,
+                        kind.as_str(),
+                        *received_amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("material transit completion failed: {reason}"),
+                    })?;
+                }
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
                 }
             }
             DomainEvent::FactoryBuildStarted {

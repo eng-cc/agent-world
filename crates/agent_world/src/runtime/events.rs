@@ -77,6 +77,14 @@ pub enum Action {
         kind: ResourceKind,
         amount: i64,
     },
+    TransferMaterial {
+        requester_agent_id: String,
+        from_ledger: MaterialLedgerId,
+        to_ledger: MaterialLedgerId,
+        kind: String,
+        amount: i64,
+        distance_km: i64,
+    },
     EmitResourceTransfer {
         from_agent_id: String,
         to_agent_id: String,
@@ -170,6 +178,36 @@ pub enum DomainEvent {
         kind: ResourceKind,
         amount: i64,
     },
+    MaterialTransferred {
+        requester_agent_id: String,
+        from_ledger: MaterialLedgerId,
+        to_ledger: MaterialLedgerId,
+        kind: String,
+        amount: i64,
+        distance_km: i64,
+    },
+    MaterialTransitStarted {
+        job_id: ActionId,
+        requester_agent_id: String,
+        from_ledger: MaterialLedgerId,
+        to_ledger: MaterialLedgerId,
+        kind: String,
+        amount: i64,
+        distance_km: i64,
+        loss_bps: i64,
+        ready_at: WorldTime,
+    },
+    MaterialTransitCompleted {
+        job_id: ActionId,
+        requester_agent_id: String,
+        from_ledger: MaterialLedgerId,
+        to_ledger: MaterialLedgerId,
+        kind: String,
+        sent_amount: i64,
+        received_amount: i64,
+        loss_amount: i64,
+        distance_km: i64,
+    },
     FactoryBuildStarted {
         job_id: ActionId,
         builder_agent_id: String,
@@ -236,6 +274,15 @@ impl DomainEvent {
             DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
+            DomainEvent::MaterialTransferred {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::MaterialTransitStarted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::MaterialTransitCompleted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
             DomainEvent::FactoryBuildStarted {
                 builder_agent_id, ..
             } => Some(builder_agent_id.as_str()),
@@ -285,6 +332,14 @@ pub enum RejectReason {
         material_kind: String,
         requested: i64,
         available: i64,
+    },
+    MaterialTransferDistanceExceeded {
+        distance_km: i64,
+        max_distance_km: i64,
+    },
+    MaterialTransitCapacityExceeded {
+        in_flight: usize,
+        max_in_flight: usize,
     },
     FactoryNotFound {
         factory_id: String,
