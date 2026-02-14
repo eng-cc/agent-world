@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Category of economy module in M4 industrial pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -137,6 +138,8 @@ pub struct RecipeExecutionRequest {
     pub desired_batches: u32,
     #[serde(default)]
     pub available_inputs: Vec<MaterialStack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub available_inputs_by_ledger: Option<BTreeMap<String, Vec<MaterialStack>>>,
     pub available_power: i64,
     pub deterministic_seed: u64,
 }
@@ -202,6 +205,8 @@ pub struct FactoryBuildRequest {
     pub builder: String,
     #[serde(default)]
     pub available_inputs: Vec<MaterialStack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub available_inputs_by_ledger: Option<BTreeMap<String, Vec<MaterialStack>>>,
     pub available_power: i64,
 }
 
@@ -317,5 +322,79 @@ mod tests {
         assert!(!decision.accepted);
         assert_eq!(decision.notes.len(), 1);
         assert_eq!(decision.notes[0], "stack exceeds limit");
+    }
+
+    #[test]
+    fn recipe_execution_request_supports_optional_ledger_inputs() {
+        let mut by_ledger = BTreeMap::new();
+        by_ledger.insert(
+            "site:alpha".to_string(),
+            vec![MaterialStack::new("iron_ingot", 12)],
+        );
+        let request = RecipeExecutionRequest {
+            recipe_id: "recipe.motor.mk1".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            desired_batches: 2,
+            available_inputs: vec![MaterialStack::new("iron_ingot", 12)],
+            available_inputs_by_ledger: Some(by_ledger.clone()),
+            available_power: 80,
+            deterministic_seed: 42,
+        };
+
+        let json = serde_json::to_vec(&request).expect("serialize recipe request");
+        let decoded: RecipeExecutionRequest =
+            serde_json::from_slice(&json).expect("deserialize recipe request");
+        assert_eq!(decoded.available_inputs_by_ledger, Some(by_ledger));
+
+        let legacy_json = serde_json::json!({
+            "recipe_id": "recipe.motor.mk1",
+            "factory_id": "factory.alpha",
+            "desired_batches": 2,
+            "available_inputs": [{"kind": "iron_ingot", "amount": 12}],
+            "available_power": 80,
+            "deterministic_seed": 42
+        });
+        let legacy: RecipeExecutionRequest =
+            serde_json::from_value(legacy_json).expect("deserialize legacy recipe request");
+        assert!(legacy.available_inputs_by_ledger.is_none());
+    }
+
+    #[test]
+    fn factory_build_request_supports_optional_ledger_inputs() {
+        let mut by_ledger = BTreeMap::new();
+        by_ledger.insert(
+            "agent:builder-a".to_string(),
+            vec![
+                MaterialStack::new("steel_plate", 20),
+                MaterialStack::new("circuit_board", 4),
+            ],
+        );
+        let request = FactoryBuildRequest {
+            factory_id: "factory.alpha".to_string(),
+            site_id: "site-1".to_string(),
+            builder: "builder-a".to_string(),
+            available_inputs: vec![
+                MaterialStack::new("steel_plate", 20),
+                MaterialStack::new("circuit_board", 4),
+            ],
+            available_inputs_by_ledger: Some(by_ledger.clone()),
+            available_power: 100,
+        };
+
+        let json = serde_json::to_vec(&request).expect("serialize factory build request");
+        let decoded: FactoryBuildRequest =
+            serde_json::from_slice(&json).expect("deserialize factory build request");
+        assert_eq!(decoded.available_inputs_by_ledger, Some(by_ledger));
+
+        let legacy_json = serde_json::json!({
+            "factory_id": "factory.alpha",
+            "site_id": "site-1",
+            "builder": "builder-a",
+            "available_inputs": [{"kind": "steel_plate", "amount": 20}],
+            "available_power": 100
+        });
+        let legacy: FactoryBuildRequest =
+            serde_json::from_value(legacy_json).expect("deserialize legacy factory build request");
+        assert!(legacy.available_inputs_by_ledger.is_none());
     }
 }

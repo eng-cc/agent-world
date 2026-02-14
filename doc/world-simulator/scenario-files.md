@@ -83,6 +83,15 @@
 - `asteroid_fragment_detail_bootstrap` 设计用于 viewer 细粒度 location 渲染回归，默认关闭 origin 与 agents，避免干扰观察。
 - 建议在截图闭环中配合 `scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap` 使用。
 
+## 物流瓶颈验证口径（2026-02-14）
+
+- 多账本/物流约束的回归基线以多站点场景为前提，建议优先使用 `triad_region_bootstrap` 或 `asteroid_fragment_triad_region_bootstrap` 做端到端验证。
+- 关键验证口径：
+  - 模块求值请求可见分账本库存：`build_factory_with_module_request_exposes_available_inputs_by_ledger`、`schedule_recipe_with_module_request_exposes_available_inputs_by_ledger`。
+  - 跨站物流存在延迟与损耗：`transfer_material_cross_site_creates_transit_and_applies_loss`。
+  - 物流吞吐瓶颈可触发拒绝：`transfer_material_rejects_when_inflight_capacity_exceeded`。
+- 通过以上口径，确保“owner/location 多账本 + 物流约束”在场景层具备可验证闭环，而非仅停留在数据结构层。
+
 说明：
 - 自 2026-02-07 起，除 `power_bootstrap` 外，内置场景不再默认注入 `power_plants`/`power_storages`；如需设施，需在场景 JSON 中显式声明。
 - `scenario_specs_match_ids` 定位于 `crates/agent_world/src/simulator/scenario.rs`，用于约束“枚举 ID 与 JSON ID 一致”。

@@ -14,6 +14,7 @@ mod basic;
 mod body;
 mod economy;
 mod economy_bootstrap;
+mod economy_module_requests;
 mod effects;
 mod governance;
 mod modules;

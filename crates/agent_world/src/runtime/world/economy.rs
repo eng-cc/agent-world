@@ -6,6 +6,7 @@ use agent_world_wasm_abi::{
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 use super::super::util::to_canonical_cbor;
 use super::super::{
@@ -89,6 +90,7 @@ impl World {
                             )
                         })
                         .collect(),
+                    available_inputs_by_ledger: Some(self.material_stacks_by_ledger()),
                     available_power: self.resource_balance(ResourceKind::Electricity),
                 };
                 let decision = self.evaluate_factory_build_with_module(
@@ -163,6 +165,7 @@ impl World {
                     factory_id: factory_id.clone(),
                     desired_batches: *desired_batches,
                     available_inputs,
+                    available_inputs_by_ledger: Some(self.material_stacks_by_ledger()),
                     available_power: self.resource_balance(ResourceKind::Electricity),
                     deterministic_seed: *deterministic_seed,
                 };
@@ -617,6 +620,19 @@ impl World {
 
     fn material_stacks(&self) -> Vec<MaterialStack> {
         self.ledger_material_stacks(&MaterialLedgerId::world())
+    }
+
+    fn material_stacks_by_ledger(&self) -> BTreeMap<String, Vec<MaterialStack>> {
+        self.state
+            .material_ledgers
+            .keys()
+            .map(|ledger_id| {
+                (
+                    ledger_id.to_string(),
+                    self.ledger_material_stacks(ledger_id),
+                )
+            })
+            .collect()
     }
 
     fn select_material_consume_ledger_for_module_request(
