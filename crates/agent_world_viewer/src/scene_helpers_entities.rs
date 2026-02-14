@@ -52,6 +52,86 @@ fn location_ring_local_scale(radius_cm: i64) -> Vec3 {
     Vec3::new(width, width * 0.6, width * 0.8)
 }
 
+fn spawn_location_two_d_map_marker(
+    parent: &mut ChildSpawnerCommands,
+    assets: &Viewer3dAssets,
+    location_id: &str,
+    radius_cm: i64,
+) {
+    let radius_m = location_radius_m(radius_cm).max(0.01);
+    let world_radius = (radius_m * 1.28).clamp(0.75, 3.6);
+    let world_thickness = (world_radius * 0.08).clamp(0.025, 0.11);
+    let local_scale = Vec3::new(
+        (world_radius * 2.0 / radius_m).max(0.08),
+        (world_thickness / radius_m).max(0.02),
+        (world_radius * 2.0 / radius_m).max(0.08),
+    );
+    let center_local_scale = (world_radius * 0.22 / radius_m).clamp(0.06, 0.32);
+    let y = -LOCATION_DETAIL_RING_Y_BAND * 0.42;
+
+    parent.spawn((
+        Mesh3d(assets.agent_module_marker_mesh.clone()),
+        MeshMaterial3d(assets.chunk_generated_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, y, 0.0)).with_scale(local_scale),
+        Name::new(format!("map2d:location:plate:{location_id}")),
+        TwoDMapMarker,
+    ));
+    parent.spawn((
+        Mesh3d(assets.location_mesh.clone()),
+        MeshMaterial3d(assets.agent_module_marker_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, y + 0.01, 0.0))
+            .with_scale(Vec3::splat(center_local_scale)),
+        Name::new(format!("map2d:location:center:{location_id}")),
+        TwoDMapMarker,
+    ));
+}
+
+pub(super) fn spawn_agent_two_d_map_marker(
+    parent: &mut ChildSpawnerCommands,
+    assets: &Viewer3dAssets,
+    agent_id: &str,
+    height_cm: i64,
+    module_count: usize,
+) {
+    let agent_height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
+        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
+    let world_radius = (agent_height_m * 0.62).clamp(0.38, 0.95);
+    let thickness = (world_radius * 0.18).clamp(0.04, 0.10);
+    let y = -(agent_height_m * 0.34);
+
+    let base_scale = Vec3::new(world_radius * 2.0, thickness, world_radius * 2.0);
+    parent.spawn((
+        Mesh3d(assets.agent_module_marker_mesh.clone()),
+        MeshMaterial3d(assets.agent_module_marker_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, y, 0.0)).with_scale(base_scale),
+        Name::new(format!("map2d:agent:plate:{agent_id}")),
+        TwoDMapMarker,
+    ));
+
+    let module_ratio =
+        module_count.min(AGENT_MODULE_MARKER_MAX) as f32 / AGENT_MODULE_MARKER_MAX as f32;
+    if module_ratio > 0.0 {
+        let outer_radius = world_radius * (1.10 + module_ratio * 0.45);
+        let outer_scale = Vec3::new(outer_radius * 2.0, thickness * 0.55, outer_radius * 2.0);
+        parent.spawn((
+            Mesh3d(assets.agent_module_marker_mesh.clone()),
+            MeshMaterial3d(assets.chunk_generated_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, y - 0.01, 0.0)).with_scale(outer_scale),
+            Name::new(format!("map2d:agent:module_band:{agent_id}")),
+            TwoDMapMarker,
+        ));
+    }
+
+    parent.spawn((
+        Mesh3d(assets.location_mesh.clone()),
+        MeshMaterial3d(assets.agent_material.clone()),
+        Transform::from_translation(Vec3::new(0.0, y + 0.015, 0.0))
+            .with_scale(Vec3::splat(world_radius * 0.58)),
+        Name::new(format!("map2d:agent:center:{agent_id}")),
+        TwoDMapMarker,
+    ));
+}
+
 pub(super) fn spawn_location_detail_children(
     parent: &mut ChildSpawnerCommands,
     assets: &Viewer3dAssets,
@@ -90,6 +170,8 @@ pub(super) fn spawn_location_detail_children(
             Name::new(format!("location:detail:ring:{location_id}:{idx}")),
         ));
     }
+
+    spawn_location_two_d_map_marker(parent, assets, location_id, radius_cm);
 
     if detail.halo_segments == 0 {
         return;

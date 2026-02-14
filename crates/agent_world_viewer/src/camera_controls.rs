@@ -6,10 +6,10 @@ use bevy::window::PrimaryWindow;
 
 use super::{
     grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, GridLineVisual, OrbitCamera,
-    RightPanelWidthState, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface,
-    WorldFloorSurface, WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS,
-    ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY,
-    ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
+    RightPanelWidthState, TwoDMapMarker, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode,
+    WorldBoundsSurface, WorldFloorSurface, WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS,
+    DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY,
+    ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
 };
 
 const ORTHO_MIN_SCALE: f32 = 0.01;
@@ -363,6 +363,19 @@ pub(super) fn sync_world_background_visibility(
     }
 }
 
+pub(super) fn sync_two_d_map_marker_visibility(
+    camera_mode: Res<ViewerCameraMode>,
+    mut query: Query<&mut Visibility, With<TwoDMapMarker>>,
+) {
+    let next_visibility = match *camera_mode {
+        ViewerCameraMode::TwoD => Visibility::Visible,
+        ViewerCameraMode::ThreeD => Visibility::Hidden,
+    };
+    for mut visibility in &mut query {
+        *visibility = next_visibility;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -559,6 +572,33 @@ mod tests {
             .expect("bounds visibility");
         assert_eq!(*floor_visibility, Visibility::Hidden);
         assert_eq!(*bounds_visibility, Visibility::Hidden);
+    }
+
+    #[test]
+    fn two_d_map_marker_visibility_follows_camera_mode() {
+        let mut app = App::new();
+        app.add_systems(Update, sync_two_d_map_marker_visibility);
+        app.insert_resource(ViewerCameraMode::TwoD);
+
+        let marker = app
+            .world_mut()
+            .spawn((TwoDMapMarker, Visibility::Hidden))
+            .id();
+
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(marker)
+            .expect("marker visibility");
+        assert_eq!(*visibility, Visibility::Visible);
+
+        *app.world_mut().resource_mut::<ViewerCameraMode>() = ViewerCameraMode::ThreeD;
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(marker)
+            .expect("marker visibility");
+        assert_eq!(*visibility, Visibility::Hidden);
     }
 
     #[test]

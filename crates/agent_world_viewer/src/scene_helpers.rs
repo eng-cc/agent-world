@@ -96,6 +96,9 @@ pub(super) struct ChunkMarker {
     pub pick_y: f32,
 }
 
+#[derive(Component)]
+pub(super) struct TwoDMapMarker;
+
 pub(super) fn attach_to_scene_root(commands: &mut Commands, scene: &Viewer3dScene, entity: Entity) {
     if let Some(root) = scene.root_entity {
         commands.entity(root).add_child(entity);
@@ -763,6 +766,7 @@ pub(super) fn spawn_agent_entity(
                 agent_label_offset(height_cm),
                 format!("label:agent:{agent_id}"),
             );
+            spawn_agent_two_d_map_marker(parent, assets, agent_id, height_cm, module_count);
             for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
                 parent.spawn((
                     Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -802,6 +806,7 @@ pub(super) fn spawn_agent_entity(
             agent_label_offset(height_cm),
             format!("label:agent:{agent_id}"),
         );
+        spawn_agent_two_d_map_marker(parent, assets, agent_id, height_cm, module_count);
         for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
             parent.spawn((
                 Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -1064,8 +1069,9 @@ mod scene_helpers_entities;
 
 use scene_helpers_entities::{
     id_hash_fraction, location_label_offset, module_visual_anchor_pos_in_scene,
-    module_visual_anchor_pos_in_snapshot, spawn_asset_entity, spawn_location_detail_children,
-    spawn_module_visual_entity, spawn_power_plant_entity, spawn_power_storage_entity,
+    module_visual_anchor_pos_in_snapshot, spawn_agent_two_d_map_marker, spawn_asset_entity,
+    spawn_location_detail_children, spawn_module_visual_entity, spawn_power_plant_entity,
+    spawn_power_storage_entity,
 };
 
 pub(super) fn spawn_chunk_entity(
