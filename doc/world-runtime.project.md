@@ -222,7 +222,7 @@
 ### 14. WASM 运行时激进迁移（R6）
 - [x] 输出 R6 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.md`）
 - [x] 输出 R6 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.project.md`）
-- [ ] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
+- [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
 ## 依赖
 - Rust workspace（`crates/agent_world`）
