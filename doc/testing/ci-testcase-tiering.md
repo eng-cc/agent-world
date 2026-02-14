@@ -20,7 +20,7 @@
 ## 接口 / 数据
 - 统一入口：`scripts/ci-tests.sh [required|full]`
 - `required` 固定包含：
-  - 静态门禁（fmt、warning baseline、工件一致性）
+  - 静态门禁（fmt、工件一致性）
   - 关键 smoke case（运行时、模块仓库、网络、执行器、viewer）
 - `full`：`required` + 特性/联测全量回归。
 

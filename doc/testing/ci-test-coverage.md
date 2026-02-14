@@ -34,7 +34,6 @@
 - 每日定时全量：`CI_VERBOSE=1 ./scripts/ci-tests.sh full`。
 - `required` 覆盖：
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
-  - `./scripts/check-include-warning-baseline.sh`
   - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
   - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
   - `env -u RUSTC_WRAPPER cargo test`

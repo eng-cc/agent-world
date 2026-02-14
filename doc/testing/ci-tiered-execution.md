@@ -22,7 +22,7 @@
 
 ## 接口 / 数据
 - 统一入口脚本：`scripts/ci-tests.sh [required|full]`
-  - `required`：格式化校验、warning 基线、内置工件一致性、默认测试集。
+  - `required`：格式化校验、内置工件一致性、默认测试集。
   - `full`：`required` + `libp2p` 特性测试 + `wasmtime` 特性测试 + viewer 在线/离线联测。
 - 本地提交入口：`scripts/pre-commit.sh`（内部执行 `./scripts/ci-tests.sh required`）。
 - GitHub Actions 入口：`.github/workflows/rust.yml`

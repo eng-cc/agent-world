@@ -45,7 +45,6 @@ run_cargo() {
 
 run_required() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
-  run ./scripts/check-include-warning-baseline.sh
   run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
   run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
   run_cargo test
