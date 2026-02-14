@@ -382,6 +382,7 @@
 - 电价与市场机制（M4.4）仍为可选后续。
 - 详细设计与任务状态以 `doc/m4-power-system.md` 与 `doc/m4-power-system.project.md` 为准。
 - 工业生产链与 Recipe/Product/Factory 全 WASM 化接口设计见 `doc/m4-industrial-economy-wasm.md` 与 `doc/m4-industrial-economy-wasm.project.md`。
+- runtime 已落地工业生产链最小执行闭环：`BuildFactory` / `ScheduleRecipe` + 建造/排产开始与完成事件（详见分册状态）。
 
 ## 分册索引
 - 世界初始化：`doc/world-simulator/world-initialization.md`

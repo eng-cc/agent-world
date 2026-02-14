@@ -263,6 +263,16 @@ V1 需要覆盖以下测试组：
 - 工厂门槛测试：未达工厂等级或标签不匹配时配方必须拒绝。
 - 构建链路测试：S0 -> S4 解锁顺序可重复通过。
 
+## 当前实现进展（2026-02-14）
+
+- ABI 层已提供 Recipe/Product/Factory 接口类型与 trait 草案（`agent_world_wasm_abi`）。
+- runtime 已落地最小执行闭环：
+  - 新动作：`BuildFactory`、`ScheduleRecipe`
+  - 新事件：`FactoryBuildStarted`、`FactoryBuilt`、`RecipeStarted`、`RecipeCompleted`
+  - 新状态：材料库存、工厂实例、建造队列、配方队列
+  - 新流程：`step` 每 tick 自动结算到期建造与排产任务
+- 已覆盖 runtime 定向测试：建造时序、排产时序、产线容量限流、库存与电力扣减、完工产出入账。
+
 ## 里程碑
 
 - M4-E1：完成机制与接口设计（本文件 + 项目文档）。

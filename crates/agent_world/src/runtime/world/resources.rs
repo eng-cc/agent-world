@@ -23,6 +23,67 @@ impl World {
         *entry
     }
 
+    pub fn material_balance(&self, material_kind: &str) -> i64 {
+        self.state
+            .materials
+            .get(material_kind)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn set_material_balance(
+        &mut self,
+        material_kind: impl Into<String>,
+        amount: i64,
+    ) -> Result<(), WorldError> {
+        if amount < 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!("material balance must be >= 0, got {amount}"),
+            });
+        }
+        let material_kind = material_kind.into();
+        if material_kind.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "material kind cannot be empty".to_string(),
+            });
+        }
+        if amount == 0 {
+            self.state.materials.remove(&material_kind);
+        } else {
+            self.state.materials.insert(material_kind, amount);
+        }
+        Ok(())
+    }
+
+    pub fn adjust_material_balance(
+        &mut self,
+        material_kind: impl Into<String>,
+        delta: i64,
+    ) -> Result<i64, WorldError> {
+        let material_kind = material_kind.into();
+        if material_kind.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "material kind cannot be empty".to_string(),
+            });
+        }
+        let current = self.material_balance(material_kind.as_str());
+        let next = current.saturating_add(delta);
+        if next < 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "material balance cannot be negative: kind={} current={} delta={}",
+                    material_kind, current, delta
+                ),
+            });
+        }
+        if next == 0 {
+            self.state.materials.remove(&material_kind);
+        } else {
+            self.state.materials.insert(material_kind, next);
+        }
+        Ok(next)
+    }
+
     pub(super) fn apply_resource_delta(&mut self, delta: &ResourceDelta) {
         for (kind, amount) in &delta.entries {
             self.adjust_resource_balance(*kind, *amount);

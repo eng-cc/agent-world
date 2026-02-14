@@ -12,6 +12,7 @@ mod agent_default_modules;
 mod audit;
 mod basic;
 mod body;
+mod economy;
 mod effects;
 mod governance;
 mod modules;

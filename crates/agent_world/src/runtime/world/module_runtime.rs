@@ -813,6 +813,10 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
                 "domain.body_interface_expand_rejected"
             }
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
+            DomainEvent::FactoryBuildStarted { .. } => "domain.economy.factory_build_started",
+            DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
+            DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
+            DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
         WorldEventBody::ReceiptAppended(_) => "effect.receipt_appended",
@@ -841,5 +845,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
+        Action::BuildFactory { .. } => "action.economy.build_factory",
+        Action::ScheduleRecipe { .. } => "action.economy.schedule_recipe",
     }
 }

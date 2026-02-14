@@ -4,6 +4,7 @@ mod actions;
 mod audit;
 mod body;
 mod bootstrap_power;
+mod economy;
 mod effects;
 mod event_processing;
 mod governance;

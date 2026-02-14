@@ -5,6 +5,7 @@ use super::super::{
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::World;
 use crate::geometry::space_distance_cm;
+use crate::simulator::ResourceKind;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -213,6 +214,198 @@ impl World {
                     to_agent_id: to_agent_id.clone(),
                     kind: *kind,
                     amount: *amount,
+                }))
+            }
+            Action::BuildFactory {
+                builder_agent_id,
+                site_id,
+                spec,
+            } => {
+                if !self.state.agents.contains_key(builder_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: builder_agent_id.clone(),
+                        },
+                    }));
+                }
+                if spec.factory_id.trim().is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["factory_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.factories.contains_key(&spec.factory_id)
+                    || self
+                        .state
+                        .pending_factory_builds
+                        .values()
+                        .any(|job| job.spec.factory_id == spec.factory_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("factory already exists: {}", spec.factory_id)],
+                        },
+                    }));
+                }
+                if spec.recipe_slots == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["recipe_slots must be > 0".to_string()],
+                        },
+                    }));
+                }
+                for stack in &spec.build_cost {
+                    if stack.amount <= 0 {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "factory build_cost must be > 0: {}={}",
+                                    stack.kind, stack.amount
+                                )],
+                            },
+                        }));
+                    }
+                    let available = self.material_balance(stack.kind.as_str());
+                    if available < stack.amount {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InsufficientMaterial {
+                                material_kind: stack.kind.clone(),
+                                requested: stack.amount,
+                                available,
+                            },
+                        }));
+                    }
+                }
+
+                let build_ticks = spec.build_time_ticks.max(1);
+                let ready_at = self.state.time.saturating_add(build_ticks as u64);
+                Ok(WorldEventBody::Domain(DomainEvent::FactoryBuildStarted {
+                    job_id: action_id,
+                    builder_agent_id: builder_agent_id.clone(),
+                    site_id: site_id.clone(),
+                    spec: spec.clone(),
+                    ready_at,
+                }))
+            }
+            Action::ScheduleRecipe {
+                requester_agent_id,
+                factory_id,
+                recipe_id,
+                plan,
+            } => {
+                if !self.state.agents.contains_key(requester_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: requester_agent_id.clone(),
+                        },
+                    }));
+                }
+                let Some(factory) = self.state.factories.get(factory_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::FactoryNotFound {
+                            factory_id: factory_id.clone(),
+                        },
+                    }));
+                };
+                let active_jobs = self
+                    .state
+                    .pending_recipe_jobs
+                    .values()
+                    .filter(|job| job.factory_id == *factory_id)
+                    .count();
+                if active_jobs >= factory.spec.recipe_slots as usize {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::FactoryBusy {
+                            factory_id: factory_id.clone(),
+                            active_jobs,
+                            recipe_slots: factory.spec.recipe_slots,
+                        },
+                    }));
+                }
+                if let Some(reason) = &plan.reject_reason {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("recipe plan rejected: {reason}")],
+                        },
+                    }));
+                }
+                if plan.accepted_batches == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["recipe accepted_batches must be > 0".to_string()],
+                        },
+                    }));
+                }
+                for stack in &plan.consume {
+                    if stack.amount <= 0 {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "recipe consume must be > 0: {}={}",
+                                    stack.kind, stack.amount
+                                )],
+                            },
+                        }));
+                    }
+                    let available = self.material_balance(stack.kind.as_str());
+                    if available < stack.amount {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InsufficientMaterial {
+                                material_kind: stack.kind.clone(),
+                                requested: stack.amount,
+                                available,
+                            },
+                        }));
+                    }
+                }
+                if plan.power_required < 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["recipe power_required must be >= 0".to_string()],
+                        },
+                    }));
+                }
+                let available_power = self.resource_balance(ResourceKind::Electricity);
+                if available_power < plan.power_required {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientResource {
+                            agent_id: "world".to_string(),
+                            kind: ResourceKind::Electricity,
+                            requested: plan.power_required,
+                            available: available_power,
+                        },
+                    }));
+                }
+                let duration_ticks = plan.duration_ticks.max(1);
+                let ready_at = self.state.time.saturating_add(duration_ticks as u64);
+                Ok(WorldEventBody::Domain(DomainEvent::RecipeStarted {
+                    job_id: action_id,
+                    requester_agent_id: requester_agent_id.clone(),
+                    factory_id: factory_id.clone(),
+                    recipe_id: recipe_id.clone(),
+                    accepted_batches: plan.accepted_batches,
+                    consume: plan.consume.clone(),
+                    produce: plan.produce.clone(),
+                    byproducts: plan.byproducts.clone(),
+                    power_required: plan.power_required,
+                    duration_ticks,
+                    ready_at,
                 }))
             }
         }

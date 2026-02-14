@@ -17,6 +17,7 @@ impl World {
             let event_body = self.action_to_event(&envelope)?;
             self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
         }
+        let _ = self.process_due_economy_jobs()?;
         Ok(())
     }
 
@@ -78,6 +79,9 @@ impl World {
                 let event = event.clone();
                 self.route_event_to_modules(&event, sandbox)?;
             }
+        }
+        for event in self.process_due_economy_jobs()? {
+            self.route_event_to_modules(&event, sandbox)?;
         }
         Ok(())
     }

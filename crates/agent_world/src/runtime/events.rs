@@ -3,6 +3,7 @@
 use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::ResourceKind;
+use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack, RecipeExecutionPlan};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -76,6 +77,17 @@ pub enum Action {
         kind: ResourceKind,
         amount: i64,
     },
+    BuildFactory {
+        builder_agent_id: String,
+        site_id: String,
+        spec: FactoryModuleSpec,
+    },
+    ScheduleRecipe {
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        plan: RecipeExecutionPlan,
+    },
 }
 
 /// Domain events that describe state changes.
@@ -126,6 +138,41 @@ pub enum DomainEvent {
         kind: ResourceKind,
         amount: i64,
     },
+    FactoryBuildStarted {
+        job_id: ActionId,
+        builder_agent_id: String,
+        site_id: String,
+        spec: FactoryModuleSpec,
+        ready_at: WorldTime,
+    },
+    FactoryBuilt {
+        job_id: ActionId,
+        builder_agent_id: String,
+        site_id: String,
+        spec: FactoryModuleSpec,
+    },
+    RecipeStarted {
+        job_id: ActionId,
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        accepted_batches: u32,
+        consume: Vec<MaterialStack>,
+        produce: Vec<MaterialStack>,
+        byproducts: Vec<MaterialStack>,
+        power_required: i64,
+        duration_ticks: u32,
+        ready_at: WorldTime,
+    },
+    RecipeCompleted {
+        job_id: ActionId,
+        requester_agent_id: String,
+        factory_id: String,
+        recipe_id: String,
+        accepted_batches: u32,
+        produce: Vec<MaterialStack>,
+        byproducts: Vec<MaterialStack>,
+    },
 }
 
 impl DomainEvent {
@@ -140,6 +187,18 @@ impl DomainEvent {
             DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
+            DomainEvent::FactoryBuildStarted {
+                builder_agent_id, ..
+            } => Some(builder_agent_id.as_str()),
+            DomainEvent::FactoryBuilt {
+                builder_agent_id, ..
+            } => Some(builder_agent_id.as_str()),
+            DomainEvent::RecipeStarted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
+            DomainEvent::RecipeCompleted {
+                requester_agent_id, ..
+            } => Some(requester_agent_id.as_str()),
         }
     }
 }
@@ -169,6 +228,19 @@ pub enum RejectReason {
     },
     InsufficientResources {
         deficits: BTreeMap<ResourceKind, i64>,
+    },
+    InsufficientMaterial {
+        material_kind: String,
+        requested: i64,
+        available: i64,
+    },
+    FactoryNotFound {
+        factory_id: String,
+    },
+    FactoryBusy {
+        factory_id: String,
+        active_jobs: usize,
+        recipe_slots: u16,
     },
     RuleDenied {
         notes: Vec<String>,

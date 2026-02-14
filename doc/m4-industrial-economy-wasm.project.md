@@ -16,6 +16,15 @@
 - [x] 回写项目管理文档状态
 - [x] 记录当日 devlog（任务完成内容 + 遗留事项）
 
+### E4 runtime 最小执行闭环
+- [x] 在 runtime 动作层新增 `BuildFactory` / `ScheduleRecipe`
+- [x] 在 runtime 事件层新增建造/排产开始与完成事件（支持回放）
+- [x] 在 `WorldState` 新增材料库存、工厂状态、建造队列、配方队列
+- [x] 在 step 流程新增“到期任务结算”（工厂完工、配方完工）
+- [x] 新增 runtime 经济闭环测试（建造时序、排产时序、产线容量、库存与电力扣减）
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --features wasmtime`
+
 ## 依赖
 
 - `crates/agent_world_wasm_abi`：模块 ABI 与共享契约定义。
@@ -24,6 +33,6 @@
 
 ## 状态
 
-- 当前阶段：E3 完成。
-- 下一步：进入 runtime 执行闭环实现（build_factory / schedule_recipe）。
-- 最近更新：完成 ABI 接口落地、验证与 devlog 记录（2026-02-14）。
+- 当前阶段：E4 完成（runtime 最小执行闭环已落地）。
+- 下一步：接入基于 wasm 模块的 recipe/factory 在线评估与治理装载模板。
+- 最近更新：完成 runtime 建造/排产闭环实现与测试（2026-02-14）。
