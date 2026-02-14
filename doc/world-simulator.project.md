@@ -116,6 +116,10 @@
 - [x] 工业风缺口收敛任务 B（经营面板）
 - [x] 工业风缺口收敛任务 C（多尺度导航 + 告警根因）
 - [x] 工业风缺口收敛任务 D（产品化表现层）
+- [x] 输出 Viewer 2D 可视化精修设计文档（`doc/world-simulator/viewer-2d-visual-polish.md`）
+- [x] 输出 Viewer 2D 可视化精修项目管理文档（`doc/world-simulator/viewer-2d-visual-polish.project.md`）
+- [ ] Viewer 2D 可视化精修任务 1（地图符号层）
+- [ ] Viewer 2D 可视化精修任务 2（标签可读性增强）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
