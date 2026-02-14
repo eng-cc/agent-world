@@ -11,6 +11,7 @@
 - [x] T3 文档回写（`doc/testing/ci-test-coverage.md`、`doc/scripts/pre-commit.md`）
 - [x] T3 更新任务日志
 - [x] T3 运行验证并提交
+- [x] T4 巡检现有测试 case 与 feature 覆盖，执行 required/full/workspace 回归并同步 `AGENTS.md` 规则
 
 ## 依赖
 - `scripts/ci-tests.sh`
@@ -19,3 +20,4 @@
 
 ## 状态
 - 当前阶段：已完成
+- 最近更新：2026-02-14
