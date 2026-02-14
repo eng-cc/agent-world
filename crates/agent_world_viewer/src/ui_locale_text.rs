@@ -466,6 +466,36 @@ pub(super) fn localize_agent_activity_block(text: String, locale: UiLocale) -> S
     converted
 }
 
+pub(super) fn localize_industrial_ops_block(text: String, locale: UiLocale) -> String {
+    if !locale.is_zh() {
+        return text;
+    }
+
+    let mut converted = text;
+    converted = converted.replace("Industrial Ops:", "工业链路:");
+    converted = converted.replace("Production Lines:", "生产链:");
+    converted = converted.replace("Factory Visuals:", "工厂可视实体:");
+    converted = converted.replace("Recipe Visuals:", "配方可视实体:");
+    converted = converted.replace("Product Visuals:", "制成品可视实体:");
+    converted = converted.replace("Logistics Visuals:", "物流可视实体:");
+    converted = converted.replace("Recent Refine Events:", "近期精炼事件:");
+    converted = converted.replace("Recent Line Updates:", "近期产线更新:");
+    converted = converted.replace("Hardware Output(Recent):", "近期硬件产出:");
+    converted = converted.replace("Logistics Routes:", "物流路由:");
+    converted = converted.replace("Active Routes:", "活跃路由:");
+    converted = converted.replace("Transfer Events:", "传输事件:");
+    converted = converted.replace("Power Moved:", "电力传输量:");
+    converted = converted.replace("Route ", "路由 ");
+    converted = converted.replace("moves=", "次数=");
+    converted = converted.replace("electricity=", "电力=");
+    converted = converted.replace("hardware=", "硬件=");
+    converted = converted.replace("data=", "数据=");
+    converted = converted.replace("power=", "功率=");
+    converted = converted.replace("loss=", "损耗=");
+    converted = converted.replace("location::", "地点::");
+    converted
+}
+
 pub(super) fn localize_details_block(text: String, locale: UiLocale) -> String {
     if !locale.is_zh() {
         return text;
@@ -578,5 +608,19 @@ mod tests {
         assert!(text.contains("线宽(2D)"));
         assert!(text.contains("背景=0.010"));
         assert!(text.contains("分块=0.020"));
+    }
+
+    #[test]
+    fn localize_industrial_ops_block_supports_zh() {
+        let text = localize_industrial_ops_block(
+            "Industrial Ops:\nProduction Lines:\n- Factory Visuals: 1\nLogistics Routes:\n- Active Routes: 2"
+                .to_string(),
+            UiLocale::ZhCn,
+        );
+        assert!(text.contains("工业链路:"));
+        assert!(text.contains("生产链:"));
+        assert!(text.contains("工厂可视实体: 1"));
+        assert!(text.contains("物流路由:"));
+        assert!(text.contains("活跃路由: 2"));
     }
 }

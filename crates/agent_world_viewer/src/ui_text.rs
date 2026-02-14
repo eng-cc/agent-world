@@ -1130,11 +1130,20 @@ fn event_activity_for_module_visual(event: &WorldEvent, entity_id: &str) -> Opti
 
 #[path = "ui_text_activity.rs"]
 mod ui_text_activity;
+#[path = "ui_text_industrial.rs"]
+mod ui_text_industrial;
 
 use ui_text_activity::{
     event_activity_for_owner, event_activity_for_power_plant, event_activity_for_power_storage,
     owner_matches_agent, owner_matches_location,
 };
+
+pub(super) fn industrial_ops_summary(
+    snapshot: Option<&WorldSnapshot>,
+    events: &[WorldEvent],
+) -> Option<String> {
+    ui_text_industrial::industrial_ops_summary(snapshot, events)
+}
 
 #[cfg(test)]
 #[path = "ui_text_tests.rs"]

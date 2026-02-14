@@ -112,7 +112,7 @@
 - [x] 可玩化准备主线：OWR1~OWR4（观察态/Prompt Ops/3D 表达优化/规模化稳定性）【已完成：OWR1~OWR4 全链路收口，含稳定性基线】
 - [x] 输出 Viewer 工业风可视化缺口收敛设计文档（`doc/world-simulator/viewer-industrial-visual-closure.md`）
 - [x] 输出 Viewer 工业风可视化缺口收敛项目管理文档（`doc/world-simulator/viewer-industrial-visual-closure.project.md`）
-- [ ] 工业风缺口收敛任务 A（产线 + 物流可视化）
+- [x] 工业风缺口收敛任务 A（产线 + 物流可视化）
 - [ ] 工业风缺口收敛任务 B（经营面板）
 - [ ] 工业风缺口收敛任务 C（多尺度导航 + 告警根因）
 - [ ] 工业风缺口收敛任务 D（产品化表现层）

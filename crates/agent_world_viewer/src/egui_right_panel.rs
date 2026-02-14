@@ -24,13 +24,14 @@ use crate::timeline_controls::{
 };
 use crate::ui_locale_text::{
     localize_agent_activity_block, localize_details_block, localize_events_summary_block,
-    localize_world_summary_block, map_link_message_for_locale, overlay_button_label,
-    overlay_chunk_legend_label, overlay_chunk_legend_title, overlay_grid_line_width_hint,
-    overlay_loading, seek_button_label, status_line, timeline_insights, timeline_jump_label,
-    timeline_mode_label, timeline_status_line,
+    localize_industrial_ops_block, localize_world_summary_block, map_link_message_for_locale,
+    overlay_button_label, overlay_chunk_legend_label, overlay_chunk_legend_title,
+    overlay_grid_line_width_hint, overlay_loading, seek_button_label, status_line,
+    timeline_insights, timeline_jump_label, timeline_mode_label, timeline_status_line,
 };
 use crate::ui_text::{
-    agent_activity_summary, events_summary, selection_details_summary, world_summary,
+    agent_activity_summary, events_summary, industrial_ops_summary, selection_details_summary,
+    world_summary,
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
@@ -992,6 +993,8 @@ fn render_text_sections(
         agent_activity_summary(state.snapshot.as_ref(), &state.events),
         locale,
     );
+    let industrial = industrial_ops_summary(state.snapshot.as_ref(), &state.events)
+        .map(|text| localize_industrial_ops_block(text, locale));
     let details = localize_details_block(
         selection_details_summary(
             selection,
@@ -1004,7 +1007,7 @@ fn render_text_sections(
     );
     let events = localize_events_summary_block(events_summary(&state.events, focus), locale);
 
-    let sections = [
+    let mut sections: Vec<(&str, String)> = vec![
         (
             if locale.is_zh() {
                 "世界摘要"
@@ -1021,16 +1024,26 @@ fn render_text_sections(
             },
             activity,
         ),
-        (
-            if locale.is_zh() {
-                "选中详情"
-            } else {
-                "Selection Details"
-            },
-            details,
-        ),
-        (if locale.is_zh() { "事件" } else { "Events" }, events),
     ];
+    if let Some(industrial) = industrial {
+        sections.push((
+            if locale.is_zh() {
+                "工业链路"
+            } else {
+                "Industrial Ops"
+            },
+            industrial,
+        ));
+    }
+    sections.push((
+        if locale.is_zh() {
+            "选中详情"
+        } else {
+            "Selection Details"
+        },
+        details,
+    ));
+    sections.push((if locale.is_zh() { "事件" } else { "Events" }, events));
 
     for (title, content) in sections {
         ui.group(|ui| {
