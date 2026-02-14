@@ -18,6 +18,12 @@ const HEAT_OFFSET_Y: f32 = 0.2;
 const FLOW_OFFSET_Y: f32 = 0.18;
 const FLOW_MIN_THICKNESS: f32 = 0.03;
 const FLOW_MAX_THICKNESS: f32 = 0.12;
+const FLOW_2D_PLANE_Y: f32 = 0.3;
+const FLOW_2D_THICKNESS_MULTIPLIER: f32 = 1.65;
+const FLOW_2D_THICKNESS_MAX: f32 = 0.24;
+const FLOW_ARROW_LENGTH_FACTOR: f32 = 3.4;
+const FLOW_ARROW_WIDTH_FACTOR: f32 = 1.85;
+const FLOW_ARROW_MIN_LENGTH: f32 = 0.08;
 const SHOW_FRAGMENT_ELEMENTS_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS";
 
 #[derive(Resource, Clone, Copy, PartialEq, Eq)]
@@ -267,6 +273,7 @@ pub(super) fn update_world_overlay_status_text(
 pub(super) fn update_world_overlays_3d(
     mut commands: Commands,
     state: Res<ViewerState>,
+    camera_mode: Res<ViewerCameraMode>,
     viewer_3d_config: Res<Viewer3dConfig>,
     overlay_config: Res<WorldOverlayConfig>,
     assets: Res<Viewer3dAssets>,
@@ -384,6 +391,11 @@ pub(super) fn update_world_overlays_3d(
         for segment in flow_segments.drain(..) {
             let ratio = (segment.amount.abs() as f32 / max_amount as f32).clamp(0.0, 1.0);
             let thickness = FLOW_MIN_THICKNESS + ratio * (FLOW_MAX_THICKNESS - FLOW_MIN_THICKNESS);
+            let (from, to, thickness) =
+                flow_render_profile(*camera_mode, segment.from, segment.to, thickness);
+            if from.distance(to) <= 0.00001 {
+                continue;
+            }
             let material = match segment.kind {
                 FlowSegmentKind::Power => assets.flow_power_material.clone(),
                 FlowSegmentKind::Trade => assets.flow_trade_material.clone(),
@@ -391,13 +403,26 @@ pub(super) fn update_world_overlays_3d(
             let entity = commands
                 .spawn((
                     Mesh3d(assets.world_box_mesh.clone()),
-                    MeshMaterial3d(material),
-                    line_transform(segment.from, segment.to, thickness),
+                    MeshMaterial3d(material.clone()),
+                    line_transform(from, to, thickness),
                     Name::new("overlay:flow"),
                 ))
                 .id();
             attach_to_scene_root(&mut commands, &scene, entity);
             scene.flow_overlay_entities.push(entity);
+
+            if *camera_mode == ViewerCameraMode::TwoD {
+                let arrow_entity = commands
+                    .spawn((
+                        Mesh3d(assets.world_box_mesh.clone()),
+                        MeshMaterial3d(material),
+                        flow_arrow_transform(from, to, thickness),
+                        Name::new("overlay:flow:arrow"),
+                    ))
+                    .id();
+                attach_to_scene_root(&mut commands, &scene, arrow_entity);
+                scene.flow_overlay_entities.push(arrow_entity);
+            }
         }
     }
 }
@@ -638,6 +663,23 @@ fn owner_position(
     }
 }
 
+fn flow_render_profile(
+    mode: ViewerCameraMode,
+    from: Vec3,
+    to: Vec3,
+    thickness: f32,
+) -> (Vec3, Vec3, f32) {
+    match mode {
+        ViewerCameraMode::TwoD => (
+            Vec3::new(from.x, FLOW_2D_PLANE_Y, from.z),
+            Vec3::new(to.x, FLOW_2D_PLANE_Y, to.z),
+            (thickness * FLOW_2D_THICKNESS_MULTIPLIER)
+                .clamp(FLOW_MIN_THICKNESS, FLOW_2D_THICKNESS_MAX),
+        ),
+        ViewerCameraMode::ThreeD => (from, to, thickness),
+    }
+}
+
 fn line_transform(from: Vec3, to: Vec3, thickness: f32) -> Transform {
     let delta = to - from;
     let length = delta.length().max(0.0001);
@@ -647,6 +689,24 @@ fn line_transform(from: Vec3, to: Vec3, thickness: f32) -> Transform {
         translation: (from + to) * 0.5,
         rotation,
         scale: Vec3::new(thickness, length, thickness),
+    }
+}
+
+fn flow_arrow_transform(from: Vec3, to: Vec3, thickness: f32) -> Transform {
+    let delta = to - from;
+    let length = delta.length().max(0.0001);
+    let direction = delta / length;
+    let max_arrow_length = (length * 0.48).max(FLOW_ARROW_MIN_LENGTH);
+    let arrow_length =
+        (thickness * FLOW_ARROW_LENGTH_FACTOR).clamp(FLOW_ARROW_MIN_LENGTH, max_arrow_length);
+    let arrow_width =
+        (thickness * FLOW_ARROW_WIDTH_FACTOR).clamp(FLOW_MIN_THICKNESS, FLOW_2D_THICKNESS_MAX);
+    let rotation = Quat::from_rotation_arc(Vec3::Y, direction);
+    let translation = to - direction * (arrow_length * 0.5);
+    Transform {
+        translation,
+        rotation,
+        scale: Vec3::new(arrow_width, arrow_length, arrow_width),
     }
 }
 
@@ -817,6 +877,42 @@ mod tests {
         assert!(overlay_refresh_due(&runtime, 15, 21, 5, false));
         assert!(overlay_refresh_due(&runtime, 11, 28, 5, false));
         assert!(overlay_refresh_due(&runtime, 11, 21, 5, true));
+    }
+
+    #[test]
+    fn flow_render_profile_two_d_flattens_and_boosts_thickness() {
+        let from = Vec3::new(1.2, 0.8, -2.4);
+        let to = Vec3::new(-3.0, 1.4, 4.2);
+        let base_thickness = 0.06;
+
+        let (two_d_from, two_d_to, two_d_thickness) =
+            flow_render_profile(ViewerCameraMode::TwoD, from, to, base_thickness);
+        let (three_d_from, three_d_to, three_d_thickness) =
+            flow_render_profile(ViewerCameraMode::ThreeD, from, to, base_thickness);
+
+        assert_eq!(three_d_from, from);
+        assert_eq!(three_d_to, to);
+        assert!((three_d_thickness - base_thickness).abs() < f32::EPSILON);
+
+        assert!((two_d_from.y - FLOW_2D_PLANE_Y).abs() < f32::EPSILON);
+        assert!((two_d_to.y - FLOW_2D_PLANE_Y).abs() < f32::EPSILON);
+        assert_eq!(two_d_from.x, from.x);
+        assert_eq!(two_d_to.z, to.z);
+        assert!(two_d_thickness > base_thickness);
+    }
+
+    #[test]
+    fn flow_arrow_transform_tip_matches_segment_target() {
+        let from = Vec3::new(0.0, FLOW_2D_PLANE_Y, 0.0);
+        let to = Vec3::new(2.0, FLOW_2D_PLANE_Y, 0.0);
+        let transform = flow_arrow_transform(from, to, 0.08);
+        let tip =
+            transform.translation + (transform.rotation * Vec3::Y) * (transform.scale.y * 0.5);
+
+        assert!((tip.x - to.x).abs() < 1e-3);
+        assert!((tip.y - to.y).abs() < 1e-3);
+        assert!((tip.z - to.z).abs() < 1e-3);
+        assert!(transform.scale.x > 0.08);
     }
 
     #[test]
