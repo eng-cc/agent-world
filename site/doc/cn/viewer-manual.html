@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="agent-world Viewer 使用手册。" />
+    <meta property="og:title" content="Viewer 使用手册 | agent-world" />
+    <meta property="og:description" content="Viewer 启动、交互、Web 闭环与排查指南。" />
+    <meta property="og:type" content="article" />
+    <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <title>Viewer 使用手册 | agent-world</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/doc/en/viewer-manual.html" />
+    <link rel="icon" type="image/svg+xml" href="../../assets/images/favicon.svg" />
+    <link rel="stylesheet" href="../../assets/styles.css" />
+    <script defer src="../../assets/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark"></span>
+        <span>agent-world docs</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#overview">概览</a>
+        <a href="#status">状态</a>
+      </nav>
+      <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>☰</button>
+      <div class="lang-switch" aria-label="语言切换">
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="切换语言"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
+          <img src="../../assets/images/globe.svg" alt="" aria-hidden="true" />
+        </button>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a class="active" href="viewer-manual.html" aria-current="page" data-lang-choice="zh" data-lang-item>中文</a>
+          <a href="../en/viewer-manual.html" data-lang-choice="en" data-lang-item>English</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="docs-main">
+      <section id="overview" class="section docs-hero" data-reveal>
+        <p class="eyebrow">Viewer Manual</p>
+        <h1>Viewer 使用手册</h1>
+        <p class="subtitle">任务二将把完整手册内容整理进此页面，当前先提供框架页。</p>
+        <div class="cta-row">
+          <a class="button secondary" href="index.html">返回文档目录</a>
+          <a class="button ghost" href="../../index.html">返回站点首页</a>
+        </div>
+      </section>
+
+      <section id="status" class="section" data-reveal>
+        <h2>当前状态</h2>
+        <p>该页面已接入文档框架、语言切换与导航；正文内容将在下一任务补齐。</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© <span data-year></span> agent-world docs · Built for static hosting</p>
+    </footer>
+  </body>
+</html>

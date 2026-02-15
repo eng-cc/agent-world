@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="agent-world 文档中心：中文使用手册与调试流程。" />
+    <meta property="og:title" content="agent-world 文档中心（中文）" />
+    <meta property="og:description" content="集中访问 Viewer 手册、调试流程与入门指引。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <meta property="og:locale" content="zh_CN" />
+    <title>agent-world 文档中心 | 中文</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/cn/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/doc/en/" />
+    <link rel="icon" type="image/svg+xml" href="../../assets/images/favicon.svg" />
+    <link rel="stylesheet" href="../../assets/styles.css" />
+    <script defer src="../../assets/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../../index.html">
+        <span class="brand-mark"></span>
+        <span>agent-world docs</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#catalog">手册目录</a>
+        <a href="#workflow">维护流程</a>
+      </nav>
+      <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>
+        ☰
+      </button>
+      <div class="lang-switch" aria-label="语言切换">
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="切换语言"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
+          <img src="../../assets/images/globe.svg" alt="" aria-hidden="true" />
+        </button>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a class="active" href="index.html" aria-current="page" data-lang-choice="zh" data-lang-item>中文</a>
+          <a href="../en/index.html" data-lang-choice="en" data-lang-item>English</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="docs-main">
+      <section class="section docs-hero" data-reveal>
+        <p class="eyebrow">Manual Hub</p>
+        <h1>agent-world 使用手册中心</h1>
+        <p class="subtitle">从这里进入中文手册与调试流程页面，作为 GitHub Pages 静态内容直接访问。</p>
+        <div class="cta-row">
+          <a class="button primary" href="#catalog">查看手册目录</a>
+          <a class="button secondary" href="../../index.html">返回首页</a>
+        </div>
+      </section>
+
+      <section id="catalog" class="section" data-reveal>
+        <h2>手册目录</h2>
+        <div class="docs-grid">
+          <article class="doc-card">
+            <p class="doc-kicker">Viewer</p>
+            <h3>Viewer 使用手册</h3>
+            <p>覆盖 live server、Web Viewer、Playwright 闭环和常见排查路径。</p>
+            <p class="doc-meta">状态：待整理为站内正文（任务二）</p>
+            <a class="button secondary" href="viewer-manual.html">进入手册</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section" data-reveal>
+        <h2>维护流程</h2>
+        <ol class="steps">
+          <li>手册内容基线维护在 `doc/viewer-manual.md`。</li>
+          <li>发布版本同步到 `site/doc/cn|en` 静态页。</li>
+          <li>提交后由 Pages 工作流自动发布。</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© <span data-year></span> agent-world docs · Built for static hosting</p>
+    </footer>
+  </body>
+</html>

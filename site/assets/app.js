@@ -46,6 +46,8 @@
     return `${pathname}/en/`;
   };
 
+  const isDocsPath = (pathname) => /\/doc\/(?:cn|en)\//.test(pathname);
+
   const maybeRedirectByLanguageOnFirstVisit = () => {
     const manualChoice = safeGetStorage(LANGUAGE_MANUAL_CHOICE_KEY);
     if (manualChoice === "zh" || manualChoice === "en") {
@@ -65,6 +67,10 @@
     }
 
     const { pathname, search, hash } = window.location;
+    if (isDocsPath(pathname)) {
+      return;
+    }
+
     if (!isChineseEntryPath(pathname)) {
       return;
     }

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="agent-world docs hub: manuals and debugging workflows." />
+    <meta property="og:title" content="agent-world Docs Hub (EN)" />
+    <meta property="og:description" content="Access Viewer manuals and debugging playbooks in one static location." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <meta property="og:locale" content="en_US" />
+    <title>agent-world Docs Hub | English</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/en/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/doc/en/" />
+    <link rel="icon" type="image/svg+xml" href="../../assets/images/favicon.svg" />
+    <link rel="stylesheet" href="../../assets/styles.css" />
+    <script defer src="../../assets/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../../en/index.html">
+        <span class="brand-mark"></span>
+        <span>agent-world docs</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#catalog">Manuals</a>
+        <a href="#workflow">Workflow</a>
+      </nav>
+      <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>
+        ☰
+      </button>
+      <div class="lang-switch" aria-label="Language switch">
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="Switch language"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
+          <img src="../../assets/images/globe.svg" alt="" aria-hidden="true" />
+        </button>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a href="../cn/index.html" data-lang-choice="zh" data-lang-item>中文</a>
+          <a class="active" href="index.html" aria-current="page" data-lang-choice="en" data-lang-item>English</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="docs-main">
+      <section class="section docs-hero" data-reveal>
+        <p class="eyebrow">Manual Hub</p>
+        <h1>agent-world Documentation Hub</h1>
+        <p class="subtitle">A static entry point for manuals and debugging guides published with GitHub Pages.</p>
+        <div class="cta-row">
+          <a class="button primary" href="#catalog">Open Manuals</a>
+          <a class="button secondary" href="../../en/index.html">Back to Home</a>
+        </div>
+      </section>
+
+      <section id="catalog" class="section" data-reveal>
+        <h2>Manual Catalog</h2>
+        <div class="docs-grid">
+          <article class="doc-card">
+            <p class="doc-kicker">Viewer</p>
+            <h3>Viewer User Manual</h3>
+            <p>Covers live server setup, web viewer flow, Playwright loop, and troubleshooting.</p>
+            <p class="doc-meta">Status: to be fully organized in task 2.</p>
+            <a class="button secondary" href="viewer-manual.html">Open Manual</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section" data-reveal>
+        <h2>Maintenance Workflow</h2>
+        <ol class="steps">
+          <li>Use `doc/viewer-manual.md` as the content baseline.</li>
+          <li>Sync release content into `site/doc/cn|en` pages.</li>
+          <li>Publish automatically through the Pages workflow.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© <span data-year></span> agent-world docs · Built for static hosting</p>
+    </footer>
+  </body>
+</html>

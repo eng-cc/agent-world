@@ -969,6 +969,56 @@ code {
   margin: 0.22rem 0;
 }
 
+.docs-main {
+  max-width: var(--container);
+}
+
+.docs-hero .subtitle {
+  max-width: 66ch;
+}
+
+.docs-grid {
+  display: grid;
+  gap: 0.92rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.doc-card {
+  display: grid;
+  gap: 0.46rem;
+  padding: 1rem 1.05rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(96, 180, 209, 0.24);
+  background: linear-gradient(150deg, rgba(13, 27, 40, 0.92), rgba(7, 14, 24, 0.96));
+}
+
+.doc-card h3 {
+  margin: 0;
+}
+
+.doc-card p {
+  margin: 0;
+}
+
+.doc-kicker {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c8ffe2;
+  font-size: 0.74rem;
+}
+
+.doc-meta {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.doc-entry-note {
+  margin: 0.72rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
 .footer {
   max-width: var(--container);
   margin: 0 auto;
@@ -1035,7 +1085,8 @@ code {
   .proof-timeline,
   .matrix-grid,
   .hero-stats,
-  .screens-grid {
+  .screens-grid,
+  .docs-grid {
     grid-template-columns: 1fr;
   }
 

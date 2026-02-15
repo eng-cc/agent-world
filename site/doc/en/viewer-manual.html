@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="agent-world Viewer user manual." />
+    <meta property="og:title" content="Viewer User Manual | agent-world" />
+    <meta property="og:description" content="Viewer startup, interactions, web loop, and troubleshooting." />
+    <meta property="og:type" content="article" />
+    <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <title>Viewer User Manual | agent-world</title>
+    <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/en/viewer-manual.html" />
+    <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
+    <link rel="alternate" hreflang="en" href="https://eng-cc.github.io/agent-world/doc/en/viewer-manual.html" />
+    <link rel="icon" type="image/svg+xml" href="../../assets/images/favicon.svg" />
+    <link rel="stylesheet" href="../../assets/styles.css" />
+    <script defer src="../../assets/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark"></span>
+        <span>agent-world docs</span>
+      </a>
+      <nav class="nav" data-menu data-section-nav>
+        <a href="#overview">Overview</a>
+        <a href="#status">Status</a>
+      </nav>
+      <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>☰</button>
+      <div class="lang-switch" aria-label="Language switch">
+        <button
+          class="lang-icon-button"
+          type="button"
+          aria-label="Switch language"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="lang-popover-menu"
+          data-lang-toggle
+        >
+          <img src="../../assets/images/globe.svg" alt="" aria-hidden="true" />
+        </button>
+        <div class="lang-popover" id="lang-popover-menu" data-lang-popover>
+          <a href="../cn/viewer-manual.html" data-lang-choice="zh" data-lang-item>中文</a>
+          <a class="active" href="viewer-manual.html" aria-current="page" data-lang-choice="en" data-lang-item>English</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="docs-main">
+      <section id="overview" class="section docs-hero" data-reveal>
+        <p class="eyebrow">Viewer Manual</p>
+        <h1>Viewer User Manual</h1>
+        <p class="subtitle">Task 2 will populate this page with the complete manual; this is the framework stub.</p>
+        <div class="cta-row">
+          <a class="button secondary" href="index.html">Back to Catalog</a>
+          <a class="button ghost" href="../../en/index.html">Back to Home</a>
+        </div>
+      </section>
+
+      <section id="status" class="section" data-reveal>
+        <h2>Current Status</h2>
+        <p>This page already has docs layout, language switch, and section navigation. Full content comes in task 2.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© <span data-year></span> agent-world docs · Built for static hosting</p>
+    </footer>
+  </body>
+</html>
