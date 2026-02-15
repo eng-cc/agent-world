@@ -32,6 +32,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(TimelineMarkFilterState::default())
         .insert_resource(CopyableTextPanelState::default())
         .insert_resource(OrbitDragState::default())
+        .insert_resource(TwoDZoomTier::default())
         .insert_resource(UiI18n::default())
         .insert_resource(auto_degrade_config)
         .insert_resource(AutoDegradeState::default())
@@ -107,7 +108,13 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 sync_camera_mode
                     .after(orbit_camera_controls)
                     .after(handle_focus_selection_hotkey),
-                camera_controls::sync_two_d_map_marker_visibility.after(sync_camera_mode),
+                camera_controls::sync_two_d_zoom_tier
+                    .after(sync_camera_mode)
+                    .after(orbit_camera_controls),
+                camera_controls::sync_two_d_map_marker_visibility
+                    .after(camera_controls::sync_two_d_zoom_tier),
+                camera_controls::sync_detail_zoom_visibility
+                    .after(camera_controls::sync_two_d_zoom_tier),
                 update_grid_line_lod_visibility.after(sync_camera_mode),
                 sync_world_background_visibility.after(sync_camera_mode),
                 update_floating_origin.after(orbit_camera_controls),

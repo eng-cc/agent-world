@@ -5,17 +5,28 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::{
-    grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, GridLineVisual, OrbitCamera,
-    RightPanelWidthState, TwoDMapMarker, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode,
-    WorldBoundsSurface, WorldFloorSurface, WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS,
-    DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY,
-    ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, ORTHO_MAX_SCALE, ORTHO_MIN_SCALE,
-    UI_PANEL_WIDTH,
+    grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, DetailZoomEntity,
+    GridLineVisual, OrbitCamera, RightPanelWidthState, TwoDMapMarker, Viewer3dCamera,
+    Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface, WorldFloorSurface, WorldOverlayConfig,
+    DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS,
+    ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, ORTHO_MAX_SCALE,
+    ORTHO_MIN_SCALE, UI_PANEL_WIDTH,
 };
+
+const TWO_D_DEFAULT_DETAIL_RADIUS_RATIO: f32 = 0.24;
+const TWO_D_OVERVIEW_ENTER_RATIO: f32 = 0.78;
+const TWO_D_OVERVIEW_EXIT_RATIO: f32 = 0.60;
 
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
     last_cursor_position: Option<Vec2>,
+}
+
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub(super) enum TwoDZoomTier {
+    #[default]
+    Detail,
+    Overview,
 }
 
 pub(super) fn orbit_camera_controls(
@@ -187,10 +198,10 @@ pub(super) fn camera_orbit_preset(
     let min_radius = orbit_min_radius(cm_to_unit);
     match mode {
         ViewerCameraMode::TwoD => {
-            let min_radius = world_view_radius(cm_to_unit).max(min_radius);
+            let detail_radius = two_d_detail_default_radius(cm_to_unit);
             OrbitCamera {
                 focus,
-                radius: min_radius.max(DEFAULT_2D_CAMERA_RADIUS),
+                radius: detail_radius.max(min_radius),
                 yaw: 0.0,
                 pitch: -1.53,
             }
@@ -278,6 +289,55 @@ fn two_d_ortho_scale_for_radius(radius: f32, cm_to_unit: f32) -> f32 {
     let reference_radius = two_d_reference_radius(cm_to_unit);
     let ratio = (radius / reference_radius).max(0.01);
     (base_scale * ratio).clamp(ORTHO_MIN_SCALE, ORTHO_MAX_SCALE)
+}
+
+fn two_d_detail_default_radius(cm_to_unit: f32) -> f32 {
+    let min_radius = orbit_min_radius(cm_to_unit);
+    (world_view_radius(cm_to_unit) * TWO_D_DEFAULT_DETAIL_RADIUS_RATIO)
+        .clamp(min_radius * 4.0, ORBIT_MAX_RADIUS)
+}
+
+fn two_d_overview_thresholds(cm_to_unit: f32) -> (f32, f32) {
+    let min_radius = orbit_min_radius(cm_to_unit);
+    let base_radius = world_view_radius(cm_to_unit);
+    let enter =
+        (base_radius * TWO_D_OVERVIEW_ENTER_RATIO).clamp(min_radius * 8.0, ORBIT_MAX_RADIUS);
+    let mut exit =
+        (base_radius * TWO_D_OVERVIEW_EXIT_RATIO).clamp(min_radius * 6.0, ORBIT_MAX_RADIUS);
+    if exit >= enter {
+        exit = (enter * 0.82).max(min_radius);
+    }
+    (exit, enter)
+}
+
+fn two_d_zoom_tier_for_radius(radius: f32, cm_to_unit: f32, current: TwoDZoomTier) -> TwoDZoomTier {
+    let (exit, enter) = two_d_overview_thresholds(cm_to_unit);
+    match current {
+        TwoDZoomTier::Detail if radius >= enter => TwoDZoomTier::Overview,
+        TwoDZoomTier::Overview if radius <= exit => TwoDZoomTier::Detail,
+        _ => current,
+    }
+}
+
+pub(super) fn sync_two_d_zoom_tier(
+    camera_mode: Res<ViewerCameraMode>,
+    config: Res<Viewer3dConfig>,
+    cameras: Query<&OrbitCamera, With<Viewer3dCamera>>,
+    mut zoom_tier: ResMut<TwoDZoomTier>,
+) {
+    let next = match *camera_mode {
+        ViewerCameraMode::TwoD => {
+            let Ok(orbit) = cameras.single() else {
+                return;
+            };
+            two_d_zoom_tier_for_radius(orbit.radius, config.effective_cm_to_unit(), *zoom_tier)
+        }
+        ViewerCameraMode::ThreeD => TwoDZoomTier::Detail,
+    };
+
+    if *zoom_tier != next {
+        *zoom_tier = next;
+    }
 }
 
 pub(super) fn sync_camera_mode(
@@ -393,11 +453,31 @@ pub(super) fn sync_world_background_visibility(
 
 pub(super) fn sync_two_d_map_marker_visibility(
     camera_mode: Res<ViewerCameraMode>,
+    zoom_tier: Res<TwoDZoomTier>,
     mut query: Query<&mut Visibility, With<TwoDMapMarker>>,
 ) {
-    let next_visibility = match *camera_mode {
-        ViewerCameraMode::TwoD => Visibility::Visible,
-        ViewerCameraMode::ThreeD => Visibility::Hidden,
+    let next_visibility = match (*camera_mode, *zoom_tier) {
+        (ViewerCameraMode::TwoD, TwoDZoomTier::Overview) => Visibility::Visible,
+        _ => Visibility::Hidden,
+    };
+    for mut visibility in &mut query {
+        *visibility = next_visibility;
+    }
+}
+
+pub(super) fn sync_detail_zoom_visibility(
+    camera_mode: Res<ViewerCameraMode>,
+    zoom_tier: Res<TwoDZoomTier>,
+    mut query: Query<&mut Visibility, With<DetailZoomEntity>>,
+) {
+    let detail_visible = !matches!(
+        (*camera_mode, *zoom_tier),
+        (ViewerCameraMode::TwoD, TwoDZoomTier::Overview)
+    );
+    let next_visibility = if detail_visible {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
     };
     for mut visibility in &mut query {
         *visibility = next_visibility;
@@ -612,13 +692,11 @@ mod tests {
 
     #[test]
     fn camera_orbit_preset_two_d_has_top_down_pitch() {
-        let orbit = camera_orbit_preset(
-            ViewerCameraMode::TwoD,
-            None,
-            Viewer3dConfig::default().effective_cm_to_unit(),
-        );
+        let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
+        let orbit = camera_orbit_preset(ViewerCameraMode::TwoD, None, cm_to_unit);
         assert!(orbit.pitch < -1.5);
-        assert!(orbit.radius >= DEFAULT_2D_CAMERA_RADIUS);
+        assert!(orbit.radius >= orbit_min_radius(cm_to_unit));
+        assert!(orbit.radius < world_view_radius(cm_to_unit));
     }
 
     #[test]
@@ -664,16 +742,43 @@ mod tests {
     }
 
     #[test]
-    fn two_d_map_marker_visibility_follows_camera_mode() {
+    fn two_d_zoom_tier_switches_with_hysteresis() {
+        let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
+        let (exit, enter) = two_d_overview_thresholds(cm_to_unit);
+
+        let to_overview =
+            two_d_zoom_tier_for_radius(enter + 0.01, cm_to_unit, TwoDZoomTier::Detail);
+        assert_eq!(to_overview, TwoDZoomTier::Overview);
+
+        let stay_overview =
+            two_d_zoom_tier_for_radius((enter + exit) * 0.5, cm_to_unit, TwoDZoomTier::Overview);
+        assert_eq!(stay_overview, TwoDZoomTier::Overview);
+
+        let back_to_detail =
+            two_d_zoom_tier_for_radius(exit - 0.01, cm_to_unit, TwoDZoomTier::Overview);
+        assert_eq!(back_to_detail, TwoDZoomTier::Detail);
+    }
+
+    #[test]
+    fn two_d_map_marker_visibility_follows_zoom_tier() {
         let mut app = App::new();
         app.add_systems(Update, sync_two_d_map_marker_visibility);
         app.insert_resource(ViewerCameraMode::TwoD);
+        app.insert_resource(TwoDZoomTier::Detail);
 
         let marker = app
             .world_mut()
             .spawn((TwoDMapMarker, Visibility::Hidden))
             .id();
 
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(marker)
+            .expect("marker visibility");
+        assert_eq!(*visibility, Visibility::Hidden);
+
+        *app.world_mut().resource_mut::<TwoDZoomTier>() = TwoDZoomTier::Overview;
         app.update();
         let visibility = app
             .world()
@@ -688,6 +793,42 @@ mod tests {
             .get::<Visibility>(marker)
             .expect("marker visibility");
         assert_eq!(*visibility, Visibility::Hidden);
+    }
+
+    #[test]
+    fn detail_zoom_visibility_hides_detail_entities_in_overview() {
+        let mut app = App::new();
+        app.add_systems(Update, sync_detail_zoom_visibility);
+        app.insert_resource(ViewerCameraMode::TwoD);
+        app.insert_resource(TwoDZoomTier::Detail);
+
+        let detail_entity = app
+            .world_mut()
+            .spawn((DetailZoomEntity, Visibility::Visible))
+            .id();
+
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(detail_entity)
+            .expect("detail visibility");
+        assert_eq!(*visibility, Visibility::Visible);
+
+        *app.world_mut().resource_mut::<TwoDZoomTier>() = TwoDZoomTier::Overview;
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(detail_entity)
+            .expect("detail visibility");
+        assert_eq!(*visibility, Visibility::Hidden);
+
+        *app.world_mut().resource_mut::<ViewerCameraMode>() = ViewerCameraMode::ThreeD;
+        app.update();
+        let visibility = app
+            .world()
+            .get::<Visibility>(detail_entity)
+            .expect("detail visibility");
+        assert_eq!(*visibility, Visibility::Visible);
     }
 
     #[test]

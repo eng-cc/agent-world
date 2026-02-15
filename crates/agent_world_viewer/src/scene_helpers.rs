@@ -92,6 +92,9 @@ pub(super) struct ChunkMarker {
 #[derive(Component)]
 pub(super) struct TwoDMapMarker;
 
+#[derive(Component)]
+pub(super) struct DetailZoomEntity;
+
 pub(super) fn attach_to_scene_root(commands: &mut Commands, scene: &Viewer3dScene, entity: Entity) {
     if let Some(root) = scene.root_entity {
         commands.entity(root).add_child(entity);
@@ -709,6 +712,7 @@ pub(super) fn spawn_agent_entity(
                 MeshMaterial3d(assets.agent_material.clone()),
                 Transform::from_scale(body_scale),
                 Name::new(format!("agent:body:{agent_id}")),
+                DetailZoomEntity,
             ));
             spawn_label(
                 parent,
@@ -731,6 +735,7 @@ pub(super) fn spawn_agent_entity(
                     MeshMaterial3d(assets.agent_module_marker_material.clone()),
                     Transform::from_translation(*marker_translation).with_scale(marker_world_scale),
                     Name::new(format!("agent:module_marker:{agent_id}:{marker_idx}")),
+                    DetailZoomEntity,
                 ));
             }
         });
@@ -756,6 +761,7 @@ pub(super) fn spawn_agent_entity(
             MeshMaterial3d(assets.agent_material.clone()),
             Transform::from_scale(body_scale),
             Name::new(format!("agent:body:{agent_id}")),
+            DetailZoomEntity,
         ));
         spawn_label(
             parent,
@@ -778,6 +784,7 @@ pub(super) fn spawn_agent_entity(
                 MeshMaterial3d(assets.agent_module_marker_material.clone()),
                 Transform::from_translation(*marker_translation).with_scale(marker_world_scale),
                 Name::new(format!("agent:module_marker:{agent_id}:{marker_idx}")),
+                DetailZoomEntity,
             ));
         }
     });

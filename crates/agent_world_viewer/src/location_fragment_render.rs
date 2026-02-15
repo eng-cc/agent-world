@@ -5,7 +5,7 @@ use agent_world::simulator::{
     infer_element_ppm, FragmentBlock, FragmentElementKind, FragmentPhysicalProfile,
 };
 
-use super::{BaseScale, Viewer3dAssets};
+use super::{BaseScale, DetailZoomEntity, Viewer3dAssets};
 
 #[derive(Component, Clone, Debug, PartialEq, Eq)]
 pub(super) struct FragmentElementMarker {
@@ -31,6 +31,7 @@ pub(super) fn spawn_location_fragment_elements(
             MeshMaterial3d(assets.fragment_element_material_library.handle_for(element)),
             local_transform,
             BaseScale(base_scale),
+            DetailZoomEntity,
             FragmentElementMarker {
                 id: fragment_id,
                 location_id: location_id.to_string(),

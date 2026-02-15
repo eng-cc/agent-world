@@ -79,6 +79,7 @@ use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{
     camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,
     sync_world_background_visibility, update_grid_line_lod_visibility, OrbitDragState,
+    TwoDZoomTier,
 };
 use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
