@@ -257,6 +257,11 @@
 - [x] 扩展 `AsteroidFragmentConfig`（`min_fragments_per_chunk` / `starter_core_radius_ratio` / `starter_core_density_multiplier`）
 - [x] 生成器接入中心区密度倍率 + 确定性保底补种
 - [x] 补充 `test_tier_required` 测试（数量保底/分布偏置/参数 sanitize）
+- [x] 扩展 `AsteroidFragmentConfig`（`replenish_interval_ticks` / `replenish_percent_ppm` / `material_distribution_strategy`）
+- [x] 运行期补种策略：低于 `max_fragments_per_chunk` 时每 `100` tick 补入 `1%`（可配置）并事件化（`FragmentsReplenished`）
+- [x] 回放接入 `FragmentsReplenished`，保证 snapshot + journal 路径一致
+- [x] 资源类型分布策略接入（`uniform` / `core_metal_rim_volatile`）
+- [x] 补充 `test_tier_required` 测试（补种周期/比例、分布策略、replay）
 
 ## 依赖
 - 基础语言与运行环境：Rust（Cargo workspace）
@@ -266,4 +271,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 Viewer Web 在线 bridge 接入与 Playwright 闭环收口（2026-02-15）
+- 最近更新：完成 FRB4（运行期补种 + 资源类型分布策略 + replay 闭环）（2026-02-15）
