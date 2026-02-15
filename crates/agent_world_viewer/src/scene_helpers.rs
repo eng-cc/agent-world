@@ -902,6 +902,7 @@ fn agent_translation_for_render(
     let location_center = geo_to_vec3(location_pos, origin, cm_to_unit);
     let location_radius = location_render_radius_units(location_radius_cm, cm_to_unit);
     let radial_offset = base - location_center;
+    let radial_distance = radial_offset.length().max(location_radius);
     let surface_normal = if radial_offset.length_squared() > 1e-6 {
         radial_offset.normalize()
     } else {
@@ -909,7 +910,7 @@ fn agent_translation_for_render(
         Vec3::new(angle.cos(), 0.24, angle.sin()).normalize()
     };
     let surface_gap = (body_half_height * 0.01).max(0.006);
-    location_center + surface_normal * (location_radius + body_half_height + surface_gap)
+    location_center + surface_normal * (radial_distance + body_half_height + surface_gap)
 }
 
 fn agent_body_radius_m(height_cm: i64) -> f32 {

@@ -888,6 +888,40 @@ fn spawn_agent_surface_attachment_test_system(
     );
 }
 
+fn spawn_agent_surface_standoff_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let origin = GeoPos::new(0.0, 0.0, 0.0);
+    spawn_location_entity_with_radiation(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "loc-surface-standoff",
+        "SurfaceStandoff",
+        GeoPos::new(0.0, 0.0, 0.0),
+        MaterialKind::Silicate,
+        240,
+        0,
+    );
+    spawn_agent_entity(
+        &mut commands,
+        &config,
+        &assets,
+        &mut scene,
+        origin,
+        "agent-surface-standoff",
+        Some("loc-surface-standoff"),
+        GeoPos::new(0.0, 0.0, 5_240.0),
+        100,
+        6,
+    );
+}
+
 fn spawn_agent_module_marker_count_test_system(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,

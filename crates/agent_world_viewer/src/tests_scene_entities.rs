@@ -332,6 +332,74 @@ fn spawn_agent_entity_attaches_to_location_surface() {
 }
 
 #[test]
+fn spawn_agent_entity_preserves_location_standoff_distance() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_surface_standoff_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let cm_to_unit = world.resource::<Viewer3dConfig>().effective_cm_to_unit();
+    let mut location_query = world.query::<(&LocationMarker, &Transform)>();
+    let (location_translation, location_radius) = location_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "loc-surface-standoff")
+        .map(|(_, transform)| (transform.translation, transform.scale.x))
+        .expect("location marker exists");
+
+    let mut agent_query = world.query::<(&AgentMarker, &Transform)>();
+    let agent_translation = agent_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "agent-surface-standoff")
+        .map(|(_, transform)| transform.translation)
+        .expect("agent marker exists");
+
+    let mut body_query = world.query::<(&Name, &Transform)>();
+    let body_scale = body_query
+        .iter(world)
+        .find(|(name, _)| name.as_str() == "agent:body:agent-surface-standoff")
+        .map(|(_, transform)| transform.scale)
+        .expect("agent body exists");
+
+    let body_half_height = body_scale.y * 0.5 + body_scale.x * 0.5;
+    let center_distance = agent_translation.distance(location_translation);
+    let surface_offset = center_distance - (location_radius + body_half_height);
+    let expected_standoff = 5_000.0_f32 * cm_to_unit;
+
+    assert!(surface_offset >= expected_standoff);
+    assert!(surface_offset <= expected_standoff + 0.03);
+}
+
+#[test]
 fn spawn_agent_entity_renders_module_markers_up_to_cap() {
     let mut app = App::new();
     app.add_systems(Update, spawn_agent_module_marker_count_test_system);
