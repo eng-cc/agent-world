@@ -18,8 +18,8 @@
 - [x] WCM3.3 执行 `test_tier_required` 最小回归（camera_controls + `cargo check`）
 
 ### WCM4 收口
-- [ ] WCM4.1 更新 `doc/viewer-manual.md` 交互说明
-- [ ] WCM4.2 更新项目文档状态与开发日志
+- [x] WCM4.1 更新 `doc/viewer-manual.md` 交互说明
+- [x] WCM4.2 更新项目文档状态与开发日志
 
 ## 依赖
 - `crates/agent_world_viewer/src/camera_controls.rs`
@@ -28,6 +28,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WCM1~WCM3 已完成，WCM4 待收口。
-- 下一步：更新使用手册、总项目文档状态与开发日志。
-- 最近更新：2026-02-15（完成 WASD 相机移动实现与最小回归）。
+- 当前阶段：WCM1~WCM4 全部完成。
+- 下一步：无（本任务收口完成）。
+- 最近更新：2026-02-15（完成手册/日志收口并更新总项目状态）。

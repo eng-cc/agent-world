@@ -29,6 +29,7 @@ AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewe
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。
 - 滚轮：缩放。
+- `W/A/S/D`：移动相机视角（平移 `focus`，2D/3D 均可用；仅在光标位于 3D 视口且未占用文本输入时生效）。
 - 右侧面板：查看状态、事件、分块、诊断等信息。
 - `2D/3D` 切换：在顶部按钮切换视角模式。
 - `F`：对“当前选中对象”执行聚焦（适合人工巡检细节）。
