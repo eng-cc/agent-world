@@ -141,6 +141,9 @@
 - [x] 输出 Viewer 2D/3D WASD 相机移动设计文档（`doc/world-simulator/viewer-wasd-camera-navigation.md`）
 - [x] 输出 Viewer 2D/3D WASD 相机移动项目管理文档（`doc/world-simulator/viewer-wasd-camera-navigation.project.md`）
 - [x] Viewer 2D/3D 交互新增 WASD 相机移动（含测试回归）
+- [x] 输出 Viewer Bevy 浏览器运行路径设计文档（`doc/world-simulator/viewer-bevy-web-runtime.md`）
+- [x] 输出 Viewer Bevy 浏览器运行路径项目管理文档（`doc/world-simulator/viewer-bevy-web-runtime.project.md`）
+- [ ] Viewer 浏览器运行路径接入（wasm 编译兼容 + trunk 启动入口）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
