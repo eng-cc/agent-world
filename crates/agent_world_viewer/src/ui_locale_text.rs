@@ -136,6 +136,14 @@ pub(super) fn locate_focus_label(locale: UiLocale) -> &'static str {
     }
 }
 
+pub(super) fn quick_locate_agent_label(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "定位 Agent"
+    } else {
+        "Locate Agent"
+    }
+}
+
 pub(super) fn jump_selection_label(locale: UiLocale) -> &'static str {
     if locale.is_zh() {
         "跳转选中对象事件"
@@ -405,6 +413,9 @@ pub(super) fn map_link_message_for_locale(message: &str, locale: UiLocale) -> St
     converted = converted.replace("no selection", "当前无选择");
     converted = converted.replace("has no related events", "没有相关事件");
     converted = converted.replace("no target tick", "没有可跳转 tick");
+    converted = converted.replace("no agents available", "当前无 Agent");
+    converted = converted.replace("located agent", "已定位 Agent");
+    converted = converted.replace("target agent", "目标 Agent");
     converted = converted.replace("event", "事件");
     converted = converted.replace("location", "地点");
     converted = converted.replace("asset", "资产");

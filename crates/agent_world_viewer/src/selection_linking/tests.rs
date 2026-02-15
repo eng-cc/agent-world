@@ -320,6 +320,11 @@ fn event_object_link_controls_use_wrapping_layout() {
     assert_eq!(locate_button.min_width, Val::Px(120.0));
     assert_eq!(locate_button.flex_grow, 1.0);
 
+    let mut quick_query = world.query::<(&Node, &QuickLocateAgentButton)>();
+    let (quick_button, _) = quick_query.single(world).expect("quick locate button");
+    assert_eq!(quick_button.min_width, Val::Px(120.0));
+    assert_eq!(quick_button.flex_grow, 1.0);
+
     let mut jump_query = world.query::<(&Node, &JumpSelectionEventsButton)>();
     let (jump_button, _) = jump_query.single(world).expect("jump button");
     assert_eq!(jump_button.min_width, Val::Px(120.0));
@@ -335,6 +340,8 @@ fn event_object_link_button_labels_follow_locale_without_query_conflict() {
     });
 
     app.world_mut()
+        .spawn((Text::new("定位 Agent"), QuickLocateAgentButtonLabel));
+    app.world_mut()
         .spawn((Text::new("定位焦点事件"), LocateFocusEventButtonLabel));
     app.world_mut().spawn((
         Text::new("跳转选中对象事件"),
@@ -342,6 +349,14 @@ fn event_object_link_button_labels_follow_locale_without_query_conflict() {
     ));
 
     app.update();
+
+    {
+        let mut query = app
+            .world_mut()
+            .query::<(&Text, &QuickLocateAgentButtonLabel)>();
+        let (text, _) = query.single(app.world()).expect("quick locate label");
+        assert_eq!(text.0, "定位 Agent");
+    }
 
     {
         let mut query = app
@@ -359,6 +374,13 @@ fn event_object_link_button_labels_follow_locale_without_query_conflict() {
     {
         let mut query = app
             .world_mut()
+            .query::<(&Text, &QuickLocateAgentButtonLabel)>();
+        let (text, _) = query.single(app.world()).expect("quick locate label");
+        assert_eq!(text.0, "Locate Agent");
+    }
+    {
+        let mut query = app
+            .world_mut()
             .query::<(&Text, &LocateFocusEventButtonLabel)>();
         let (text, _) = query.single(app.world()).expect("locate label");
         assert_eq!(text.0, "Locate Focus");
@@ -370,6 +392,124 @@ fn event_object_link_button_labels_follow_locale_without_query_conflict() {
         let (text, _) = query.single(app.world()).expect("jump label");
         assert_eq!(text.0, "Jump Selection");
     }
+}
+
+#[test]
+fn quick_locate_agent_button_prefers_current_agent_selection() {
+    let mut app = App::new();
+    app.add_systems(Update, handle_quick_locate_agent_button);
+
+    let selected_entity = app
+        .world_mut()
+        .spawn((Transform::default(), BaseScale(Vec3::ONE)))
+        .id();
+    let fallback_entity = app
+        .world_mut()
+        .spawn((Transform::default(), BaseScale(Vec3::ONE)))
+        .id();
+
+    let mut scene = Viewer3dScene::default();
+    scene
+        .agent_entities
+        .insert("agent-9".to_string(), selected_entity);
+    scene
+        .agent_entities
+        .insert("agent-1".to_string(), fallback_entity);
+
+    app.world_mut().insert_resource(scene);
+    app.world_mut().insert_resource(Viewer3dConfig::default());
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity: selected_entity,
+            kind: SelectionKind::Agent,
+            id: "agent-9".to_string(),
+            name: None,
+        }),
+    });
+    app.world_mut()
+        .insert_resource(EventObjectLinkState::default());
+
+    app.world_mut()
+        .spawn((Button, Interaction::Pressed, QuickLocateAgentButton));
+    app.update();
+
+    let selection = app.world().resource::<ViewerSelection>();
+    let current = selection.current.as_ref().expect("selection");
+    assert_eq!(current.kind, SelectionKind::Agent);
+    assert_eq!(current.id, "agent-9");
+
+    let link = app.world().resource::<EventObjectLinkState>();
+    assert_eq!(link.message, "Link: located agent agent-9");
+}
+
+#[test]
+fn quick_locate_agent_button_falls_back_to_sorted_first_agent() {
+    let mut app = App::new();
+    app.add_systems(Update, handle_quick_locate_agent_button);
+
+    let location_entity = app
+        .world_mut()
+        .spawn((Transform::default(), BaseScale(Vec3::ONE)))
+        .id();
+    let agent_a = app
+        .world_mut()
+        .spawn((Transform::default(), BaseScale(Vec3::ONE)))
+        .id();
+    let agent_b = app
+        .world_mut()
+        .spawn((Transform::default(), BaseScale(Vec3::ONE)))
+        .id();
+
+    let mut scene = Viewer3dScene::default();
+    scene.agent_entities.insert("agent-9".to_string(), agent_b);
+    scene.agent_entities.insert("agent-1".to_string(), agent_a);
+
+    app.world_mut().insert_resource(scene);
+    app.world_mut().insert_resource(Viewer3dConfig::default());
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity: location_entity,
+            kind: SelectionKind::Location,
+            id: "loc-1".to_string(),
+            name: Some("L1".to_string()),
+        }),
+    });
+    app.world_mut()
+        .insert_resource(EventObjectLinkState::default());
+
+    app.world_mut()
+        .spawn((Button, Interaction::Pressed, QuickLocateAgentButton));
+    app.update();
+
+    let selection = app.world().resource::<ViewerSelection>();
+    let current = selection.current.as_ref().expect("selection");
+    assert_eq!(current.kind, SelectionKind::Agent);
+    assert_eq!(current.id, "agent-1");
+
+    let link = app.world().resource::<EventObjectLinkState>();
+    assert_eq!(link.message, "Link: located agent agent-1");
+}
+
+#[test]
+fn quick_locate_agent_button_reports_when_no_agent_exists() {
+    let mut app = App::new();
+    app.add_systems(Update, handle_quick_locate_agent_button);
+
+    app.world_mut().insert_resource(Viewer3dScene::default());
+    app.world_mut().insert_resource(Viewer3dConfig::default());
+    app.world_mut().insert_resource(ViewerSelection::default());
+    app.world_mut()
+        .insert_resource(EventObjectLinkState::default());
+
+    app.world_mut()
+        .spawn((Button, Interaction::Pressed, QuickLocateAgentButton));
+    app.update();
+
+    let selection = app.world().resource::<ViewerSelection>();
+    assert!(selection.current.is_none());
+
+    let link = app.world().resource::<EventObjectLinkState>();
+    assert_eq!(link.message, "Link: no agents available");
 }
 
 #[test]

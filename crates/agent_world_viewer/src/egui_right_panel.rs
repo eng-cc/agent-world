@@ -16,7 +16,8 @@ use crate::i18n::{
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
-    jump_selection_events_action, locate_focus_event_action, selection_kind_label,
+    jump_selection_events_action, locate_focus_event_action, quick_locate_agent_action,
+    selection_kind_label,
 };
 use crate::timeline_controls::{
     timeline_axis_max_public, timeline_mark_filter_label_public, timeline_mark_jump_action,
@@ -352,6 +353,23 @@ pub(super) fn render_right_side_panel_egui(
                     "Event Link"
                 });
                 ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(crate::ui_locale_text::quick_locate_agent_label(locale))
+                        .clicked()
+                    {
+                        if let Some(config) = viewer_3d_config.as_deref() {
+                            quick_locate_agent_action(
+                                &scene,
+                                config,
+                                selection.as_mut(),
+                                link_state.as_mut(),
+                                &mut transforms,
+                            );
+                        } else {
+                            link_state.message = "Link: viewer config unavailable".to_string();
+                        }
+                    }
+
                     if ui
                         .button(crate::ui_locale_text::locate_focus_label(locale))
                         .clicked()

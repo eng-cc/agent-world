@@ -8,6 +8,7 @@ use bevy::window::PrimaryWindow;
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};
 use crate::ui_locale_text::{
     jump_selection_label, link_ready, locate_focus_label, map_link_message_for_locale,
+    quick_locate_agent_label,
 };
 
 use super::*;
@@ -29,6 +30,9 @@ impl Default for EventObjectLinkState {
 pub(super) struct LocateFocusEventButton;
 
 #[derive(Component)]
+pub(super) struct QuickLocateAgentButton;
+
+#[derive(Component)]
 pub(super) struct JumpSelectionEventsButton;
 
 #[derive(Component)]
@@ -36,6 +40,9 @@ pub(super) struct EventObjectLinkText;
 
 #[derive(Component)]
 pub(super) struct LocateFocusEventButtonLabel;
+
+#[derive(Component)]
+pub(super) struct QuickLocateAgentButtonLabel;
 
 #[derive(Component)]
 pub(super) struct JumpSelectionEventsButtonLabel;
@@ -77,6 +84,7 @@ pub(super) fn spawn_event_object_link_controls(
                 ..default()
             })
             .with_children(|buttons| {
+                spawn_quick_locate_agent_button(buttons, &font, locale);
                 spawn_locate_focus_button(buttons, &font, locale);
                 spawn_jump_selection_button(buttons, &font, locale);
             });
@@ -162,6 +170,40 @@ fn spawn_jump_selection_button(
         });
 }
 
+fn spawn_quick_locate_agent_button(
+    buttons: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    locale: UiLocale,
+) {
+    buttons
+        .spawn((
+            Button,
+            Node {
+                min_width: Val::Px(120.0),
+                padding: UiRect::horizontal(Val::Px(8.0)),
+                height: Val::Px(22.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                flex_grow: 1.0,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.21, 0.30, 0.40)),
+            QuickLocateAgentButton,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(quick_locate_agent_label(locale)),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                QuickLocateAgentButtonLabel,
+            ));
+        });
+}
+
 pub(super) fn handle_locate_focus_event_button(
     mut interactions: Query<
         &Interaction,
@@ -195,6 +237,36 @@ pub(super) fn handle_locate_focus_event_button(
     }
 }
 
+#[allow(dead_code)]
+pub(super) fn handle_quick_locate_agent_button(
+    mut interactions: Query<
+        &Interaction,
+        (
+            Changed<Interaction>,
+            With<Button>,
+            With<QuickLocateAgentButton>,
+        ),
+    >,
+    scene: Res<Viewer3dScene>,
+    config: Res<Viewer3dConfig>,
+    mut selection: ResMut<ViewerSelection>,
+    mut link_state: ResMut<EventObjectLinkState>,
+    mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
+) {
+    for interaction in &mut interactions {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        quick_locate_agent_action(
+            &scene,
+            &config,
+            &mut selection,
+            &mut link_state,
+            &mut transforms,
+        );
+    }
+}
+
 pub(super) fn handle_jump_selection_events_button(
     mut interactions: Query<
         &Interaction,
@@ -215,6 +287,51 @@ pub(super) fn handle_jump_selection_events_button(
         }
         jump_selection_events_action(&state, &selection, &mut link_state, timeline.as_deref_mut());
     }
+}
+
+pub(super) fn quick_locate_agent_action(
+    scene: &Viewer3dScene,
+    config: &Viewer3dConfig,
+    selection: &mut ViewerSelection,
+    link_state: &mut EventObjectLinkState,
+    transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
+) {
+    let target_agent_id = selection
+        .current
+        .as_ref()
+        .filter(|current| {
+            current.kind == SelectionKind::Agent
+                && scene.agent_entities.contains_key(current.id.as_str())
+        })
+        .map(|current| current.id.clone())
+        .or_else(|| first_sorted_agent_id(scene));
+
+    let Some(agent_id) = target_agent_id else {
+        link_state.message = "Link: no agents available".to_string();
+        return;
+    };
+
+    let Some(entity) = scene.agent_entities.get(agent_id.as_str()).copied() else {
+        link_state.message = format!("Link: target agent {} is not in current scene", agent_id);
+        return;
+    };
+
+    apply_selection(
+        selection,
+        transforms,
+        config,
+        entity,
+        SelectionKind::Agent,
+        agent_id.clone(),
+        None,
+    );
+    link_state.message = format!("Link: located agent {agent_id}");
+}
+
+fn first_sorted_agent_id(scene: &Viewer3dScene) -> Option<String> {
+    let mut ids = scene.agent_entities.keys().cloned().collect::<Vec<_>>();
+    ids.sort_unstable();
+    ids.into_iter().next()
 }
 
 pub(super) fn locate_focus_event_action(
@@ -338,6 +455,7 @@ pub(super) fn update_event_object_link_button_labels(
     i18n: Option<Res<UiI18n>>,
     mut labels: ParamSet<(
         Query<&mut Text, With<LocateFocusEventButtonLabel>>,
+        Query<&mut Text, With<QuickLocateAgentButtonLabel>>,
         Query<&mut Text, With<JumpSelectionEventsButtonLabel>>,
     )>,
 ) {
@@ -353,6 +471,9 @@ pub(super) fn update_event_object_link_button_labels(
         text.0 = locate_focus_label(locale).to_string();
     }
     if let Ok(mut text) = labels.p1().single_mut() {
+        text.0 = quick_locate_agent_label(locale).to_string();
+    }
+    if let Ok(mut text) = labels.p2().single_mut() {
         text.0 = jump_selection_label(locale).to_string();
     }
 }
