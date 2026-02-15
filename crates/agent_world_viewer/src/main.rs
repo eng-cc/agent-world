@@ -25,7 +25,7 @@ const ORBIT_PAN_SENSITIVITY: f32 = 0.002;
 const ORBIT_ZOOM_SENSITIVITY: f32 = 0.2;
 const ORBIT_MIN_RADIUS: f32 = 4.0;
 const ORBIT_MAX_RADIUS: f32 = 5_000.0;
-const ORTHO_MIN_SCALE: f32 = 0.01;
+const ORTHO_MIN_SCALE: f32 = 0.00005;
 const ORTHO_MAX_SCALE: f32 = 128.0;
 const PICK_MAX_DISTANCE: f32 = 1.0;
 const LABEL_FONT_SIZE: f32 = 18.0;
@@ -77,9 +77,9 @@ use auto_focus::{
 };
 use button_feedback::{track_step_loading_state, StepControlLoadingState};
 use camera_controls::{
-    camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls, sync_camera_mode,
-    sync_world_background_visibility, update_grid_line_lod_visibility, OrbitDragState,
-    TwoDZoomTier,
+    camera_orbit_preset, camera_projection_for_mode, orbit_camera_controls,
+    sync_2d_zoom_projection, sync_camera_mode, sync_world_background_visibility,
+    update_grid_line_lod_visibility, OrbitDragState, TwoDZoomTier,
 };
 use copyable_text::CopyableTextPanelState;
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
@@ -512,6 +512,7 @@ fn setup_3d_scene(
         .spawn((
             Transform::default(),
             GlobalTransform::default(),
+            Visibility::Visible,
             Viewer3dSceneRoot,
         ))
         .id();
@@ -653,7 +654,10 @@ fn setup_3d_scene(
     let orbit = camera_orbit_preset(mode, None, config.effective_cm_to_unit());
     let mut transform = Transform::default();
     orbit.apply_to_transform(&mut transform);
-    let projection = camera_projection_for_mode(mode, &config);
+    let mut projection = camera_projection_for_mode(mode, &config);
+    if mode == ViewerCameraMode::TwoD {
+        sync_2d_zoom_projection(&mut projection, orbit.radius, config.effective_cm_to_unit());
+    }
     commands.spawn((
         Camera3d::default(),
         projection,

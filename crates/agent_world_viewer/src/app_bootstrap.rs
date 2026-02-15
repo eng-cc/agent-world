@@ -113,6 +113,8 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                     .after(orbit_camera_controls),
                 camera_controls::sync_two_d_map_marker_visibility
                     .after(camera_controls::sync_two_d_zoom_tier),
+                camera_controls::sync_two_d_map_marker_scale
+                    .after(camera_controls::sync_two_d_map_marker_visibility),
                 camera_controls::sync_detail_zoom_visibility
                     .after(camera_controls::sync_two_d_zoom_tier),
                 update_grid_line_lod_visibility.after(sync_camera_mode),

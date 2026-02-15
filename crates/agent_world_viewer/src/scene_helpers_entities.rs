@@ -1,5 +1,11 @@
 use super::*;
 
+const TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD: f32 = 0.0003;
+const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00004;
+const TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD: f32 = 0.0016;
+const TWO_D_AGENT_MARKER_MIN_LIFT_M: f32 = 0.18;
+const TWO_D_AGENT_MARKER_MAX_LIFT_M: f32 = 0.85;
+
 pub(super) fn spawn_agent_two_d_map_marker(
     parent: &mut ChildSpawnerCommands,
     assets: &Viewer3dAssets,
@@ -8,18 +14,15 @@ pub(super) fn spawn_agent_two_d_map_marker(
     module_count: usize,
     cm_to_unit: f32,
 ) {
-    let agent_height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
-        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
-    let units_per_m = world_units_per_meter(cm_to_unit);
-    let world_radius = (agent_height_m * 0.62).clamp(0.38, 0.95) * units_per_m;
-    let thickness = (world_radius * 0.18).clamp(0.04 * units_per_m, 0.10 * units_per_m);
-    let y = -(agent_height_m * 0.34) * units_per_m;
+    let (world_radius, thickness, y) = two_d_agent_marker_profile(height_cm, cm_to_unit);
 
     let base_scale = Vec3::new(world_radius * 2.0, thickness, world_radius * 2.0);
     parent.spawn((
         Mesh3d(assets.agent_module_marker_mesh.clone()),
         MeshMaterial3d(assets.agent_module_marker_material.clone()),
         Transform::from_translation(Vec3::new(0.0, y, 0.0)).with_scale(base_scale),
+        BaseScale(base_scale),
+        Visibility::Visible,
         Name::new(format!("map2d:agent:plate:{agent_id}")),
         TwoDMapMarker,
     ));
@@ -32,8 +35,10 @@ pub(super) fn spawn_agent_two_d_map_marker(
         parent.spawn((
             Mesh3d(assets.agent_module_marker_mesh.clone()),
             MeshMaterial3d(assets.chunk_generated_material.clone()),
-            Transform::from_translation(Vec3::new(0.0, y - 0.01 * units_per_m, 0.0))
+            Transform::from_translation(Vec3::new(0.0, y - thickness * 0.45, 0.0))
                 .with_scale(outer_scale),
+            BaseScale(outer_scale),
+            Visibility::Visible,
             Name::new(format!("map2d:agent:module_band:{agent_id}")),
             TwoDMapMarker,
         ));
@@ -42,11 +47,30 @@ pub(super) fn spawn_agent_two_d_map_marker(
     parent.spawn((
         Mesh3d(assets.location_mesh.clone()),
         MeshMaterial3d(assets.agent_material.clone()),
-        Transform::from_translation(Vec3::new(0.0, y + 0.015 * units_per_m, 0.0))
+        Transform::from_translation(Vec3::new(0.0, y + thickness * 0.65, 0.0))
             .with_scale(Vec3::splat(world_radius * 0.58)),
+        BaseScale(Vec3::splat(world_radius * 0.58)),
+        Visibility::Visible,
         Name::new(format!("map2d:agent:center:{agent_id}")),
         TwoDMapMarker,
     ));
+}
+
+fn two_d_agent_marker_profile(height_cm: i64, cm_to_unit: f32) -> (f32, f32, f32) {
+    let agent_height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
+        .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
+    let units_per_m = world_units_per_meter(cm_to_unit);
+    let physical_radius = (agent_height_m * 0.62).clamp(0.38, 0.95) * units_per_m;
+    let world_radius = physical_radius.max(TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD);
+    let thickness = (world_radius * 0.18).clamp(
+        TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD,
+        TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD,
+    );
+    let y = (agent_height_m * 0.35)
+        .clamp(TWO_D_AGENT_MARKER_MIN_LIFT_M, TWO_D_AGENT_MARKER_MAX_LIFT_M)
+        * units_per_m
+        + thickness * 0.5;
+    (world_radius, thickness, y)
 }
 
 pub(super) fn id_hash_fraction(id: &str) -> f32 {
@@ -320,6 +344,20 @@ fn chunk_material(assets: &Viewer3dAssets, state: ChunkState) -> Handle<Standard
         ChunkState::Unexplored => assets.chunk_unexplored_material.clone(),
         ChunkState::Generated => assets.chunk_generated_material.clone(),
         ChunkState::Exhausted => assets.chunk_exhausted_material.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn two_d_agent_marker_profile_enforces_readable_radius() {
+        let (radius, thickness, y) = two_d_agent_marker_profile(100, 0.00001);
+        assert!(radius >= TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD);
+        assert!(thickness >= TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD);
+        assert!(thickness <= TWO_D_AGENT_MARKER_MAX_THICKNESS_WORLD);
+        assert!(y > 0.0);
     }
 }
 

@@ -626,6 +626,7 @@ pub(super) fn spawn_location_entity_with_radiation(
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
             Transform::from_translation(translation).with_scale(marker_scale),
+            Visibility::Visible,
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
@@ -644,6 +645,7 @@ pub(super) fn spawn_location_entity_with_radiation(
     let entity = commands
         .spawn((
             Transform::from_translation(translation).with_scale(marker_scale),
+            Visibility::Visible,
             Name::new(format!("location:anchor:{location_id}:{name}")),
             LocationMarker {
                 id: location_id.to_string(),

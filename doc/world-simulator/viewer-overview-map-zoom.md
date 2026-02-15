@@ -27,6 +27,10 @@
   - `TwoDZoomTier`：`Detail | Overview`。
 - 新增细节可见性组件标记：
   - `DetailZoomEntity`：用于在全览图态批量隐藏细节实体。
+- 启动聚焦与相机同步：
+  - 启动自动聚焦写入 orbit 后，需要跳过首帧 `sync_camera_mode` 的默认半径回写，避免出现“先放大后立即缩小”。
+- 场景层级可见性链：
+  - `Viewer3dSceneRoot` 与 location anchor 必须持有 `Visibility`（从而具备 `InheritedVisibility`），避免子节点可见性传播不一致。
 - 2D 缩放逻辑：
   - 默认半径按世界尺度推导到细节态默认值（不再以世界全宽为默认视野）。
   - 根据 orbit 半径与世界尺度计算进入/退出全览阈值（迟滞）。

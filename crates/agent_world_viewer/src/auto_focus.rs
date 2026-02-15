@@ -14,7 +14,9 @@ const AUTO_FOCUS_TARGET_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET";
 const AUTO_FOCUS_FORCE_3D_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D";
 const AUTO_FOCUS_RADIUS_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS";
 
-const DEFAULT_AUTO_FOCUS_FORCE_3D: bool = true;
+const DEFAULT_AUTO_FOCUS_ENABLED: bool = true;
+const DEFAULT_AUTO_FOCUS_FORCE_3D: bool = false;
+const MAX_AGENT_CONTEXT_FOCUS_RADIUS_M: f32 = 8_000.0;
 const DEFAULT_MANUAL_FOCUS_RADIUS_M: f32 = 14.0;
 const MIN_TWO_D_FOCUS_RADIUS_M: f32 = 12.0;
 const MIN_LOCATION_FOCUS_RADIUS_M: f32 = 6.0;
@@ -32,8 +34,8 @@ pub(super) struct AutoFocusConfig {
 impl Default for AutoFocusConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
-            target: AutoFocusTarget::FirstFragment,
+            enabled: DEFAULT_AUTO_FOCUS_ENABLED,
+            target: AutoFocusTarget::FirstAgent,
             force_3d: DEFAULT_AUTO_FOCUS_FORCE_3D,
             radius_override: None,
         }
@@ -175,6 +177,7 @@ fn apply_focus_to_camera(
     projection: &mut Projection,
     auto_focus_state: Option<&mut AutoFocusState>,
 ) {
+    let mut auto_focus_state = auto_focus_state;
     let cm_to_unit = config.effective_cm_to_unit();
     if force_3d && *camera_mode != ViewerCameraMode::ThreeD {
         *camera_mode = ViewerCameraMode::ThreeD;
@@ -186,9 +189,6 @@ fn apply_focus_to_camera(
         orbit.yaw = preset.yaw;
         orbit.pitch = preset.pitch;
         *projection = camera_projection_for_mode(ViewerCameraMode::ThreeD, config);
-        if let Some(state) = auto_focus_state {
-            state.skip_next_mode_sync = true;
-        }
     }
 
     orbit.focus = resolved_focus.focus;
@@ -206,6 +206,10 @@ fn apply_focus_to_camera(
             *projection = camera_projection_for_mode(ViewerCameraMode::TwoD, config);
         }
         sync_2d_zoom_projection(projection, orbit.radius, config.effective_cm_to_unit());
+    }
+
+    if let Some(state) = auto_focus_state.as_deref_mut() {
+        state.skip_next_mode_sync = true;
     }
 
     orbit.apply_to_transform(camera_transform);
@@ -324,13 +328,33 @@ fn resolve_focus(
             Some(ResolvedFocus { focus, radius })
         }
         ResolvedTarget::Agent { id, entity } => {
-            let focus = transforms.get(entity).ok()?.translation;
-            let radius = scene
+            let focus = transforms
+                .get(entity)
+                .ok()
+                .map(|transform| transform.translation)
+                .or_else(|| {
+                    scene
+                        .agent_location_ids
+                        .get(id.as_str())
+                        .and_then(|location_id| scene.location_entities.get(location_id.as_str()))
+                        .and_then(|location_entity| transforms.get(*location_entity).ok())
+                        .map(|transform| transform.translation)
+                })?;
+            let agent_radius = scene
                 .agent_heights_cm
                 .get(id.as_str())
                 .copied()
-                .map(|height_cm| agent_focus_radius(height_cm, cm_to_unit))
-                .unwrap_or(fallback_radius);
+                .map(|height_cm| agent_focus_radius(height_cm, cm_to_unit));
+            let radius = match agent_radius {
+                Some(agent_radius) => {
+                    let context_radius = agent_context_focus_radius(scene, id.as_str(), cm_to_unit)
+                        .map(|radius| radius.min(agent_radius * 1.6));
+                    context_radius
+                        .map(|context_radius| agent_radius.max(context_radius))
+                        .unwrap_or(agent_radius)
+                }
+                None => fallback_radius,
+            };
             Some(ResolvedFocus { focus, radius })
         }
     }
@@ -352,6 +376,37 @@ fn agent_focus_radius(height_cm: i64, cm_to_unit: f32) -> f32 {
     )
 }
 
+fn agent_context_focus_radius(
+    scene: &Viewer3dScene,
+    agent_id: &str,
+    cm_to_unit: f32,
+) -> Option<f32> {
+    let agent_radius = scene
+        .agent_heights_cm
+        .get(agent_id)
+        .copied()
+        .map(|height_cm| agent_focus_radius(height_cm, cm_to_unit));
+    let context_location_radius = scene
+        .agent_location_ids
+        .get(agent_id)
+        .and_then(|location_id| scene.location_radii_cm.get(location_id.as_str()))
+        .copied()
+        .map(|radius_cm| location_focus_radius(radius_cm, cm_to_unit))
+        .map(|radius| {
+            radius.clamp(
+                focus_radius_units(MIN_AGENT_FOCUS_RADIUS_M, cm_to_unit),
+                focus_radius_units(MAX_AGENT_CONTEXT_FOCUS_RADIUS_M, cm_to_unit),
+            )
+        });
+
+    match (agent_radius, context_location_radius) {
+        (Some(agent_radius), Some(context_radius)) => Some(agent_radius.max(context_radius)),
+        (Some(agent_radius), None) => Some(agent_radius),
+        (None, Some(context_radius)) => Some(context_radius),
+        (None, None) => None,
+    }
+}
+
 fn focus_radius_units(radius_m: f32, cm_to_unit: f32) -> f32 {
     (radius_m.max(0.0) * cm_to_unit.max(f32::EPSILON) * 100.0).max(0.0001)
 }
@@ -365,11 +420,10 @@ fn config_from_values(
     let parsed_target = target_value
         .as_deref()
         .and_then(parse_auto_focus_target_from);
-    let target = parsed_target
-        .clone()
-        .unwrap_or(AutoFocusTarget::FirstFragment);
+    let target = parsed_target.clone().unwrap_or(AutoFocusTarget::FirstAgent);
 
-    let enabled = parse_bool(enabled_value.as_deref()).unwrap_or(false) || parsed_target.is_some();
+    let enabled = parse_bool(enabled_value.as_deref()).unwrap_or(DEFAULT_AUTO_FOCUS_ENABLED)
+        || parsed_target.is_some();
     let force_3d = parse_bool(force_3d_value.as_deref()).unwrap_or(DEFAULT_AUTO_FOCUS_FORCE_3D);
     let radius_override = radius_value
         .as_deref()
@@ -465,7 +519,7 @@ mod tests {
         );
 
         assert!(!config.enabled);
-        assert_eq!(config.target, AutoFocusTarget::FirstFragment);
+        assert_eq!(config.target, AutoFocusTarget::FirstAgent);
         assert!(config.force_3d);
         assert_eq!(config.radius_override, None);
     }
@@ -548,5 +602,32 @@ mod tests {
             _ => panic!("expected orthographic projection"),
         };
         assert!(after_scale > before_scale);
+    }
+
+    #[test]
+    fn default_auto_focus_targets_first_agent_in_two_d() {
+        let config = config_from_values(None, None, None, None);
+        assert!(config.enabled);
+        assert_eq!(config.target, AutoFocusTarget::FirstAgent);
+        assert!(!config.force_3d);
+        assert_eq!(config.radius_override, None);
+    }
+
+    #[test]
+    fn agent_context_focus_radius_prefers_location_context_with_cap() {
+        let mut scene = Viewer3dScene::default();
+        scene.agent_heights_cm.insert("agent-0".to_string(), 100);
+        scene
+            .agent_location_ids
+            .insert("agent-0".to_string(), "frag-0".to_string());
+        scene
+            .location_radii_cm
+            .insert("frag-0".to_string(), 500_000);
+
+        let radius = agent_context_focus_radius(&scene, "agent-0", 0.00001)
+            .expect("agent context radius should resolve");
+        let max_context = focus_radius_units(MAX_AGENT_CONTEXT_FOCUS_RADIUS_M, 0.00001);
+        assert!(radius <= max_context);
+        assert!(radius >= focus_radius_units(MIN_AGENT_FOCUS_RADIUS_M, 0.00001));
     }
 }

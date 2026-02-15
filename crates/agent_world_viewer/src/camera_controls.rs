@@ -13,9 +13,13 @@ use super::{
     ORTHO_MIN_SCALE, UI_PANEL_WIDTH,
 };
 
-const TWO_D_DEFAULT_DETAIL_RADIUS_RATIO: f32 = 0.24;
-const TWO_D_OVERVIEW_ENTER_RATIO: f32 = 0.78;
-const TWO_D_OVERVIEW_EXIT_RATIO: f32 = 0.60;
+const TWO_D_DEFAULT_DETAIL_RADIUS_RATIO: f32 = 0.0035;
+const TWO_D_DETAIL_MIN_RADIUS_MULTIPLIER: f32 = 16.0;
+const TWO_D_OVERVIEW_ENTER_DETAIL_MULTIPLIER: f32 = 14.0;
+const TWO_D_OVERVIEW_EXIT_DETAIL_MULTIPLIER: f32 = 9.0;
+const TWO_D_MIN_RADIUS_RATIO: f32 = 0.0001;
+const TWO_D_OVERVIEW_MARKER_MIN_BOOST: f32 = 8.0;
+const TWO_D_OVERVIEW_MARKER_MAX_BOOST: f32 = 4096.0;
 
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
@@ -287,23 +291,25 @@ fn two_d_reference_radius(cm_to_unit: f32) -> f32 {
 fn two_d_ortho_scale_for_radius(radius: f32, cm_to_unit: f32) -> f32 {
     let base_scale = world_view_ortho_scale(cm_to_unit);
     let reference_radius = two_d_reference_radius(cm_to_unit);
-    let ratio = (radius / reference_radius).max(0.01);
+    let ratio = (radius / reference_radius).max(TWO_D_MIN_RADIUS_RATIO);
     (base_scale * ratio).clamp(ORTHO_MIN_SCALE, ORTHO_MAX_SCALE)
 }
 
 fn two_d_detail_default_radius(cm_to_unit: f32) -> f32 {
     let min_radius = orbit_min_radius(cm_to_unit);
-    (world_view_radius(cm_to_unit) * TWO_D_DEFAULT_DETAIL_RADIUS_RATIO)
-        .clamp(min_radius * 4.0, ORBIT_MAX_RADIUS)
+    (world_view_radius(cm_to_unit) * TWO_D_DEFAULT_DETAIL_RADIUS_RATIO).clamp(
+        min_radius * TWO_D_DETAIL_MIN_RADIUS_MULTIPLIER,
+        ORBIT_MAX_RADIUS,
+    )
 }
 
 fn two_d_overview_thresholds(cm_to_unit: f32) -> (f32, f32) {
     let min_radius = orbit_min_radius(cm_to_unit);
-    let base_radius = world_view_radius(cm_to_unit);
-    let enter =
-        (base_radius * TWO_D_OVERVIEW_ENTER_RATIO).clamp(min_radius * 8.0, ORBIT_MAX_RADIUS);
-    let mut exit =
-        (base_radius * TWO_D_OVERVIEW_EXIT_RATIO).clamp(min_radius * 6.0, ORBIT_MAX_RADIUS);
+    let detail_radius = two_d_detail_default_radius(cm_to_unit);
+    let enter = (detail_radius * TWO_D_OVERVIEW_ENTER_DETAIL_MULTIPLIER)
+        .clamp(min_radius * 8.0, ORBIT_MAX_RADIUS);
+    let mut exit = (detail_radius * TWO_D_OVERVIEW_EXIT_DETAIL_MULTIPLIER)
+        .clamp(min_radius * 6.0, ORBIT_MAX_RADIUS);
     if exit >= enter {
         exit = (enter * 0.82).max(min_radius);
     }
@@ -374,6 +380,9 @@ pub(super) fn sync_camera_mode(
     *orbit = next_orbit;
     orbit.apply_to_transform(&mut transform);
     *projection = camera_projection_for_mode(*camera_mode, &config);
+    if *camera_mode == ViewerCameraMode::TwoD {
+        sync_2d_zoom_projection(&mut projection, orbit.radius, config.effective_cm_to_unit());
+    }
 
     for (visual, mut transform, mut base_scale) in &mut grid_lines {
         let thickness = grid_line_thickness(visual.kind, *camera_mode);
@@ -462,6 +471,35 @@ pub(super) fn sync_two_d_map_marker_visibility(
     };
     for mut visibility in &mut query {
         *visibility = next_visibility;
+    }
+}
+
+pub(super) fn sync_two_d_map_marker_scale(
+    camera_mode: Res<ViewerCameraMode>,
+    zoom_tier: Res<TwoDZoomTier>,
+    config: Res<Viewer3dConfig>,
+    cameras: Query<&OrbitCamera, With<Viewer3dCamera>>,
+    mut query: Query<(&mut Transform, &BaseScale), With<TwoDMapMarker>>,
+) {
+    let cm_to_unit = config.effective_cm_to_unit();
+    let boost = if matches!(
+        (*camera_mode, *zoom_tier),
+        (ViewerCameraMode::TwoD, TwoDZoomTier::Overview)
+    ) {
+        let Ok(orbit) = cameras.single() else {
+            return;
+        };
+        let detail_radius =
+            two_d_detail_default_radius(cm_to_unit).max(orbit_min_radius(cm_to_unit));
+        (orbit.radius / detail_radius)
+            .clamp(1.0, TWO_D_OVERVIEW_MARKER_MAX_BOOST)
+            .max(TWO_D_OVERVIEW_MARKER_MIN_BOOST)
+    } else {
+        1.0
+    };
+
+    for (mut transform, base_scale) in &mut query {
+        transform.scale = base_scale.0 * boost;
     }
 }
 
@@ -565,6 +603,14 @@ mod tests {
         let far_zoom_out_scale =
             two_d_ortho_scale_for_radius((reference * 4.0).min(ORBIT_MAX_RADIUS), cm_to_unit);
         assert!(far_zoom_out_scale > 8.0);
+    }
+
+    #[test]
+    fn two_d_detail_default_zoom_is_deep_enough_for_agent_readability() {
+        let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
+        let detail_radius = two_d_detail_default_radius(cm_to_unit);
+        let detail_scale = two_d_ortho_scale_for_radius(detail_radius, cm_to_unit);
+        assert!(detail_scale < 0.001);
     }
 
     #[test]
@@ -700,6 +746,43 @@ mod tests {
     }
 
     #[test]
+    fn sync_camera_mode_two_d_projection_matches_orbit_radius() {
+        let mut app = App::new();
+        app.add_systems(Update, sync_camera_mode);
+        app.insert_resource(Viewer3dConfig::default());
+        app.insert_resource(ViewerCameraMode::ThreeD);
+        app.insert_resource(AutoFocusState::default());
+
+        let config = *app.world().resource::<Viewer3dConfig>();
+        let mut transform = Transform::default();
+        let orbit = camera_orbit_preset(
+            ViewerCameraMode::ThreeD,
+            Some(Vec3::ZERO),
+            config.effective_cm_to_unit(),
+        );
+        orbit.apply_to_transform(&mut transform);
+        app.world_mut().spawn((
+            Viewer3dCamera,
+            orbit,
+            transform,
+            camera_projection_for_mode(ViewerCameraMode::ThreeD, &config),
+        ));
+
+        app.world_mut().insert_resource(ViewerCameraMode::TwoD);
+        app.update();
+
+        let mut query = app.world_mut().query::<(&OrbitCamera, &Projection)>();
+        let (orbit, projection) = query
+            .single(app.world())
+            .expect("camera query should contain one entity");
+        let Projection::Orthographic(ortho) = projection else {
+            panic!("expected orthographic projection");
+        };
+        let expected = two_d_ortho_scale_for_radius(orbit.radius, config.effective_cm_to_unit());
+        assert!((ortho.scale - expected).abs() < 1e-6);
+    }
+
+    #[test]
     fn world_background_surfaces_are_always_hidden() {
         let mut app = App::new();
         app.add_systems(Update, sync_world_background_visibility);
@@ -793,6 +876,58 @@ mod tests {
             .get::<Visibility>(marker)
             .expect("marker visibility");
         assert_eq!(*visibility, Visibility::Hidden);
+    }
+
+    #[test]
+    fn two_d_map_marker_scale_boosts_in_overview_and_resets_in_detail() {
+        let mut app = App::new();
+        app.add_systems(Update, sync_two_d_map_marker_scale);
+        app.insert_resource(ViewerCameraMode::TwoD);
+        app.insert_resource(TwoDZoomTier::Overview);
+        app.insert_resource(Viewer3dConfig::default());
+
+        let config = *app.world().resource::<Viewer3dConfig>();
+        let cm_to_unit = config.effective_cm_to_unit();
+        let mut camera_transform = Transform::default();
+        let orbit = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: two_d_detail_default_radius(cm_to_unit) * 24.0,
+            yaw: 0.0,
+            pitch: -1.53,
+        };
+        orbit.apply_to_transform(&mut camera_transform);
+        app.world_mut()
+            .spawn((Viewer3dCamera, orbit, camera_transform));
+
+        let base = Vec3::new(0.002, 0.0002, 0.002);
+        let marker = app
+            .world_mut()
+            .spawn((
+                TwoDMapMarker,
+                BaseScale(base),
+                Transform::from_scale(base),
+                Visibility::Visible,
+            ))
+            .id();
+
+        app.update();
+        let boosted = app
+            .world()
+            .get::<Transform>(marker)
+            .expect("marker transform in overview")
+            .scale;
+        assert!(boosted.x > base.x);
+
+        *app.world_mut().resource_mut::<TwoDZoomTier>() = TwoDZoomTier::Detail;
+        app.update();
+        let reset = app
+            .world()
+            .get::<Transform>(marker)
+            .expect("marker transform in detail")
+            .scale;
+        assert!((reset.x - base.x).abs() < 1e-6);
+        assert!((reset.y - base.y).abs() < 1e-6);
+        assert!((reset.z - base.z).abs() < 1e-6);
     }
 
     #[test]
