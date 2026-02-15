@@ -5,7 +5,7 @@ use agent_world::simulator::{
     infer_element_ppm, FragmentBlock, FragmentElementKind, FragmentPhysicalProfile,
 };
 
-use super::Viewer3dAssets;
+use super::{BaseScale, Viewer3dAssets};
 
 #[derive(Component, Clone, Debug, PartialEq, Eq)]
 pub(super) struct FragmentElementMarker {
@@ -24,10 +24,13 @@ pub(super) fn spawn_location_fragment_elements(
     for (index, block) in fragment_profile.blocks.blocks.iter().enumerate() {
         let element = dominant_element_for_block(block).unwrap_or(FragmentElementKind::Silicon);
         let fragment_id = format!("{location_id}#{index}");
+        let local_transform = fragment_block_local_transform(block, radius_cm);
+        let base_scale = local_transform.scale;
         parent.spawn((
             Mesh3d(assets.agent_module_marker_mesh.clone()),
             MeshMaterial3d(assets.fragment_element_material_library.handle_for(element)),
-            fragment_block_local_transform(block, radius_cm),
+            local_transform,
+            BaseScale(base_scale),
             FragmentElementMarker {
                 id: fragment_id,
                 location_id: location_id.to_string(),

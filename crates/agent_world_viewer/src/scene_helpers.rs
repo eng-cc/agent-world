@@ -12,8 +12,6 @@ const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
 const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
 const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
-const LOCATION_RENDER_RADIUS_MIN_UNITS: f32 = 0.22;
-const LOCATION_RENDER_RADIUS_MAX_UNITS: f32 = 16.0;
 const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
 const LOCATION_DEPLETION_MIN_RADIUS_FACTOR: f32 = 0.24;
@@ -792,11 +790,7 @@ fn location_radius_m(radius_cm: i64) -> f32 {
 }
 
 fn location_render_radius_units(radius_cm: i64, cm_to_unit: f32) -> f32 {
-    let scaled = (radius_cm.max(1) as f32 * cm_to_unit.max(f32::EPSILON)).max(0.0);
-    scaled.clamp(
-        LOCATION_RENDER_RADIUS_MIN_UNITS,
-        LOCATION_RENDER_RADIUS_MAX_UNITS,
-    )
+    (radius_cm.max(1) as f32) * cm_to_unit.max(f32::EPSILON)
 }
 
 pub(super) fn location_visual_radius_cm(
@@ -1142,14 +1136,14 @@ mod depletion_tests {
     }
 
     #[test]
-    fn location_render_radius_units_scales_by_world_units_and_clamps() {
+    fn location_render_radius_units_scales_by_world_units_without_clamp() {
         let mapped = location_render_radius_units(500_000, 0.00001);
         assert!((mapped - 5.0).abs() < f32::EPSILON);
 
-        let min_clamped = location_render_radius_units(100, 0.00001);
-        assert!((min_clamped - LOCATION_RENDER_RADIUS_MIN_UNITS).abs() < f32::EPSILON);
+        let tiny = location_render_radius_units(100, 0.00001);
+        assert!((tiny - 0.001).abs() < f32::EPSILON);
 
-        let max_clamped = location_render_radius_units(10_000_000, 0.00001);
-        assert!((max_clamped - LOCATION_RENDER_RADIUS_MAX_UNITS).abs() < f32::EPSILON);
+        let large = location_render_radius_units(10_000_000, 0.00001);
+        assert!((large - 100.0).abs() < f32::EPSILON);
     }
 }

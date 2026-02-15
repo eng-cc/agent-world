@@ -49,7 +49,7 @@ fn spawn_location_entity_keeps_anchor_without_label() {
 }
 
 #[test]
-fn spawn_location_entity_uses_clamped_anchor_radius_scale() {
+fn spawn_location_entity_uses_linear_anchor_radius_scale() {
     let mut app = App::new();
     app.add_systems(Update, spawn_location_scale_test_system);
     app.insert_resource(Viewer3dConfig::default());
@@ -91,7 +91,7 @@ fn spawn_location_entity_uses_clamped_anchor_radius_scale() {
         .iter(world)
         .find(|(marker, _)| marker.id == "loc-scale")
         .expect("location marker exists");
-    let expected = (20_000.0_f32 * cm_to_unit).clamp(0.22, 16.0);
+    let expected = 20_000.0_f32 * cm_to_unit;
     assert!((base.0.x - expected).abs() < 1e-3);
     assert_eq!(marker.material, MaterialKind::Silicate);
     assert_eq!(marker.radiation_emission_per_tick, 0);

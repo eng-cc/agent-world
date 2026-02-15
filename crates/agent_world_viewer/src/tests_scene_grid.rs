@@ -75,6 +75,32 @@ fn rebuild_scene_spawns_fragments_by_default_without_location_mesh() {
     assert_eq!(location_mesh_query.iter(world).count(), 0);
 }
 
+#[test]
+fn rebuild_scene_fragment_entities_preserve_base_scale_for_selection_reset() {
+    let mut app = App::new();
+    app.add_systems(Update, rebuild_scene_fragments_default_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(sample_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut fragment_query = world.query::<(&Name, &Transform, &BaseScale)>();
+    let mut checked = 0usize;
+    for (name, transform, base_scale) in fragment_query.iter(world) {
+        if !name.as_str().starts_with("location:fragment:block:loc-1:") {
+            continue;
+        }
+        checked += 1;
+        assert!((transform.scale.x - base_scale.0.x).abs() < 1e-6);
+        assert!((transform.scale.y - base_scale.0.y).abs() < 1e-6);
+        assert!((transform.scale.z - base_scale.0.z).abs() < 1e-6);
+    }
+
+    assert!(checked > 0);
+}
+
 fn spawn_background_test_system(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,

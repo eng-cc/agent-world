@@ -130,8 +130,8 @@
 - [x] Viewer 编译告警清理（移除 `agent_world_viewer` 中 location detail 遗留 dead code 与未使用依赖）
 - [x] 输出 Viewer Frag 实际比例与选中显示修复设计文档（`doc/world-simulator/viewer-frag-scale-selection-fix.md`）
 - [x] 输出 Viewer Frag 实际比例与选中显示修复项目管理文档（`doc/world-simulator/viewer-frag-scale-selection-fix.project.md`）
-- [ ] Viewer Frag 实际比例修复（尺寸按数据口径线性映射）
-- [ ] Viewer Frag 选中显示修复（选中/取消选中保持原始比例）
+- [x] Viewer Frag 实际比例修复（尺寸按数据口径线性映射）
+- [x] Viewer Frag 选中显示修复（选中/取消选中保持原始比例）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
