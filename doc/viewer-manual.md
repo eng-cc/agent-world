@@ -26,6 +26,16 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer
 ```
 
+### 4）浏览器模式（Bevy + wasm）
+```bash
+./scripts/run-viewer-web.sh --open
+```
+
+- 该模式当前默认离线，不连接 `world_viewer_live`（浏览器端无原生 TCP）。
+- 首次运行前需安装：
+  - `trunk`（`cargo install trunk`）
+  - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
+
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。
 - 滚轮：缩放。

@@ -150,6 +150,7 @@ fn resolve_panel_mode_from_env() -> ViewerPanelMode {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn run_headless(addr: String, offline: bool) {
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     App::new()
@@ -174,6 +175,7 @@ pub(super) fn run_headless(addr: String, offline: bool) {
         .run();
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn resolve_addr() -> String {
     std::env::var("AGENT_WORLD_VIEWER_ADDR")
         .ok()
@@ -181,12 +183,14 @@ pub(super) fn resolve_addr() -> String {
         .unwrap_or_else(|| DEFAULT_ADDR.to_string())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn resolve_offline(headless: bool) -> bool {
     let offline_env = std::env::var("AGENT_WORLD_VIEWER_OFFLINE").is_ok();
     let force_online = std::env::var("AGENT_WORLD_VIEWER_FORCE_ONLINE").is_ok();
     decide_offline(headless, offline_env, force_online)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn decide_offline(headless: bool, offline_env: bool, force_online: bool) -> bool {
     if force_online {
         return false;

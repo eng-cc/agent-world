@@ -33,6 +33,7 @@ pub(super) struct ControlButton {
     pub(super) control: ViewerControl,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Resource, Default)]
 pub(super) struct HeadlessStatus {
     pub(super) last_status: Option<ConnectionStatus>,

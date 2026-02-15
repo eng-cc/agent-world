@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::ui_text::format_status;
-use crate::{
-    ConnectionStatus, HeadlessStatus, ViewerClient, ViewerControl, ViewerRequest, ViewerState,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::HeadlessStatus;
+use crate::{ConnectionStatus, ViewerClient, ViewerControl, ViewerRequest, ViewerState};
 
 const HEADLESS_AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_HEADLESS_AUTO_PLAY";
 const AUTO_PLAY_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_PLAY";
@@ -28,6 +29,7 @@ pub(super) fn headless_auto_play_once(
     *sent = true;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn headless_report(mut status: ResMut<HeadlessStatus>, state: Res<ViewerState>) {
     if status
         .last_status

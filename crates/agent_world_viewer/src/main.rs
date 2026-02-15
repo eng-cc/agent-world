@@ -1,17 +1,20 @@
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::{BufRead, Write};
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::TcpStream;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Mutex;
+#[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
 use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
     AgentDecisionTrace, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
-use agent_world::viewer::{
-    ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
-};
+use agent_world::viewer::{ViewerControl, ViewerRequest, ViewerResponse};
+#[cfg(not(target_arch = "wasm32"))]
+use agent_world::viewer::{ViewerStream, VIEWER_PROTOCOL_VERSION};
 use bevy::prelude::*;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
@@ -69,7 +72,9 @@ mod viewer_3d_config;
 mod viewer_automation;
 mod world_overlay;
 
-use app_bootstrap::{resolve_addr, resolve_offline, run_headless, run_ui};
+use app_bootstrap::run_ui;
+#[cfg(not(target_arch = "wasm32"))]
+use app_bootstrap::{resolve_addr, resolve_offline, run_headless};
 use auto_degrade::{auto_degrade_config_from_env, update_auto_degrade_policy, AutoDegradeState};
 use auto_focus::{
     apply_startup_auto_focus, auto_focus_config_from_env, handle_focus_selection_hotkey,
@@ -89,7 +94,9 @@ use event_click_list::{
 };
 use event_window::{event_window_policy_from_env, push_event_with_window, EventWindowPolicy};
 use floating_origin::update_floating_origin;
-use headless::{headless_auto_play_once, headless_report};
+use headless::headless_auto_play_once;
+#[cfg(not(target_arch = "wasm32"))]
+use headless::headless_report;
 use i18n::{control_button_label, locale_or_default, UiI18n};
 use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
@@ -139,6 +146,7 @@ const WORLD_GRID_LINE_THICKNESS_3D: f32 = 0.014;
 const CHUNK_GRID_LINE_THICKNESS_2D: f32 = 0.012;
 const CHUNK_GRID_LINE_THICKNESS_3D: f32 = 0.022;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let addr = resolve_addr();
     let headless = std::env::var("AGENT_WORLD_VIEWER_HEADLESS").is_ok();
@@ -149,6 +157,13 @@ fn main() {
     } else {
         run_ui(addr, offline);
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    // Browser build currently runs in offline mode because native TCP stream
+    // transport is unavailable on wasm32-unknown-unknown.
+    run_ui(DEFAULT_ADDR.to_string(), true);
 }
 
 #[derive(Resource)]
@@ -397,6 +412,7 @@ fn setup_offline_state(mut commands: Commands) {
     });
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
     let (tx_out, rx_out) = mpsc::channel::<ViewerRequest>();
     let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
@@ -417,6 +433,18 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
     (tx_out, rx_in)
 }
 
+#[cfg(target_arch = "wasm32")]
+fn spawn_viewer_client(_addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
+    let (tx_out, _rx_out) = mpsc::channel::<ViewerRequest>();
+    let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
+    let _ = tx_in.send(ViewerResponse::Error {
+        message: "web viewer only supports offline mode; TCP live stream is unavailable"
+            .to_string(),
+    });
+    (tx_out, rx_in)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn run_connection(
     stream: TcpStream,
     rx_out: Receiver<ViewerRequest>,
@@ -456,6 +484,7 @@ fn run_connection(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn read_responses(stream: TcpStream, tx_in: Sender<ViewerResponse>) {
     let mut reader = std::io::BufReader::new(stream);
     let mut line = String::new();
@@ -489,6 +518,7 @@ fn read_responses(stream: TcpStream, tx_in: Sender<ViewerResponse>) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn send_request(
     writer: &mut std::io::BufWriter<TcpStream>,
     request: &ViewerRequest,

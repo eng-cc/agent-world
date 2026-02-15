@@ -6,8 +6,11 @@ use agent_world::simulator::{
 };
 
 use super::viewer_3d_config::ViewerPhysicalRenderConfig;
-use super::{ConnectionStatus, SelectionKind, ViewerSelection};
+#[cfg(not(target_arch = "wasm32"))]
+use super::ConnectionStatus;
+use super::{SelectionKind, ViewerSelection};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(super) fn format_status(status: &ConnectionStatus) -> String {
     match status {
         ConnectionStatus::Connecting => "connecting".to_string(),

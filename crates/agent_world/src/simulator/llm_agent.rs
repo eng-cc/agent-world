@@ -11,7 +11,6 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
 
 use super::agent::{
     ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
@@ -451,12 +450,19 @@ impl OpenAiChatCompletionClient {
     }
 
     fn build_http_client(timeout_ms: u64) -> Result<reqwest::Client, LlmClientError> {
-        reqwest::Client::builder()
-            .timeout(Duration::from_millis(timeout_ms.max(1)))
-            .build()
-            .map_err(|err| LlmClientError::BuildClient {
-                message: err.to_string(),
-            })
+        #[cfg(target_arch = "wasm32")]
+        let builder = {
+            let _ = timeout_ms;
+            reqwest::Client::builder()
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let builder =
+            reqwest::Client::builder().timeout(std::time::Duration::from_millis(timeout_ms.max(1)));
+
+        builder.build().map_err(|err| LlmClientError::BuildClient {
+            message: err.to_string(),
+        })
     }
 
     fn build_client(
