@@ -237,7 +237,6 @@ pub(super) fn handle_locate_focus_event_button(
     }
 }
 
-#[allow(dead_code)]
 pub(super) fn handle_quick_locate_agent_button(
     mut interactions: Query<
         &Interaction,

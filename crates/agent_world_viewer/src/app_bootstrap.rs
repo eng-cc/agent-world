@@ -77,6 +77,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 handle_world_overlay_toggle_buttons,
                 handle_event_click_buttons,
                 handle_locate_focus_event_button,
+                selection_linking::handle_quick_locate_agent_button,
                 handle_jump_selection_events_button,
                 update_event_object_link_text,
                 update_world_overlay_status_text,
