@@ -138,6 +138,9 @@
 - [x] 输出 Viewer 全览图缩放切换设计文档（`doc/world-simulator/viewer-overview-map-zoom.md`）
 - [x] 输出 Viewer 全览图缩放切换项目管理文档（`doc/world-simulator/viewer-overview-map-zoom.project.md`）
 - [x] Viewer 全览图缩放切换（默认近景倍率 + 缩放阈值自动切换全览图）
+- [x] 输出 Viewer 2D/3D WASD 相机移动设计文档（`doc/world-simulator/viewer-wasd-camera-navigation.md`）
+- [x] 输出 Viewer 2D/3D WASD 相机移动项目管理文档（`doc/world-simulator/viewer-wasd-camera-navigation.project.md`）
+- [ ] Viewer 2D/3D 交互新增 WASD 相机移动（含测试回归）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
