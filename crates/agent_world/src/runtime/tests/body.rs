@@ -28,6 +28,7 @@ fn install_m1_body_module(world: &mut World) {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024 * 1024,
             max_gas: 2_000_000,

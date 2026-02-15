@@ -445,6 +445,25 @@ impl World {
             });
         }
 
+        if let Some(identity) = &module.artifact_identity {
+            if !identity.is_complete() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity is incomplete for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if !identity.matches_unsigned_signature(&module.wasm_hash) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity signature mismatch for {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
+
         if module.interface_version != "wasm-1" {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!(

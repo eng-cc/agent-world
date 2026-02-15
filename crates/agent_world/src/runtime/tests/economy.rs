@@ -50,6 +50,7 @@ fn activate_pure_module(world: &mut World, module_id: &str, wasm_seed: &[u8]) {
         exports: vec!["call".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024 * 1024,
             max_gas: 1_000_000,

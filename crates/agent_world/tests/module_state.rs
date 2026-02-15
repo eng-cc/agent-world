@@ -115,6 +115,7 @@ fn reducer_state_updates_and_is_reused() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -187,6 +188,7 @@ fn pure_module_new_state_is_rejected() {
         exports: vec!["call".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

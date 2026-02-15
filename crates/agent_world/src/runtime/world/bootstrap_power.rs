@@ -1,15 +1,17 @@
 use super::super::{
-    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation, ModuleChangeSet,
-    ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
-    ModuleSubscriptionStage, ProposalDecision, WorldError, M1_AGENT_DEFAULT_MODULE_VERSION,
-    M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
-    M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
-    M1_STORAGE_POWER_MODULE_ID,
+    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation,
+    ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ProposalDecision,
+    WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
+    M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION, M1_RADIATION_POWER_MODULE_ID,
+    M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
 };
 use super::World;
 
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
+const M1_BOOTSTRAP_BUILD_MANIFEST: &str =
+    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {
@@ -160,6 +162,12 @@ fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, World
     m1_builtin_wasm_module_artifact_bytes(module_id)
 }
 
+fn m1_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
+    let source_hash = util::sha256_hex(format!("builtin-source:{module_id}").as_bytes());
+    let build_manifest_hash = util::sha256_hex(M1_BOOTSTRAP_BUILD_MANIFEST.as_bytes());
+    ModuleArtifactIdentity::unsigned(wasm_hash, source_hash, build_manifest_hash)
+}
+
 fn ensure_bootstrap_module(
     world: &mut World,
     changes: &mut ModuleChangeSet,
@@ -199,7 +207,7 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_POWER_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Domain,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
@@ -220,6 +228,10 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_RADIATION_POWER_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -238,7 +250,7 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_POWER_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Body,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
@@ -259,6 +271,10 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_STORAGE_POWER_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -277,7 +293,7 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_AGENT_DEFAULT_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Body,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
@@ -298,6 +314,10 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_SENSOR_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -316,7 +336,7 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_AGENT_DEFAULT_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Body,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
@@ -337,6 +357,10 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_MOBILITY_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -355,7 +379,7 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_AGENT_DEFAULT_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::AgentInternal,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
@@ -365,6 +389,10 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_MEMORY_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,
@@ -384,7 +412,7 @@ fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
         version: M1_AGENT_DEFAULT_MODULE_VERSION.to_string(),
         kind: ModuleKind::Reducer,
         role: ModuleRole::Body,
-        wasm_hash,
+        wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
@@ -397,6 +425,10 @@ fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: Some(m1_bootstrap_artifact_identity(
+            M1_STORAGE_CARGO_MODULE_ID,
+            &wasm_hash,
+        )),
         limits: ModuleLimits {
             max_mem_bytes: M1_BOOTSTRAP_WASM_MAX_MEM_BYTES,
             max_gas: M1_BOOTSTRAP_WASM_MAX_GAS,

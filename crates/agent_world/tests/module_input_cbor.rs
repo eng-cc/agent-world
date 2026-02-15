@@ -106,6 +106,7 @@ fn module_route_encodes_event_input_as_cbor() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -169,6 +170,7 @@ fn module_route_encodes_action_input_as_cbor() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -235,6 +237,7 @@ fn module_route_pure_input_omits_state() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

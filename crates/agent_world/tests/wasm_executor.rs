@@ -53,6 +53,7 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024,
             max_gas: 10_000,

@@ -42,6 +42,7 @@ fn module_store_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits::unbounded(),
     };
 
@@ -125,6 +126,7 @@ fn world_module_store_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits::unbounded(),
     };
 
@@ -195,6 +197,7 @@ fn world_save_to_dir_with_modules_roundtrip() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits::unbounded(),
     };
 

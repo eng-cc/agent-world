@@ -573,6 +573,7 @@ fn client_fetch_module_manifest_from_dht_uses_provider_list() {
         exports: vec!["call".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: agent_world_wasm_abi::ModuleLimits::unbounded(),
     };
     let bytes = to_canonical_cbor(&manifest).expect("cbor");

@@ -53,6 +53,7 @@ fn governance_module_happy_path_updates_registry() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits::unbounded(),
     };
 
@@ -110,6 +111,7 @@ fn shadow_failure_blocks_apply() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits::unbounded(),
     };
 
@@ -159,6 +161,7 @@ fn module_routing_emits_event() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -244,6 +247,7 @@ fn replay_preserves_module_events() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

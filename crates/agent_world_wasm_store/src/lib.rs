@@ -193,6 +193,7 @@ mod tests {
             exports: vec!["reduce".to_string()],
             subscriptions: Vec::<ModuleSubscription>::new(),
             required_caps: Vec::new(),
+            artifact_identity: None,
             limits: ModuleLimits::unbounded(),
         }
     }

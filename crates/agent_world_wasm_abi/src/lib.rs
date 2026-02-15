@@ -38,6 +38,60 @@ pub struct ModuleArtifact {
     pub bytes: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleArtifactIdentity {
+    pub source_hash: String,
+    pub build_manifest_hash: String,
+    pub artifact_signature: String,
+}
+
+impl ModuleArtifactIdentity {
+    pub fn is_complete(&self) -> bool {
+        !self.source_hash.trim().is_empty()
+            && !self.build_manifest_hash.trim().is_empty()
+            && !self.artifact_signature.trim().is_empty()
+    }
+
+    pub fn unsigned_signature(
+        wasm_hash: &str,
+        source_hash: &str,
+        build_manifest_hash: &str,
+    ) -> String {
+        format!("unsigned:{wasm_hash}:{source_hash}:{build_manifest_hash}")
+    }
+
+    pub fn unsigned(
+        wasm_hash: &str,
+        source_hash: impl Into<String>,
+        build_manifest_hash: impl Into<String>,
+    ) -> Self {
+        let source_hash = source_hash.into();
+        let build_manifest_hash = build_manifest_hash.into();
+        let artifact_signature =
+            Self::unsigned_signature(wasm_hash, &source_hash, &build_manifest_hash);
+        Self {
+            source_hash,
+            build_manifest_hash,
+            artifact_signature,
+        }
+    }
+
+    pub fn matches_unsigned_signature(&self, wasm_hash: &str) -> bool {
+        self.artifact_signature
+            == Self::unsigned_signature(wasm_hash, &self.source_hash, &self.build_manifest_hash)
+    }
+}
+
+impl Default for ModuleArtifactIdentity {
+    fn default() -> Self {
+        Self {
+            source_hash: String::new(),
+            build_manifest_hash: String::new(),
+            artifact_signature: String::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleCache {
     max_cached_modules: usize,
@@ -202,6 +256,8 @@ pub struct ModuleManifest {
     pub subscriptions: Vec<ModuleSubscription>,
     #[serde(default)]
     pub required_caps: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifact_identity: Option<ModuleArtifactIdentity>,
     #[serde(default)]
     pub limits: ModuleLimits,
 }
@@ -486,5 +542,13 @@ mod tests {
         assert_eq!(json["data"]["module_id"], "m.rule");
         assert_eq!(json["data"]["reason"], "manual");
         assert_eq!(json["data"]["deactivated_by"], "tester");
+    }
+
+    #[test]
+    fn module_artifact_identity_unsigned_signature_roundtrip() {
+        let identity = ModuleArtifactIdentity::unsigned("hash-1", "src-1", "build-1");
+        assert!(identity.is_complete());
+        assert!(identity.matches_unsigned_signature("hash-1"));
+        assert!(!identity.matches_unsigned_signature("hash-2"));
     }
 }

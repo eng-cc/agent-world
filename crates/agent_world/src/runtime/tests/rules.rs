@@ -48,6 +48,7 @@ fn install_m1_move_rule(world: &mut World) {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024 * 1024,
             max_gas: 2_000_000,
@@ -116,6 +117,7 @@ fn install_m1_visibility_rule(world: &mut World) {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024 * 1024,
             max_gas: 2_000_000,
@@ -184,6 +186,7 @@ fn install_m1_transfer_rule(world: &mut World) {
             },
         ],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 64 * 1024 * 1024,
             max_gas: 2_000_000,
@@ -271,6 +274,7 @@ fn install_rule_modules(world: &mut World, action_kind: &str, module_ids: &[&str
                 filters: None,
             }],
             required_caps: Vec::new(),
+            artifact_identity: None,
             limits: ModuleLimits {
                 max_mem_bytes: 1024,
                 max_gas: 10_000,
@@ -367,6 +371,7 @@ fn rule_decision_override_and_cost_apply() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -471,6 +476,7 @@ fn rule_decision_rejects_on_insufficient_resources() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

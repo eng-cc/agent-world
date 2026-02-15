@@ -34,6 +34,7 @@ fn apply_module_changes_registers_and_activates() {
             filters: None,
         }],
         required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -122,6 +123,7 @@ fn shadow_rejects_missing_module_artifact() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
         limits: ModuleLimits::default(),
     };
 
@@ -143,6 +145,110 @@ fn shadow_rejects_missing_module_artifact() {
     let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
     let err = world.shadow_proposal(proposal_id).unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+}
+
+#[test]
+fn shadow_rejects_incomplete_module_artifact_identity() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-identity";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: Some(ModuleArtifactIdentity {
+            source_hash: String::new(),
+            build_manifest_hash: "build-hash".to_string(),
+            artifact_signature: "unsigned:dummy:src:build".to_string(),
+        }),
+        limits: ModuleLimits::default(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("artifact_identity is incomplete"));
+}
+
+#[test]
+fn shadow_rejects_module_artifact_identity_signature_mismatch() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-identity-mismatch";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: Some(ModuleArtifactIdentity::unsigned(
+            "different-wasm-hash",
+            "src-hash",
+            "build-hash",
+        )),
+        limits: ModuleLimits::default(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("artifact_identity signature mismatch"));
 }
 
 #[test]
@@ -221,6 +327,7 @@ fn module_call_queues_effects_and_emits() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -320,6 +427,7 @@ fn module_call_policy_denied_records_failure() {
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -434,6 +542,7 @@ fn step_with_modules_routes_domain_events() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -522,6 +631,7 @@ fn step_with_modules_routes_actions() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -646,6 +756,7 @@ fn module_calls_use_entrypoint_for_kind() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -672,6 +783,7 @@ fn module_calls_use_entrypoint_for_kind() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,

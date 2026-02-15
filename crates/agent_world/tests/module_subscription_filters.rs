@@ -79,6 +79,7 @@ fn module_subscription_event_filters_by_agent_id() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -162,6 +163,7 @@ fn module_subscription_action_filters_by_agent_id() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -245,6 +247,7 @@ fn module_subscription_invalid_filter_is_rejected() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -308,6 +311,7 @@ fn module_subscription_rejects_mixed_kinds_without_stage() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -371,6 +375,7 @@ fn module_subscription_rejects_action_kinds_in_post_event_stage() {
             filters: None,
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -440,6 +445,7 @@ fn module_subscription_any_matches() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -526,6 +532,7 @@ fn module_subscription_numeric_range_matches() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
@@ -611,6 +618,7 @@ fn module_subscription_regex_matches() {
             })),
         }],
         required_caps: Vec::new(),
+        artifact_identity: None,
         limits: ModuleLimits {
             max_mem_bytes: 1024,
             max_gas: 10_000,
