@@ -25,6 +25,7 @@
 - [x] OWR3.6 3D 缩放输入兼容修复（MouseWheel Pixel 归一化 + macOS PinchGesture）
 - [x] OWR3.7 2D 缩放恢复（滚轮/Pinch 同步正交投影 scale）
 - [x] OWR3.8 放开相机缩放上限（Orbit 半径与 2D 正交缩放上限）并闭环验证 `llm_bootstrap`
+- [x] OWR3.9 缩放常量单一来源（`camera_controls`/`viewer_automation` 共享 `ORTHO_*`）
 
 ### OWR4 规模化稳定性（对应缺口 5）
 - [x] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项

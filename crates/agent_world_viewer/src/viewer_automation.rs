@@ -6,8 +6,6 @@ use super::*;
 const AUTOMATION_STEPS_ENV: &str = "AGENT_WORLD_VIEWER_AUTOMATION_STEPS";
 const AUTO_SELECT_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT";
 const AUTO_SELECT_TARGET_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET";
-const AUTOMATION_ORTHO_MIN_SCALE: f32 = 0.01;
-const AUTOMATION_ORTHO_MAX_SCALE: f32 = 128.0;
 
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub(super) struct ViewerAutomationConfig {
@@ -191,8 +189,8 @@ fn apply_step(
                 (orbit.radius * factor.max(0.01)).clamp(ORBIT_MIN_RADIUS, ORBIT_MAX_RADIUS);
             if *camera_mode == ViewerCameraMode::TwoD {
                 if let Projection::Orthographic(ortho) = &mut *projection {
-                    ortho.scale = (ortho.scale * factor.max(0.01))
-                        .clamp(AUTOMATION_ORTHO_MIN_SCALE, AUTOMATION_ORTHO_MAX_SCALE);
+                    ortho.scale =
+                        (ortho.scale * factor.max(0.01)).clamp(ORTHO_MIN_SCALE, ORTHO_MAX_SCALE);
                 } else {
                     *projection = camera_projection_for_mode(ViewerCameraMode::TwoD, viewer_config);
                 }

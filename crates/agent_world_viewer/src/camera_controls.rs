@@ -9,11 +9,9 @@ use super::{
     RightPanelWidthState, TwoDMapMarker, Viewer3dCamera, Viewer3dConfig, ViewerCameraMode,
     WorldBoundsSurface, WorldFloorSurface, WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS,
     DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY,
-    ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, UI_PANEL_WIDTH,
+    ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, ORTHO_MAX_SCALE, ORTHO_MIN_SCALE,
+    UI_PANEL_WIDTH,
 };
-
-const ORTHO_MIN_SCALE: f32 = 0.01;
-const ORTHO_MAX_SCALE: f32 = 128.0;
 
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
