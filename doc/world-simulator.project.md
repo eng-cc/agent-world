@@ -121,7 +121,7 @@
 - [x] Viewer 2D 可视化精修任务 1（地图符号层）
 - [x] Viewer 2D 可视化精修任务 2（标签可读性增强）
 - [x] Viewer 2D 可视化精修任务 3（流向层工业化表达）
-- [ ] Viewer 事件联动新增“快速定位 Agent”按钮（`doc/world-simulator/viewer-agent-quick-locate.project.md`）
+- [x] Viewer 事件联动新增“快速定位 Agent”按钮（`doc/world-simulator/viewer-agent-quick-locate.project.md`）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
