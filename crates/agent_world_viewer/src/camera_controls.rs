@@ -3,6 +3,7 @@ use bevy::input::gestures::PinchGesture;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use bevy_egui::EguiContexts;
 
 use super::{
     grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, DetailZoomEntity,
@@ -20,6 +21,9 @@ const TWO_D_OVERVIEW_EXIT_DETAIL_MULTIPLIER: f32 = 9.0;
 const TWO_D_MIN_RADIUS_RATIO: f32 = 0.0001;
 const TWO_D_OVERVIEW_MARKER_MIN_BOOST: f32 = 8.0;
 const TWO_D_OVERVIEW_MARKER_MAX_BOOST: f32 = 4096.0;
+const ORBIT_KEYBOARD_PAN_SPEED_MULTIPLIER: f32 = 12.0;
+const ORBIT_KEYBOARD_PAN_BOOST_MULTIPLIER: f32 = 2.0;
+const ORBIT_KEYBOARD_PAN_MIN_SPEED: f32 = 0.2;
 
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
@@ -37,9 +41,11 @@ pub(super) fn orbit_camera_controls(
     windows: Query<&Window, With<PrimaryWindow>>,
     buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
     camera_mode: Res<ViewerCameraMode>,
     config: Res<Viewer3dConfig>,
     panel_width: Option<Res<RightPanelWidthState>>,
+    mut egui_contexts: EguiContexts,
     mut mouse_wheel: MessageReader<MouseWheel>,
     mut pinch_gesture: MessageReader<PinchGesture>,
     mut drag_state: ResMut<OrbitDragState>,
@@ -57,6 +63,16 @@ pub(super) fn orbit_camera_controls(
     let cursor_in_3d = cursor_position
         .map(|cursor| cursor_in_3d_view(window, cursor, panel_width_px))
         .unwrap_or(false);
+    let keyboard_captured_by_ui = egui_contexts
+        .ctx_mut()
+        .ok()
+        .map(|ctx| ctx.wants_keyboard_input())
+        .unwrap_or(false);
+    let keyboard_axis = if cursor_in_3d && !keyboard_captured_by_ui {
+        wasd_axis(&keys)
+    } else {
+        Vec2::ZERO
+    };
 
     let shift_pressed = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     let rotate_drag = buttons.pressed(MouseButton::Left) && !shift_pressed;
@@ -81,7 +97,7 @@ pub(super) fn orbit_camera_controls(
         }
     }
 
-    if delta == Vec2::ZERO && scroll == 0.0 {
+    if delta == Vec2::ZERO && scroll == 0.0 && keyboard_axis == Vec2::ZERO {
         return;
     }
 
@@ -101,8 +117,10 @@ pub(super) fn orbit_camera_controls(
         min_radius,
         ORBIT_MAX_RADIUS,
     );
+    let keyboard_changed =
+        apply_keyboard_pan(&mut orbit, keyboard_axis, time.delta_secs(), shift_pressed);
 
-    if changed {
+    if changed || keyboard_changed {
         orbit.apply_to_transform(&mut transform);
     }
 
@@ -143,6 +161,58 @@ fn normalized_mouse_wheel_delta(unit: MouseScrollUnit, y: f32) -> f32 {
 fn pinch_scroll_delta(delta: f32) -> f32 {
     // Pinch magnify deltas are much smaller than line-based wheel deltas.
     delta * 8.0
+}
+
+fn wasd_axis(keys: &ButtonInput<KeyCode>) -> Vec2 {
+    Vec2::new(
+        key_axis(keys, KeyCode::KeyD, KeyCode::KeyA),
+        key_axis(keys, KeyCode::KeyW, KeyCode::KeyS),
+    )
+}
+
+fn key_axis(keys: &ButtonInput<KeyCode>, positive: KeyCode, negative: KeyCode) -> f32 {
+    let positive = if keys.pressed(positive) { 1.0 } else { 0.0 };
+    let negative = if keys.pressed(negative) { 1.0 } else { 0.0 };
+    positive - negative
+}
+
+fn flatten_xz(direction: Vec3) -> Vec3 {
+    Vec3::new(direction.x, 0.0, direction.z)
+}
+
+fn apply_keyboard_pan(
+    orbit: &mut OrbitCamera,
+    axis: Vec2,
+    delta_secs: f32,
+    speed_boost: bool,
+) -> bool {
+    if axis == Vec2::ZERO || !delta_secs.is_finite() || delta_secs <= 0.0 {
+        return false;
+    }
+
+    let rotation =
+        Quat::from_axis_angle(Vec3::Y, orbit.yaw) * Quat::from_axis_angle(Vec3::X, orbit.pitch);
+    let right = flatten_xz(rotation * Vec3::X);
+    let forward = flatten_xz(rotation * -Vec3::Z);
+    let Some(right) = right.try_normalize() else {
+        return false;
+    };
+    let Some(forward) = forward.try_normalize() else {
+        return false;
+    };
+
+    let movement_direction = axis.x * right + axis.y * forward;
+    let Some(movement_direction) = movement_direction.try_normalize() else {
+        return false;
+    };
+
+    let mut speed = (orbit.radius * ORBIT_PAN_SENSITIVITY * ORBIT_KEYBOARD_PAN_SPEED_MULTIPLIER)
+        .max(ORBIT_KEYBOARD_PAN_MIN_SPEED);
+    if speed_boost {
+        speed *= ORBIT_KEYBOARD_PAN_BOOST_MULTIPLIER;
+    }
+    orbit.focus += movement_direction * speed * delta_secs;
+    true
 }
 
 pub(super) fn sync_2d_zoom_projection(
@@ -564,6 +634,24 @@ mod tests {
     }
 
     #[test]
+    fn wasd_axis_maps_pressed_keys() {
+        let mut keys = ButtonInput::<KeyCode>::default();
+        assert_eq!(wasd_axis(&keys), Vec2::ZERO);
+
+        keys.press(KeyCode::KeyW);
+        keys.press(KeyCode::KeyD);
+        assert_eq!(wasd_axis(&keys), Vec2::new(1.0, 1.0));
+
+        keys.release(KeyCode::KeyW);
+        keys.press(KeyCode::KeyS);
+        assert_eq!(wasd_axis(&keys), Vec2::new(1.0, -1.0));
+
+        keys.press(KeyCode::KeyA);
+        keys.release(KeyCode::KeyD);
+        assert_eq!(wasd_axis(&keys), Vec2::new(-1.0, -1.0));
+    }
+
+    #[test]
     fn two_d_ortho_scale_decreases_when_radius_decreases() {
         let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
         let reference = two_d_reference_radius(cm_to_unit);
@@ -684,6 +772,57 @@ mod tests {
         assert!(!changed);
         assert!((orbit.yaw - 1.0).abs() < f32::EPSILON);
         assert!((orbit.pitch + 1.53).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn apply_keyboard_pan_two_d_moves_focus_on_horizontal_plane() {
+        let mut orbit = OrbitCamera {
+            focus: Vec3::new(0.0, 3.0, 0.0),
+            radius: 90.0,
+            yaw: 0.0,
+            pitch: -1.53,
+        };
+
+        let changed = apply_keyboard_pan(&mut orbit, Vec2::new(0.0, 1.0), 1.0, false);
+        assert!(changed);
+        assert!((orbit.focus.y - 3.0).abs() < 1e-6);
+        assert!(orbit.focus.z < 0.0);
+    }
+
+    #[test]
+    fn apply_keyboard_pan_three_d_follows_camera_heading() {
+        let mut orbit = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 48.0,
+            yaw: std::f32::consts::FRAC_PI_2,
+            pitch: 0.55,
+        };
+
+        let changed = apply_keyboard_pan(&mut orbit, Vec2::new(0.0, 1.0), 1.0, false);
+        assert!(changed);
+        assert!(orbit.focus.x < 0.0);
+        assert!(orbit.focus.z.abs() < orbit.focus.x.abs());
+    }
+
+    #[test]
+    fn apply_keyboard_pan_shift_boost_moves_faster() {
+        let mut normal = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 64.0,
+            yaw: -0.7,
+            pitch: 0.55,
+        };
+        let mut boosted = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 64.0,
+            yaw: -0.7,
+            pitch: 0.55,
+        };
+
+        let normal_changed = apply_keyboard_pan(&mut normal, Vec2::new(1.0, 0.0), 1.0, false);
+        let boosted_changed = apply_keyboard_pan(&mut boosted, Vec2::new(1.0, 0.0), 1.0, true);
+        assert!(normal_changed && boosted_changed);
+        assert!(boosted.focus.distance(Vec3::ZERO) > normal.focus.distance(Vec3::ZERO));
     }
 
     #[test]

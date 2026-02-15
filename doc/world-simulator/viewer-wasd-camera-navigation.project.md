@@ -8,14 +8,14 @@
 - [x] WCM1.3 在总项目文档挂载任务入口
 
 ### WCM2 输入系统实现
-- [ ] WCM2.1 `camera_controls` 接入 WASD 输入轴（W/A/S/D）
-- [ ] WCM2.2 2D/3D 统一接入键盘平移（仅移动 `OrbitCamera.focus`）
-- [ ] WCM2.3 输入冲突保护（EGUI 键盘占用时禁用）
+- [x] WCM2.1 `camera_controls` 接入 WASD 输入轴（W/A/S/D）
+- [x] WCM2.2 2D/3D 统一接入键盘平移（仅移动 `OrbitCamera.focus`）
+- [x] WCM2.3 输入冲突保护（EGUI 键盘占用时禁用）
 
 ### WCM3 测试与回归
-- [ ] WCM3.1 单测：WASD 输入轴映射
-- [ ] WCM3.2 单测：2D/3D 模式下 WASD 位移行为
-- [ ] WCM3.3 执行 `test_tier_required` 最小回归（camera_controls + `cargo check`）
+- [x] WCM3.1 单测：WASD 输入轴映射
+- [x] WCM3.2 单测：2D/3D 模式下 WASD 位移行为
+- [x] WCM3.3 执行 `test_tier_required` 最小回归（camera_controls + `cargo check`）
 
 ### WCM4 收口
 - [ ] WCM4.1 更新 `doc/viewer-manual.md` 交互说明
@@ -28,6 +28,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WCM1 已完成，WCM2 待开始。
-- 下一步：实现 WASD 相机移动并补齐测试。
-- 最近更新：2026-02-15（完成文档输出与任务挂载）。
+- 当前阶段：WCM1~WCM3 已完成，WCM4 待收口。
+- 下一步：更新使用手册、总项目文档状态与开发日志。
+- 最近更新：2026-02-15（完成 WASD 相机移动实现与最小回归）。
