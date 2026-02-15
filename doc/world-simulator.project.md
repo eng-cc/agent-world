@@ -149,7 +149,7 @@
 - [x] Viewer 闭环测试默认切换到 Web 端（Playwright）
 - [x] 输出 Viewer WebSocket/HTTP bridge 设计文档（`doc/world-simulator/viewer-websocket-http-bridge.md`）
 - [x] 输出 Viewer WebSocket/HTTP bridge 项目管理文档（`doc/world-simulator/viewer-websocket-http-bridge.project.md`）
-- [ ] Viewer Web 在线 bridge 接入（WebSocket/HTTP -> live TCP）
+- [x] Viewer Web 在线 bridge 接入（WebSocket/HTTP -> live TCP）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -259,4 +259,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 Viewer WebSocket/HTTP bridge 文档建模并挂载任务入口（2026-02-15）
+- 最近更新：完成 Viewer Web 在线 bridge 接入与 Playwright 闭环收口（2026-02-15）

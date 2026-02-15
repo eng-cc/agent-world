@@ -37,5 +37,5 @@
 
 ## 状态
 - 当前阶段：WBR1~WBR5 全部完成。
-- 下一步：若需浏览器在线模式，新增 WebSocket/HTTP bridge 路径对接 `world_viewer_live`。
-- 最近更新：2026-02-15（完成闭环策略对齐，Web 默认闭环生效）。
+- 下一步：与 `viewer-websocket-http-bridge` 持续对齐在线链路回归口径。
+- 最近更新：2026-02-15（在线 bridge 已接入，Web 默认闭环保持生效）。

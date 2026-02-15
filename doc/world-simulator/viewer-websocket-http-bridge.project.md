@@ -18,9 +18,9 @@
 - [x] WLB3.3 通过 wasm 编译回归与 viewer 相关最小测试
 
 ### WLB4 文档与闭环收口
-- [ ] WLB4.1 更新 AGENTS/手册/运行路径文档（含 llm_bootstrap Web 命令）
-- [ ] WLB4.2 执行 Web 端闭环验证（live server + web viewer + Playwright）
-- [ ] WLB4.3 更新项目状态、开发日志并收口
+- [x] WLB4.1 更新 AGENTS/手册/运行路径文档（含 llm_bootstrap Web 命令）
+- [x] WLB4.2 执行 Web 端闭环验证（live server + web viewer + Playwright）
+- [x] WLB4.3 更新项目状态、开发日志并收口
 
 ## 依赖
 - `crates/agent_world/src/viewer/live.rs`
@@ -32,6 +32,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WLB1~WLB3 已完成，WLB4 进行中。
-- 下一步：更新文档与闭环流程，完成 Web 在线路径收口。
-- 最近更新：2026-02-15（完成 wasm WebSocket 客户端接入并通过回归）。
+- 当前阶段：WLB1~WLB4 全部完成。
+- 下一步：按 Web 默认闭环口径维持回归，必要时补充 bridge 稳定性压力测试。
+- 最近更新：2026-02-15（完成 live+web+Playwright 在线闭环并收口文档状态）。

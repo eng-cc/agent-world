@@ -9,11 +9,11 @@
 ## 范围
 - 范围内：
   - 修复 `agent_world`/`agent_world_viewer` 在 `wasm32` 目标下的编译不兼容点。
-  - 在 Viewer 中引入 Web 平台路径：浏览器端默认离线模式，不尝试 TCP 直连。
+  - 在 Viewer 中引入 Web 平台路径：浏览器端通过 WebSocket bridge 在线连接 live server（不做 TCP 直连）。
   - 新增基于 `trunk` 的浏览器启动入口（脚本 + `index.html`）。
   - 更新使用手册，补充 Web 运行步骤、Playwright 闭环步骤与限制说明。
 - 范围外：
-  - 不在本任务实现浏览器端与 `world_viewer_live` 的在线协议桥接（WebSocket/HTTP 中转）。
+  - 不在本任务重构 Viewer 业务协议字段，沿用既有 JSON line 协议映射。
   - 不重构 Viewer 业务逻辑，不新增 Web 专属 UI 功能。
   - 不引入重型 Playwright test suite（仅保留 CLI 级最小闭环）。
 
@@ -42,7 +42,8 @@
 - Native（非 `wasm32`）：维持当前逻辑，支持 TCP 连接与 headless。
 - Web（`wasm32`）：
   - 入口直接走 UI 模式。
-  - 默认离线（`offline=true`），连接状态在 UI 中按离线模式展示。
+  - 默认连接 `ws://127.0.0.1:5011`，可通过 URL 参数 `?ws=` 或 `?addr=` 覆盖。
+  - 依赖 `world_viewer_live --web-bind <addr>` 启动 WebSocket bridge。
   - 不编译 TCP 连接链路（`TcpStream` 相关代码通过 `cfg` 隔离）。
 
 ### 3) `agent_world` wasm 兼容点
@@ -57,7 +58,7 @@
 
 ## 风险
 - 平台能力差异风险：浏览器端无法直接使用 TCP。
-  - 缓解：本阶段明确 Web 路径仅支持离线 UI，在线能力后续通过桥接任务补齐。
+  - 缓解：统一通过 WebSocket bridge 转发到 live TCP 协议，不在浏览器直接做 TCP。
 - 依赖差异风险：`reqwest`/系统 API 在 wasm 下能力与 native 不同。
   - 缓解：针对已知不兼容 API 做 `cfg` 分支，并纳入 wasm 目标编译回归。
 - 工具链风险：本地缺少 `trunk` 或 wasm target 导致无法启动。

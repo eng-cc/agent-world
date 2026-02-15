@@ -28,19 +28,24 @@
 - 说明：此流程主要给 agent 使用，人类开发者可忽略。
 
 ### 标准流程（Web 默认）
-1) 启动 Web Viewer：
-   `./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
-2) 使用 Playwright CLI 执行闭环采样（推荐 skill wrapper）：
+1) 启动 live server（含 WebSocket bridge）：
+   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300`
+2) 启动 Web Viewer：
+   `env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
+3) 使用 Playwright CLI 执行闭环采样（推荐 skill wrapper）：
    ```bash
+   source "$HOME/.nvm/nvm.sh"
+   nvm use 24
    export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
    export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
    mkdir -p output/playwright/viewer
-   "$PWCLI" open http://127.0.0.1:4173
-   "$PWCLI" snapshot
-   "$PWCLI" console
-   "$PWCLI" screenshot output/playwright/viewer/viewer-web.png
+   bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+   bash "$PWCLI" snapshot
+   bash "$PWCLI" console
+   bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
+   bash "$PWCLI" close
    ```
-3) 最小验收口径：
+4) 最小验收口径：
    - 页面可加载（snapshot 可见 `canvas`）。
    - `console error = 0`。
    - `output/playwright/` 至少有 1 张截图产物。

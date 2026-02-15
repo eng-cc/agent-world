@@ -14,8 +14,9 @@
 
 ### 1）启动 live server（推荐）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
 ```
+如需让 Agent 决策走 LLM，可额外加 `--llm`（需要先配置 LLM key）。
 
 ### 2）启动 viewer
 ```bash
@@ -29,10 +30,11 @@ AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewe
 
 ### 4）浏览器模式（Bevy + wasm）
 ```bash
-./scripts/run-viewer-web.sh --open
+env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
 
-- 该模式当前默认离线，不连接 `world_viewer_live`（浏览器端无原生 TCP）。
+- 打开浏览器访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`
+- Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server。
 - 首次运行前需安装：
   - `trunk`（`cargo install trunk`）
   - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
@@ -76,20 +78,26 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
 
 ### 标准流程
-1) 启动 Web Viewer（终端 A）
+1) 启动 live server（终端 A）
 ```bash
-./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
 ```
 
-2) 执行 Playwright 闭环采样（终端 B）
+2) 启动 Web Viewer（终端 B）
+```bash
+env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
+```
+
+3) 执行 Playwright 闭环采样（终端 C）
 ```bash
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 mkdir -p output/playwright/viewer
-"$PWCLI" open http://127.0.0.1:4173
-"$PWCLI" snapshot
-"$PWCLI" console
-"$PWCLI" screenshot output/playwright/viewer/viewer-web.png
+bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+bash "$PWCLI" snapshot
+bash "$PWCLI" console
+bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
+bash "$PWCLI" close
 ```
 
 ### 输出目录
