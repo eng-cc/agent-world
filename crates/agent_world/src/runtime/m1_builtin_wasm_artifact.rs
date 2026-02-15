@@ -1,10 +1,12 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
 #[cfg(all(test, feature = "wasmtime"))]
-use super::{world::World, WorldError};
-use super::{
-    M1_BODY_MODULE_ID, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_MOVE_RULE_MODULE_ID,
-    M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
-    M1_STORAGE_POWER_MODULE_ID, M1_TRANSFER_RULE_MODULE_ID, M1_VISIBILITY_RULE_MODULE_ID,
-};
+use super::world::World;
+use super::WorldError;
+
+const M1_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m1_builtin_modules.sha256");
+const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 #[cfg(all(test, feature = "wasmtime"))]
 pub(crate) fn m1_builtin_module_ids_manifest() -> Vec<&'static str> {
@@ -15,40 +17,69 @@ pub(crate) fn m1_builtin_module_ids_manifest() -> Vec<&'static str> {
         .collect()
 }
 
-pub(crate) fn m1_builtin_wasm_module_artifact_bytes(module_id: &str) -> Option<&'static [u8]> {
-    match module_id {
-        M1_MOVE_RULE_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.rule.move.wasm"
-        )),
-        M1_VISIBILITY_RULE_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.rule.visibility.wasm"
-        )),
-        M1_TRANSFER_RULE_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.rule.transfer.wasm"
-        )),
-        M1_BODY_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.body.core.wasm"
-        )),
-        M1_SENSOR_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.sensor.basic.wasm"
-        )),
-        M1_MOBILITY_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.mobility.basic.wasm"
-        )),
-        M1_MEMORY_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.memory.core.wasm"
-        )),
-        M1_STORAGE_CARGO_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.storage.cargo.wasm"
-        )),
-        M1_RADIATION_POWER_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.power.radiation_harvest.wasm"
-        )),
-        M1_STORAGE_POWER_MODULE_ID => Some(include_bytes!(
-            "world/artifacts/m1_builtin_modules/m1.power.storage.wasm"
-        )),
-        _ => None,
+fn builtin_wasm_distfs_root() -> PathBuf {
+    if let Ok(path) = std::env::var(BUILTIN_WASM_DISTFS_ROOT_ENV) {
+        if !path.trim().is_empty() {
+            return PathBuf::from(path);
+        }
     }
+
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join(".distfs")
+        .join("builtin_wasm")
+}
+
+fn hash_manifest_for_module(module_id: &str) -> Option<&'static str> {
+    for line in M1_BUILTIN_HASH_MANIFEST.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let mut parts = line.split_whitespace();
+        let Some(id) = parts.next() else {
+            continue;
+        };
+        let Some(hash) = parts.next() else {
+            continue;
+        };
+        if id == module_id {
+            return Some(hash);
+        }
+    }
+    None
+}
+
+pub(crate) fn m1_builtin_wasm_module_artifact_bytes(
+    module_id: &str,
+) -> Result<Vec<u8>, WorldError> {
+    let expected_hash =
+        hash_manifest_for_module(module_id).ok_or_else(|| WorldError::ModuleChangeInvalid {
+            reason: format!("missing builtin wasm hash manifest entry for module_id={module_id}"),
+        })?;
+    let distfs_blob_path = builtin_wasm_distfs_root()
+        .join("blobs")
+        .join(format!("{expected_hash}.blob"));
+
+    let wasm_bytes = fs::read(&distfs_blob_path).map_err(|error| WorldError::ModuleChangeInvalid {
+        reason: format!(
+            "missing builtin wasm distfs blob for module_id={module_id}, hash={expected_hash}, path={}, err={error}",
+            distfs_blob_path.display()
+        ),
+    })?;
+
+    let actual_hash = super::util::sha256_hex(&wasm_bytes);
+    if actual_hash != expected_hash {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "builtin wasm distfs blob hash mismatch for module_id={module_id}, expected={expected_hash}, actual={actual_hash}, path={}",
+                distfs_blob_path.display()
+            ),
+        });
+    }
+
+    Ok(wasm_bytes)
 }
 
 #[cfg(all(test, feature = "wasmtime"))]
@@ -56,12 +87,8 @@ pub(crate) fn register_m1_builtin_wasm_module_artifact(
     world: &mut World,
     module_id: &str,
 ) -> Result<String, WorldError> {
-    let wasm_bytes = m1_builtin_wasm_module_artifact_bytes(module_id).ok_or_else(|| {
-        WorldError::ModuleChangeInvalid {
-            reason: format!("unsupported m1 builtin wasm module id: {module_id}"),
-        }
-    })?;
-    let wasm_hash = super::util::sha256_hex(wasm_bytes);
-    world.register_module_artifact(wasm_hash.clone(), wasm_bytes)?;
+    let wasm_bytes = m1_builtin_wasm_module_artifact_bytes(module_id)?;
+    let wasm_hash = super::util::sha256_hex(&wasm_bytes);
+    world.register_module_artifact(wasm_hash.clone(), &wasm_bytes)?;
     Ok(wasm_hash)
 }

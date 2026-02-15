@@ -6,8 +6,9 @@ OUT_DIR="$ROOT_DIR/.tmp/builtin-wasm-sync-modules"
 PROFILE="release"
 CHECK_ONLY=0
 MODULE_IDS_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt"
-ARTIFACT_DIR="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules"
 HASH_MANIFEST_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256"
+DISTFS_ROOT="$ROOT_DIR/.distfs/builtin_wasm"
+DISTFS_BLOBS_DIR="$DISTFS_ROOT/blobs"
 
 declare -a MODULE_IDS=()
 
@@ -17,12 +18,13 @@ Usage:
   scripts/sync-m1-builtin-wasm-artifacts.sh [options]
 
 Options:
-  --check                 Build and verify embedded per-module artifacts/hash manifest only
+  --check                 Build and verify hash manifest vs built wasm, then hydrate DistFS blobs
   --profile <name>        Cargo profile forwarded to wasm build suite (default: release)
   --out-dir <dir>         Build output directory (default: .tmp/builtin-wasm-sync-modules)
   --module-ids-path <p>   Module id manifest path (default: crates/.../m1_builtin_module_ids.txt)
-  --artifact-dir <p>      Embedded artifact directory (default: crates/.../m1_builtin_modules)
-  --hash-path <p>         Embedded hash manifest path (default: crates/.../m1_builtin_modules.sha256)
+  --hash-path <p>         Hash manifest path tracked by git (default: crates/.../m1_builtin_modules.sha256)
+  --distfs-root <p>       DistFS builtin wasm root (default: .distfs/builtin_wasm)
+  --artifact-dir <p>      Deprecated alias of DistFS blobs dir (default: <distfs-root>/blobs)
   -h, --help              Show this help
 USAGE
 }
@@ -88,14 +90,20 @@ while [[ $# -gt 0 ]]; do
       MODULE_IDS_PATH="$2"
       shift 2
       ;;
-    --artifact-dir)
-      [[ $# -ge 2 ]] || { echo "error: --artifact-dir requires a value" >&2; exit 2; }
-      ARTIFACT_DIR="$2"
-      shift 2
-      ;;
     --hash-path)
       [[ $# -ge 2 ]] || { echo "error: --hash-path requires a value" >&2; exit 2; }
       HASH_MANIFEST_PATH="$2"
+      shift 2
+      ;;
+    --distfs-root)
+      [[ $# -ge 2 ]] || { echo "error: --distfs-root requires a value" >&2; exit 2; }
+      DISTFS_ROOT="$2"
+      DISTFS_BLOBS_DIR="$DISTFS_ROOT/blobs"
+      shift 2
+      ;;
+    --artifact-dir)
+      [[ $# -ge 2 ]] || { echo "error: --artifact-dir requires a value" >&2; exit 2; }
+      DISTFS_BLOBS_DIR="$2"
       shift 2
       ;;
     -h|--help)
@@ -112,22 +120,22 @@ done
 
 read_module_ids
 mkdir -p "$OUT_DIR"
+mkdir -p "$DISTFS_BLOBS_DIR"
 
 "$ROOT_DIR/scripts/build-builtin-wasm-modules.sh" \
   --module-ids-path "$MODULE_IDS_PATH" \
   --out-dir "$OUT_DIR" \
   --profile "$PROFILE"
 
-if [[ "$CHECK_ONLY" -eq 1 ]]; then
-  if [[ ! -d "$ARTIFACT_DIR" ]]; then
-    echo "error: artifact directory missing: $ARTIFACT_DIR" >&2
-    exit 1
-  fi
-  if [[ ! -f "$HASH_MANIFEST_PATH" ]]; then
+if [[ ! -f "$HASH_MANIFEST_PATH" ]]; then
+  if [[ "$CHECK_ONLY" -eq 1 ]]; then
     echo "error: hash manifest missing: $HASH_MANIFEST_PATH" >&2
+    echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
     exit 1
   fi
+fi
 
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
   manifest_line_count="$(wc -l < "$HASH_MANIFEST_PATH" | tr -d '[:space:]')"
   if [[ "$manifest_line_count" -ne "${#MODULE_IDS[@]}" ]]; then
     echo "error: hash manifest line count mismatch" >&2
@@ -136,50 +144,50 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 1
   fi
 
+  hydrated_count=0
   for module_id in "${MODULE_IDS[@]}"; do
     built_path="$OUT_DIR/$module_id.wasm"
-    embedded_path="$ARTIFACT_DIR/$module_id.wasm"
-
     if [[ ! -f "$built_path" ]]; then
       echo "error: built wasm not found: $built_path" >&2
       exit 1
     fi
-    if [[ ! -f "$embedded_path" ]]; then
-      echo "error: embedded wasm not found: $embedded_path" >&2
-      exit 1
-    fi
 
     built_hash="$(sha256_file "$built_path")"
-    embedded_hash="$(sha256_file "$embedded_path")"
     manifest_hash="$(manifest_hash_for "$module_id")"
+
     if [[ -z "$manifest_hash" ]]; then
       echo "error: module hash missing in manifest: $module_id" >&2
       exit 1
     fi
 
-    if [[ "$manifest_hash" != "$embedded_hash" ]]; then
-      echo "error: hash manifest mismatch for module: $module_id" >&2
-      echo "  manifest=$manifest_hash" >&2
-      echo "  embedded=$embedded_hash" >&2
-      exit 1
-    fi
-    if [[ "$built_hash" != "$embedded_hash" ]]; then
-      echo "error: embedded artifact is stale vs built wasm for module: $module_id" >&2
+    if [[ "$built_hash" != "$manifest_hash" ]]; then
+      echo "error: hash manifest is stale vs built wasm for module: $module_id" >&2
       echo "  built   =$built_hash" >&2
-      echo "  embedded=$embedded_hash" >&2
+      echo "  manifest=$manifest_hash" >&2
       echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
       exit 1
     fi
+
+    distfs_blob_path="$DISTFS_BLOBS_DIR/$manifest_hash.blob"
+    if [[ -f "$distfs_blob_path" ]]; then
+      distfs_hash="$(sha256_file "$distfs_blob_path")"
+      if [[ "$distfs_hash" == "$manifest_hash" ]]; then
+        continue
+      fi
+    fi
+
+    cp "$built_path" "$distfs_blob_path"
+    hydrated_count=$((hydrated_count + 1))
   done
 
-  echo "check ok: per-module embedded artifacts and hash manifest are in sync"
+  echo "check ok: hash manifest is in sync with built wasm"
   echo "  module_count=${#MODULE_IDS[@]}"
-  echo "  artifact_dir=$ARTIFACT_DIR"
   echo "  hash_manifest=$HASH_MANIFEST_PATH"
+  echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"
+  echo "  hydrated_blobs=$hydrated_count"
   exit 0
 fi
 
-mkdir -p "$ARTIFACT_DIR"
 tmp_manifest="$(mktemp)"
 trap 'rm -f "$tmp_manifest"' EXIT
 
@@ -190,9 +198,9 @@ for module_id in "${MODULE_IDS[@]}"; do
     exit 1
   fi
 
-  embedded_path="$ARTIFACT_DIR/$module_id.wasm"
-  cp "$built_path" "$embedded_path"
   module_hash="$(sha256_file "$built_path")"
+  distfs_blob_path="$DISTFS_BLOBS_DIR/$module_hash.blob"
+  cp "$built_path" "$distfs_blob_path"
   printf "%s %s\n" "$module_id" "$module_hash" >> "$tmp_manifest"
 done
 
@@ -200,7 +208,7 @@ mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"
 mv "$tmp_manifest" "$HASH_MANIFEST_PATH"
 trap - EXIT
 
-echo "synced per-module embedded wasm artifacts"
+echo "synced builtin wasm hash manifest + DistFS blobs"
 echo "  module_count=${#MODULE_IDS[@]}"
-echo "  artifact_dir=$ARTIFACT_DIR"
 echo "  hash_manifest=$HASH_MANIFEST_PATH"
+echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"

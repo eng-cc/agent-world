@@ -53,8 +53,10 @@ run_agent_world_full_tier_tests() {
 
 run_required_gate_checks() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
-  run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
-  run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
+  if [[ "${CI_SKIP_BUILTIN_WASM_CHECKS:-0}" != "1" ]]; then
+    run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
+    run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
+  fi
 }
 
 echo "+ ci test tier: $tier"

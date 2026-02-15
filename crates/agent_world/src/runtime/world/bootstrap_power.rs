@@ -40,7 +40,7 @@ impl World {
             self,
             &mut changes,
             M1_RADIATION_POWER_MODULE_ID,
-            radiation_power_artifact,
+            &radiation_power_artifact,
             M1_POWER_MODULE_VERSION,
             m1_radiation_power_manifest,
         )?;
@@ -48,7 +48,7 @@ impl World {
             self,
             &mut changes,
             M1_STORAGE_POWER_MODULE_ID,
-            storage_power_artifact,
+            &storage_power_artifact,
             M1_POWER_MODULE_VERSION,
             m1_storage_power_manifest,
         )?;
@@ -104,7 +104,7 @@ impl World {
             self,
             &mut changes,
             M1_SENSOR_MODULE_ID,
-            sensor_artifact,
+            &sensor_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_sensor_manifest,
         )?;
@@ -112,7 +112,7 @@ impl World {
             self,
             &mut changes,
             M1_MOBILITY_MODULE_ID,
-            mobility_artifact,
+            &mobility_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_mobility_manifest,
         )?;
@@ -120,7 +120,7 @@ impl World {
             self,
             &mut changes,
             M1_MEMORY_MODULE_ID,
-            memory_artifact,
+            &memory_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_memory_manifest,
         )?;
@@ -128,7 +128,7 @@ impl World {
             self,
             &mut changes,
             M1_STORAGE_CARGO_MODULE_ID,
-            storage_cargo_artifact,
+            &storage_cargo_artifact,
             M1_AGENT_DEFAULT_MODULE_VERSION,
             m1_storage_cargo_manifest,
         )?;
@@ -156,12 +156,8 @@ impl World {
     }
 }
 
-fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<&'static [u8], WorldError> {
-    m1_builtin_wasm_module_artifact_bytes(module_id).ok_or_else(|| {
-        WorldError::ModuleChangeInvalid {
-            reason: format!("missing embedded wasm module artifact for module_id={module_id}"),
-        }
-    })
+fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, WorldError> {
+    m1_builtin_wasm_module_artifact_bytes(module_id)
 }
 
 fn ensure_bootstrap_module(

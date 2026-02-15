@@ -18,4 +18,6 @@ else
   echo "+ no staged Rust files, skip rustfmt"
 fi
 
-./scripts/ci-tests.sh required
+./scripts/sync-m1-builtin-wasm-artifacts.sh --check
+./scripts/sync-m4-builtin-wasm-artifacts.sh --check
+CI_SKIP_BUILTIN_WASM_CHECKS=1 ./scripts/ci-tests.sh required

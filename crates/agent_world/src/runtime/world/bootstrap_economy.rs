@@ -26,7 +26,7 @@ impl World {
             self,
             &mut changes,
             M4_FACTORY_MINER_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_FACTORY_MINER_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_MINER_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_factory_miner_manifest,
         )?;
@@ -34,7 +34,7 @@ impl World {
             self,
             &mut changes,
             M4_FACTORY_SMELTER_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_FACTORY_SMELTER_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_SMELTER_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_factory_smelter_manifest,
         )?;
@@ -42,7 +42,7 @@ impl World {
             self,
             &mut changes,
             M4_FACTORY_ASSEMBLER_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_FACTORY_ASSEMBLER_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_FACTORY_ASSEMBLER_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_factory_assembler_manifest,
         )?;
@@ -50,7 +50,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_SMELT_IRON_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_IRON_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_IRON_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_smelt_iron_manifest,
         )?;
@@ -58,7 +58,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_smelt_copper_wire_manifest,
         )?;
@@ -66,7 +66,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_assemble_gear_manifest,
         )?;
@@ -74,7 +74,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_assemble_control_chip_manifest,
         )?;
@@ -82,7 +82,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_assemble_motor_manifest,
         )?;
@@ -90,7 +90,7 @@ impl World {
             self,
             &mut changes,
             M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_recipe_assemble_drone_manifest,
         )?;
@@ -98,7 +98,7 @@ impl World {
             self,
             &mut changes,
             M4_PRODUCT_IRON_INGOT_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_PRODUCT_IRON_INGOT_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_IRON_INGOT_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_product_iron_ingot_manifest,
         )?;
@@ -106,7 +106,7 @@ impl World {
             self,
             &mut changes,
             M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_PRODUCT_CONTROL_CHIP_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_CONTROL_CHIP_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_product_control_chip_manifest,
         )?;
@@ -114,7 +114,7 @@ impl World {
             self,
             &mut changes,
             M4_PRODUCT_MOTOR_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_PRODUCT_MOTOR_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_MOTOR_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_product_motor_manifest,
         )?;
@@ -122,7 +122,7 @@ impl World {
             self,
             &mut changes,
             M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
-            m4_builtin_wasm_artifact_for_module(M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID)?,
+            &m4_builtin_wasm_artifact_for_module(M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID)?,
             M4_ECONOMY_MODULE_VERSION,
             m4_product_logistics_drone_manifest,
         )?;
@@ -150,12 +150,8 @@ impl World {
     }
 }
 
-fn m4_builtin_wasm_artifact_for_module(module_id: &str) -> Result<&'static [u8], WorldError> {
-    m4_builtin_wasm_module_artifact_bytes(module_id).ok_or_else(|| {
-        WorldError::ModuleChangeInvalid {
-            reason: format!("missing embedded wasm module artifact for module_id={module_id}"),
-        }
-    })
+fn m4_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, WorldError> {
+    m4_builtin_wasm_module_artifact_bytes(module_id)
 }
 
 fn ensure_bootstrap_module(
