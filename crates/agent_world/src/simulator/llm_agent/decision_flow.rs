@@ -1,5 +1,5 @@
 use super::super::agent::AgentDecision;
-use super::super::types::Action;
+use super::super::types::{Action, ResourceKind, ResourceOwner};
 use super::prompt_assembly::{PromptSectionKind, PromptSectionPriority};
 use serde::{Deserialize, Serialize};
 
@@ -109,6 +109,26 @@ pub(super) fn serialize_decision_for_prompt(decision: &AgentDecision) -> String 
             "decision": "harvest_radiation",
             "max_amount": max_amount,
         }),
+        AgentDecision::Act(Action::TransferResource {
+            from,
+            to,
+            kind,
+            amount,
+        }) => serde_json::json!({
+            "decision": "transfer_resource",
+            "from_owner": owner_to_prompt_spec(from),
+            "to_owner": owner_to_prompt_spec(to),
+            "kind": resource_kind_to_prompt_value(*kind),
+            "amount": amount,
+        }),
+        AgentDecision::Act(Action::RefineCompound {
+            owner,
+            compound_mass_g,
+        }) => serde_json::json!({
+            "decision": "refine_compound",
+            "owner": owner_to_prompt_spec(owner),
+            "compound_mass_g": compound_mass_g,
+        }),
         AgentDecision::Act(_) => serde_json::json!({ "decision": "wait" }),
     };
 
@@ -121,6 +141,12 @@ struct LlmDecisionPayload {
     ticks: Option<u64>,
     to: Option<String>,
     max_amount: Option<i64>,
+    from_owner: Option<String>,
+    to_owner: Option<String>,
+    kind: Option<String>,
+    amount: Option<i64>,
+    owner: Option<String>,
+    compound_mass_g: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -524,6 +550,84 @@ fn parse_llm_decision_value_with_error(
                 max_amount,
             })
         }
+        "transfer_resource" => {
+            let from_owner = match parsed.from_owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => {
+                    return (
+                        AgentDecision::Wait,
+                        Some("transfer_resource missing `from_owner`".to_string()),
+                    );
+                }
+            };
+            let to_owner = match parsed.to_owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => {
+                    return (
+                        AgentDecision::Wait,
+                        Some("transfer_resource missing `to_owner`".to_string()),
+                    );
+                }
+            };
+            let kind = match parsed.kind.as_deref() {
+                Some(raw_kind) => match parse_resource_kind(raw_kind) {
+                    Some(kind) => kind,
+                    None => {
+                        return (
+                            AgentDecision::Wait,
+                            Some(format!("transfer_resource invalid kind: {raw_kind}")),
+                        );
+                    }
+                },
+                None => {
+                    return (
+                        AgentDecision::Wait,
+                        Some("transfer_resource missing `kind`".to_string()),
+                    );
+                }
+            };
+            let amount = parsed.amount.unwrap_or(1);
+            if amount <= 0 {
+                return (
+                    AgentDecision::Wait,
+                    Some("transfer_resource requires positive amount".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::TransferResource {
+                from: from_owner,
+                to: to_owner,
+                kind,
+                amount,
+            })
+        }
+        "refine_compound" => {
+            let owner = match parsed.owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => ResourceOwner::Agent {
+                    agent_id: agent_id.to_string(),
+                },
+            };
+            let compound_mass_g = parsed.compound_mass_g.unwrap_or(1);
+            if compound_mass_g <= 0 {
+                return (
+                    AgentDecision::Wait,
+                    Some("refine_compound requires positive compound_mass_g".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::RefineCompound {
+                owner,
+                compound_mass_g,
+            })
+        }
         other => {
             return (
                 AgentDecision::Wait,
@@ -533,6 +637,61 @@ fn parse_llm_decision_value_with_error(
     };
 
     (decision, None)
+}
+
+fn parse_owner_spec(value: &str, default_agent_id: &str) -> Result<ResourceOwner, String> {
+    let normalized = value.trim();
+    if normalized.is_empty() {
+        return Err("owner spec cannot be empty".to_string());
+    }
+    if normalized.eq_ignore_ascii_case("self") {
+        return Ok(ResourceOwner::Agent {
+            agent_id: default_agent_id.to_string(),
+        });
+    }
+    if let Some(agent_id) = normalized.strip_prefix("agent:") {
+        if agent_id.trim().is_empty() {
+            return Err("owner spec agent id cannot be empty".to_string());
+        }
+        return Ok(ResourceOwner::Agent {
+            agent_id: agent_id.trim().to_string(),
+        });
+    }
+    if let Some(location_id) = normalized.strip_prefix("location:") {
+        if location_id.trim().is_empty() {
+            return Err("owner spec location id cannot be empty".to_string());
+        }
+        return Ok(ResourceOwner::Location {
+            location_id: location_id.trim().to_string(),
+        });
+    }
+    Err(format!(
+        "invalid owner spec `{normalized}`; use self/agent:<id>/location:<id>"
+    ))
+}
+
+fn parse_resource_kind(value: &str) -> Option<ResourceKind> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "electricity" | "power" => Some(ResourceKind::Electricity),
+        "hardware" => Some(ResourceKind::Hardware),
+        "data" => Some(ResourceKind::Data),
+        _ => None,
+    }
+}
+
+fn resource_kind_to_prompt_value(kind: ResourceKind) -> &'static str {
+    match kind {
+        ResourceKind::Electricity => "electricity",
+        ResourceKind::Hardware => "hardware",
+        ResourceKind::Data => "data",
+    }
+}
+
+fn owner_to_prompt_spec(owner: &ResourceOwner) -> String {
+    match owner {
+        ResourceOwner::Agent { agent_id } => format!("agent:{agent_id}"),
+        ResourceOwner::Location { location_id } => format!("location:{location_id}"),
+    }
 }
 
 fn extract_json_block(raw: &str) -> Option<&str> {

@@ -8,10 +8,10 @@
 - [x] LBA0.3 在总项目文档挂载任务入口
 
 ### LBA1 解析与动作接线
-- [ ] LBA1.1 扩展 LLM decision 解析：`transfer_resource`
-- [ ] LBA1.2 扩展 LLM decision 解析：`refine_compound`
-- [ ] LBA1.3 扩展 `serialize_decision_for_prompt` 对新增动作的回写
-- [ ] LBA1.4 新增解析单元测试（合法/非法路径）
+- [x] LBA1.1 扩展 LLM decision 解析：`transfer_resource`
+- [x] LBA1.2 扩展 LLM decision 解析：`refine_compound`
+- [x] LBA1.3 扩展 `serialize_decision_for_prompt` 对新增动作的回写
+- [x] LBA1.4 新增解析单元测试（合法/非法路径）
 
 ### LBA2 Prompt 约束与回归
 - [ ] LBA2.1 更新 `[Decision JSON Schema]`，加入 transfer/refine
@@ -33,6 +33,6 @@
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 
 ## 状态
-- 当前阶段：LBA0 完成，LBA1 进行中。
-- 下一阶段：完成 LBA1/LBA2 代码与测试后执行 LBA3 Web 闭环验收。
-- 最近更新：2026-02-15（创建项目并进入解析动作扩展阶段）。
+- 当前阶段：LBA1 完成，LBA2 进行中。
+- 下一阶段：完成 LBA2 代码与测试后执行 LBA3 Web 闭环验收。
+- 最近更新：2026-02-15（完成 LLM 建造动作解析接线，进入 Prompt 约束回归阶段）。

@@ -722,6 +722,72 @@ fn llm_agent_parse_move_action() {
 }
 
 #[test]
+fn llm_agent_parse_transfer_resource_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"transfer_resource\",\"from_owner\":\"location:loc-1\",\"to_owner\":\"self\",\"kind\":\"electricity\",\"amount\":7}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::TransferResource {
+            from: ResourceOwner::Location {
+                location_id: "loc-1".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            kind: ResourceKind::Electricity,
+            amount: 7,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_refine_compound_action_defaults_to_self_owner() {
+    let client = MockClient {
+        output: Some("{\"decision\":\"refine_compound\",\"compound_mass_g\":80}".to_string()),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::RefineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            compound_mass_g: 80,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_transfer_resource_with_invalid_kind() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"transfer_resource\",\"from_owner\":\"self\",\"to_owner\":\"location:loc-1\",\"kind\":\"invalid_kind\",\"amount\":3}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("invalid kind"));
+}
+
+#[test]
 fn llm_agent_parse_json_in_markdown_block() {
     let client = MockClient {
         output: Some(
