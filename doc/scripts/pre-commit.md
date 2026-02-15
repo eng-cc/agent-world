@@ -5,7 +5,7 @@
 - 以单一脚本形式减少重复维护，降低遗漏风险。
 
 ## 范围
-- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）与 `required` 级别测试（格式化校验、工件一致性、feature 标签驱动的 smoke case）。
+- **范围内**：执行本地提交前格式化（仅格式化已暂存 Rust 文件）、`required` 级别测试（格式化校验、工件一致性、feature 标签驱动的 smoke case）以及 viewer 的 `wasm32` 编译检查。
 - **范围外**：lint 或其它包的静态检查。
 - **范围外**：`libp2p`/`wasmtime` 特性回归与 viewer 在线/离线联测（由 `full` 级别承担）。
 
@@ -17,7 +17,8 @@
   - 再执行 builtin wasm 校验与 DistFS 落盘：
     - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
     - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-  - 最后调用统一测试清单脚本：`CI_SKIP_BUILTIN_WASM_CHECKS=1 ./scripts/ci-tests.sh required`（避免重复执行同一校验）。
+  - 调用统一测试清单脚本：`CI_SKIP_BUILTIN_WASM_CHECKS=1 ./scripts/ci-tests.sh required`（避免重复执行同一校验）。
+  - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
 - 用例分级标签：
   - `test_tier_required`：本地提交与 PR 必跑 case。
   - `test_tier_full`：每日定时全量回归 case。

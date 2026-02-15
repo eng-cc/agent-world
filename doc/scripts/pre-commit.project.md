@@ -14,11 +14,13 @@
 - [x] 文档补充：新仓库需重新注册 pre-commit hook（2026-02-07）
 - [x] 移除默认 pre-commit/CI 的 builtin wasm hash 校验（改为手动按需执行，2026-02-14）
 - [x] pre-commit 重新启用 builtin wasm hash 校验并落盘 DistFS（2026-02-15）
+- [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p agent_world_viewer --target wasm32-unknown-unknown`，2026-02-15）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
 - `cargo test`（agent_world viewer 联测）
+- `wasm32-unknown-unknown` Rust target（viewer wasm 编译检查）
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：pre-commit 重新启用 `sync-m1/m4-builtin-wasm-artifacts --check`，并通过 `CI_SKIP_BUILTIN_WASM_CHECKS=1` 避免重复执行（2026-02-15）
+- 最近更新：pre-commit 新增 `agent_world_viewer` wasm32 编译门禁，拦截 Web Viewer 编译回归（2026-02-15）
