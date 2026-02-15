@@ -1059,7 +1059,11 @@ fn update_3d_scene(
 
     if config.highlight_selected {
         if let Some(current) = selection.current.as_ref() {
-            apply_entity_highlight(&mut transforms, current.entity);
+            if should_apply_scale_highlight(current.kind) {
+                apply_entity_highlight(&mut transforms, current.entity);
+            } else {
+                reset_entity_scale(&mut transforms, current.entity);
+            }
         }
     } else if let Some(current) = selection.current.as_ref() {
         reset_entity_scale(&mut transforms, current.entity);

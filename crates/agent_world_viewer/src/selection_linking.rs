@@ -483,7 +483,7 @@ pub(super) fn pick_3d_selection(
     windows: Query<&Window, With<PrimaryWindow>>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
     agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
-    locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
+    locations: Query<(Entity, &GlobalTransform, &LocationMarker), With<Mesh3d>>,
     fragments: Query<(Entity, &GlobalTransform, &FragmentElementMarker)>,
     assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
     power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
@@ -713,7 +713,7 @@ pub(super) fn apply_selection(
         id,
         name,
     });
-    if config.highlight_selected {
+    if config.highlight_selected && should_apply_scale_highlight(kind) {
         apply_entity_highlight(transforms, entity);
     }
 }

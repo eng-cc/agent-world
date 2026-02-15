@@ -132,6 +132,7 @@
 - [x] 输出 Viewer Frag 实际比例与选中显示修复项目管理文档（`doc/world-simulator/viewer-frag-scale-selection-fix.project.md`）
 - [x] Viewer Frag 实际比例修复（尺寸按数据口径线性映射）
 - [x] Viewer Frag 选中显示修复（选中/取消选中保持原始比例）
+- [x] Viewer Frag 二次修复（避免点击误选不可见 location 锚点；frag 选中不再缩放）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

@@ -1096,6 +1096,10 @@ pub(super) fn apply_entity_highlight(
     }
 }
 
+pub(super) fn should_apply_scale_highlight(kind: SelectionKind) -> bool {
+    !matches!(kind, SelectionKind::Fragment)
+}
+
 pub(super) fn reset_entity_scale(
     transforms: &mut Query<(&mut Transform, Option<&BaseScale>)>,
     entity: Entity,
@@ -1145,5 +1149,12 @@ mod depletion_tests {
 
         let large = location_render_radius_units(10_000_000, 0.00001);
         assert!((large - 100.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn should_apply_scale_highlight_skips_fragment() {
+        assert!(should_apply_scale_highlight(SelectionKind::Agent));
+        assert!(should_apply_scale_highlight(SelectionKind::Location));
+        assert!(!should_apply_scale_highlight(SelectionKind::Fragment));
     }
 }

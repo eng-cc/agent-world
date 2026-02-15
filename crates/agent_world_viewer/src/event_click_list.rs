@@ -229,7 +229,7 @@ pub(super) fn apply_event_click_action(
         name: target.name.clone(),
     });
 
-    if config.highlight_selected {
+    if config.highlight_selected && should_apply_scale_highlight(target.kind) {
         apply_entity_highlight(transforms, entity);
     }
 

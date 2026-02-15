@@ -513,6 +513,57 @@ fn quick_locate_agent_button_reports_when_no_agent_exists() {
 }
 
 #[test]
+fn apply_selection_does_not_scale_fragment_entity() {
+    let mut app = App::new();
+    app.add_systems(Update, apply_fragment_selection_test_system);
+    app.world_mut().insert_resource(ViewerSelection::default());
+    app.world_mut().insert_resource(Viewer3dConfig::default());
+
+    let base = Vec3::new(0.2, 0.3, 0.4);
+    app.world_mut().spawn((
+        FragmentSelectionTestMarker,
+        Transform::from_scale(base),
+        BaseScale(base),
+    ));
+
+    app.update();
+
+    let mut query = app
+        .world_mut()
+        .query::<(&Transform, &BaseScale, &FragmentSelectionTestMarker)>();
+    let (transform, base_scale, _) = query
+        .single(app.world())
+        .expect("fragment test entity should exist");
+    assert!((transform.scale.x - base_scale.0.x).abs() < 1e-6);
+    assert!((transform.scale.y - base_scale.0.y).abs() < 1e-6);
+    assert!((transform.scale.z - base_scale.0.z).abs() < 1e-6);
+}
+
+#[derive(Component)]
+struct FragmentSelectionTestMarker;
+
+fn apply_fragment_selection_test_system(
+    config: Res<Viewer3dConfig>,
+    mut selection: ResMut<ViewerSelection>,
+    markers: Query<Entity, With<FragmentSelectionTestMarker>>,
+    mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
+) {
+    let entity = markers
+        .iter()
+        .next()
+        .expect("fragment test entity should exist");
+    apply_selection(
+        &mut selection,
+        &mut transforms,
+        &config,
+        entity,
+        SelectionKind::Fragment,
+        "frag-1#0".to_string(),
+        Some("frag-1".to_string()),
+    );
+}
+
+#[test]
 fn ray_chunk_grid_hit_distance_matches_interior_hit() {
     let marker = ChunkMarker {
         id: "0,0,0".to_string(),
