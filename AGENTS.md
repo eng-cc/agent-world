@@ -22,22 +22,38 @@
 - third_party下面的代码只可读，不能写
 - 执行cargo命令需要如下形式 env -u RUSTC_WRAPPER cargo check
 
-## Agent 专用：UI 截图闭环调试（给 Codex 用，优先脚本）
-- 目标：在无法直接“看实时窗口”时，完成 `运行程序 -> 保存截图 -> 读取截图 -> 继续调试` 的闭环。
+## Agent 专用：UI Web 闭环调试（给 Codex 用，Playwright 优先）
+- 目标：在无法直接“看实时窗口”时，完成 `启动 Web Viewer -> 自动化交互/取证 -> 继续调试` 的闭环。
 - 适用场景：`agent_world_viewer` 可视化问题定位（黑屏、布局、相机交互、文本状态等）。
 - 说明：此流程主要给 agent 使用，人类开发者可忽略。
 
-### 标准流程（优先使用脚本）
-1) 一键脚本（默认会先清空 `.tmp/`）：
-   `./scripts/capture-viewer-frame.sh`
-2) 可选参数：
-   `./scripts/capture-viewer-frame.sh --scenario llm_bootstrap --addr 127.0.0.1:5023 --tick-ms 300 --viewer-wait 8`
+### 标准流程（Web 默认）
+1) 启动 Web Viewer：
+   `./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
+2) 使用 Playwright CLI 执行闭环采样（推荐 skill wrapper）：
+   ```bash
+   export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+   export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+   mkdir -p output/playwright/viewer
+   "$PWCLI" open http://127.0.0.1:4173
+   "$PWCLI" snapshot
+   "$PWCLI" console
+   "$PWCLI" screenshot output/playwright/viewer/viewer-web.png
+   ```
+3) 最小验收口径：
+   - 页面可加载（snapshot 可见 `canvas`）。
+   - `console error = 0`。
+   - `output/playwright/` 至少有 1 张截图产物。
+
+### Fallback（仅 native 链路问题）
+- 当问题只在 native 图形链路出现，或 Web 端无法复现时，再使用：
+  - `./scripts/capture-viewer-frame.sh`
+- 该链路定位为历史兼容/应急，不作为默认闭环流程。
 
 ### 推荐约定
-- 临时产物统一放在 `.tmp/screens/`（日志、截图、窗口几何）；默认每次新调试前由脚本清空 `.tmp/`。
-- 每次调试结束清理后台进程（viewer/server/Xvfb），避免端口或 DISPLAY 冲突。
-- 若截图全黑，优先排查：
-  - 抓图时机过早（应用未首帧渲染）
-  - 抓到错误窗口/错误坐标
-  - 图形后端为软件渲染导致首帧慢（可适当延长等待）
-- 若能拿到截图但无法自动输入，允许先用“静态多帧截图 + 日志”定位，再决定是否加程序内调试面板。
+- Web 闭环产物统一放在 `output/playwright/`。
+- 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
+- 若页面首帧空白，优先排查：
+  - `trunk` 是否完成首轮编译。
+  - 访问地址是否与脚本端口一致。
+  - 浏览器控制台是否有 wasm 初始化错误。

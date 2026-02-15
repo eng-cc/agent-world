@@ -1,13 +1,14 @@
 # Agent World Viewer 使用说明书
 
 ## 目标
-- 提供一份可直接操作的 Viewer 使用手册，覆盖启动、交互、自动聚焦与截图闭环。
+- 提供一份可直接操作的 Viewer 使用手册，覆盖启动、交互、自动聚焦与 Web 闭环。
 - 统一人工调试与脚本闭环的命令入口，减少重复沟通成本。
 
 ## 适用范围
 - 可视化客户端：`crates/agent_world_viewer`
 - 联调服务端：`crates/agent_world --bin world_viewer_live`
-- 截图闭环脚本：`scripts/capture-viewer-frame.sh`
+- Web 闭环入口：`scripts/run-viewer-web.sh` + Playwright CLI
+- native fallback 脚本：`scripts/capture-viewer-frame.sh`
 
 ## 快速开始
 
@@ -67,25 +68,43 @@ AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 
-## 截图闭环（推荐给调试/回归）
+## Web 闭环（默认，推荐调试/回归）
 
-### 一键抓图
+### 前置要求
+- Node.js 20+（需 `npx` 可用）
+- `trunk`（`cargo install trunk`）
+- `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
+
+### 标准流程
+1) 启动 Web Viewer（终端 A）
 ```bash
-./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18
+./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
+```
+
+2) 执行 Playwright 闭环采样（终端 B）
+```bash
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+mkdir -p output/playwright/viewer
+"$PWCLI" open http://127.0.0.1:4173
+"$PWCLI" snapshot
+"$PWCLI" console
+"$PWCLI" screenshot output/playwright/viewer/viewer-web.png
 ```
 
 ### 输出目录
-- `.tmp/screens/window.png`
-- `.tmp/screens/root.png`
-- `.tmp/screens/live_server.log`
-- `.tmp/screens/viewer.log`
-- `.tmp/screens/window_line.txt`
-- `.tmp/screens/window_geom.txt`
+- `output/playwright/viewer/*.png`
+- `.playwright-cli/console-*.log`（或 CLI 控制台输出）
 
-### 自动聚焦相关脚本参数
-- `--auto-focus-target <target>`
-- `--auto-focus-radius <number>`
-- `--auto-focus-keep-2d`
+### 最小验收口径
+- 页面加载成功（`snapshot` 可见 `canvas`）。
+- `console error = 0`。
+- 至少产出 1 张截图。
+
+### native fallback（仅在 Web 无法复现或排查图形链路）
+```bash
+./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18
+```
 
 ## 推荐调试场景
 - 细粒度 location 渲染观察：`asteroid_fragment_detail_bootstrap`
@@ -98,7 +117,9 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - 详情面板会显示：`Fragment Depletion: mined=<x>% remaining=<a>/<b>`。
 
 ## 常见问题排查
-- 截图全黑：适当增大 `--viewer-wait`（如 12~15 秒），确认首帧已渲染。
+- Web 页面空白：等待 `trunk` 首轮编译完成，确认访问端口与 `run-viewer-web.sh` 参数一致。
+- Playwright 启动失败：先检查 `node --version`、`npm --version`、`npx` 是否可用。
+- Console 有 wasm 报错：先修复运行时错误再看视觉问题，避免误判为渲染缺陷。
 - 看不到细节：切换 3D，放大并移动视角；必要时使用 `F` 聚焦目标。
 - 自动聚焦无效：确认 target 存在，或先使用 `first_fragment` 排除 ID 输入问题。
 - 连接失败：检查 `world_viewer_live` 是否运行、端口与 viewer 地址是否一致。
@@ -106,7 +127,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ## 参考文档
 - `doc/world-simulator/viewer-location-fine-grained-rendering.md`
 - `doc/world-simulator/viewer-auto-focus-capture.md`
-- `doc/scripts/capture-viewer-frame.md`
+- `doc/world-simulator/viewer-web-closure-testing-policy.md`
+- `doc/scripts/capture-viewer-frame.md`（native fallback）
 
 ## Fragment 元素分块渲染（默认开启）
 - 目标：把 location 的 fragment 分块默认显示出来，并按主导元素显示不同颜色。

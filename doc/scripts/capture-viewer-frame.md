@@ -1,8 +1,10 @@
 # Capture Viewer Frame（Agent UI截图闭环调试脚本）
 
+> 状态说明（2026-02-15）：该脚本已降级为 **native fallback**。默认闭环路径为 Web 端：`scripts/run-viewer-web.sh + Playwright`。
+
 ## 目标
-- 提供一个面向 agent 的一键闭环调试入口：`启动服务 -> 启动虚拟显示与 viewer -> 抓图 -> 留存日志`。
-- 将可视化调试产物标准化到 `.tmp/screens/`，便于 agent 读取图片后继续定位问题。
+- 提供一个面向 agent 的 native 图形链路应急入口：`启动服务 -> 启动虚拟显示与 viewer -> 抓图 -> 留存日志`。
+- 在 Web 闭环无法复现问题时，提供可回放的本地截图证据。
 - 默认在每次新调试开始前清空 `.tmp/`，避免历史残留影响判断。
 - 增加平台识别与分支实现，使脚本在 Linux 与 macOS 都能完成最小截图闭环。
 - 在 macOS 录屏权限受限时，使用 Bevy 内置截图能力完成窗口截图，避免依赖系统录屏授权。
@@ -18,10 +20,14 @@
   - 输出统一日志与窗口几何信息（`live_server.log`/`viewer.log`/`window_geom.txt`）。
   - 默认清空 `.tmp/`，可通过 `--keep-tmp` 保留。
 - **范围外**：
+  - 不作为默认闭环路径（默认闭环改为 `scripts/run-viewer-web.sh + Playwright`）。
   - 不提供自动鼠标键盘交互回放。
   - 不替代完整 UI 自动化测试（仍以现有单测/联测为准）。
 
 ## 接口 / 数据
+- 默认 Web 闭环入口（本脚本外）：
+  - `./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
+  - Playwright CLI：`open/snapshot/console/screenshot`
 - 脚本路径：`scripts/capture-viewer-frame.sh`
 - 典型调用：
   - `./scripts/capture-viewer-frame.sh`
@@ -56,8 +62,11 @@
 - **M5**：接入 viewer 内置自动截图并在 macOS 默认启用，绕过录屏权限约束。
 - **M6**：接入自动聚焦参数，保证目标区域更易复现。
 - **M7**：增加预热编译、可调超时与失败日志，降低截图超时风险。
+- **M8**：策略切换后定位为 fallback（Web 闭环默认启用，native 保留应急能力）。
 
 ## 风险
+- **路径分叉风险**：团队误把 fallback 当默认流程。
+  - 缓解：在 AGENTS/手册中统一声明“Web 默认、native fallback”。
 - **依赖差异**：Linux 与 macOS 命令能力不同，需要分别校验命令可用性。
 - **截图时机**：若触发过早可能抓到“连接中”界面，需配合 `--viewer-wait` 与内置延迟参数。
 - **渲染链路**：viewer 内置截图依赖 Bevy 渲染完成回调，若渲染异常可能导致截图未落盘。

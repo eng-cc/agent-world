@@ -27,6 +27,8 @@
 - [x] M8：新增 `--auto-select-target` 参数并透传 `AGENT_WORLD_VIEWER_AUTO_SELECT*`
 - [x] M8：新增 `--automation-steps` 参数并透传 `AGENT_WORLD_VIEWER_AUTOMATION_STEPS`
 - [x] M8：更新帮助信息与日志输出，便于确认自动化参数是否生效
+- [x] M9：文档口径切换为 Web 默认闭环（`run-viewer-web.sh + Playwright`）
+- [x] M9：`capture-viewer-frame` 明确降级为 native fallback，应急排障专用
 
 ## 依赖
 - Linux：`Xvfb`、`ffmpeg`、`xwininfo`
@@ -34,6 +36,6 @@
 - Rust/Cargo（`world_viewer_live` + `agent_world_viewer`）
 
 ## 状态
-- 当前阶段：M8（启动自动选中/自动化步骤参数透传完成）
+- 当前阶段：M9（策略切换完成，脚本定位为 native fallback）
 - 下一阶段：按需补充“多帧抓图”或“自动化步骤模板库”
-- 最近更新：脚本支持 `--auto-select-target` 与 `--automation-steps`（2026-02-11）
+- 最近更新：完成 Web 默认闭环策略迁移，`capture-viewer-frame` 改为 fallback 口径（2026-02-15）

@@ -22,6 +22,10 @@
 - [x] WBR4.2 更新本项目文档状态、总项目文档与开发日志
 - [x] WBR4.3 Playwright 闭环验证（打开 Web 页面、抓 snapshot/screenshot、校验 console error）
 
+### WBR5 闭环策略对齐
+- [x] WBR5.1 与 `viewer-web-closure-testing-policy` 对齐，明确 Web 为默认闭环路径
+- [x] WBR5.2 在手册/AGENTS/脚本文档中统一“Web 默认，native fallback”口径
+
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`
 - `crates/agent_world_viewer/src/main.rs`
@@ -32,6 +36,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WBR1~WBR4 全部完成。
+- 当前阶段：WBR1~WBR5 全部完成。
 - 下一步：若需浏览器在线模式，新增 WebSocket/HTTP bridge 路径对接 `world_viewer_live`。
-- 最近更新：2026-02-15（完成 wasm 兼容、Web 入口与回归收口）。
+- 最近更新：2026-02-15（完成闭环策略对齐，Web 默认闭环生效）。

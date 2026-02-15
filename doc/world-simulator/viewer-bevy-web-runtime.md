@@ -4,17 +4,18 @@
 - 为 `agent_world_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
 - 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `world_viewer_live`。
 - 建立最小闭环：`wasm32` 编译可通过、可通过统一脚本启动本地 Web 调试服务、文档可直接指引使用。
+- 将 Web 路径设为 Viewer 闭环默认路径，闭环证据统一走 `Playwright` 产物（截图 + console）。
 
 ## 范围
 - 范围内：
   - 修复 `agent_world`/`agent_world_viewer` 在 `wasm32` 目标下的编译不兼容点。
   - 在 Viewer 中引入 Web 平台路径：浏览器端默认离线模式，不尝试 TCP 直连。
   - 新增基于 `trunk` 的浏览器启动入口（脚本 + `index.html`）。
-  - 更新使用手册，补充 Web 运行步骤与限制说明。
+  - 更新使用手册，补充 Web 运行步骤、Playwright 闭环步骤与限制说明。
 - 范围外：
   - 不在本任务实现浏览器端与 `world_viewer_live` 的在线协议桥接（WebSocket/HTTP 中转）。
   - 不重构 Viewer 业务逻辑，不新增 Web 专属 UI 功能。
-  - 不引入 E2E 浏览器自动化测试（先完成编译与可手动运行闭环）。
+  - 不引入重型 Playwright test suite（仅保留 CLI 级最小闭环）。
 
 ## 接口 / 数据
 
@@ -24,6 +25,18 @@
   - 在 `crates/agent_world_viewer` 下执行 `trunk serve`。
 - 新增页面入口：`crates/agent_world_viewer/index.html`
   - 使用 trunk rust pipeline（`data-bin=agent_world_viewer`）构建并加载 wasm。
+
+### 1.1) 默认闭环入口（策略约束）
+- Web 启动：`./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
+- Playwright CLI 闭环：
+  - `open http://127.0.0.1:4173`
+  - `snapshot`
+  - `console`
+  - `screenshot output/playwright/viewer/*.png`
+- 最小验收：
+  - 页面可加载（存在 `canvas`）
+  - `console error = 0`
+  - 至少 1 张截图产物
 
 ### 2) 平台行为约束
 - Native（非 `wasm32`）：维持当前逻辑，支持 TCP 连接与 headless。
@@ -40,6 +53,7 @@
 - WBR2：完成 `agent_world`/`agent_world_viewer` wasm 兼容改造并通过 `cargo check --target wasm32-unknown-unknown`。
 - WBR3：完成 Web 启动入口（脚本 + `index.html`）与手册更新。
 - WBR4：执行 `test_tier_required` 相关回归，更新项目状态与开发日志。
+- WBR5：闭环策略收口（Web 默认、native fallback）并同步 AGENTS/手册/脚本文档。
 
 ## 风险
 - 平台能力差异风险：浏览器端无法直接使用 TCP。
@@ -48,3 +62,5 @@
   - 缓解：针对已知不兼容 API 做 `cfg` 分支，并纳入 wasm 目标编译回归。
 - 工具链风险：本地缺少 `trunk` 或 wasm target 导致无法启动。
   - 缓解：脚本中增加前置检查与明确报错提示。
+- 规范漂移风险：历史文档仍指向 native 截图链路。
+  - 缓解：以 `viewer-web-closure-testing-policy` 统一口径，定期在项目文档中校验。
