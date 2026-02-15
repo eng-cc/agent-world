@@ -1,15 +1,19 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 use super::{util, BlobStore, HashAlgorithm, LocalCasStore, WorldError};
 
 const BUILTIN_WASM_FETCHER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCHER";
+#[cfg(not(target_arch = "wasm32"))]
 const BUILTIN_WASM_FETCH_URLS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_URLS";
 const BUILTIN_WASM_COMPILER_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_COMPILER";
+#[cfg(not(target_arch = "wasm32"))]
 const BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_TIMEOUT_MS";
 
+#[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
 const BUILTIN_WASM_BUILD_PROFILE: &str = "release";
 const BUILTIN_WASM_BUILD_TARGET: &str = "wasm32-unknown-unknown";
@@ -80,6 +84,7 @@ fn try_fetch_via_fetcher(
     Ok(Some(bytes))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn try_fetch_via_http(expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError> {
     let Some(fetch_urls) = env_non_empty(BUILTIN_WASM_FETCH_URLS_ENV) else {
         return Ok(None);
@@ -115,6 +120,11 @@ fn try_fetch_via_http(expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError
             }
         }
     }
+    Ok(None)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn try_fetch_via_http(_expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError> {
     Ok(None)
 }
 
@@ -236,6 +246,7 @@ fn validate_compiled_hash(
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn fetch_timeout() -> Duration {
     let timeout_ms = env_non_empty(BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV)
         .and_then(|raw| raw.parse::<u64>().ok())
