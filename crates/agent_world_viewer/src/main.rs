@@ -94,10 +94,7 @@ use internal_capture::{
     internal_capture_config_from_env, trigger_internal_capture, InternalCaptureState,
 };
 use label_lod::{update_label_lod, LabelLodStats};
-use material_library::{
-    build_fragment_element_material_handles, build_location_material_handles,
-    FragmentElementMaterialHandles, LocationMaterialHandles,
-};
+use material_library::{build_fragment_element_material_handles, FragmentElementMaterialHandles};
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
 use prompt_control_state::PromptControlUiState;
@@ -250,7 +247,6 @@ struct Viewer3dAssets {
     agent_module_marker_mesh: Handle<Mesh>,
     agent_module_marker_material: Handle<StandardMaterial>,
     location_mesh: Handle<Mesh>,
-    location_material_library: LocationMaterialHandles,
     fragment_element_material_library: FragmentElementMaterialHandles,
     asset_mesh: Handle<Mesh>,
     asset_material: Handle<StandardMaterial>,
@@ -542,7 +538,6 @@ fn setup_3d_scene(
         unlit: true,
         ..default()
     });
-    let location_material_library = build_location_material_handles(&mut materials);
     let fragment_element_material_library = build_fragment_element_material_handles(&mut materials);
     let asset_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.82, 0.76, 0.34),
@@ -631,7 +626,6 @@ fn setup_3d_scene(
         agent_module_marker_mesh,
         agent_module_marker_material,
         location_mesh,
-        location_material_library,
         fragment_element_material_library,
         asset_mesh,
         asset_material,

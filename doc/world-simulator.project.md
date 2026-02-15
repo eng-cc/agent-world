@@ -127,6 +127,7 @@
 - [x] Viewer 2D/3D 可视化清晰度修复任务 1（Location 尺度映射修复）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 2（2D 自动聚焦缩放同步）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 3（默认信息密度收敛与回归）
+- [x] Viewer 编译告警清理（移除 `agent_world_viewer` 中 location detail 遗留 dead code 与未使用依赖）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{SelectionInfo, SelectionKind, Viewer3dScene, ViewerSelection};
+use super::{Viewer3dScene, ViewerSelection};
 
 const HALO_BASE_RADIUS: f32 = 0.65;
 const HALO_RADIUS_MULTIPLIER: f32 = 1.9;
@@ -128,7 +128,7 @@ fn halo_transform_for_target(target: &Transform, elapsed_secs: f32) -> Transform
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ViewerSelection;
+    use crate::{SelectionInfo, SelectionKind, ViewerSelection};
 
     #[test]
     fn halo_transform_scales_and_offsets_from_target() {

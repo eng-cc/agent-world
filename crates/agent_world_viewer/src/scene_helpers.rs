@@ -16,11 +16,6 @@ const LOCATION_RENDER_RADIUS_MIN_UNITS: f32 = 0.22;
 const LOCATION_RENDER_RADIUS_MAX_UNITS: f32 = 16.0;
 const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
-const LOCATION_DETAIL_RING_RADIUS_BASE: f32 = 1.05;
-const LOCATION_DETAIL_RING_RADIUS_ALT: f32 = 1.12;
-const LOCATION_DETAIL_RING_Y_BAND: f32 = 0.22;
-const LOCATION_DETAIL_HALO_RADIUS_JITTER: f32 = 0.04;
-const LOCATION_DETAIL_HALO_Y_OFFSET: f32 = 0.08;
 const LOCATION_DEPLETION_MIN_RADIUS_FACTOR: f32 = 0.24;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
 const AGENT_HEIGHT_MAX_M: f32 = 4.0;
@@ -844,14 +839,6 @@ fn location_remaining_mass_ratio(fragment_budget: &FragmentResourceBudget) -> Op
     Some((clamped_remaining as f32 / total_mass as f32).clamp(0.0, 1.0))
 }
 
-fn location_radiation_ratio(radiation_emission_per_tick: i64) -> f32 {
-    if radiation_emission_per_tick <= 0 {
-        return 0.0;
-    }
-    let log10 = (radiation_emission_per_tick.max(1) as f32).log10();
-    (log10 / 6.0).clamp(0.0, 1.0)
-}
-
 fn agent_height_cm(height_cm: Option<i64>) -> i64 {
     height_cm.unwrap_or(agent_world::models::DEFAULT_AGENT_HEIGHT_CM)
 }
@@ -1036,10 +1023,9 @@ fn agent_label_offset(height_cm: i64) -> f32 {
 mod scene_helpers_entities;
 
 use scene_helpers_entities::{
-    id_hash_fraction, location_label_offset, module_visual_anchor_pos_in_scene,
-    module_visual_anchor_pos_in_snapshot, spawn_agent_two_d_map_marker, spawn_asset_entity,
-    spawn_location_detail_children, spawn_module_visual_entity, spawn_power_plant_entity,
-    spawn_power_storage_entity,
+    id_hash_fraction, module_visual_anchor_pos_in_scene, module_visual_anchor_pos_in_snapshot,
+    spawn_agent_two_d_map_marker, spawn_asset_entity, spawn_module_visual_entity,
+    spawn_power_plant_entity, spawn_power_storage_entity,
 };
 
 pub(super) fn spawn_chunk_entity(
