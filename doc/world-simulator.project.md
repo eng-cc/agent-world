@@ -126,7 +126,7 @@
 - [x] 输出 Viewer 2D/3D 可视化清晰度修复项目管理文档（`doc/world-simulator/viewer-2d-3d-clarity-fix.project.md`）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 1（Location 尺度映射修复）
 - [x] Viewer 2D/3D 可视化清晰度修复任务 2（2D 自动聚焦缩放同步）
-- [ ] Viewer 2D/3D 可视化清晰度修复任务 3（默认信息密度收敛与回归）
+- [x] Viewer 2D/3D 可视化清晰度修复任务 3（默认信息密度收敛与回归）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

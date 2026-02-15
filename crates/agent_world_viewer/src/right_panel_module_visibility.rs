@@ -26,11 +26,11 @@ impl Default for RightPanelModuleVisibilityState {
         Self {
             show_controls: true,
             show_overview: true,
-            show_overlay: true,
-            show_diagnosis: true,
+            show_overlay: false,
+            show_diagnosis: false,
             show_event_link: true,
-            show_timeline: true,
-            show_details: true,
+            show_timeline: false,
+            show_details: false,
         }
     }
 }
@@ -208,15 +208,15 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn visibility_defaults_to_show_all_sections() {
+    fn visibility_defaults_to_core_sections() {
         let state = RightPanelModuleVisibilityState::default();
         assert!(state.show_controls);
         assert!(state.show_overview);
-        assert!(state.show_overlay);
-        assert!(state.show_diagnosis);
+        assert!(!state.show_overlay);
+        assert!(!state.show_diagnosis);
         assert!(state.show_event_link);
-        assert!(state.show_timeline);
-        assert!(state.show_details);
+        assert!(!state.show_timeline);
+        assert!(!state.show_details);
     }
 
     #[test]

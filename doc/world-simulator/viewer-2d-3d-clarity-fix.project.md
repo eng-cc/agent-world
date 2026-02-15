@@ -7,9 +7,9 @@
 - [x] CFX2.2 补充/更新 Location 尺度相关单测
 - [x] CFX3.1 修复 2D 自动聚焦后正交缩放同步
 - [x] CFX3.2 补充自动聚焦 2D 缩放回归测试
-- [ ] CFX4.1 收敛右侧模块默认可见性（降低首次信息密度）
-- [ ] CFX4.2 执行 test_tier_required 回归与截图闭环
-- [ ] CFX4.3 更新项目文档状态与开发日志
+- [x] CFX4.1 收敛右侧模块默认可见性（降低首次信息密度）
+- [x] CFX4.2 执行 test_tier_required 回归与截图闭环
+- [x] CFX4.3 更新项目文档状态与开发日志
 
 ## 依赖
 - `crates/agent_world_viewer/src/scene_helpers.rs`
@@ -19,6 +19,6 @@
 - `scripts/capture-viewer-frame.sh`
 
 ## 状态
-- 当前阶段：CFX1~CFX3 已完成，CFX4 待执行。
-- 下一步：执行 CFX4（默认信息密度收敛与回归）。
-- 最近更新：2026-02-15（完成 CFX3）。
+- 当前阶段：CFX1~CFX4 已完成。
+- 下一步：根据新反馈决定是否进入下一轮可视化精修（例如 3D 网格噪声分级开关）。
+- 最近更新：2026-02-15（完成 CFX4 收口）。
