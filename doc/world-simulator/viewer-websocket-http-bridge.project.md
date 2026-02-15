@@ -8,9 +8,9 @@
 - [x] WLB1.3 在总项目文档挂载任务入口
 
 ### WLB2 后端 bridge
-- [ ] WLB2.1 实现 WebSocket <-> TCP line protocol 双向桥接
-- [ ] WLB2.2 `world_viewer_live` 增加 `--web-bind` 参数并接入 bridge 生命周期
-- [ ] WLB2.3 补充测试并通过 `test_tier_required` 最小回归
+- [x] WLB2.1 实现 WebSocket <-> TCP line protocol 双向桥接
+- [x] WLB2.2 `world_viewer_live` 增加 `--web-bind` 参数并接入 bridge 生命周期
+- [x] WLB2.3 补充测试并通过 `test_tier_required` 最小回归
 
 ### WLB3 Web Viewer 接入
 - [ ] WLB3.1 wasm 路径接入 WebSocket 客户端（替代固定 offline）
@@ -32,6 +32,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WLB1 已完成，WLB2~WLB4 进行中。
-- 下一步：实现 bridge 后端与 CLI 参数接入。
-- 最近更新：2026-02-15（完成文档建模与任务拆解）。
+- 当前阶段：WLB1~WLB2 已完成，WLB3~WLB4 进行中。
+- 下一步：接入 wasm WebSocket 客户端，打通 Web 在线路径。
+- 最近更新：2026-02-15（完成后端 bridge 与 `--web-bind` 接入，回归通过）。

@@ -2,6 +2,7 @@ mod demo;
 mod live;
 mod protocol;
 mod server;
+mod web_bridge;
 
 pub use demo::{generate_viewer_demo, ViewerDemoError, ViewerDemoSummary};
 pub use live::{
@@ -13,3 +14,4 @@ pub use protocol::{
     ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 pub use server::{ViewerServer, ViewerServerConfig, ViewerServerError};
+pub use web_bridge::{ViewerWebBridge, ViewerWebBridgeConfig, ViewerWebBridgeError};

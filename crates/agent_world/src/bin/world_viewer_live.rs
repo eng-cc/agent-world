@@ -1,14 +1,19 @@
 use std::env;
 use std::process;
+use std::thread;
 use std::time::Duration;
 
 use agent_world::simulator::WorldScenario;
-use agent_world::viewer::{ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig};
+use agent_world::viewer::{
+    ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
+    ViewerWebBridgeConfig,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
     scenario: WorldScenario,
     bind_addr: String,
+    web_bind_addr: Option<String>,
     tick_ms: u64,
     llm_mode: bool,
 }
@@ -18,6 +23,7 @@ impl Default for CliOptions {
         Self {
             scenario: WorldScenario::TwinRegionBootstrap,
             bind_addr: "127.0.0.1:5010".to_string(),
+            web_bind_addr: None,
             tick_ms: 200,
             llm_mode: false,
         }
@@ -34,6 +40,19 @@ fn main() {
             process::exit(1);
         }
     };
+
+    if let Some(web_bind_addr) = options.web_bind_addr.clone() {
+        let upstream_addr = options.bind_addr.clone();
+        thread::spawn(move || {
+            let bridge = ViewerWebBridge::new(ViewerWebBridgeConfig::new(
+                web_bind_addr.clone(),
+                upstream_addr,
+            ));
+            if let Err(err) = bridge.run() {
+                eprintln!("viewer web bridge failed on {}: {err:?}", web_bind_addr);
+            }
+        });
+    }
 
     let config = ViewerLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
@@ -85,6 +104,13 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     .filter(|value| *value > 0)
                     .ok_or_else(|| "--tick-ms requires a positive integer".to_string())?;
             }
+            "--web-bind" => {
+                options.web_bind_addr = Some(
+                    iter.next()
+                        .ok_or_else(|| "--web-bind requires an address".to_string())?
+                        .to_string(),
+                );
+            }
             "--scenario" => {
                 scenario_arg = Some(
                     iter.next()
@@ -117,9 +143,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 }
 
 fn print_help() {
-    println!("Usage: world_viewer_live [scenario] [--bind <addr>] [--tick-ms <ms>] [--llm]");
+    println!(
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm]"
+    );
     println!("Options:");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
+    println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Use LLM decisions instead of built-in script");
@@ -138,6 +167,7 @@ mod tests {
         let options = parse_options([].into_iter()).expect("defaults");
         assert_eq!(options.scenario, WorldScenario::TwinRegionBootstrap);
         assert_eq!(options.bind_addr, "127.0.0.1:5010");
+        assert!(options.web_bind_addr.is_none());
         assert_eq!(options.tick_ms, 200);
         assert!(!options.llm_mode);
     }
@@ -155,6 +185,8 @@ mod tests {
                 "llm_bootstrap",
                 "--bind",
                 "127.0.0.1:9001",
+                "--web-bind",
+                "127.0.0.1:9002",
                 "--tick-ms",
                 "50",
             ]
@@ -163,6 +195,7 @@ mod tests {
         .expect("custom");
         assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
         assert_eq!(options.bind_addr, "127.0.0.1:9001");
+        assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:9002"));
         assert_eq!(options.tick_ms, 50);
     }
 
