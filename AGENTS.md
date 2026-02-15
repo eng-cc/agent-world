@@ -21,6 +21,7 @@
 - 主crate是agent_world其他子模块各自闭环基础模块功能
 - third_party下面的代码只可读，不能写
 - 执行cargo命令需要如下形式 env -u RUSTC_WRAPPER cargo check
+- 使用手册都放在site/doc(cn/en)，可作为静态站内容
 
 ## Agent 专用：UI Web 闭环调试（给 Codex 用，Playwright 优先）
 - 目标：在无法直接“看实时窗口”时，完成 `启动 Web Viewer -> 自动化交互/取证 -> 继续调试` 的闭环。
