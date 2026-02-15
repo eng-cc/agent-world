@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world Viewer user manual." />
+    <meta name="description" content="agent-world Viewer manual: startup, interaction, web loop, and troubleshooting." />
     <meta property="og:title" content="Viewer User Manual | agent-world" />
-    <meta property="og:description" content="Viewer startup, interactions, web loop, and troubleshooting." />
+    <meta property="og:description" content="Covers live server setup, web viewer loop, Playwright capture, and troubleshooting." />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <meta property="og:locale" content="en_US" />
     <title>Viewer User Manual | agent-world</title>
     <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/en/viewer-manual.html" />
     <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
@@ -23,8 +24,9 @@
         <span>agent-world docs</span>
       </a>
       <nav class="nav" data-menu data-section-nav>
-        <a href="#overview">Overview</a>
-        <a href="#status">Status</a>
+        <a href="#quickstart">Quick Start</a>
+        <a href="#web-loop">Web Loop</a>
+        <a href="#troubleshooting">Troubleshooting</a>
       </nav>
       <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>☰</button>
       <div class="lang-switch" aria-label="Language switch">
@@ -47,19 +49,143 @@
     </header>
 
     <main id="top" class="docs-main">
-      <section id="overview" class="section docs-hero" data-reveal>
+      <section class="section docs-hero" data-reveal>
         <p class="eyebrow">Viewer Manual</p>
-        <h1>Viewer User Manual</h1>
-        <p class="subtitle">Task 2 will populate this page with the complete manual; this is the framework stub.</p>
+        <h1>Agent World Viewer User Manual</h1>
+        <p class="subtitle">Covers startup modes, controls, auto-focus, web closure debugging, and common issue diagnosis for `agent_world_viewer` workflows.</p>
         <div class="cta-row">
-          <a class="button secondary" href="index.html">Back to Catalog</a>
-          <a class="button ghost" href="../../en/index.html">Back to Home</a>
+          <a class="button primary" href="#quickstart">Start Running</a>
+          <a class="button secondary" href="#web-loop">Go to Web Loop</a>
+          <a class="button ghost" href="index.html">Back to Catalog</a>
         </div>
       </section>
 
-      <section id="status" class="section" data-reveal>
-        <h2>Current Status</h2>
-        <p>This page already has docs layout, language switch, and section navigation. Full content comes in task 2.</p>
+      <section id="quickstart" class="section" data-reveal>
+        <h2>Quick Start</h2>
+        <h3>1) Start live server (recommended)</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>Use `--llm` only after configuring your LLM key.</p>
+
+        <h3>2) Start viewer</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+
+        <h3>3) Offline mode (no server connection)</h3>
+        <pre><code>AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer</code></pre>
+
+        <h3>4) Browser mode (Bevy + wasm)</h3>
+        <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
+        <p>Open: `http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`.</p>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Common Interaction</h2>
+        <ul>
+          <li>Mouse drag: rotate/pan view.</li>
+          <li>Wheel: zoom.</li>
+          <li>`W/A/S/D`: move camera focus (works in 2D/3D when pointer is in 3D viewport and no text field is active).</li>
+          <li>`2D/3D`: switch view mode from top controls.</li>
+          <li>`F`: focus currently selected object.</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Auto Focus</h2>
+        <p>Use environment variables to focus a target at startup:</p>
+        <ul>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS=1`</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=&lt;target&gt;`</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0` (default `1`)</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
+        </ul>
+        <p>Supported targets: `first_fragment`, `first_location`, `first_agent`, `location:&lt;id&gt;`, `agent:&lt;id&gt;`.</p>
+        <pre><code>AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
+AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+      </section>
+
+      <section id="web-loop" class="section" data-reveal>
+        <h2>Web Closure Loop (default recommendation)</h2>
+        <h3>Prerequisites</h3>
+        <ul>
+          <li>Node.js 20+ (`npx` available)</li>
+          <li>`trunk` (`cargo install trunk`)</li>
+          <li>`wasm32-unknown-unknown` (`rustup target add wasm32-unknown-unknown`)</li>
+        </ul>
+
+        <h3>Standard Flow</h3>
+        <p>Terminal A: start live server.</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>Terminal B: start web viewer.</p>
+        <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
+        <p>Terminal C: run Playwright capture loop.</p>
+        <pre><code>export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+mkdir -p output/playwright/viewer
+bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+bash "$PWCLI" snapshot
+bash "$PWCLI" console
+bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
+bash "$PWCLI" close</code></pre>
+
+        <h3>Outputs and Minimum Acceptance</h3>
+        <ul>
+          <li>Outputs: `output/playwright/viewer/*.png`, `.playwright-cli/console-*.log`.</li>
+          <li>Acceptance: page loads with `canvas`, `console error = 0`, and at least one screenshot artifact.</li>
+        </ul>
+
+        <h3>Native fallback (only when web path cannot reproduce)</h3>
+        <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Recommended Debug Scenarios</h2>
+        <ul>
+          <li>`asteroid_fragment_detail_bootstrap`: inspect fine-grained location rendering.</li>
+          <li>`llm_bootstrap`: routine online integration.</li>
+          <li>`twin_region_bootstrap`: compare two-region coordination behavior.</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Fragment Depletion Visualization</h2>
+        <ul>
+          <li>When a location has `fragment_budget`, visual size scales by remaining mass ratio.</li>
+          <li>Lower remaining budget yields smaller rendered radius, with a minimum visibility clamp.</li>
+          <li>Details panel shows: `Fragment Depletion: mined=&lt;x&gt;% remaining=&lt;a&gt;/&lt;b&gt;`.</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting" class="section" data-reveal>
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li>Blank web page: wait for first `trunk` build and verify port/URL consistency.</li>
+          <li>Playwright startup failure: check `node --version`, `npm --version`, and `npx` availability.</li>
+          <li>Wasm errors in console: fix runtime initialization errors before debugging visuals.</li>
+          <li>Cannot see detail: switch to 3D, zoom and move camera, or use `F` focus.</li>
+          <li>Auto focus not working: verify target existence, start from `first_fragment`.</li>
+          <li>Connection failure: check `world_viewer_live` process and endpoint port match.</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>References</h2>
+        <ul class="doc-links">
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-location-fine-grained-rendering.md" target="_blank" rel="noreferrer">viewer-location-fine-grained-rendering.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-auto-focus-capture.md" target="_blank" rel="noreferrer">viewer-auto-focus-capture.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-closure-testing-policy.md" target="_blank" rel="noreferrer">viewer-web-closure-testing-policy.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Fragment Element Chunk Rendering (default enabled)</h2>
+        <ul>
+          <li>Goal: render location fragment chunks by default, colorized by dominant element.</li>
+          <li>Behavior: outer location geometry/labels are hidden; logical anchor remains and fragment chunks are always rendered.</li>
+          <li>Selection: clicking a fragment shows owning `location` ID/name in details panel.</li>
+          <li>Configuration: fragment visibility toggle and related env vars have been removed.</li>
+        </ul>
       </section>
     </main>
 

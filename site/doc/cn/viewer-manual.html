@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world Viewer 使用手册。" />
+    <meta name="description" content="agent-world Viewer 使用手册：启动、交互、Web 闭环与故障排查。" />
     <meta property="og:title" content="Viewer 使用手册 | agent-world" />
-    <meta property="og:description" content="Viewer 启动、交互、Web 闭环与排查指南。" />
+    <meta property="og:description" content="覆盖 live server、Web Viewer、Playwright 闭环与常见排查路径。" />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
+    <meta property="og:locale" content="zh_CN" />
     <title>Viewer 使用手册 | agent-world</title>
     <link rel="canonical" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
     <link rel="alternate" hreflang="zh-CN" href="https://eng-cc.github.io/agent-world/doc/cn/viewer-manual.html" />
@@ -23,8 +24,9 @@
         <span>agent-world docs</span>
       </a>
       <nav class="nav" data-menu data-section-nav>
-        <a href="#overview">概览</a>
-        <a href="#status">状态</a>
+        <a href="#quickstart">快速开始</a>
+        <a href="#web-loop">Web 闭环</a>
+        <a href="#troubleshooting">排查</a>
       </nav>
       <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>☰</button>
       <div class="lang-switch" aria-label="语言切换">
@@ -47,19 +49,143 @@
     </header>
 
     <main id="top" class="docs-main">
-      <section id="overview" class="section docs-hero" data-reveal>
+      <section class="section docs-hero" data-reveal>
         <p class="eyebrow">Viewer Manual</p>
-        <h1>Viewer 使用手册</h1>
-        <p class="subtitle">任务二将把完整手册内容整理进此页面，当前先提供框架页。</p>
+        <h1>Agent World Viewer 使用手册</h1>
+        <p class="subtitle">覆盖启动方式、交互说明、自动聚焦、Web 闭环调试与常见问题，适用于 `agent_world_viewer` 联调与回归。</p>
         <div class="cta-row">
-          <a class="button secondary" href="index.html">返回文档目录</a>
-          <a class="button ghost" href="../../index.html">返回站点首页</a>
+          <a class="button primary" href="#quickstart">先跑起来</a>
+          <a class="button secondary" href="#web-loop">进入 Web 闭环</a>
+          <a class="button ghost" href="index.html">返回文档目录</a>
         </div>
       </section>
 
-      <section id="status" class="section" data-reveal>
-        <h2>当前状态</h2>
-        <p>该页面已接入文档框架、语言切换与导航；正文内容将在下一任务补齐。</p>
+      <section id="quickstart" class="section" data-reveal>
+        <h2>快速开始</h2>
+        <h3>1) 启动 live server（推荐）</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>如需 LLM 决策，增加 `--llm` 并先配置 key。</p>
+
+        <h3>2) 启动 viewer</h3>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+
+        <h3>3) 离线模式（不连服务端）</h3>
+        <pre><code>AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer</code></pre>
+
+        <h3>4) 浏览器模式（Bevy + wasm）</h3>
+        <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
+        <p>访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`。</p>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>常用交互</h2>
+        <ul>
+          <li>鼠标拖拽：旋转/平移观察视角。</li>
+          <li>滚轮：缩放。</li>
+          <li>`W/A/S/D`：移动相机视角（2D/3D 均可，需位于 3D 视口且未占用文本输入）。</li>
+          <li>`2D/3D`：顶部按钮切换视角模式。</li>
+          <li>`F`：聚焦当前选中对象。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>自动聚焦（Auto Focus）</h2>
+        <p>启动时可通过环境变量自动定位目标：</p>
+        <ul>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS=1`</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=&lt;target&gt;`</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=1|0`（默认 `1`）</li>
+          <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;`（可选）</li>
+        </ul>
+        <p>支持目标：`first_fragment`、`first_location`、`first_agent`、`location:&lt;id&gt;`、`agent:&lt;id&gt;`。</p>
+        <pre><code>AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
+AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+      </section>
+
+      <section id="web-loop" class="section" data-reveal>
+        <h2>Web 闭环（默认推荐）</h2>
+        <h3>前置要求</h3>
+        <ul>
+          <li>Node.js 20+（`npx` 可用）</li>
+          <li>`trunk`（`cargo install trunk`）</li>
+          <li>`wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）</li>
+        </ul>
+
+        <h3>标准流程</h3>
+        <p>终端 A：启动 live server。</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
+        <p>终端 B：启动 Web Viewer。</p>
+        <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
+        <p>终端 C：执行 Playwright 闭环采样。</p>
+        <pre><code>export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
+mkdir -p output/playwright/viewer
+bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+bash "$PWCLI" snapshot
+bash "$PWCLI" console
+bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
+bash "$PWCLI" close</code></pre>
+
+        <h3>输出目录与最小验收</h3>
+        <ul>
+          <li>输出：`output/playwright/viewer/*.png`、`.playwright-cli/console-*.log`。</li>
+          <li>验收：页面加载成功（含 `canvas`）、`console error = 0`、至少 1 张截图。</li>
+        </ul>
+
+        <h3>native fallback（仅 Web 无法复现时）</h3>
+        <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>推荐调试场景</h2>
+        <ul>
+          <li>`asteroid_fragment_detail_bootstrap`：细粒度 location 渲染观察。</li>
+          <li>`llm_bootstrap`：常规在线联调。</li>
+          <li>`twin_region_bootstrap`：双区域协作对比。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>开采损耗可视化</h2>
+        <ul>
+          <li>含 `fragment_budget` 的 location 会按剩余质量比例缩放体量。</li>
+          <li>剩余越少，视觉半径越小；存在最小可视半径保护。</li>
+          <li>详情面板显示：`Fragment Depletion: mined=&lt;x&gt;% remaining=&lt;a&gt;/&lt;b&gt;`。</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting" class="section" data-reveal>
+        <h2>常见问题排查</h2>
+        <ul>
+          <li>Web 页面空白：先等 `trunk` 首轮编译完成，检查端口与 URL 是否一致。</li>
+          <li>Playwright 启动失败：检查 `node --version`、`npm --version`、`npx`。</li>
+          <li>Console 出现 wasm 报错：先修复运行时错误，再判断视觉问题。</li>
+          <li>看不到细节：切换 3D，放大并移动视角，或按 `F` 聚焦。</li>
+          <li>自动聚焦无效：先用 `first_fragment` 排除目标 ID 输入问题。</li>
+          <li>连接失败：检查 `world_viewer_live` 运行状态与端口一致性。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>参考文档</h2>
+        <ul class="doc-links">
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-location-fine-grained-rendering.md" target="_blank" rel="noreferrer">viewer-location-fine-grained-rendering.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-auto-focus-capture.md" target="_blank" rel="noreferrer">viewer-auto-focus-capture.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-closure-testing-policy.md" target="_blank" rel="noreferrer">viewer-web-closure-testing-policy.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Fragment 元素分块渲染（默认开启）</h2>
+        <ul>
+          <li>目标：location 的 fragment 分块默认显示，并按主导元素渲染颜色。</li>
+          <li>当前行为：不渲染 location 外层几何与标签，仅保留逻辑锚点；frag 分块始终渲染。</li>
+          <li>交互：点击 frag 后，详情面板显示所属 `location`（ID 与名称）。</li>
+          <li>配置：已移除 frag 渲染开关和环境变量，不再支持按开关隐藏 frag。</li>
+        </ul>
       </section>
     </main>
 
