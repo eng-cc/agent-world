@@ -126,7 +126,11 @@ fn pinch_scroll_delta(delta: f32) -> f32 {
     delta * 8.0
 }
 
-fn sync_2d_zoom_projection(projection: &mut Projection, orbit_radius: f32, cm_to_unit: f32) {
+pub(super) fn sync_2d_zoom_projection(
+    projection: &mut Projection,
+    orbit_radius: f32,
+    cm_to_unit: f32,
+) {
     if let Projection::Orthographic(ortho) = projection {
         ortho.scale = two_d_ortho_scale_for_radius(orbit_radius, cm_to_unit);
     }

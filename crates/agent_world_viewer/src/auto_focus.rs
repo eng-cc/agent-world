@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
+use super::camera_controls::sync_2d_zoom_projection;
 use super::{
     camera_orbit_preset, camera_projection_for_mode, OrbitCamera, SelectionInfo, SelectionKind,
     Viewer3dCamera, Viewer3dConfig, Viewer3dScene, ViewerCameraMode, ViewerSelection,
@@ -194,6 +195,14 @@ fn apply_focus_to_camera(
     orbit.radius = radius_override
         .unwrap_or(resolved_focus.radius)
         .clamp(min_radius, ORBIT_MAX_RADIUS);
+
+    if matches!(*camera_mode, ViewerCameraMode::TwoD) {
+        if !matches!(*projection, Projection::Orthographic(_)) {
+            *projection = camera_projection_for_mode(ViewerCameraMode::TwoD, config);
+        }
+        sync_2d_zoom_projection(projection, orbit.radius, config.effective_cm_to_unit());
+    }
+
     orbit.apply_to_transform(camera_transform);
 }
 
@@ -479,5 +488,44 @@ mod tests {
             }
             ResolvedTarget::Agent { .. } => panic!("expected location target"),
         }
+    }
+
+    #[test]
+    fn apply_focus_to_camera_syncs_two_d_projection_scale_with_radius() {
+        let config = Viewer3dConfig::default();
+        let mut camera_mode = ViewerCameraMode::TwoD;
+        let mut orbit = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 12.0,
+            yaw: 0.0,
+            pitch: -1.53,
+        };
+        let mut camera_transform = Transform::default();
+        let mut projection = camera_projection_for_mode(ViewerCameraMode::TwoD, &config);
+        let before_scale = match &projection {
+            Projection::Orthographic(ortho) => ortho.scale,
+            _ => panic!("expected orthographic projection"),
+        };
+
+        apply_focus_to_camera(
+            ResolvedFocus {
+                focus: Vec3::new(4.0, 2.0, -3.0),
+                radius: 320.0,
+            },
+            None,
+            false,
+            &config,
+            &mut camera_mode,
+            &mut orbit,
+            &mut camera_transform,
+            &mut projection,
+            None,
+        );
+
+        let after_scale = match &projection {
+            Projection::Orthographic(ortho) => ortho.scale,
+            _ => panic!("expected orthographic projection"),
+        };
+        assert!(after_scale > before_scale);
     }
 }
