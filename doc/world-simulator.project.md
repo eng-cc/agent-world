@@ -135,6 +135,9 @@
 - [x] Viewer Frag 二次修复（避免点击误选不可见 location 锚点；frag 选中不再缩放）
 - [x] Viewer Frag 三次修复（移除 frag 选中黄色 halo；修正 Agent 尺度量纲）
 - [x] Viewer Frag 四次修复（相机 near/far 与缩放下限按世界单位映射，恢复 Agent 放大可见性）
+- [x] 输出 Viewer 全览图缩放切换设计文档（`doc/world-simulator/viewer-overview-map-zoom.md`）
+- [x] 输出 Viewer 全览图缩放切换项目管理文档（`doc/world-simulator/viewer-overview-map-zoom.project.md`）
+- [ ] Viewer 全览图缩放切换（默认近景倍率 + 缩放阈值自动切换全览图）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
