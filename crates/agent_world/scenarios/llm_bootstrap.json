@@ -2,7 +2,7 @@
   "id": "llm_bootstrap",
   "name": "LLM Bootstrap",
   "seed": 5,
-  "asteroid_fragment": { "enabled": false, "min_fragment_spacing_cm": 50000 },
+  "asteroid_fragment": { "enabled": true, "min_fragment_spacing_cm": 50000 },
   "origin": {
     "resources": { "amounts": { "electricity": 180, "hardware": 30, "data": 40 } }
   },

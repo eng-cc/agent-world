@@ -13,7 +13,7 @@ use super::{
 };
 
 const ORTHO_MIN_SCALE: f32 = 0.01;
-const ORTHO_MAX_SCALE: f32 = 8.0;
+const ORTHO_MAX_SCALE: f32 = 128.0;
 
 #[derive(Resource, Default)]
 pub(super) struct OrbitDragState {
@@ -448,6 +448,15 @@ mod tests {
     }
 
     #[test]
+    fn two_d_ortho_scale_supports_large_zoom_out() {
+        let cm_to_unit = 0.0002;
+        let reference = two_d_reference_radius(cm_to_unit);
+        let far_zoom_out_scale =
+            two_d_ortho_scale_for_radius((reference * 4.0).min(ORBIT_MAX_RADIUS), cm_to_unit);
+        assert!(far_zoom_out_scale > 8.0);
+    }
+
+    #[test]
     fn apply_orbit_input_updates_focus_and_radius() {
         let mut orbit = OrbitCamera {
             focus: Vec3::ZERO,
@@ -467,6 +476,28 @@ mod tests {
         assert!(changed);
         assert_ne!(orbit.focus, Vec3::ZERO);
         assert!(orbit.radius < 20.0);
+    }
+
+    #[test]
+    fn apply_orbit_input_zoom_out_clamps_to_expanded_max_radius() {
+        let mut orbit = OrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 100.0,
+            yaw: 0.0,
+            pitch: 0.0,
+        };
+
+        let changed = apply_orbit_input(
+            &mut orbit,
+            Vec2::ZERO,
+            -1_000.0,
+            false,
+            false,
+            ViewerCameraMode::TwoD,
+        );
+        assert!(changed);
+        assert!(ORBIT_MAX_RADIUS > 300.0);
+        assert!((orbit.radius - ORBIT_MAX_RADIUS).abs() < f32::EPSILON);
     }
 
     #[test]

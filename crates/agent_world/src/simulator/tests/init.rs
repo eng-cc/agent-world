@@ -580,7 +580,7 @@ fn scenarios_are_stable() {
             required_locations: &["origin", "llm-site-0", "llm-site-1"],
             required_plants: &[],
             required_storages: &[],
-            expect_asteroid_fragment: false,
+            expect_asteroid_fragment: true,
         },
         ScenarioExpectation {
             scenario: WorldScenario::PowerBootstrap,

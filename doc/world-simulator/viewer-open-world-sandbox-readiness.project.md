@@ -24,6 +24,7 @@
 - [x] OWR3.5 完成 VPP9：2D/3D 与联动全回归
 - [x] OWR3.6 3D 缩放输入兼容修复（MouseWheel Pixel 归一化 + macOS PinchGesture）
 - [x] OWR3.7 2D 缩放恢复（滚轮/Pinch 同步正交投影 scale）
+- [x] OWR3.8 放开相机缩放上限（Orbit 半径与 2D 正交缩放上限）并闭环验证 `llm_bootstrap`
 
 ### OWR4 规模化稳定性（对应缺口 5）
 - [x] OWR4.1 事件窗口策略（滚动窗口 + 采样）与配置项
@@ -61,4 +62,3 @@
 | `llm_bootstrap` | `script_fallback(no_openai_key)` | 2.67 | 17.78 | 21.43 | 1.38% |
 
 - 归档策略：原始截图/日志不纳入 git，仅保留可复跑脚本与本节结论指标，后续版本按同口径复跑并直接更新本表。
-
