@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world Viewer manual: startup, interaction, web loop, and troubleshooting." />
+    <meta name="description" content="agent-world Viewer manual: startup, interactions, auto focus, automation steps, web loop, and troubleshooting." />
     <meta property="og:title" content="Viewer User Manual | agent-world" />
-    <meta property="og:description" content="Covers live server setup, web viewer loop, Playwright capture, and troubleshooting." />
+    <meta property="og:description" content="Covers live server setup, web viewer loop, Playwright capture, detail panels, and troubleshooting paths." />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="en_US" />
@@ -26,6 +26,7 @@
       <nav class="nav" data-menu data-section-nav>
         <a href="#quickstart">Quick Start</a>
         <a href="#web-loop">Web Loop</a>
+        <a href="#panels">Panels</a>
         <a href="#troubleshooting">Troubleshooting</a>
       </nav>
       <button class="menu-button" type="button" aria-label="Toggle menu" data-menu-toggle>☰</button>
@@ -52,7 +53,7 @@
       <section class="section docs-hero" data-reveal>
         <p class="eyebrow">Viewer Manual</p>
         <h1>Agent World Viewer User Manual</h1>
-        <p class="subtitle">Covers startup modes, controls, auto-focus, web closure debugging, and common issue diagnosis for `agent_world_viewer` workflows.</p>
+        <p class="subtitle">Covers startup modes, controls, auto-focus, automation steps, web closure debugging, and common issue diagnosis for `agent_world_viewer` workflows.</p>
         <div class="cta-row">
           <a class="button primary" href="#quickstart">Start Running</a>
           <a class="button secondary" href="#web-loop">Go to Web Loop</a>
@@ -64,7 +65,7 @@
         <h2>Quick Start</h2>
         <h3>1) Start live server (recommended)</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300</code></pre>
-        <p>Use `--llm` only after configuring your LLM key.</p>
+        <p>Add `--llm` and configure key(s) in advance when LLM decision making is required.</p>
 
         <h3>2) Start viewer</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
@@ -80,11 +81,11 @@
       <section class="section" data-reveal>
         <h2>Common Interaction</h2>
         <ul>
-          <li>Mouse drag: rotate/pan view.</li>
-          <li>Wheel: zoom.</li>
-          <li>`W/A/S/D`: move camera focus (works in 2D/3D when pointer is in 3D viewport and no text field is active).</li>
-          <li>`2D/3D`: switch view mode from top controls.</li>
-          <li>`F`: focus currently selected object.</li>
+          <li>Mouse drag: rotate/pan camera.</li>
+          <li>Mouse wheel: zoom.</li>
+          <li>`W/A/S/D`: move camera focus (works in 2D/3D when pointer is in viewport and no text field is active).</li>
+          <li>`2D/3D`: switch view mode from the top controls.</li>
+          <li>`F`: focus current selection.</li>
         </ul>
       </section>
 
@@ -98,10 +99,19 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;` (optional)</li>
         </ul>
         <p>Supported targets: `first_fragment`, `first_location`, `first_agent`, `location:&lt;id&gt;`, `agent:&lt;id&gt;`.</p>
-        <pre><code>AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Auto Select / Automation Steps</h2>
+        <ul>
+          <li>`--auto-select-target`: auto-select a target after startup (for example `first_agent`).</li>
+          <li>`--automation-steps`: execute a step sequence (for example `mode=3d;focus=first_agent;zoom=0.8`).</li>
+        </ul>
+        <pre><code>./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --auto-select-target first_agent \
+  --automation-steps "mode=3d;focus=first_agent;zoom=0.8"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -136,6 +146,54 @@ bash "$PWCLI" close</code></pre>
 
         <h3>Native fallback (only when web path cannot reproduce)</h3>
         <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
+        <p>Common advanced flags: `--capture-max-wait`, `--no-prewarm`, `--keep-tmp`, `--auto-focus-keep-2d`.</p>
+      </section>
+
+      <section id="panels" class="section" data-reveal>
+        <h2>Right Panel Capabilities</h2>
+        <h3>Module visibility and local persistence</h3>
+        <ul>
+          <li>Each module can be toggled independently: Controls, Overview, Overlays, Diagnostics, Event Routing, Timeline, Status Details.</li>
+          <li>Toggle states are persisted and restored on restart.</li>
+          <li>Default file: `$HOME/.agent_world_viewer/right_panel_modules.json`.</li>
+          <li>Override path with: `AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`.</li>
+        </ul>
+
+        <h3>Selection details panel</h3>
+        <ul>
+          <li>Supports: Agent, Location, Asset, PowerPlant, PowerStorage, Chunk.</li>
+          <li>In LLM scenarios, the latest decision I/O summary is available.</li>
+        </ul>
+
+        <h3>Quick locate agent</h3>
+        <ul>
+          <li>Entry: `Locate Agent` button in `Event Routing` area.</li>
+          <li>Priority: current selected agent first, otherwise the lexicographically first agent.</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Overview Zoom Mode Switch (2D)</h2>
+        <ul>
+          <li>2D view auto-switches between detail mode and overview-map mode based on zoom tier.</li>
+          <li>Default starts in detail mode; once crossing threshold, viewer enters overview-map mode with simplified layers.</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>Copyable Text Panel</h2>
+        <ul>
+          <li>Open text panel to copy state, events, diagnostics, and selection detail text.</li>
+          <li>Use OS shortcut to copy (macOS `Cmd+C` / Windows/Linux `Ctrl+C`).</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>UI Language Switch</h2>
+        <ul>
+          <li>Viewer UI supports Chinese and English.</li>
+          <li>Switch via top language control with immediate effect.</li>
+        </ul>
       </section>
 
       <section class="section" data-reveal>
@@ -174,6 +232,11 @@ bash "$PWCLI" close</code></pre>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-location-fine-grained-rendering.md" target="_blank" rel="noreferrer">viewer-location-fine-grained-rendering.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-auto-focus-capture.md" target="_blank" rel="noreferrer">viewer-auto-focus-capture.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-closure-testing-policy.md" target="_blank" rel="noreferrer">viewer-web-closure-testing-policy.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-selection-details.md" target="_blank" rel="noreferrer">viewer-selection-details.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-right-panel-module-visibility.md" target="_blank" rel="noreferrer">viewer-right-panel-module-visibility.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-overview-map-zoom.md" target="_blank" rel="noreferrer">viewer-overview-map-zoom.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-agent-quick-locate.md" target="_blank" rel="noreferrer">viewer-agent-quick-locate.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-copyable-text.md" target="_blank" rel="noreferrer">viewer-copyable-text.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
         </ul>
       </section>
@@ -182,8 +245,8 @@ bash "$PWCLI" close</code></pre>
         <h2>Fragment Element Chunk Rendering (default enabled)</h2>
         <ul>
           <li>Goal: render location fragment chunks by default, colorized by dominant element.</li>
-          <li>Behavior: outer location geometry/labels are hidden; logical anchor remains and fragment chunks are always rendered.</li>
-          <li>Selection: clicking a fragment shows owning `location` ID/name in details panel.</li>
+          <li>Behavior: outer location geometry and labels are hidden; logical anchors remain while fragment chunks always render.</li>
+          <li>Selection: clicking a fragment shows owning `location` ID/name in the details panel.</li>
           <li>Configuration: fragment visibility toggle and related env vars have been removed.</li>
         </ul>
       </section>

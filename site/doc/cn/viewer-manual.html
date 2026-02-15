@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="agent-world Viewer 使用手册：启动、交互、Web 闭环与故障排查。" />
+    <meta name="description" content="agent-world Viewer 使用手册：启动、交互、自动聚焦、自动步骤与 Web 闭环。" />
     <meta property="og:title" content="Viewer 使用手册 | agent-world" />
-    <meta property="og:description" content="覆盖 live server、Web Viewer、Playwright 闭环与常见排查路径。" />
+    <meta property="og:description" content="覆盖 live server、Web Viewer、Playwright 闭环、详情面板与常见排查路径。" />
     <meta property="og:type" content="article" />
     <meta property="og:image" content="../../assets/images/og-cover.png" />
     <meta property="og:locale" content="zh_CN" />
@@ -26,6 +26,7 @@
       <nav class="nav" data-menu data-section-nav>
         <a href="#quickstart">快速开始</a>
         <a href="#web-loop">Web 闭环</a>
+        <a href="#panels">面板能力</a>
         <a href="#troubleshooting">排查</a>
       </nav>
       <button class="menu-button" type="button" aria-label="切换菜单" data-menu-toggle>☰</button>
@@ -52,7 +53,7 @@
       <section class="section docs-hero" data-reveal>
         <p class="eyebrow">Viewer Manual</p>
         <h1>Agent World Viewer 使用手册</h1>
-        <p class="subtitle">覆盖启动方式、交互说明、自动聚焦、Web 闭环调试与常见问题，适用于 `agent_world_viewer` 联调与回归。</p>
+        <p class="subtitle">覆盖启动方式、交互说明、自动聚焦、自动步骤、Web 闭环调试与常见问题，适用于 `agent_world_viewer` 联调与回归。</p>
         <div class="cta-row">
           <a class="button primary" href="#quickstart">先跑起来</a>
           <a class="button secondary" href="#web-loop">进入 Web 闭环</a>
@@ -98,10 +99,19 @@
           <li>`AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=&lt;number&gt;`（可选）</li>
         </ul>
         <p>支持目标：`first_fragment`、`first_location`、`first_agent`、`location:&lt;id&gt;`、`agent:&lt;id&gt;`。</p>
-        <pre><code>AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
-AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
-env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023</code></pre>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>自动步骤（Auto Select / Automation Steps）</h2>
+        <ul>
+          <li>`--auto-select-target`：启动后自动选中目标（如 `first_agent`）。</li>
+          <li>`--automation-steps`：执行一组自动步骤（如 `mode=3d;focus=first_agent;zoom=0.8`）。</li>
+        </ul>
+        <pre><code>./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --auto-select-target first_agent \
+  --automation-steps "mode=3d;focus=first_agent;zoom=0.8"</code></pre>
       </section>
 
       <section id="web-loop" class="section" data-reveal>
@@ -136,6 +146,54 @@ bash "$PWCLI" close</code></pre>
 
         <h3>native fallback（仅 Web 无法复现时）</h3>
         <pre><code>./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18</code></pre>
+        <p>常用增强参数：`--capture-max-wait`、`--no-prewarm`、`--keep-tmp`、`--auto-focus-keep-2d`。</p>
+      </section>
+
+      <section id="panels" class="section" data-reveal>
+        <h2>右侧面板能力</h2>
+        <h3>模块显隐与本地缓存</h3>
+        <ul>
+          <li>支持按模块单独显示/隐藏：控制、总览、覆盖层、诊断、事件联动、时间轴、状态明细。</li>
+          <li>开关状态会落盘并在重启后恢复。</li>
+          <li>默认路径：`$HOME/.agent_world_viewer/right_panel_modules.json`。</li>
+          <li>可覆盖路径：`AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`。</li>
+        </ul>
+
+        <h3>选中详情面板</h3>
+        <ul>
+          <li>支持对象：Agent、Location、Asset、PowerPlant、PowerStorage、Chunk。</li>
+          <li>LLM 场景下可查看最近决策 I/O 摘要。</li>
+        </ul>
+
+        <h3>快速定位 Agent</h3>
+        <ul>
+          <li>入口：`事件联动` 区域 `定位 Agent` 按钮。</li>
+          <li>优先定位当前选中 Agent，否则定位字典序第一个 Agent。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>全览图缩放切换（2D）</h2>
+        <ul>
+          <li>2D 视角支持细节态 / 全览图态自动切换。</li>
+          <li>默认细节态；缩放到阈值后切换到全览图态并简化显示层。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>文本可选中/复制面板</h2>
+        <ul>
+          <li>可打开文本面板复制状态、事件、诊断与详情文本。</li>
+          <li>使用系统快捷键复制（macOS `Cmd+C` / Windows/Linux `Ctrl+C`）。</li>
+        </ul>
+      </section>
+
+      <section class="section" data-reveal>
+        <h2>UI 语言切换</h2>
+        <ul>
+          <li>支持中文 / 英文 UI。</li>
+          <li>通过顶部语言控件切换并即时生效。</li>
+        </ul>
       </section>
 
       <section class="section" data-reveal>
@@ -174,6 +232,11 @@ bash "$PWCLI" close</code></pre>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-location-fine-grained-rendering.md" target="_blank" rel="noreferrer">viewer-location-fine-grained-rendering.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-auto-focus-capture.md" target="_blank" rel="noreferrer">viewer-auto-focus-capture.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-web-closure-testing-policy.md" target="_blank" rel="noreferrer">viewer-web-closure-testing-policy.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-selection-details.md" target="_blank" rel="noreferrer">viewer-selection-details.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-right-panel-module-visibility.md" target="_blank" rel="noreferrer">viewer-right-panel-module-visibility.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-overview-map-zoom.md" target="_blank" rel="noreferrer">viewer-overview-map-zoom.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-agent-quick-locate.md" target="_blank" rel="noreferrer">viewer-agent-quick-locate.md</a></li>
+          <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/world-simulator/viewer-copyable-text.md" target="_blank" rel="noreferrer">viewer-copyable-text.md</a></li>
           <li><a href="https://github.com/eng-cc/agent-world/blob/main/doc/scripts/capture-viewer-frame.md" target="_blank" rel="noreferrer">capture-viewer-frame.md</a></li>
         </ul>
       </section>
