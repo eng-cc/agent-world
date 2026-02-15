@@ -69,6 +69,13 @@ manifest_hash_for() {
   awk -v m="$module_id" '$1 == m { print $2; exit }' "$HASH_MANIFEST_PATH"
 }
 
+hydrate_distfs_blobs() {
+  env -u RUSTC_WRAPPER cargo run --quiet -p agent_world_distfs --bin hydrate_builtin_wasm -- \
+    --root "$DISTFS_ROOT" \
+    --manifest "$HASH_MANIFEST_PATH" \
+    --built-dir "$OUT_DIR"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --check)
@@ -104,6 +111,7 @@ while [[ $# -gt 0 ]]; do
     --artifact-dir)
       [[ $# -ge 2 ]] || { echo "error: --artifact-dir requires a value" >&2; exit 2; }
       DISTFS_BLOBS_DIR="$2"
+      DISTFS_ROOT="$(dirname "$DISTFS_BLOBS_DIR")"
       shift 2
       ;;
     -h|--help)
@@ -144,7 +152,6 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     exit 1
   fi
 
-  hydrated_count=0
   for module_id in "${MODULE_IDS[@]}"; do
     built_path="$OUT_DIR/$module_id.wasm"
     if [[ ! -f "$built_path" ]]; then
@@ -167,24 +174,14 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
       echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
       exit 1
     fi
-
-    distfs_blob_path="$DISTFS_BLOBS_DIR/$manifest_hash.blob"
-    if [[ -f "$distfs_blob_path" ]]; then
-      distfs_hash="$(sha256_file "$distfs_blob_path")"
-      if [[ "$distfs_hash" == "$manifest_hash" ]]; then
-        continue
-      fi
-    fi
-
-    cp "$built_path" "$distfs_blob_path"
-    hydrated_count=$((hydrated_count + 1))
   done
+
+  hydrate_distfs_blobs
 
   echo "check ok: hash manifest is in sync with built wasm"
   echo "  module_count=${#MODULE_IDS[@]}"
   echo "  hash_manifest=$HASH_MANIFEST_PATH"
   echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"
-  echo "  hydrated_blobs=$hydrated_count"
   exit 0
 fi
 
@@ -199,14 +196,14 @@ for module_id in "${MODULE_IDS[@]}"; do
   fi
 
   module_hash="$(sha256_file "$built_path")"
-  distfs_blob_path="$DISTFS_BLOBS_DIR/$module_hash.blob"
-  cp "$built_path" "$distfs_blob_path"
   printf "%s %s\n" "$module_id" "$module_hash" >> "$tmp_manifest"
 done
 
 mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"
 mv "$tmp_manifest" "$HASH_MANIFEST_PATH"
 trap - EXIT
+
+hydrate_distfs_blobs
 
 echo "synced builtin wasm hash manifest + DistFS blobs"
 echo "  module_count=${#MODULE_IDS[@]}"

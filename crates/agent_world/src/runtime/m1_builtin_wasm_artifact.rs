@@ -1,9 +1,8 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[cfg(all(test, feature = "wasmtime"))]
 use super::world::World;
-use super::WorldError;
+use super::{HashAlgorithm, LocalCasStore, WorldError};
 
 const M1_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m1_builtin_modules.sha256");
 const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
@@ -58,26 +57,16 @@ pub(crate) fn m1_builtin_wasm_module_artifact_bytes(
         hash_manifest_for_module(module_id).ok_or_else(|| WorldError::ModuleChangeInvalid {
             reason: format!("missing builtin wasm hash manifest entry for module_id={module_id}"),
         })?;
-    let distfs_blob_path = builtin_wasm_distfs_root()
-        .join("blobs")
-        .join(format!("{expected_hash}.blob"));
-
-    let wasm_bytes = fs::read(&distfs_blob_path).map_err(|error| WorldError::ModuleChangeInvalid {
-        reason: format!(
-            "missing builtin wasm distfs blob for module_id={module_id}, hash={expected_hash}, path={}, err={error}",
-            distfs_blob_path.display()
-        ),
-    })?;
-
-    let actual_hash = super::util::sha256_hex(&wasm_bytes);
-    if actual_hash != expected_hash {
-        return Err(WorldError::ModuleChangeInvalid {
+    let distfs_root = builtin_wasm_distfs_root();
+    let store = LocalCasStore::new_with_hash_algorithm(&distfs_root, HashAlgorithm::Sha256);
+    let wasm_bytes = store
+        .get_verified(expected_hash)
+        .map_err(|error| WorldError::ModuleChangeInvalid {
             reason: format!(
-                "builtin wasm distfs blob hash mismatch for module_id={module_id}, expected={expected_hash}, actual={actual_hash}, path={}",
-                distfs_blob_path.display()
+                "failed to load builtin wasm distfs blob for module_id={module_id}, hash={expected_hash}, distfs_root={}, err={error:?}",
+                distfs_root.display()
             ),
-        });
-    }
+        })?;
 
     Ok(wasm_bytes)
 }

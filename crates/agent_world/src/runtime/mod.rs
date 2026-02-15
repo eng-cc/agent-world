@@ -81,7 +81,7 @@ pub use modules::{
 };
 
 // Blob store
-pub use blob_store::{blake3_hex, BlobStore, LocalCasStore};
+pub use blob_store::{blake3_hex, BlobStore, HashAlgorithm, LocalCasStore};
 
 pub(crate) use m1_builtin_wasm_artifact::m1_builtin_wasm_module_artifact_bytes;
 #[cfg(all(test, feature = "wasmtime"))]

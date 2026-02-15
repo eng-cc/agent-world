@@ -3,6 +3,7 @@ use agent_world_proto::distributed_storage::{JournalSegmentRef, SegmentConfig};
 use agent_world_proto::world_error::WorldError;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const BLOBS_DIR: &str = "blobs";
 const PINS_FILE: &str = "pins.json";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HashAlgorithm {
+    Blake3,
+    Sha256,
+}
 
 pub trait BlobStore {
     fn put(&self, content_hash: &str, bytes: &[u8]) -> Result<(), WorldError>;
@@ -28,10 +35,15 @@ pub struct LocalCasStore {
     root: PathBuf,
     blobs_dir: PathBuf,
     pins_path: PathBuf,
+    hash_algorithm: HashAlgorithm,
 }
 
 impl LocalCasStore {
     pub fn new(root: impl AsRef<Path>) -> Self {
+        Self::new_with_hash_algorithm(root, HashAlgorithm::Blake3)
+    }
+
+    pub fn new_with_hash_algorithm(root: impl AsRef<Path>, hash_algorithm: HashAlgorithm) -> Self {
         let root = root.as_ref().to_path_buf();
         let blobs_dir = root.join(BLOBS_DIR);
         let pins_path = root.join(PINS_FILE);
@@ -39,6 +51,7 @@ impl LocalCasStore {
             root,
             blobs_dir,
             pins_path,
+            hash_algorithm,
         }
     }
 
@@ -52,6 +65,33 @@ impl LocalCasStore {
 
     pub fn pins_path(&self) -> &Path {
         &self.pins_path
+    }
+
+    pub fn hash_algorithm(&self) -> HashAlgorithm {
+        self.hash_algorithm
+    }
+
+    pub fn get_verified(&self, content_hash: &str) -> Result<Vec<u8>, WorldError> {
+        let bytes = self.get(content_hash)?;
+        let actual_hash = self.hash_hex(&bytes);
+        if actual_hash != content_hash {
+            return Err(WorldError::BlobHashMismatch {
+                expected: content_hash.to_string(),
+                actual: actual_hash,
+            });
+        }
+        Ok(bytes)
+    }
+
+    fn hash_hex(&self, bytes: &[u8]) -> String {
+        match self.hash_algorithm {
+            HashAlgorithm::Blake3 => blake3_hex(bytes),
+            HashAlgorithm::Sha256 => {
+                let mut hasher = Sha256::new();
+                hasher.update(bytes);
+                format!("{:x}", hasher.finalize())
+            }
+        }
     }
 
     fn ensure_dirs(&self) -> Result<(), WorldError> {
@@ -166,7 +206,7 @@ impl LocalCasStore {
 impl BlobStore for LocalCasStore {
     fn put(&self, content_hash: &str, bytes: &[u8]) -> Result<(), WorldError> {
         self.ensure_dirs()?;
-        let actual_hash = blake3_hex(bytes);
+        let actual_hash = self.hash_hex(bytes);
         if actual_hash != content_hash {
             return Err(WorldError::BlobHashMismatch {
                 expected: content_hash.to_string(),
@@ -179,6 +219,12 @@ impl BlobStore for LocalCasStore {
         }
         write_bytes_atomic(&path, bytes)?;
         Ok(())
+    }
+
+    fn put_bytes(&self, bytes: &[u8]) -> Result<String, WorldError> {
+        let content_hash = self.hash_hex(bytes);
+        self.put(&content_hash, bytes)?;
+        Ok(content_hash)
     }
 
     fn get(&self, content_hash: &str) -> Result<Vec<u8>, WorldError> {
@@ -440,6 +486,26 @@ mod tests {
 
         store.pin(&hash).expect("pin");
         assert!(store.is_pinned(&hash).expect("is pinned"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cas_sha256_roundtrip_and_verify() {
+        let dir = temp_dir("cas-sha256");
+        let store = LocalCasStore::new_with_hash_algorithm(&dir, HashAlgorithm::Sha256);
+
+        let bytes = b"hello sha256 distfs".to_vec();
+        let hash = store.put_bytes(&bytes).expect("put");
+        assert!(store.has(&hash).expect("has"));
+        assert_eq!(store.get_verified(&hash).expect("verified get"), bytes);
+
+        let blob_path = store.blobs_dir().join(format!("{hash}.blob"));
+        fs::write(&blob_path, b"tampered").expect("tamper blob");
+        assert!(matches!(
+            store.get_verified(&hash),
+            Err(WorldError::BlobHashMismatch { .. })
+        ));
 
         let _ = fs::remove_dir_all(&dir);
     }

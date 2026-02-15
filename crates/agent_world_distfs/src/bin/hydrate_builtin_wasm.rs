@@ -1,0 +1,162 @@
+use agent_world_distfs::{BlobStore, HashAlgorithm, LocalCasStore};
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Debug)]
+struct Options {
+    root: PathBuf,
+    manifest: PathBuf,
+    built_dir: PathBuf,
+}
+
+fn usage() -> &'static str {
+    "Usage: cargo run -p agent_world_distfs --bin hydrate_builtin_wasm -- \\
+  --root <distfs-root> --manifest <module-hash-manifest> --built-dir <built-wasm-dir>"
+}
+
+fn parse_args() -> Result<Options, String> {
+    let mut root: Option<PathBuf> = None;
+    let mut manifest: Option<PathBuf> = None;
+    let mut built_dir: Option<PathBuf> = None;
+
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--root" => {
+                let Some(value) = args.next() else {
+                    return Err("missing value for --root".to_string());
+                };
+                root = Some(PathBuf::from(value));
+            }
+            "--manifest" => {
+                let Some(value) = args.next() else {
+                    return Err("missing value for --manifest".to_string());
+                };
+                manifest = Some(PathBuf::from(value));
+            }
+            "--built-dir" => {
+                let Some(value) = args.next() else {
+                    return Err("missing value for --built-dir".to_string());
+                };
+                built_dir = Some(PathBuf::from(value));
+            }
+            "-h" | "--help" => {
+                return Err(usage().to_string());
+            }
+            other => {
+                return Err(format!("unknown argument: {other}"));
+            }
+        }
+    }
+
+    let Some(root) = root else {
+        return Err("--root is required".to_string());
+    };
+    let Some(manifest) = manifest else {
+        return Err("--manifest is required".to_string());
+    };
+    let Some(built_dir) = built_dir else {
+        return Err("--built-dir is required".to_string());
+    };
+
+    Ok(Options {
+        root,
+        manifest,
+        built_dir,
+    })
+}
+
+fn parse_manifest_line(line: &str) -> Result<Option<(String, String)>, String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let mut parts = trimmed.split_whitespace();
+    let Some(module_id) = parts.next() else {
+        return Ok(None);
+    };
+    let Some(hash) = parts.next() else {
+        return Err(format!("invalid manifest line (missing hash): {line}"));
+    };
+    if parts.next().is_some() {
+        return Err(format!("invalid manifest line (too many columns): {line}"));
+    }
+
+    Ok(Some((module_id.to_string(), hash.to_string())))
+}
+
+fn run() -> Result<(), String> {
+    let options = parse_args()?;
+
+    let manifest_content = fs::read_to_string(&options.manifest).map_err(|error| {
+        format!(
+            "failed to read manifest {}: {error}",
+            options.manifest.display()
+        )
+    })?;
+
+    let store = LocalCasStore::new_with_hash_algorithm(&options.root, HashAlgorithm::Sha256);
+    let mut module_count = 0usize;
+    let mut newly_written = 0usize;
+
+    for line in manifest_content.lines() {
+        let Some((module_id, hash)) = parse_manifest_line(line)? else {
+            continue;
+        };
+
+        let built_path = options.built_dir.join(format!("{module_id}.wasm"));
+        let bytes = fs::read(&built_path).map_err(|error| {
+            format!(
+                "failed to read built wasm for module {module_id} at {}: {error}",
+                built_path.display()
+            )
+        })?;
+
+        let existed = store.has(&hash).map_err(|error| {
+            format!(
+                "failed to check distfs blob existence hash={} root={}: {error:?}",
+                hash,
+                options.root.display()
+            )
+        })?;
+
+        store.put(&hash, &bytes).map_err(|error| {
+            format!(
+                "failed to put distfs blob hash={} module_id={} root={}: {error:?}",
+                hash,
+                module_id,
+                options.root.display()
+            )
+        })?;
+
+        if !existed {
+            newly_written += 1;
+        }
+        module_count += 1;
+    }
+
+    if module_count == 0 {
+        return Err(format!(
+            "manifest has no module entries: {}",
+            options.manifest.display()
+        ));
+    }
+
+    println!(
+        "hydrated builtin wasm distfs blobs: module_count={}, newly_written={}, root={}",
+        module_count,
+        newly_written,
+        options.root.display()
+    );
+    Ok(())
+}
+
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("error: {error}");
+        eprintln!("{}", usage());
+        std::process::exit(2);
+    }
+}
