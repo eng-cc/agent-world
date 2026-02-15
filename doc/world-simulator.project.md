@@ -144,6 +144,9 @@
 - [x] 输出 Viewer Bevy 浏览器运行路径设计文档（`doc/world-simulator/viewer-bevy-web-runtime.md`）
 - [x] 输出 Viewer Bevy 浏览器运行路径项目管理文档（`doc/world-simulator/viewer-bevy-web-runtime.project.md`）
 - [x] Viewer 浏览器运行路径接入（wasm 编译兼容 + trunk 启动入口）
+- [x] 输出 Viewer Web 端闭环测试策略设计文档（`doc/world-simulator/viewer-web-closure-testing-policy.md`）
+- [x] 输出 Viewer Web 端闭环测试策略项目管理文档（`doc/world-simulator/viewer-web-closure-testing-policy.project.md`）
+- [ ] Viewer 闭环测试默认切换到 Web 端（Playwright）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
