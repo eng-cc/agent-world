@@ -20,10 +20,10 @@
 - [x] LBA2.4 执行 `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent -- --nocapture`
 
 ### LBA3 Web 闭环验证
-- [ ] LBA3.1 启动 `world_viewer_live + run-viewer-web`（`llm_bootstrap`）
-- [ ] LBA3.2 使用 Playwright 执行 `open/snapshot/console/screenshot`
-- [ ] LBA3.3 验证 `console error=0` 且产出 `output/playwright/` 截图
-- [ ] LBA3.4 更新文档状态与任务日志
+- [x] LBA3.1 启动 `world_viewer_live + run-viewer-web`（`llm_bootstrap`）
+- [x] LBA3.2 使用 Playwright 执行 `open/snapshot/console/screenshot`
+- [x] LBA3.3 验证 `console error=0` 且产出 `output/playwright/` 截图
+- [x] LBA3.4 更新文档状态与任务日志
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
@@ -33,6 +33,6 @@
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 
 ## 状态
-- 当前阶段：LBA2 完成，LBA3 进行中。
-- 下一阶段：执行 Web 闭环验收（Playwright）并回写日志与状态。
-- 最近更新：2026-02-15（完成 Prompt schema 与回归测试，进入 Web 闭环验证阶段）。
+- 当前阶段：LBA0~LBA3 全部完成。
+- 下一阶段：在具备 `OPENAI_API_KEY` 的环境复跑 `--llm` 在线闭环，验证新增建造动作在真实 LLM 决策下的表现。
+- 最近更新：2026-02-15（完成 Web 闭环验收，`console error=0`，截图落盘 `output/playwright/viewer/viewer-web-lba3.png`）。
