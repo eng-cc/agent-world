@@ -14,7 +14,7 @@
 
 ### 1）启动 live server（推荐）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
 ```
 如需让 Agent 决策走 LLM，可额外加 `--llm`（需要先配置 LLM key）。
 
