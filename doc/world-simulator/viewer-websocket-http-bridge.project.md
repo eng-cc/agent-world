@@ -13,9 +13,9 @@
 - [x] WLB2.3 补充测试并通过 `test_tier_required` 最小回归
 
 ### WLB3 Web Viewer 接入
-- [ ] WLB3.1 wasm 路径接入 WebSocket 客户端（替代固定 offline）
-- [ ] WLB3.2 支持 WebSocket 地址配置（默认 + URL 参数）
-- [ ] WLB3.3 通过 wasm 编译回归与 viewer 相关最小测试
+- [x] WLB3.1 wasm 路径接入 WebSocket 客户端（替代固定 offline）
+- [x] WLB3.2 支持 WebSocket 地址配置（默认 + URL 参数）
+- [x] WLB3.3 通过 wasm 编译回归与 viewer 相关最小测试
 
 ### WLB4 文档与闭环收口
 - [ ] WLB4.1 更新 AGENTS/手册/运行路径文档（含 llm_bootstrap Web 命令）
@@ -32,6 +32,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WLB1~WLB2 已完成，WLB3~WLB4 进行中。
-- 下一步：接入 wasm WebSocket 客户端，打通 Web 在线路径。
-- 最近更新：2026-02-15（完成后端 bridge 与 `--web-bind` 接入，回归通过）。
+- 当前阶段：WLB1~WLB3 已完成，WLB4 进行中。
+- 下一步：更新文档与闭环流程，完成 Web 在线路径收口。
+- 最近更新：2026-02-15（完成 wasm WebSocket 客户端接入并通过回归）。

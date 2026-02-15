@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use std::cell::RefCell;
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{BufRead, Write};
@@ -12,12 +14,23 @@ use agent_world::geometry::GeoPos;
 use agent_world::simulator::{
     AgentDecisionTrace, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
 };
-use agent_world::viewer::{ViewerControl, ViewerRequest, ViewerResponse};
-#[cfg(not(target_arch = "wasm32"))]
-use agent_world::viewer::{ViewerStream, VIEWER_PROTOCOL_VERSION};
+use agent_world::viewer::{
+    ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+};
 use bevy::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::callback::Interval;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::closure::Closure;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use web_sys::{CloseEvent, ErrorEvent, Event, MessageEvent, UrlSearchParams, WebSocket};
 
+#[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_ADDR: &str = "127.0.0.1:5010";
+#[cfg(target_arch = "wasm32")]
+const DEFAULT_WEB_WS_ADDR: &str = "ws://127.0.0.1:5011";
 const DEFAULT_MAX_EVENTS: usize = 100;
 const AGENT_BODY_MESH_RADIUS: f32 = 0.5;
 const AGENT_BODY_MESH_LENGTH: f32 = 1.0;
@@ -161,9 +174,63 @@ fn main() {
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    // Browser build currently runs in offline mode because native TCP stream
-    // transport is unavailable on wasm32-unknown-unknown.
-    run_ui(DEFAULT_ADDR.to_string(), true);
+    run_ui(resolve_web_addr(), false);
+}
+
+#[cfg(target_arch = "wasm32")]
+struct WasmWsRuntime {
+    _socket: WebSocket,
+    _sender_loop: Interval,
+    _on_open: Closure<dyn FnMut(Event)>,
+    _on_message: Closure<dyn FnMut(MessageEvent)>,
+    _on_error: Closure<dyn FnMut(ErrorEvent)>,
+    _on_close: Closure<dyn FnMut(CloseEvent)>,
+}
+
+#[cfg(target_arch = "wasm32")]
+thread_local! {
+    static WASM_WS_RUNTIME: RefCell<Option<WasmWsRuntime>> = RefCell::new(None);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_web_addr() -> String {
+    let default_addr = DEFAULT_WEB_WS_ADDR.to_string();
+    let Some(window) = web_sys::window() else {
+        return default_addr;
+    };
+
+    let search = match window.location().search() {
+        Ok(search) => search,
+        Err(_) => return default_addr,
+    };
+
+    let params = match UrlSearchParams::new_with_str(&search) {
+        Ok(params) => params,
+        Err(_) => return default_addr,
+    };
+
+    if let Some(ws) = params.get("ws") {
+        return normalize_ws_addr(ws.trim());
+    }
+    if let Some(addr) = params.get("addr") {
+        return normalize_ws_addr(addr.trim());
+    }
+
+    default_addr
+}
+
+#[cfg(target_arch = "wasm32")]
+fn normalize_ws_addr(raw: &str) -> String {
+    if raw.starts_with("ws://") || raw.starts_with("wss://") {
+        return raw.to_string();
+    }
+    if let Some(stripped) = raw.strip_prefix("http://") {
+        return format!("ws://{stripped}");
+    }
+    if let Some(stripped) = raw.strip_prefix("https://") {
+        return format!("wss://{stripped}");
+    }
+    format!("ws://{raw}")
 }
 
 #[derive(Resource)]
@@ -434,14 +501,131 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
 }
 
 #[cfg(target_arch = "wasm32")]
-fn spawn_viewer_client(_addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
-    let (tx_out, _rx_out) = mpsc::channel::<ViewerRequest>();
+fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
+    let (tx_out, rx_out) = mpsc::channel::<ViewerRequest>();
     let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
-    let _ = tx_in.send(ViewerResponse::Error {
-        message: "web viewer only supports offline mode; TCP live stream is unavailable"
-            .to_string(),
+
+    let ws_url = normalize_ws_addr(&addr);
+    let socket = match WebSocket::new(&ws_url) {
+        Ok(socket) => socket,
+        Err(err) => {
+            let _ = tx_in.send(ViewerResponse::Error {
+                message: format!("websocket open failed: {err:?}"),
+            });
+            return (tx_out, rx_in);
+        }
+    };
+
+    let open_socket = socket.clone();
+    let open_tx = tx_in.clone();
+    let on_open = Closure::wrap(Box::new(move |_event: Event| {
+        send_request_ws(
+            &open_socket,
+            &ViewerRequest::Hello {
+                client: "bevy_viewer_web".to_string(),
+                version: VIEWER_PROTOCOL_VERSION,
+            },
+            &open_tx,
+        );
+        send_request_ws(
+            &open_socket,
+            &ViewerRequest::Subscribe {
+                streams: vec![
+                    ViewerStream::Snapshot,
+                    ViewerStream::Events,
+                    ViewerStream::Metrics,
+                ],
+                event_kinds: Vec::new(),
+            },
+            &open_tx,
+        );
+        send_request_ws(&open_socket, &ViewerRequest::RequestSnapshot, &open_tx);
+    }) as Box<dyn FnMut(_)>);
+    socket.set_onopen(Some(on_open.as_ref().unchecked_ref()));
+
+    let message_tx = tx_in.clone();
+    let on_message = Closure::wrap(Box::new(move |event: MessageEvent| {
+        let Some(text) = event.data().as_string() else {
+            let _ = message_tx.send(ViewerResponse::Error {
+                message: "websocket message decode failed: non-text payload".to_string(),
+            });
+            return;
+        };
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+        match serde_json::from_str::<ViewerResponse>(trimmed) {
+            Ok(response) => {
+                let _ = message_tx.send(response);
+            }
+            Err(err) => {
+                let _ = message_tx.send(ViewerResponse::Error {
+                    message: format!("decode error: {err}"),
+                });
+            }
+        }
+    }) as Box<dyn FnMut(_)>);
+    socket.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
+
+    let error_tx = tx_in.clone();
+    let on_error = Closure::wrap(Box::new(move |event: ErrorEvent| {
+        let _ = error_tx.send(ViewerResponse::Error {
+            message: format!("websocket error: {}", event.message()),
+        });
+    }) as Box<dyn FnMut(_)>);
+    socket.set_onerror(Some(on_error.as_ref().unchecked_ref()));
+
+    let close_tx = tx_in.clone();
+    let on_close = Closure::wrap(Box::new(move |event: CloseEvent| {
+        let _ = close_tx.send(ViewerResponse::Error {
+            message: format!(
+                "websocket closed: code={} reason={}",
+                event.code(),
+                event.reason()
+            ),
+        });
+    }) as Box<dyn FnMut(_)>);
+    socket.set_onclose(Some(on_close.as_ref().unchecked_ref()));
+
+    let sender_socket = socket.clone();
+    let sender_tx = tx_in.clone();
+    let sender_loop = Interval::new(16, move || {
+        while let Ok(request) = rx_out.try_recv() {
+            send_request_ws(&sender_socket, &request, &sender_tx);
+        }
     });
+
+    WASM_WS_RUNTIME.with(|runtime| {
+        *runtime.borrow_mut() = Some(WasmWsRuntime {
+            _socket: socket,
+            _sender_loop: sender_loop,
+            _on_open: on_open,
+            _on_message: on_message,
+            _on_error: on_error,
+            _on_close: on_close,
+        });
+    });
+
     (tx_out, rx_in)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn send_request_ws(socket: &WebSocket, request: &ViewerRequest, tx_in: &Sender<ViewerResponse>) {
+    match serde_json::to_string(request) {
+        Ok(payload) => {
+            if let Err(err) = socket.send_with_str(&payload) {
+                let _ = tx_in.send(ViewerResponse::Error {
+                    message: format!("websocket send failed: {err:?}"),
+                });
+            }
+        }
+        Err(err) => {
+            let _ = tx_in.send(ViewerResponse::Error {
+                message: format!("request encode failed: {err}"),
+            });
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
