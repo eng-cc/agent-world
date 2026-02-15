@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use super::camera_controls::orbit_min_radius;
 use super::selection_linking::apply_selection;
 use super::*;
 
@@ -185,8 +186,8 @@ fn apply_step(
                 return StepResult::Pending;
             };
 
-            orbit.radius =
-                (orbit.radius * factor.max(0.01)).clamp(ORBIT_MIN_RADIUS, ORBIT_MAX_RADIUS);
+            let min_radius = orbit_min_radius(viewer_config.effective_cm_to_unit());
+            orbit.radius = (orbit.radius * factor.max(0.01)).clamp(min_radius, ORBIT_MAX_RADIUS);
             if *camera_mode == ViewerCameraMode::TwoD {
                 if let Projection::Orthographic(ortho) = &mut *projection {
                     ortho.scale =

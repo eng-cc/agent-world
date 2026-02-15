@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::camera_controls::sync_2d_zoom_projection;
+use super::camera_controls::{orbit_min_radius, sync_2d_zoom_projection};
 use super::{
     camera_orbit_preset, camera_projection_for_mode, OrbitCamera, SelectionInfo, SelectionKind,
     Viewer3dCamera, Viewer3dConfig, Viewer3dScene, ViewerCameraMode, ViewerSelection,
-    ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS,
+    ORBIT_MAX_RADIUS,
 };
 
 const AUTO_FOCUS_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS";
@@ -15,7 +15,11 @@ const AUTO_FOCUS_FORCE_3D_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D";
 const AUTO_FOCUS_RADIUS_ENV: &str = "AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS";
 
 const DEFAULT_AUTO_FOCUS_FORCE_3D: bool = true;
-const DEFAULT_MANUAL_FOCUS_RADIUS: f32 = 14.0;
+const DEFAULT_MANUAL_FOCUS_RADIUS_M: f32 = 14.0;
+const MIN_TWO_D_FOCUS_RADIUS_M: f32 = 12.0;
+const MIN_LOCATION_FOCUS_RADIUS_M: f32 = 6.0;
+const MIN_AGENT_FOCUS_RADIUS_M: f32 = 5.0;
+const MAX_AGENT_FOCUS_RADIUS_M: f32 = 32.0;
 
 #[derive(Resource, Clone, Debug, PartialEq)]
 pub(super) struct AutoFocusConfig {
@@ -95,7 +99,7 @@ pub(super) fn apply_startup_auto_focus(
         &scene,
         &transforms,
         config.effective_cm_to_unit(),
-        DEFAULT_MANUAL_FOCUS_RADIUS,
+        focus_radius_units(DEFAULT_MANUAL_FOCUS_RADIUS_M, config.effective_cm_to_unit()),
     ) else {
         return;
     };
@@ -171,12 +175,13 @@ fn apply_focus_to_camera(
     projection: &mut Projection,
     auto_focus_state: Option<&mut AutoFocusState>,
 ) {
+    let cm_to_unit = config.effective_cm_to_unit();
     if force_3d && *camera_mode != ViewerCameraMode::ThreeD {
         *camera_mode = ViewerCameraMode::ThreeD;
         let preset = camera_orbit_preset(
             ViewerCameraMode::ThreeD,
             Some(resolved_focus.focus),
-            config.effective_cm_to_unit(),
+            cm_to_unit,
         );
         orbit.yaw = preset.yaw;
         orbit.pitch = preset.pitch;
@@ -188,9 +193,9 @@ fn apply_focus_to_camera(
 
     orbit.focus = resolved_focus.focus;
     let min_radius = if matches!(*camera_mode, ViewerCameraMode::TwoD) && !force_3d {
-        12.0
+        focus_radius_units(MIN_TWO_D_FOCUS_RADIUS_M, cm_to_unit).max(orbit_min_radius(cm_to_unit))
     } else {
-        ORBIT_MIN_RADIUS
+        orbit_min_radius(cm_to_unit)
     };
     orbit.radius = radius_override
         .unwrap_or(resolved_focus.radius)
@@ -220,14 +225,20 @@ fn resolve_focus_from_selection(
             .get(selection.id.as_str())
             .copied()
             .map(|radius_cm| location_focus_radius(radius_cm, cm_to_unit))
-            .unwrap_or(DEFAULT_MANUAL_FOCUS_RADIUS),
+            .unwrap_or(focus_radius_units(
+                DEFAULT_MANUAL_FOCUS_RADIUS_M,
+                cm_to_unit,
+            )),
         SelectionKind::Agent => scene
             .agent_heights_cm
             .get(selection.id.as_str())
             .copied()
             .map(|height_cm| agent_focus_radius(height_cm, cm_to_unit))
-            .unwrap_or(DEFAULT_MANUAL_FOCUS_RADIUS),
-        _ => DEFAULT_MANUAL_FOCUS_RADIUS,
+            .unwrap_or(focus_radius_units(
+                DEFAULT_MANUAL_FOCUS_RADIUS_M,
+                cm_to_unit,
+            )),
+        _ => focus_radius_units(DEFAULT_MANUAL_FOCUS_RADIUS_M, cm_to_unit),
     };
 
     Some(ResolvedFocus { focus, radius })
@@ -327,12 +338,22 @@ fn resolve_focus(
 
 fn location_focus_radius(radius_cm: i64, cm_to_unit: f32) -> f32 {
     let location_radius = (radius_cm.max(1) as f32 * cm_to_unit).max(0.01);
-    (location_radius * 3.2).clamp(6.0, ORBIT_MAX_RADIUS)
+    (location_radius * 3.2).clamp(
+        focus_radius_units(MIN_LOCATION_FOCUS_RADIUS_M, cm_to_unit),
+        ORBIT_MAX_RADIUS,
+    )
 }
 
 fn agent_focus_radius(height_cm: i64, cm_to_unit: f32) -> f32 {
     let height = (height_cm.max(1) as f32 * cm_to_unit).max(0.005);
-    (height * 18.0).clamp(5.0, 32.0)
+    (height * 18.0).clamp(
+        focus_radius_units(MIN_AGENT_FOCUS_RADIUS_M, cm_to_unit),
+        focus_radius_units(MAX_AGENT_FOCUS_RADIUS_M, cm_to_unit),
+    )
+}
+
+fn focus_radius_units(radius_m: f32, cm_to_unit: f32) -> f32 {
+    (radius_m.max(0.0) * cm_to_unit.max(f32::EPSILON) * 100.0).max(0.0001)
 }
 
 fn config_from_values(

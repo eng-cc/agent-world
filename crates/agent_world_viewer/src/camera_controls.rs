@@ -74,6 +74,8 @@ pub(super) fn orbit_camera_controls(
         return;
     };
 
+    let cm_to_unit = config.effective_cm_to_unit();
+    let min_radius = orbit_min_radius(cm_to_unit);
     let changed = apply_orbit_input(
         &mut orbit,
         delta,
@@ -81,6 +83,8 @@ pub(super) fn orbit_camera_controls(
         rotate_drag && dragging,
         pan_drag && dragging,
         *camera_mode,
+        min_radius,
+        ORBIT_MAX_RADIUS,
     );
 
     if changed {
@@ -88,7 +92,7 @@ pub(super) fn orbit_camera_controls(
     }
 
     if scroll != 0.0 && *camera_mode == ViewerCameraMode::TwoD {
-        sync_2d_zoom_projection(&mut projection, orbit.radius, config.effective_cm_to_unit());
+        sync_2d_zoom_projection(&mut projection, orbit.radius, cm_to_unit);
     }
 }
 
@@ -143,6 +147,8 @@ fn apply_orbit_input(
     rotate_drag: bool,
     pan_drag: bool,
     mode: ViewerCameraMode,
+    min_radius: f32,
+    max_radius: f32,
 ) -> bool {
     let mut changed = false;
 
@@ -164,8 +170,8 @@ fn apply_orbit_input(
     }
 
     if scroll != 0.0 {
-        orbit.radius = (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY))
-            .clamp(ORBIT_MIN_RADIUS, ORBIT_MAX_RADIUS);
+        orbit.radius =
+            (orbit.radius * (1.0 - scroll * ORBIT_ZOOM_SENSITIVITY)).clamp(min_radius, max_radius);
         changed = true;
     }
 
@@ -178,9 +184,10 @@ pub(super) fn camera_orbit_preset(
     cm_to_unit: f32,
 ) -> OrbitCamera {
     let focus = focus.unwrap_or(Vec3::ZERO);
+    let min_radius = orbit_min_radius(cm_to_unit);
     match mode {
         ViewerCameraMode::TwoD => {
-            let min_radius = world_view_radius(cm_to_unit).max(ORBIT_MIN_RADIUS);
+            let min_radius = world_view_radius(cm_to_unit).max(min_radius);
             OrbitCamera {
                 focus,
                 radius: min_radius.max(DEFAULT_2D_CAMERA_RADIUS),
@@ -190,7 +197,7 @@ pub(super) fn camera_orbit_preset(
         }
         ViewerCameraMode::ThreeD => OrbitCamera {
             focus,
-            radius: DEFAULT_3D_CAMERA_RADIUS,
+            radius: DEFAULT_3D_CAMERA_RADIUS.clamp(min_radius, ORBIT_MAX_RADIUS),
             yaw: -0.7,
             pitch: 0.55,
         },
@@ -201,22 +208,41 @@ pub(super) fn camera_projection_for_mode(
     mode: ViewerCameraMode,
     config: &Viewer3dConfig,
 ) -> Projection {
+    let cm_to_unit = config.effective_cm_to_unit();
+    let (near, far) = camera_clip_planes(cm_to_unit, config);
     match mode {
         ViewerCameraMode::TwoD => {
-            let scale = world_view_ortho_scale(config.effective_cm_to_unit());
+            let scale = world_view_ortho_scale(cm_to_unit);
             Projection::Orthographic(OrthographicProjection {
-                near: config.physical.camera_near_m,
-                far: config.physical.camera_far_m,
+                near,
+                far,
                 scale,
                 ..OrthographicProjection::default_3d()
             })
         }
         ViewerCameraMode::ThreeD => Projection::Perspective(PerspectiveProjection {
-            near: config.physical.camera_near_m,
-            far: config.physical.camera_far_m,
+            near,
+            far,
             ..default()
         }),
     }
+}
+
+fn world_units_per_meter(cm_to_unit: f32) -> f32 {
+    cm_to_unit.max(f32::EPSILON) * 100.0
+}
+
+pub(super) fn orbit_min_radius(cm_to_unit: f32) -> f32 {
+    (ORBIT_MIN_RADIUS * world_units_per_meter(cm_to_unit)).clamp(0.0001, ORBIT_MAX_RADIUS)
+}
+
+fn camera_clip_planes(cm_to_unit: f32, config: &Viewer3dConfig) -> (f32, f32) {
+    let units_per_meter = world_units_per_meter(cm_to_unit);
+    let near = (config.physical.camera_near_m * units_per_meter).max(0.00001);
+    let scaled_far = config.physical.camera_far_m * units_per_meter;
+    let fallback_far = world_view_radius(cm_to_unit).max(DEFAULT_3D_CAMERA_RADIUS) * 4.0;
+    let far = scaled_far.max(fallback_far).max(near + 0.01);
+    (near, far)
 }
 
 fn world_view_radius(cm_to_unit: f32) -> f32 {
@@ -244,7 +270,7 @@ fn world_view_ortho_scale(cm_to_unit: f32) -> f32 {
 fn two_d_reference_radius(cm_to_unit: f32) -> f32 {
     world_view_radius(cm_to_unit)
         .max(DEFAULT_2D_CAMERA_RADIUS)
-        .max(ORBIT_MIN_RADIUS)
+        .max(orbit_min_radius(cm_to_unit))
 }
 
 fn two_d_ortho_scale_for_radius(radius: f32, cm_to_unit: f32) -> f32 {
@@ -423,8 +449,10 @@ mod tests {
     fn two_d_ortho_scale_decreases_when_radius_decreases() {
         let cm_to_unit = Viewer3dConfig::default().effective_cm_to_unit();
         let reference = two_d_reference_radius(cm_to_unit);
-        let zoom_in_scale =
-            two_d_ortho_scale_for_radius((reference * 0.5).max(ORBIT_MIN_RADIUS), cm_to_unit);
+        let zoom_in_scale = two_d_ortho_scale_for_radius(
+            (reference * 0.5).max(orbit_min_radius(cm_to_unit)),
+            cm_to_unit,
+        );
         let zoom_out_scale =
             two_d_ortho_scale_for_radius((reference * 1.5).min(ORBIT_MAX_RADIUS), cm_to_unit);
         assert!(zoom_in_scale < zoom_out_scale);
@@ -440,7 +468,8 @@ mod tests {
             _ => panic!("expected orthographic projection"),
         };
 
-        let zoom_in_radius = (two_d_reference_radius(cm_to_unit) * 0.6).max(ORBIT_MIN_RADIUS);
+        let zoom_in_radius =
+            (two_d_reference_radius(cm_to_unit) * 0.6).max(orbit_min_radius(cm_to_unit));
         sync_2d_zoom_projection(&mut projection, zoom_in_radius, cm_to_unit);
         let after = match &projection {
             Projection::Orthographic(ortho) => ortho.scale,
@@ -474,6 +503,8 @@ mod tests {
             false,
             true,
             ViewerCameraMode::ThreeD,
+            ORBIT_MIN_RADIUS,
+            ORBIT_MAX_RADIUS,
         );
         assert!(changed);
         assert_ne!(orbit.focus, Vec3::ZERO);
@@ -496,6 +527,8 @@ mod tests {
             false,
             false,
             ViewerCameraMode::TwoD,
+            ORBIT_MIN_RADIUS,
+            ORBIT_MAX_RADIUS,
         );
         assert!(changed);
         assert!(ORBIT_MAX_RADIUS > 300.0);
@@ -518,6 +551,8 @@ mod tests {
             true,
             false,
             ViewerCameraMode::TwoD,
+            ORBIT_MIN_RADIUS,
+            ORBIT_MAX_RADIUS,
         );
 
         assert!(!changed);
@@ -539,6 +574,27 @@ mod tests {
 
         let three_d = camera_projection_for_mode(ViewerCameraMode::ThreeD, &config);
         assert!(matches!(three_d, Projection::Perspective(_)));
+    }
+
+    #[test]
+    fn camera_projection_scales_near_and_keeps_far_covering_world() {
+        let config = Viewer3dConfig::default();
+        let units_per_meter = config.effective_cm_to_unit() * 100.0;
+        let expected_near = config.physical.camera_near_m * units_per_meter;
+
+        let projection = camera_projection_for_mode(ViewerCameraMode::ThreeD, &config);
+        let Projection::Perspective(perspective) = projection else {
+            panic!("expected perspective projection");
+        };
+        assert!((perspective.near - expected_near).abs() < 1e-6);
+        assert!(perspective.far >= world_view_radius(config.effective_cm_to_unit()));
+    }
+
+    #[test]
+    fn orbit_min_radius_scales_with_world_units() {
+        let config = Viewer3dConfig::default();
+        let min_radius = orbit_min_radius(config.effective_cm_to_unit());
+        assert!((min_radius - 0.004).abs() < 1e-6);
     }
 
     #[test]
