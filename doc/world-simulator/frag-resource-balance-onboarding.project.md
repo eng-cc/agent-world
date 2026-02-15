@@ -5,9 +5,9 @@
 - [x] FRB2.1 扩展 `AsteroidFragmentConfig`（保底数量 + 中心引导参数）
 - [x] FRB2.2 在 `generate_fragments` 接入中心区密度倍率与确定性补种
 - [x] FRB2.3 补充 `test_tier_required` 测试（数量保底/分布偏置/sanitize）
-- [ ] FRB3.1 回写 `doc/world-simulator.project.md` 状态
-- [ ] FRB3.2 记录当日 devlog（日期/完成内容/遗留事项）
-- [ ] FRB3.3 运行回归测试并完成收口
+- [x] FRB3.1 回写 `doc/world-simulator.project.md` 状态
+- [x] FRB3.2 记录当日 devlog（日期/完成内容/遗留事项）
+- [x] FRB3.3 运行回归测试并完成收口
 
 ## 依赖
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -17,5 +17,5 @@
 - `doc/devlog/`
 
 ## 状态
-- 当前阶段：FRB3（回归与文档收口）
-- 下一阶段：FRB 收口提交
+- 当前阶段：FRB（已完成）
+- 下一阶段：按经济主线继续迭代（关注在线调参与资源节奏监控）
