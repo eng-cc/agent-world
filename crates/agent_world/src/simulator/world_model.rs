@@ -742,6 +742,9 @@ pub struct AsteroidFragmentConfig {
     pub radius_min_cm: i64,
     pub radius_max_cm: i64,
     pub min_fragment_spacing_cm: i64,
+    pub min_fragments_per_chunk: i64,
+    pub starter_core_radius_ratio: f64,
+    pub starter_core_density_multiplier: f64,
     pub max_fragments_per_chunk: i64,
     pub max_blocks_per_fragment: i64,
     pub max_blocks_per_chunk: i64,
@@ -762,6 +765,9 @@ impl Default for AsteroidFragmentConfig {
             radius_min_cm: 25_000,
             radius_max_cm: 500_000,
             min_fragment_spacing_cm: 50_000,
+            min_fragments_per_chunk: 6,
+            starter_core_radius_ratio: 0.35,
+            starter_core_density_multiplier: 1.6,
             max_fragments_per_chunk: 4_000,
             max_blocks_per_fragment: 64,
             max_blocks_per_chunk: 120_000,
@@ -803,8 +809,23 @@ impl AsteroidFragmentConfig {
         if self.min_fragment_spacing_cm < 0 {
             self.min_fragment_spacing_cm = 0;
         }
+        if self.min_fragments_per_chunk < 0 {
+            self.min_fragments_per_chunk = 0;
+        }
+        if !self.starter_core_radius_ratio.is_finite() {
+            self.starter_core_radius_ratio = 0.0;
+        }
+        self.starter_core_radius_ratio = self.starter_core_radius_ratio.clamp(0.0, 1.0);
+        if !self.starter_core_density_multiplier.is_finite()
+            || self.starter_core_density_multiplier < 1.0
+        {
+            self.starter_core_density_multiplier = 1.0;
+        }
         if self.max_fragments_per_chunk < 0 {
             self.max_fragments_per_chunk = 0;
+        }
+        if self.min_fragments_per_chunk > self.max_fragments_per_chunk {
+            self.min_fragments_per_chunk = self.max_fragments_per_chunk;
         }
         if self.max_blocks_per_fragment < 0 {
             self.max_blocks_per_fragment = 0;

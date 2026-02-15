@@ -6,6 +6,7 @@ use super::types::LocationProfile;
 use super::world_model::{AsteroidFragmentConfig, Location, SpaceConfig};
 
 const MAX_PLACEMENT_ATTEMPTS: usize = 8;
+const MAX_BACKFILL_ATTEMPTS_PER_FRAGMENT: usize = 24;
 
 pub fn generate_fragments(
     seed: u64,
@@ -26,79 +27,165 @@ pub fn generate_fragments(
     let mut idx = 0usize;
     let mid_z_cm = space.height_cm as f64 / 2.0;
     let min_spacing_cm = config.min_fragment_spacing_cm.max(0) as f64;
-    let enforce_spacing = min_spacing_cm > 0.0;
+    let core_radius_ratio = config.starter_core_radius_ratio.clamp(0.0, 1.0);
+    let core_density_multiplier = config.starter_core_density_multiplier.max(1.0);
+    let chunk_center_x_cm = space.width_cm as f64 / 2.0;
+    let chunk_center_y_cm = space.depth_cm as f64 / 2.0;
+    let max_planar_distance_cm = chunk_center_x_cm.hypot(chunk_center_y_cm).max(1.0);
 
     for ix in 0..voxels_x {
+        let voxel_min_x = ix * voxel_cm;
+        let voxel_max_x = ((ix + 1) * voxel_cm).min(space.width_cm);
         for iy in 0..voxels_y {
+            let voxel_min_y = iy * voxel_cm;
+            let voxel_max_y = ((iy + 1) * voxel_cm).min(space.depth_cm);
             for iz in 0..voxels_z {
-                let z_cm = (iz as i64 * voxel_cm) as f64 + (voxel_cm as f64 / 2.0);
+                let voxel_min_z = iz * voxel_cm;
+                let voxel_max_z = ((iz + 1) * voxel_cm).min(space.height_cm);
+                let z_cm = (voxel_min_z as f64 + voxel_max_z as f64) / 2.0;
                 let z_km = ((z_cm - mid_z_cm).abs() / 100_000.0).max(0.0);
                 let layer = if config.layer_scale_height_km > 0.0 {
                     (-z_km / config.layer_scale_height_km).exp()
                 } else {
                     1.0
                 };
+
+                let voxel_center_x = (voxel_min_x as f64 + voxel_max_x as f64) / 2.0;
+                let voxel_center_y = (voxel_min_y as f64 + voxel_max_y as f64) / 2.0;
+                let planar_distance_ratio = (voxel_center_x - chunk_center_x_cm)
+                    .hypot(voxel_center_y - chunk_center_y_cm)
+                    / max_planar_distance_cm;
+                let core_density = if planar_distance_ratio <= core_radius_ratio {
+                    core_density_multiplier
+                } else {
+                    1.0
+                };
+
                 let noise = (rng.next_f64() * 2.0 - 1.0) * config.cluster_noise;
-                let density = (config.base_density_per_km3 * (1.0 + noise).max(0.0)) * layer;
+                let density =
+                    (config.base_density_per_km3 * (1.0 + noise).max(0.0)) * layer * core_density;
                 let lambda = density * voxel_volume_km3;
                 let count = sample_poisson(&mut rng, lambda);
 
                 for _ in 0..count {
-                    let mut placed = false;
-                    for _ in 0..MAX_PLACEMENT_ATTEMPTS {
-                        let x = (ix as i64 * voxel_cm) as f64 + rng.next_f64() * voxel_cm as f64;
-                        let y = (iy as i64 * voxel_cm) as f64 + rng.next_f64() * voxel_cm as f64;
-                        let z = (iz as i64 * voxel_cm) as f64 + rng.next_f64() * voxel_cm as f64;
-                        let radius_cm = sample_power_law(
-                            &mut rng,
-                            config.radius_min_cm.max(1) as f64,
-                            config.radius_max_cm.max(1) as f64,
-                            config.size_powerlaw_q.max(1.0),
-                        );
-                        let radius_cm = radius_cm.round().max(1.0) as i64;
-                        let pos = GeoPos {
-                            x_cm: x,
-                            y_cm: y,
-                            z_cm: z,
-                        };
-                        if enforce_spacing
-                            && !spacing_allows(&pos, radius_cm, &placements, min_spacing_cm)
-                        {
-                            continue;
-                        }
-
-                        let roll = rng.next_u32() % total_weights;
-                        let material = config.material_weights.pick(roll);
-                        let material_factor =
-                            config.material_radiation_factors.factor_for(material);
-                        let emission = estimate_radiation_emission(
-                            radius_cm as f64,
-                            material_factor,
-                            config.radiation_emission_scale,
-                            config.radiation_radius_exponent,
-                        );
-                        let profile = LocationProfile {
-                            material,
-                            radius_cm,
-                            radiation_emission_per_tick: emission,
-                        };
-                        let location_id = format!("frag-{idx}");
-                        let name = location_id.clone();
-                        locations.push(Location::new_with_profile(location_id, name, pos, profile));
-                        placements.push((pos, radius_cm));
+                    let placed = try_place_fragment(
+                        &mut rng,
+                        (voxel_min_x as f64, voxel_max_x as f64),
+                        (voxel_min_y as f64, voxel_max_y as f64),
+                        (voxel_min_z as f64, voxel_max_z as f64),
+                        config,
+                        total_weights,
+                        &placements,
+                        min_spacing_cm,
+                        idx,
+                    );
+                    if let Some((location, placement)) = placed {
+                        locations.push(location);
+                        placements.push(placement);
                         idx += 1;
-                        placed = true;
-                        break;
-                    }
-                    if !placed {
-                        continue;
                     }
                 }
             }
         }
     }
 
+    let min_fragments_per_chunk = config.min_fragments_per_chunk.max(0) as usize;
+    let max_fragments_per_chunk = config.max_fragments_per_chunk.max(0) as usize;
+    let floor_target = if max_fragments_per_chunk == 0 {
+        0
+    } else {
+        min_fragments_per_chunk.min(max_fragments_per_chunk)
+    };
+    if locations.len() < floor_target {
+        let missing = floor_target - locations.len();
+        let max_backfill_attempts = missing.saturating_mul(MAX_BACKFILL_ATTEMPTS_PER_FRAGMENT);
+        for _ in 0..max_backfill_attempts {
+            if locations.len() >= floor_target {
+                break;
+            }
+            let placed = try_place_fragment(
+                &mut rng,
+                (0.0, space.width_cm as f64),
+                (0.0, space.depth_cm as f64),
+                (0.0, space.height_cm as f64),
+                config,
+                total_weights,
+                &placements,
+                min_spacing_cm,
+                idx,
+            );
+            if let Some((location, placement)) = placed {
+                locations.push(location);
+                placements.push(placement);
+                idx += 1;
+            }
+        }
+    }
+
     locations
+}
+
+fn try_place_fragment(
+    rng: &mut Lcg,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    z_range: (f64, f64),
+    config: &AsteroidFragmentConfig,
+    total_weights: u32,
+    placements: &[(GeoPos, i64)],
+    min_spacing_cm: f64,
+    idx: usize,
+) -> Option<(Location, (GeoPos, i64))> {
+    for _ in 0..MAX_PLACEMENT_ATTEMPTS {
+        let x = sample_in_range(rng, x_range.0, x_range.1);
+        let y = sample_in_range(rng, y_range.0, y_range.1);
+        let z = sample_in_range(rng, z_range.0, z_range.1);
+        let radius_cm = sample_power_law(
+            rng,
+            config.radius_min_cm.max(1) as f64,
+            config.radius_max_cm.max(1) as f64,
+            config.size_powerlaw_q.max(1.0),
+        );
+        let radius_cm = radius_cm.round().max(1.0) as i64;
+        let pos = GeoPos {
+            x_cm: x,
+            y_cm: y,
+            z_cm: z,
+        };
+        if min_spacing_cm > 0.0 && !spacing_allows(&pos, radius_cm, placements, min_spacing_cm) {
+            continue;
+        }
+
+        let roll = rng.next_u32() % total_weights;
+        let material = config.material_weights.pick(roll);
+        let material_factor = config.material_radiation_factors.factor_for(material);
+        let emission = estimate_radiation_emission(
+            radius_cm as f64,
+            material_factor,
+            config.radiation_emission_scale,
+            config.radiation_radius_exponent,
+        );
+        let profile = LocationProfile {
+            material,
+            radius_cm,
+            radiation_emission_per_tick: emission,
+        };
+        let location_id = format!("frag-{idx}");
+        let name = location_id.clone();
+        let location = Location::new_with_profile(location_id, name, pos, profile);
+        return Some((location, (pos, radius_cm)));
+    }
+    None
+}
+
+fn sample_in_range(rng: &mut Lcg, start: f64, end: f64) -> f64 {
+    let min = start.min(end);
+    let max = start.max(end);
+    let width = max - min;
+    if width <= f64::EPSILON {
+        return min;
+    }
+    min + rng.next_f64() * width
 }
 
 fn spacing_allows(
