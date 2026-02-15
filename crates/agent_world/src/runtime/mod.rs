@@ -11,6 +11,7 @@
 mod agent_cell;
 mod audit;
 mod blob_store;
+mod builtin_wasm_materializer;
 mod effect;
 mod error;
 mod events;
@@ -82,6 +83,7 @@ pub use modules::{
 
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, HashAlgorithm, LocalCasStore};
+pub(crate) use builtin_wasm_materializer::load_builtin_wasm_with_fetch_fallback;
 
 pub(crate) use m1_builtin_wasm_artifact::m1_builtin_wasm_module_artifact_bytes;
 #[cfg(all(test, feature = "wasmtime"))]

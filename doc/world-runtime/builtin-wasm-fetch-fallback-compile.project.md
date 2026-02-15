@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] BFC-1 设计文档落地（`doc/world-runtime/builtin-wasm-fetch-fallback-compile.md`）
 - [x] BFC-1 项目管理文档落地（本文件）
-- [ ] BFC-2 实现 runtime builtin wasm 装载链路：本地命中 -> 网络拉取 -> 本地编译回退
+- [x] BFC-2 实现 runtime builtin wasm 装载链路：本地命中 -> 网络拉取 -> 本地编译回退
 - [ ] BFC-3 增加 `test_tier_full` 闭环测试（拉取失败回退编译）
 - [ ] BFC-4 执行回归并更新 devlog
 
@@ -16,4 +16,4 @@
 - `tools/wasm_build_suite/*`
 
 ## 状态
-- 当前阶段：进行中（BFC-2）
+- 当前阶段：进行中（BFC-3）
