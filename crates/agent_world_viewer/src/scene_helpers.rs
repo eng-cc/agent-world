@@ -12,6 +12,8 @@ const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
 const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
 const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
+const LOCATION_RENDER_RADIUS_MIN_UNITS: f32 = 0.22;
+const LOCATION_RENDER_RADIUS_MAX_UNITS: f32 = 16.0;
 const LOCATION_RADIUS_MIN_M: f32 = 0.25;
 const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
 const LOCATION_DETAIL_RING_RADIUS_BASE: f32 = 1.05;
@@ -631,8 +633,8 @@ pub(super) fn spawn_location_entity_with_radiation(
         return;
     }
 
-    let radius_m = location_radius_m(radius_cm);
-    let marker_scale = Vec3::splat(radius_m);
+    let radius_world_units = location_render_radius_units(radius_cm, config.effective_cm_to_unit());
+    let marker_scale = Vec3::splat(radius_world_units);
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
@@ -653,7 +655,7 @@ pub(super) fn spawn_location_entity_with_radiation(
                 parent,
                 assets,
                 name.to_string(),
-                location_label_offset(radius_m),
+                location_label_offset(radius_world_units),
                 format!("label:location:{location_id}"),
             );
             spawn_location_detail_children(
@@ -689,7 +691,7 @@ pub(super) fn spawn_location_entity_with_radiation(
             parent,
             assets,
             name.to_string(),
-            location_label_offset(radius_m),
+            location_label_offset(radius_world_units),
             format!("label:location:{location_id}"),
         );
         spawn_location_detail_children(
@@ -834,6 +836,14 @@ fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<G
 
 fn location_radius_m(radius_cm: i64) -> f32 {
     (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
+}
+
+fn location_render_radius_units(radius_cm: i64, cm_to_unit: f32) -> f32 {
+    let scaled = (radius_cm.max(1) as f32 * cm_to_unit.max(f32::EPSILON)).max(0.0);
+    scaled.clamp(
+        LOCATION_RENDER_RADIUS_MIN_UNITS,
+        LOCATION_RENDER_RADIUS_MAX_UNITS,
+    )
 }
 
 pub(super) fn location_visual_radius_cm(
@@ -1185,5 +1195,17 @@ mod depletion_tests {
             .insert(FragmentElementKind::Iron, 0);
         let min_radius = location_visual_radius_cm(800, Some(&budget));
         assert_eq!(min_radius, 192);
+    }
+
+    #[test]
+    fn location_render_radius_units_scales_by_world_units_and_clamps() {
+        let mapped = location_render_radius_units(500_000, 0.00001);
+        assert!((mapped - 5.0).abs() < f32::EPSILON);
+
+        let min_clamped = location_render_radius_units(100, 0.00001);
+        assert!((min_clamped - LOCATION_RENDER_RADIUS_MIN_UNITS).abs() < f32::EPSILON);
+
+        let max_clamped = location_render_radius_units(10_000_000, 0.00001);
+        assert!((max_clamped - LOCATION_RENDER_RADIUS_MAX_UNITS).abs() < f32::EPSILON);
     }
 }
