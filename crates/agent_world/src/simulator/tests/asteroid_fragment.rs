@@ -242,11 +242,50 @@ fn asteroid_fragment_config_sanitize_clamps_starter_balance_fields() {
     config.min_fragments_per_chunk = 99;
     config.starter_core_radius_ratio = 2.0;
     config.starter_core_density_multiplier = 0.2;
+    config.replenish_interval_ticks = -10;
+    config.replenish_percent_ppm = 2_000_000;
 
     let sanitized = config.sanitized();
     assert_eq!(sanitized.min_fragments_per_chunk, 12);
     assert_eq!(sanitized.starter_core_radius_ratio, 1.0);
     assert_eq!(sanitized.starter_core_density_multiplier, 1.0);
+    assert_eq!(sanitized.replenish_interval_ticks, 0);
+    assert_eq!(sanitized.replenish_percent_ppm, 1_000_000);
+}
+
+#[test]
+fn asteroid_fragment_material_distribution_core_metal_rim_volatile_biases_zones() {
+    let space = SpaceConfig {
+        width_cm: 800_000,
+        depth_cm: 800_000,
+        height_cm: 100_000,
+    };
+    let mut config = AsteroidFragmentConfig::default();
+    config.base_density_per_km3 = 40.0;
+    config.voxel_size_km = 1;
+    config.cluster_noise = 0.0;
+    config.layer_scale_height_km = 0.0;
+    config.radius_min_cm = 100;
+    config.radius_max_cm = 100;
+    config.min_fragment_spacing_cm = 0;
+    config.min_fragments_per_chunk = 0;
+    config.material_distribution_strategy = MaterialDistributionStrategy::CoreMetalRimVolatile;
+    config.starter_core_radius_ratio = 0.35;
+
+    let fragments = generate_fragments(212, &space, &config);
+    assert!(fragments.len() > 20);
+
+    let stats = zone_material_stats(&fragments, &space, config.starter_core_radius_ratio);
+    assert!(stats.core_total > 0);
+    assert!(stats.rim_total > 0);
+
+    let core_metal_share = stats.core_metal_like as f64 / stats.core_total as f64;
+    let rim_metal_share = stats.rim_metal_like as f64 / stats.rim_total as f64;
+    let core_volatile_share = stats.core_volatile as f64 / stats.core_total as f64;
+    let rim_volatile_share = stats.rim_volatile as f64 / stats.rim_total as f64;
+
+    assert!(core_metal_share > rim_metal_share);
+    assert!(rim_volatile_share > core_volatile_share);
 }
 
 fn count_fragments_in_core_zone(fragments: &[Location], space: &SpaceConfig, ratio: f64) -> usize {
@@ -263,4 +302,70 @@ fn count_fragments_in_core_zone(fragments: &[Location], space: &SpaceConfig, rat
             distance_ratio <= core_ratio
         })
         .count()
+}
+
+struct ZoneMaterialStats {
+    core_total: usize,
+    rim_total: usize,
+    core_metal_like: usize,
+    rim_metal_like: usize,
+    core_volatile: usize,
+    rim_volatile: usize,
+}
+
+fn zone_material_stats(
+    fragments: &[Location],
+    space: &SpaceConfig,
+    core_ratio: f64,
+) -> ZoneMaterialStats {
+    let center_x = space.width_cm as f64 / 2.0;
+    let center_y = space.depth_cm as f64 / 2.0;
+    let max_distance = center_x.hypot(center_y).max(1.0);
+    let core = core_ratio.clamp(0.0, 1.0);
+    let rim_threshold = (core + 1.0) / 2.0;
+
+    let mut out = ZoneMaterialStats {
+        core_total: 0,
+        rim_total: 0,
+        core_metal_like: 0,
+        rim_metal_like: 0,
+        core_volatile: 0,
+        rim_volatile: 0,
+    };
+
+    for fragment in fragments {
+        let ratio =
+            (fragment.pos.x_cm - center_x).hypot(fragment.pos.y_cm - center_y) / max_distance;
+        if ratio <= core {
+            out.core_total = out.core_total.saturating_add(1);
+            if matches!(
+                fragment.profile.material,
+                MaterialKind::Metal | MaterialKind::Composite
+            ) {
+                out.core_metal_like = out.core_metal_like.saturating_add(1);
+            }
+            if matches!(
+                fragment.profile.material,
+                MaterialKind::Ice | MaterialKind::Carbon
+            ) {
+                out.core_volatile = out.core_volatile.saturating_add(1);
+            }
+        } else if ratio >= rim_threshold {
+            out.rim_total = out.rim_total.saturating_add(1);
+            if matches!(
+                fragment.profile.material,
+                MaterialKind::Metal | MaterialKind::Composite
+            ) {
+                out.rim_metal_like = out.rim_metal_like.saturating_add(1);
+            }
+            if matches!(
+                fragment.profile.material,
+                MaterialKind::Ice | MaterialKind::Carbon
+            ) {
+                out.rim_volatile = out.rim_volatile.saturating_add(1);
+            }
+        }
+    }
+
+    out
 }

@@ -74,6 +74,8 @@ impl WorldKernel {
             hook(action_id, &action, &event);
         }
 
+        self.maybe_replenish_fragments();
+
         Some(event)
     }
 

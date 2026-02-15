@@ -745,6 +745,9 @@ pub struct AsteroidFragmentConfig {
     pub min_fragments_per_chunk: i64,
     pub starter_core_radius_ratio: f64,
     pub starter_core_density_multiplier: f64,
+    pub replenish_interval_ticks: i64,
+    pub replenish_percent_ppm: i64,
+    pub material_distribution_strategy: MaterialDistributionStrategy,
     pub max_fragments_per_chunk: i64,
     pub max_blocks_per_fragment: i64,
     pub max_blocks_per_chunk: i64,
@@ -768,6 +771,9 @@ impl Default for AsteroidFragmentConfig {
             min_fragments_per_chunk: 6,
             starter_core_radius_ratio: 0.35,
             starter_core_density_multiplier: 1.6,
+            replenish_interval_ticks: 100,
+            replenish_percent_ppm: 10_000,
+            material_distribution_strategy: MaterialDistributionStrategy::Uniform,
             max_fragments_per_chunk: 4_000,
             max_blocks_per_fragment: 64,
             max_blocks_per_chunk: 120_000,
@@ -821,6 +827,10 @@ impl AsteroidFragmentConfig {
         {
             self.starter_core_density_multiplier = 1.0;
         }
+        if self.replenish_interval_ticks < 0 {
+            self.replenish_interval_ticks = 0;
+        }
+        self.replenish_percent_ppm = self.replenish_percent_ppm.clamp(0, PPM_BASE);
         if self.max_fragments_per_chunk < 0 {
             self.max_fragments_per_chunk = 0;
         }
@@ -836,6 +846,19 @@ impl AsteroidFragmentConfig {
         self.material_weights = self.material_weights.sanitized();
         self.material_radiation_factors = self.material_radiation_factors.sanitized();
         self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialDistributionStrategy {
+    Uniform,
+    CoreMetalRimVolatile,
+}
+
+impl Default for MaterialDistributionStrategy {
+    fn default() -> Self {
+        Self::Uniform
     }
 }
 

@@ -10,7 +10,7 @@ use super::super::types::{
     Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile,
     ResourceKind, ResourceOwner, WorldEventId, WorldTime,
 };
-use super::super::world_model::AgentPromptProfile;
+use super::super::world_model::{AgentPromptProfile, Location};
 
 // ============================================================================
 // Observation Types
@@ -52,6 +52,12 @@ pub struct WorldEvent {
     pub id: WorldEventId,
     pub time: WorldTime,
     pub kind: WorldEventKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FragmentReplenishedEntry {
+    pub coord: ChunkCoord,
+    pub location: Location,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -106,6 +112,9 @@ pub enum WorldEventKind {
         block_count: u32,
         chunk_budget: ChunkResourceBudget,
         cause: ChunkGenerationCause,
+    },
+    FragmentsReplenished {
+        entries: Vec<FragmentReplenishedEntry>,
     },
     AgentPromptUpdated {
         profile: AgentPromptProfile,

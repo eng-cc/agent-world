@@ -826,6 +826,13 @@ pub(super) fn event_primary_target(
             id: chunk_id(*coord),
             name: None,
         }),
+        WorldEventKind::FragmentsReplenished { entries } => {
+            entries.first().map(|entry| SelectionTarget {
+                kind: SelectionKind::Chunk,
+                id: chunk_id(entry.coord),
+                name: None,
+            })
+        }
         WorldEventKind::ModuleVisualEntityUpserted { entity } => Some(SelectionTarget {
             kind: SelectionKind::Asset,
             id: entity.entity_id.clone(),

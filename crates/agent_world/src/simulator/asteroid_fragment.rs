@@ -3,7 +3,9 @@
 use crate::geometry::GeoPos;
 
 use super::types::LocationProfile;
-use super::world_model::{AsteroidFragmentConfig, Location, SpaceConfig};
+use super::world_model::{
+    AsteroidFragmentConfig, Location, MaterialDistributionStrategy, MaterialWeights, SpaceConfig,
+};
 
 const MAX_PLACEMENT_ATTEMPTS: usize = 8;
 const MAX_BACKFILL_ATTEMPTS_PER_FRAGMENT: usize = 24;
@@ -20,7 +22,6 @@ pub fn generate_fragments(
     let voxels_z = ((space.height_cm + voxel_cm - 1) / voxel_cm).max(1);
 
     let voxel_volume_km3 = (config.voxel_size_km as f64).powi(3).max(1e-6);
-    let total_weights = config.material_weights.total().max(1);
 
     let mut locations = Vec::new();
     let mut placements = Vec::new();
@@ -74,9 +75,11 @@ pub fn generate_fragments(
                         (voxel_min_y as f64, voxel_max_y as f64),
                         (voxel_min_z as f64, voxel_max_z as f64),
                         config,
-                        total_weights,
                         &placements,
                         min_spacing_cm,
+                        chunk_center_x_cm,
+                        chunk_center_y_cm,
+                        max_planar_distance_cm,
                         idx,
                     );
                     if let Some((location, placement)) = placed {
@@ -109,9 +112,11 @@ pub fn generate_fragments(
                 (0.0, space.depth_cm as f64),
                 (0.0, space.height_cm as f64),
                 config,
-                total_weights,
                 &placements,
                 min_spacing_cm,
+                chunk_center_x_cm,
+                chunk_center_y_cm,
+                max_planar_distance_cm,
                 idx,
             );
             if let Some((location, placement)) = placed {
@@ -131,9 +136,11 @@ fn try_place_fragment(
     y_range: (f64, f64),
     z_range: (f64, f64),
     config: &AsteroidFragmentConfig,
-    total_weights: u32,
     placements: &[(GeoPos, i64)],
     min_spacing_cm: f64,
+    chunk_center_x_cm: f64,
+    chunk_center_y_cm: f64,
+    max_planar_distance_cm: f64,
     idx: usize,
 ) -> Option<(Location, (GeoPos, i64))> {
     for _ in 0..MAX_PLACEMENT_ATTEMPTS {
@@ -156,8 +163,12 @@ fn try_place_fragment(
             continue;
         }
 
+        let planar_distance_ratio =
+            (x - chunk_center_x_cm).hypot(y - chunk_center_y_cm) / max_planar_distance_cm;
+        let material_weights = material_weights_for_ratio(config, planar_distance_ratio);
+        let total_weights = material_weights.total().max(1);
         let roll = rng.next_u32() % total_weights;
-        let material = config.material_weights.pick(roll);
+        let material = material_weights.pick(roll);
         let material_factor = config.material_radiation_factors.factor_for(material);
         let emission = estimate_radiation_emission(
             radius_cm as f64,
@@ -186,6 +197,62 @@ fn sample_in_range(rng: &mut Lcg, start: f64, end: f64) -> f64 {
         return min;
     }
     min + rng.next_f64() * width
+}
+
+fn material_weights_for_ratio(config: &AsteroidFragmentConfig, ratio: f64) -> MaterialWeights {
+    match config.material_distribution_strategy {
+        MaterialDistributionStrategy::Uniform => config.material_weights,
+        MaterialDistributionStrategy::CoreMetalRimVolatile => zoned_weights(
+            config.material_weights,
+            ratio,
+            config.starter_core_radius_ratio,
+        ),
+    }
+}
+
+fn zoned_weights(base: MaterialWeights, ratio: f64, core_radius_ratio: f64) -> MaterialWeights {
+    let core_ratio = core_radius_ratio.clamp(0.0, 1.0);
+    let mid_ratio = (core_ratio + 1.0) / 2.0;
+    let r = ratio.clamp(0.0, 1.0);
+
+    if r <= core_ratio {
+        MaterialWeights {
+            silicate: scale_weight(base.silicate, 9_000),
+            metal: scale_weight(base.metal, 17_000),
+            ice: scale_weight(base.ice, 7_000),
+            carbon: scale_weight(base.carbon, 7_000),
+            composite: scale_weight(base.composite, 15_000),
+        }
+        .sanitized()
+    } else if r <= mid_ratio {
+        MaterialWeights {
+            silicate: scale_weight(base.silicate, 10_000),
+            metal: scale_weight(base.metal, 12_000),
+            ice: scale_weight(base.ice, 9_000),
+            carbon: scale_weight(base.carbon, 9_000),
+            composite: scale_weight(base.composite, 11_500),
+        }
+        .sanitized()
+    } else {
+        MaterialWeights {
+            silicate: scale_weight(base.silicate, 10_000),
+            metal: scale_weight(base.metal, 7_000),
+            ice: scale_weight(base.ice, 16_000),
+            carbon: scale_weight(base.carbon, 16_000),
+            composite: scale_weight(base.composite, 8_000),
+        }
+        .sanitized()
+    }
+}
+
+fn scale_weight(weight: u32, bps: u32) -> u32 {
+    if weight == 0 || bps == 0 {
+        return 0;
+    }
+    ((weight as u64)
+        .saturating_mul(bps as u64)
+        .saturating_add(9_999)
+        / 10_000) as u32
 }
 
 fn spacing_allows(

@@ -86,8 +86,8 @@ pub use types::{
 pub use world_model::{
     physics_parameter_specs, Agent, AgentPromptProfile, Asset, AssetKind, AsteroidFragmentConfig,
     BoundaryReservation, ChunkState, EconomyConfig, FragmentResourceError, Location,
-    MaterialRadiationFactors, MaterialWeights, PhysicsConfig, PhysicsParameterSpec, SpaceConfig,
-    ThermalStatus, WorldConfig, WorldModel,
+    MaterialDistributionStrategy, MaterialRadiationFactors, MaterialWeights, PhysicsConfig,
+    PhysicsParameterSpec, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };
 
 // Re-export power system types

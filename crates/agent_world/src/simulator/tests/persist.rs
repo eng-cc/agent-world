@@ -437,6 +437,48 @@ fn replay_with_budget_caps_keeps_chunk_generated_consistent() {
 }
 
 #[test]
+fn replay_from_snapshot_applies_fragment_replenished_event() {
+    let mut config = WorldConfig::default();
+    config.asteroid_fragment.base_density_per_km3 = 0.0;
+    config.asteroid_fragment.min_fragments_per_chunk = 0;
+    config.asteroid_fragment.max_fragments_per_chunk = 100;
+    config.asteroid_fragment.replenish_interval_ticks = 5;
+    config.asteroid_fragment.replenish_percent_ppm = 10_000;
+
+    let target_chunk = ChunkCoord { x: 0, y: 0, z: 0 };
+    let mut init = WorldInitConfig::default();
+    init.seed = 456;
+    init.agents.count = 0;
+    init.asteroid_fragment.bootstrap_chunks = vec![target_chunk];
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let snapshot = kernel.snapshot();
+
+    for i in 0..5 {
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: format!("replay-replenish-loc-{i}"),
+            name: format!("replay-replenish-loc-{i}"),
+            pos: GeoPos {
+                x_cm: 10_000.0 + i as f64,
+                y_cm: 20_000.0 + i as f64,
+                z_cm: 30_000.0,
+            },
+            profile: LocationProfile::default(),
+        });
+        kernel.step().expect("step");
+    }
+
+    let journal = kernel.journal_snapshot();
+    assert!(journal
+        .events
+        .iter()
+        .any(|event| { matches!(event.kind, WorldEventKind::FragmentsReplenished { .. }) }));
+
+    let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
+    assert_eq!(replayed.model(), kernel.model());
+}
+
+#[test]
 fn replay_from_snapshot_applies_agent_prompt_updated_event() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);

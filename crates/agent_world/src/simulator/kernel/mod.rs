@@ -1,6 +1,7 @@
 //! WorldKernel: time, events, actions, and observation.
 
 mod actions;
+mod fragment_replenish;
 mod observation;
 mod persistence;
 mod power;
@@ -49,10 +50,10 @@ impl ChunkRuntimeConfig {
 }
 
 pub use types::{
-    merge_kernel_rule_decisions, ChunkGenerationCause, KernelRuleCost, KernelRuleDecision,
-    KernelRuleDecisionMergeError, KernelRuleModuleContext, KernelRuleModuleInput,
-    KernelRuleModuleOutput, KernelRuleVerdict, Observation, ObservedAgent, ObservedLocation,
-    PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
+    merge_kernel_rule_decisions, ChunkGenerationCause, FragmentReplenishedEntry, KernelRuleCost,
+    KernelRuleDecision, KernelRuleDecisionMergeError, KernelRuleModuleContext,
+    KernelRuleModuleInput, KernelRuleModuleOutput, KernelRuleVerdict, Observation, ObservedAgent,
+    ObservedLocation, PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
 };
 
 type PreActionRuleHook =

@@ -854,6 +854,71 @@ fn action_chunk_generation_consumes_boundary_reservations() {
 }
 
 #[test]
+fn step_replenishes_fragments_every_hundred_ticks_at_one_percent() {
+    let mut config = WorldConfig::default();
+    config.asteroid_fragment.base_density_per_km3 = 0.0;
+    config.asteroid_fragment.min_fragments_per_chunk = 0;
+    config.asteroid_fragment.max_fragments_per_chunk = 100;
+    config.asteroid_fragment.replenish_interval_ticks = 100;
+    config.asteroid_fragment.replenish_percent_ppm = 10_000;
+
+    let target_chunk = ChunkCoord { x: 0, y: 0, z: 0 };
+    let mut init = WorldInitConfig::default();
+    init.seed = 123;
+    init.agents.count = 0;
+    init.asteroid_fragment.bootstrap_chunks = vec![target_chunk];
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let before_count = kernel
+        .model()
+        .locations
+        .values()
+        .filter(|location| {
+            location.id.starts_with("frag-")
+                && chunk_coord_of(location.pos, &config.space)
+                    .is_some_and(|coord| coord == target_chunk)
+        })
+        .count();
+    assert_eq!(before_count, 0);
+
+    for i in 0..100 {
+        kernel.submit_action(Action::RegisterLocation {
+            location_id: format!("tick-loc-{i}"),
+            name: format!("tick-loc-{i}"),
+            pos: GeoPos {
+                x_cm: 1000.0 + i as f64,
+                y_cm: 2000.0 + i as f64,
+                z_cm: 3000.0,
+            },
+            profile: LocationProfile::default(),
+        });
+        kernel.step().expect("step");
+    }
+
+    let replenish_events: Vec<&WorldEventKind> = kernel
+        .journal()
+        .iter()
+        .filter_map(|event| match &event.kind {
+            WorldEventKind::FragmentsReplenished { .. } => Some(&event.kind),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(replenish_events.len(), 1);
+
+    let after_count = kernel
+        .model()
+        .locations
+        .values()
+        .filter(|location| {
+            location.id.starts_with("frag-")
+                && chunk_coord_of(location.pos, &config.space)
+                    .is_some_and(|coord| coord == target_chunk)
+        })
+        .count();
+    assert_eq!(after_count, 1);
+}
+
+#[test]
 fn kernel_closed_loop_example() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,

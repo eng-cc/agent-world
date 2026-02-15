@@ -247,6 +247,12 @@ impl WorldKernel {
                     });
                 }
             }
+            WorldEventKind::FragmentsReplenished { entries } => {
+                self.apply_fragment_replenished_entries(entries)
+                    .map_err(|err| PersistError::ReplayConflict {
+                        message: format!("failed to apply fragment replenish event: {err}"),
+                    })?;
+            }
             WorldEventKind::AgentPromptUpdated { profile, .. } => {
                 if !self.model.agents.contains_key(&profile.agent_id) {
                     return Err(PersistError::ReplayConflict {
