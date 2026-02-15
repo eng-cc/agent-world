@@ -97,11 +97,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - `doc/world-simulator/viewer-auto-focus-capture.md`
 - `doc/scripts/capture-viewer-frame.md`
 
-## Fragment 元素分块渲染（性能可控）
-- 目标：把 location 的 fragment 分块全部显示出来，并按主导元素显示不同颜色。
-- 默认：关闭（优先保证性能）。
-- 人工开关：右侧面板 `Overlay` 区点击 `碎片/Fragment` 按钮。
-- 脚本/自动化默认值：
-  - `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS=1`（默认开启）
-  - `AGENT_WORLD_VIEWER_SHOW_FRAGMENT_ELEMENTS=0`（默认关闭）
-- 说明：该开关会触发场景重建；分块数量多时建议只在需要截图或材质检查时开启。
+## Fragment 元素分块渲染（默认开启）
+- 目标：把 location 的 fragment 分块默认显示出来，并按主导元素显示不同颜色。
+- 当前行为：不再渲染 location 外层几何与标签，仅保留逻辑锚点；frag 分块始终渲染。
+- 选择交互：点击 frag 后，详情面板会显示所属 `location`（ID 与名称）。
+- 配置说明：已移除 frag 渲染开关与对应环境变量，不再支持按开关隐藏 frag。
