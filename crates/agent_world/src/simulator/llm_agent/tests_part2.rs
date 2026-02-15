@@ -857,6 +857,8 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(system_prompt.contains("exploration_bias"));
     assert!(system_prompt.contains("execute_until"));
     assert!(user_prompt.contains("execute_until"));
+    assert!(user_prompt.contains("transfer_resource"));
+    assert!(user_prompt.contains("refine_compound"));
     assert!(user_prompt.contains("move_agent.to 不能是当前所在位置"));
 }
 

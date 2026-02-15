@@ -258,12 +258,18 @@ impl PromptAssembler {
 {{"decision":"wait_ticks","ticks":<u64>}}
 {{"decision":"move_agent","to":"<location_id>"}}
 {{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
+{{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|hardware|data>","amount":<i64 >=1>}}
+{{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
+- 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
+- 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
+- transfer_resource.kind 仅允许 electricity/hardware/data，amount 必须为正整数
+- owner 字段仅允许 self/agent:<id>/location:<id>
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
@@ -922,6 +928,11 @@ mod tests {
         assert!(output
             .user_prompt
             .contains("move_agent.to 不能是当前所在位置"));
+        assert!(output.user_prompt.contains("transfer_resource"));
+        assert!(output.user_prompt.contains("refine_compound"));
+        assert!(output
+            .user_prompt
+            .contains("owner 字段仅允许 self/agent:<id>/location:<id>"));
         assert!(output.user_prompt.contains("推荐 harvest 模板"));
         assert!(output.user_prompt.contains("推荐 move 模板"));
     }

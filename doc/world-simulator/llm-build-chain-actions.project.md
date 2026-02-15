@@ -14,10 +14,10 @@
 - [x] LBA1.4 新增解析单元测试（合法/非法路径）
 
 ### LBA2 Prompt 约束与回归
-- [ ] LBA2.1 更新 `[Decision JSON Schema]`，加入 transfer/refine
-- [ ] LBA2.2 新增推荐模板与字段约束文案
-- [ ] LBA2.3 更新 Prompt 相关测试
-- [ ] LBA2.4 执行 `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent -- --nocapture`
+- [x] LBA2.1 更新 `[Decision JSON Schema]`，加入 transfer/refine
+- [x] LBA2.2 新增推荐模板与字段约束文案
+- [x] LBA2.3 更新 Prompt 相关测试
+- [x] LBA2.4 执行 `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent -- --nocapture`
 
 ### LBA3 Web 闭环验证
 - [ ] LBA3.1 启动 `world_viewer_live + run-viewer-web`（`llm_bootstrap`）
@@ -33,6 +33,6 @@
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 
 ## 状态
-- 当前阶段：LBA1 完成，LBA2 进行中。
-- 下一阶段：完成 LBA2 代码与测试后执行 LBA3 Web 闭环验收。
-- 最近更新：2026-02-15（完成 LLM 建造动作解析接线，进入 Prompt 约束回归阶段）。
+- 当前阶段：LBA2 完成，LBA3 进行中。
+- 下一阶段：执行 Web 闭环验收（Playwright）并回写日志与状态。
+- 最近更新：2026-02-15（完成 Prompt schema 与回归测试，进入 Web 闭环验证阶段）。
