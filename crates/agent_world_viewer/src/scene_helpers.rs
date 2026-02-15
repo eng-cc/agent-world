@@ -12,8 +12,6 @@ const ASSET_MARKER_VERTICAL_OFFSET: f32 = 1.1;
 const ASSET_MARKER_RING_RADIUS: f32 = 0.45;
 const MODULE_VISUAL_VERTICAL_OFFSET: f32 = 1.4;
 const MODULE_VISUAL_RING_RADIUS: f32 = 0.7;
-const LOCATION_RADIUS_MIN_M: f32 = 0.25;
-const LOCATION_RADIUS_MAX_M: f32 = 3000.0;
 const LOCATION_DEPLETION_MIN_RADIUS_FACTOR: f32 = 0.24;
 const AGENT_HEIGHT_MIN_M: f32 = 0.25;
 const AGENT_HEIGHT_MAX_M: f32 = 4.0;
@@ -688,11 +686,11 @@ pub(super) fn spawn_agent_entity(
         return;
     }
 
-    let body_scale = agent_body_scale(height_cm);
-    let marker_scale = agent_module_marker_scale(height_cm);
-    let marker_world_scale =
-        agent_module_marker_world_scale(marker_scale, config.effective_cm_to_unit(), height_cm);
-    let module_markers = agent_module_marker_transforms(height_cm, module_count);
+    let cm_to_unit = config.effective_cm_to_unit();
+    let body_scale = agent_body_scale(height_cm, cm_to_unit);
+    let marker_scale = agent_module_marker_scale(height_cm, cm_to_unit);
+    let marker_world_scale = agent_module_marker_world_scale(marker_scale, cm_to_unit, height_cm);
+    let module_markers = agent_module_marker_transforms(height_cm, module_count, cm_to_unit);
     let translation = agent_translation_for_render(scene, config, origin, agent_id, pos, height_cm);
     if let Some(entity) = scene.agent_entities.get(agent_id) {
         commands.entity(*entity).insert((
@@ -716,10 +714,17 @@ pub(super) fn spawn_agent_entity(
                 parent,
                 assets,
                 agent_id.to_string(),
-                agent_label_offset(height_cm),
+                agent_label_offset(height_cm, cm_to_unit),
                 format!("label:agent:{agent_id}"),
             );
-            spawn_agent_two_d_map_marker(parent, assets, agent_id, height_cm, module_count);
+            spawn_agent_two_d_map_marker(
+                parent,
+                assets,
+                agent_id,
+                height_cm,
+                module_count,
+                cm_to_unit,
+            );
             for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
                 parent.spawn((
                     Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -756,10 +761,17 @@ pub(super) fn spawn_agent_entity(
             parent,
             assets,
             agent_id.to_string(),
-            agent_label_offset(height_cm),
+            agent_label_offset(height_cm, cm_to_unit),
             format!("label:agent:{agent_id}"),
         );
-        spawn_agent_two_d_map_marker(parent, assets, agent_id, height_cm, module_count);
+        spawn_agent_two_d_map_marker(
+            parent,
+            assets,
+            agent_id,
+            height_cm,
+            module_count,
+            cm_to_unit,
+        );
         for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
             parent.spawn((
                 Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -785,12 +797,12 @@ fn owner_anchor_pos(snapshot: &WorldSnapshot, owner: &ResourceOwner) -> Option<G
     }
 }
 
-fn location_radius_m(radius_cm: i64) -> f32 {
-    (radius_cm.max(1) as f32 / 100.0).clamp(LOCATION_RADIUS_MIN_M, LOCATION_RADIUS_MAX_M)
-}
-
 fn location_render_radius_units(radius_cm: i64, cm_to_unit: f32) -> f32 {
     (radius_cm.max(1) as f32) * cm_to_unit.max(f32::EPSILON)
+}
+
+fn world_units_per_meter(cm_to_unit: f32) -> f32 {
+    cm_to_unit.max(f32::EPSILON) * 100.0
 }
 
 pub(super) fn location_visual_radius_cm(
@@ -837,16 +849,21 @@ fn agent_height_cm(height_cm: Option<i64>) -> i64 {
     height_cm.unwrap_or(agent_world::models::DEFAULT_AGENT_HEIGHT_CM)
 }
 
-fn agent_body_scale(height_cm: i64) -> Vec3 {
+fn agent_body_scale(height_cm: i64, cm_to_unit: f32) -> Vec3 {
     let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
         .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
     let radius_m = (height_m * AGENT_BODY_RADIUS_RATIO).clamp(0.06, 0.9);
     let body_length_m = (height_m * AGENT_BODY_LENGTH_RATIO).max(radius_m * 0.1);
-    Vec3::new(radius_m * 2.0, body_length_m, radius_m * 2.0)
+    let units_per_m = world_units_per_meter(cm_to_unit);
+    Vec3::new(
+        radius_m * 2.0 * units_per_m,
+        body_length_m * units_per_m,
+        radius_m * 2.0 * units_per_m,
+    )
 }
 
-fn body_half_height_m(height_cm: i64) -> f32 {
-    let scale = agent_body_scale(height_cm);
+fn body_half_height_units(height_cm: i64, cm_to_unit: f32) -> f32 {
+    let scale = agent_body_scale(height_cm, cm_to_unit);
     scale.y * 0.5 + scale.x * 0.5
 }
 
@@ -858,8 +875,9 @@ fn agent_translation_for_render(
     pos: GeoPos,
     height_cm: i64,
 ) -> Vec3 {
-    let base = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
-    let body_half_height = body_half_height_m(height_cm);
+    let cm_to_unit = config.effective_cm_to_unit();
+    let base = geo_to_vec3(pos, origin, cm_to_unit);
+    let body_half_height = body_half_height_units(height_cm, cm_to_unit);
     let Some(location_id) = scene.agent_location_ids.get(agent_id) else {
         return base + Vec3::Y * body_half_height;
     };
@@ -872,8 +890,8 @@ fn agent_translation_for_render(
         return base + Vec3::Y * body_half_height;
     };
 
-    let location_center = geo_to_vec3(location_pos, origin, config.effective_cm_to_unit());
-    let location_radius = location_radius_m(location_radius_cm);
+    let location_center = geo_to_vec3(location_pos, origin, cm_to_unit);
+    let location_radius = location_render_radius_units(location_radius_cm, cm_to_unit);
     let radial_offset = base - location_center;
     let surface_normal = if radial_offset.length_squared() > 1e-6 {
         radial_offset.normalize()
@@ -895,12 +913,16 @@ fn capped_module_marker_count(module_count: usize) -> usize {
     module_count.min(AGENT_MODULE_MARKER_MAX)
 }
 
-fn agent_module_marker_scale(height_cm: i64) -> Vec3 {
+fn agent_module_marker_scale(height_cm: i64, cm_to_unit: f32) -> Vec3 {
     let radius = agent_body_radius_m(height_cm);
+    let units_per_m = world_units_per_meter(cm_to_unit);
     Vec3::new(
-        (radius * AGENT_MODULE_MARKER_WIDTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_WIDTH, 0.62),
-        (radius * AGENT_MODULE_MARKER_HEIGHT_RATIO).clamp(AGENT_MODULE_MARKER_MIN_HEIGHT, 0.78),
-        (radius * AGENT_MODULE_MARKER_DEPTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_DEPTH, 0.42),
+        (radius * AGENT_MODULE_MARKER_WIDTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_WIDTH, 0.62)
+            * units_per_m,
+        (radius * AGENT_MODULE_MARKER_HEIGHT_RATIO).clamp(AGENT_MODULE_MARKER_MIN_HEIGHT, 0.78)
+            * units_per_m,
+        (radius * AGENT_MODULE_MARKER_DEPTH_RATIO).clamp(AGENT_MODULE_MARKER_MIN_DEPTH, 0.42)
+            * units_per_m,
     )
 }
 
@@ -919,30 +941,38 @@ fn agent_module_marker_world_scale(
     } else {
         (min_height_cm / marker_height_cm).clamp(1.0, 3.4)
     };
+    let units_per_m = world_units_per_meter(cm_to_unit);
+    let min_world_width = AGENT_MODULE_MARKER_WORLD_MIN_WIDTH * units_per_m;
+    let min_world_height = AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT * units_per_m;
+    let min_world_depth = AGENT_MODULE_MARKER_WORLD_MIN_DEPTH * units_per_m;
 
     Vec3::new(
-        (marker_scale.x * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_WIDTH),
-        (marker_scale.y * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_HEIGHT),
-        (marker_scale.z * factor).max(AGENT_MODULE_MARKER_WORLD_MIN_DEPTH),
+        (marker_scale.x * factor).max(min_world_width),
+        (marker_scale.y * factor).max(min_world_height),
+        (marker_scale.z * factor).max(min_world_depth),
     )
 }
 
-fn agent_module_ring_radius(height_cm: i64, ring_idx: usize) -> f32 {
+fn agent_module_ring_radius(height_cm: i64, ring_idx: usize, cm_to_unit: f32) -> f32 {
     let radius = agent_body_radius_m(height_cm);
     let base = radius * AGENT_MODULE_RING_BASE_MULTIPLIER;
     let ring_gap = radius * AGENT_MODULE_RING_GAP_RATIO;
-    (base + ring_gap * ring_idx as f32).clamp(0.25, 4.2)
+    (base + ring_gap * ring_idx as f32).clamp(0.25, 4.2) * world_units_per_meter(cm_to_unit)
 }
 
-fn agent_module_marker_transforms(height_cm: i64, module_count: usize) -> Vec<Vec3> {
+fn agent_module_marker_transforms(
+    height_cm: i64,
+    module_count: usize,
+    cm_to_unit: f32,
+) -> Vec<Vec3> {
     let marker_count = capped_module_marker_count(module_count);
     if marker_count == 0 {
         return Vec::new();
     }
 
-    let body_scale = agent_body_scale(height_cm);
-    let marker_scale = agent_module_marker_scale(height_cm);
-    let body_half_height = body_half_height_m(height_cm);
+    let body_scale = agent_body_scale(height_cm, cm_to_unit);
+    let marker_scale = agent_module_marker_scale(height_cm, cm_to_unit);
+    let body_half_height = body_half_height_units(height_cm, cm_to_unit);
     let module_gap_x = marker_scale.x * 2.05;
     let module_gap_z = marker_scale.z * 2.35;
     let module_layer_gap_z = marker_scale.z * 0.95;
@@ -974,7 +1004,7 @@ fn agent_module_marker_transforms(height_cm: i64, module_count: usize) -> Vec<Ve
         let markers_in_ring = remaining.min(AGENT_MODULE_MARKERS_PER_RING);
         let angle_step = std::f32::consts::TAU / markers_in_ring as f32;
         let angle = angle_step * within_ring as f32;
-        let ring_radius = agent_module_ring_radius(height_cm, ring_idx);
+        let ring_radius = agent_module_ring_radius(height_cm, ring_idx, cm_to_unit);
         let vertical = base_y + marker_scale.y * (0.28 + ring_idx as f32 * 0.24);
         transforms.push(Vec3::new(
             shell_offset_x + angle.cos() * ring_radius,
@@ -1007,10 +1037,10 @@ fn default_agent_module_count_estimate() -> usize {
         .count()
 }
 
-fn agent_label_offset(height_cm: i64) -> f32 {
+fn agent_label_offset(height_cm: i64, cm_to_unit: f32) -> f32 {
     let height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
         .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
-    (height_m * 0.65).max(AGENT_LABEL_OFFSET)
+    (height_m * 0.65).max(AGENT_LABEL_OFFSET) * world_units_per_meter(cm_to_unit)
 }
 
 #[path = "scene_helpers_entities.rs"]

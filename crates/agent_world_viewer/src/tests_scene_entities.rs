@@ -247,6 +247,7 @@ fn spawn_agent_entity_uses_body_height_scale() {
     app.update();
 
     let world = app.world_mut();
+    let units_per_m = world.resource::<Viewer3dConfig>().effective_cm_to_unit() * 100.0;
     let mut query = world.query::<(&AgentMarker, &BaseScale)>();
     let (marker, base) = query
         .iter(world)
@@ -261,8 +262,8 @@ fn spawn_agent_entity_uses_body_height_scale() {
         .iter(world)
         .find(|(name, _)| name.as_str() == "agent:body:agent-scale")
         .expect("agent body exists");
-    assert!((body_transform.scale.y - 1.12).abs() < 1e-3);
-    assert!((body_transform.scale.x - 0.88).abs() < 1e-3);
+    assert!((body_transform.scale.y - (1.12 * units_per_m)).abs() < 1e-6);
+    assert!((body_transform.scale.x - (0.88 * units_per_m)).abs() < 1e-6);
 }
 
 #[test]
@@ -303,10 +304,10 @@ fn spawn_agent_entity_attaches_to_location_surface() {
 
     let world = app.world_mut();
     let mut location_query = world.query::<(&LocationMarker, &Transform)>();
-    let location_translation = location_query
+    let (location_translation, location_radius) = location_query
         .iter(world)
         .find(|(marker, _)| marker.id == "loc-surface")
-        .map(|(_, transform)| transform.translation)
+        .map(|(_, transform)| (transform.translation, transform.scale.x))
         .expect("location marker exists");
 
     let mut agent_query = world.query::<(&AgentMarker, &Transform)>();
@@ -324,7 +325,6 @@ fn spawn_agent_entity_attaches_to_location_surface() {
         .expect("agent body exists");
 
     let body_half_height = body_scale.y * 0.5 + body_scale.x * 0.5;
-    let location_radius = 2.4;
     let center_distance = agent_translation.distance(location_translation);
     let surface_offset = center_distance - (location_radius + body_half_height);
     assert!(surface_offset >= 0.005);
@@ -416,6 +416,7 @@ fn spawn_agent_entity_robot_layout_places_head_slot_first() {
     app.update();
 
     let world = app.world_mut();
+    let units_per_m = world.resource::<Viewer3dConfig>().effective_cm_to_unit() * 100.0;
     let mut query = world.query::<(&Name, &Transform)>();
     let marker_transform = query
         .iter(world)
@@ -423,8 +424,8 @@ fn spawn_agent_entity_robot_layout_places_head_slot_first() {
         .map(|(_, transform)| *transform)
         .expect("first module marker exists");
 
-    assert!(marker_transform.translation.x > 0.55);
-    assert!(marker_transform.translation.z > 0.65);
+    assert!(marker_transform.translation.x > 0.55 * units_per_m);
+    assert!(marker_transform.translation.z > 0.65 * units_per_m);
 }
 
 #[test]

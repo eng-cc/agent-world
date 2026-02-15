@@ -6,12 +6,14 @@ pub(super) fn spawn_agent_two_d_map_marker(
     agent_id: &str,
     height_cm: i64,
     module_count: usize,
+    cm_to_unit: f32,
 ) {
     let agent_height_m = (agent_height_cm(Some(height_cm)) as f32 / 100.0)
         .clamp(AGENT_HEIGHT_MIN_M, AGENT_HEIGHT_MAX_M);
-    let world_radius = (agent_height_m * 0.62).clamp(0.38, 0.95);
-    let thickness = (world_radius * 0.18).clamp(0.04, 0.10);
-    let y = -(agent_height_m * 0.34);
+    let units_per_m = world_units_per_meter(cm_to_unit);
+    let world_radius = (agent_height_m * 0.62).clamp(0.38, 0.95) * units_per_m;
+    let thickness = (world_radius * 0.18).clamp(0.04 * units_per_m, 0.10 * units_per_m);
+    let y = -(agent_height_m * 0.34) * units_per_m;
 
     let base_scale = Vec3::new(world_radius * 2.0, thickness, world_radius * 2.0);
     parent.spawn((
@@ -30,7 +32,8 @@ pub(super) fn spawn_agent_two_d_map_marker(
         parent.spawn((
             Mesh3d(assets.agent_module_marker_mesh.clone()),
             MeshMaterial3d(assets.chunk_generated_material.clone()),
-            Transform::from_translation(Vec3::new(0.0, y - 0.01, 0.0)).with_scale(outer_scale),
+            Transform::from_translation(Vec3::new(0.0, y - 0.01 * units_per_m, 0.0))
+                .with_scale(outer_scale),
             Name::new(format!("map2d:agent:module_band:{agent_id}")),
             TwoDMapMarker,
         ));
@@ -39,7 +42,7 @@ pub(super) fn spawn_agent_two_d_map_marker(
     parent.spawn((
         Mesh3d(assets.location_mesh.clone()),
         MeshMaterial3d(assets.agent_material.clone()),
-        Transform::from_translation(Vec3::new(0.0, y + 0.015, 0.0))
+        Transform::from_translation(Vec3::new(0.0, y + 0.015 * units_per_m, 0.0))
             .with_scale(Vec3::splat(world_radius * 0.58)),
         Name::new(format!("map2d:agent:center:{agent_id}")),
         TwoDMapMarker,

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{Viewer3dScene, ViewerSelection};
+use super::{SelectionKind, Viewer3dScene, ViewerSelection};
 
 const HALO_BASE_RADIUS: f32 = 0.65;
 const HALO_RADIUS_MULTIPLIER: f32 = 1.9;
@@ -32,6 +32,10 @@ pub(super) fn update_selection_emphasis(
         set_halo_visibility(&state, &mut halos, Visibility::Hidden);
         return;
     };
+    if selected.kind == SelectionKind::Fragment {
+        set_halo_visibility(&state, &mut halos, Visibility::Hidden);
+        return;
+    }
 
     let Ok(target_transform) = targets.get(selected.entity) else {
         set_halo_visibility(&state, &mut halos, Visibility::Hidden);
@@ -189,5 +193,39 @@ mod tests {
                 .expect("halo exists")
         };
         assert_eq!(visible_after_clear, Visibility::Hidden);
+    }
+
+    #[test]
+    fn selection_emphasis_hides_halo_for_fragment_selection() {
+        let mut app = App::new();
+        app.add_systems(Update, update_selection_emphasis);
+        app.insert_resource(Viewer3dScene::default());
+        app.insert_resource(ViewerSelection::default());
+        app.insert_resource(SelectionEmphasisState::default());
+        app.insert_resource(Assets::<Mesh>::default());
+        app.insert_resource(Assets::<StandardMaterial>::default());
+
+        let selected = app
+            .world_mut()
+            .spawn(Transform::from_xyz(1.0, 2.0, 3.0).with_scale(Vec3::splat(2.0)))
+            .id();
+        app.world_mut().insert_resource(ViewerSelection {
+            current: Some(SelectionInfo {
+                entity: selected,
+                kind: SelectionKind::Fragment,
+                id: "frag-1#0".to_string(),
+                name: Some("frag-1".to_string()),
+            }),
+        });
+
+        app.update();
+
+        let mut query = app
+            .world_mut()
+            .query::<(&Visibility, &SelectionEmphasisHalo)>();
+        assert!(
+            query.iter(app.world_mut()).next().is_none(),
+            "fragment selection should not spawn halo"
+        );
     }
 }
