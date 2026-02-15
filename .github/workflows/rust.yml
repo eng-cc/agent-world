@@ -12,6 +12,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  RUST_TOOLCHAIN: 1.92.0
 
 jobs:
   required-gate:
@@ -19,8 +20,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: Install wasm target
-        run: rustup target add wasm32-unknown-unknown
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile default --component rustfmt
+          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
+          rustup default "${RUST_TOOLCHAIN}"
       - name: Install system deps
         run: |
           sudo apt-get update
@@ -44,8 +48,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: Install wasm target
-        run: rustup target add wasm32-unknown-unknown
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile default --component rustfmt
+          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
+          rustup default "${RUST_TOOLCHAIN}"
       - name: Install system deps
         run: |
           sudo apt-get update
