@@ -1,7 +1,7 @@
 # Agent World Viewer 使用说明书
 
 ## 目标
-- 提供一份可直接操作的 Viewer 使用手册，覆盖启动、交互、自动聚焦与 Web 闭环。
+- 提供一份可直接操作的 Viewer 使用手册，覆盖启动、交互、自动聚焦、自动步骤与 Web 闭环。
 - 统一人工调试与脚本闭环的命令入口，减少重复沟通成本。
 
 ## 适用范围
@@ -32,7 +32,6 @@ AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewe
 ```bash
 env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
-
 - 打开浏览器访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`
 - Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server。
 - 首次运行前需安装：
@@ -43,9 +42,9 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 - 鼠标拖拽：旋转/平移观察视角。
 - 滚轮：缩放。
 - `W/A/S/D`：移动相机视角（平移 `focus`，2D/3D 均可用；仅在光标位于 3D 视口且未占用文本输入时生效）。
-- 右侧面板：查看状态、事件、分块、诊断等信息。
 - `2D/3D` 切换：在顶部按钮切换视角模式。
 - `F`：对“当前选中对象”执行聚焦（适合人工巡检细节）。
+- 右侧面板：查看状态、事件、分块、诊断等信息。
 
 ## 自动聚焦（Auto Focus）
 
@@ -68,6 +67,20 @@ AGENT_WORLD_VIEWER_AUTO_FOCUS=1 \
 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=first_fragment \
 AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=18 \
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+
+## 自动步骤（Auto Select / Automation Steps）
+- `--auto-select-target`：启动后自动选中目标（例如 `first_agent`、`agent:agent-0`）。
+- `--automation-steps`：执行一组自动步骤（例如 `mode=3d;focus=agent:agent-0;zoom=0.8;select=agent:agent-0`）。
+- 常用于截图回归，减少手工定位误差。
+
+示例：
+```bash
+./scripts/capture-viewer-frame.sh \
+  --scenario llm_bootstrap \
+  --addr 127.0.0.1:5131 \
+  --auto-select-target first_agent \
+  --automation-steps "mode=3d;focus=first_agent;zoom=0.8"
 ```
 
 ## Web 闭环（默认，推荐调试/回归）
@@ -110,9 +123,57 @@ bash "$PWCLI" close
 - 至少产出 1 张截图。
 
 ### native fallback（仅在 Web 无法复现或排查图形链路）
+基础调用：
 ```bash
 ./scripts/capture-viewer-frame.sh --scenario asteroid_fragment_detail_bootstrap --addr 127.0.0.1:5131 --tick-ms 300 --viewer-wait 12 --auto-focus-target first_fragment --auto-focus-radius 18
 ```
+
+常用增强参数：
+- `--capture-max-wait <sec>`：覆盖内置截图最大等待时间。
+- `--no-prewarm`：跳过预热编译。
+- `--keep-tmp`：保留 `.tmp/` 产物便于排查。
+- `--auto-focus-keep-2d`：自动聚焦时保持 2D，不强制切 3D。
+
+## 右侧面板模块显隐与本地缓存
+- 右侧面板支持按模块单独显示/隐藏：控制、总览、覆盖层、诊断、事件联动、时间轴、状态明细。
+- 开关状态会落盘并在重启后恢复。
+- 默认缓存路径：`$HOME/.agent_world_viewer/right_panel_modules.json`
+- 可通过环境变量覆盖：`AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`
+
+## 选中详情面板
+- 点击对象后会在详情区显示信息，支持：
+  - Agent
+  - Location
+  - Asset
+  - PowerPlant
+  - PowerStorage
+  - Chunk
+- LLM 场景下，Agent 详情可显示最近决策 I/O（输入、输出、错误与 token/时延摘要）。
+- 离线或无 LLM trace 时会显示降级提示，不影响基础详情查看。
+
+## 快速定位 Agent
+- 入口：右侧 `Event Link / 事件联动` 区域的 `定位 Agent` 按钮。
+- 行为：
+  - 优先定位当前已选中的 Agent；
+  - 否则定位当前场景字典序第一个 Agent。
+- 适合对象密集场景下快速回到 Agent 观察位。
+
+## 全览图缩放切换（2D）
+- 2D 视角支持“细节态 / 全览图态”自动切换。
+- 默认进入细节态，便于看清 Agent 与局部关系。
+- 缩放到阈值后自动进入全览图态，显示简化标记并隐藏部分细节几何。
+- 切回近景后自动恢复细节显示。
+
+## 文本可选中/复制面板
+- 支持打开可选中文本面板，用于复制状态、事件、诊断与详情文本。
+- 面板使用系统快捷键复制（macOS `Cmd+C` / Windows/Linux `Ctrl+C`）。
+- 若遮挡视图可在顶部控制区切换显示/隐藏。
+
+## UI 语言切换
+- Viewer 支持中文/英文 UI。
+- 通过顶部语言控件切换后即时生效。
+- 若启用本地配置持久化，重启后会保持最近一次选择。
+- 语言切换不改变协议字段，仅改变显示文案。
 
 ## 推荐调试场景
 - 细粒度 location 渲染观察：`asteroid_fragment_detail_bootstrap`
@@ -136,6 +197,11 @@ bash "$PWCLI" close
 - `doc/world-simulator/viewer-location-fine-grained-rendering.md`
 - `doc/world-simulator/viewer-auto-focus-capture.md`
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
+- `doc/world-simulator/viewer-selection-details.md`
+- `doc/world-simulator/viewer-right-panel-module-visibility.md`
+- `doc/world-simulator/viewer-overview-map-zoom.md`
+- `doc/world-simulator/viewer-agent-quick-locate.md`
+- `doc/world-simulator/viewer-copyable-text.md`
 - `doc/scripts/capture-viewer-frame.md`（native fallback）
 
 ## Fragment 元素分块渲染（默认开启）
