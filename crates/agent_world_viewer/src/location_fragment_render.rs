@@ -7,6 +7,13 @@ use agent_world::simulator::{
 
 use super::Viewer3dAssets;
 
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
+pub(super) struct FragmentElementMarker {
+    pub id: String,
+    pub location_id: String,
+    pub block_index: usize,
+}
+
 pub(super) fn spawn_location_fragment_elements(
     parent: &mut ChildSpawnerCommands,
     assets: &Viewer3dAssets,
@@ -16,10 +23,16 @@ pub(super) fn spawn_location_fragment_elements(
 ) {
     for (index, block) in fragment_profile.blocks.blocks.iter().enumerate() {
         let element = dominant_element_for_block(block).unwrap_or(FragmentElementKind::Silicon);
+        let fragment_id = format!("{location_id}#{index}");
         parent.spawn((
             Mesh3d(assets.agent_module_marker_mesh.clone()),
             MeshMaterial3d(assets.fragment_element_material_library.handle_for(element)),
             fragment_block_local_transform(block, radius_cm),
+            FragmentElementMarker {
+                id: fragment_id,
+                location_id: location_id.to_string(),
+                block_index: index,
+            },
             Name::new(format!(
                 "location:fragment:block:{location_id}:{index}:{:?}",
                 element

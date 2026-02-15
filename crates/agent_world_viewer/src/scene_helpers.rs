@@ -113,7 +113,6 @@ pub(super) fn rebuild_scene_from_snapshot(
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
     snapshot: &WorldSnapshot,
-    show_fragment_elements: bool,
 ) {
     for entity in scene
         .agent_entities
@@ -179,21 +178,19 @@ pub(super) fn rebuild_scene_from_snapshot(
             location.profile.radiation_emission_per_tick,
         );
 
-        if show_fragment_elements {
-            if let (Some(fragment_profile), Some(entity)) = (
-                location.fragment_profile.as_ref(),
-                scene.location_entities.get(location_id).copied(),
-            ) {
-                commands.entity(entity).with_children(|parent| {
-                    location_fragment_render::spawn_location_fragment_elements(
-                        parent,
-                        assets,
-                        location_id,
-                        visual_radius_cm,
-                        fragment_profile,
-                    );
-                });
-            }
+        if let (Some(fragment_profile), Some(entity)) = (
+            location.fragment_profile.as_ref(),
+            scene.location_entities.get(location_id).copied(),
+        ) {
+            commands.entity(entity).with_children(|parent| {
+                location_fragment_render::spawn_location_fragment_elements(
+                    parent,
+                    assets,
+                    location_id,
+                    visual_radius_cm,
+                    fragment_profile,
+                );
+            });
         }
     }
 
@@ -612,7 +609,7 @@ enum ChunkAxis {
 pub(super) fn spawn_location_entity_with_radiation(
     commands: &mut Commands,
     config: &Viewer3dConfig,
-    assets: &Viewer3dAssets,
+    _assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
     origin: GeoPos,
     location_id: &str,
@@ -629,18 +626,12 @@ pub(super) fn spawn_location_entity_with_radiation(
         .location_radii_cm
         .insert(location_id.to_string(), radius_cm.max(1));
 
-    if !config.show_locations {
-        return;
-    }
-
     let radius_world_units = location_render_radius_units(radius_cm, config.effective_cm_to_unit());
     let marker_scale = Vec3::splat(radius_world_units);
     let translation = geo_to_vec3(pos, origin, config.effective_cm_to_unit());
     if let Some(entity) = scene.location_entities.get(location_id) {
         commands.entity(*entity).insert((
             Transform::from_translation(translation).with_scale(marker_scale),
-            Visibility::Visible,
-            MeshMaterial3d(assets.location_material_library.handle_for(material)),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
@@ -649,33 +640,17 @@ pub(super) fn spawn_location_entity_with_radiation(
             },
             BaseScale(marker_scale),
         ));
+        commands
+            .entity(*entity)
+            .remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>)>();
         commands.entity(*entity).despawn_children();
-        commands.entity(*entity).with_children(|parent| {
-            spawn_label(
-                parent,
-                assets,
-                name.to_string(),
-                location_label_offset(radius_world_units),
-                format!("label:location:{location_id}"),
-            );
-            spawn_location_detail_children(
-                parent,
-                assets,
-                location_id,
-                material,
-                radius_cm,
-                radiation_emission_per_tick,
-            );
-        });
         return;
     }
 
     let entity = commands
         .spawn((
-            Mesh3d(assets.location_mesh.clone()),
-            MeshMaterial3d(assets.location_material_library.handle_for(material)),
             Transform::from_translation(translation).with_scale(marker_scale),
-            Name::new(format!("location:{location_id}:{name}")),
+            Name::new(format!("location:anchor:{location_id}:{name}")),
             LocationMarker {
                 id: location_id.to_string(),
                 name: name.to_string(),
@@ -686,23 +661,6 @@ pub(super) fn spawn_location_entity_with_radiation(
         ))
         .id();
     attach_to_scene_root(commands, scene, entity);
-    commands.entity(entity).with_children(|parent| {
-        spawn_label(
-            parent,
-            assets,
-            name.to_string(),
-            location_label_offset(radius_world_units),
-            format!("label:location:{location_id}"),
-        );
-        spawn_location_detail_children(
-            parent,
-            assets,
-            location_id,
-            material,
-            radius_cm,
-            radiation_emission_per_tick,
-        );
-    });
     scene
         .location_entities
         .insert(location_id.to_string(), entity);

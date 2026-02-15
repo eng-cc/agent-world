@@ -208,6 +208,13 @@ pub(super) fn selection_kind_label(kind: SelectionKind, locale: UiLocale) -> &'s
                 "location"
             }
         }
+        SelectionKind::Fragment => {
+            if locale.is_zh() {
+                "碎片"
+            } else {
+                "fragment"
+            }
+        }
         SelectionKind::Asset => {
             if locale.is_zh() {
                 "资产"

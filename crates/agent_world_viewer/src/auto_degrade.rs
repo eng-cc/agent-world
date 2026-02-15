@@ -287,7 +287,6 @@ mod tests {
             show_chunk_overlay: true,
             show_resource_heatmap: false,
             show_flow_overlay: true,
-            show_fragment_elements: false,
         };
         let mut state = AutoDegradeState::default();
         let tuning = AutoDegradeTuning {

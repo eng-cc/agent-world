@@ -276,3 +276,69 @@ fn update_ui_populates_chunk_selection_details() {
     assert!(details_text.0.contains("Budget (remaining top):"));
     assert!(details_text.0.contains("generated fragments=4 blocks=18"));
 }
+
+#[test]
+fn update_ui_populates_fragment_selection_details_with_owner_location() {
+    let mut app = App::new();
+    app.add_systems(Update, update_ui);
+
+    app.world_mut().spawn((Text::new(""), StatusText));
+    app.world_mut().spawn((Text::new(""), SummaryText));
+    app.world_mut().spawn((Text::new(""), EventsText));
+    app.world_mut().spawn((Text::new(""), SelectionText));
+    app.world_mut().spawn((Text::new(""), AgentActivityText));
+    app.world_mut().spawn((Text::new(""), SelectionDetailsText));
+
+    let entity = app.world_mut().spawn_empty().id();
+    app.world_mut().insert_resource(ViewerSelection {
+        current: Some(SelectionInfo {
+            entity,
+            kind: SelectionKind::Fragment,
+            id: "loc-1#0".to_string(),
+            name: Some("loc-1".to_string()),
+        }),
+    });
+
+    let mut model = agent_world::simulator::WorldModel::default();
+    model.locations.insert(
+        "loc-1".to_string(),
+        agent_world::simulator::Location::new(
+            "loc-1",
+            "Alpha",
+            agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        ),
+    );
+
+    let snapshot = agent_world::simulator::WorldSnapshot {
+        version: agent_world::simulator::SNAPSHOT_VERSION,
+        chunk_generation_schema_version: agent_world::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+        time: 12,
+        config: agent_world::simulator::WorldConfig::default(),
+        model,
+        chunk_runtime: agent_world::simulator::ChunkRuntimeConfig::default(),
+        next_event_id: 1,
+        next_action_id: 1,
+        pending_actions: Vec::new(),
+        journal_len: 0,
+    };
+
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: Some(snapshot),
+        events: Vec::new(),
+        decision_traces: Vec::new(),
+        metrics: None,
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let details_text = {
+        let mut query = world.query::<(&Text, &SelectionDetailsText)>();
+        query.single(world).expect("details text").0.clone()
+    };
+
+    assert!(details_text.0.contains("Details: fragment loc-1#0"));
+    assert!(details_text.0.contains("Location: loc-1"));
+    assert!(details_text.0.contains("Location Name: Alpha"));
+}

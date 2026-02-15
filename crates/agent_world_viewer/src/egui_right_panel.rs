@@ -804,34 +804,7 @@ fn render_overlay_section(
         if ui.button(overlay_button_label("flow", locale)).clicked() {
             overlay_config.show_flow_overlay = !overlay_config.show_flow_overlay;
         }
-        if ui
-            .button(overlay_button_label("fragment", locale))
-            .clicked()
-        {
-            overlay_config.show_fragment_elements = !overlay_config.show_fragment_elements;
-        }
     });
-
-    let fragment_toggle_status = if locale.is_zh() {
-        format!(
-            "碎片元素: {}",
-            if overlay_config.show_fragment_elements {
-                "开"
-            } else {
-                "关"
-            }
-        )
-    } else {
-        format!(
-            "Fragment Elements: {}",
-            if overlay_config.show_fragment_elements {
-                "on"
-            } else {
-                "off"
-            }
-        )
-    };
-    ui.label(fragment_toggle_status);
 
     let text = if let Some(config) = viewer_3d_config.as_deref() {
         overlay_status_text_public(

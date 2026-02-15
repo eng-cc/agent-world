@@ -703,15 +703,15 @@ fn egui_kittest_module_toggle_switches_visibility() {
     harness.run();
     assert!(!harness.state().visibility.show_controls);
 
-    harness.get_by_label("明细:开").click();
-    harness.run();
-    assert!(!harness.state().visibility.show_details);
-    assert!(!harness.state().copyable_visible);
-
     harness.get_by_label("明细:关").click();
     harness.run();
     assert!(harness.state().visibility.show_details);
     assert!(harness.state().copyable_visible);
+
+    harness.get_by_label("明细:开").click();
+    harness.run();
+    assert!(!harness.state().visibility.show_details);
+    assert!(!harness.state().copyable_visible);
 }
 
 #[test]

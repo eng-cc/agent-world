@@ -52,6 +52,29 @@ fn rebuild_scene_spawns_chunk_grid_lines_for_all_chunks() {
     assert_eq!(line_count, 100);
 }
 
+#[test]
+fn rebuild_scene_spawns_fragments_by_default_without_location_mesh() {
+    let mut app = App::new();
+    app.add_systems(Update, rebuild_scene_fragments_default_test_system);
+    app.insert_resource(Viewer3dConfig::default());
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(sample_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+
+    let mut fragment_query = world.query::<&Name>();
+    let fragment_count = fragment_query
+        .iter(world)
+        .filter(|name| name.as_str().starts_with("location:fragment:block:loc-1:"))
+        .count();
+    assert!(fragment_count > 0);
+
+    let mut location_mesh_query = world.query_filtered::<&LocationMarker, With<Mesh3d>>();
+    assert_eq!(location_mesh_query.iter(world).count(), 0);
+}
+
 fn spawn_background_test_system(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
@@ -74,14 +97,17 @@ fn rebuild_scene_chunks_test_system(
     mut scene: ResMut<Viewer3dScene>,
 ) {
     let snapshot = sample_snapshot();
-    rebuild_scene_from_snapshot(
-        &mut commands,
-        &config,
-        &assets,
-        &mut scene,
-        &snapshot,
-        false,
-    );
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
+}
+
+fn rebuild_scene_fragments_default_test_system(
+    mut commands: Commands,
+    config: Res<Viewer3dConfig>,
+    assets: Res<Viewer3dAssets>,
+    mut scene: ResMut<Viewer3dScene>,
+) {
+    let snapshot = sample_fragment_snapshot();
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
 }
 
 fn sample_snapshot() -> WorldSnapshot {
@@ -111,6 +137,21 @@ fn sample_snapshot() -> WorldSnapshot {
         pending_actions: Vec::new(),
         journal_len: 0,
     }
+}
+
+fn sample_fragment_snapshot() -> WorldSnapshot {
+    let mut snapshot = sample_snapshot();
+    let location = snapshot
+        .model
+        .locations
+        .get_mut("loc-1")
+        .expect("location exists");
+    location.fragment_profile = Some(agent_world::simulator::synthesize_fragment_profile(
+        7,
+        600,
+        agent_world::simulator::MaterialKind::Silicate,
+    ));
+    snapshot
 }
 
 fn sample_assets() -> Viewer3dAssets {

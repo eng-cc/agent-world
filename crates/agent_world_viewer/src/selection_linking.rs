@@ -5,6 +5,7 @@ use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use super::location_fragment_render::FragmentElementMarker;
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};
 use crate::ui_locale_text::{
     jump_selection_label, link_ready, locate_focus_label, map_link_message_for_locale,
@@ -483,6 +484,7 @@ pub(super) fn pick_3d_selection(
     camera_query: Query<(&Camera, &GlobalTransform), With<Viewer3dCamera>>,
     agents: Query<(Entity, &GlobalTransform, &AgentMarker)>,
     locations: Query<(Entity, &GlobalTransform, &LocationMarker)>,
+    fragments: Query<(Entity, &GlobalTransform, &FragmentElementMarker)>,
     assets: Query<(Entity, &GlobalTransform, &AssetMarker)>,
     power_plants: Query<(Entity, &GlobalTransform, &PowerPlantMarker)>,
     power_storages: Query<(Entity, &GlobalTransform, &PowerStorageMarker)>,
@@ -541,6 +543,9 @@ pub(super) fn pick_3d_selection(
     }
 
     for (entity, transform, marker) in locations.iter() {
+        if !marker.id.starts_with("frag-") {
+            continue;
+        }
         let _material = marker.material;
         let _radiation_emission_per_tick = marker.radiation_emission_per_tick;
         if let Some(distance) = ray_point_distance(ray, transform.translation()) {
@@ -555,6 +560,25 @@ pub(super) fn pick_3d_selection(
                     SelectionKind::Location,
                     marker.id.clone(),
                     Some(marker.name.clone()),
+                    distance,
+                ));
+            }
+        }
+    }
+
+    for (entity, transform, marker) in fragments.iter() {
+        if let Some(distance) = ray_point_distance(ray, transform.translation()) {
+            if distance <= PICK_MAX_DISTANCE
+                && best
+                    .as_ref()
+                    .map(|(_, _, _, _, best_dist)| distance < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((
+                    entity,
+                    SelectionKind::Fragment,
+                    marker.id.clone(),
+                    Some(marker.location_id.clone()),
                     distance,
                 ));
             }
@@ -746,6 +770,11 @@ fn event_matches_selection(
     match selection.kind {
         SelectionKind::Agent => event_matches_agent(event, selection.id.as_str()),
         SelectionKind::Location => event_matches_location(event, selection.id.as_str()),
+        SelectionKind::Fragment => selection
+            .name
+            .as_deref()
+            .map(|location_id| event_matches_location(event, location_id))
+            .unwrap_or(false),
         SelectionKind::PowerPlant => event_matches_power_plant(event, selection.id.as_str()),
         SelectionKind::PowerStorage => event_matches_power_storage(event, selection.id.as_str()),
         SelectionKind::Chunk => selection
@@ -939,6 +968,7 @@ pub(super) fn target_entity(scene: &Viewer3dScene, target: &SelectionTarget) -> 
     match target.kind {
         SelectionKind::Agent => scene.agent_entities.get(target.id.as_str()).copied(),
         SelectionKind::Location => scene.location_entities.get(target.id.as_str()).copied(),
+        SelectionKind::Fragment => None,
         SelectionKind::Asset => scene
             .asset_entities
             .get(target.id.as_str())
@@ -1134,6 +1164,7 @@ pub(super) fn selection_kind_label(kind: SelectionKind) -> &'static str {
     match kind {
         SelectionKind::Agent => "agent",
         SelectionKind::Location => "location",
+        SelectionKind::Fragment => "fragment",
         SelectionKind::Asset => "asset",
         SelectionKind::PowerPlant => "power_plant",
         SelectionKind::PowerStorage => "power_storage",

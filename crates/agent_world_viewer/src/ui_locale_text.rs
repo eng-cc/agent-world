@@ -39,7 +39,7 @@ pub(super) fn selection_line(selection: &ViewerSelection, locale: UiLocale) -> S
     let kind = selection_kind_label(info.kind, locale);
     if locale.is_zh() {
         match info.kind {
-            SelectionKind::Location => match &info.name {
+            SelectionKind::Location | SelectionKind::Fragment => match &info.name {
                 Some(name) => format!("选择: {kind} {} ({name})", info.id),
                 None => format!("选择: {kind} {}", info.id),
             },
@@ -47,7 +47,7 @@ pub(super) fn selection_line(selection: &ViewerSelection, locale: UiLocale) -> S
         }
     } else {
         match info.kind {
-            SelectionKind::Location => match &info.name {
+            SelectionKind::Location | SelectionKind::Fragment => match &info.name {
                 Some(name) => format!("Selection: {kind} {} ({name})", info.id),
                 None => format!("Selection: {kind} {}", info.id),
             },

@@ -194,6 +194,9 @@ pub(super) fn selection_details_summary(
             events,
             reference_radiation_area_m2,
         ),
+        SelectionKind::Fragment => {
+            fragment_details_summary(selected.id.as_str(), selected.name.as_deref(), snapshot)
+        }
         SelectionKind::Asset => asset_details_summary(selected.id.as_str(), snapshot, events),
         SelectionKind::PowerPlant => {
             power_plant_details_summary(selected.id.as_str(), snapshot, events)
@@ -208,6 +211,25 @@ pub(super) fn selection_details_summary(
             events,
         ),
     }
+}
+
+fn fragment_details_summary(
+    fragment_id: &str,
+    owner_location_id: Option<&str>,
+    snapshot: Option<&WorldSnapshot>,
+) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!("Details: fragment {fragment_id}"));
+    let location_id = owner_location_id.unwrap_or("(unknown)");
+    lines.push(format!("Location: {location_id}"));
+
+    if let Some(snapshot) = snapshot {
+        if let Some(location) = snapshot.model.locations.get(location_id) {
+            lines.push(format!("Location Name: {}", location.name));
+        }
+    }
+
+    lines.join("\n")
 }
 
 fn agent_details_summary(

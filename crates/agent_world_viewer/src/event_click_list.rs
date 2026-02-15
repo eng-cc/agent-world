@@ -313,6 +313,7 @@ fn selection_kind_name(kind: SelectionKind) -> &'static str {
     match kind {
         SelectionKind::Agent => "agent",
         SelectionKind::Location => "location",
+        SelectionKind::Fragment => "fragment",
         SelectionKind::Asset => "asset",
         SelectionKind::PowerPlant => "power_plant",
         SelectionKind::PowerStorage => "power_storage",

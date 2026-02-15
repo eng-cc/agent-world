@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn spawn_location_entity_adds_label_text() {
+fn spawn_location_entity_keeps_anchor_without_label() {
     let mut app = App::new();
     app.add_systems(Update, spawn_label_test_system);
     app.insert_resource(Viewer3dConfig::default());
@@ -38,12 +38,19 @@ fn spawn_location_entity_adds_label_text() {
     app.update();
 
     let world = app.world_mut();
-    let mut query = world.query::<&Text2d>();
-    assert!(query.iter(world).next().is_some());
+    let mut label_query = world.query::<&Text2d>();
+    assert!(label_query.iter(world).next().is_none());
+
+    let mut marker_query = world.query::<(&LocationMarker, &Name)>();
+    let (_, name) = marker_query
+        .iter(world)
+        .find(|(marker, _)| marker.id == "loc-1")
+        .expect("location marker exists");
+    assert!(name.as_str().starts_with("location:anchor:"));
 }
 
 #[test]
-fn spawn_location_entity_uses_physical_radius_scale() {
+fn spawn_location_entity_uses_clamped_anchor_radius_scale() {
     let mut app = App::new();
     app.add_systems(Update, spawn_location_scale_test_system);
     app.insert_resource(Viewer3dConfig::default());
@@ -80,12 +87,14 @@ fn spawn_location_entity_uses_physical_radius_scale() {
     app.update();
 
     let world = app.world_mut();
+    let cm_to_unit = world.resource::<Viewer3dConfig>().effective_cm_to_unit();
     let mut query = world.query::<(&LocationMarker, &BaseScale)>();
     let (marker, base) = query
         .iter(world)
         .find(|(marker, _)| marker.id == "loc-scale")
         .expect("location marker exists");
-    assert!((base.0.x - 200.0).abs() < 1e-3);
+    let expected = (20_000.0_f32 * cm_to_unit).clamp(0.22, 16.0);
+    assert!((base.0.x - expected).abs() < 1e-3);
     assert_eq!(marker.material, MaterialKind::Silicate);
     assert_eq!(marker.radiation_emission_per_tick, 0);
 }
@@ -143,7 +152,7 @@ fn spawn_location_entity_renders_fine_grained_ring_details() {
                 .starts_with("location:detail:halo:loc-detail-ring:")
         })
         .count();
-    assert_eq!(ring_count, 5);
+    assert_eq!(ring_count, 0);
     assert_eq!(halo_count, 0);
 }
 
@@ -201,8 +210,8 @@ fn spawn_location_entity_renders_radiation_halo_details() {
         })
         .count();
 
-    assert_eq!(ring_count, 4);
-    assert_eq!(halo_count, 6);
+    assert_eq!(ring_count, 0);
+    assert_eq!(halo_count, 0);
 }
 
 #[test]
@@ -299,11 +308,11 @@ fn spawn_agent_entity_attaches_to_location_surface() {
     app.update();
 
     let world = app.world_mut();
-    let mut location_query = world.query::<(&LocationMarker, &Transform, &BaseScale)>();
-    let (location_translation, location_radius) = location_query
+    let mut location_query = world.query::<(&LocationMarker, &Transform)>();
+    let location_translation = location_query
         .iter(world)
-        .find(|(marker, _, _)| marker.id == "loc-surface")
-        .map(|(_, transform, scale)| (transform.translation, scale.0.x))
+        .find(|(marker, _)| marker.id == "loc-surface")
+        .map(|(_, transform)| transform.translation)
         .expect("location marker exists");
 
     let mut agent_query = world.query::<(&AgentMarker, &Transform)>();
@@ -321,6 +330,7 @@ fn spawn_agent_entity_attaches_to_location_surface() {
         .expect("agent body exists");
 
     let body_half_height = body_scale.y * 0.5 + body_scale.x * 0.5;
+    let location_radius = 2.4;
     let center_distance = agent_translation.distance(location_translation);
     let surface_offset = center_distance - (location_radius + body_half_height);
     assert!(surface_offset >= 0.005);

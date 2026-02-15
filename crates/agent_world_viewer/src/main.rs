@@ -200,7 +200,6 @@ struct Viewer3dScene {
     space: Option<SpaceConfig>,
     last_snapshot_time: Option<u64>,
     last_event_id: Option<u64>,
-    fragment_elements_visible: bool,
     agent_entities: HashMap<String, Entity>,
     agent_positions: HashMap<String, GeoPos>,
     agent_heights_cm: HashMap<String, i64>,
@@ -291,6 +290,7 @@ struct SelectionInfo {
 enum SelectionKind {
     Agent,
     Location,
+    Fragment,
     Asset,
     PowerPlant,
     PowerStorage,
@@ -1038,7 +1038,6 @@ fn update_3d_scene(
     mut scene: ResMut<Viewer3dScene>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
-    overlay_config: Res<WorldOverlayConfig>,
     state: Res<ViewerState>,
 ) {
     let Some(snapshot) = state.snapshot.as_ref() else {
@@ -1046,29 +1045,14 @@ fn update_3d_scene(
     };
 
     let snapshot_time = snapshot.time;
-    if scene_requires_full_rebuild(&scene, snapshot, overlay_config.show_fragment_elements) {
-        rebuild_scene_from_snapshot(
-            &mut commands,
-            &config,
-            &assets,
-            &mut scene,
-            snapshot,
-            overlay_config.show_fragment_elements,
-        );
+    if scene_requires_full_rebuild(&scene, snapshot) {
+        rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, snapshot);
         scene.last_event_id = None;
         selection.clear();
     } else {
-        refresh_scene_dirty_objects(
-            &mut commands,
-            &config,
-            &assets,
-            &mut scene,
-            snapshot,
-            overlay_config.show_fragment_elements,
-        );
+        refresh_scene_dirty_objects(&mut commands, &config, &assets, &mut scene, snapshot);
     }
     scene.last_snapshot_time = Some(snapshot_time);
-    scene.fragment_elements_visible = overlay_config.show_fragment_elements;
 
     apply_events_to_scene(
         &mut commands,

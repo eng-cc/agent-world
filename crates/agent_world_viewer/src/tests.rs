@@ -983,14 +983,7 @@ fn rebuild_scene_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(
-        &mut commands,
-        &config,
-        &assets,
-        &mut scene,
-        &snapshot,
-        false,
-    );
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
 }
 
 fn rebuild_scene_default_module_count_test_system(
@@ -1026,12 +1019,5 @@ fn rebuild_scene_default_module_count_test_system(
         journal_len: 0,
     };
 
-    rebuild_scene_from_snapshot(
-        &mut commands,
-        &config,
-        &assets,
-        &mut scene,
-        &snapshot,
-        false,
-    );
+    rebuild_scene_from_snapshot(&mut commands, &config, &assets, &mut scene, &snapshot);
 }

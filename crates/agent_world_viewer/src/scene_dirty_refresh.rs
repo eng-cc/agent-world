@@ -7,15 +7,8 @@ use super::scene_helpers::{
 };
 use super::*;
 
-pub(super) fn scene_requires_full_rebuild(
-    scene: &Viewer3dScene,
-    snapshot: &WorldSnapshot,
-    show_fragment_elements: bool,
-) -> bool {
+pub(super) fn scene_requires_full_rebuild(scene: &Viewer3dScene, snapshot: &WorldSnapshot) -> bool {
     if scene.origin.is_none() || scene.space.is_none() {
-        return true;
-    }
-    if scene.fragment_elements_visible != show_fragment_elements {
         return true;
     }
     if scene
@@ -37,7 +30,6 @@ pub(super) fn refresh_scene_dirty_objects(
     assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
     snapshot: &WorldSnapshot,
-    show_fragment_elements: bool,
 ) {
     let Some(origin) = scene.origin else {
         return;
@@ -82,21 +74,19 @@ pub(super) fn refresh_scene_dirty_objects(
             location.profile.radiation_emission_per_tick,
         );
 
-        if show_fragment_elements {
-            if let (Some(fragment_profile), Some(entity)) = (
-                location.fragment_profile.as_ref(),
-                scene.location_entities.get(location_id).copied(),
-            ) {
-                commands.entity(entity).with_children(|parent| {
-                    location_fragment_render::spawn_location_fragment_elements(
-                        parent,
-                        assets,
-                        location_id,
-                        visual_radius_cm,
-                        fragment_profile,
-                    );
-                });
-            }
+        if let (Some(fragment_profile), Some(entity)) = (
+            location.fragment_profile.as_ref(),
+            scene.location_entities.get(location_id).copied(),
+        ) {
+            commands.entity(entity).with_children(|parent| {
+                location_fragment_render::spawn_location_fragment_elements(
+                    parent,
+                    assets,
+                    location_id,
+                    visual_radius_cm,
+                    fragment_profile,
+                );
+            });
         }
     }
 
@@ -238,15 +228,13 @@ mod tests {
             origin: Some(origin),
             space: Some(snapshot.config.space.clone()),
             last_snapshot_time: Some(9),
-            fragment_elements_visible: false,
             ..Viewer3dScene::default()
         };
 
-        assert!(!scene_requires_full_rebuild(&scene, &snapshot, false));
-        assert!(scene_requires_full_rebuild(&scene, &snapshot, true));
+        assert!(!scene_requires_full_rebuild(&scene, &snapshot));
 
         scene.last_snapshot_time = Some(11);
-        assert!(scene_requires_full_rebuild(&scene, &snapshot, false));
+        assert!(scene_requires_full_rebuild(&scene, &snapshot));
     }
 
     #[test]
