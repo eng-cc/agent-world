@@ -154,6 +154,8 @@
 - [x] 明确化合物主导组成与元素统计映射口径
 - [x] 接入未探索不生成的 chunk 索引与触发逻辑（observe/move/transfer/harvest 触发）
 - [x] 接入碎片块状物理画像与化合物组成生成（体积/密度/质量 + compounds/elements）
+- [x] 输出 Agent Frag 初始站位优化设计/项目文档（`doc/world-simulator/agent-frag-initial-spawn-position.md`、`doc/world-simulator/agent-frag-initial-spawn-position.project.md`）
+- [x] 初始化阶段 Agent 出生点优化：有 frag 时优先 frag，且在 frag 上方约 50m 站位（含测试回归）
 - [x] 接入资源预算一次性生成（total/remaining）与开采扣减守恒
 - [x] 场景接入起始 chunk 预生成与固定 20km×20km×10km 分块配置
 - [x] 接入 ChunkGenerated 事件与持久化/回放校验（CG6：init/observe/action + 版本迁移）

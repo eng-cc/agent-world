@@ -13,6 +13,7 @@
 mod agent;
 mod asteroid_fragment;
 mod chunking;
+mod frag_spawn;
 mod fragment_physics;
 mod init;
 mod init_module_visual;

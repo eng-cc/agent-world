@@ -21,6 +21,7 @@ mod conservation;
 mod consistency;
 mod fragment_physics;
 mod init;
+mod init_agent_frag_spawn;
 mod kernel;
 mod kernel_rule_decisions;
 mod kernel_rule_invariants;

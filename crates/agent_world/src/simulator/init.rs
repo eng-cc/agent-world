@@ -6,6 +6,7 @@ use crate::geometry::GeoPos;
 
 use super::asteroid_fragment::generate_fragments;
 use super::chunking::{chunk_coord_of, chunk_coords, ChunkCoord};
+use super::frag_spawn::{fragment_spawn_pos, FRAGMENT_LOCATION_PREFIX};
 use super::fragment_physics::{
     synthesize_fragment_budget, synthesize_fragment_profile, truncate_fragment_profile_blocks,
 };
@@ -440,9 +441,17 @@ pub fn build_world_model(
         let mut spawn_candidates: Vec<LocationId> = model
             .locations
             .keys()
-            .filter(|location_id| !location_id.starts_with("frag-"))
+            .filter(|location_id| location_id.starts_with(FRAGMENT_LOCATION_PREFIX))
             .cloned()
             .collect();
+        if spawn_candidates.is_empty() {
+            spawn_candidates = model
+                .locations
+                .keys()
+                .filter(|location_id| !location_id.starts_with(FRAGMENT_LOCATION_PREFIX))
+                .cloned()
+                .collect();
+        }
         if spawn_candidates.is_empty() {
             spawn_candidates = model.locations.keys().cloned().collect();
         }
@@ -454,17 +463,22 @@ pub fn build_world_model(
         ensure_valid_stock(&init.agents.resources)?;
         for offset in 0..init.agents.count {
             let idx = init.agents.start_index as u64 + offset as u64;
-            let spawn_pick = splitmix64(
+            let spawn_roll = splitmix64(
                 init.seed
                     .wrapping_add(0xA2E4_4B5D_1974_3377)
                     .wrapping_add(idx),
-            ) as usize
-                % spawn_candidates.len();
+            );
+            let spawn_pick = spawn_roll as usize % spawn_candidates.len();
             let spawn_location_id = spawn_candidates[spawn_pick].clone();
             let spawn_pos = model
                 .locations
                 .get(&spawn_location_id)
-                .map(|location| location.pos)
+                .map(|location| {
+                    if !location.id.starts_with(FRAGMENT_LOCATION_PREFIX) {
+                        return location.pos;
+                    }
+                    fragment_spawn_pos(location, &config.space, spawn_roll)
+                })
                 .ok_or_else(|| WorldInitError::SpawnLocationNotFound {
                     location_id: spawn_location_id.clone(),
                 })?;
