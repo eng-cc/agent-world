@@ -20,6 +20,7 @@
 ### WBR4 回归与收口
 - [x] WBR4.1 执行 `test_tier_required` 最小回归（至少 viewer 相关 check/test）
 - [x] WBR4.2 更新本项目文档状态、总项目文档与开发日志
+- [x] WBR4.3 Playwright 闭环验证（打开 Web 页面、抓 snapshot/screenshot、校验 console error）
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent.rs`

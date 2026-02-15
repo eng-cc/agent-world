@@ -482,12 +482,12 @@ pub(super) fn handle_timeline_seek_submit(
             With<TimelineSeekSubmitButton>,
         ),
     >,
-    client: Res<ViewerClient>,
+    client: Option<Res<ViewerClient>>,
     mut timeline: ResMut<TimelineUiState>,
 ) {
     for interaction in &mut interactions {
         if *interaction == Interaction::Pressed {
-            timeline_seek_action(&mut timeline, Some(&client));
+            timeline_seek_action(&mut timeline, client.as_deref());
         }
     }
 }
@@ -874,7 +874,7 @@ fn format_tick_list(ticks: &[u64], max_items: usize) -> String {
 
 pub(super) fn handle_control_buttons(
     mut interactions: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
-    client: Res<ViewerClient>,
+    client: Option<Res<ViewerClient>>,
     state: Res<ViewerState>,
     mut loading: ResMut<StepControlLoadingState>,
 ) {
@@ -888,9 +888,11 @@ pub(super) fn handle_control_buttons(
         }
 
         mark_step_loading_on_control(&button.control, &state, &mut loading);
-        let _ = client.tx.send(ViewerRequest::Control {
-            mode: button.control.clone(),
-        });
+        if let Some(client) = client.as_deref() {
+            let _ = client.tx.send(ViewerRequest::Control {
+                mode: button.control.clone(),
+            });
+        }
     }
 }
 
