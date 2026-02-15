@@ -186,6 +186,9 @@
 - [x] 修复 viewer 3D 相机拖拽输入兼容性（支持触控板/Shift+左键平移）
 - [x] 输出 LLM Prompt 组装重构与多步机制设计文档（`doc/world-simulator/llm-prompt-multi-step-orchestration.md`）
 - [x] 输出对应项目管理文档（`doc/world-simulator/llm-prompt-multi-step-orchestration.project.md`）
+- [x] 输出 LLM 建造链路动作扩展设计文档（`doc/world-simulator/llm-build-chain-actions.md`）
+- [x] 输出对应项目管理文档（`doc/world-simulator/llm-build-chain-actions.project.md`）
+- [ ] 扩展 LLM 决策动作到建造链路 V1（`transfer_resource` / `refine_compound`）并完成 Web 闭环验收
 
 ### 9. 场景测试覆盖矩阵
 - [x] 在 `doc/world-simulator/scenario-files.md` 补充“场景 → 测试目标”矩阵
