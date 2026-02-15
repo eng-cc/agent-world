@@ -12,6 +12,7 @@ mod agent_default_modules;
 mod audit;
 mod basic;
 mod body;
+mod builtin_wasm_materializer;
 mod economy;
 mod economy_bootstrap;
 mod economy_module_requests;
