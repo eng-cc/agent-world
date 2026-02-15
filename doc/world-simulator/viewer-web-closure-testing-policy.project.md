@@ -14,8 +14,8 @@
 - [x] WCT2.4 更新 `doc/world-simulator/viewer-bevy-web-runtime*.md` 增补策略约束
 
 ### WCT3 回归与收口
-- [ ] WCT3.1 执行最小回归（viewer wasm check + Web 脚本 help）
-- [ ] WCT3.2 更新项目管理文档状态、总项目文档与开发日志
+- [x] WCT3.1 执行最小回归（viewer wasm check + Web 脚本 help + Playwright 闭环）
+- [x] WCT3.2 更新项目管理文档状态、总项目文档与开发日志
 
 ## 依赖
 - `AGENTS.md`
@@ -27,6 +27,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WCT1~WCT2 已完成，WCT3 进行中。
-- 下一步：执行最小回归（wasm check + web help + Playwright 闭环）并收口状态。
-- 最近更新：2026-02-15（完成文档口径迁移，统一 Web 默认闭环）。
+- 当前阶段：WCT1~WCT3 全部完成。
+- 下一步：按该策略执行后续 Viewer 闭环任务（Web 默认，native fallback）。
+- 最近更新：2026-02-15（完成最小回归与 Playwright 闭环收口）。

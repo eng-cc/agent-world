@@ -146,7 +146,7 @@
 - [x] Viewer 浏览器运行路径接入（wasm 编译兼容 + trunk 启动入口）
 - [x] 输出 Viewer Web 端闭环测试策略设计文档（`doc/world-simulator/viewer-web-closure-testing-policy.md`）
 - [x] 输出 Viewer Web 端闭环测试策略项目管理文档（`doc/world-simulator/viewer-web-closure-testing-policy.project.md`）
-- [ ] Viewer 闭环测试默认切换到 Web 端（Playwright）
+- [x] Viewer 闭环测试默认切换到 Web 端（Playwright）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
@@ -256,4 +256,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 M4 配方完工自动 Product 校验闭环（模块解析策略 + 入账门禁 + 回归测试，2026-02-14）
+- 最近更新：完成 Viewer 闭环测试默认切换到 Web 端（Playwright，含策略文档迁移与回归收口，2026-02-15）
