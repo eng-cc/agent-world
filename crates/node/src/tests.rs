@@ -1,5 +1,5 @@
 use super::*;
-use agent_world_distfs::{FileStore as _, LocalCasStore};
+use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use ed25519_dalek::SigningKey;
 use std::fs;
 use std::net::UdpSocket;
@@ -378,6 +378,89 @@ fn runtime_gossip_replication_rejects_unsigned_when_signature_enforced() {
     let store_b = LocalCasStore::new(dir_b.join("store"));
     let files = store_b.list_files().expect("list files");
     assert!(files.is_empty());
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
+fn runtime_gossip_replication_persists_guard_across_restart() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let dir_a = temp_dir("restart-a");
+    let dir_b = temp_dir("restart-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+
+    let build_config_a = || {
+        NodeConfig::new("node-a", "world-restart", NodeRole::Sequencer)
+            .expect("config a")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("tick a")
+            .with_pos_validators(validators.clone())
+            .expect("validators a")
+            .with_gossip_optional(addr_a, vec![addr_b])
+            .with_replication(signed_replication_config(dir_a.clone(), 55))
+    };
+    let build_config_b = || {
+        NodeConfig::new("node-b", "world-restart", NodeRole::Observer)
+            .expect("config b")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("tick b")
+            .with_pos_validators(validators.clone())
+            .expect("validators b")
+            .with_gossip_optional(addr_b, vec![addr_a])
+            .with_replication(signed_replication_config(dir_b.clone(), 66))
+    };
+
+    let mut runtime_a = NodeRuntime::new(build_config_a());
+    let mut runtime_b = NodeRuntime::new(build_config_b());
+    runtime_a.start().expect("start a first");
+    runtime_b.start().expect("start b first");
+    thread::sleep(Duration::from_millis(220));
+    let snapshot_b_first = runtime_b.snapshot();
+    runtime_a.stop().expect("stop a first");
+    runtime_b.stop().expect("stop b first");
+    assert!(snapshot_b_first.last_error.is_none());
+
+    let guard_path = dir_b.join("replication_guard.json");
+    let guard_before: SingleWriterReplicationGuard =
+        serde_json::from_slice(&fs::read(&guard_path).expect("read guard before"))
+            .expect("parse guard before");
+    assert!(guard_before.last_sequence >= 1);
+
+    let mut runtime_a = NodeRuntime::new(build_config_a());
+    let mut runtime_b = NodeRuntime::new(build_config_b());
+    runtime_a.start().expect("start a second");
+    runtime_b.start().expect("start b second");
+    thread::sleep(Duration::from_millis(220));
+    let snapshot_b_second = runtime_b.snapshot();
+    runtime_a.stop().expect("stop a second");
+    runtime_b.stop().expect("stop b second");
+    assert!(snapshot_b_second.last_error.is_none());
+
+    let guard_after: SingleWriterReplicationGuard =
+        serde_json::from_slice(&fs::read(&guard_path).expect("read guard after"))
+            .expect("parse guard after");
+    assert_eq!(guard_after.writer_id, guard_before.writer_id);
+    assert!(guard_after.last_sequence > guard_before.last_sequence);
+
+    let store_b = LocalCasStore::new(dir_b.join("store"));
+    let files = store_b.list_files().expect("list files");
+    assert!(files.len() >= 2);
 
     let _ = fs::remove_dir_all(&dir_a);
     let _ = fs::remove_dir_all(&dir_b);
