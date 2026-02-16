@@ -1,5 +1,7 @@
 use std::env;
+use std::fs;
 use std::net::SocketAddr;
+use std::path::Path;
 use std::process;
 use std::thread;
 use std::time::Duration;
@@ -10,6 +12,13 @@ use agent_world::viewer::{
     ViewerWebBridgeConfig,
 };
 use agent_world_node::{NodeConfig, NodeRole, NodeRuntime, PosValidator};
+use ed25519_dalek::SigningKey;
+use rand_core::OsRng;
+
+const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
+const NODE_TABLE_KEY: &str = "node";
+const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
+const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -119,6 +128,9 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
     if !options.node_enabled {
         return Ok(None);
     }
+
+    let _ = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
+        .map_err(|err| format!("failed to ensure node keypair in config.toml: {err}"))?;
 
     let world_id = format!("live-{}", options.scenario.as_str());
     let mut config = NodeConfig::new(options.node_id.clone(), world_id, options.node_role)
@@ -308,9 +320,154 @@ fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
         .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NodeKeypairConfig {
+    private_key_hex: String,
+    public_key_hex: String,
+}
+
+fn ensure_node_keypair_in_config(path: &Path) -> Result<NodeKeypairConfig, String> {
+    let mut table = load_config_table(path)?;
+    let mut wrote = false;
+
+    let node_table = table
+        .entry(NODE_TABLE_KEY.to_string())
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()));
+    let node_table = node_table
+        .as_table_mut()
+        .ok_or_else(|| "config field 'node' must be a table".to_string())?;
+
+    let existing_private = node_table
+        .get(NODE_PRIVATE_KEY_FIELD)
+        .and_then(toml::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+    let existing_public = node_table
+        .get(NODE_PUBLIC_KEY_FIELD)
+        .and_then(toml::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+
+    let keypair = match (existing_private, existing_public) {
+        (Some(private_hex), Some(public_hex)) => {
+            validate_node_keypair_hex(private_hex.as_str(), public_hex.as_str())?;
+            NodeKeypairConfig {
+                private_key_hex: private_hex,
+                public_key_hex: public_hex,
+            }
+        }
+        (Some(private_hex), None) => {
+            let signing_key = signing_key_from_hex(private_hex.as_str())?;
+            let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+            node_table.insert(
+                NODE_PUBLIC_KEY_FIELD.to_string(),
+                toml::Value::String(public_key_hex.clone()),
+            );
+            wrote = true;
+            NodeKeypairConfig {
+                private_key_hex: private_hex,
+                public_key_hex,
+            }
+        }
+        _ => {
+            let signing_key = SigningKey::generate(&mut OsRng);
+            let private_key_hex = hex::encode(signing_key.to_bytes());
+            let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+            node_table.insert(
+                NODE_PRIVATE_KEY_FIELD.to_string(),
+                toml::Value::String(private_key_hex.clone()),
+            );
+            node_table.insert(
+                NODE_PUBLIC_KEY_FIELD.to_string(),
+                toml::Value::String(public_key_hex.clone()),
+            );
+            wrote = true;
+            NodeKeypairConfig {
+                private_key_hex,
+                public_key_hex,
+            }
+        }
+    };
+
+    if wrote {
+        write_config_table(path, &table)?;
+    }
+    Ok(keypair)
+}
+
+fn load_config_table(path: &Path) -> Result<toml::map::Map<String, toml::Value>, String> {
+    if !path.exists() {
+        return Ok(toml::map::Map::new());
+    }
+
+    let content = fs::read_to_string(path)
+        .map_err(|err| format!("read {} failed: {}", path.display(), err))?;
+    if content.trim().is_empty() {
+        return Ok(toml::map::Map::new());
+    }
+
+    let value: toml::Value = toml::from_str(content.as_str())
+        .map_err(|err| format!("parse {} failed: {}", path.display(), err))?;
+    value
+        .as_table()
+        .cloned()
+        .ok_or_else(|| format!("{} root must be a table", path.display()))
+}
+
+fn write_config_table(
+    path: &Path,
+    table: &toml::map::Map<String, toml::Value>,
+) -> Result<(), String> {
+    let content = toml::to_string_pretty(table)
+        .map_err(|err| format!("serialize {} failed: {}", path.display(), err))?;
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|err| {
+                format!(
+                    "create config parent dir {} failed: {}",
+                    parent.display(),
+                    err
+                )
+            })?;
+        }
+    }
+    fs::write(path, content).map_err(|err| format!("write {} failed: {}", path.display(), err))
+}
+
+fn validate_node_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<(), String> {
+    let signing_key = signing_key_from_hex(private_key_hex)?;
+    let expected_public_hex = hex::encode(signing_key.verifying_key().to_bytes());
+    if expected_public_hex != public_key_hex {
+        return Err("node.public_key does not match node.private_key".to_string());
+    }
+    Ok(())
+}
+
+fn signing_key_from_hex(private_key_hex: &str) -> Result<SigningKey, String> {
+    let private_bytes = hex::decode(private_key_hex)
+        .map_err(|_| "node.private_key must be valid hex".to_string())?;
+    let private_array: [u8; 32] = private_bytes
+        .try_into()
+        .map_err(|_| "node.private_key must be 32-byte hex".to_string())?;
+    Ok(SigningKey::from_bytes(&private_array))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_config_path(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}.toml"))
+    }
 
     #[test]
     fn parse_options_defaults() {
@@ -488,5 +645,51 @@ mod tests {
             parse_options(["--node-gossip-peer", "127.0.0.1:6202"].into_iter()).expect("options");
         let err = start_live_node(&options).expect_err("must fail");
         assert!(err.contains("--node-gossip-bind"));
+    }
+
+    #[test]
+    fn ensure_node_keypair_in_config_creates_file_when_missing() {
+        let path = temp_config_path("node-key-create");
+        let keypair = ensure_node_keypair_in_config(&path).expect("ensure keypair");
+        assert_eq!(keypair.private_key_hex.len(), 64);
+        assert_eq!(keypair.public_key_hex.len(), 64);
+        assert!(path.exists());
+
+        let content = fs::read_to_string(&path).expect("read config");
+        assert!(content.contains("[node]"));
+        assert!(content.contains("private_key"));
+        assert!(content.contains("public_key"));
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn ensure_node_keypair_in_config_preserves_existing_keypair() {
+        let path = temp_config_path("node-key-preserve");
+        let first = ensure_node_keypair_in_config(&path).expect("first ensure");
+        let second = ensure_node_keypair_in_config(&path).expect("second ensure");
+        assert_eq!(first, second);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn ensure_node_keypair_in_config_fills_missing_public_key() {
+        let path = temp_config_path("node-key-fill-public");
+        let generated = ensure_node_keypair_in_config(&path).expect("first ensure");
+
+        let content = fs::read_to_string(&path).expect("read config");
+        let mut value: toml::Value = toml::from_str(content.as_str()).expect("parse config");
+        let node = value
+            .as_table_mut()
+            .and_then(|table| table.get_mut(NODE_TABLE_KEY))
+            .and_then(toml::Value::as_table_mut)
+            .expect("node table");
+        node.remove(NODE_PUBLIC_KEY_FIELD);
+        fs::write(&path, toml::to_string_pretty(&value).expect("serialize")).expect("write");
+
+        let filled = ensure_node_keypair_in_config(&path).expect("fill public");
+        assert_eq!(filled.private_key_hex, generated.private_key_hex);
+        assert_eq!(filled.public_key_hex, generated.public_key_hex);
+        let _ = fs::remove_file(path);
     }
 }

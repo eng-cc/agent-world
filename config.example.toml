@@ -36,3 +36,8 @@ chat_map_developer_role_to_system = true
 model = "your-model-id"
 model_context_window = 128000
 model_provider = "ark"
+
+[node]
+# 节点启动时会读取这两个字段；若 config.toml 缺失或字段为空，会自动生成并写回。
+private_key = ""
+public_key = ""
