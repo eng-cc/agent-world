@@ -6,7 +6,7 @@
 - [x] AHA-2：实现结算签名语义升级（`mintsig:v1`）与签名校验函数。
 - [x] AHA-3：实现资产不变量审计报告 API，并覆盖 `test_tier_required` 单测。
 - [x] AHA-4：`world_viewer_live` reward runtime 接入审计摘要输出。
-- [ ] AHA-5：文档状态回写、devlog 收口、发布说明整理。
+- [x] AHA-5：文档状态回写、devlog 收口、发布说明整理。
 
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-redeemable-power-asset-audit-hardening.md`
@@ -17,6 +17,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
 
 ## 状态
-- 当前阶段：AHA-4 完成（`world_viewer_live` 审计摘要接线已落地）。
-- 下一步：执行 AHA-5（文档状态回写、devlog 收口、发布说明整理）。
+- 当前阶段：AHA-0 ~ AHA-5 全部完成。
+- 下一步：等待验收与后续迭代需求。
 - 最近更新：2026-02-16。
