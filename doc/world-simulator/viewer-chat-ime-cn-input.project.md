@@ -3,8 +3,8 @@
 ## 任务拆解
 - [x] CIM1 输出设计文档（`doc/world-simulator/viewer-chat-ime-cn-input.md`）
 - [x] CIM2 输出项目管理文档（本文件）
-- [ ] CIM3 调整 Web Viewer 输入事件处理配置，修复 Chat 输入框中文输入
-- [ ] CIM4 回归验证（`test_tier_required` + wasm 目标检查 + Web 闭环截图）
+- [x] CIM3 调整 Web Viewer 输入事件处理配置，修复 Chat 输入框中文输入
+- [x] CIM4 回归验证（`test_tier_required` + wasm 目标检查 + Web 闭环截图）
 - [ ] CIM5 文档回写、devlog、提交收口
 
 ## 依赖
@@ -13,6 +13,6 @@
 - `scripts/run-viewer-web.sh`
 
 ## 状态
-- 当前阶段：进行中（CIM3）
-- 下一步：完成代码修复并执行回归验证
-- 最近更新：CIM1-CIM2 完成（2026-02-16）
+- 当前阶段：进行中（CIM5）
+- 下一步：写入 devlog 并完成收口提交
+- 最近更新：CIM3-CIM4 完成（2026-02-16）

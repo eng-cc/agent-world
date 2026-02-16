@@ -54,11 +54,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(module_visibility_path)
         .insert_resource(StepControlLoadingState::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Agent World Viewer".to_string(),
-                resolution: (1200, 800).into(),
-                ..default()
-            }),
+            primary_window: Some(primary_window_config()),
             ..default()
         }))
         .add_plugins(EguiPlugin::default())
@@ -138,6 +134,23 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .run();
 }
 
+fn primary_window_config() -> Window {
+    let window = Window {
+        title: "Agent World Viewer".to_string(),
+        resolution: (1200, 800).into(),
+        ..default()
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let window = Window {
+        // Preserve browser composition flow so CJK IME can commit into egui TextEdit.
+        prevent_default_event_handling: false,
+        ..window
+    };
+
+    window
+}
+
 fn resolve_panel_mode_from_env() -> ViewerPanelMode {
     let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_PANEL_MODE").ok() else {
         return ViewerPanelMode::default();
@@ -199,4 +212,29 @@ pub(super) fn decide_offline(headless: bool, offline_env: bool, force_online: bo
         return true;
     }
     headless
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn primary_window_config_sets_title_and_resolution() {
+        let window = primary_window_config();
+        assert_eq!(window.title, "Agent World Viewer");
+        assert_eq!(window.resolution.physical_width(), 1200);
+        assert_eq!(window.resolution.physical_height(), 800);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn primary_window_config_keeps_default_prevent_default_on_native() {
+        let window = primary_window_config();
+        assert!(window.prevent_default_event_handling);
+    }
+
+    #[test]
+    fn decide_offline_force_online_overrides_other_flags() {
+        assert!(!decide_offline(true, true, true));
+    }
 }
