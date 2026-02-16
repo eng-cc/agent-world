@@ -1,4 +1,5 @@
 use std::env;
+use std::net::SocketAddr;
 use std::process;
 use std::thread;
 use std::time::Duration;
@@ -23,6 +24,8 @@ struct CliOptions {
     node_tick_ms: u64,
     node_auto_attest_all_validators: bool,
     node_validators: Vec<PosValidator>,
+    node_gossip_bind: Option<SocketAddr>,
+    node_gossip_peers: Vec<SocketAddr>,
 }
 
 impl Default for CliOptions {
@@ -39,6 +42,8 @@ impl Default for CliOptions {
             node_tick_ms: 200,
             node_auto_attest_all_validators: true,
             node_validators: Vec::new(),
+            node_gossip_bind: None,
+            node_gossip_peers: Vec::new(),
         }
     }
 }
@@ -125,6 +130,12 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
             .map_err(|err| format!("failed to apply node validators: {err:?}"))?;
     }
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    if !options.node_gossip_peers.is_empty() && options.node_gossip_bind.is_none() {
+        return Err("node gossip peers require --node-gossip-bind".to_string());
+    }
+    if let Some(bind_addr) = options.node_gossip_bind {
+        config = config.with_gossip_optional(bind_addr, options.node_gossip_peers.clone());
+    }
 
     let mut runtime = NodeRuntime::new(config);
     runtime
@@ -212,6 +223,20 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--node-no-auto-attest-all" => {
                 options.node_auto_attest_all_validators = false;
             }
+            "--node-gossip-bind" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-gossip-bind requires <addr:port>".to_string())?;
+                options.node_gossip_bind = Some(parse_socket_addr(raw, "--node-gossip-bind")?);
+            }
+            "--node-gossip-peer" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-gossip-peer requires <addr:port>".to_string())?;
+                options
+                    .node_gossip_peers
+                    .push(parse_socket_addr(raw, "--node-gossip-peer")?);
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -236,7 +261,7 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
 fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...]"
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
     );
     println!("Options:");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
@@ -250,6 +275,8 @@ fn print_help() {
     println!("  --node-tick-ms <ms> Node runtime tick interval (default: 200)");
     println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
     println!("  --node-no-auto-attest-all Disable auto-attesting all validators per tick");
+    println!("  --node-gossip-bind <addr:port> Bind UDP endpoint for node gossip");
+    println!("  --node-gossip-peer <addr:port> Add UDP peer endpoint for node gossip");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -276,6 +303,11 @@ fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
     })
 }
 
+fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
+    raw.parse::<SocketAddr>()
+        .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,6 +326,8 @@ mod tests {
         assert_eq!(options.node_tick_ms, 200);
         assert!(options.node_auto_attest_all_validators);
         assert!(options.node_validators.is_empty());
+        assert!(options.node_gossip_bind.is_none());
+        assert!(options.node_gossip_peers.is_empty());
     }
 
     #[test]
@@ -324,6 +358,12 @@ mod tests {
                 "--node-validator",
                 "node-b:40",
                 "--node-no-auto-attest-all",
+                "--node-gossip-bind",
+                "127.0.0.1:6001",
+                "--node-gossip-peer",
+                "127.0.0.1:6002",
+                "--node-gossip-peer",
+                "127.0.0.1:6003",
             ]
             .into_iter(),
         )
@@ -337,6 +377,17 @@ mod tests {
         assert_eq!(options.node_tick_ms, 30);
         assert!(!options.node_auto_attest_all_validators);
         assert_eq!(options.node_validators.len(), 2);
+        assert_eq!(
+            options.node_gossip_bind,
+            Some("127.0.0.1:6001".parse::<SocketAddr>().expect("addr"))
+        );
+        assert_eq!(
+            options.node_gossip_peers,
+            vec![
+                "127.0.0.1:6002".parse::<SocketAddr>().expect("addr"),
+                "127.0.0.1:6003".parse::<SocketAddr>().expect("addr"),
+            ]
+        );
         assert_eq!(
             options.node_validators,
             vec![
@@ -379,6 +430,13 @@ mod tests {
     }
 
     #[test]
+    fn parse_options_rejects_invalid_node_gossip_addr() {
+        let err =
+            parse_options(["--node-gossip-bind", "invalid"].into_iter()).expect_err("invalid");
+        assert!(err.contains("--node-gossip-bind"));
+    }
+
+    #[test]
     fn start_live_node_applies_pos_options() {
         let options = parse_options(
             [
@@ -391,6 +449,10 @@ mod tests {
                 "--node-validator",
                 "node-backup:30",
                 "--node-no-auto-attest-all",
+                "--node-gossip-bind",
+                "127.0.0.1:6101",
+                "--node-gossip-peer",
+                "127.0.0.1:6102",
             ]
             .into_iter(),
         )
@@ -406,7 +468,25 @@ mod tests {
         assert_eq!(config.pos_config.validators[1].validator_id, "node-backup");
         assert_eq!(config.pos_config.validators[1].stake, 30);
         assert!(!config.auto_attest_all_validators);
+        let gossip = config.gossip.as_ref().expect("gossip config");
+        assert_eq!(
+            gossip.bind_addr,
+            "127.0.0.1:6101".parse::<SocketAddr>().expect("addr")
+        );
+        assert_eq!(gossip.peers.len(), 1);
+        assert_eq!(
+            gossip.peers[0],
+            "127.0.0.1:6102".parse::<SocketAddr>().expect("addr")
+        );
 
         runtime.stop().expect("stop");
+    }
+
+    #[test]
+    fn start_live_node_rejects_gossip_peers_without_bind() {
+        let options =
+            parse_options(["--node-gossip-peer", "127.0.0.1:6202"].into_iter()).expect("options");
+        let err = start_live_node(&options).expect_err("must fail");
+        assert!(err.contains("--node-gossip-bind"));
     }
 }
