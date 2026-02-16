@@ -44,6 +44,11 @@
 - [x] LFO7.3 调整 prompt/behavior 约束为“只允许 tool call 输出”，更新解析路径与单测
 - [x] LFO7.4 跑通 required-tier 测试并记录 devlog/状态回填
 
+### LFO8 Tool-only 在线抽样与 TODO 回填（2026-02-17）
+- [x] LFO8.1 使用“建工厂 + 制成品”目标 prompt 复跑 `llm_bootstrap --ticks 30`，输出 JSON 报告
+- [x] LFO8.2 使用 `--print-llm-io` 短程抽样定位高 `parse_errors` 根因
+- [x] LFO8.3 回写 TODO 并更新项目文档/devlog
+
 ### LFO7 实施结果摘要（2026-02-17）
 - tool 注册：
   - 在原 4 个查询工具基础上新增 `agent_submit_decision`，统一承载最终动作提交。
@@ -56,6 +61,22 @@
   - 上下文足够时要求直接调用 `agent_submit_decision`，保留 `message_to_user` 参数透传。
 - 回归测试：
   - 新增/更新覆盖：tool 列表数量、`tool_choice=required`、决策 tool 参数映射、`output_text` 拒绝路径、tool-only prompt 约束。
+
+### LFO8 在线抽样结果摘要（2026-02-17）
+- 运行产物：
+  - `output/llm_closed_loop/tool_only_llm_bootstrap_report.json`
+- 关键指标（30 tick）：
+  - `action_kind_counts={build_factory:2, move_agent:1, refine_compound:3, schedule_recipe:1}`
+  - `action_kind_success_counts={build_factory:1, refine_compound:3, schedule_recipe:1}`
+  - `trace_counts={llm_errors:0, parse_errors:20, repair_rounds_total:20}`
+  - `decision_counts={wait:23, act:7}`，`world_time=7`
+- 链路确认：
+  - 已完成“建工厂 + 制成品（排产）”主链路：`build_factory` 成功与 `schedule_recipe` 成功均已出现。
+- 新观察 TODO（后续优化）：
+  - TODO-5：tool-only 协议下，模型在排产后频繁输出 `execute_until + wait`，当前解析会判定 `execute_until action must be actionable decision` 并回落修复回路，导致长窗口 `parse_errors` 偏高、`world_time` 增长停滞。建议增加“等待语义专用协议”：
+    - 方案 A：允许 `execute_until.action=wait_ticks(1)`（或等价动作）并在 guardrail 中限长；
+    - 方案 B：检测到 `execute_until + wait` 时自动改写为最小可执行动作并保留 `until` 条件；
+    - 方案 C：在 prompt 示例中移除 wait 型 `execute_until` 模板并增加“排产后用可执行动作推进时间”的硬约束。
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
@@ -125,6 +146,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO7 全部完成（含决策全量 Tool 化）。
-- 下一步：在线抽样复跑验证 tool-only 协议下的长窗口稳定性，并评估是否继续压缩多工具同轮输出空间。
-- 最近更新：2026-02-17（完成 LFO7.2-LFO7.4 代码与测试收口）。
+- 当前阶段：LFO0-LFO8 全部完成（含 tool-only 在线抽样与 TODO 回填）。
+- 下一步：进入 LFO9，收敛 `execute_until + wait` 在 tool-only 下的解析/策略一致性，降低长窗口修复率。
+- 最近更新：2026-02-17（完成 LFO8 在线抽样与 TODO-5）。
