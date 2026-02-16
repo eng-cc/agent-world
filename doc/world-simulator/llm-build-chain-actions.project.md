@@ -31,6 +31,18 @@
 - [x] LBA4.3 Prompt/解析层增加非法 module 别名纠正或错误提示（例如 `agent_modules_list` -> `agent.modules.list`）。
 - [x] LBA4.4 `world_llm_agent_demo` 报告新增 `reject_reason` 聚合统计，便于回归判断“失败是策略问题还是能力缺失”。
 
+### LBA5 在线 LLM 闭环复跑（2026-02-16）
+- [x] LBA5.1 使用“建工厂 + 制成品”目标 prompt 复跑 `llm_bootstrap` 20 tick。
+- [x] LBA5.2 产出运行证据：
+  - `output/llm_bootstrap/factory_finished_rerun_2026-02-16/run.log`
+  - `output/llm_bootstrap/factory_finished_rerun_2026-02-16/report.json`
+  - 指标：`action_success=19`、`action_failure=1`、`llm_errors=0`、`parse_errors=0`。
+- [x] LBA5.3 复跑结论：当前动作集中仍无法直接建厂，但可稳定完成“辐射采集 -> 化合物精炼(1000g) -> 硬件产出”最小制成品闭环。
+- [x] LBA5.4 记录产品优化 TODO（待后续排期）：
+  - TODO-1：LLM 仍会先发出“移动到当前位置”的无效动作（`agent_already_at_location`），可在 prompt 中进一步强化“distance_cm=0 禁止 move”并在 planner 层增加硬拦截。
+  - TODO-2：模型偶发单轮输出多个 JSON（`module_call --- module_call --- decision`）；建议新增“多 JSON 响应拆分与告警统计”，避免依赖隐式容错。
+  - TODO-3：`world_llm_agent_demo` 报告未直接暴露“最终硬件库存/增量”，建议补充制成品 KPI 字段，降低人工解读成本。
+
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
 - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
@@ -39,6 +51,6 @@
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 
 ## 状态
-- 当前阶段：LBA0~LBA4 全部完成。
-- 下一阶段：在真实在线模型下复跑 20~30 tick，观察 `action_reject_reason_*` 指标是否从参数类失败转向策略类失败。
-- 最近更新：2026-02-16（完成 LBA4 优化：prompt 约束增强、module 别名纠正、report 拒绝原因统计）。
+- 当前阶段：LBA0~LBA5 全部完成。
+- 下一阶段：按 TODO-1~TODO-3 进入产品优化排期（先补多 JSON 解析告警与制成品 KPI，再收敛 move 无效动作）。
+- 最近更新：2026-02-16（完成 LBA5 在线闭环复跑与优化 TODO 记录）。
