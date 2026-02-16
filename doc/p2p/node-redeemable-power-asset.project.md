@@ -10,7 +10,7 @@
 - [x] RPA-6：实现最小需求侧支付入口（系统订单池预算分配）并接入结算。
 - [x] RPA-7：实现身份签名治理最小收口（`node_id <-> public_key` 校验，拒绝未绑定提交）。
 - [x] RPA-8：增强 DistFS 证明语义字段并补齐 `test_tier_required`/`test_tier_full` 回归。
-- [ ] RPA-9：文档状态回写、devlog 收口、发布说明整理。
+- [x] RPA-9：文档状态回写、devlog 收口、发布说明整理。
 
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/node-redeemable-power-asset.md`
@@ -25,6 +25,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
 
 ## 状态
-- 当前阶段：RPA-8 完成（DistFS 证明语义字段与回归已落地）。
-- 下一步：执行 RPA-9（文档状态回写、devlog 收口、发布说明整理）。
+- 当前阶段：RPA-0 ~ RPA-9 全部完成。
+- 下一步：等待验收与后续迭代需求。
 - 最近更新：2026-02-16。
