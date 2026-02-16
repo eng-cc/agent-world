@@ -11,7 +11,7 @@ use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
     measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
     NodePointsRuntimeCollector, NodePointsRuntimeHeuristics, ProtocolPowerReserve,
-    RewardAssetConfig, World as RuntimeWorld,
+    RewardAssetConfig, RewardAssetInvariantReport, World as RuntimeWorld,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -400,6 +400,13 @@ fn reward_runtime_loop(
         if config.auto_redeem {
             auto_redeem_runtime_rewards(&mut reward_world, minted_records.as_slice());
         }
+        let invariant_report = reward_world.reward_asset_invariant_report();
+        if !invariant_report.is_ok() {
+            eprintln!(
+                "reward runtime invariant violations detected: {}",
+                invariant_report.violations.len()
+            );
+        }
 
         let payload = serde_json::json!({
             "observed_at_unix_ms": observed_at_unix_ms,
@@ -427,6 +434,8 @@ fn reward_runtime_loop(
             "minted_records": minted_records,
             "node_balances": reward_world.state().node_asset_balances,
             "reserve": reward_world.protocol_power_reserve(),
+            "reward_asset_invariant_status": reward_invariant_status_payload(&invariant_report),
+            "reward_asset_invariant_report": invariant_report,
         });
         let report_path = Path::new(config.report_dir.as_str())
             .join(format!("epoch-{}.json", report.epoch_index));
@@ -494,6 +503,13 @@ fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u
         available_power_units: current.available_power_units,
         redeemed_power_units: 0,
     });
+}
+
+fn reward_invariant_status_payload(report: &RewardAssetInvariantReport) -> serde_json::Value {
+    serde_json::json!({
+        "ok": report.is_ok(),
+        "violation_count": report.violations.len(),
+    })
 }
 
 fn now_unix_ms() -> i64 {
@@ -1147,6 +1163,41 @@ mod tests {
         let err = parse_options(["--no-node", "--reward-runtime-enable"].into_iter())
             .expect_err("reward runtime requires node");
         assert!(err.contains("--reward-runtime-enable"));
+    }
+
+    #[test]
+    fn reward_invariant_status_payload_reflects_violation_count() {
+        let clean = RewardAssetInvariantReport::default();
+        let clean_payload = reward_invariant_status_payload(&clean);
+        assert_eq!(
+            clean_payload.get("ok").and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            clean_payload
+                .get("violation_count")
+                .and_then(|value| value.as_u64()),
+            Some(0)
+        );
+
+        let mut violated = RewardAssetInvariantReport::default();
+        violated
+            .violations
+            .push(agent_world::runtime::RewardAssetInvariantViolation {
+            code: "mint_signature_invalid".to_string(),
+            message: "tampered".to_string(),
+        });
+        let violated_payload = reward_invariant_status_payload(&violated);
+        assert_eq!(
+            violated_payload.get("ok").and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            violated_payload
+                .get("violation_count")
+                .and_then(|value| value.as_u64()),
+            Some(1)
+        );
     }
 
     #[test]
