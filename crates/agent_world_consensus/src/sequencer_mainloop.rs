@@ -1,0 +1,520 @@
+use serde::Serialize;
+
+use super::distributed::ActionEnvelope;
+use super::distributed::WorldHeadAnnounce;
+use super::distributed_dht::DistributedDht;
+use super::error::WorldError;
+use super::lease::{LeaseDecision, LeaseManager};
+use super::mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
+use super::pos::{
+    attest_world_head_with_pos, propose_world_head_with_pos, PosConsensus, PosConsensusConfig,
+    PosConsensusDecision, PosConsensusStatus,
+};
+
+#[derive(Debug, Clone)]
+pub struct SequencerMainloopConfig {
+    pub world_id: String,
+    pub node_id: String,
+    pub lease_ttl_ms: i64,
+    pub batch_rules: ActionBatchRules,
+    pub mempool: ActionMempoolConfig,
+    pub auto_attest_all_validators: bool,
+    pub initial_prev_block_hash: String,
+}
+
+impl Default for SequencerMainloopConfig {
+    fn default() -> Self {
+        Self {
+            world_id: "w1".to_string(),
+            node_id: "sequencer-1".to_string(),
+            lease_ttl_ms: 5_000,
+            batch_rules: ActionBatchRules::default(),
+            mempool: ActionMempoolConfig::default(),
+            auto_attest_all_validators: true,
+            initial_prev_block_hash: "genesis".to_string(),
+        }
+    }
+}
+
+impl SequencerMainloopConfig {
+    fn validate(&self) -> Result<(), WorldError> {
+        if self.world_id.trim().is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sequencer world_id cannot be empty".to_string(),
+            });
+        }
+        if self.node_id.trim().is_empty() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sequencer node_id cannot be empty".to_string(),
+            });
+        }
+        if self.lease_ttl_ms <= 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sequencer lease_ttl_ms must be positive".to_string(),
+            });
+        }
+        if self.batch_rules.max_actions == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sequencer batch_rules.max_actions must be positive".to_string(),
+            });
+        }
+        if self.batch_rules.max_payload_bytes == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sequencer batch_rules.max_payload_bytes must be positive".to_string(),
+            });
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SequencerTickState {
+    LeaseBlocked,
+    Idle,
+    Pending,
+    Committed,
+    Rejected,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SequencerTickReport {
+    pub world_id: String,
+    pub node_id: String,
+    pub state: SequencerTickState,
+    pub lease_granted: bool,
+    pub height: Option<u64>,
+    pub slot: Option<u64>,
+    pub batch_id: Option<String>,
+    pub block_hash: Option<String>,
+    pub status: Option<PosConsensusStatus>,
+}
+
+pub struct SequencerMainloop {
+    config: SequencerMainloopConfig,
+    mempool: ActionMempool,
+    consensus: PosConsensus,
+    lease: LeaseManager,
+    next_height: u64,
+    next_slot: u64,
+    prev_block_hash: String,
+}
+
+impl SequencerMainloop {
+    pub fn new(
+        config: SequencerMainloopConfig,
+        pos_config: PosConsensusConfig,
+    ) -> Result<Self, WorldError> {
+        config.validate()?;
+        let consensus = PosConsensus::new(pos_config)?;
+        Ok(Self {
+            mempool: ActionMempool::new(config.mempool.clone()),
+            lease: LeaseManager::new(),
+            prev_block_hash: config.initial_prev_block_hash.clone(),
+            config,
+            consensus,
+            next_height: 1,
+            next_slot: 0,
+        })
+    }
+
+    pub fn config(&self) -> &SequencerMainloopConfig {
+        &self.config
+    }
+
+    pub fn next_height(&self) -> u64 {
+        self.next_height
+    }
+
+    pub fn next_slot(&self) -> u64 {
+        self.next_slot
+    }
+
+    pub fn pending_actions(&self) -> usize {
+        self.mempool.len()
+    }
+
+    pub fn submit_action(&mut self, action: ActionEnvelope) -> bool {
+        if action.world_id != self.config.world_id {
+            return false;
+        }
+        self.mempool.add_action(action)
+    }
+
+    pub fn tick(
+        &mut self,
+        dht: &impl DistributedDht,
+        now_ms: i64,
+    ) -> Result<SequencerTickReport, WorldError> {
+        let lease = self.ensure_lease(now_ms);
+        if !lease.granted {
+            return Ok(SequencerTickReport {
+                world_id: self.config.world_id.clone(),
+                node_id: self.config.node_id.clone(),
+                state: SequencerTickState::LeaseBlocked,
+                lease_granted: false,
+                height: None,
+                slot: None,
+                batch_id: None,
+                block_hash: None,
+                status: None,
+            });
+        }
+
+        if let Some(report) = self.drive_pending_head(dht, now_ms)? {
+            return Ok(report);
+        }
+
+        let slot = self.next_slot;
+        let height = self.next_height;
+        let Some(batch) = self.mempool.take_batch_with_rules(
+            &self.config.world_id,
+            &self.config.node_id,
+            self.config.batch_rules,
+            now_ms,
+        )?
+        else {
+            return Ok(SequencerTickReport {
+                world_id: self.config.world_id.clone(),
+                node_id: self.config.node_id.clone(),
+                state: SequencerTickState::Idle,
+                lease_granted: true,
+                height: None,
+                slot: None,
+                batch_id: None,
+                block_hash: None,
+                status: None,
+            });
+        };
+
+        let state_root = state_root_for_actions(&batch.actions)?;
+        let block_hash = block_hash_for_batch(
+            &self.config.world_id,
+            height,
+            slot,
+            &self.prev_block_hash,
+            &batch.batch_id,
+            &state_root,
+        )?;
+
+        let head = WorldHeadAnnounce {
+            world_id: self.config.world_id.clone(),
+            height,
+            block_hash: block_hash.clone(),
+            state_root,
+            timestamp_ms: now_ms,
+            signature: String::new(),
+        };
+
+        let mut decision = propose_world_head_with_pos(
+            dht,
+            &mut self.consensus,
+            &head,
+            &self.config.node_id,
+            slot,
+            now_ms,
+        )?;
+
+        decision = self.drive_attestations_for_head(dht, &head, decision, now_ms)?;
+        self.next_slot = self.next_slot.saturating_add(1);
+
+        self.apply_finalized_status(&head.block_hash, decision.status);
+
+        Ok(SequencerTickReport {
+            world_id: self.config.world_id.clone(),
+            node_id: self.config.node_id.clone(),
+            state: tick_state_from_status(decision.status),
+            lease_granted: true,
+            height: Some(decision.height),
+            slot: Some(decision.slot),
+            batch_id: Some(batch.batch_id),
+            block_hash: Some(head.block_hash),
+            status: Some(decision.status),
+        })
+    }
+
+    fn ensure_lease(&mut self, now_ms: i64) -> LeaseDecision {
+        self.lease.expire_if_needed(now_ms);
+
+        if let Some(current) = self.lease.current().cloned() {
+            if current.holder_id == self.config.node_id && current.expires_at_ms > now_ms {
+                return self
+                    .lease
+                    .renew(&current.lease_id, now_ms, self.config.lease_ttl_ms);
+            }
+        }
+
+        self.lease
+            .try_acquire(&self.config.node_id, now_ms, self.config.lease_ttl_ms)
+    }
+
+    fn drive_pending_head(
+        &mut self,
+        dht: &impl DistributedDht,
+        now_ms: i64,
+    ) -> Result<Option<SequencerTickReport>, WorldError> {
+        let Some(record) = self
+            .consensus
+            .record(&self.config.world_id, self.next_height)
+            .cloned()
+        else {
+            return Ok(None);
+        };
+
+        if !matches!(record.status, PosConsensusStatus::Pending) {
+            return Ok(None);
+        }
+
+        let mut decision = self.decision_from_record(&record)?;
+        decision = self.drive_attestations_for_head(dht, &record.head, decision, now_ms)?;
+        self.apply_finalized_status(&record.head.block_hash, decision.status);
+
+        Ok(Some(SequencerTickReport {
+            world_id: self.config.world_id.clone(),
+            node_id: self.config.node_id.clone(),
+            state: tick_state_from_status(decision.status),
+            lease_granted: true,
+            height: Some(decision.height),
+            slot: Some(decision.slot),
+            batch_id: None,
+            block_hash: Some(record.head.block_hash),
+            status: Some(decision.status),
+        }))
+    }
+
+    fn drive_attestations_for_head(
+        &mut self,
+        dht: &impl DistributedDht,
+        head: &WorldHeadAnnounce,
+        mut decision: PosConsensusDecision,
+        now_ms: i64,
+    ) -> Result<PosConsensusDecision, WorldError> {
+        if !matches!(decision.status, PosConsensusStatus::Pending) {
+            return Ok(decision);
+        }
+
+        let target_epoch = self.consensus.slot_epoch(head.height.saturating_sub(1));
+        let source_epoch = target_epoch.saturating_sub(1);
+
+        for validator in self.consensus.validators() {
+            let validator_id = validator.validator_id;
+            if validator_id == self.config.node_id {
+                continue;
+            }
+
+            decision = attest_world_head_with_pos(
+                dht,
+                &mut self.consensus,
+                &head.world_id,
+                head.height,
+                &head.block_hash,
+                &validator_id,
+                true,
+                now_ms,
+                source_epoch,
+                target_epoch,
+                Some("sequencer mainloop auto attestation".to_string()),
+            )?;
+
+            if !matches!(decision.status, PosConsensusStatus::Pending) {
+                break;
+            }
+            if !self.config.auto_attest_all_validators {
+                break;
+            }
+        }
+
+        Ok(decision)
+    }
+
+    fn apply_finalized_status(&mut self, block_hash: &str, status: PosConsensusStatus) {
+        match status {
+            PosConsensusStatus::Pending => {}
+            PosConsensusStatus::Committed => {
+                self.prev_block_hash = block_hash.to_string();
+                self.next_height = self.next_height.saturating_add(1);
+            }
+            PosConsensusStatus::Rejected => {
+                self.next_height = self.next_height.saturating_add(1);
+            }
+        }
+    }
+
+    fn decision_from_record(
+        &self,
+        record: &super::pos::PosHeadRecord,
+    ) -> Result<PosConsensusDecision, WorldError> {
+        Ok(PosConsensusDecision {
+            world_id: record.head.world_id.clone(),
+            height: record.head.height,
+            block_hash: record.head.block_hash.clone(),
+            slot: record.slot,
+            epoch: record.epoch,
+            status: record.status,
+            approved_stake: record.approved_stake,
+            rejected_stake: record.rejected_stake,
+            total_stake: self.consensus.total_stake(),
+            required_stake: self.consensus.required_stake(),
+        })
+    }
+}
+
+fn tick_state_from_status(status: PosConsensusStatus) -> SequencerTickState {
+    match status {
+        PosConsensusStatus::Pending => SequencerTickState::Pending,
+        PosConsensusStatus::Committed => SequencerTickState::Committed,
+        PosConsensusStatus::Rejected => SequencerTickState::Rejected,
+    }
+}
+
+fn block_hash_for_batch(
+    world_id: &str,
+    height: u64,
+    slot: u64,
+    prev_block_hash: &str,
+    batch_id: &str,
+    state_root: &str,
+) -> Result<String, WorldError> {
+    let payload = BlockHashPayload {
+        world_id,
+        height,
+        slot,
+        prev_block_hash,
+        batch_id,
+        state_root,
+    };
+    let bytes = to_canonical_cbor(&payload)?;
+    Ok(super::util::blake3_hex(&bytes))
+}
+
+fn state_root_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldError> {
+    let summary: Vec<ActionStateSummary<'_>> = actions
+        .iter()
+        .map(|action| ActionStateSummary {
+            action_id: &action.action_id,
+            actor_id: &action.actor_id,
+            payload_hash: &action.payload_hash,
+            nonce: action.nonce,
+            timestamp_ms: action.timestamp_ms,
+        })
+        .collect();
+    let bytes = to_canonical_cbor(&summary)?;
+    Ok(super::util::blake3_hex(&bytes))
+}
+
+#[derive(Debug, Serialize)]
+struct BlockHashPayload<'a> {
+    world_id: &'a str,
+    height: u64,
+    slot: u64,
+    prev_block_hash: &'a str,
+    batch_id: &'a str,
+    state_root: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct ActionStateSummary<'a> {
+    action_id: &'a str,
+    actor_id: &'a str,
+    payload_hash: &'a str,
+    nonce: u64,
+    timestamp_ms: i64,
+}
+
+fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
+    super::util::to_canonical_cbor(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use super::super::distributed::ActionEnvelope;
+    use super::super::distributed_dht::InMemoryDht;
+    use super::super::pos::PosValidator;
+    use agent_world_proto::distributed_dht::DistributedDht as _;
+
+    fn action(id: &str, ts: i64) -> ActionEnvelope {
+        ActionEnvelope {
+            world_id: "w1".to_string(),
+            action_id: id.to_string(),
+            actor_id: "agent-1".to_string(),
+            action_kind: "move".to_string(),
+            payload_cbor: vec![1, 2, 3],
+            payload_hash: format!("payload-{id}"),
+            nonce: 1,
+            timestamp_ms: ts,
+            signature: String::new(),
+        }
+    }
+
+    fn test_pos_config() -> PosConsensusConfig {
+        PosConsensusConfig::ethereum_like(vec![PosValidator {
+            validator_id: "sequencer-1".to_string(),
+            stake: 100,
+        }])
+    }
+
+    #[test]
+    fn sequencer_tick_commits_batch_and_publishes_head() {
+        let mut loop_state =
+            SequencerMainloop::new(SequencerMainloopConfig::default(), test_pos_config())
+                .expect("create loop");
+        let dht = InMemoryDht::new();
+
+        assert!(loop_state.submit_action(action("a-1", 10)));
+
+        let report = loop_state.tick(&dht, 100).expect("tick");
+        assert_eq!(report.state, SequencerTickState::Committed);
+        assert_eq!(report.height, Some(1));
+        assert_eq!(report.slot, Some(0));
+        assert!(report.batch_id.is_some());
+
+        let head = dht
+            .get_world_head("w1")
+            .expect("head query")
+            .expect("head exists");
+        assert_eq!(head.height, 1);
+        assert_eq!(loop_state.next_height(), 2);
+        assert_eq!(loop_state.next_slot(), 1);
+    }
+
+    #[test]
+    fn sequencer_tick_is_idle_without_actions() {
+        let mut loop_state =
+            SequencerMainloop::new(SequencerMainloopConfig::default(), test_pos_config())
+                .expect("create loop");
+        let dht = InMemoryDht::new();
+
+        let report = loop_state.tick(&dht, 100).expect("tick");
+        assert_eq!(report.state, SequencerTickState::Idle);
+        assert_eq!(report.height, None);
+        assert_eq!(loop_state.next_height(), 1);
+        assert_eq!(loop_state.next_slot(), 0);
+    }
+
+    #[test]
+    fn submit_action_rejects_world_mismatch() {
+        let mut loop_state =
+            SequencerMainloop::new(SequencerMainloopConfig::default(), test_pos_config())
+                .expect("create loop");
+
+        let mut invalid = action("a-x", 1);
+        invalid.world_id = "w2".to_string();
+
+        assert!(!loop_state.submit_action(invalid));
+        assert_eq!(loop_state.pending_actions(), 0);
+    }
+
+    #[test]
+    fn config_rejects_non_positive_lease_ttl() {
+        let config = SequencerMainloopConfig {
+            lease_ttl_ms: 0,
+            ..SequencerMainloopConfig::default()
+        };
+        let result = SequencerMainloop::new(config, test_pos_config());
+        assert!(matches!(
+            result,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+    }
+}
