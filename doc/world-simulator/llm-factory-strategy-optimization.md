@@ -114,3 +114,41 @@
 - 工具 schema 过宽风险：若参数约束不足，可能导致 tool 参数语义漂移，需依赖解析/guardrail 兜底。
 - 模型兼容风险：强制 required 后，少数模型可能出现空调用或异常中止，需要明确错误路径与修复提示。
 - 回归覆盖风险：历史“文本 JSON 直出”路径若完全关闭，需确保现有测试全部迁移到 tool-first 口径。
+
+## LFO9 增量设计：Tool-only 类型化输入收敛（2026-02-17）
+
+### 目标
+- 删除 OpenAI SDK 解析失败时的 raw-body JSON fallback（立即移除兼容路径 #1），避免双入口行为差异。
+- 保留 tool 参数与决策语义解析（#2/#5 必留），但移除“function_call 先转字符串 JSON 再反向解析”的中间层（#3/#4）。
+- 将 `behavior_loop` 的主路径改为消费类型化 turn 数据，减少字符串拼接/拆分引入的不确定性。
+
+### 范围
+- In Scope:
+  - `OpenAiChatCompletionClient::complete` 删除 `ParseBody(raw)` fallback，统一走 SDK typed response。
+  - `openai_payload` 输出从 `String` 中间 JSON 改为 typed turn（决策 turn / 模块调用 turn）。
+  - `decision_flow` 新增 typed turn 解析入口，`behavior_loop` 改为直接消费 typed turn。
+  - 更新单测：删除 raw fallback 用例，迁移为 typed turn 转换与行为回归用例。
+- Out of Scope:
+  - 不变更工具集合与 `tool_choice=required` 策略。
+  - 不改动经济参数、动作语义与 world kernel 行为。
+  - 不处理 `execute_until + wait` 语义优化（该项仍属 TODO-5）。
+
+### 接口 / 数据
+- `LlmCompletionResult` 增加 typed turn 列表字段（用于行为层解析），`output` 字符串保留用于 trace/debug 展示。
+- typed turn 至少包含：
+  - 决策 turn：决策 payload（JSON value）
+  - 模块调用 turn：`module` + `args`
+- 解析职责：
+  - `openai_payload`：负责 function_call 到 typed turn 的归一化映射。
+  - `decision_flow`：负责 typed turn 到 `ParsedLlmTurn` 的语义解析与错误归类。
+
+### 里程碑
+- LFO9.1 文档更新与任务拆解。
+- LFO9.2 删除 raw-body fallback（#1）。
+- LFO9.3 完成 typed turn 重构并删除字符串中间解析链路（#3/#4）。
+- LFO9.4 完成 required-tier 回归并回写结果。
+
+### 风险
+- provider 兼容风险：移除 fallback 后，SDK 解析失败将直接报错；需通过测试确认常用 provider 响应兼容。
+- 迁移回归风险：历史测试大量依赖字符串输出，需同步改造 mock client 构造路径，避免误报。
+- trace 可读性风险：若 typed turn 序列化展示不稳定，会影响调试日志可读性。

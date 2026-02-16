@@ -49,6 +49,12 @@
 - [x] LFO8.2 使用 `--print-llm-io` 短程抽样定位高 `parse_errors` 根因
 - [x] LFO8.3 回写 TODO 并更新项目文档/devlog
 
+### LFO9 Tool-only 类型化输入收敛（2026-02-17）
+- [x] LFO9.1 更新增量设计文档与项目拆解（删除 #1，重构 #3/#4，保留 #2/#5）
+- [ ] LFO9.2 删除 OpenAI raw-body fallback 解析路径（#1）
+- [ ] LFO9.3 类型化重构：移除字符串中间 JSON 映射与解析链路（#3/#4）
+- [ ] LFO9.4 迁移/补齐 required-tier 测试并回填文档与日志
+
 ### LFO7 实施结果摘要（2026-02-17）
 - tool 注册：
   - 在原 4 个查询工具基础上新增 `agent_submit_decision`，统一承载最终动作提交。
@@ -146,6 +152,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO8 全部完成（含 tool-only 在线抽样与 TODO 回填）。
-- 下一步：进入 LFO9，收敛 `execute_until + wait` 在 tool-only 下的解析/策略一致性，降低长窗口修复率。
-- 最近更新：2026-02-17（完成 LFO8 在线抽样与 TODO-5）。
+- 当前阶段：LFO9 进行中（已完成 LFO9.1）。
+- 下一步：执行 LFO9.2-LFO9.4，完成 #1 删除与 #3/#4 类型化收敛。
+- 最近更新：2026-02-17（完成 LFO9 文档立项与任务拆解）。
