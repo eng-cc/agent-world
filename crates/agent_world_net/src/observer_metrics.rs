@@ -1,6 +1,13 @@
+use super::distributed_client::DistributedClient;
+use super::distributed_dht::DistributedDht;
+use super::distributed_head_follow::HeadFollower;
+use super::error::WorldError;
+use super::head_sync::follow_head_sync;
 use super::observer::{
-    HeadSyncModeReport, HeadSyncModeWithDhtReport, HeadSyncSourceMode, HeadSyncSourceModeWithDht,
+    HeadFollowReport, HeadSyncModeReport, HeadSyncModeWithDhtReport, HeadSyncSourceMode,
+    HeadSyncSourceModeWithDht, ObserverClient, ObserverSubscription,
 };
+use agent_world_distfs::{BlobStore, FileStore};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ObserverModeCounters {
@@ -94,6 +101,93 @@ impl ObserverRuntimeMetrics {
                 &mut self.snapshot.mode_with_dht.network_with_dht_then_path_index
             }
         }
+    }
+}
+
+impl ObserverClient {
+    pub fn sync_heads_with_mode_observed_report_and_record(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        metrics: &mut ObserverRuntimeMetrics,
+    ) -> Result<HeadSyncModeReport, WorldError> {
+        let observed =
+            self.sync_heads_with_mode_observed_report(mode, subscription, follower, client, store)?;
+        metrics.record_mode_report(&observed);
+        Ok(observed)
+    }
+
+    pub fn sync_heads_with_dht_mode_observed_report_and_record(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        metrics: &mut ObserverRuntimeMetrics,
+    ) -> Result<HeadSyncModeWithDhtReport, WorldError> {
+        let observed = self.sync_heads_with_dht_mode_observed_report(
+            mode,
+            subscription,
+            follower,
+            dht,
+            client,
+            store,
+        )?;
+        metrics.record_mode_with_dht_report(&observed);
+        Ok(observed)
+    }
+
+    pub fn follow_heads_with_mode_and_metrics(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        metrics: &mut ObserverRuntimeMetrics,
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        follow_head_sync(max_rounds, || {
+            let observed = self.sync_heads_with_mode_observed_report(
+                mode,
+                subscription,
+                follower,
+                client,
+                store,
+            )?;
+            metrics.record_mode_report(&observed);
+            Ok(observed.report)
+        })
+    }
+
+    pub fn follow_heads_with_dht_mode_and_metrics(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        metrics: &mut ObserverRuntimeMetrics,
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        follow_head_sync(max_rounds, || {
+            let observed = self.sync_heads_with_dht_mode_observed_report(
+                mode,
+                subscription,
+                follower,
+                dht,
+                client,
+                store,
+            )?;
+            metrics.record_mode_with_dht_report(&observed);
+            Ok(observed.report)
+        })
     }
 }
 
