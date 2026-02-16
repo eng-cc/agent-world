@@ -234,6 +234,93 @@ fn reward_asset_settlement_signature_verification_rejects_tamper() {
 }
 
 #[test]
+fn reward_asset_invariant_report_is_clean_for_valid_state() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        credits_per_power_unit: 1,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 18,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    let report = settlement_report(18, vec![settlement("node-a", 30)]);
+    world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("mint");
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 2,
+        nonce: 1,
+    });
+    world.step().expect("redeem");
+
+    let invariant = world.reward_asset_invariant_report();
+    assert!(invariant.is_ok(), "{:?}", invariant.violations);
+    assert_eq!(invariant.total_nodes, 1);
+    assert_eq!(invariant.total_minted_credits, 3);
+    assert_eq!(invariant.total_burned_credits, 2);
+    assert_eq!(invariant.total_power_credit_balance, 1);
+    assert_eq!(invariant.mint_record_count, 1);
+}
+
+#[test]
+fn reward_asset_invariant_report_detects_signature_and_balance_drift() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+    let report = settlement_report(19, vec![settlement("node-a", 30)]);
+    world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("mint");
+
+    let mut snapshot = world.snapshot();
+    snapshot
+        .state
+        .node_asset_balances
+        .get_mut("node-a")
+        .expect("node-a balance")
+        .power_credit_balance = 99;
+    snapshot.state.reward_mint_records[0].signature = "mintsig:v1:deadbeef".to_string();
+
+    let tampered = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
+    let invariant = tampered.reward_asset_invariant_report();
+    assert!(!invariant.is_ok());
+    assert!(
+        invariant
+            .violations
+            .iter()
+            .any(|violation| violation.code == "node_balance_mismatch")
+    );
+    assert!(
+        invariant
+            .violations
+            .iter()
+            .any(|violation| violation.code == "global_balance_mismatch")
+    );
+    assert!(
+        invariant
+            .violations
+            .iter()
+            .any(|violation| violation.code == "mint_signature_invalid")
+    );
+}
+
+#[test]
 fn reward_asset_settlement_rejects_zero_points_per_credit() {
     let mut world = World::new();
     world.set_reward_asset_config(RewardAssetConfig {

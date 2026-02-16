@@ -4,7 +4,8 @@ use super::super::WorldError;
 use super::super::reward_asset::reward_mint_signature_v1;
 use super::super::{
     EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
-    ProtocolPowerReserve, RewardAssetConfig, SystemOrderPoolBudget,
+    ProtocolPowerReserve, RewardAssetConfig, RewardAssetInvariantReport,
+    RewardAssetInvariantViolation, SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -80,6 +81,92 @@ impl World {
 
     pub fn reward_mint_records(&self) -> &[NodeRewardMintRecord] {
         self.state.reward_mint_records.as_slice()
+    }
+
+    pub fn reward_asset_invariant_report(&self) -> RewardAssetInvariantReport {
+        let mut report = RewardAssetInvariantReport {
+            total_nodes: self.state.node_asset_balances.len(),
+            mint_record_count: self.state.reward_mint_records.len(),
+            ..RewardAssetInvariantReport::default()
+        };
+
+        for (node_id_key, balance) in &self.state.node_asset_balances {
+            if balance.node_id.trim().is_empty() {
+                report.violations.push(RewardAssetInvariantViolation {
+                    code: "node_id_empty".to_string(),
+                    message: "node asset balance contains empty node_id".to_string(),
+                });
+            } else if node_id_key != &balance.node_id {
+                report.violations.push(RewardAssetInvariantViolation {
+                    code: "node_id_key_mismatch".to_string(),
+                    message: format!(
+                        "node asset key {} mismatches payload {}",
+                        node_id_key, balance.node_id
+                    ),
+                });
+            }
+
+            report.total_minted_credits = report
+                .total_minted_credits
+                .saturating_add(balance.total_minted_credits);
+            report.total_burned_credits = report
+                .total_burned_credits
+                .saturating_add(balance.total_burned_credits);
+            report.total_power_credit_balance = report
+                .total_power_credit_balance
+                .saturating_add(balance.power_credit_balance);
+
+            if balance.total_burned_credits > balance.total_minted_credits {
+                report.violations.push(RewardAssetInvariantViolation {
+                    code: "node_burn_over_mint".to_string(),
+                    message: format!(
+                        "node {} has burned > minted (burned={} minted={})",
+                        balance.node_id, balance.total_burned_credits, balance.total_minted_credits
+                    ),
+                });
+                continue;
+            }
+
+            let expected_balance = balance
+                .total_minted_credits
+                .saturating_sub(balance.total_burned_credits);
+            if balance.power_credit_balance != expected_balance {
+                report.violations.push(RewardAssetInvariantViolation {
+                    code: "node_balance_mismatch".to_string(),
+                    message: format!(
+                        "node {} balance mismatch (actual={} expected={})",
+                        balance.node_id, balance.power_credit_balance, expected_balance
+                    ),
+                });
+            }
+        }
+
+        let expected_total_balance = report
+            .total_minted_credits
+            .saturating_sub(report.total_burned_credits);
+        if report.total_power_credit_balance != expected_total_balance {
+            report.violations.push(RewardAssetInvariantViolation {
+                code: "global_balance_mismatch".to_string(),
+                message: format!(
+                    "global power_credit balance mismatch (actual={} expected={})",
+                    report.total_power_credit_balance, expected_total_balance
+                ),
+            });
+        }
+
+        for record in &self.state.reward_mint_records {
+            if let Err(reason) = self.verify_reward_mint_record_signature(record) {
+                report.violations.push(RewardAssetInvariantViolation {
+                    code: "mint_signature_invalid".to_string(),
+                    message: format!(
+                        "mint record signature invalid (epoch={} node={}): {reason}",
+                        record.epoch_index, record.node_id
+                    ),
+                });
+            }
+        }
+
+        report
     }
 
     pub fn verify_reward_mint_record_signature(

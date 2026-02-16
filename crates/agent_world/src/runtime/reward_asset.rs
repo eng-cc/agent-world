@@ -68,6 +68,28 @@ pub struct SystemOrderPoolBudget {
     pub node_credit_allocated: BTreeMap<String, u64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct RewardAssetInvariantViolation {
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct RewardAssetInvariantReport {
+    pub total_nodes: usize,
+    pub total_minted_credits: u64,
+    pub total_burned_credits: u64,
+    pub total_power_credit_balance: u64,
+    pub mint_record_count: usize,
+    pub violations: Vec<RewardAssetInvariantViolation>,
+}
+
+impl RewardAssetInvariantReport {
+    pub fn is_ok(&self) -> bool {
+        self.violations.is_empty()
+    }
+}
+
 pub fn reward_mint_signature_v1(
     epoch_index: u64,
     node_id: &str,

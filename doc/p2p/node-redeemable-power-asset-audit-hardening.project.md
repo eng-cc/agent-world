@@ -4,7 +4,7 @@
 - [x] AHA-0：完成设计文档。
 - [x] AHA-1：完成项目管理文档拆解。
 - [x] AHA-2：实现结算签名语义升级（`mintsig:v1`）与签名校验函数。
-- [ ] AHA-3：实现资产不变量审计报告 API，并覆盖 `test_tier_required` 单测。
+- [x] AHA-3：实现资产不变量审计报告 API，并覆盖 `test_tier_required` 单测。
 - [ ] AHA-4：`world_viewer_live` reward runtime 接入审计摘要输出。
 - [ ] AHA-5：文档状态回写、devlog 收口、发布说明整理。
 
@@ -17,6 +17,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
 
 ## 状态
-- 当前阶段：AHA-2 完成（签名语义升级与校验已落地）。
-- 下一步：执行 AHA-3（资产不变量审计报告 API 与回归）。
+- 当前阶段：AHA-3 完成（资产不变量审计报告与回归已落地）。
+- 下一步：执行 AHA-4（`world_viewer_live` reward runtime 审计摘要接线）。
 - 最近更新：2026-02-16。

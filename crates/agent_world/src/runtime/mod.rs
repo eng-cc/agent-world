@@ -95,7 +95,7 @@ pub use node_points_runtime::{
 };
 pub use reward_asset::{
     NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
-    SystemOrderPoolBudget,
+    RewardAssetInvariantReport, RewardAssetInvariantViolation, SystemOrderPoolBudget,
 };
 
 // Blob store
