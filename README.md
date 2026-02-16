@@ -43,6 +43,7 @@
 - `agent_world_proto`：协议与共享数据模型层。承载跨 crate 的协议类型、元数据、统一错误模型等，不放业务执行逻辑。
 - `agent_world_net`：网络与传输层，承载`libp2p`适配等跨节点通信基础网络能力。
 - `agent_world_consensus`：共识与成员协同层，承载共识、区块链出块等一致性与治理流程。
+- `agent_world_node`：节点运行时编排层，承载节点角色（sequencer/storage/observer）主循环、gossip 共识消息流转与复制同步桥接。
 - `agent_world_distfs`: 分布式文件系统，基于网络和共识层构建，对外提供标准的文件读写接口。
 - `agent_world_wasm_abi`：WASM ABI 契约层。承载模块清单、事件/调用输入输出、模块工件元信息等跨运行时的稳定结构定义。
 - `agent_world_wasm_executor`：WASM 执行层。承载模块执行器抽象与后端实现（如 `wasmtime` feature），负责受控执行与错误映射。
