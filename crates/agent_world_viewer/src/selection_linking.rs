@@ -491,7 +491,6 @@ pub(super) fn pick_3d_selection(
     chunks: Query<(Entity, &GlobalTransform, &ChunkMarker)>,
     config: Res<Viewer3dConfig>,
     panel_width: Option<Res<RightPanelWidthState>>,
-    chat_history_panel_width: Option<Res<ChatHistoryPanelWidthState>>,
     mut selection: ResMut<ViewerSelection>,
     mut transforms: Query<(&mut Transform, Option<&BaseScale>)>,
 ) {
@@ -509,13 +508,8 @@ pub(super) fn pick_3d_selection(
         .as_deref()
         .map(|state| state.width_px)
         .unwrap_or(UI_PANEL_WIDTH);
-    let chat_history_width = chat_history_panel_width
-        .as_deref()
-        .map(|state| state.width_px)
-        .unwrap_or(0.0);
     let right_bound = (window.width() - right_panel_width).max(0.0);
-    let left_bound = chat_history_width.max(0.0);
-    if cursor_position.x < left_bound || cursor_position.x > right_bound {
+    if cursor_position.x > right_bound {
         return;
     }
 

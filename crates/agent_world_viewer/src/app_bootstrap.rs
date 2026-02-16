@@ -48,7 +48,6 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(InternalCaptureState::default())
         .insert_resource(RightPanelLayoutState::default())
         .insert_resource(RightPanelWidthState::default())
-        .insert_resource(ChatHistoryPanelWidthState::default())
         .insert_resource(RenderPerfSummary::default())
         .insert_resource(RenderPerfHistory::default())
         .insert_resource(LabelLodStats::default())

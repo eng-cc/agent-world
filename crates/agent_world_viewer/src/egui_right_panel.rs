@@ -37,10 +37,10 @@ use crate::ui_text::{
 };
 use crate::world_overlay::overlay_status_text_public;
 use crate::{
-    grid_line_thickness, ChatHistoryPanelWidthState, CopyableTextPanelState, DiagnosisState,
-    EventObjectLinkState, GridLineKind, RenderPerfSummary, RightPanelLayoutState,
-    RightPanelWidthState, TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient,
-    ViewerControl, ViewerPanelMode, ViewerSelection, ViewerState, WorldOverlayConfig,
+    grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
+    GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
+    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl,
+    ViewerPanelMode, ViewerSelection, ViewerState, WorldOverlayConfig,
 };
 use crate::{prompt_ops_panel::render_prompt_ops_section, prompt_ops_panel::PromptOpsDraftState};
 
@@ -50,14 +50,11 @@ mod egui_observe_section_card;
 mod egui_right_panel_chat;
 
 use egui_observe_section_card::render_observe_section_card;
-use egui_right_panel_chat::{render_chat_history_panel, render_chat_section, AgentChatDraftState};
+use egui_right_panel_chat::{render_chat_section, AgentChatDraftState};
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
 const MIN_PANEL_WIDTH: f32 = 240.0;
 const MAX_PANEL_WIDTH: f32 = 420.0;
-const DEFAULT_CHAT_HISTORY_PANEL_WIDTH: f32 = 240.0;
-const MIN_CHAT_HISTORY_PANEL_WIDTH: f32 = 180.0;
-const MAX_CHAT_HISTORY_PANEL_WIDTH: f32 = 300.0;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
@@ -92,19 +89,9 @@ fn adaptive_panel_default_width(available_width: f32) -> f32 {
     (width * 0.22).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
 }
 
-fn adaptive_chat_history_panel_width(available_width: f32) -> f32 {
-    let width = if available_width.is_finite() {
-        available_width
-    } else {
-        DEFAULT_CHAT_HISTORY_PANEL_WIDTH
-    };
-    (width * 0.18).clamp(MIN_CHAT_HISTORY_PANEL_WIDTH, MAX_CHAT_HISTORY_PANEL_WIDTH)
-}
-
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
-    chat_history_panel_width: ResMut<'w, ChatHistoryPanelWidthState>,
     layout_state: ResMut<'w, RightPanelLayoutState>,
     camera_mode: ResMut<'w, ViewerCameraMode>,
     panel_mode: ResMut<'w, ViewerPanelMode>,
@@ -137,7 +124,6 @@ pub(super) fn render_right_side_panel_egui(
 ) {
     let RightPanelParams {
         mut panel_width,
-        mut chat_history_panel_width,
         mut layout_state,
         mut camera_mode,
         mut panel_mode,
@@ -172,22 +158,6 @@ pub(super) fn render_right_side_panel_egui(
         copyable_panel_state.visible = module_visibility.show_details;
     }
     chat_focus_signal.wants_ime_focus = false;
-    chat_history_panel_width.width_px = 0.0;
-
-    let show_chat_history_panel =
-        *panel_mode == ViewerPanelMode::Observe && module_visibility.show_chat;
-    if show_chat_history_panel {
-        let default_history_width =
-            adaptive_chat_history_panel_width(context.available_rect().width());
-        let history_response = egui::SidePanel::left("viewer-chat-history-side-panel")
-            .resizable(true)
-            .default_width(default_history_width)
-            .width_range(MIN_CHAT_HISTORY_PANEL_WIDTH..=MAX_CHAT_HISTORY_PANEL_WIDTH)
-            .show(context, |ui| {
-                render_chat_history_panel(ui, locale, &state, &mut chat_draft);
-            });
-        chat_history_panel_width.width_px = history_response.response.rect.width();
-    }
 
     let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")

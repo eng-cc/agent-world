@@ -52,8 +52,3 @@ impl Default for RightPanelWidthState {
         }
     }
 }
-
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub(super) struct ChatHistoryPanelWidthState {
-    pub(super) width_px: f32,
-}

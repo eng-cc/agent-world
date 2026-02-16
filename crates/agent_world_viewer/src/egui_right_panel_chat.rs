@@ -16,7 +16,6 @@ struct ChatThread {
     id: String,
     agent_id: String,
     title: String,
-    preview: String,
     started_at: u64,
     updated_at: u64,
     messages: Vec<LlmChatMessageTrace>,
@@ -43,75 +42,6 @@ impl Default for AgentChatDraftState {
             follow_latest_thread: true,
         }
     }
-}
-
-pub(super) fn render_chat_history_panel(
-    ui: &mut egui::Ui,
-    locale: crate::i18n::UiLocale,
-    state: &ViewerState,
-    draft: &mut AgentChatDraftState,
-) {
-    ui.spacing_mut().item_spacing = egui::vec2(6.0, 8.0);
-
-    ui.strong(if locale.is_zh() {
-        "聊天记录"
-    } else {
-        "Chat History"
-    });
-
-    let agent_ids = collect_chat_agent_ids(state);
-    let threads = collect_chat_threads(state, CHAT_THREAD_LIMIT, CHAT_MESSAGE_LIMIT);
-    sync_chat_selection(draft, &threads, &agent_ids);
-
-    if threads.is_empty() {
-        ui.label(if locale.is_zh() {
-            "暂无会话（等待 Agent 产生对话）"
-        } else {
-            "No chat thread yet (waiting for agent conversation)"
-        });
-        return;
-    }
-
-    egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            for thread in &threads {
-                let selected = draft
-                    .selected_thread_id
-                    .as_ref()
-                    .is_some_and(|selected_id| selected_id == &thread.id);
-                let title = format!("{} · {}", thread.agent_id, thread.title);
-
-                let response = ui
-                    .add(egui::Button::new(title).selected(selected).wrap())
-                    .on_hover_text(if locale.is_zh() {
-                        "点击切换会话"
-                    } else {
-                        "Click to switch thread"
-                    });
-
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new(thread.preview.as_str())
-                            .size(11.5)
-                            .color(egui::Color32::from_gray(190)),
-                    )
-                    .wrap(),
-                );
-                ui.label(
-                    egui::RichText::new(format!("T{}", thread.updated_at))
-                        .size(10.0)
-                        .color(egui::Color32::from_gray(140)),
-                );
-                ui.add_space(4.0);
-
-                if response.clicked() {
-                    draft.selected_thread_id = Some(thread.id.clone());
-                    draft.selected_agent_id = Some(thread.agent_id.clone());
-                    draft.follow_latest_thread = false;
-                }
-            }
-        });
 }
 
 pub(super) fn render_chat_section(
@@ -146,6 +76,64 @@ pub(super) fn render_chat_section(
         .clone()
         .unwrap_or_else(|| agent_ids[0].clone());
 
+    let active_thread = draft.selected_thread_id.as_ref().and_then(|thread_id| {
+        chat_threads
+            .iter()
+            .find(|thread| &thread.id == thread_id)
+            .cloned()
+    });
+
+    egui::Frame::group(ui.style()).show(ui, |ui| {
+        ui.strong(if locale.is_zh() {
+            "聊天记录"
+        } else {
+            "Chat Records"
+        });
+        if let Some(thread) = active_thread.as_ref() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(if locale.is_zh() {
+                    "当前会话"
+                } else {
+                    "Current Thread"
+                });
+                ui.label(
+                    egui::RichText::new(thread.title.as_str())
+                        .color(egui::Color32::from_gray(220))
+                        .strong(),
+                );
+                ui.label(
+                    egui::RichText::new(format!("T{}", thread.updated_at))
+                        .size(10.5)
+                        .color(egui::Color32::from_gray(150)),
+                );
+            });
+        }
+
+        let active_messages = active_thread
+            .as_ref()
+            .map(|thread| thread.messages.clone())
+            .unwrap_or_default();
+        if active_messages.is_empty() {
+            ui.label(if locale.is_zh() {
+                "暂无对话消息。"
+            } else {
+                "No chat messages yet."
+            });
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(300.0)
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    for message in &active_messages {
+                        render_chat_message_bubble(ui, message, locale);
+                        ui.add_space(2.0);
+                    }
+                });
+        }
+    });
+
+    ui.add_space(6.0);
+
     egui::ComboBox::from_label(if locale.is_zh() {
         "目标 Agent"
     } else {
@@ -164,65 +152,6 @@ pub(super) fn render_chat_section(
             }
         }
     });
-
-    let active_thread = draft.selected_thread_id.as_ref().and_then(|thread_id| {
-        chat_threads
-            .iter()
-            .find(|thread| &thread.id == thread_id)
-            .cloned()
-    });
-
-    if let Some(thread) = active_thread.as_ref() {
-        ui.horizontal_wrapped(|ui| {
-            ui.label(if locale.is_zh() {
-                "当前会话"
-            } else {
-                "Current Thread"
-            });
-            ui.label(
-                egui::RichText::new(thread.title.as_str())
-                    .color(egui::Color32::from_gray(220))
-                    .strong(),
-            );
-            ui.label(
-                egui::RichText::new(format!("T{}", thread.updated_at))
-                    .size(10.5)
-                    .color(egui::Color32::from_gray(150)),
-            );
-        });
-    } else {
-        ui.label(if locale.is_zh() {
-            "当前 Agent 暂无会话历史。"
-        } else {
-            "No thread history for the selected agent yet."
-        });
-    }
-
-    ui.separator();
-
-    let active_messages = active_thread
-        .as_ref()
-        .map(|thread| thread.messages.clone())
-        .unwrap_or_default();
-    if active_messages.is_empty() {
-        ui.label(if locale.is_zh() {
-            "暂无对话消息。"
-        } else {
-            "No chat messages yet."
-        });
-    } else {
-        egui::ScrollArea::vertical()
-            .max_height(280.0)
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                for message in &active_messages {
-                    render_chat_message_bubble(ui, message, locale);
-                    ui.add_space(2.0);
-                }
-            });
-    }
-
-    ui.separator();
 
     let input_response = ui.add(
         egui::TextEdit::multiline(&mut draft.input_message)
@@ -464,7 +393,6 @@ fn collect_chat_threads(
                     id: format!("{agent_id}:{}:{sequence}", message.time),
                     agent_id: agent_id.clone(),
                     title: chat_thread_title(message.content.as_str(), message.time),
-                    preview: truncate_text(message.content.as_str(), CHAT_PREVIEW_CHARS),
                     started_at: message.time,
                     updated_at: message.time,
                     messages: vec![message],
@@ -475,7 +403,6 @@ fn collect_chat_threads(
 
             if let Some(thread) = current_thread.as_mut() {
                 thread.updated_at = message.time;
-                thread.preview = truncate_text(message.content.as_str(), CHAT_PREVIEW_CHARS);
                 thread.messages.push(message);
             }
         }

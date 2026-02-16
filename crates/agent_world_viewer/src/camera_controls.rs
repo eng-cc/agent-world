@@ -6,12 +6,12 @@ use bevy::window::PrimaryWindow;
 use bevy_egui::EguiContexts;
 
 use super::{
-    grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, ChatHistoryPanelWidthState,
-    DetailZoomEntity, GridLineVisual, OrbitCamera, RightPanelWidthState, TwoDMapMarker,
-    Viewer3dCamera, Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface, WorldFloorSurface,
-    WorldOverlayConfig, DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS,
-    ORBIT_MIN_RADIUS, ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY,
-    ORTHO_MAX_SCALE, ORTHO_MIN_SCALE, UI_PANEL_WIDTH,
+    grid_line_scale, grid_line_thickness, AutoFocusState, BaseScale, DetailZoomEntity,
+    GridLineVisual, OrbitCamera, RightPanelWidthState, TwoDMapMarker, Viewer3dCamera,
+    Viewer3dConfig, ViewerCameraMode, WorldBoundsSurface, WorldFloorSurface, WorldOverlayConfig,
+    DEFAULT_2D_CAMERA_RADIUS, DEFAULT_3D_CAMERA_RADIUS, ORBIT_MAX_RADIUS, ORBIT_MIN_RADIUS,
+    ORBIT_PAN_SENSITIVITY, ORBIT_ROTATE_SENSITIVITY, ORBIT_ZOOM_SENSITIVITY, ORTHO_MAX_SCALE,
+    ORTHO_MIN_SCALE, UI_PANEL_WIDTH,
 };
 
 const TWO_D_DEFAULT_DETAIL_RADIUS_RATIO: f32 = 0.0035;
@@ -45,7 +45,6 @@ pub(super) fn orbit_camera_controls(
     camera_mode: Res<ViewerCameraMode>,
     config: Res<Viewer3dConfig>,
     panel_width: Option<Res<RightPanelWidthState>>,
-    chat_history_panel_width: Option<Res<ChatHistoryPanelWidthState>>,
     mut egui_contexts: EguiContexts,
     mut mouse_wheel: MessageReader<MouseWheel>,
     mut pinch_gesture: MessageReader<PinchGesture>,
@@ -61,12 +60,8 @@ pub(super) fn orbit_camera_controls(
         .as_deref()
         .map(|state| state.width_px)
         .unwrap_or(UI_PANEL_WIDTH);
-    let chat_history_width_px = chat_history_panel_width
-        .as_deref()
-        .map(|state| state.width_px)
-        .unwrap_or(0.0);
     let cursor_in_3d = cursor_position
-        .map(|cursor| cursor_in_3d_view(window, cursor, chat_history_width_px, panel_width_px))
+        .map(|cursor| cursor_in_3d_view(window, cursor, panel_width_px))
         .unwrap_or(false);
     let keyboard_captured_by_ui = egui_contexts
         .ctx_mut()
@@ -134,15 +129,9 @@ pub(super) fn orbit_camera_controls(
     }
 }
 
-fn cursor_in_3d_view(
-    window: &Window,
-    cursor: Vec2,
-    chat_history_width_px: f32,
-    right_panel_width_px: f32,
-) -> bool {
-    let left_bound = chat_history_width_px.max(0.0);
-    let right_bound = (window.width() - right_panel_width_px).max(0.0);
-    cursor.x >= left_bound && cursor.x <= right_bound
+fn cursor_in_3d_view(window: &Window, cursor: Vec2, panel_width_px: f32) -> bool {
+    let viewport_width = (window.width() - panel_width_px).max(0.0);
+    cursor.x <= viewport_width
 }
 
 fn drag_delta(
@@ -663,28 +652,12 @@ mod tests {
     }
 
     #[test]
-    fn cursor_in_3d_view_respects_left_and_right_panel_bounds() {
+    fn cursor_in_3d_view_respects_right_panel_bound() {
         let mut window = Window::default();
         window.resolution.set(1200.0, 800.0);
 
-        assert!(cursor_in_3d_view(
-            &window,
-            Vec2::new(280.0, 100.0),
-            240.0,
-            320.0
-        ));
-        assert!(!cursor_in_3d_view(
-            &window,
-            Vec2::new(120.0, 100.0),
-            240.0,
-            320.0
-        ));
-        assert!(!cursor_in_3d_view(
-            &window,
-            Vec2::new(940.5, 100.0),
-            240.0,
-            320.0
-        ));
+        assert!(cursor_in_3d_view(&window, Vec2::new(879.5, 100.0), 320.0));
+        assert!(!cursor_in_3d_view(&window, Vec2::new(880.5, 100.0), 320.0));
     }
 
     #[test]
