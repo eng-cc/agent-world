@@ -362,12 +362,16 @@ mod tests {
 
     use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
-    use agent_world_distfs::LocalCasStore;
+    use agent_world_distfs::{BlobStore as _, LocalCasStore};
+    use agent_world_proto::distributed::{
+        FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
+        RR_GET_BLOCK,
+    };
 
     use super::super::distributed_head_follow::HeadFollower;
     use super::super::distributed_net::InMemoryNetwork;
     use super::super::distributed_storage::{
-        store_execution_result_with_path_index, ExecutionWriteConfig,
+        store_execution_result_with_path_index, ExecutionWriteConfig, ExecutionWriteResult,
     };
     use super::super::util::to_canonical_cbor;
     use super::*;
@@ -378,6 +382,83 @@ mod tests {
             .expect("duration since epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
+    }
+
+    fn write_world_fixture(world_id: &str, store: &LocalCasStore) -> (ExecutionWriteResult, usize) {
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        let write = store_execution_result_with_path_index(
+            world_id,
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write");
+        (write, journal.len())
+    }
+
+    fn publish_head(network: &Arc<dyn DistributedNetwork + Send + Sync>, head: &WorldHeadAnnounce) {
+        let payload = to_canonical_cbor(head).expect("head cbor");
+        network
+            .publish(&topic_head(&head.world_id), &payload)
+            .expect("publish");
+    }
+
+    fn register_block_fetch_handlers(
+        network: &Arc<dyn DistributedNetwork + Send + Sync>,
+        world_id: &'static str,
+        store: &LocalCasStore,
+        write: &ExecutionWriteResult,
+    ) {
+        let block = write.block.clone();
+        let snapshot_ref = write.snapshot_manifest_ref.content_hash.clone();
+        let journal_ref = write.journal_segments_ref.content_hash.clone();
+
+        network
+            .register_handler(
+                RR_GET_BLOCK,
+                Box::new(move |payload| {
+                    let request: GetBlockRequest =
+                        serde_cbor::from_slice(payload).expect("decode request");
+                    assert_eq!(request.world_id, world_id);
+                    let response = GetBlockResponse {
+                        block: block.clone(),
+                        journal_ref: journal_ref.clone(),
+                        snapshot_ref: snapshot_ref.clone(),
+                    };
+                    Ok(to_canonical_cbor(&response).expect("encode response"))
+                }),
+            )
+            .expect("register block");
+
+        let store_clone = store.clone();
+        network
+            .register_handler(
+                RR_FETCH_BLOB,
+                Box::new(move |payload| {
+                    let request: FetchBlobRequest =
+                        serde_cbor::from_slice(payload).expect("decode request");
+                    let bytes = store_clone.get(&request.content_hash).expect("load blob");
+                    let response = FetchBlobResponse {
+                        blob: bytes,
+                        content_hash: request.content_hash,
+                    };
+                    Ok(to_canonical_cbor(&response).expect("encode response"))
+                }),
+            )
+            .expect("register fetch");
     }
 
     #[test]
@@ -405,47 +486,107 @@ mod tests {
     }
 
     #[test]
-    fn observer_sync_heads_with_path_index_applies_world() {
-        let dir = temp_dir("observer-path-index-sync");
+    fn observer_sync_heads_with_mode_network_only_applies_world() {
+        const WORLD_ID: &str = "w1";
+        let dir = temp_dir("observer-mode-network");
         let store = LocalCasStore::new(&dir);
-
-        let mut world = World::new();
-        world.submit_action(Action::RegisterAgent {
-            agent_id: "agent-1".to_string(),
-            pos: GeoPos::new(0.0, 0.0, 0.0),
-        });
-        world.step().expect("step world");
-
-        let snapshot = world.snapshot();
-        let journal = world.journal().clone();
-        let write = store_execution_result_with_path_index(
-            "w1",
-            1,
-            "genesis",
-            "exec-1",
-            1,
-            &snapshot,
-            &journal,
-            &store,
-            ExecutionWriteConfig::default(),
-        )
-        .expect("write");
+        let (write, journal_len) = write_world_fixture(WORLD_ID, &store);
 
         let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        register_block_fetch_handlers(&network, WORLD_ID, &store, &write);
         let observer = ObserverClient::new(Arc::clone(&network));
-        let subscription = observer.subscribe("w1").expect("subscribe");
-        let payload = to_canonical_cbor(&write.head_announce).expect("head cbor");
-        network
-            .publish(&topic_head("w1"), &payload)
-            .expect("publish");
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe(WORLD_ID).expect("subscribe");
+        publish_head(&network, &write.head_announce);
 
         let mut follower = HeadFollower::new("w1");
         let result = observer
-            .sync_heads_with_path_index(&subscription, &mut follower, &store)
+            .sync_heads_with_mode(
+                HeadSyncSourceMode::NetworkOnly,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
             .expect("sync");
         let applied = result.expect("applied world");
-        assert_eq!(applied.journal().len(), journal.len());
+        assert_eq!(applied.journal().len(), journal_len);
         assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_mode_path_index_only_applies_world() {
+        let dir = temp_dir("observer-mode-path-index");
+        let store = LocalCasStore::new(&dir);
+        let (write, journal_len) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_mode(
+                HeadSyncSourceMode::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
+            .expect("sync");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal_len);
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_mode_falls_back_to_path_index() {
+        let dir = temp_dir("observer-mode-fallback");
+        let store = LocalCasStore::new(&dir);
+        let (write, journal_len) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_mode(
+                HeadSyncSourceMode::NetworkThenPathIndex,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
+            .expect("sync with fallback");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal_len);
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let network_only_sub = observer.subscribe("w1").expect("second subscribe");
+        publish_head(&network, &write.head_announce);
+        let mut network_only_follower = HeadFollower::new("w1");
+        let network_only_error = observer
+            .sync_heads_with_mode(
+                HeadSyncSourceMode::NetworkOnly,
+                &network_only_sub,
+                &mut network_only_follower,
+                &client,
+                &store,
+            )
+            .expect_err("network-only should fail without handlers");
+        assert!(matches!(
+            network_only_error,
+            WorldError::NetworkProtocolUnavailable { .. }
+        ));
 
         let _ = fs::remove_dir_all(&dir);
     }
