@@ -218,6 +218,7 @@ dependencies = [
 name = "agent_world_node"
 version = "0.1.0"
 dependencies = [
+ "agent_world_distfs",
  "serde",
  "serde_json",
 ]

@@ -2,6 +2,7 @@ use std::collections::{hash_map::DefaultHasher, BTreeMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::net::{SocketAddr, UdpSocket};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -10,6 +11,12 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+
+mod replication;
+
+pub use replication::NodeReplicationConfig;
+
+use replication::{GossipReplicationMessage, ReplicationRuntime};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -96,6 +103,7 @@ pub struct NodeConfig {
     pub pos_config: NodePosConfig,
     pub auto_attest_all_validators: bool,
     pub gossip: Option<NodeGossipConfig>,
+    pub replication: Option<NodeReplicationConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +145,7 @@ impl NodeConfig {
             pos_config,
             auto_attest_all_validators: true,
             gossip: None,
+            replication: None,
         })
     }
 
@@ -196,6 +205,14 @@ impl NodeConfig {
             peers: dedup.keys().copied().collect(),
         });
         self
+    }
+
+    pub fn with_replication_root(
+        mut self,
+        root_dir: impl Into<PathBuf>,
+    ) -> Result<Self, NodeError> {
+        self.replication = Some(NodeReplicationConfig::new(root_dir)?);
+        Ok(self)
     }
 }
 
@@ -313,6 +330,17 @@ impl NodeRuntime {
         } else {
             None
         };
+        let mut replication = if let Some(config) = &self.config.replication {
+            match ReplicationRuntime::new(config, &self.config.node_id) {
+                Ok(runtime) => Some(runtime),
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let tick_interval = self.config.tick_interval;
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
@@ -335,8 +363,13 @@ impl NodeRuntime {
                                 current.last_tick_unix_ms = Some(now_ms);
                             }
 
-                            let tick_result =
-                                engine.tick(&node_id, &world_id, now_ms, gossip.as_mut());
+                            let tick_result = engine.tick(
+                                &node_id,
+                                &world_id,
+                                now_ms,
+                                gossip.as_mut(),
+                                replication.as_mut(),
+                            );
                             let mut current = lock_state(&state);
                             match tick_result {
                                 Ok(consensus_snapshot) => {
@@ -426,6 +459,7 @@ struct PosNodeEngine {
     pending: Option<PendingProposal>,
     auto_attest_all_validators: bool,
     last_broadcast_committed_height: u64,
+    replicate_local_commits: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
 }
 
@@ -490,6 +524,13 @@ struct GossipCommitMessage {
     committed_at_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum GossipMessage {
+    Commit(GossipCommitMessage),
+    Replication(GossipReplicationMessage),
+}
+
 impl GossipEndpoint {
     fn bind(config: &NodeGossipConfig) -> Result<Self, NodeError> {
         let socket = UdpSocket::bind(config.bind_addr).map_err(|err| NodeError::Gossip {
@@ -507,9 +548,22 @@ impl GossipEndpoint {
     }
 
     fn broadcast_commit(&self, message: &GossipCommitMessage) -> Result<(), NodeError> {
-        let bytes = serde_json::to_vec(message).map_err(|err| NodeError::Gossip {
+        let envelope = GossipMessage::Commit(message.clone());
+        let bytes = serde_json::to_vec(&envelope).map_err(|err| NodeError::Gossip {
             reason: format!("serialize gossip message failed: {}", err),
         })?;
+        self.broadcast_bytes(&bytes)
+    }
+
+    fn broadcast_replication(&self, message: &GossipReplicationMessage) -> Result<(), NodeError> {
+        let envelope = GossipMessage::Replication(message.clone());
+        let bytes = serde_json::to_vec(&envelope).map_err(|err| NodeError::Gossip {
+            reason: format!("serialize replication message failed: {}", err),
+        })?;
+        self.broadcast_bytes(&bytes)
+    }
+
+    fn broadcast_bytes(&self, bytes: &[u8]) -> Result<(), NodeError> {
         for peer in &self.peers {
             self.socket
                 .send_to(&bytes, peer)
@@ -520,15 +574,20 @@ impl GossipEndpoint {
         Ok(())
     }
 
-    fn drain_messages(&self) -> Result<Vec<GossipCommitMessage>, NodeError> {
+    fn drain_messages(&self) -> Result<Vec<GossipMessage>, NodeError> {
         let mut buf = [0u8; 2048];
         let mut messages = Vec::new();
         loop {
             match self.socket.recv_from(&mut buf) {
                 Ok((size, _from)) => {
                     let payload = &buf[..size];
-                    if let Ok(message) = serde_json::from_slice::<GossipCommitMessage>(payload) {
+                    if let Ok(message) = serde_json::from_slice::<GossipMessage>(payload) {
                         messages.push(message);
+                        continue;
+                    }
+                    // Backward compatibility for legacy commit payload format.
+                    if let Ok(commit) = serde_json::from_slice::<GossipCommitMessage>(payload) {
+                        messages.push(GossipMessage::Commit(commit));
                     }
                 }
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -558,6 +617,8 @@ impl PosNodeEngine {
             pending: None,
             auto_attest_all_validators: config.auto_attest_all_validators,
             last_broadcast_committed_height: 0,
+            replicate_local_commits: matches!(config.role, NodeRole::Sequencer)
+                && config.replication.is_some(),
             peer_heads: BTreeMap::new(),
         })
     }
@@ -568,9 +629,10 @@ impl PosNodeEngine {
         world_id: &str,
         now_ms: i64,
         gossip: Option<&mut GossipEndpoint>,
+        mut replication: Option<&mut ReplicationRuntime>,
     ) -> Result<NodeConsensusSnapshot, NodeError> {
         if let Some(endpoint) = gossip.as_ref() {
-            self.ingest_peer_commits(endpoint, world_id)?;
+            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
         }
 
         let mut decision = if self.pending.is_some() {
@@ -586,7 +648,15 @@ impl PosNodeEngine {
         self.apply_decision(&decision);
         if let Some(endpoint) = gossip {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
-            self.ingest_peer_commits(endpoint, world_id)?;
+            self.broadcast_local_replication(
+                endpoint,
+                node_id,
+                world_id,
+                now_ms,
+                &decision,
+                replication.as_deref_mut(),
+            )?;
+            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
         }
         Ok(self.snapshot_from_decision(&decision))
     }
@@ -808,34 +878,72 @@ impl PosNodeEngine {
         Ok(())
     }
 
-    fn ingest_peer_commits(
+    fn broadcast_local_replication(
         &mut self,
         endpoint: &GossipEndpoint,
+        node_id: &str,
         world_id: &str,
+        now_ms: i64,
+        decision: &PosDecision,
+        replication: Option<&mut ReplicationRuntime>,
+    ) -> Result<(), NodeError> {
+        if !self.replicate_local_commits {
+            return Ok(());
+        }
+        let Some(replication) = replication else {
+            return Ok(());
+        };
+        if let Some(message) =
+            replication.build_local_commit_message(node_id, world_id, now_ms, decision)?
+        {
+            endpoint.broadcast_replication(&message)?;
+        }
+        Ok(())
+    }
+
+    fn ingest_peer_messages(
+        &mut self,
+        endpoint: &GossipEndpoint,
+        node_id: &str,
+        world_id: &str,
+        mut replication: Option<&mut ReplicationRuntime>,
     ) -> Result<(), NodeError> {
         let messages = endpoint.drain_messages()?;
         for message in messages {
-            if message.version != 1 || message.world_id != world_id {
-                continue;
-            }
-            let previous_height = self
-                .peer_heads
-                .get(message.node_id.as_str())
-                .map(|head| head.height)
-                .unwrap_or(0);
-            if message.height < previous_height {
-                continue;
-            }
-            self.peer_heads.insert(
-                message.node_id.clone(),
-                PeerCommittedHead {
-                    height: message.height,
-                    block_hash: message.block_hash.clone(),
-                    committed_at_ms: message.committed_at_ms,
-                },
-            );
-            if message.height > self.network_committed_height {
-                self.network_committed_height = message.height;
+            match message {
+                GossipMessage::Commit(commit) => {
+                    if commit.version != 1 || commit.world_id != world_id {
+                        continue;
+                    }
+                    let previous_height = self
+                        .peer_heads
+                        .get(commit.node_id.as_str())
+                        .map(|head| head.height)
+                        .unwrap_or(0);
+                    if commit.height < previous_height {
+                        continue;
+                    }
+                    self.peer_heads.insert(
+                        commit.node_id.clone(),
+                        PeerCommittedHead {
+                            height: commit.height,
+                            block_hash: commit.block_hash.clone(),
+                            committed_at_ms: commit.committed_at_ms,
+                        },
+                    );
+                    if commit.height > self.network_committed_height {
+                        self.network_committed_height = commit.height;
+                    }
+                }
+                GossipMessage::Replication(replication_msg) => {
+                    if let Some(replication_runtime) = replication.as_deref_mut() {
+                        let _ = replication_runtime.apply_remote_message(
+                            node_id,
+                            world_id,
+                            &replication_msg,
+                        );
+                    }
+                }
             }
         }
         Ok(())
@@ -848,6 +956,7 @@ pub enum NodeError {
     InvalidConfig { reason: String },
     Consensus { reason: String },
     Gossip { reason: String },
+    Replication { reason: String },
     AlreadyRunning { node_id: String },
     NotRunning { node_id: String },
     ThreadSpawnFailed { reason: String },
@@ -863,6 +972,7 @@ impl fmt::Display for NodeError {
             NodeError::InvalidConfig { reason } => write!(f, "invalid node config: {}", reason),
             NodeError::Consensus { reason } => write!(f, "node consensus error: {}", reason),
             NodeError::Gossip { reason } => write!(f, "node gossip error: {}", reason),
+            NodeError::Replication { reason } => write!(f, "node replication error: {}", reason),
             NodeError::AlreadyRunning { node_id } => {
                 write!(f, "node runtime already running: {}", node_id)
             }
@@ -1012,178 +1122,4 @@ fn now_unix_ms() -> i64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::net::UdpSocket;
-
-    fn multi_validators() -> Vec<PosValidator> {
-        vec![
-            PosValidator {
-                validator_id: "node-a".to_string(),
-                stake: 40,
-            },
-            PosValidator {
-                validator_id: "node-b".to_string(),
-                stake: 35,
-            },
-            PosValidator {
-                validator_id: "node-c".to_string(),
-                stake: 25,
-            },
-        ]
-    }
-
-    #[test]
-    fn role_parse_roundtrip() {
-        for role in [NodeRole::Sequencer, NodeRole::Storage, NodeRole::Observer] {
-            let parsed = NodeRole::from_str(role.as_str()).expect("parse role");
-            assert_eq!(parsed, role);
-        }
-    }
-
-    #[test]
-    fn config_rejects_invalid_pos_config() {
-        let result = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
-            .expect("base config")
-            .with_pos_config(NodePosConfig::ethereum_like(vec![]));
-        assert!(matches!(result, Err(NodeError::InvalidConfig { .. })));
-    }
-
-    #[test]
-    fn pos_engine_commits_single_validator_head() {
-        let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer).expect("config");
-        let mut engine = PosNodeEngine::new(&config).expect("engine");
-
-        let snapshot = engine
-            .tick(&config.node_id, &config.world_id, 1_000, None)
-            .expect("tick");
-        assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
-        assert_eq!(snapshot.latest_height, 1);
-        assert_eq!(snapshot.committed_height, 1);
-        assert_eq!(snapshot.last_status, Some(PosConsensusStatus::Committed));
-        assert_eq!(snapshot.slot, 1);
-    }
-
-    #[test]
-    fn pos_engine_progresses_pending_when_auto_attest_disabled() {
-        let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
-            .expect("config")
-            .with_pos_validators(multi_validators())
-            .expect("validators")
-            .with_auto_attest_all_validators(false);
-        let mut engine = PosNodeEngine::new(&config).expect("engine");
-
-        let mut committed_height = 0;
-        for offset in 0..12 {
-            let snapshot = engine
-                .tick(&config.node_id, &config.world_id, 2_000 + offset, None)
-                .expect("tick");
-            committed_height = snapshot.committed_height;
-            if committed_height > 0 {
-                break;
-            }
-        }
-
-        assert!(committed_height >= 1);
-    }
-
-    #[test]
-    fn runtime_start_and_stop_updates_snapshot() {
-        let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
-            .expect("config")
-            .with_tick_interval(Duration::from_millis(10))
-            .expect("tick interval");
-        let mut runtime = NodeRuntime::new(config);
-        runtime.start().expect("start");
-        thread::sleep(Duration::from_millis(40));
-
-        let running = runtime.snapshot();
-        assert!(running.running);
-        assert!(running.tick_count >= 2);
-        assert!(running.last_tick_unix_ms.is_some());
-        assert_eq!(running.consensus.mode, NodeConsensusMode::Pos);
-        assert!(running.consensus.committed_height >= 1);
-        assert_eq!(
-            running.consensus.last_status,
-            Some(PosConsensusStatus::Committed)
-        );
-        assert!(running.last_error.is_none());
-
-        runtime.stop().expect("stop");
-        let stopped = runtime.snapshot();
-        assert!(!stopped.running);
-        assert!(stopped.tick_count >= running.tick_count);
-    }
-
-    #[test]
-    fn runtime_rejects_double_start() {
-        let config = NodeConfig::new("node-b", "world-b", NodeRole::Sequencer).expect("config");
-        let mut runtime = NodeRuntime::new(config);
-        runtime.start().expect("first start");
-        let err = runtime.start().expect_err("second start must fail");
-        assert!(matches!(err, NodeError::AlreadyRunning { .. }));
-        runtime.stop().expect("stop");
-    }
-
-    #[test]
-    fn config_with_gossip_rejects_empty_peers() {
-        let bind_socket = UdpSocket::bind("127.0.0.1:0").expect("bind");
-        let bind_addr = bind_socket.local_addr().expect("addr");
-        let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
-            .expect("config")
-            .with_gossip(bind_addr, vec![]);
-        assert!(matches!(config, Err(NodeError::InvalidConfig { .. })));
-    }
-
-    #[test]
-    fn runtime_gossip_tracks_peer_committed_heads() {
-        let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
-        let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
-        let addr_a = socket_a.local_addr().expect("addr a");
-        let addr_b = socket_b.local_addr().expect("addr b");
-        drop(socket_a);
-        drop(socket_b);
-
-        let validators = vec![
-            PosValidator {
-                validator_id: "node-a".to_string(),
-                stake: 60,
-            },
-            PosValidator {
-                validator_id: "node-b".to_string(),
-                stake: 40,
-            },
-        ];
-
-        let config_a = NodeConfig::new("node-a", "world-sync", NodeRole::Sequencer)
-            .expect("config a")
-            .with_tick_interval(Duration::from_millis(10))
-            .expect("tick a")
-            .with_pos_validators(validators.clone())
-            .expect("validators a")
-            .with_gossip_optional(addr_a, vec![addr_b]);
-        let config_b = NodeConfig::new("node-b", "world-sync", NodeRole::Observer)
-            .expect("config b")
-            .with_tick_interval(Duration::from_millis(10))
-            .expect("tick b")
-            .with_pos_validators(validators)
-            .expect("validators b")
-            .with_gossip_optional(addr_b, vec![addr_a]);
-
-        let mut runtime_a = NodeRuntime::new(config_a);
-        let mut runtime_b = NodeRuntime::new(config_b);
-        runtime_a.start().expect("start a");
-        runtime_b.start().expect("start b");
-        thread::sleep(Duration::from_millis(180));
-
-        let snapshot_a = runtime_a.snapshot();
-        let snapshot_b = runtime_b.snapshot();
-        assert!(snapshot_a.consensus.network_committed_height >= 1);
-        assert!(snapshot_b.consensus.network_committed_height >= 1);
-        assert!(snapshot_a.consensus.known_peer_heads >= 1);
-        assert!(snapshot_b.consensus.known_peer_heads >= 1);
-
-        runtime_a.stop().expect("stop a");
-        runtime_b.stop().expect("stop b");
-    }
-}
+mod tests;
