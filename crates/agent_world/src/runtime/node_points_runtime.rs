@@ -109,7 +109,8 @@ impl NodePointsRuntimeCollector {
         let epoch_ms = self.epoch_duration_ms();
         if let Some(start_ms) = self.epoch_started_at_unix_ms {
             if epoch_ms > 0 {
-                let elapsed_ms = observation_time_delta(start_ms, self.latest_observed_at_unix_ms());
+                let elapsed_ms =
+                    observation_time_delta(start_ms, self.latest_observed_at_unix_ms());
                 if elapsed_ms >= epoch_ms {
                     let report = self.settle_epoch_internal();
                     self.epoch_started_at_unix_ms = Some(self.latest_observed_at_unix_ms());
@@ -158,16 +159,14 @@ impl NodePointsRuntimeCollector {
             .iter()
             .map(|(node_id, accumulator)| {
                 let epoch_seconds = self.ledger.config().epoch_duration_seconds.max(1);
-                let mut availability_ratio =
-                    (accumulator.uptime_ms as f64 / (epoch_seconds as f64 * 1000.0)).clamp(0.0, 1.0);
+                let mut availability_ratio = (accumulator.uptime_ms as f64
+                    / (epoch_seconds as f64 * 1000.0))
+                    .clamp(0.0, 1.0);
                 let mut verify_pass_ratio = 1.0;
                 if accumulator.error_samples > 0 {
                     verify_pass_ratio = self.heuristics.degraded_verify_ratio.clamp(0.0, 1.0);
-                    availability_ratio = availability_ratio.min(
-                        self.heuristics
-                            .degraded_availability_ratio
-                            .clamp(0.0, 1.0),
-                    );
+                    availability_ratio = availability_ratio
+                        .min(self.heuristics.degraded_availability_ratio.clamp(0.0, 1.0));
                 }
                 NodeContributionSample {
                     node_id: node_id.clone(),
@@ -205,8 +204,9 @@ impl NodePointsRuntimeCollector {
             if observation.running {
                 accumulator.uptime_ms = accumulator.uptime_ms.saturating_add(delta_ms);
             }
-            accumulator.self_sim_compute_units =
-                accumulator.self_sim_compute_units.saturating_add(delta_ticks);
+            accumulator.self_sim_compute_units = accumulator
+                .self_sim_compute_units
+                .saturating_add(delta_ticks);
 
             match observation.role {
                 NodeRole::Sequencer => {
@@ -220,7 +220,10 @@ impl NodePointsRuntimeCollector {
                         .saturating_add(delta_ticks);
                 }
                 NodeRole::Storage => {
-                    let delegated = scale_ticks(delta_ticks, self.heuristics.storage_role_delegated_tick_ratio);
+                    let delegated = scale_ticks(
+                        delta_ticks,
+                        self.heuristics.storage_role_delegated_tick_ratio,
+                    );
                     accumulator.delegated_sim_compute_units = accumulator
                         .delegated_sim_compute_units
                         .saturating_add(delegated);

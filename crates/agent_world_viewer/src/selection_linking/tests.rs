@@ -164,6 +164,108 @@ fn selection_related_ticks_match_agent_events() {
 }
 
 #[test]
+fn factory_and_recipe_events_map_to_owner_target() {
+    let factory_built = WorldEvent {
+        id: 21,
+        time: 4,
+        kind: WorldEventKind::FactoryBuilt {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-7".to_string(),
+            },
+            location_id: "loc-1".to_string(),
+            factory_id: "factory-1".to_string(),
+            factory_kind: "miner".to_string(),
+            electricity_cost: 12,
+            hardware_cost: 3,
+        },
+    };
+    let recipe_scheduled = WorldEvent {
+        id: 22,
+        time: 5,
+        kind: WorldEventKind::RecipeScheduled {
+            owner: ResourceOwner::Location {
+                location_id: "loc-2".to_string(),
+            },
+            factory_id: "factory-1".to_string(),
+            recipe_id: "recipe-1".to_string(),
+            batches: 1,
+            electricity_cost: 6,
+            hardware_cost: 2,
+            data_output: 8,
+            finished_product_id: "drone".to_string(),
+            finished_product_units: 1,
+        },
+    };
+
+    let factory_target = event_primary_target(&factory_built, None).expect("factory target");
+    assert_eq!(factory_target.kind, SelectionKind::Agent);
+    assert_eq!(factory_target.id, "agent-7");
+
+    let recipe_target = event_primary_target(&recipe_scheduled, None).expect("recipe target");
+    assert_eq!(recipe_target.kind, SelectionKind::Location);
+    assert_eq!(recipe_target.id, "loc-2");
+}
+
+#[test]
+fn selection_related_ticks_include_factory_and_recipe_events() {
+    let events = vec![
+        WorldEvent {
+            id: 30,
+            time: 4,
+            kind: WorldEventKind::FactoryBuilt {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-7".to_string(),
+                },
+                location_id: "loc-1".to_string(),
+                factory_id: "factory-1".to_string(),
+                factory_kind: "smelter".to_string(),
+                electricity_cost: 18,
+                hardware_cost: 7,
+            },
+        },
+        WorldEvent {
+            id: 31,
+            time: 6,
+            kind: WorldEventKind::RecipeScheduled {
+                owner: ResourceOwner::Location {
+                    location_id: "loc-1".to_string(),
+                },
+                factory_id: "factory-1".to_string(),
+                recipe_id: "iron_ingot".to_string(),
+                batches: 1,
+                electricity_cost: 3,
+                hardware_cost: 1,
+                data_output: 5,
+                finished_product_id: "iron_ingot".to_string(),
+                finished_product_units: 1,
+            },
+        },
+    ];
+
+    let agent_selection = SelectionInfo {
+        entity: Entity::from_bits(7),
+        kind: SelectionKind::Agent,
+        id: "agent-7".to_string(),
+        name: None,
+    };
+    let location_selection = SelectionInfo {
+        entity: Entity::from_bits(8),
+        kind: SelectionKind::Location,
+        id: "loc-1".to_string(),
+        name: Some("L1".to_string()),
+    };
+
+    assert_eq!(
+        selection_related_ticks(&agent_selection, &events, None),
+        vec![4]
+    );
+    assert_eq!(
+        selection_related_ticks(&location_selection, &events, None),
+        vec![4, 6]
+    );
+}
+
+#[test]
 fn locate_focus_event_button_selects_target_and_updates_timeline() {
     let mut app = App::new();
     app.add_systems(Update, handle_locate_focus_event_button);

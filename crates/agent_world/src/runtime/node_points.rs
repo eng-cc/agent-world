@@ -515,7 +515,9 @@ mod tests {
         assert!(settlement_a0.awarded_points > settlement_b0.awarded_points);
         assert_eq!(settlement_c0.awarded_points, 0);
         assert_eq!(
-            settlement_a0.awarded_points + settlement_b0.awarded_points + settlement_c0.awarded_points,
+            settlement_a0.awarded_points
+                + settlement_b0.awarded_points
+                + settlement_c0.awarded_points,
             1000
         );
 

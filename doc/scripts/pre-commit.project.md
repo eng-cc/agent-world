@@ -15,6 +15,7 @@
 - [x] 移除默认 pre-commit/CI 的 builtin wasm hash 校验（改为手动按需执行，2026-02-14）
 - [x] pre-commit 重新启用 builtin wasm hash 校验并落盘 DistFS（2026-02-15）
 - [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p agent_world_viewer --target wasm32-unknown-unknown`，2026-02-15）
+- [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` + 补齐 `selection_linking` 新事件分支，2026-02-16）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
@@ -23,4 +24,4 @@
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：pre-commit 新增 `agent_world_viewer` wasm32 编译门禁，拦截 Web Viewer 编译回归（2026-02-15）
+- 最近更新：修复 `cargo fmt --check` 漂移并补齐 Viewer 新事件分支，`./scripts/pre-commit.sh` 全链路通过（2026-02-16）

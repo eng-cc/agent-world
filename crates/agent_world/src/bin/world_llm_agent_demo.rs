@@ -172,7 +172,10 @@ impl DemoRunReport {
             return;
         }
         self.action_failure += 1;
-        *self.action_kind_failure_counts.entry(action_kind).or_insert(0) += 1;
+        *self
+            .action_kind_failure_counts
+            .entry(action_kind)
+            .or_insert(0) += 1;
         if let Some(reason) = action_result.reject_reason() {
             let key = reject_reason_metric_key(reason);
             *self.action_reject_reason_counts.entry(key).or_insert(0) += 1;
@@ -759,7 +762,10 @@ mod tests {
 
         assert_eq!(report.action_kind_counts.get("build_factory"), Some(&1));
         assert_eq!(report.action_kind_counts.get("schedule_recipe"), Some(&1));
-        assert_eq!(report.action_kind_success_counts.get("build_factory"), Some(&1));
+        assert_eq!(
+            report.action_kind_success_counts.get("build_factory"),
+            Some(&1)
+        );
         assert_eq!(
             report.action_kind_failure_counts.get("schedule_recipe"),
             Some(&1)
