@@ -40,9 +40,22 @@
 
 ### LFO7 决策全量 Tool 化（2026-02-17）
 - [x] LFO7.1 输出增量设计文档并补充项目拆解（tool-only 协议）
-- [ ] LFO7.2 扩展 Responses tools：新增 `agent_submit_decision`，并切换 `tool_choice=required`
-- [ ] LFO7.3 调整 prompt/behavior 约束为“只允许 tool call 输出”，更新解析路径与单测
-- [ ] LFO7.4 跑通 required-tier 测试并记录 devlog/状态回填
+- [x] LFO7.2 扩展 Responses tools：新增 `agent_submit_decision`，并切换 `tool_choice=required`
+- [x] LFO7.3 调整 prompt/behavior 约束为“只允许 tool call 输出”，更新解析路径与单测
+- [x] LFO7.4 跑通 required-tier 测试并记录 devlog/状态回填
+
+### LFO7 实施结果摘要（2026-02-17）
+- tool 注册：
+  - 在原 4 个查询工具基础上新增 `agent_submit_decision`，统一承载最终动作提交。
+  - `build_responses_request_payload` 切换到 `tool_choice=required`，强制模型使用 tool call。
+- 协议收敛：
+  - OpenAI `function_call` 统一映射到内部解析链路；其中 `agent_submit_decision` 直接映射为决策 payload，查询工具映射为 `module_call`。
+  - 移除对 `output_text` 直接决策的兼容路径（无 tool call 时返回 `EmptyChoice`），减少“文本 JSON 漂移”。
+- Prompt/行为约束：
+  - 系统与对话约束改为 tool-only：每轮只允许一个 tool call，禁止 JSON 文本直出。
+  - 上下文足够时要求直接调用 `agent_submit_decision`，保留 `message_to_user` 参数透传。
+- 回归测试：
+  - 新增/更新覆盖：tool 列表数量、`tool_choice=required`、决策 tool 参数映射、`output_text` 拒绝路径、tool-only prompt 约束。
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
@@ -112,6 +125,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO6.5 已完成，进入 LFO7 决策全量 Tool 化。
-- 下一步：执行 LFO7.2-LFO7.4，完成 tool-only 协议改造与回归验证。
-- 最近更新：2026-02-17（新增 LFO7 任务拆解并完成 LFO7.1）。
+- 当前阶段：LFO0-LFO7 全部完成（含决策全量 Tool 化）。
+- 下一步：在线抽样复跑验证 tool-only 协议下的长窗口稳定性，并评估是否继续压缩多工具同轮输出空间。
+- 最近更新：2026-02-17（完成 LFO7.2-LFO7.4 代码与测试收口）。

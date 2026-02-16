@@ -141,7 +141,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
             let mut user_prompt = prompt_output.user_prompt.clone();
             user_prompt.push_str(
-                "\n\n[Dialogue Constraints]\n- 本轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔与代码块包裹 JSON。\n",
+                "\n\n[Dialogue Constraints]\n- 本轮只允许调用一个 tool；禁止直接输出 JSON 文本或 `---` 分隔多段内容。\n",
             );
             user_prompt.push_str(
                 format!(
@@ -161,13 +161,13 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 "- move_agent.to 不能是当前所在位置（observation 中 distance_cm=0 的 location）。\n",
             );
             user_prompt.push_str(
-                "- 若需要信息查询，只能输出一个 module_call JSON；拿到工具结果后下一轮再输出最终 decision。\n",
+                "- 若需要信息查询，只能调用一个查询 tool；拿到工具结果后下一轮再调用 `agent_submit_decision`。\n",
             );
             user_prompt.push_str(
-                "- 若要向玩家解释当前决策，请在 JSON 内使用 message_to_user 字段；不要在 JSON 外输出文本。\n",
+                "- 若要向玩家解释当前决策，请在 `agent_submit_decision` 参数内使用 message_to_user；不要输出额外文本。\n",
             );
             user_prompt.push_str(
-                "- 若上下文已足够，请直接输出最终 decision；message_to_user 仅保留关键信息，避免冗长。\n",
+                "- 若上下文已足够，请直接调用 `agent_submit_decision` 提交最终决策；message_to_user 保持简洁。\n",
             );
             user_prompt.push_str(
                 format!(
@@ -197,9 +197,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             }
 
             if let Some(repair_reason) = repair_context.as_ref() {
-                user_prompt.push_str("\n[Repair]\n上一轮输出解析失败，请修复为合法 JSON：");
+                user_prompt.push_str("\n[Repair]\n上一轮输出解析失败，请修复为合法 tool call：");
                 user_prompt.push_str(repair_reason.as_str());
-                user_prompt.push_str("\n仅返回一个合法 JSON 对象，不要追加其他 JSON 块。\n");
+                user_prompt.push_str("\n仅调用一个合法 tool，不要追加其他内容。\n");
             }
 
             let request = LlmCompletionRequest {
@@ -583,7 +583,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         continue;
                     }
 
-                    let err = "no actionable JSON object found in assistant output".to_string();
+                    let err = "no actionable tool call found in assistant output".to_string();
                     if repair_rounds_used < self.config.max_repair_rounds as u32 {
                         repair_rounds_used = repair_rounds_used.saturating_add(1);
                         repair_context = Some(err);

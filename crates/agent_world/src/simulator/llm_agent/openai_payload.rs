@@ -57,6 +57,66 @@ pub(super) fn responses_tools() -> Vec<Tool> {
             })),
             strict: None,
         }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
+            description: Some(
+                "提交最终决策；所有世界动作必须通过该 tool call，而不是输出文本 JSON。".to_string(),
+            ),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "decision": {
+                        "type": "string",
+                        "enum": [
+                            "wait",
+                            "wait_ticks",
+                            "move_agent",
+                            "harvest_radiation",
+                            "transfer_resource",
+                            "refine_compound",
+                            "build_factory",
+                            "schedule_recipe",
+                            "execute_until"
+                        ]
+                    },
+                    "ticks": { "type": "integer", "minimum": 1 },
+                    "to": { "type": "string" },
+                    "max_amount": { "type": "integer", "minimum": 1 },
+                    "from_owner": { "type": "string" },
+                    "to_owner": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "amount": { "type": "integer", "minimum": 1 },
+                    "owner": { "type": "string" },
+                    "compound_mass_g": { "type": "integer", "minimum": 1 },
+                    "location_id": { "type": "string" },
+                    "factory_id": { "type": "string" },
+                    "factory_kind": { "type": "string" },
+                    "recipe_id": { "type": "string" },
+                    "batches": { "type": "integer", "minimum": 1 },
+                    "action": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "until": {
+                        "type": "object",
+                        "properties": {
+                            "event": { "type": "string" },
+                            "event_any_of": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                            },
+                            "value_lte": { "type": "integer", "minimum": 0 }
+                        },
+                        "additionalProperties": false
+                    },
+                    "max_ticks": { "type": "integer", "minimum": 1 },
+                    "message_to_user": { "type": "string" }
+                },
+                "required": ["decision"],
+                "additionalProperties": false
+            })),
+            strict: None,
+        }),
     ]
 }
 
@@ -84,6 +144,9 @@ pub(super) fn decode_tool_arguments(arguments: &str) -> serde_json::Value {
 }
 
 pub(super) fn function_call_to_module_call_json(name: &str, arguments: &str) -> String {
+    if name == OPENAI_TOOL_AGENT_SUBMIT_DECISION {
+        return decode_tool_arguments(arguments).to_string();
+    }
     let module = module_name_from_tool_name(name);
     let args = decode_tool_arguments(arguments);
     serde_json::json!({
@@ -106,6 +169,7 @@ pub(super) fn output_item_to_module_call_json(item: &OutputItem) -> Option<Strin
 
 pub(super) fn extract_module_call_from_raw_response(value: &serde_json::Value) -> Option<String> {
     let output_items = value.get("output")?.as_array()?;
+    let mut tool_outputs = Vec::new();
     for item in output_items {
         if item.get("type").and_then(|kind| kind.as_str()) != Some("function_call") {
             continue;
@@ -115,40 +179,12 @@ pub(super) fn extract_module_call_from_raw_response(value: &serde_json::Value) -
             .get("arguments")
             .and_then(|arguments| arguments.as_str())
             .unwrap_or("{}");
-        return Some(function_call_to_module_call_json(name, arguments));
+        tool_outputs.push(function_call_to_module_call_json(name, arguments));
     }
-    None
-}
-
-pub(super) fn extract_output_text_from_raw_response(value: &serde_json::Value) -> Option<String> {
-    let output_items = value.get("output")?.as_array()?;
-    let mut parts = Vec::new();
-
-    for item in output_items {
-        if item.get("type").and_then(|kind| kind.as_str()) != Some("message") {
-            continue;
-        }
-        let content_items = match item.get("content").and_then(|content| content.as_array()) {
-            Some(content_items) => content_items,
-            None => continue,
-        };
-        for content_item in content_items {
-            if content_item.get("type").and_then(|kind| kind.as_str()) != Some("output_text") {
-                continue;
-            }
-            if let Some(text) = content_item.get("text").and_then(|text| text.as_str()) {
-                parts.push(text);
-            }
-        }
-    }
-
-    if parts.is_empty() {
-        value
-            .get("output_text")
-            .and_then(|text| text.as_str())
-            .map(|text| text.to_string())
+    if tool_outputs.is_empty() {
+        None
     } else {
-        Some(parts.join(""))
+        Some(tool_outputs.join("\n"))
     }
 }
 
@@ -160,9 +196,7 @@ pub(super) fn completion_result_from_raw_response_json(
             message: format!("compat parse failed: {err}"),
         })?;
 
-    let output = extract_module_call_from_raw_response(&value)
-        .or_else(|| extract_output_text_from_raw_response(&value))
-        .unwrap_or_default();
+    let output = extract_module_call_from_raw_response(&value).unwrap_or_default();
 
     if output.trim().is_empty() {
         return Err(LlmClientError::EmptyChoice);
@@ -190,12 +224,12 @@ pub(super) fn completion_result_from_raw_response_json(
 pub(super) fn completion_result_from_sdk_response(
     response: Response,
 ) -> Result<LlmCompletionResult, LlmClientError> {
-    let output = response
+    let outputs = response
         .output
         .iter()
-        .find_map(output_item_to_module_call_json)
-        .or_else(|| response.output_text())
-        .unwrap_or_default();
+        .filter_map(output_item_to_module_call_json)
+        .collect::<Vec<_>>();
+    let output = outputs.join("\n");
 
     if output.trim().is_empty() {
         return Err(LlmClientError::EmptyChoice);
@@ -230,7 +264,7 @@ pub(super) fn build_responses_request_payload(
         .instructions(request.system_prompt.clone())
         .input(InputParam::Text(request.user_prompt.clone()))
         .tools(responses_tools())
-        .tool_choice(ToolChoiceParam::Mode(ToolChoiceOptions::Auto))
+        .tool_choice(ToolChoiceParam::Mode(ToolChoiceOptions::Required))
         .build()
         .map_err(|err| LlmClientError::DecodeResponse {
             message: err.to_string(),

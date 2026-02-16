@@ -155,7 +155,7 @@ impl PromptAssembler {
                 kind: PromptSectionKind::Policy,
                 priority: PromptSectionPriority::High,
                 content: format!(
-                    "{}\n\n你是一个硅基文明 Agent。请严格输出 JSON，不要输出额外文字。",
+                    "{}\n\n你是一个硅基文明 Agent。必须通过 tool call 输出，不要直接输出 JSON 或额外文字。",
                     input.base_system_prompt,
                 ),
             },
@@ -177,15 +177,13 @@ impl PromptAssembler {
                 kind: PromptSectionKind::Tools,
                 priority: PromptSectionPriority::High,
                 content: r#"[Tool Protocol]
-- 如果需要更多信息，可输出模块调用 JSON：{"type":"module_call","module":"<module_name>","args":{...}}
-- 仅允许模块名：agent.modules.list / environment.current_observation / memory.short_term.recent / memory.long_term.search
+- 本代理采用 tool-only 协议：每轮必须调用 tool，禁止输出 JSON 文本或自然语言正文
+- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search
+- 最终决策工具：agent_submit_decision
 - 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search
-- 每轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔多段 JSON，禁止代码块包裹 JSON
-- 若本轮输出 module_call，则只能输出 1 个 module_call；不要在同一回复混合 module_call 与 decision*
-- 若需要对玩家说明意图，请在 JSON 中使用可选字段 `message_to_user`（字符串）
-- 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策
-- 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）
-- 在获得足够信息后，必须输出最终决策 JSON；若附带 `message_to_user`，请简洁。"#.to_string(),
+- 每轮只允许调用一个 tool；不要在同一回复混用查询工具与最终决策工具
+- 若需要对玩家说明意图，请在 `agent_submit_decision` 参数中使用可选字段 `message_to_user`
+- 当连续动作触发反重复门控时，优先查询新证据或输出 execute_until，不要复读同一终局动作"#.to_string(),
             },
             true,
         ));
@@ -235,7 +233,8 @@ impl PromptAssembler {
                 kind: PromptSectionKind::OutputSchema,
                 priority: PromptSectionPriority::High,
                 content: format!(
-                    r#"[Decision JSON Schema]
+                    r#"[Decision Tool Args Schema]
+- 必须通过 tool `agent_submit_decision` 提交以下 args 结构（禁止直接输出 JSON）：
 {{"decision":"wait"}}
 {{"decision":"wait_ticks","ticks":<u64>}}
 {{"decision":"move_agent","to":"<location_id>"}}
@@ -245,8 +244,7 @@ impl PromptAssembler {
 {{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
 {{"decision":"schedule_recipe","owner":"<self|agent:<id>|location:<id>>","factory_id":"<factory_id>","recipe_id":"<recipe_id>","batches":<i64 >=1>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
-- 任意决策 JSON 或 module_call JSON 可选附带：`"message_to_user":"<string>"`
-- module_call 仍使用：{{"type":"module_call","module":"<module_name>","args":{{...}},"message_to_user":"<optional>"}}（message_to_user 可省略）
+- 任意决策 args 可选附带：`"message_to_user":"<string>"`
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=3>}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
@@ -273,16 +271,11 @@ impl PromptAssembler {
   - 其他 reject_reason -> 先输出最小可执行补救动作，不得原样重试失败参数
 - 禁止连续超过 2 轮同参数 harvest_radiation；若连续采集未推进目标，下一轮必须切到 refine_compound/build_factory/schedule_recipe
 - harvest 的 execute_until.max_ticks 运行时会被硬裁剪到 3；若电力已足够下一步 refine/schedule，必须立即回切，不得继续长 harvest
-- 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
-- execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
 [Output Hard Rules]
-- 每轮只输出一个 JSON 对象（非数组），不要输出多个 JSON 块，不要使用 `---` 分隔
-- 当前上下文若已足够，请直接输出最终 decision（可 execute_until）
-- 若要向玩家提供文本反馈，只能通过 JSON 字段 `message_to_user`，不要在 JSON 外输出文本
-
-若你需要查询信息，请输出模块调用 JSON：
-{{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
+- 每轮只允许调用一个 tool（查询或 `agent_submit_decision`）
+- 当前上下文若已足够，请直接调用 `agent_submit_decision` 提交最终决策（可 execute_until）
+- 禁止在 tool call 之外输出 JSON/文本；不要使用 `---` 分隔多段内容"#,
                     input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
@@ -626,12 +619,12 @@ mod tests {
         let output = PromptAssembler::assemble(sample_input());
         assert!(output.system_prompt.contains("base prompt"));
         assert!(output.system_prompt.contains("short goal"));
-        assert!(output.system_prompt.contains("module_call"));
+        assert!(output.system_prompt.contains("agent_submit_decision"));
 
         assert!(output.user_prompt.contains("observation(json)"));
         assert!(output.user_prompt.contains("[Conversation]"));
         assert!(output.user_prompt.contains("[Memory Digest]"));
-        assert!(output.user_prompt.contains("Decision JSON Schema"));
+        assert!(output.user_prompt.contains("Decision Tool Args Schema"));
     }
 
     #[test]
@@ -911,16 +904,12 @@ mod tests {
     }
 
     #[test]
-    fn prompt_assembly_includes_single_json_constraints() {
+    fn prompt_assembly_includes_tool_call_constraints() {
         let output = PromptAssembler::assemble(sample_input());
-        assert!(output
-            .system_prompt
-            .contains("每轮只允许输出一个 JSON 对象"));
+        assert!(output.system_prompt.contains("每轮只允许调用一个 tool"));
         assert!(output.system_prompt.contains("message_to_user"));
         assert!(output.user_prompt.contains("[Output Hard Rules]"));
-        assert!(output
-            .user_prompt
-            .contains("decision_draft.decision 必须是完整 decision 对象"));
+        assert!(output.user_prompt.contains("agent_submit_decision"));
         assert!(output.user_prompt.contains("message_to_user"));
     }
 

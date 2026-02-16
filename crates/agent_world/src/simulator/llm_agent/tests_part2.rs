@@ -117,7 +117,7 @@ fn llm_agent_system_prompt_contains_configured_goals() {
     let system_prompt = behavior.system_prompt();
     assert!(system_prompt.contains("short-goal"));
     assert!(system_prompt.contains("long-goal"));
-    assert!(system_prompt.contains("module_call"));
+    assert!(system_prompt.contains("agent_submit_decision"));
 }
 
 #[test]

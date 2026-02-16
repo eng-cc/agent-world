@@ -536,7 +536,7 @@ fn openai_client_enables_timeout_retry_when_timeout_below_default() {
 #[test]
 fn responses_tools_register_expected_function_names() {
     let tools = responses_tools();
-    assert_eq!(tools.len(), 4);
+    assert_eq!(tools.len(), 5);
 
     let names = tools
         .into_iter()
@@ -553,6 +553,7 @@ fn responses_tools_register_expected_function_names() {
             OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION.to_string(),
             OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT.to_string(),
             OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH.to_string(),
+            OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
         ]
     );
 }
@@ -610,7 +611,27 @@ fn response_function_call_invalid_json_arguments_are_preserved_as_raw() {
 }
 
 #[test]
-fn build_responses_request_payload_includes_tools_and_auto_choice() {
+fn response_function_call_maps_decision_tool_to_decision_json() {
+    let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
+        arguments: "{\"decision\":\"wait_ticks\",\"ticks\":2}".to_string(),
+        call_id: "call_decision".to_string(),
+        name: OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
+        id: None,
+        status: None,
+    });
+
+    let output_json = output_item_to_module_call_json(&output_item).expect("decision json");
+    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
+
+    assert_eq!(
+        value.get("decision").and_then(|value| value.as_str()),
+        Some("wait_ticks")
+    );
+    assert_eq!(value.get("ticks").and_then(|value| value.as_i64()), Some(2));
+}
+
+#[test]
+fn build_responses_request_payload_includes_tools_and_required_choice() {
     let request = LlmCompletionRequest {
         model: "gpt-test".to_string(),
         system_prompt: "system".to_string(),
@@ -634,13 +655,13 @@ fn build_responses_request_payload_includes_tools_and_auto_choice() {
         .expect("tool choice exists")
         .as_str()
         .expect("tool choice string");
-    assert_eq!(tool_choice, "auto");
+    assert_eq!(tool_choice, "required");
 
     let tools = payload_json
         .get("tools")
         .and_then(|v| v.as_array())
         .expect("tools array");
-    assert_eq!(tools.len(), 4);
+    assert_eq!(tools.len(), 5);
 
     let function_names = tools
         .iter()
@@ -653,6 +674,7 @@ fn build_responses_request_payload_includes_tools_and_auto_choice() {
             OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
             OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
             OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
+            OPENAI_TOOL_AGENT_SUBMIT_DECISION,
         ]
     );
 }
@@ -696,7 +718,30 @@ fn completion_result_from_raw_response_json_parses_function_call_without_annotat
 }
 
 #[test]
-fn completion_result_from_raw_response_json_parses_output_text_without_annotations() {
+fn completion_result_from_raw_response_json_parses_decision_tool_call_without_annotations() {
+    let raw = r#"{
+      "model":"gpt-test",
+      "output":[
+        {
+          "type":"function_call",
+          "name":"agent_submit_decision",
+          "arguments":"{\"decision\":\"wait\"}"
+        }
+      ]
+    }"#;
+
+    let result = completion_result_from_raw_response_json(raw).expect("result");
+    let output: serde_json::Value = serde_json::from_str(result.output.as_str()).expect("json");
+
+    assert_eq!(result.model.as_deref(), Some("gpt-test"));
+    assert_eq!(
+        output.get("decision").and_then(|value| value.as_str()),
+        Some("wait")
+    );
+}
+
+#[test]
+fn completion_result_from_raw_response_json_rejects_output_text_without_tool_call() {
     let raw = r#"{
       "model":"gpt-test",
       "output":[
@@ -710,9 +755,8 @@ fn completion_result_from_raw_response_json_parses_output_text_without_annotatio
       ]
     }"#;
 
-    let result = completion_result_from_raw_response_json(raw).expect("result");
-    assert_eq!(result.model.as_deref(), Some("gpt-test"));
-    assert_eq!(result.output, "{\"decision\":\"wait\"}");
+    let result = completion_result_from_raw_response_json(raw);
+    assert!(matches!(result, Err(LlmClientError::EmptyChoice)));
 }
 
 #[test]
