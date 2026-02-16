@@ -883,6 +883,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 format!("insufficient_resource.{kind}")
             }
             RejectReason::FacilityNotFound { .. } => "factory_not_found".to_string(),
+            RejectReason::FacilityAlreadyExists { .. } => "facility_already_exists".to_string(),
             RejectReason::AgentAlreadyAtLocation { .. } => "agent_already_at_location".to_string(),
             RejectReason::AgentNotAtLocation { .. } => "agent_not_at_location".to_string(),
             RejectReason::ThermalOverload { .. } => "thermal_overload".to_string(),

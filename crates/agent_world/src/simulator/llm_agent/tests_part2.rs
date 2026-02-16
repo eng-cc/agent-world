@@ -200,6 +200,40 @@ fn llm_agent_user_prompt_includes_last_action_summary_after_feedback() {
 }
 
 #[test]
+fn llm_agent_user_prompt_preserves_facility_already_exists_reject_reason() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let action_result = ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-1".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        action_id: 10,
+        success: false,
+        event: WorldEvent {
+            id: 10,
+            time: 12,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::FacilityAlreadyExists {
+                    facility_id: "factory.alpha".to_string(),
+                },
+            },
+        },
+    };
+
+    behavior.on_action_result(&action_result);
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("\"last_action\""));
+    assert!(prompt.contains("\"kind\":\"build_factory\""));
+    assert!(prompt.contains("\"success\":false"));
+    assert!(prompt.contains("\"reject_reason\":\"facility_already_exists\""));
+    assert!(!prompt.contains("\"reject_reason\":\"other\""));
+}
+
+#[test]
 fn llm_agent_user_prompt_contains_memory_digest_section() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     behavior

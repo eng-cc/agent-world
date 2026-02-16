@@ -31,6 +31,11 @@
 - [x] LFO5.2 验证主链路达成：`build_factory` 成功且 `schedule_recipe` 至少 2 次成功，`data` 正增长
 - [x] LFO5.3 记录本轮新发现 TODO 并回写项目文档/任务日志
 
+### LFO6 用户指令 TODO 收口（2026-02-16）
+- [x] LFO6.1 修复 `facility_already_exists` 在 prompt `last_action.reject_reason` 被降级为 `other` 的问题
+- [ ] LFO6.2 收敛 `execute_until` 尾段长 harvest（增加 harvest 连续轮次硬上限与回切提示）
+- [ ] LFO6.3 增加 `schedule_recipe.batches` 与可用硬件上界约束（含 guardrail 与提示文案）
+
 ### LFO4 在线闭环结果摘要（2026-02-16）
 - 运行产物：
   - `output/llm_bootstrap/factory_schedule_lfo4_20_2026-02-16/run.log`
@@ -78,6 +83,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO5 全部完成。
-- 下一步：基于 LFO5 TODO 继续迭代（优先修复 reject_reason 透传，再收敛长 harvest 与批次数过配）。
-- 最近更新：2026-02-16（完成 LFO5 用户指令闭环复跑与 TODO 回写）。
+- 当前阶段：LFO0-LFO5 与 LFO6.1 已完成；LFO6.2-LFO6.3 进行中。
+- 下一步：完成 LFO6.2/LFO6.3，并执行在线复跑确认 TODO 收口效果。
+- 最近更新：2026-02-16（完成 LFO6.1 reject_reason 透传修复）。
