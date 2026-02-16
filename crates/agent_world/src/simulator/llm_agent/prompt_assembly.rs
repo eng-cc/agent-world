@@ -263,6 +263,13 @@ impl PromptAssembler {
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
 - schedule_recipe.batches 必须是正整数
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
+- [Failure Recovery Policy] 当 observation.last_action.success=false 时，必须优先按 reject_reason 切换下一动作：
+  - insufficient_resource.hardware -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=hardware)
+  - insufficient_resource.electricity -> harvest_radiation 或 transfer_resource(kind=electricity)
+  - factory_not_found -> build_factory（先建厂再 schedule_recipe）
+  - agent_already_at_location -> 禁止重复 move_agent 到同 location，改为 schedule_recipe/refine_compound/harvest_radiation
+  - 其他 reject_reason -> 先输出最小可执行补救动作，不得原样重试失败参数
+- 禁止连续超过 2 轮同参数 harvest_radiation；若连续采集未推进目标，下一轮必须切到 refine_compound/build_factory/schedule_recipe
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
@@ -949,6 +956,19 @@ mod tests {
         assert!(output
             .user_prompt
             .contains("owner 字段仅允许 self/agent:<id>/location:<id>"));
+        assert!(output.user_prompt.contains("[Failure Recovery Policy]"));
+        assert!(output
+            .user_prompt
+            .contains("insufficient_resource.hardware -> refine_compound"));
+        assert!(output
+            .user_prompt
+            .contains("insufficient_resource.electricity -> harvest_radiation"));
+        assert!(output
+            .user_prompt
+            .contains("factory_not_found -> build_factory"));
+        assert!(output
+            .user_prompt
+            .contains("agent_already_at_location -> 禁止重复 move_agent"));
         assert!(output.user_prompt.contains("推荐 harvest 模板"));
         assert!(output.user_prompt.contains("推荐 move 模板"));
     }

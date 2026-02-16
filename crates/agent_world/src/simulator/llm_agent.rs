@@ -17,10 +17,9 @@ use super::agent::{
     LlmChatRole, LlmDecisionDiagnostics, LlmEffectIntentTrace, LlmEffectReceiptTrace,
     LlmPromptSectionTrace, LlmStepTrace,
 };
-use super::kernel::Observation;
-use super::kernel::WorldEvent;
+use super::kernel::{Observation, RejectReason, WorldEvent};
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
-use super::types::Action;
+use super::types::{Action, ResourceKind};
 
 mod behavior_loop;
 mod config_helpers;
@@ -153,6 +152,13 @@ const PROMPT_CONVERSATION_MAX_ITEMS: usize = 12;
 const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 5;
 const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 5;
 const CONVERSATION_HISTORY_MAX_ITEMS: usize = 64;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PromptLastActionSummary {
+    kind: String,
+    success: bool,
+    reject_reason: Option<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct LlmPromptOverrides {
@@ -623,6 +629,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     active_execute_until: Option<ActiveExecuteUntil>,
     conversation_history: Vec<LlmChatMessageTrace>,
     conversation_trace_cursor: usize,
+    last_action_summary: Option<PromptLastActionSummary>,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -667,6 +674,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             active_execute_until: None,
             conversation_history: Vec::new(),
             conversation_trace_cursor: 0,
+            last_action_summary: None,
         }
     }
 
@@ -749,7 +757,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         step_index: usize,
         max_steps: usize,
     ) -> PromptAssemblyOutput {
-        let observation_json = Self::observation_json_for_prompt(observation);
+        let observation_json = self.observation_json_for_prompt(observation);
         let history_start = module_history
             .len()
             .saturating_sub(self.config.prompt_max_history_items);
@@ -781,7 +789,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         })
     }
 
-    fn observation_json_for_prompt(observation: &Observation) -> String {
+    fn observation_json_for_prompt(&self, observation: &Observation) -> String {
         let mut visible_agents = observation.visible_agents.iter().collect::<Vec<_>>();
         visible_agents.sort_by_key(|agent| agent.distance_cm);
         let visible_agents = visible_agents
@@ -808,11 +816,24 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             })
             .collect::<Vec<_>>();
 
+        let last_action = self
+            .last_action_summary
+            .as_ref()
+            .map(|summary| {
+                serde_json::json!({
+                    "kind": summary.kind,
+                    "success": summary.success,
+                    "reject_reason": summary.reject_reason,
+                })
+            })
+            .unwrap_or(serde_json::Value::Null);
+
         serde_json::to_string(&serde_json::json!({
             "time": observation.time,
             "agent_id": observation.agent_id,
             "pos": observation.pos,
             "self_resources": observation.self_resources,
+            "last_action": last_action,
             "visibility_range_cm": observation.visibility_range_cm,
             "visible_agents_total": observation.visible_agents.len(),
             "visible_agents_omitted": observation
@@ -828,6 +849,56 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "visible_locations": visible_locations,
         }))
         .unwrap_or_else(|_| "{\"error\":\"observation serialize failed\"}".to_string())
+    }
+
+    fn action_kind_name_for_prompt(action: &Action) -> &'static str {
+        match action {
+            Action::RegisterLocation { .. } => "register_location",
+            Action::RegisterAgent { .. } => "register_agent",
+            Action::RegisterPowerPlant { .. } => "register_power_plant",
+            Action::RegisterPowerStorage { .. } => "register_power_storage",
+            Action::UpsertModuleVisualEntity { .. } => "upsert_module_visual_entity",
+            Action::RemoveModuleVisualEntity { .. } => "remove_module_visual_entity",
+            Action::DrawPower { .. } => "draw_power",
+            Action::StorePower { .. } => "store_power",
+            Action::MoveAgent { .. } => "move_agent",
+            Action::HarvestRadiation { .. } => "harvest_radiation",
+            Action::BuyPower { .. } => "buy_power",
+            Action::SellPower { .. } => "sell_power",
+            Action::TransferResource { .. } => "transfer_resource",
+            Action::RefineCompound { .. } => "refine_compound",
+            Action::BuildFactory { .. } => "build_factory",
+            Action::ScheduleRecipe { .. } => "schedule_recipe",
+        }
+    }
+
+    fn reject_reason_code_for_prompt(reason: &RejectReason) -> String {
+        match reason {
+            RejectReason::InsufficientResource { kind, .. } => {
+                let kind = match kind {
+                    ResourceKind::Electricity => "electricity",
+                    ResourceKind::Hardware => "hardware",
+                    ResourceKind::Data => "data",
+                };
+                format!("insufficient_resource.{kind}")
+            }
+            RejectReason::FacilityNotFound { .. } => "factory_not_found".to_string(),
+            RejectReason::AgentAlreadyAtLocation { .. } => "agent_already_at_location".to_string(),
+            RejectReason::AgentNotAtLocation { .. } => "agent_not_at_location".to_string(),
+            RejectReason::ThermalOverload { .. } => "thermal_overload".to_string(),
+            RejectReason::RadiationUnavailable { .. } => "radiation_unavailable".to_string(),
+            _ => "other".to_string(),
+        }
+    }
+
+    fn summarize_action_result_for_prompt(result: &ActionResult) -> PromptLastActionSummary {
+        PromptLastActionSummary {
+            kind: Self::action_kind_name_for_prompt(&result.action).to_string(),
+            success: result.success,
+            reject_reason: result
+                .reject_reason()
+                .map(Self::reject_reason_code_for_prompt),
+        }
     }
 
     fn memory_digest_for_prompt(digest: &str) -> String {

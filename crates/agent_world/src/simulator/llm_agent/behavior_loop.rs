@@ -700,6 +700,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
     fn on_action_result(&mut self, result: &ActionResult) {
         let time = result.event.time;
+        self.last_action_summary = Some(Self::summarize_action_result_for_prompt(result));
         self.memory
             .record_action_result(time, result.action.clone(), result.success);
         if !result.success {

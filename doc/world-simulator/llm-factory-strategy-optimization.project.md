@@ -7,9 +7,9 @@
 - [x] LFO0.2 输出项目管理文档（本文件）
 
 ### LFO1 Prompt 恢复规则（TODO-1）
-- [ ] LFO1.1 在 prompt 增加“失败原因 -> 下一动作”规则模板
-- [ ] LFO1.2 透出 `last_action` 结果摘要到 observation（含 reject reason）
-- [ ] LFO1.3 增加/更新 prompt 断言测试（拒绝原因驱动动作切换）
+- [x] LFO1.1 在 prompt 增加“失败原因 -> 下一动作”规则模板
+- [x] LFO1.2 透出 `last_action` 结果摘要到 observation（含 reject reason）
+- [x] LFO1.3 增加/更新 prompt 断言测试（拒绝原因驱动动作切换）
 
 ### LFO2 动作触发率统计（TODO-2）
 - [ ] LFO2.1 扩展 `world_llm_agent_demo` report 结构（`action_kind_counts` 等）
@@ -35,6 +35,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0 完成，LFO1 待开始。
-- 下一步：执行 LFO1（先落地拒绝原因恢复规则，再做指标和离线回归）。
-- 最近更新：2026-02-16（完成优化迭代文档立项）。
+- 当前阶段：LFO0-LFO1 完成，LFO2 待开始。
+- 下一步：执行 LFO2（接入 `action_kind_counts`/`first_action_tick` 报告指标）。
+- 最近更新：2026-02-16（完成 LFO1：恢复规则、`last_action` 透出与断言测试）。

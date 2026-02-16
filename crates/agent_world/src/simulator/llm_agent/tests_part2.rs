@@ -152,6 +152,54 @@ fn llm_agent_user_prompt_omits_step_context_metadata() {
 }
 
 #[test]
+fn llm_agent_user_prompt_contains_failure_recovery_policy() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("[Failure Recovery Policy]"));
+    assert!(prompt.contains("insufficient_resource.hardware -> refine_compound"));
+    assert!(prompt.contains("insufficient_resource.electricity -> harvest_radiation"));
+    assert!(prompt.contains("factory_not_found -> build_factory"));
+}
+
+#[test]
+fn llm_agent_user_prompt_includes_last_action_summary_after_feedback() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let action_result = ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-1".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        action_id: 9,
+        success: false,
+        event: WorldEvent {
+            id: 9,
+            time: 11,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    kind: ResourceKind::Hardware,
+                    requested: 10,
+                    available: 0,
+                },
+            },
+        },
+    };
+
+    behavior.on_action_result(&action_result);
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("\"last_action\""));
+    assert!(prompt.contains("\"kind\":\"build_factory\""));
+    assert!(prompt.contains("\"success\":false"));
+    assert!(prompt.contains("\"reject_reason\":\"insufficient_resource.hardware\""));
+}
+
+#[test]
 fn llm_agent_user_prompt_contains_memory_digest_section() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     behavior
