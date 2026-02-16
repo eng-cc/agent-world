@@ -11,6 +11,7 @@ use super::error::WorldError;
 use super::events::DomainEvent;
 use super::reward_asset::{
     NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
+    SystemOrderPoolBudget,
 };
 use super::types::{ActionId, MaterialLedgerId, WorldTime};
 
@@ -115,6 +116,8 @@ pub struct WorldState {
     pub reward_mint_records: Vec<NodeRewardMintRecord>,
     #[serde(default)]
     pub node_redeem_nonces: BTreeMap<String, u64>,
+    #[serde(default)]
+    pub system_order_pool_budgets: BTreeMap<u64, SystemOrderPoolBudget>,
 }
 
 impl Default for WorldState {
@@ -135,6 +138,7 @@ impl Default for WorldState {
             protocol_power_reserve: ProtocolPowerReserve::default(),
             reward_mint_records: Vec::new(),
             node_redeem_nonces: BTreeMap::new(),
+            system_order_pool_budgets: BTreeMap::new(),
         }
     }
 }

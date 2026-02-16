@@ -3,7 +3,7 @@ use super::super::ResourceDelta;
 use super::super::WorldError;
 use super::super::{
     EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
-    ProtocolPowerReserve, RewardAssetConfig,
+    ProtocolPowerReserve, RewardAssetConfig, SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -51,6 +51,23 @@ impl World {
         self.state.reward_mint_records.as_slice()
     }
 
+    pub fn system_order_pool_budget(&self, epoch_index: u64) -> Option<&SystemOrderPoolBudget> {
+        self.state.system_order_pool_budgets.get(&epoch_index)
+    }
+
+    pub fn set_system_order_pool_budget(&mut self, epoch_index: u64, total_credit_budget: u64) {
+        self.state.system_order_pool_budgets.insert(
+            epoch_index,
+            SystemOrderPoolBudget {
+                epoch_index,
+                total_credit_budget,
+                remaining_credit_budget: total_credit_budget,
+                node_credit_caps: BTreeMap::new(),
+                node_credit_allocated: BTreeMap::new(),
+            },
+        );
+    }
+
     pub fn apply_node_points_settlement_mint(
         &mut self,
         report: &EpochSettlementReport,
@@ -67,6 +84,7 @@ impl World {
                 reason: "points_per_credit must be positive".to_string(),
             });
         }
+        self.ensure_system_order_budget_caps_for_epoch(report);
 
         let settlement_hash = hash_json(report)?;
         let mut minted_records = Vec::new();
@@ -78,6 +96,11 @@ impl World {
             }
 
             let minted_power_credits = settlement.awarded_points / points_per_credit;
+            let minted_power_credits = self.cap_minted_credits_by_system_order_budget(
+                report.epoch_index,
+                settlement.node_id.as_str(),
+                minted_power_credits,
+            );
             if minted_power_credits == 0 {
                 continue;
             }
@@ -97,6 +120,94 @@ impl World {
         }
 
         Ok(minted_records)
+    }
+
+    fn ensure_system_order_budget_caps_for_epoch(&mut self, report: &EpochSettlementReport) {
+        let Some(budget) = self.state.system_order_pool_budgets.get_mut(&report.epoch_index) else {
+            return;
+        };
+        if !budget.node_credit_caps.is_empty() {
+            return;
+        }
+        if budget.total_credit_budget == 0 || report.settlements.is_empty() {
+            return;
+        }
+
+        let total_awarded_points = report
+            .settlements
+            .iter()
+            .map(|settlement| settlement.awarded_points)
+            .sum::<u64>();
+        if total_awarded_points == 0 {
+            return;
+        }
+
+        let mut distributed = 0_u64;
+        for settlement in &report.settlements {
+            let cap = budget
+                .total_credit_budget
+                .saturating_mul(settlement.awarded_points)
+                / total_awarded_points;
+            distributed = distributed.saturating_add(cap);
+            budget
+                .node_credit_caps
+                .insert(settlement.node_id.clone(), cap);
+        }
+
+        let mut remainder = budget.total_credit_budget.saturating_sub(distributed);
+        if remainder == 0 {
+            return;
+        }
+        let mut ranked = report
+            .settlements
+            .iter()
+            .map(|settlement| (settlement.node_id.as_str(), settlement.awarded_points))
+            .collect::<Vec<_>>();
+        ranked.sort_by(|(a_node_id, a_points), (b_node_id, b_points)| {
+            b_points.cmp(a_points).then_with(|| a_node_id.cmp(b_node_id))
+        });
+        let mut index = 0_usize;
+        while remainder > 0 && !ranked.is_empty() {
+            let node_id = ranked[index % ranked.len()].0;
+            if let Some(cap) = budget.node_credit_caps.get_mut(node_id) {
+                *cap = cap.saturating_add(1);
+                remainder -= 1;
+            }
+            index = index.saturating_add(1);
+        }
+    }
+
+    fn cap_minted_credits_by_system_order_budget(
+        &mut self,
+        epoch_index: u64,
+        node_id: &str,
+        requested_credits: u64,
+    ) -> u64 {
+        let Some(budget) = self.state.system_order_pool_budgets.get_mut(&epoch_index) else {
+            return requested_credits;
+        };
+        if requested_credits == 0 || budget.remaining_credit_budget == 0 {
+            return 0;
+        }
+        let node_cap = budget.node_credit_caps.get(node_id).copied().unwrap_or(0);
+        let node_allocated = budget.node_credit_allocated.get(node_id).copied().unwrap_or(0);
+        let node_remaining = node_cap.saturating_sub(node_allocated);
+        if node_remaining == 0 {
+            return 0;
+        }
+        let allowed = requested_credits
+            .min(node_remaining)
+            .min(budget.remaining_credit_budget);
+        if allowed == 0 {
+            return 0;
+        }
+        budget.remaining_credit_budget = budget.remaining_credit_budget.saturating_sub(allowed);
+        budget
+            .node_credit_allocated
+            .entry(node_id.to_string())
+            .and_modify(|value| *value = value.saturating_add(allowed))
+            .or_insert(allowed);
+        allowed
     }
 
     pub fn mint_node_power_credits(

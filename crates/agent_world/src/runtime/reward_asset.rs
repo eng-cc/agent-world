@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 const DEFAULT_POINTS_PER_CREDIT: u64 = 10;
 const DEFAULT_CREDITS_PER_POWER_UNIT: u64 = 1;
@@ -52,4 +53,14 @@ pub struct NodeRewardMintRecord {
     pub settlement_hash: String,
     pub signer_node_id: String,
     pub signature: String,
+}
+
+/// Demand-side system order pool budget for one epoch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct SystemOrderPoolBudget {
+    pub epoch_index: u64,
+    pub total_credit_budget: u64,
+    pub remaining_credit_budget: u64,
+    pub node_credit_caps: BTreeMap<String, u64>,
+    pub node_credit_allocated: BTreeMap<String, u64>,
 }

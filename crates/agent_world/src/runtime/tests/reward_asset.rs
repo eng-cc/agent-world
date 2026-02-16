@@ -213,6 +213,102 @@ fn reward_asset_snapshot_roundtrip_persists_mint_records() {
 }
 
 #[test]
+fn reward_asset_settlement_mint_respects_system_order_pool_budget() {
+    let mut world = World::new();
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+    world.set_system_order_pool_budget(6, 8);
+    let report = settlement_report(
+        6,
+        vec![settlement("node-a", 100), settlement("node-b", 100)],
+    );
+
+    let minted = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("apply settlement mint with budget");
+    assert_eq!(minted.len(), 2);
+    assert_eq!(
+        minted
+            .iter()
+            .map(|record| record.minted_power_credits)
+            .sum::<u64>(),
+        8
+    );
+    assert_eq!(world.node_power_credit_balance("node-a"), 4);
+    assert_eq!(world.node_power_credit_balance("node-b"), 4);
+
+    let budget = world
+        .system_order_pool_budget(6)
+        .expect("epoch 6 budget should exist");
+    assert_eq!(budget.remaining_credit_budget, 0);
+    assert_eq!(budget.node_credit_caps.get("node-a"), Some(&4));
+    assert_eq!(budget.node_credit_caps.get("node-b"), Some(&4));
+    assert_eq!(budget.node_credit_allocated.get("node-a"), Some(&4));
+    assert_eq!(budget.node_credit_allocated.get("node-b"), Some(&4));
+}
+
+#[test]
+fn reward_asset_settlement_mint_budget_remainder_prefers_higher_points() {
+    let mut world = World::new();
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+    world.set_system_order_pool_budget(7, 5);
+    let report = settlement_report(
+        7,
+        vec![settlement("node-a", 300), settlement("node-b", 100)],
+    );
+
+    let minted = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("apply settlement mint with weighted budget");
+    assert_eq!(minted.len(), 2);
+
+    let node_a = minted
+        .iter()
+        .find(|record| record.node_id == "node-a")
+        .expect("node-a record");
+    let node_b = minted
+        .iter()
+        .find(|record| record.node_id == "node-b")
+        .expect("node-b record");
+    assert_eq!(node_a.minted_power_credits, 4);
+    assert_eq!(node_b.minted_power_credits, 1);
+    assert_eq!(world.node_power_credit_balance("node-a"), 4);
+    assert_eq!(world.node_power_credit_balance("node-b"), 1);
+}
+
+#[test]
+fn reward_asset_snapshot_roundtrip_persists_system_order_pool_budget() {
+    let mut world = World::new();
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+    world.set_system_order_pool_budget(8, 6);
+    let report = settlement_report(
+        8,
+        vec![settlement("node-a", 200), settlement("node-b", 100)],
+    );
+    world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("mint with budget");
+
+    let snapshot = world.snapshot();
+    let restored = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
+    let budget = restored
+        .system_order_pool_budget(8)
+        .expect("budget should persist");
+    assert_eq!(budget.total_credit_budget, 6);
+    assert_eq!(budget.remaining_credit_budget, 0);
+    assert_eq!(budget.node_credit_allocated.get("node-a"), Some(&4));
+    assert_eq!(budget.node_credit_allocated.get("node-b"), Some(&2));
+}
+
+#[test]
 fn reward_asset_redeem_power_action_updates_balances_and_reserve() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
