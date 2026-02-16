@@ -623,9 +623,18 @@ fn load_profile_draft_from_profile(
     selected_agent_id: &str,
     profile: &AgentPromptProfile,
 ) {
-    draft.profile_system_prompt = profile.system_prompt_override.clone().unwrap_or_default();
-    draft.profile_short_term_goal = profile.short_term_goal_override.clone().unwrap_or_default();
-    draft.profile_long_term_goal = profile.long_term_goal_override.clone().unwrap_or_default();
+    draft.profile_system_prompt = profile
+        .system_prompt_override
+        .clone()
+        .unwrap_or_else(|| DEFAULT_LLM_SYSTEM_PROMPT.to_string());
+    draft.profile_short_term_goal = profile
+        .short_term_goal_override
+        .clone()
+        .unwrap_or_else(|| DEFAULT_LLM_SHORT_TERM_GOAL.to_string());
+    draft.profile_long_term_goal = profile
+        .long_term_goal_override
+        .clone()
+        .unwrap_or_else(|| DEFAULT_LLM_LONG_TERM_GOAL.to_string());
     draft.profile_loaded_agent_id = Some(selected_agent_id.to_string());
 }
 
@@ -680,26 +689,48 @@ fn build_prompt_profile_apply_request(
         agent_id: selected_agent_id.to_string(),
         expected_version: Some(current_profile.version),
         updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
-        system_prompt_override: patch_override(
+        system_prompt_override: patch_override_with_default(
             current_profile.system_prompt_override.as_ref(),
-            next_system.as_ref(),
+            DEFAULT_LLM_SYSTEM_PROMPT,
+            next_system.as_deref(),
         ),
-        short_term_goal_override: patch_override(
+        short_term_goal_override: patch_override_with_default(
             current_profile.short_term_goal_override.as_ref(),
-            next_short.as_ref(),
+            DEFAULT_LLM_SHORT_TERM_GOAL,
+            next_short.as_deref(),
         ),
-        long_term_goal_override: patch_override(
+        long_term_goal_override: patch_override_with_default(
             current_profile.long_term_goal_override.as_ref(),
-            next_long.as_ref(),
+            DEFAULT_LLM_LONG_TERM_GOAL,
+            next_long.as_deref(),
         ),
     }
 }
 
-fn patch_override(current: Option<&String>, next: Option<&String>) -> Option<Option<String>> {
-    if current.map(|value| value.as_str()) == next.map(|value| value.as_str()) {
-        None
-    } else {
-        Some(next.cloned())
+fn patch_override_with_default(
+    current: Option<&String>,
+    default_value: &str,
+    next: Option<&str>,
+) -> Option<Option<String>> {
+    match (current, next) {
+        (None, None) => None,
+        (Some(_), None) => Some(None),
+        (None, Some(next_value)) => {
+            if next_value == default_value {
+                None
+            } else {
+                Some(Some(next_value.to_string()))
+            }
+        }
+        (Some(current_value), Some(next_value)) => {
+            if current_value == next_value {
+                None
+            } else if next_value == default_value {
+                Some(None)
+            } else {
+                Some(Some(next_value.to_string()))
+            }
+        }
     }
 }
 
@@ -1456,6 +1487,56 @@ mod tests {
             Some(Some("long-new".to_string()))
         );
         assert!(prompt_apply_request_has_patch(&request));
+    }
+
+    #[test]
+    fn load_profile_draft_from_profile_prefills_defaults_when_override_missing() {
+        let profile = AgentPromptProfile::for_agent("agent-a");
+        let mut draft = AgentChatDraftState::default();
+
+        load_profile_draft_from_profile(&mut draft, "agent-a", &profile);
+
+        assert_eq!(draft.profile_system_prompt, DEFAULT_LLM_SYSTEM_PROMPT);
+        assert_eq!(draft.profile_short_term_goal, DEFAULT_LLM_SHORT_TERM_GOAL);
+        assert_eq!(draft.profile_long_term_goal, DEFAULT_LLM_LONG_TERM_GOAL);
+    }
+
+    #[test]
+    fn build_prompt_profile_apply_request_ignores_unmodified_defaults() {
+        let current = AgentPromptProfile::for_agent("agent-a");
+        let draft = AgentChatDraftState {
+            profile_system_prompt: DEFAULT_LLM_SYSTEM_PROMPT.to_string(),
+            profile_short_term_goal: DEFAULT_LLM_SHORT_TERM_GOAL.to_string(),
+            profile_long_term_goal: DEFAULT_LLM_LONG_TERM_GOAL.to_string(),
+            ..AgentChatDraftState::default()
+        };
+
+        let request = build_prompt_profile_apply_request("agent-a", &current, &draft);
+        assert!(!prompt_apply_request_has_patch(&request));
+    }
+
+    #[test]
+    fn build_prompt_profile_apply_request_reverts_override_when_input_is_default() {
+        let current = AgentPromptProfile {
+            agent_id: "agent-a".to_string(),
+            version: 5,
+            updated_at_tick: 42,
+            updated_by: "tester".to_string(),
+            system_prompt_override: Some("custom-system".to_string()),
+            short_term_goal_override: Some("custom-short".to_string()),
+            long_term_goal_override: Some("custom-long".to_string()),
+        };
+        let draft = AgentChatDraftState {
+            profile_system_prompt: DEFAULT_LLM_SYSTEM_PROMPT.to_string(),
+            profile_short_term_goal: DEFAULT_LLM_SHORT_TERM_GOAL.to_string(),
+            profile_long_term_goal: DEFAULT_LLM_LONG_TERM_GOAL.to_string(),
+            ..AgentChatDraftState::default()
+        };
+
+        let request = build_prompt_profile_apply_request("agent-a", &current, &draft);
+        assert_eq!(request.system_prompt_override, Some(None));
+        assert_eq!(request.short_term_goal_override, Some(None));
+        assert_eq!(request.long_term_goal_override, Some(None));
     }
 
     #[test]
