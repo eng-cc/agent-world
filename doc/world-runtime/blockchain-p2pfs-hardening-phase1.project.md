@@ -1,0 +1,19 @@
+# Agent World Runtime：区块链 + P2P FS 硬改造（Phase 1）项目管理文档
+
+## 任务拆解
+- [x] HP1-0：输出设计文档与项目管理文档。
+- [ ] HP1-1：`world_viewer_live` 注入 libp2p replication 网络（CLI + 启动接线 + 测试）。
+- [ ] HP1-2：Node PoS gossip 扩展 proposal/attestation（广播 + 消费 + 回归）。
+- [ ] HP1-3：执行回归测试，更新文档状态与 devlog 收口。
+
+## 依赖
+- `crates/agent_world`
+- `crates/agent_world_node`
+- `crates/agent_world_net`
+- `doc/world-runtime/node-replication-libp2p-migration.md`
+- `doc/world-runtime/distributed-node-pos-gossip.md`
+
+## 状态
+- 当前阶段：HP1-0 已完成，进入 HP1-1。
+- 下一步：完成 `world_viewer_live` 上层 libp2p replication 注入并补测试。
+- 最近更新：2026-02-16。
