@@ -41,4 +41,5 @@ artifacts/owr4_baseline/
 **/tests/snapshots/*.new.png
 
 .playwright
+.playwright-cli
 crates/agent_world_viewer/dist
