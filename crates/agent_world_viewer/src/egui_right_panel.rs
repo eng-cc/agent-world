@@ -52,9 +52,12 @@ mod egui_right_panel_chat;
 use egui_observe_section_card::render_observe_section_card;
 use egui_right_panel_chat::{render_chat_section, AgentChatDraftState};
 
-const DEFAULT_PANEL_WIDTH: f32 = 320.0;
-const MIN_PANEL_WIDTH: f32 = 240.0;
-const MAX_PANEL_WIDTH: f32 = 420.0;
+const MAIN_PANEL_DEFAULT_WIDTH: f32 = 320.0;
+const MAIN_PANEL_MIN_WIDTH: f32 = 240.0;
+const MAIN_PANEL_MAX_WIDTH: f32 = 420.0;
+const CHAT_PANEL_DEFAULT_WIDTH: f32 = 360.0;
+const CHAT_PANEL_MIN_WIDTH: f32 = 280.0;
+const CHAT_PANEL_MAX_WIDTH: f32 = 480.0;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
@@ -90,9 +93,18 @@ fn adaptive_panel_default_width(available_width: f32) -> f32 {
     let width = if available_width.is_finite() {
         available_width
     } else {
-        DEFAULT_PANEL_WIDTH
+        MAIN_PANEL_DEFAULT_WIDTH
     };
-    (width * 0.22).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
+    (width * 0.22).clamp(MAIN_PANEL_MIN_WIDTH, MAIN_PANEL_MAX_WIDTH)
+}
+
+fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
+    let width = if available_width.is_finite() {
+        available_width
+    } else {
+        CHAT_PANEL_DEFAULT_WIDTH
+    };
+    (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, CHAT_PANEL_MAX_WIDTH)
 }
 
 #[derive(SystemParam)]
@@ -166,11 +178,32 @@ pub(super) fn render_right_side_panel_egui(
     }
     chat_focus_signal.wants_ime_focus = false;
 
+    let show_chat_panel = !layout_state.top_panel_collapsed
+        && *panel_mode == ViewerPanelMode::Observe
+        && module_visibility.show_chat;
+    let chat_panel_width = if show_chat_panel {
+        let default_chat_width =
+            adaptive_chat_panel_default_width(context.available_rect().width());
+        let chat_response = egui::SidePanel::right("viewer-chat-side-panel")
+            .resizable(true)
+            .default_width(default_chat_width)
+            .width_range(CHAT_PANEL_MIN_WIDTH..=CHAT_PANEL_MAX_WIDTH)
+            .show(context, |ui| {
+                ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
+                ui.heading(if locale.is_zh() { "对话" } else { "Chat" });
+                chat_focus_signal.wants_ime_focus =
+                    render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
+            });
+        chat_response.response.rect.width()
+    } else {
+        0.0
+    };
+
     let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
         .resizable(true)
         .default_width(default_panel_width)
-        .width_range(MIN_PANEL_WIDTH..=MAX_PANEL_WIDTH)
+        .width_range(MAIN_PANEL_MIN_WIDTH..=MAIN_PANEL_MAX_WIDTH)
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
 
@@ -341,12 +374,6 @@ pub(super) fn render_right_side_panel_egui(
                 );
             }
 
-            if module_visibility.show_chat {
-                ui.separator();
-                chat_focus_signal.wants_ime_focus =
-                    render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
-            }
-
             if module_visibility.show_overlay {
                 ui.separator();
                 render_overlay_section(
@@ -513,7 +540,7 @@ pub(super) fn render_right_side_panel_egui(
             }
         });
 
-    panel_width.width_px = panel_response.response.rect.width();
+    panel_width.width_px = panel_response.response.rect.width() + chat_panel_width;
 }
 
 fn render_module_toggle_button(
