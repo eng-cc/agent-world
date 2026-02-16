@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use agent_world::simulator::{
     AgentPromptProfile, LlmChatMessageTrace, LlmChatRole, WorldEventKind,
+    DEFAULT_LLM_LONG_TERM_GOAL, DEFAULT_LLM_SHORT_TERM_GOAL, DEFAULT_LLM_SYSTEM_PROMPT,
 };
 use bevy_egui::egui;
 
@@ -555,11 +556,12 @@ fn render_prompt_preset_editor(
             egui::TextEdit::multiline(&mut draft.profile_system_prompt)
                 .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
                 .hint_text(if locale.is_zh() {
-                    "输入 system prompt 覆盖内容"
+                    "输入 system prompt 覆盖内容；留空表示使用默认值"
                 } else {
-                    "Type system prompt override"
+                    "Type system prompt override; leave empty to use default"
                 }),
         );
+        render_prompt_default_hint(ui, locale, DEFAULT_LLM_SYSTEM_PROMPT);
 
         ui.label(if locale.is_zh() {
             "短期目标"
@@ -570,11 +572,12 @@ fn render_prompt_preset_editor(
             egui::TextEdit::multiline(&mut draft.profile_short_term_goal)
                 .desired_rows(3)
                 .hint_text(if locale.is_zh() {
-                    "输入 short-term goal 覆盖内容"
+                    "输入 short-term goal 覆盖内容；留空表示使用默认值"
                 } else {
-                    "Type short-term goal override"
+                    "Type short-term goal override; leave empty to use default"
                 }),
         );
+        render_prompt_default_hint(ui, locale, DEFAULT_LLM_SHORT_TERM_GOAL);
 
         ui.label(if locale.is_zh() {
             "长期目标"
@@ -585,11 +588,12 @@ fn render_prompt_preset_editor(
             egui::TextEdit::multiline(&mut draft.profile_long_term_goal)
                 .desired_rows(3)
                 .hint_text(if locale.is_zh() {
-                    "输入 long-term goal 覆盖内容"
+                    "输入 long-term goal 覆盖内容；留空表示使用默认值"
                 } else {
-                    "Type long-term goal override"
+                    "Type long-term goal override; leave empty to use default"
                 }),
         );
+        render_prompt_default_hint(ui, locale, DEFAULT_LLM_LONG_TERM_GOAL);
 
         if apply_profile {
             match send_prompt_profile_apply_command(
@@ -729,6 +733,25 @@ fn prompt_apply_request_has_patch(
     request.system_prompt_override.is_some()
         || request.short_term_goal_override.is_some()
         || request.long_term_goal_override.is_some()
+}
+
+fn render_prompt_default_hint(ui: &mut egui::Ui, locale: crate::i18n::UiLocale, default: &str) {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(prompt_default_text(locale, default))
+                .size(10.5)
+                .color(egui::Color32::from_gray(160)),
+        )
+        .wrap(),
+    );
+}
+
+fn prompt_default_text(locale: crate::i18n::UiLocale, default: &str) -> String {
+    if locale.is_zh() {
+        format!("默认值（未覆盖时生效）: {default}")
+    } else {
+        format!("Default (used when override is empty): {default}")
+    }
 }
 
 fn render_info_stream(
@@ -1480,5 +1503,16 @@ mod tests {
             long_term_goal_override: None,
         };
         assert!(!prompt_apply_request_has_patch(&request));
+    }
+
+    #[test]
+    fn prompt_default_text_is_localized() {
+        let zh = prompt_default_text(crate::i18n::UiLocale::ZhCn, "default-x");
+        assert!(zh.contains("默认值"));
+        assert!(zh.contains("default-x"));
+
+        let en = prompt_default_text(crate::i18n::UiLocale::EnUs, "default-y");
+        assert!(en.contains("Default"));
+        assert!(en.contains("default-y"));
     }
 }
