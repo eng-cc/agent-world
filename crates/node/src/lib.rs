@@ -214,6 +214,11 @@ impl NodeConfig {
         self.replication = Some(NodeReplicationConfig::new(root_dir)?);
         Ok(self)
     }
+
+    pub fn with_replication(mut self, replication: NodeReplicationConfig) -> Self {
+        self.replication = Some(replication);
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

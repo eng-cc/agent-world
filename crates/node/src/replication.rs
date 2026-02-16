@@ -5,6 +5,7 @@ use agent_world_distfs::{
     apply_replication_record, build_replication_record, FileReplicationRecord, LocalCasStore,
     SingleWriterReplicationGuard,
 };
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 use crate::{NodeError, PosConsensusStatus, PosDecision};
@@ -15,6 +16,9 @@ const COMMIT_FILE_PREFIX: &str = "consensus/commits";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReplicationConfig {
     pub root_dir: PathBuf,
+    signing_private_key_hex: Option<String>,
+    signing_public_key_hex: Option<String>,
+    enforce_signature: bool,
 }
 
 impl NodeReplicationConfig {
@@ -25,7 +29,58 @@ impl NodeReplicationConfig {
                 reason: "replication root_dir cannot be empty".to_string(),
             });
         }
-        Ok(Self { root_dir })
+        Ok(Self {
+            root_dir,
+            signing_private_key_hex: None,
+            signing_public_key_hex: None,
+            enforce_signature: false,
+        })
+    }
+
+    pub fn with_signing_keypair(
+        mut self,
+        private_key_hex: impl Into<String>,
+        public_key_hex: impl Into<String>,
+    ) -> Result<Self, NodeError> {
+        let private_key_hex = private_key_hex.into();
+        let public_key_hex = public_key_hex.into();
+        let signing_key = signing_key_from_hex(private_key_hex.as_str())?;
+        let expected_public = hex::encode(signing_key.verifying_key().to_bytes());
+        if expected_public != public_key_hex {
+            return Err(NodeError::InvalidConfig {
+                reason: "replication signing public key does not match private key".to_string(),
+            });
+        }
+        self.signing_private_key_hex = Some(private_key_hex);
+        self.signing_public_key_hex = Some(public_key_hex);
+        self.enforce_signature = true;
+        Ok(self)
+    }
+
+    fn signing_keypair(&self) -> Result<Option<ReplicationSigningKey>, NodeError> {
+        match (
+            self.signing_private_key_hex.as_deref(),
+            self.signing_public_key_hex.as_deref(),
+        ) {
+            (Some(private_key_hex), Some(public_key_hex)) => {
+                let signing_key = signing_key_from_hex(private_key_hex)?;
+                let expected_public = hex::encode(signing_key.verifying_key().to_bytes());
+                if expected_public != public_key_hex {
+                    return Err(NodeError::InvalidConfig {
+                        reason: "replication signing public key does not match private key"
+                            .to_string(),
+                    });
+                }
+                Ok(Some(ReplicationSigningKey {
+                    signing_key,
+                    public_key_hex: public_key_hex.to_string(),
+                }))
+            }
+            (None, None) => Ok(None),
+            _ => Err(NodeError::InvalidConfig {
+                reason: "replication signing keypair must include both private/public".to_string(),
+            }),
+        }
     }
 
     fn store_root(&self) -> PathBuf {
@@ -49,6 +104,14 @@ pub(crate) struct GossipReplicationMessage {
     pub node_id: String,
     pub record: FileReplicationRecord,
     pub payload: Vec<u8>,
+    pub public_key_hex: Option<String>,
+    pub signature_hex: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ReplicationSigningKey {
+    signing_key: SigningKey,
+    public_key_hex: String,
 }
 
 #[derive(Debug)]
@@ -57,6 +120,8 @@ pub(crate) struct ReplicationRuntime {
     store: LocalCasStore,
     guard: SingleWriterReplicationGuard,
     writer_state: LocalWriterState,
+    signer: Option<ReplicationSigningKey>,
+    enforce_signature: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -76,6 +141,16 @@ struct ReplicatedCommitPayload {
     committed_at_ms: i64,
 }
 
+#[derive(Debug, Serialize)]
+struct ReplicationSigningPayload<'a> {
+    version: u8,
+    world_id: &'a str,
+    node_id: &'a str,
+    record: &'a FileReplicationRecord,
+    payload: &'a [u8],
+    public_key_hex: Option<&'a str>,
+}
+
 impl ReplicationRuntime {
     pub(crate) fn new(config: &NodeReplicationConfig, node_id: &str) -> Result<Self, NodeError> {
         fs::create_dir_all(&config.root_dir).map_err(|err| NodeError::Replication {
@@ -91,12 +166,15 @@ impl ReplicationRuntime {
         )?;
         let writer_state =
             load_json_or_default::<LocalWriterState>(config.writer_state_path(node_id).as_path())?;
+        let signer = config.signing_keypair()?;
 
         Ok(Self {
             config: config.clone(),
             store: LocalCasStore::new(config.store_root()),
             guard,
             writer_state,
+            enforce_signature: config.enforce_signature || signer.is_some(),
+            signer,
         })
     }
 
@@ -126,6 +204,11 @@ impl ReplicationRuntime {
         let payload_bytes = serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
             reason: format!("serialize local replication payload failed: {}", err),
         })?;
+        let writer_id = self
+            .signer
+            .as_ref()
+            .map(|signer| signer.public_key_hex.as_str())
+            .unwrap_or(node_id);
         let sequence = self
             .guard
             .last_sequence
@@ -134,7 +217,7 @@ impl ReplicationRuntime {
         let path = format!("{COMMIT_FILE_PREFIX}/{:020}.json", decision.height);
         let record = build_replication_record(
             world_id,
-            node_id,
+            writer_id,
             sequence,
             path.as_str(),
             &payload_bytes,
@@ -149,13 +232,25 @@ impl ReplicationRuntime {
         self.writer_state.last_replicated_height = decision.height;
         self.persist_state(node_id)?;
 
-        Ok(Some(GossipReplicationMessage {
+        let mut message = GossipReplicationMessage {
             version: REPLICATION_VERSION,
             world_id: world_id.to_string(),
             node_id: node_id.to_string(),
             record,
             payload: payload_bytes,
-        }))
+            public_key_hex: self
+                .signer
+                .as_ref()
+                .map(|signer| signer.public_key_hex.clone()),
+            signature_hex: None,
+        };
+
+        if let Some(signer) = &self.signer {
+            let signature_hex = sign_replication_message(&message, signer)?;
+            message.signature_hex = Some(signature_hex);
+        }
+
+        Ok(Some(message))
     }
 
     pub(crate) fn apply_remote_message(
@@ -172,6 +267,21 @@ impl ReplicationRuntime {
         }
         if message.world_id != world_id || message.record.world_id != world_id {
             return Ok(());
+        }
+
+        if self.enforce_signature
+            || message.signature_hex.is_some()
+            || message.public_key_hex.is_some()
+        {
+            verify_replication_message_signature(message)?;
+            if let Some(public_key_hex) = message.public_key_hex.as_deref() {
+                if message.record.writer_id != public_key_hex {
+                    return Err(NodeError::Replication {
+                        reason: "replication writer_id does not match signature public key"
+                            .to_string(),
+                    });
+                }
+            }
         }
 
         if let Some(existing_writer) = self.guard.writer_id.as_deref() {
@@ -206,6 +316,75 @@ impl ReplicationRuntime {
             &self.writer_state,
         )
     }
+}
+
+fn signing_key_from_hex(private_key_hex: &str) -> Result<SigningKey, NodeError> {
+    let private_key = decode_hex_array::<32>(private_key_hex, "replication private key")?;
+    Ok(SigningKey::from_bytes(&private_key))
+}
+
+fn sign_replication_message(
+    message: &GossipReplicationMessage,
+    signer: &ReplicationSigningKey,
+) -> Result<String, NodeError> {
+    let payload = replication_signing_bytes(message)?;
+    let signature: Signature = signer.signing_key.sign(&payload);
+    Ok(hex::encode(signature.to_bytes()))
+}
+
+fn verify_replication_message_signature(
+    message: &GossipReplicationMessage,
+) -> Result<(), NodeError> {
+    let public_key_hex =
+        message
+            .public_key_hex
+            .as_deref()
+            .ok_or_else(|| NodeError::Replication {
+                reason: "replication signature missing public_key_hex".to_string(),
+            })?;
+    let signature_hex = message
+        .signature_hex
+        .as_deref()
+        .ok_or_else(|| NodeError::Replication {
+            reason: "replication signature missing signature_hex".to_string(),
+        })?;
+
+    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "replication public key")?;
+    let signature_bytes = decode_hex_array::<64>(signature_hex, "replication signature")?;
+    let public_key =
+        VerifyingKey::from_bytes(&public_key_bytes).map_err(|err| NodeError::Replication {
+            reason: format!("parse replication public key failed: {}", err),
+        })?;
+    let signature = Signature::from_bytes(&signature_bytes);
+    let payload = replication_signing_bytes(message)?;
+    public_key
+        .verify(&payload, &signature)
+        .map_err(|err| NodeError::Replication {
+            reason: format!("verify replication signature failed: {}", err),
+        })
+}
+
+fn replication_signing_bytes(message: &GossipReplicationMessage) -> Result<Vec<u8>, NodeError> {
+    let payload = ReplicationSigningPayload {
+        version: message.version,
+        world_id: message.world_id.as_str(),
+        node_id: message.node_id.as_str(),
+        record: &message.record,
+        payload: &message.payload,
+        public_key_hex: message.public_key_hex.as_deref(),
+    };
+    serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
+        reason: format!("serialize replication signing payload failed: {}", err),
+    })
+}
+
+fn decode_hex_array<const N: usize>(value: &str, label: &str) -> Result<[u8; N], NodeError> {
+    let bytes = hex::decode(value).map_err(|_| NodeError::Replication {
+        reason: format!("{} must be valid hex", label),
+    })?;
+    bytes.try_into().map_err(|_| NodeError::Replication {
+        reason: format!("{} must be {} bytes hex", label, N),
+    })
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>

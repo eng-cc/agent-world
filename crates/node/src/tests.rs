@@ -1,5 +1,6 @@
 use super::*;
 use agent_world_distfs::{FileStore as _, LocalCasStore};
+use ed25519_dalek::SigningKey;
 use std::fs;
 use std::net::UdpSocket;
 use std::path::PathBuf;
@@ -28,6 +29,23 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .expect("duration")
         .as_nanos();
     std::env::temp_dir().join(format!("agent-world-node-tests-{prefix}-{unique}"))
+}
+
+fn deterministic_keypair_hex(seed: u8) -> (String, String) {
+    let bytes = [seed; 32];
+    let signing_key = SigningKey::from_bytes(&bytes);
+    (
+        hex::encode(signing_key.to_bytes()),
+        hex::encode(signing_key.verifying_key().to_bytes()),
+    )
+}
+
+fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConfig {
+    let (private_hex, public_hex) = deterministic_keypair_hex(seed);
+    NodeReplicationConfig::new(root_dir)
+        .expect("replication config")
+        .with_signing_keypair(private_hex, public_hex)
+        .expect("signing keypair")
 }
 
 #[test]
@@ -245,6 +263,121 @@ fn runtime_gossip_replication_syncs_distfs_commit_files() {
         .iter()
         .any(|item| item.path.starts_with("consensus/commits/")));
     assert!(dir_b.join("replication_guard.json").exists());
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
+fn runtime_gossip_replication_with_signature_applies_files() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let dir_a = temp_dir("signed-repl-a");
+    let dir_b = temp_dir("signed-repl-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+
+    let config_a = NodeConfig::new("node-a", "world-signed", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators.clone())
+        .expect("validators a")
+        .with_gossip_optional(addr_a, vec![addr_b])
+        .with_replication(signed_replication_config(dir_a.clone(), 11));
+    let config_b = NodeConfig::new("node-b", "world-signed", NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_validators(validators)
+        .expect("validators b")
+        .with_gossip_optional(addr_b, vec![addr_a])
+        .with_replication(signed_replication_config(dir_b.clone(), 22));
+
+    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_b = NodeRuntime::new(config_b);
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b");
+    thread::sleep(Duration::from_millis(220));
+
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b");
+
+    let store_b = LocalCasStore::new(dir_b.join("store"));
+    let files = store_b.list_files().expect("list files");
+    assert!(files
+        .iter()
+        .any(|item| item.path.starts_with("consensus/commits/")));
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
+fn runtime_gossip_replication_rejects_unsigned_when_signature_enforced() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let dir_a = temp_dir("unsigned-a");
+    let dir_b = temp_dir("enforced-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+
+    let config_a = NodeConfig::new("node-a", "world-enforced", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators.clone())
+        .expect("validators a")
+        .with_gossip_optional(addr_a, vec![addr_b])
+        .with_replication_root(dir_a.clone())
+        .expect("replication a");
+    let config_b = NodeConfig::new("node-b", "world-enforced", NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_validators(validators)
+        .expect("validators b")
+        .with_gossip_optional(addr_b, vec![addr_a])
+        .with_replication(signed_replication_config(dir_b.clone(), 33));
+
+    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_b = NodeRuntime::new(config_b);
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b");
+    thread::sleep(Duration::from_millis(220));
+
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b");
+
+    let store_b = LocalCasStore::new(dir_b.join("store"));
+    let files = store_b.list_files().expect("list files");
+    assert!(files.is_empty());
 
     let _ = fs::remove_dir_all(&dir_a);
     let _ = fs::remove_dir_all(&dir_b);

@@ -219,6 +219,8 @@ name = "agent_world_node"
 version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
+ "ed25519-dalek",
+ "hex",
  "serde",
  "serde_json",
 ]

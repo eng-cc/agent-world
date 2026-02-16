@@ -11,7 +11,7 @@ use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
-use agent_world_node::{NodeConfig, NodeRole, NodeRuntime, PosValidator};
+use agent_world_node::{NodeConfig, NodeReplicationConfig, NodeRole, NodeRuntime, PosValidator};
 use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
 
@@ -129,7 +129,7 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
         return Ok(None);
     }
 
-    let _ = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
+    let keypair = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
         .map_err(|err| format!("failed to ensure node keypair in config.toml: {err}"))?;
 
     let world_id = format!("live-{}", options.scenario.as_str());
@@ -148,6 +148,18 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
     if let Some(bind_addr) = options.node_gossip_bind {
         config = config.with_gossip_optional(bind_addr, options.node_gossip_peers.clone());
     }
+    let replication_root = Path::new("output")
+        .join("node-distfs")
+        .join(options.node_id.as_str());
+    let replication = NodeReplicationConfig::new(replication_root)
+        .and_then(|cfg| {
+            cfg.with_signing_keypair(
+                keypair.private_key_hex.clone(),
+                keypair.public_key_hex.clone(),
+            )
+        })
+        .map_err(|err| format!("failed to build node replication config: {err:?}"))?;
+    config = config.with_replication(replication);
 
     let mut runtime = NodeRuntime::new(config);
     runtime

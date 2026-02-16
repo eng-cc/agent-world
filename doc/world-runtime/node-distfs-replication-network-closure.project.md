@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] NRX-0：输出设计文档与项目管理文档。
 - [x] NRX-1：node gossip 接入 DistFS 复制消息（广播+应用+guard 持久化）。
-- [ ] NRX-2：接入复制消息签名/验签（消费 config.toml 节点密钥）。
+- [x] NRX-2：接入复制消息签名/验签（消费 config.toml 节点密钥）。
 - [ ] NRX-3：补齐多节点复制与重启恢复测试，完成收口。
 
 ## 依赖
@@ -14,6 +14,6 @@
 - `doc/world-runtime/node-keypair-config-bootstrap.md`
 
 ## 状态
-- 当前阶段：NRX-1 完成，进入 NRX-2。
-- 下一步：将 config.toml 节点密钥接入 replication 消息签名与验签链路。
+- 当前阶段：NRX-2 完成，进入 NRX-3。
+- 下一步：补齐重启恢复测试并完成收口验证。
 - 最近更新：2026-02-16。
