@@ -35,11 +35,29 @@
 - [x] LFO6.1 修复 `facility_already_exists` 在 prompt `last_action.reject_reason` 被降级为 `other` 的问题
 - [x] LFO6.2 收敛 `execute_until` 尾段长 harvest（增加 harvest 连续轮次硬上限与回切提示）
 - [x] LFO6.3 增加 `schedule_recipe.batches` 与可用硬件上界约束（含 guardrail 与提示文案）
+- [x] LFO6.4 当 `schedule_recipe` 连单批也不可执行时，guardrail 自动回切 `refine_compound/harvest_radiation`
+- [x] LFO6.5 基于 LFO6.1-LFO6.4 在线复跑 `llm_bootstrap --ticks 30` 并回填对比指标
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
 - `execute_until` 收敛：`harvest_radiation` 的 `max_ticks` 运行时硬上限为 `3`（含 auto-reentry 路径）。
-- `schedule_recipe` 防过配：在 `owner=self` 且配方可识别时，`batches` 按 `self_resources.hardware` 与默认配方硬件成本上界裁剪，并回写 trace 提示。
+- `schedule_recipe` 防过配：在 `owner=self` 且配方可识别时，`batches` 按 `self_resources.hardware` 与默认配方硬件成本上界裁剪；若单批也不可执行则回切到恢复动作（优先 `refine_compound`，否则 `harvest_radiation`），并回写 trace 提示。
+
+### LFO6 在线复跑结果摘要（2026-02-17）
+- 运行产物：
+  - `output/llm_bootstrap/user_factory_closedloop_lfo6_rerun_2026-02-16_235611/run.log`
+  - `output/llm_bootstrap/user_factory_closedloop_lfo6_rerun_2026-02-16_235611/report.json`
+- 关键指标：
+  - `action_success=27`、`action_failure=3`、`llm_errors=0`、`parse_errors=0`
+  - `action_kind_counts={build_factory:1, harvest_radiation:16, move_agent:1, refine_compound:6, schedule_recipe:6}`
+  - `action_kind_success_counts.schedule_recipe=4`
+  - `first_action_tick={build_factory:7, schedule_recipe:9}`
+- 对比 LFO5（`user_factory_closedloop_2026-02-16_230752`）：
+  - 建厂与排产启动更早（`build_factory: 11 -> 7`，`schedule_recipe: 12 -> 9`）。
+  - harvest 占比下降（`18 -> 16`），排产总次数上升（`5 -> 6`）。
+  - 未出现 `facility_already_exists` 拒绝场景，本轮未触发该在线样本；对应 reject_reason 语义透传由单测覆盖（`llm_agent_user_prompt_preserves_facility_already_exists_reject_reason`）。
+- 新观察 TODO（后续优化）：
+  - TODO-4：`tick=17` 仍出现多段 JSON（含 `---` 与混合 `module_call/decision`）协议违规输出；当前依赖 guardrail/修复回路兜底（本轮 `parse_errors=0`），建议增加“多段输出硬拒绝 + 末段决策提取”策略以降低上下文膨胀和行为不确定性。
 
 ### LFO4 在线闭环结果摘要（2026-02-16）
 - 运行产物：
@@ -88,6 +106,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO6 全部完成。
-- 下一步：可选执行新一轮在线复跑，验证 LFO6 约束对长窗口策略稳定性的提升幅度。
-- 最近更新：2026-02-16（完成 LFO6.3 schedule_recipe 批次数上界约束）。
+- 当前阶段：LFO0-LFO6.5 已完成，LFO6.1-LFO6.4 已通过在线复跑验证。
+- 下一步：评估 TODO-4（多段 JSON 协议违规输出）并决定是否纳入下一轮收口任务。
+- 最近更新：2026-02-17（完成 LFO6.5 在线复跑验证与结果回填）。

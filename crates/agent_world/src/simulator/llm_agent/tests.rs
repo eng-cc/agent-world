@@ -832,7 +832,12 @@ fn llm_agent_parse_schedule_recipe_action_with_default_batches() {
         err: None,
     };
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
-    let decision = behavior.decide(&make_observation());
+    let mut observation = make_observation();
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 2)
+        .expect("add test hardware");
+    let decision = behavior.decide(&observation);
 
     assert_eq!(
         decision,

@@ -140,6 +140,8 @@ pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
 pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
 pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
+const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
+const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -1073,7 +1075,39 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 }
 
                 let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
-                let max_batches = (available_hardware / cost_per_batch).max(1);
+                let available_electricity =
+                    observation.self_resources.get(ResourceKind::Electricity);
+                if available_hardware < cost_per_batch {
+                    let recovery_mass_g = cost_per_batch
+                        .saturating_mul(DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE)
+                        .max(DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE);
+                    let required_electricity = ((recovery_mass_g + 999) / 1000)
+                        .saturating_mul(DEFAULT_REFINE_ELECTRICITY_COST_PER_KG);
+                    if available_electricity >= required_electricity {
+                        return (
+                            Action::RefineCompound {
+                                owner,
+                                compound_mass_g: recovery_mass_g,
+                            },
+                            Some(format!(
+                                "schedule_recipe guardrail rerouted to refine_compound: available_hardware={} < recipe_hardware_cost_per_batch={}; recovery_mass_g={}",
+                                available_hardware, cost_per_batch, recovery_mass_g
+                            )),
+                        );
+                    }
+                    return (
+                        Action::HarvestRadiation {
+                            agent_id: self.agent_id.clone(),
+                            max_amount: self.config.harvest_max_amount_cap,
+                        },
+                        Some(format!(
+                            "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_electricity={} < refine_required_electricity={}",
+                            available_hardware, cost_per_batch, available_electricity, required_electricity
+                        )),
+                    );
+                }
+
+                let max_batches = available_hardware / cost_per_batch;
                 if batches > max_batches {
                     (
                         Action::ScheduleRecipe {
