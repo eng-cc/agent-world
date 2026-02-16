@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{SelectionKind, ViewerCameraMode, ViewerControl, ViewerPanelMode};
+use super::{SelectionKind, ViewerCameraMode, ViewerControl};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum UiLocale {
@@ -77,23 +77,6 @@ pub(super) fn camera_mode_button_label(mode: ViewerCameraMode, locale: UiLocale)
         (ViewerCameraMode::TwoD, UiLocale::EnUs) => "2D",
         (ViewerCameraMode::ThreeD, UiLocale::ZhCn) => "3D",
         (ViewerCameraMode::ThreeD, UiLocale::EnUs) => "3D",
-    }
-}
-
-pub(super) fn panel_mode_section_label(locale: UiLocale) -> &'static str {
-    if locale.is_zh() {
-        "模式"
-    } else {
-        "Mode"
-    }
-}
-
-pub(super) fn panel_mode_button_label(mode: ViewerPanelMode, locale: UiLocale) -> &'static str {
-    match (mode, locale) {
-        (ViewerPanelMode::Observe, UiLocale::ZhCn) => "观察",
-        (ViewerPanelMode::Observe, UiLocale::EnUs) => "Observe",
-        (ViewerPanelMode::PromptOps, UiLocale::ZhCn) => "Prompt运维",
-        (ViewerPanelMode::PromptOps, UiLocale::EnUs) => "Prompt Ops",
     }
 }
 
@@ -323,20 +306,6 @@ mod tests {
         assert_eq!(
             camera_mode_button_label(ViewerCameraMode::ThreeD, UiLocale::EnUs),
             "3D"
-        );
-    }
-
-    #[test]
-    fn panel_mode_labels_are_stable() {
-        assert_eq!(panel_mode_section_label(UiLocale::ZhCn), "模式");
-        assert_eq!(panel_mode_section_label(UiLocale::EnUs), "Mode");
-        assert_eq!(
-            panel_mode_button_label(ViewerPanelMode::Observe, UiLocale::ZhCn),
-            "观察"
-        );
-        assert_eq!(
-            panel_mode_button_label(ViewerPanelMode::PromptOps, UiLocale::EnUs),
-            "Prompt Ops"
         );
     }
 

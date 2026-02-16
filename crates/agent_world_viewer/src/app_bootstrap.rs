@@ -183,8 +183,9 @@ fn resolve_panel_mode_from_env() -> ViewerPanelMode {
     };
 
     match raw.trim().to_ascii_lowercase().as_str() {
-        "observe" | "obs" | "default" => ViewerPanelMode::Observe,
-        "prompt_ops" | "prompt-ops" | "promptops" | "ops" => ViewerPanelMode::PromptOps,
+        "observe" | "obs" | "default" | "prompt_ops" | "prompt-ops" | "promptops" | "ops" => {
+            ViewerPanelMode::Observe
+        }
         _ => ViewerPanelMode::default(),
     }
 }

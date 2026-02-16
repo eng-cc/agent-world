@@ -11,8 +11,8 @@ use crate::event_click_list::{
 use crate::i18n::{
     advanced_debug_toggle_label, camera_mode_button_label, camera_mode_section_label,
     control_button_label, copyable_panel_toggle_label, language_toggle_label, locale_or_default,
-    module_switches_title, module_toggle_label, panel_mode_button_label, panel_mode_section_label,
-    play_pause_toggle_label, step_button_label, top_controls_label, top_panel_toggle_label, UiI18n,
+    module_switches_title, module_toggle_label, play_pause_toggle_label, step_button_label,
+    top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
@@ -40,9 +40,8 @@ use crate::{
     grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
     GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
     TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl,
-    ViewerPanelMode, ViewerSelection, ViewerState, WorldOverlayConfig,
+    ViewerSelection, ViewerState, WorldOverlayConfig,
 };
-use crate::{prompt_ops_panel::render_prompt_ops_section, prompt_ops_panel::PromptOpsDraftState};
 
 #[path = "egui_observe_section_card.rs"]
 mod egui_observe_section_card;
@@ -107,12 +106,8 @@ fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
     (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, CHAT_PANEL_MAX_WIDTH)
 }
 
-fn should_show_chat_panel(
-    layout_state: &RightPanelLayoutState,
-    panel_mode: ViewerPanelMode,
-    show_chat: bool,
-) -> bool {
-    !layout_state.top_panel_collapsed && panel_mode == ViewerPanelMode::Observe && show_chat
+fn should_show_chat_panel(layout_state: &RightPanelLayoutState, show_chat: bool) -> bool {
+    !layout_state.top_panel_collapsed && show_chat
 }
 
 fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 {
@@ -124,7 +119,6 @@ pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
     layout_state: ResMut<'w, RightPanelLayoutState>,
     camera_mode: ResMut<'w, ViewerCameraMode>,
-    panel_mode: ResMut<'w, ViewerPanelMode>,
     i18n: Option<ResMut<'w, UiI18n>>,
     copyable_panel_state: ResMut<'w, CopyableTextPanelState>,
     module_visibility: ResMut<'w, RightPanelModuleVisibilityState>,
@@ -133,7 +127,6 @@ pub(super) struct RightPanelParams<'w, 's> {
     selection: ResMut<'w, ViewerSelection>,
     render_perf: Option<Res<'w, RenderPerfSummary>>,
     viewer_3d_config: Option<Res<'w, Viewer3dConfig>>,
-    prompt_control: Option<Res<'w, crate::PromptControlUiState>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
     chat_focus_signal: ResMut<'w, crate::ChatInputFocusSignal>,
@@ -148,7 +141,6 @@ pub(super) struct RightPanelParams<'w, 's> {
 pub(super) fn render_right_side_panel_egui(
     mut contexts: EguiContexts,
     mut cjk_font_initialized: Local<bool>,
-    mut prompt_ops_draft: Local<PromptOpsDraftState>,
     mut chat_draft: Local<AgentChatDraftState>,
     mut control_panel: Local<ControlPanelUiState>,
     params: RightPanelParams,
@@ -157,7 +149,6 @@ pub(super) fn render_right_side_panel_egui(
         mut panel_width,
         mut layout_state,
         mut camera_mode,
-        mut panel_mode,
         mut i18n,
         mut copyable_panel_state,
         mut module_visibility,
@@ -166,7 +157,6 @@ pub(super) fn render_right_side_panel_egui(
         mut selection,
         render_perf,
         viewer_3d_config,
-        prompt_control,
         mut loading,
         client,
         mut chat_focus_signal,
@@ -190,11 +180,8 @@ pub(super) fn render_right_side_panel_egui(
     }
     chat_focus_signal.wants_ime_focus = false;
 
-    let show_chat_panel = should_show_chat_panel(
-        layout_state.as_ref(),
-        *panel_mode,
-        module_visibility.show_chat,
-    );
+    let show_chat_panel =
+        should_show_chat_panel(layout_state.as_ref(), module_visibility.show_chat);
     let chat_panel_width = if show_chat_panel {
         let default_chat_width =
             adaptive_chat_panel_default_width(context.available_rect().width());
@@ -262,30 +249,6 @@ pub(super) fn render_right_side_panel_egui(
                     *camera_mode = ViewerCameraMode::ThreeD;
                 }
 
-                ui.separator();
-                ui.label(panel_mode_section_label(locale));
-
-                let is_observe_mode = *panel_mode == ViewerPanelMode::Observe;
-                if ui
-                    .selectable_label(
-                        is_observe_mode,
-                        panel_mode_button_label(ViewerPanelMode::Observe, locale),
-                    )
-                    .clicked()
-                {
-                    *panel_mode = ViewerPanelMode::Observe;
-                }
-
-                if ui
-                    .selectable_label(
-                        !is_observe_mode,
-                        panel_mode_button_label(ViewerPanelMode::PromptOps, locale),
-                    )
-                    .clicked()
-                {
-                    *panel_mode = ViewerPanelMode::PromptOps;
-                }
-
                 if ui
                     .button(copyable_panel_toggle_label(
                         copyable_panel_state.visible,
@@ -301,19 +264,6 @@ pub(super) fn render_right_side_panel_egui(
             });
 
             if layout_state.top_panel_collapsed {
-                return;
-            }
-
-            if *panel_mode == ViewerPanelMode::PromptOps {
-                ui.separator();
-                render_prompt_ops_section(
-                    ui,
-                    locale,
-                    &state,
-                    &mut prompt_ops_draft,
-                    prompt_control.as_deref(),
-                    client.as_deref(),
-                );
                 return;
             }
 

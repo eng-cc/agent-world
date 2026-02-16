@@ -1,11 +1,7 @@
 use super::egui_observe_section_card::{section_tone, ObserveSectionTone};
 use super::*;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
-use agent_world::geometry::GeoPos;
-use agent_world::simulator::{
-    Agent, ChunkRuntimeConfig, RejectReason, WorldConfig, WorldEvent, WorldEventKind, WorldModel,
-    WorldSnapshot, CHUNK_GENERATION_SCHEMA_VERSION, SNAPSHOT_VERSION,
-};
+use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
 use egui_kittest::{kittest::Queryable as _, Harness};
 use egui_wgpu::wgpu;
 use std::iter::once;
@@ -269,55 +265,6 @@ fn sample_viewer_state(
     }
 }
 
-fn sample_prompt_ops_state() -> crate::ViewerState {
-    let mut model = WorldModel::default();
-    model.agents.insert(
-        "agent-0".to_string(),
-        Agent::new(
-            "agent-0",
-            "loc-0",
-            GeoPos {
-                x_cm: 0.0,
-                y_cm: 0.0,
-                z_cm: 0.0,
-            },
-        ),
-    );
-    model.agents.insert(
-        "agent-1".to_string(),
-        Agent::new(
-            "agent-1",
-            "loc-0",
-            GeoPos {
-                x_cm: 1.0,
-                y_cm: 0.0,
-                z_cm: 0.0,
-            },
-        ),
-    );
-
-    let snapshot = WorldSnapshot {
-        version: SNAPSHOT_VERSION,
-        chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
-        time: 0,
-        config: WorldConfig::default(),
-        model,
-        chunk_runtime: ChunkRuntimeConfig::default(),
-        next_event_id: 1,
-        next_action_id: 1,
-        pending_actions: Vec::new(),
-        journal_len: 0,
-    };
-
-    crate::ViewerState {
-        status: crate::ConnectionStatus::Connected,
-        snapshot: Some(snapshot),
-        events: Vec::new(),
-        decision_traces: Vec::new(),
-        metrics: None,
-    }
-}
-
 #[test]
 fn adaptive_panel_width_clamps_to_bounds() {
     assert_eq!(adaptive_panel_default_width(200.0), MAIN_PANEL_MIN_WIDTH);
@@ -341,34 +288,17 @@ fn adaptive_chat_panel_width_clamps_to_bounds() {
 }
 
 #[test]
-fn show_chat_panel_requires_observe_mode_expanded_top_and_visibility_enabled() {
+fn show_chat_panel_requires_expanded_top_and_visibility_enabled() {
     let expanded_layout = RightPanelLayoutState {
         top_panel_collapsed: false,
     };
-    assert!(should_show_chat_panel(
-        &expanded_layout,
-        ViewerPanelMode::Observe,
-        true
-    ));
-    assert!(!should_show_chat_panel(
-        &expanded_layout,
-        ViewerPanelMode::PromptOps,
-        true
-    ));
-    assert!(!should_show_chat_panel(
-        &expanded_layout,
-        ViewerPanelMode::Observe,
-        false
-    ));
+    assert!(should_show_chat_panel(&expanded_layout, true));
+    assert!(!should_show_chat_panel(&expanded_layout, false));
 
     let collapsed_layout = RightPanelLayoutState {
         top_panel_collapsed: true,
     };
-    assert!(!should_show_chat_panel(
-        &collapsed_layout,
-        ViewerPanelMode::Observe,
-        true
-    ));
+    assert!(!should_show_chat_panel(&collapsed_layout, true));
 }
 
 #[test]
@@ -718,31 +648,6 @@ fn egui_kittest_overlay_section_renders_chunk_legend_and_width_hint() {
     harness.get_by_label_contains("已耗尽");
     harness.get_by_label_contains("背景网格");
     harness.get_by_label_contains("线宽(2D)");
-}
-
-#[test]
-fn egui_kittest_prompt_ops_section_renders_agent_targets_and_scope_note() {
-    let state = sample_prompt_ops_state();
-    let mut prompt_ops_draft = PromptOpsDraftState::default();
-
-    let mut harness = Harness::new_ui(move |ui| {
-        render_prompt_ops_section(
-            ui,
-            crate::i18n::UiLocale::ZhCn,
-            &state,
-            &mut prompt_ops_draft,
-            None,
-            None,
-        );
-    });
-
-    harness.fit_contents();
-    harness.get_by_label_contains("Prompt 运维");
-    harness.get_by_label_contains("仅支持修改 Agent Prompt");
-    harness.get_by_label_contains("agent-1");
-    harness.get_by_label_contains("目标: agent-0");
-    harness.get_by_label_contains("差异预览");
-    harness.get_by_label_contains("变更审计");
 }
 
 #[derive(Default)]

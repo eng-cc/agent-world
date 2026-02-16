@@ -75,8 +75,6 @@ mod material_library;
 mod panel_layout;
 mod panel_scroll;
 mod perf_probe;
-mod prompt_control_state;
-mod prompt_ops_panel;
 mod render_perf_summary;
 mod right_panel_module_visibility;
 mod scene_dirty_refresh;
@@ -126,7 +124,6 @@ use label_lod::{update_label_lod, LabelLodStats};
 use material_library::{build_fragment_element_material_handles, FragmentElementMaterialHandles};
 use panel_layout::{spawn_top_panel_toggle, RightPanelLayoutState, TopPanelContainer};
 use panel_scroll::{RightPanelScroll, TopPanelScroll};
-use prompt_control_state::PromptControlUiState;
 use render_perf_summary::{sample_render_perf_summary, RenderPerfHistory, RenderPerfSummary};
 use right_panel_module_visibility::{
     persist_right_panel_module_visibility, resolve_right_panel_module_visibility_resources,
@@ -416,7 +413,6 @@ impl Default for ViewerCameraMode {
 #[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
 enum ViewerPanelMode {
     Observe,
-    PromptOps,
 }
 
 impl Default for ViewerPanelMode {
@@ -569,12 +565,7 @@ fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
     commands.insert_resource(ViewerState::default());
 }
 
-fn setup_startup_state(
-    mut commands: Commands,
-    config: Res<OfflineConfig>,
-    viewer: Res<ViewerConfig>,
-) {
-    commands.insert_resource(PromptControlUiState::default());
+fn setup_startup_state(commands: Commands, config: Res<OfflineConfig>, viewer: Res<ViewerConfig>) {
     if config.offline {
         setup_offline_state(commands);
     } else {
@@ -1292,7 +1283,6 @@ fn poll_viewer_messages(
     mut state: ResMut<ViewerState>,
     config: Res<ViewerConfig>,
     client: Option<Res<ViewerClient>>,
-    mut prompt_control: Option<ResMut<PromptControlUiState>>,
 ) {
     let Some(client) = client else {
         return;
@@ -1333,20 +1323,8 @@ fn poll_viewer_messages(
                 ViewerResponse::Error { message } => {
                     state.status = ConnectionStatus::Error(message);
                 }
-                ViewerResponse::PromptControlAck { ack } => {
-                    if let Some(prompt_control) = prompt_control.as_deref_mut() {
-                        prompt_control.record_ack(ack);
-                    }
-                }
-                ViewerResponse::PromptControlError { error } => {
-                    if let Some(prompt_control) = prompt_control.as_deref_mut() {
-                        prompt_control.record_error(error);
-                    } else {
-                        state.status = ConnectionStatus::Error(
-                            "prompt control error (state unavailable)".to_string(),
-                        );
-                    }
-                }
+                ViewerResponse::PromptControlAck { .. } => {}
+                ViewerResponse::PromptControlError { .. } => {}
                 ViewerResponse::AgentChatAck { .. } => {}
                 ViewerResponse::AgentChatError { error } => {
                     state.status = ConnectionStatus::Error(format!(
@@ -1521,5 +1499,3 @@ fn update_3d_viewport(mut cameras: Query<&mut Camera, With<Viewer3dCamera>>) {
 mod camera_mode_tests;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod tests_prompt_control;
