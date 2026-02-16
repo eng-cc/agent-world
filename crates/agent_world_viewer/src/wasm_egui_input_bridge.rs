@@ -269,19 +269,34 @@ pub(super) fn sync_wasm_egui_input_bridge_focus(
         || wants_keyboard_input
         || output.platform_output.ime.is_some()
         || output.platform_output.mutable_text_under_cursor;
-    if editing_text == bridge.focused {
+    let dom_focused = web_sys::window()
+        .and_then(|window| window.document())
+        .and_then(|document| document.active_element())
+        .map(|element| element.id() == EGUI_IME_BRIDGE_INPUT_ID)
+        .unwrap_or(false);
+
+    if editing_text {
+        if bridge.focused && dom_focused {
+            return;
+        }
+        bridge.input.set_hidden(false);
+        if !dom_focused {
+            let _ = bridge.input.focus();
+        }
+        bridge.focused = true;
         return;
     }
 
-    if editing_text {
-        bridge.input.set_hidden(false);
-        let _ = bridge.input.focus();
-    } else {
-        bridge.input.set_value("");
-        let _ = bridge.input.blur();
-        bridge.input.set_hidden(true);
+    if !bridge.focused && !dom_focused {
+        return;
     }
-    bridge.focused = editing_text;
+
+    bridge.input.set_value("");
+    if dom_focused {
+        let _ = bridge.input.blur();
+    }
+    bridge.input.set_hidden(true);
+    bridge.focused = false;
 }
 
 pub(super) fn pump_wasm_egui_input_bridge_events(

@@ -14,7 +14,9 @@
 - [x] CIB11 现场反馈回修：为聊天 `TextEdit` 增加显式焦点信号并驱动 wasm IME bridge 聚焦
 - [x] CIB12 回归验证与提交收口（CIB11）
 - [x] CIB13 现场反馈回修：确认 `winit web IME` 框架限制并将 bridge 复用到 `bevy_egui` 的 `egui_text_agent`
-- [ ] CIB14 回归验证与提交收口（CIB13）
+- [x] CIB14 回归验证与提交收口（CIB13）
+- [x] CIB15 现场反馈回修：修复聊天输入框二次点击导致 bridge 丢失 DOM 焦点
+- [ ] CIB16 回归验证与提交收口（CIB15）
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -23,6 +25,6 @@
 - `crates/agent_world_viewer/Cargo.toml`
 
 ## 状态
-- 当前阶段：进行中（CIB14）
-- 下一步：你侧手工复测 Web 聊天输入框的中文输入（拼音上屏、候选提交、回退）并反馈结果
-- 最近更新：CIB13 完成（2026-02-16）
+- 当前阶段：进行中（CIB16）
+- 下一步：你侧手工复测“首次点击 + 二次点击（淡蓝高亮）+ 再输入中文”链路
+- 最近更新：CIB15 完成（2026-02-16）
