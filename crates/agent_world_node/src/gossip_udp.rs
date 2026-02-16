@@ -15,6 +15,10 @@ pub(crate) struct GossipCommitMessage {
     pub epoch: u64,
     pub block_hash: String,
     pub committed_at_ms: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,6 +32,10 @@ pub(crate) struct GossipProposalMessage {
     pub epoch: u64,
     pub block_hash: String,
     pub proposed_at_ms: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,6 +53,10 @@ pub(crate) struct GossipAttestationMessage {
     pub target_epoch: u64,
     pub voted_at_ms: i64,
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

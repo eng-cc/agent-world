@@ -83,6 +83,16 @@ impl NodeReplicationConfig {
         }
     }
 
+    pub(crate) fn consensus_signer(&self) -> Result<Option<(SigningKey, String)>, NodeError> {
+        Ok(self
+            .signing_keypair()?
+            .map(|key| (key.signing_key, key.public_key_hex)))
+    }
+
+    pub(crate) fn enforce_consensus_signature(&self) -> bool {
+        self.enforce_signature || self.signing_private_key_hex.is_some()
+    }
+
     fn store_root(&self) -> PathBuf {
         self.root_dir.join("store")
     }

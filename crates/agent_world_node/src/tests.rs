@@ -1,3 +1,7 @@
+use super::consensus_signature::{
+    sign_attestation_message, sign_proposal_message, ConsensusMessageSigner,
+};
+use super::gossip_udp::GossipEndpoint;
 use super::*;
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use agent_world_proto::distributed_net::NetworkSubscription;
@@ -181,6 +185,8 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
         epoch: 0,
         block_hash: format!("{}:h1:s0:p{}", config.world_id, "node-a"),
         proposed_at_ms: 1_000,
+        public_key_hex: None,
+        signature_hex: None,
     };
     engine
         .ingest_proposal_message(&config.world_id, &proposal)
@@ -200,6 +206,8 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
         target_epoch: 0,
         voted_at_ms: 1_001,
         reason: Some("gossip attestation".to_string()),
+        public_key_hex: None,
+        signature_hex: None,
     };
     engine
         .ingest_attestation_message(&config.world_id, &attestation)
@@ -238,6 +246,164 @@ fn runtime_start_and_stop_updates_snapshot() {
     let stopped = runtime.snapshot();
     assert!(!stopped.running);
     assert!(stopped.tick_count >= running.tick_count);
+}
+
+#[test]
+fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let config_b = NodeConfig::new("node-b", "world-sig-enforced", NodeRole::Observer)
+        .expect("config b")
+        .with_pos_validators(validators)
+        .expect("validators")
+        .with_replication(signed_replication_config(temp_dir("sig-enforced"), 201));
+    let mut engine = PosNodeEngine::new(&config_b).expect("engine");
+
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: vec![addr_b],
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    let unsigned_proposal = GossipProposalMessage {
+        version: 1,
+        world_id: config_b.world_id.clone(),
+        node_id: "node-a".to_string(),
+        proposer_id: "node-a".to_string(),
+        height: 1,
+        slot: 0,
+        epoch: 0,
+        block_hash: format!("{}:h1:s0:p{}", config_b.world_id, "node-a"),
+        proposed_at_ms: 1_000,
+        public_key_hex: None,
+        signature_hex: None,
+    };
+    endpoint_a
+        .broadcast_proposal(&unsigned_proposal)
+        .expect("broadcast unsigned proposal");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None)
+        .expect("ingest");
+    assert!(engine.pending.is_none());
+}
+
+#[test]
+fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let config_b = NodeConfig::new("node-b", "world-sig-accept", NodeRole::Observer)
+        .expect("config b")
+        .with_pos_validators(validators)
+        .expect("validators")
+        .with_replication(signed_replication_config(temp_dir("sig-accept"), 202));
+    let mut engine = PosNodeEngine::new(&config_b).expect("engine");
+
+    let (private_hex, public_hex) = deterministic_keypair_hex(203);
+    let signing_key = SigningKey::from_bytes(
+        &hex::decode(private_hex)
+            .expect("private decode")
+            .try_into()
+            .expect("private len"),
+    );
+    let signer = ConsensusMessageSigner::new(signing_key, public_hex).expect("signer");
+
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: vec![addr_b],
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    let mut proposal = GossipProposalMessage {
+        version: 1,
+        world_id: config_b.world_id.clone(),
+        node_id: "node-a".to_string(),
+        proposer_id: "node-a".to_string(),
+        height: 1,
+        slot: 0,
+        epoch: 0,
+        block_hash: format!("{}:h1:s0:p{}", config_b.world_id, "node-a"),
+        proposed_at_ms: 2_000,
+        public_key_hex: None,
+        signature_hex: None,
+    };
+    sign_proposal_message(&mut proposal, &signer).expect("sign proposal");
+    endpoint_a
+        .broadcast_proposal(&proposal)
+        .expect("broadcast signed proposal");
+    thread::sleep(Duration::from_millis(20));
+
+    let mut attestation = GossipAttestationMessage {
+        version: 1,
+        world_id: config_b.world_id.clone(),
+        node_id: "node-a".to_string(),
+        validator_id: "node-b".to_string(),
+        height: proposal.height,
+        slot: proposal.slot,
+        epoch: proposal.epoch,
+        block_hash: proposal.block_hash.clone(),
+        approve: true,
+        source_epoch: 0,
+        target_epoch: 0,
+        voted_at_ms: 2_001,
+        reason: Some("signed attestation".to_string()),
+        public_key_hex: None,
+        signature_hex: None,
+    };
+    sign_attestation_message(&mut attestation, &signer).expect("sign attestation");
+    endpoint_a
+        .broadcast_attestation(&attestation)
+        .expect("broadcast signed attestation");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config_b.node_id, &config_b.world_id, None)
+        .expect("ingest");
+    let pending = engine.pending.as_ref().expect("pending exists");
+    assert_eq!(pending.height, 1);
+    assert!(pending.attestations.contains_key("node-a"));
+    assert!(pending.attestations.contains_key("node-b"));
 }
 
 #[test]

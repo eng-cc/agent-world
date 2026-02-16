@@ -8,14 +8,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
+mod consensus_signature;
 mod gossip_udp;
 mod libp2p_replication_network;
 mod network_bridge;
 mod pos_validation;
 mod replication;
+mod runtime_util;
 
+use consensus_signature::{
+    sign_attestation_message, sign_commit_message, sign_proposal_message,
+    verify_attestation_message_signature, verify_commit_message_signature,
+    verify_proposal_message_signature, ConsensusMessageSigner,
+};
 use gossip_udp::{
     GossipAttestationMessage, GossipCommitMessage, GossipEndpoint, GossipMessage,
     GossipProposalMessage,
@@ -27,6 +34,7 @@ pub use replication::NodeReplicationConfig;
 use network_bridge::ReplicationNetworkEndpoint;
 use pos_validation::{decide_status, validate_pos_config, validated_pos_state};
 use replication::ReplicationRuntime;
+use runtime_util::{lock_state, now_unix_ms};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -497,6 +505,8 @@ struct PosNodeEngine {
     last_broadcast_local_attestation_height: u64,
     last_broadcast_committed_height: u64,
     replicate_local_commits: bool,
+    consensus_signer: Option<ConsensusMessageSigner>,
+    enforce_consensus_signature: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
 }
 
@@ -546,6 +556,18 @@ struct PeerCommittedHead {
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, total_stake, required_stake) = validated_pos_state(&config.pos_config)?;
+        let (consensus_signer, enforce_consensus_signature) =
+            if let Some(replication) = &config.replication {
+                let signer = replication
+                    .consensus_signer()?
+                    .map(|(signing_key, public_key_hex)| {
+                        ConsensusMessageSigner::new(signing_key, public_key_hex)
+                    })
+                    .transpose()?;
+                (signer, replication.enforce_consensus_signature())
+            } else {
+                (None, false)
+            };
         Ok(Self {
             validators,
             total_stake,
@@ -562,6 +584,8 @@ impl PosNodeEngine {
             last_broadcast_committed_height: 0,
             replicate_local_commits: matches!(config.role, NodeRole::Sequencer)
                 && config.replication.is_some(),
+            consensus_signer,
+            enforce_consensus_signature,
             peer_heads: BTreeMap::new(),
         })
     }
@@ -833,7 +857,7 @@ impl PosNodeEngine {
         if proposal.height <= self.last_broadcast_proposal_height {
             return Ok(());
         }
-        let message = GossipProposalMessage {
+        let mut message = GossipProposalMessage {
             version: 1,
             world_id: world_id.to_string(),
             node_id: node_id.to_string(),
@@ -843,7 +867,12 @@ impl PosNodeEngine {
             epoch: proposal.epoch,
             block_hash: proposal.block_hash.clone(),
             proposed_at_ms: now_ms,
+            public_key_hex: None,
+            signature_hex: None,
         };
+        if let Some(signer) = self.consensus_signer.as_ref() {
+            sign_proposal_message(&mut message, signer)?;
+        }
         endpoint.broadcast_proposal(&message)?;
         self.last_broadcast_proposal_height = proposal.height;
         Ok(())
@@ -866,7 +895,7 @@ impl PosNodeEngine {
             return Ok(());
         }
 
-        let message = GossipAttestationMessage {
+        let mut message = GossipAttestationMessage {
             version: 1,
             world_id: world_id.to_string(),
             node_id: node_id.to_string(),
@@ -880,7 +909,12 @@ impl PosNodeEngine {
             target_epoch: attestation.target_epoch,
             voted_at_ms: now_ms,
             reason: attestation.reason.clone(),
+            public_key_hex: None,
+            signature_hex: None,
         };
+        if let Some(signer) = self.consensus_signer.as_ref() {
+            sign_attestation_message(&mut message, signer)?;
+        }
         endpoint.broadcast_attestation(&message)?;
         self.last_broadcast_local_attestation_height = proposal.height;
         Ok(())
@@ -900,7 +934,7 @@ impl PosNodeEngine {
         if decision.height <= self.last_broadcast_committed_height {
             return Ok(());
         }
-        let message = GossipCommitMessage {
+        let mut message = GossipCommitMessage {
             version: 1,
             world_id: world_id.to_string(),
             node_id: node_id.to_string(),
@@ -909,7 +943,12 @@ impl PosNodeEngine {
             epoch: decision.epoch,
             block_hash: decision.block_hash.clone(),
             committed_at_ms: now_ms,
+            public_key_hex: None,
+            signature_hex: None,
         };
+        if let Some(signer) = self.consensus_signer.as_ref() {
+            sign_commit_message(&mut message, signer)?;
+        }
         endpoint.broadcast_commit(&message)?;
         self.last_broadcast_committed_height = decision.height;
         Ok(())
@@ -1051,6 +1090,11 @@ impl PosNodeEngine {
                     if commit.version != 1 || commit.world_id != world_id {
                         continue;
                     }
+                    if verify_commit_message_signature(&commit, self.enforce_consensus_signature)
+                        .is_err()
+                    {
+                        continue;
+                    }
                     let previous_height = self
                         .peer_heads
                         .get(commit.node_id.as_str())
@@ -1072,9 +1116,25 @@ impl PosNodeEngine {
                     }
                 }
                 GossipMessage::Proposal(proposal) => {
+                    if verify_proposal_message_signature(
+                        &proposal,
+                        self.enforce_consensus_signature,
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
                     self.ingest_proposal_message(world_id, &proposal)?;
                 }
                 GossipMessage::Attestation(attestation) => {
+                    if verify_attestation_message_signature(
+                        &attestation,
+                        self.enforce_consensus_signature,
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
                     self.ingest_attestation_message(world_id, &attestation)?;
                 }
                 GossipMessage::Replication(replication_msg) => {
@@ -1130,19 +1190,6 @@ impl fmt::Display for NodeError {
 }
 
 impl std::error::Error for NodeError {}
-
-fn lock_state<'a>(state: &'a Arc<Mutex<RuntimeState>>) -> std::sync::MutexGuard<'a, RuntimeState> {
-    state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-fn now_unix_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as i64)
-        .unwrap_or(0)
-}
 
 #[cfg(test)]
 mod tests;

@@ -226,6 +226,7 @@ dependencies = [
  "hex",
  "libp2p",
  "serde",
+ "serde_cbor",
  "serde_json",
 ]
 
