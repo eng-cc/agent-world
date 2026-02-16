@@ -87,6 +87,8 @@
           <li>`2D/3D`：顶部按钮切换视角模式。</li>
           <li>控制区（观察模式）：默认仅显示 `播放/暂停` 单按钮；点击 `高级调试` 后展开 `单步` 与 `跳转 0`。</li>
           <li>`F`：聚焦当前选中对象。</li>
+          <li>右侧综合面板：查看控制、状态、事件、分块、诊断等模块信息。</li>
+          <li>最右侧 Chat 面板：独立承载 Agent Chat，不与综合面板混排；仅在观察模式且顶部区域展开时显示。</li>
         </ul>
       </section>
 
@@ -151,10 +153,12 @@ bash "$PWCLI" close</code></pre>
       </section>
 
       <section id="panels" class="section" data-reveal>
-        <h2>右侧面板能力</h2>
+        <h2>右侧综合面板与 Chat 面板</h2>
         <h3>模块显隐与本地缓存</h3>
         <ul>
           <li>支持按模块单独显示/隐藏：控制、总览、覆盖层、诊断、事件联动、时间轴、状态明细。</li>
+          <li>`Chat` 开关控制独立最右侧 Chat 面板显隐；关闭时不渲染且不占用右侧宽度。</li>
+          <li>Chat 内容已从综合右侧面板拆分，不再混排。</li>
           <li>开关状态会落盘并在重启后恢复。</li>
           <li>默认路径：`$HOME/.agent_world_viewer/right_panel_modules.json`。</li>
           <li>可覆盖路径：`AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`。</li>

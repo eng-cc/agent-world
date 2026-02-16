@@ -87,6 +87,8 @@
           <li>`2D/3D`: switch view mode from the top controls.</li>
           <li>Controls (Observe mode): defaults to a single `Play/Pause` toggle; click `Advanced Debug` to expand `Step` and `Seek 0`.</li>
           <li>`F`: focus current selection.</li>
+          <li>Main right panel: inspect controls, status, events, chunk overlays, and diagnostics modules.</li>
+          <li>Rightmost Chat panel: dedicated Agent Chat surface, no longer mixed with the main right panel; shown only in Observe mode with expanded top area.</li>
         </ul>
       </section>
 
@@ -151,10 +153,12 @@ bash "$PWCLI" close</code></pre>
       </section>
 
       <section id="panels" class="section" data-reveal>
-        <h2>Right Panel Capabilities</h2>
+        <h2>Main Right Panel and Chat Panel</h2>
         <h3>Module visibility and local persistence</h3>
         <ul>
           <li>Each module can be toggled independently: Controls, Overview, Overlays, Diagnostics, Event Routing, Timeline, Status Details.</li>
+          <li>The `Chat` toggle controls a dedicated rightmost Chat panel; when disabled, the chat panel is not rendered and takes no right-side width.</li>
+          <li>Chat content is no longer rendered inside the main right panel.</li>
           <li>Toggle states are persisted and restored on restart.</li>
           <li>Default file: `$HOME/.agent_world_viewer/right_panel_modules.json`.</li>
           <li>Override path with: `AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`.</li>
