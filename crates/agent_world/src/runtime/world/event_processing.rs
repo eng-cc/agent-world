@@ -196,6 +196,29 @@ impl World {
                         reason: "redeem_credits must be > 0".to_string(),
                     }));
                 }
+                if *nonce == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "nonce must be > 0".to_string(),
+                    }));
+                }
+                if let Some(last_nonce) = self.state.node_redeem_nonces.get(node_id) {
+                    if *nonce <= *last_nonce {
+                        return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                            node_id: node_id.clone(),
+                            target_agent_id: target_agent_id.clone(),
+                            redeem_credits: *redeem_credits,
+                            nonce: *nonce,
+                            reason: format!(
+                                "nonce replay detected: nonce={} last_nonce={}",
+                                nonce, last_nonce
+                            ),
+                        }));
+                    }
+                }
                 let credits_per_power_unit = self.state.reward_asset_config.credits_per_power_unit;
                 if credits_per_power_unit == 0 {
                     return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
@@ -229,6 +252,68 @@ impl World {
                     }));
                 }
                 let granted_power_units = granted_power_units_u64 as i64;
+                let min_redeem_power_unit = self.state.reward_asset_config.min_redeem_power_unit;
+                if min_redeem_power_unit <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "min_redeem_power_unit must be positive".to_string(),
+                    }));
+                }
+                if granted_power_units < min_redeem_power_unit {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!(
+                            "granted power below minimum unit: granted={} min={}",
+                            granted_power_units, min_redeem_power_unit
+                        ),
+                    }));
+                }
+                let max_redeem_power_per_epoch =
+                    self.state.reward_asset_config.max_redeem_power_per_epoch;
+                if max_redeem_power_per_epoch <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "max_redeem_power_per_epoch must be positive".to_string(),
+                    }));
+                }
+                let next_redeemed = match self
+                    .state
+                    .protocol_power_reserve
+                    .redeemed_power_units
+                    .checked_add(granted_power_units)
+                {
+                    Some(value) => value,
+                    None => {
+                        return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                            node_id: node_id.clone(),
+                            target_agent_id: target_agent_id.clone(),
+                            redeem_credits: *redeem_credits,
+                            nonce: *nonce,
+                            reason: "redeemed_power_units overflow".to_string(),
+                        }));
+                    }
+                };
+                if next_redeemed > max_redeem_power_per_epoch {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!(
+                            "epoch redeem cap exceeded: next={} cap={}",
+                            next_redeemed, max_redeem_power_per_epoch
+                        ),
+                    }));
+                }
                 let available_credits = self.node_power_credit_balance(node_id);
                 if available_credits < *redeem_credits {
                     return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {

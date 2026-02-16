@@ -43,6 +43,10 @@ impl World {
             .unwrap_or(0)
     }
 
+    pub fn node_last_redeem_nonce(&self, node_id: &str) -> Option<u64> {
+        self.state.node_redeem_nonces.get(node_id).copied()
+    }
+
     pub fn reward_mint_records(&self) -> &[NodeRewardMintRecord] {
         self.state.reward_mint_records.as_slice()
     }

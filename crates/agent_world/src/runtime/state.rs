@@ -113,6 +113,8 @@ pub struct WorldState {
     pub protocol_power_reserve: ProtocolPowerReserve,
     #[serde(default)]
     pub reward_mint_records: Vec<NodeRewardMintRecord>,
+    #[serde(default)]
+    pub node_redeem_nonces: BTreeMap<String, u64>,
 }
 
 impl Default for WorldState {
@@ -132,6 +134,7 @@ impl Default for WorldState {
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
             reward_mint_records: Vec::new(),
+            node_redeem_nonces: BTreeMap::new(),
         }
     }
 }
@@ -295,6 +298,7 @@ impl WorldState {
                 burned_credits,
                 granted_power_units,
                 reserve_remaining,
+                nonce,
                 ..
             } => {
                 if *burned_credits == 0 {
@@ -309,6 +313,35 @@ impl WorldState {
                             granted_power_units
                         ),
                     });
+                }
+                let min_redeem_power_unit = self.reward_asset_config.min_redeem_power_unit;
+                if min_redeem_power_unit <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "min_redeem_power_unit must be positive".to_string(),
+                    });
+                }
+                if *granted_power_units < min_redeem_power_unit {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "granted_power_units below minimum: granted={} min={}",
+                            granted_power_units, min_redeem_power_unit
+                        ),
+                    });
+                }
+                if *nonce == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "nonce must be > 0".to_string(),
+                    });
+                }
+                if let Some(last_nonce) = self.node_redeem_nonces.get(node_id) {
+                    if *nonce <= *last_nonce {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "nonce replay detected: node_id={} nonce={} last_nonce={}",
+                                node_id, nonce, last_nonce
+                            ),
+                        });
+                    }
                 }
                 remove_node_power_credits(
                     &mut self.node_asset_balances,
@@ -337,11 +370,30 @@ impl WorldState {
                         ),
                     });
                 }
-                self.protocol_power_reserve.available_power_units = next_reserve;
-                self.protocol_power_reserve.redeemed_power_units = self
+                let max_redeem_power_per_epoch = self.reward_asset_config.max_redeem_power_per_epoch;
+                if max_redeem_power_per_epoch <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "max_redeem_power_per_epoch must be positive".to_string(),
+                    });
+                }
+                let next_redeemed = self
                     .protocol_power_reserve
                     .redeemed_power_units
-                    .saturating_add(*granted_power_units);
+                    .checked_add(*granted_power_units)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: "redeemed_power_units overflow".to_string(),
+                    })?;
+                if next_redeemed > max_redeem_power_per_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "epoch redeem cap exceeded: next={} cap={}",
+                            next_redeemed, max_redeem_power_per_epoch
+                        ),
+                    });
+                }
+                self.protocol_power_reserve.available_power_units = next_reserve;
+                self.protocol_power_reserve.redeemed_power_units = next_redeemed;
+                self.node_redeem_nonces.insert(node_id.clone(), *nonce);
 
                 let target = self
                     .agents
