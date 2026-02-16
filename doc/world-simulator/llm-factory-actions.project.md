@@ -51,5 +51,5 @@
 
 ## 状态
 - 当前阶段：LFA0-LFA3 全部完成。
-- 下一步：按 TODO-1~TODO-3 进入策略与可观测性优化迭代。
-- 最近更新：2026-02-16（完成 LFA3 在线闭环验证与收口）。
+- 下一步：按 TODO-1~TODO-3 进入策略与可观测性优化迭代（见 `doc/world-simulator/llm-factory-strategy-optimization.md` 与 `doc/world-simulator/llm-factory-strategy-optimization.project.md`）。
+- 最近更新：2026-02-16（完成 LFA3 收口并迁移后续任务到 LFO 文档）。
