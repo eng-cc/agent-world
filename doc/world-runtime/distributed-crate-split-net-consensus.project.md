@@ -208,5 +208,5 @@
 
 ## 状态
 - 当前阶段：六十三次扩展阶段完成（T100 已完成，`distributed_storage` / `distributed_validation` 已去除路径包装并收敛为 runtime 本地实现）。
-- 下一步：继续推进 net 侧 `runtime_bridge` 的可编译闭环（补齐 `agent_world_net` 对 `blob_store/world/segmenter/...` 依赖抽象），优先将 storage/validation 复用逻辑进一步下沉到 split crate 的可编译抽象层并逐步切到直接依赖。
-- 最近更新：2026-02-14
+- 下一步：继续推进 net 侧 `runtime_bridge` 的解耦抽象（在已可编译闭环基础上减少 `agent_world` 运行时类型耦合），优先将 storage/validation 复用逻辑下沉为独立抽象接口并逐步切到直接依赖。
+- 最近更新：2026-02-16
