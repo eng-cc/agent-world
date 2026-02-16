@@ -20,6 +20,8 @@ mod network;
 #[cfg(feature = "runtime_bridge")]
 mod observer;
 #[cfg(feature = "runtime_bridge")]
+mod observer_metrics;
+#[cfg(feature = "runtime_bridge")]
 mod observer_replay;
 mod provider_cache;
 mod replay_flow;
@@ -142,6 +144,12 @@ pub use observer::{
     HeadFollowReport, HeadSyncModeReport, HeadSyncModeWithDhtReport, HeadSyncReport,
     HeadSyncResult, HeadSyncSourceMode, HeadSyncSourceModeWithDht, ObserverClient,
     ObserverSubscription,
+};
+#[cfg(feature = "runtime_bridge")]
+pub use observer_metrics::{
+    ObserverModeCounters, ObserverModeRuntimeMetricsSnapshot,
+    ObserverModeWithDhtRuntimeMetricsSnapshot, ObserverRuntimeMetrics,
+    ObserverRuntimeMetricsSnapshot,
 };
 #[cfg(feature = "runtime_bridge")]
 pub use observer_replay::{
