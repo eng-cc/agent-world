@@ -17,9 +17,9 @@
 - [x] LFO2.3 增加 report JSON 结构回归测试
 
 ### LFO3 固定序列离线回归（TODO-3）
-- [ ] LFO3.1 新增 mock 决策序列测试（失败恢复 -> 建厂 -> 排产成功）
-- [ ] LFO3.2 新增反循环测试（限制连续无效 harvest）
-- [ ] LFO3.3 归并到 `test_tier_required` 并验证稳定通过
+- [x] LFO3.1 新增 mock 决策序列测试（失败恢复 -> 建厂 -> 排产成功）
+- [x] LFO3.2 新增反循环测试（限制连续无效 harvest）
+- [x] LFO3.3 归并到 `test_tier_required` 并验证稳定通过
 
 ### LFO4 在线闭环验证与收口
 - [ ] LFO4.1 复跑 `llm_bootstrap --ticks 20` 并记录 `action_kind_counts`
@@ -35,6 +35,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO2 完成，LFO3 待开始。
-- 下一步：执行 LFO3（固定 mock 序列离线回归：成功链路 + 反循环）。
-- 最近更新：2026-02-16（完成 LFO2：动作触发率/首达 tick 指标与回归测试）。
+- 当前阶段：LFO0-LFO3 完成，LFO4 待开始。
+- 下一步：执行 LFO4（在线 20/30 tick 复跑并记录新报告指标）。
+- 最近更新：2026-02-16（完成 LFO3：固定序列离线回归与反循环测试）。

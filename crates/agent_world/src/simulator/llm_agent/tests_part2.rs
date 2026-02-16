@@ -437,6 +437,182 @@ fn llm_agent_force_replan_allows_switch_to_new_terminal_action_without_module_ca
 }
 
 #[test]
+fn llm_agent_force_replan_breaks_repeated_harvest_loop_with_repair() {
+    let client = SequenceMockClient::new(vec![
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"harvest_radiation","max_amount":5}"#.to_string(),
+        r#"{"decision":"refine_compound","compound_mass_g":1000}"#.to_string(),
+    ]);
+
+    let mut config = base_config();
+    config.max_decision_steps = 4;
+    config.max_repair_rounds = 1;
+    config.force_replan_after_same_action = 2;
+    config.execute_until_auto_reenter_ticks = 0;
+
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+    let mut observation = make_observation();
+
+    observation.time = 70;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 5, .. })
+    ));
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 5,
+        },
+        action_id: 701,
+        success: true,
+        event: WorldEvent {
+            id: 801,
+            time: 70,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 5,
+                available: 90,
+            },
+        },
+    });
+
+    observation.time = 71;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 5, .. })
+    ));
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 5,
+        },
+        action_id: 702,
+        success: true,
+        event: WorldEvent {
+            id: 802,
+            time: 71,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-2".to_string(),
+                amount: 4,
+                available: 86,
+            },
+        },
+    });
+
+    observation.time = 72;
+    let third = behavior.decide(&observation);
+    assert!(matches!(
+        third,
+        AgentDecision::Act(Action::RefineCompound {
+            compound_mass_g: 1000,
+            ..
+        })
+    ));
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace.parse_error.is_none());
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("replan guard requires")));
+}
+
+#[test]
+fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
+    let world_config = crate::simulator::WorldConfig::default();
+    let world_init = crate::simulator::WorldInitConfig::from_scenario(
+        crate::simulator::WorldScenario::LlmBootstrap,
+        &world_config,
+    );
+    let (mut kernel, _) =
+        crate::simulator::initialize_kernel(world_config, world_init).expect("init kernel");
+    let start_location_id = kernel
+        .model()
+        .agents
+        .get("agent-0")
+        .expect("agent exists")
+        .location_id
+        .clone();
+
+    let client = SequenceMockClient::new(vec![
+        format!(
+            r#"{{"decision":"build_factory","owner":"self","location_id":"{}","factory_id":"factory.alpha","factory_kind":"factory.assembler.mk1"}}"#,
+            start_location_id
+        ),
+        r#"{"decision":"refine_compound","owner":"self","compound_mass_g":7000}"#.to_string(),
+        format!(
+            r#"{{"decision":"build_factory","owner":"self","location_id":"{}","factory_id":"factory.alpha","factory_kind":"factory.assembler.mk1"}}"#,
+            start_location_id
+        ),
+        r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.control_chip","batches":1}"#.to_string(),
+    ]);
+
+    let mut config = base_config();
+    config.max_decision_steps = 1;
+    config.max_repair_rounds = 0;
+    config.execute_until_auto_reenter_ticks = 0;
+    config.force_replan_after_same_action = 0;
+
+    let behavior = LlmAgentBehavior::new("agent-0", config, client);
+    let mut runner: crate::simulator::AgentRunner<LlmAgentBehavior<SequenceMockClient>> =
+        crate::simulator::AgentRunner::new();
+    runner.register(behavior);
+
+    let tick1 = runner.tick(&mut kernel).expect("tick1");
+    let action1 = tick1.action_result.expect("tick1 action");
+    assert!(!action1.success);
+    assert!(matches!(
+        action1.reject_reason(),
+        Some(RejectReason::InsufficientResource {
+            kind: ResourceKind::Hardware,
+            ..
+        })
+    ));
+
+    let tick2 = runner.tick(&mut kernel).expect("tick2");
+    let action2 = tick2.action_result.expect("tick2 action");
+    assert!(action2.success);
+    assert!(matches!(
+        action2.event.kind,
+        WorldEventKind::CompoundRefined {
+            hardware_output: 7,
+            ..
+        }
+    ));
+
+    let tick3 = runner.tick(&mut kernel).expect("tick3");
+    let action3 = tick3.action_result.expect("tick3 action");
+    assert!(action3.success);
+    assert!(matches!(
+        action3.event.kind,
+        WorldEventKind::FactoryBuilt { .. }
+    ));
+
+    let tick4 = runner.tick(&mut kernel).expect("tick4");
+    let action4 = tick4.action_result.expect("tick4 action");
+    assert!(action4.success);
+    assert!(matches!(
+        action4.event.kind,
+        WorldEventKind::RecipeScheduled { .. }
+    ));
+
+    let factory = kernel
+        .model()
+        .factories
+        .get("factory.alpha")
+        .expect("factory exists");
+    assert_eq!(factory.kind, "factory.assembler.mk1");
+
+    let agent = kernel.model().agents.get("agent-0").expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Data), 13);
+}
+
+#[test]
 fn llm_agent_execute_until_continues_without_llm_until_event() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
