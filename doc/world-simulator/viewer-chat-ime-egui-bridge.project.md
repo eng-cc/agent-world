@@ -10,7 +10,9 @@
 - [x] CIB7 现场反馈回修：桥接焦点判定改为 `wants_keyboard_input`，并使用 IME Commit 事件
 - [x] CIB8 回归验证与提交收口（CIB7）
 - [x] CIB9 现场反馈回修：修复桥接焦点抖动导致输入框无法聚焦
-- [ ] CIB10 回归验证与提交收口（CIB9）
+- [x] CIB10 回归验证与提交收口（CIB9）
+- [x] CIB11 现场反馈回修：为聊天 `TextEdit` 增加显式焦点信号并驱动 wasm IME bridge 聚焦
+- [ ] CIB12 回归验证与提交收口（CIB11）
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -19,6 +21,6 @@
 - `crates/agent_world_viewer/Cargo.toml`
 
 ## 状态
-- 当前阶段：进行中（CIB10）
-- 下一步：完成 CIB9 回修的文档回写与提交
-- 最近更新：CIB9 完成（2026-02-16）
+- 当前阶段：进行中（CIB12）
+- 下一步：你侧手工复测聊天输入框聚焦与中文输入，完成 CIB11 收口
+- 最近更新：CIB11 完成（2026-02-16）

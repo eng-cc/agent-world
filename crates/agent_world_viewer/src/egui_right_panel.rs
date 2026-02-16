@@ -106,6 +106,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     prompt_control: Option<Res<'w, crate::PromptControlUiState>>,
     loading: ResMut<'w, StepControlLoadingState>,
     client: Option<Res<'w, ViewerClient>>,
+    chat_focus_signal: ResMut<'w, crate::ChatInputFocusSignal>,
     timeline: ResMut<'w, TimelineUiState>,
     timeline_filters: ResMut<'w, TimelineMarkFilterState>,
     diagnosis_state: Res<'w, DiagnosisState>,
@@ -137,6 +138,7 @@ pub(super) fn render_right_side_panel_egui(
         prompt_control,
         mut loading,
         client,
+        mut chat_focus_signal,
         mut timeline,
         mut timeline_filters,
         diagnosis_state,
@@ -155,6 +157,7 @@ pub(super) fn render_right_side_panel_egui(
     if copyable_panel_state.visible != module_visibility.show_details {
         copyable_panel_state.visible = module_visibility.show_details;
     }
+    chat_focus_signal.wants_ime_focus = false;
 
     let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
@@ -326,7 +329,8 @@ pub(super) fn render_right_side_panel_egui(
 
             if module_visibility.show_chat {
                 ui.separator();
-                render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
+                chat_focus_signal.wants_ime_focus =
+                    render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
             }
 
             if module_visibility.show_overlay {

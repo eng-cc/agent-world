@@ -23,6 +23,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(ViewerCameraMode::default())
         .insert_resource(panel_mode)
         .insert_resource(ViewerSelection::default())
+        .insert_resource(ChatInputFocusSignal::default())
         .insert_resource(world_overlay_config_from_env())
         .insert_resource(WorldOverlayUiState::default())
         .insert_resource(OverlayRenderRuntime::default())
@@ -67,14 +68,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 setup_wasm_egui_input_bridge,
             ),
         )
-        .add_systems(
-            Update,
-            (
-                sync_wasm_egui_input_bridge_focus,
-                pump_wasm_egui_input_bridge_events,
-            )
-                .chain(),
-        )
+        .add_systems(Update, pump_wasm_egui_input_bridge_events)
         .add_systems(
             Update,
             (
@@ -145,7 +139,14 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 update_label_lod.after(pick_3d_selection),
             ),
         )
-        .add_systems(EguiPrimaryContextPass, render_right_side_panel_egui)
+        .add_systems(
+            EguiPrimaryContextPass,
+            (
+                render_right_side_panel_egui,
+                sync_wasm_egui_input_bridge_focus,
+            )
+                .chain(),
+        )
         .run();
 }
 

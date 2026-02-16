@@ -12,6 +12,7 @@ pub(crate) struct AgentChatDraftState {
     selected_agent_id: Option<String>,
     input_message: String,
     status_message: String,
+    input_focused: bool,
 }
 
 pub(super) fn render_chat_section(
@@ -20,7 +21,7 @@ pub(super) fn render_chat_section(
     state: &ViewerState,
     client: Option<&ViewerClient>,
     draft: &mut AgentChatDraftState,
-) {
+) -> bool {
     ui.strong(if locale.is_zh() {
         "玩家 / Agent 对话"
     } else {
@@ -34,7 +35,8 @@ pub(super) fn render_chat_section(
         } else {
             "No available agent yet (waiting for snapshot/trace)"
         });
-        return;
+        draft.input_focused = false;
+        return false;
     }
 
     let selected_valid = draft
@@ -66,8 +68,9 @@ pub(super) fn render_chat_section(
         }
     });
 
-    ui.add(
+    let input_response = ui.add(
         egui::TextEdit::multiline(&mut draft.input_message)
+            .id_source(crate::EGUI_CHAT_INPUT_WIDGET_ID)
             .desired_rows(2)
             .hint_text(if locale.is_zh() {
                 "输入玩家消息后发送给 Agent"
@@ -75,6 +78,13 @@ pub(super) fn render_chat_section(
                 "Type player message and send to agent"
             }),
     );
+    if input_response.gained_focus() || input_response.clicked() {
+        draft.input_focused = true;
+    }
+    if input_response.lost_focus() {
+        draft.input_focused = false;
+    }
+    let input_active = draft.input_focused || input_response.has_focus();
 
     ui.horizontal_wrapped(|ui| {
         let can_send = !draft.input_message.trim().is_empty();
@@ -138,7 +148,7 @@ pub(super) fn render_chat_section(
         } else {
             "No chat messages yet."
         });
-        return;
+        return input_active;
     }
 
     egui::ScrollArea::vertical()
@@ -150,6 +160,8 @@ pub(super) fn render_chat_section(
                 ui.add(egui::Label::new(line).wrap().selectable(true));
             }
         });
+
+    input_active
 }
 
 fn collect_chat_agent_ids(state: &ViewerState) -> Vec<String> {

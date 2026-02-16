@@ -49,6 +49,7 @@ const LOCATION_LABEL_OFFSET: f32 = 0.8;
 const AGENT_LABEL_OFFSET: f32 = 0.6;
 const LABEL_SCALE: f32 = 0.03;
 const UI_PANEL_WIDTH: f32 = 380.0;
+pub(crate) const EGUI_CHAT_INPUT_WIDGET_ID: &str = "viewer-chat-input-message";
 mod app_bootstrap;
 mod auto_degrade;
 mod auto_focus;
@@ -371,6 +372,11 @@ struct Viewer3dAssets {
 #[derive(Resource, Default)]
 struct ViewerSelection {
     current: Option<SelectionInfo>,
+}
+
+#[derive(Resource, Default)]
+struct ChatInputFocusSignal {
+    wants_ime_focus: bool,
 }
 
 #[derive(Clone)]

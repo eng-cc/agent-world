@@ -235,6 +235,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
 
 pub(super) fn sync_wasm_egui_input_bridge_focus(
     bridge: Option<NonSendMut<WasmEguiInputBridgeState>>,
+    chat_focus_signal: Option<Res<crate::ChatInputFocusSignal>>,
     mut context_query: Query<(&EguiOutput, &mut EguiContext), With<PrimaryEguiContext>>,
 ) {
     let Some(mut bridge) = bridge else {
@@ -244,8 +245,17 @@ pub(super) fn sync_wasm_egui_input_bridge_focus(
         return;
     };
 
+    let chat_input_focused = context
+        .get_mut()
+        .memory(|memory| memory.has_focus(egui::Id::new(crate::EGUI_CHAT_INPUT_WIDGET_ID)));
+    let chat_focus_signal = chat_focus_signal
+        .as_deref()
+        .map(|signal| signal.wants_ime_focus)
+        .unwrap_or(false);
     let wants_keyboard_input = context.get_mut().wants_keyboard_input();
-    let editing_text = wants_keyboard_input
+    let editing_text = chat_focus_signal
+        || chat_input_focused
+        || wants_keyboard_input
         || output.platform_output.ime.is_some()
         || output.platform_output.mutable_text_under_cursor;
     if editing_text == bridge.focused {
