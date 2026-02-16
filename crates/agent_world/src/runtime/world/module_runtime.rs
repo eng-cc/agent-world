@@ -873,6 +873,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::RedeemPower { .. } => "action.redeem_power",
+        Action::RedeemPowerSigned { .. } => "action.redeem_power_signed",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",

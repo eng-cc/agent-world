@@ -1,11 +1,15 @@
+use super::super::reward_asset::{
+    reward_mint_signature_v1, reward_mint_signature_v2, verify_reward_mint_signature_v2,
+    verify_reward_redeem_signature_v1, REWARD_MINT_SIGNATURE_V1_PREFIX,
+    REWARD_MINT_SIGNATURE_V2_PREFIX,
+};
 use super::super::util::hash_json;
 use super::super::ResourceDelta;
 use super::super::WorldError;
-use super::super::reward_asset::reward_mint_signature_v1;
 use super::super::{
     EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
     ProtocolPowerReserve, RewardAssetConfig, RewardAssetInvariantReport,
-    RewardAssetInvariantViolation, SystemOrderPoolBudget,
+    RewardAssetInvariantViolation, RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -23,6 +27,17 @@ impl World {
 
     pub fn set_reward_asset_config(&mut self, config: RewardAssetConfig) {
         self.state.reward_asset_config = config;
+    }
+
+    pub fn reward_signature_governance_policy(&self) -> &RewardSignatureGovernancePolicy {
+        &self.state.reward_signature_governance_policy
+    }
+
+    pub fn set_reward_signature_governance_policy(
+        &mut self,
+        policy: RewardSignatureGovernancePolicy,
+    ) {
+        self.state.reward_signature_governance_policy = policy;
     }
 
     pub fn protocol_power_reserve(&self) -> &ProtocolPowerReserve {
@@ -181,22 +196,76 @@ impl World {
                     record.signer_node_id
                 )
             })?;
-        let expected_signature = reward_mint_signature_v1(
-            record.epoch_index,
-            record.node_id.as_str(),
-            record.source_awarded_points,
-            record.minted_power_credits,
-            record.settlement_hash.as_str(),
-            record.signer_node_id.as_str(),
-            signer_public_key,
-        );
-        if record.signature != expected_signature {
-            return Err(format!(
-                "reward mint signature mismatch for node {} at epoch {}",
-                record.node_id, record.epoch_index
-            ));
+        if record
+            .signature
+            .starts_with(REWARD_MINT_SIGNATURE_V2_PREFIX)
+        {
+            return verify_reward_mint_signature_v2(
+                record.signature.as_str(),
+                record.epoch_index,
+                record.node_id.as_str(),
+                record.source_awarded_points,
+                record.minted_power_credits,
+                record.settlement_hash.as_str(),
+                record.signer_node_id.as_str(),
+                signer_public_key,
+            );
         }
-        Ok(())
+        if record
+            .signature
+            .starts_with(REWARD_MINT_SIGNATURE_V1_PREFIX)
+        {
+            if !self
+                .state
+                .reward_signature_governance_policy
+                .allow_mintsig_v1_fallback
+            {
+                return Err("mintsig:v1 is disabled by governance policy".to_string());
+            }
+            let expected_signature = reward_mint_signature_v1(
+                record.epoch_index,
+                record.node_id.as_str(),
+                record.source_awarded_points,
+                record.minted_power_credits,
+                record.settlement_hash.as_str(),
+                record.signer_node_id.as_str(),
+                signer_public_key,
+            );
+            if record.signature != expected_signature {
+                return Err(format!(
+                    "reward mint signature mismatch for node {} at epoch {}",
+                    record.node_id, record.epoch_index
+                ));
+            }
+            return Ok(());
+        }
+        Err(format!(
+            "unsupported reward mint signature version for node {} at epoch {}",
+            record.node_id, record.epoch_index
+        ))
+    }
+
+    pub fn verify_redeem_power_signature(
+        &self,
+        node_id: &str,
+        target_agent_id: &str,
+        redeem_credits: u64,
+        nonce: u64,
+        signer_node_id: &str,
+        signature: &str,
+    ) -> Result<(), String> {
+        let signer_public_key = self
+            .node_identity_public_key(signer_node_id)
+            .ok_or_else(|| format!("redeem signer identity is not bound: {signer_node_id}"))?;
+        verify_reward_redeem_signature_v1(
+            signature,
+            node_id,
+            target_agent_id,
+            redeem_credits,
+            nonce,
+            signer_node_id,
+            signer_public_key,
+        )
     }
 
     pub fn system_order_pool_budget(&self, epoch_index: u64) -> Option<&SystemOrderPoolBudget> {
@@ -221,6 +290,37 @@ impl World {
         report: &EpochSettlementReport,
         signer_node_id: &str,
     ) -> Result<Vec<NodeRewardMintRecord>, WorldError> {
+        if self
+            .state
+            .reward_signature_governance_policy
+            .require_mintsig_v2
+        {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "mintsig:v2 is required by governance policy; use apply_node_points_settlement_mint_v2".to_string(),
+            });
+        }
+        self.apply_node_points_settlement_mint_internal(report, signer_node_id, None)
+    }
+
+    pub fn apply_node_points_settlement_mint_v2(
+        &mut self,
+        report: &EpochSettlementReport,
+        signer_node_id: &str,
+        signer_private_key_hex: &str,
+    ) -> Result<Vec<NodeRewardMintRecord>, WorldError> {
+        self.apply_node_points_settlement_mint_internal(
+            report,
+            signer_node_id,
+            Some(signer_private_key_hex),
+        )
+    }
+
+    fn apply_node_points_settlement_mint_internal(
+        &mut self,
+        report: &EpochSettlementReport,
+        signer_node_id: &str,
+        signer_private_key_hex: Option<&str>,
+    ) -> Result<Vec<NodeRewardMintRecord>, WorldError> {
         if signer_node_id.trim().is_empty() {
             return Err(WorldError::ResourceBalanceInvalid {
                 reason: "signer_node_id cannot be empty".to_string(),
@@ -232,7 +332,9 @@ impl World {
                 reason: "points_per_credit must be positive".to_string(),
             });
         }
-        let signer_public_key = self.require_bound_node_identity(signer_node_id)?.to_string();
+        let signer_public_key = self
+            .require_bound_node_identity(signer_node_id)?
+            .to_string();
         for settlement in &report.settlements {
             self.require_bound_node_identity(settlement.node_id.as_str())?;
         }
@@ -257,6 +359,29 @@ impl World {
                 continue;
             }
             self.mint_node_power_credits(settlement.node_id.as_str(), minted_power_credits)?;
+            let signature = if let Some(signer_private_key_hex) = signer_private_key_hex {
+                reward_mint_signature_v2(
+                    report.epoch_index,
+                    settlement.node_id.as_str(),
+                    settlement.awarded_points,
+                    minted_power_credits,
+                    settlement_hash.as_str(),
+                    signer_node_id,
+                    signer_public_key.as_str(),
+                    signer_private_key_hex,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid { reason })?
+            } else {
+                reward_mint_signature_v1(
+                    report.epoch_index,
+                    settlement.node_id.as_str(),
+                    settlement.awarded_points,
+                    minted_power_credits,
+                    settlement_hash.as_str(),
+                    signer_node_id,
+                    signer_public_key.as_str(),
+                )
+            };
 
             let record = NodeRewardMintRecord {
                 epoch_index: report.epoch_index,
@@ -265,15 +390,7 @@ impl World {
                 minted_power_credits,
                 settlement_hash: settlement_hash.clone(),
                 signer_node_id: signer_node_id.to_string(),
-                signature: reward_mint_signature_v1(
-                    report.epoch_index,
-                    settlement.node_id.as_str(),
-                    settlement.awarded_points,
-                    minted_power_credits,
-                    settlement_hash.as_str(),
-                    signer_node_id,
-                    signer_public_key.as_str(),
-                ),
+                signature,
             };
             self.state.reward_mint_records.push(record.clone());
             minted_records.push(record);
@@ -283,7 +400,11 @@ impl World {
     }
 
     fn ensure_system_order_budget_caps_for_epoch(&mut self, report: &EpochSettlementReport) {
-        let Some(budget) = self.state.system_order_pool_budgets.get_mut(&report.epoch_index) else {
+        let Some(budget) = self
+            .state
+            .system_order_pool_budgets
+            .get_mut(&report.epoch_index)
+        else {
             return;
         };
         if !budget.node_credit_caps.is_empty() {
@@ -324,7 +445,9 @@ impl World {
             .map(|settlement| (settlement.node_id.as_str(), settlement.awarded_points))
             .collect::<Vec<_>>();
         ranked.sort_by(|(a_node_id, a_points), (b_node_id, b_points)| {
-            b_points.cmp(a_points).then_with(|| a_node_id.cmp(b_node_id))
+            b_points
+                .cmp(a_points)
+                .then_with(|| a_node_id.cmp(b_node_id))
         });
         let mut index = 0_usize;
         while remainder > 0 && !ranked.is_empty() {
@@ -350,7 +473,11 @@ impl World {
             return 0;
         }
         let node_cap = budget.node_credit_caps.get(node_id).copied().unwrap_or(0);
-        let node_allocated = budget.node_credit_allocated.get(node_id).copied().unwrap_or(0);
+        let node_allocated = budget
+            .node_credit_allocated
+            .get(node_id)
+            .copied()
+            .unwrap_or(0);
         let node_remaining = node_cap.saturating_sub(node_allocated);
         if node_remaining == 0 {
             return 0;

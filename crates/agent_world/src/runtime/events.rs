@@ -83,6 +83,14 @@ pub enum Action {
         redeem_credits: u64,
         nonce: u64,
     },
+    RedeemPowerSigned {
+        node_id: String,
+        target_agent_id: String,
+        redeem_credits: u64,
+        nonce: u64,
+        signer_node_id: String,
+        signature: String,
+    },
     TransferMaterial {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,

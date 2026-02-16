@@ -1,4 +1,5 @@
 use super::super::*;
+use ed25519_dalek::SigningKey;
 
 fn settlement(node_id: &str, awarded_points: u64) -> NodeSettlement {
     NodeSettlement {
@@ -40,6 +41,17 @@ fn bind_node_identity(world: &mut World, node_id: &str) {
     world
         .bind_node_identity(node_id, public_key.as_str())
         .expect("bind node identity");
+}
+
+fn bind_node_identity_with_seed(world: &mut World, node_id: &str, seed: u8) -> String {
+    let private = [seed; 32];
+    let signing_key = SigningKey::from_bytes(&private);
+    let private_key_hex = hex::encode(signing_key.to_bytes());
+    let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+    world
+        .bind_node_identity(node_id, public_key_hex.as_str())
+        .expect("bind node identity with keypair");
+    private_key_hex
 }
 
 #[test]
@@ -213,10 +225,7 @@ fn reward_asset_settlement_signature_verification_rejects_tamper() {
     let minted = world
         .apply_node_points_settlement_mint(&report, "node-signer")
         .expect("apply settlement mint");
-    let record = minted
-        .first()
-        .cloned()
-        .expect("minted record should exist");
+    let record = minted.first().cloned().expect("minted record should exist");
 
     let mut tampered = record.clone();
     tampered.minted_power_credits = tampered.minted_power_credits.saturating_add(1);
@@ -231,6 +240,75 @@ fn reward_asset_settlement_signature_verification_rejects_tamper() {
         .verify_reward_mint_record_signature(&unbound_signer)
         .expect_err("unbound signer should fail");
     assert!(err.contains("not bound"));
+}
+
+#[test]
+fn reward_asset_settlement_mint_v2_emits_verifiable_signature() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 7);
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+
+    let report = settlement_report(12, vec![settlement("node-a", 40)]);
+    let minted = world
+        .apply_node_points_settlement_mint_v2(&report, "node-signer", signer_private_key.as_str())
+        .expect("apply settlement mint v2");
+    assert_eq!(minted.len(), 1);
+    let record = &minted[0];
+    assert!(record.signature.starts_with("mintsig:v2:"));
+    assert_eq!(record.signature.len(), "mintsig:v2:".len() + 128);
+    world
+        .verify_reward_mint_record_signature(record)
+        .expect("mint signature v2 should be verifiable");
+}
+
+#[test]
+fn reward_asset_settlement_governance_requires_v2_rejects_legacy_mint() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: true,
+        allow_mintsig_v1_fallback: false,
+        require_redeem_signature: false,
+    });
+    let report = settlement_report(13, vec![settlement("node-a", 20)]);
+
+    let err = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect_err("legacy mint should be rejected by governance");
+    match err {
+        WorldError::ResourceBalanceInvalid { reason } => {
+            assert!(reason.contains("mintsig:v2 is required"));
+        }
+        other => panic!("expected ResourceBalanceInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn reward_asset_settlement_mint_v2_rejects_private_key_mismatch() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let _ = bind_node_identity_with_seed(&mut world, "node-signer", 7);
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+
+    let wrong_private_key = hex::encode([9_u8; 32]);
+    let report = settlement_report(14, vec![settlement("node-a", 20)]);
+    let err = world
+        .apply_node_points_settlement_mint_v2(&report, "node-signer", wrong_private_key.as_str())
+        .expect_err("mismatched private key should be rejected");
+    match err {
+        WorldError::ResourceBalanceInvalid { reason } => {
+            assert!(reason.contains("does not match private key"));
+        }
+        other => panic!("expected ResourceBalanceInvalid, got {other:?}"),
+    }
 }
 
 #[test]
@@ -300,24 +378,18 @@ fn reward_asset_invariant_report_detects_signature_and_balance_drift() {
     let tampered = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
     let invariant = tampered.reward_asset_invariant_report();
     assert!(!invariant.is_ok());
-    assert!(
-        invariant
-            .violations
-            .iter()
-            .any(|violation| violation.code == "node_balance_mismatch")
-    );
-    assert!(
-        invariant
-            .violations
-            .iter()
-            .any(|violation| violation.code == "global_balance_mismatch")
-    );
-    assert!(
-        invariant
-            .violations
-            .iter()
-            .any(|violation| violation.code == "mint_signature_invalid")
-    );
+    assert!(invariant
+        .violations
+        .iter()
+        .any(|violation| violation.code == "node_balance_mismatch"));
+    assert!(invariant
+        .violations
+        .iter()
+        .any(|violation| violation.code == "global_balance_mismatch"));
+    assert!(invariant
+        .violations
+        .iter()
+        .any(|violation| violation.code == "mint_signature_invalid"));
 }
 
 #[test]
@@ -526,6 +598,157 @@ fn reward_asset_snapshot_roundtrip_persists_system_order_pool_budget() {
     assert_eq!(budget.remaining_credit_budget, 0);
     assert_eq!(budget.node_credit_allocated.get("node-a"), Some(&4));
     assert_eq!(budget.node_credit_allocated.get("node-b"), Some(&2));
+}
+
+#[test]
+fn reward_asset_redeem_power_signed_action_succeeds_when_policy_requires_signature() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 21);
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: false,
+        allow_mintsig_v1_fallback: true,
+        require_redeem_signature: true,
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 2,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 15,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 6)
+        .expect("mint node credits");
+
+    let signer_public_key = world
+        .node_identity_public_key("node-signer")
+        .expect("signer public key");
+    let signature = reward_redeem_signature_v1(
+        "node-a",
+        "agent-1",
+        4,
+        9,
+        "node-signer",
+        signer_public_key,
+        signer_private_key.as_str(),
+    )
+    .expect("build redeem signature");
+    world.submit_action(Action::RedeemPowerSigned {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 4,
+        nonce: 9,
+        signer_node_id: "node-signer".to_string(),
+        signature,
+    });
+    world.step().expect("signed redeem");
+
+    assert_eq!(world.node_power_credit_balance("node-a"), 2);
+    assert_eq!(world.protocol_power_reserve().available_power_units, 98);
+    assert_eq!(world.protocol_power_reserve().redeemed_power_units, 2);
+}
+
+#[test]
+fn reward_asset_redeem_power_rejects_unsigned_when_policy_requires_signature() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: false,
+        allow_mintsig_v1_fallback: true,
+        require_redeem_signature: true,
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 15,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 5)
+        .expect("mint node credits");
+
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 2,
+        nonce: 1,
+    });
+    world.step().expect("unsigned redeem should be rejected");
+    let event = world.journal().events.last().expect("reject event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemRejected { reason, .. }) => {
+            assert!(reason.contains("redeem signature is required"));
+        }
+        other => panic!("expected PowerRedeemRejected, got {other:?}"),
+    }
+}
+
+#[test]
+fn reward_asset_redeem_power_signed_rejects_invalid_signature() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 29);
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: false,
+        allow_mintsig_v1_fallback: true,
+        require_redeem_signature: true,
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 16,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 5)
+        .expect("mint node credits");
+
+    let signer_public_key = world
+        .node_identity_public_key("node-signer")
+        .expect("signer public key");
+    let signature = reward_redeem_signature_v1(
+        "node-a",
+        "agent-1",
+        3,
+        2,
+        "node-signer",
+        signer_public_key,
+        signer_private_key.as_str(),
+    )
+    .expect("build redeem signature");
+    world.submit_action(Action::RedeemPowerSigned {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 4,
+        nonce: 2,
+        signer_node_id: "node-signer".to_string(),
+        signature,
+    });
+    world.step().expect("redeem should be rejected");
+
+    let event = world.journal().events.last().expect("reject event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemRejected { reason, .. }) => {
+            assert!(reason.contains("signature verification failed"));
+        }
+        other => panic!("expected PowerRedeemRejected, got {other:?}"),
+    }
 }
 
 #[test]

@@ -94,8 +94,9 @@ pub use node_points_runtime::{
     NodePointsRuntimeObservation,
 };
 pub use reward_asset::{
-    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
-    RewardAssetInvariantReport, RewardAssetInvariantViolation, SystemOrderPoolBudget,
+    reward_redeem_signature_v1, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,
+    RewardAssetConfig, RewardAssetInvariantReport, RewardAssetInvariantViolation,
+    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
 };
 
 // Blob store

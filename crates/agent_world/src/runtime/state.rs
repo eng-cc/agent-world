@@ -11,7 +11,7 @@ use super::error::WorldError;
 use super::events::DomainEvent;
 use super::reward_asset::{
     NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
-    SystemOrderPoolBudget,
+    RewardSignatureGovernancePolicy, SystemOrderPoolBudget,
 };
 use super::types::{ActionId, MaterialLedgerId, WorldTime};
 
@@ -120,6 +120,8 @@ pub struct WorldState {
     pub system_order_pool_budgets: BTreeMap<u64, SystemOrderPoolBudget>,
     #[serde(default)]
     pub node_identity_bindings: BTreeMap<String, String>,
+    #[serde(default)]
+    pub reward_signature_governance_policy: RewardSignatureGovernancePolicy,
 }
 
 impl Default for WorldState {
@@ -142,6 +144,7 @@ impl Default for WorldState {
             node_redeem_nonces: BTreeMap::new(),
             system_order_pool_budgets: BTreeMap::new(),
             node_identity_bindings: BTreeMap::new(),
+            reward_signature_governance_policy: RewardSignatureGovernancePolicy::default(),
         }
     }
 }
@@ -377,7 +380,8 @@ impl WorldState {
                         ),
                     });
                 }
-                let max_redeem_power_per_epoch = self.reward_asset_config.max_redeem_power_per_epoch;
+                let max_redeem_power_per_epoch =
+                    self.reward_asset_config.max_redeem_power_per_epoch;
                 if max_redeem_power_per_epoch <= 0 {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: "max_redeem_power_per_epoch must be positive".to_string(),
@@ -402,12 +406,11 @@ impl WorldState {
                 self.protocol_power_reserve.redeemed_power_units = next_redeemed;
                 self.node_redeem_nonces.insert(node_id.clone(), *nonce);
 
-                let target = self
-                    .agents
-                    .get_mut(target_agent_id)
-                    .ok_or_else(|| WorldError::AgentNotFound {
+                let target = self.agents.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
                         agent_id: target_agent_id.clone(),
-                    })?;
+                    }
+                })?;
                 target
                     .state
                     .resources
