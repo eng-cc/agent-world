@@ -9,8 +9,8 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{CompositionEvent, HtmlInputElement, InputEvent, KeyboardEvent};
 
-const EGUI_IME_BRIDGE_INPUT_ID: &str = "agent-world-egui-ime-bridge";
-const EGUI_IME_BRIDGE_STYLE: &str = "position:fixed;left:-1000px;top:-1000px;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;";
+const EGUI_IME_BRIDGE_INPUT_ID: &str = "egui_text_agent";
+const EGUI_IME_BRIDGE_STYLE: &str = "background-color:transparent;border:none;outline:none;width:1px;height:1px;caret-color:transparent;position:absolute;top:0;left:0;";
 
 #[derive(Clone, Copy, Default)]
 struct BridgeInputState {
@@ -48,29 +48,40 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         return;
     };
 
-    let Ok(element) = document.create_element("input") else {
-        warn!("wasm ime bridge: failed to create input element");
-        return;
-    };
-    let Ok(input) = element.dyn_into::<HtmlInputElement>() else {
-        warn!("wasm ime bridge: failed to create input element");
-        return;
+    let (input, created_here) = match document
+        .get_element_by_id(EGUI_IME_BRIDGE_INPUT_ID)
+        .and_then(|element| element.dyn_into::<HtmlInputElement>().ok())
+    {
+        Some(input) => (input, false),
+        None => {
+            let Ok(element) = document.create_element("input") else {
+                warn!("wasm ime bridge: failed to create input element");
+                return;
+            };
+            let Ok(input) = element.dyn_into::<HtmlInputElement>() else {
+                warn!("wasm ime bridge: failed to create input element");
+                return;
+            };
+            (input, true)
+        }
     };
 
-    input.set_id(EGUI_IME_BRIDGE_INPUT_ID);
-    input.set_type("text");
-    input.set_tab_index(-1);
-    input.set_hidden(true);
-    let _ = input.set_attribute("style", EGUI_IME_BRIDGE_STYLE);
-    let _ = input.set_attribute("aria-hidden", "true");
-    let _ = input.set_attribute("autocapitalize", "off");
-    let _ = input.set_attribute("autocomplete", "off");
-    let _ = input.set_attribute("autocorrect", "off");
-    let _ = input.set_attribute("spellcheck", "false");
+    if created_here {
+        input.set_id(EGUI_IME_BRIDGE_INPUT_ID);
+        input.set_type("text");
+        input.set_tab_index(-1);
+        input.set_hidden(true);
+        input.set_size(1);
+        let _ = input.set_attribute("style", EGUI_IME_BRIDGE_STYLE);
+        let _ = input.set_attribute("autocapitalize", "off");
+        let _ = input.set_attribute("autocomplete", "off");
+        let _ = input.set_attribute("autocorrect", "off");
+        let _ = input.set_attribute("spellcheck", "false");
 
-    if body.append_child(&input).is_err() {
-        warn!("wasm ime bridge: failed to append input element");
-        return;
+        if body.append_child(&input).is_err() {
+            warn!("wasm ime bridge: failed to append input element");
+            return;
+        }
     }
 
     let (tx, rx) = mpsc::channel::<egui::Event>();
