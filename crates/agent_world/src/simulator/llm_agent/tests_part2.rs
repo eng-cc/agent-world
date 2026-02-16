@@ -1076,6 +1076,74 @@ fn llm_agent_clamps_execute_until_harvest_action_to_configured_cap() {
 }
 
 #[test]
+fn llm_agent_clamps_execute_until_harvest_max_ticks_to_short_cap() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":8},"until":{"event":"new_visible_agent"},"max_ticks":8}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 70;
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::HarvestRadiation { max_amount: 8, .. })
+    ));
+    let first_trace = behavior.take_decision_trace().expect("first trace");
+    assert!(first_trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("max_ticks=3")));
+    assert!(first_trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("max_ticks clamped")));
+
+    for offset in 0..4_u64 {
+        behavior.on_action_result(&ActionResult {
+            action: Action::HarvestRadiation {
+                agent_id: "agent-1".to_string(),
+                max_amount: 8,
+            },
+            action_id: 200 + offset,
+            success: true,
+            event: WorldEvent {
+                id: 300 + offset,
+                time: 70 + offset,
+                kind: WorldEventKind::RadiationHarvested {
+                    agent_id: "agent-1".to_string(),
+                    location_id: "loc-2".to_string(),
+                    amount: 6,
+                    available: 80,
+                },
+            },
+        });
+
+        observation.time = 71 + offset;
+        let decision = behavior.decide(&observation);
+        if offset < 3 {
+            assert!(matches!(
+                decision,
+                AgentDecision::Act(Action::HarvestRadiation { .. })
+            ));
+        } else {
+            assert!(matches!(
+                decision,
+                AgentDecision::Act(Action::MoveAgent { .. })
+            ));
+        }
+        let _ = behavior.take_decision_trace();
+    }
+
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
 fn llm_agent_execute_until_stops_on_harvest_available_threshold() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(

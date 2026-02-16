@@ -248,7 +248,7 @@ impl PromptAssembler {
 - 任意决策 JSON 或 module_call JSON 可选附带：`"message_to_user":"<string>"`
 - module_call 仍使用：{{"type":"module_call","module":"<module_name>","args":{{...}},"message_to_user":"<optional>"}}（message_to_user 可省略）
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
-- 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
+- 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=3>}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
 - 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
 - 推荐 build_factory 模板: {{"decision":"build_factory","owner":"self","location_id":"<location_id>","factory_id":"factory.<name>","factory_kind":"factory.assembler.mk1"}}
@@ -270,6 +270,7 @@ impl PromptAssembler {
   - agent_already_at_location -> 禁止重复 move_agent 到同 location，改为 schedule_recipe/refine_compound/harvest_radiation
   - 其他 reject_reason -> 先输出最小可执行补救动作，不得原样重试失败参数
 - 禁止连续超过 2 轮同参数 harvest_radiation；若连续采集未推进目标，下一轮必须切到 refine_compound/build_factory/schedule_recipe
+- harvest 的 execute_until.max_ticks 运行时会被硬裁剪到 3；若电力已足够下一步 refine/schedule，必须立即回切，不得继续长 harvest
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
@@ -724,7 +725,7 @@ mod tests {
             },
             harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
-                context_window_tokens: 2_048,
+                context_window_tokens: 2_560,
                 reserved_output_tokens: 256,
                 safety_margin_tokens: 128,
             },
@@ -942,7 +943,9 @@ mod tests {
 
         let output = PromptAssembler::assemble(input);
         assert!(output.user_prompt.contains("<i64 1..=42>"));
+        assert!(output.user_prompt.contains("\"max_ticks\":<u64 1..=3>"));
         assert!(output.user_prompt.contains("不超过 42"));
+        assert!(output.user_prompt.contains("硬裁剪到 3"));
         assert!(output
             .user_prompt
             .contains("move_agent.to 不能是当前所在位置"));

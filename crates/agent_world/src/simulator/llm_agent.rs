@@ -36,8 +36,8 @@ pub use prompt_assembly::{
 
 use decision_flow::{
     parse_limit_arg, parse_llm_turn_responses, prompt_section_kind_name,
-    prompt_section_priority_name, summarize_trace_text, LlmModuleCallRequest, ModuleCallExchange,
-    ParsedLlmTurn,
+    prompt_section_priority_name, summarize_trace_text, ExecuteUntilDirective,
+    LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
 };
 use execution_controls::{ActionReplanGuardState, ActiveExecuteUntil};
 
@@ -138,6 +138,7 @@ pub const DEFAULT_LLM_PROMPT_PROFILE: LlmPromptProfile = LlmPromptProfile::Balan
 pub const DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: usize = 4;
 pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
 pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
+pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -1008,6 +1009,36 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             }
             other => (other, None),
         }
+    }
+
+    fn apply_execute_until_guardrails(
+        &self,
+        mut directive: ExecuteUntilDirective,
+    ) -> (ExecuteUntilDirective, Option<String>) {
+        let mut notes = Vec::new();
+        let (guarded_action, action_note) = self.apply_action_guardrails(directive.action);
+        directive.action = guarded_action;
+        if let Some(action_note) = action_note {
+            notes.push(action_note);
+        }
+
+        if matches!(directive.action, Action::HarvestRadiation { .. })
+            && directive.max_ticks > DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS
+        {
+            let original = directive.max_ticks;
+            directive.max_ticks = DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS;
+            notes.push(format!(
+                "execute_until.max_ticks clamped for harvest_radiation: {} -> {}; force replan sooner to avoid long harvest tail",
+                original, directive.max_ticks
+            ));
+        }
+
+        let note = if notes.is_empty() {
+            None
+        } else {
+            Some(notes.join("; "))
+        };
+        (directive, note)
     }
 
     fn observe_memory_summary(observation: &Observation) -> String {

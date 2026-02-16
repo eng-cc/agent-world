@@ -327,11 +327,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         message_to_user,
                                     );
                                 }
-                                let mut guarded_directive = directive;
-                                let (guarded_action, guardrail_note) =
-                                    self.apply_action_guardrails(guarded_directive.action);
-                                guarded_directive.action = guarded_action.clone();
-                                decision = AgentDecision::Act(guarded_action);
+                                let (guarded_directive, guardrail_note) =
+                                    self.apply_execute_until_guardrails(directive);
+                                decision = AgentDecision::Act(guarded_directive.action.clone());
                                 self.active_execute_until =
                                     Some(ActiveExecuteUntil::from_directive(
                                         guarded_directive.clone(),
@@ -636,7 +634,12 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     let will_force_replan_next =
                         force_replan_threshold > 0 && projected_repeat >= force_replan_threshold;
                     if !will_force_replan_next {
-                        let max_ticks = self.config.execute_until_auto_reenter_ticks as u64;
+                        let mut max_ticks = self.config.execute_until_auto_reenter_ticks as u64;
+                        if matches!(action, Action::HarvestRadiation { .. })
+                            && max_ticks > DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS
+                        {
+                            max_ticks = DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS;
+                        }
                         let active_execute_until = ActiveExecuteUntil::from_auto_reentry(
                             action.clone(),
                             observation,
