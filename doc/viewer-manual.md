@@ -47,6 +47,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 - `F`：对“当前选中对象”执行聚焦（适合人工巡检细节）。
 - 右侧综合面板：查看控制、状态、事件、分块、诊断等模块信息。
 - 最右侧 Chat 面板：独立承载 Agent Chat，不与综合面板混排；仅在观察模式且顶部区域展开时显示，可通过模块可见性中的 `Chat` 开关隐藏。
+- Chat 输入：输入框聚焦时，`Enter` 直接发送；`Shift+Enter` 换行。
 
 ## 自动聚焦（Auto Focus）
 
