@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] RPA-0：完成设计文档与项目管理文档。
 - [x] RPA-1：实现 `PowerCredit` 资产账本与配置（含快照持久化）。
-- [ ] RPA-2：将 `NodePoints` epoch 结算结果接入链状态铸造记录（`NodeRewardMintRecord`）。
+- [x] RPA-2：将 `NodePoints` epoch 结算结果接入链状态铸造记录（`NodeRewardMintRecord`）。
 - [ ] RPA-3：实现 `RedeemPower` 动作闭环（余额扣减、Agent 电力增加、事件产出）。
 - [ ] RPA-4：实现守恒与风控（储备池、每 epoch 额度、最小兑换单位、nonce 防重放）。
 - [ ] RPA-5：接线运行时主链路（`world_viewer_live`/runtime 开关与配置）。
@@ -25,6 +25,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
 
 ## 状态
-- 当前阶段：RPA-1 完成（资产账本与快照持久化已落地）。
-- 下一步：执行 RPA-2（结算上链铸造记录接线）。
+- 当前阶段：RPA-2 完成（NodePoints 结算上链铸造记录已落地）。
+- 下一步：执行 RPA-3（`RedeemPower` 动作闭环）。
 - 最近更新：2026-02-16。

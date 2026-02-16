@@ -93,7 +93,9 @@ pub use node_points_runtime::{
     measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
     NodePointsRuntimeObservation,
 };
-pub use reward_asset::{NodeAssetBalance, ProtocolPowerReserve, RewardAssetConfig};
+pub use reward_asset::{
+    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
+};
 
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, HashAlgorithm, LocalCasStore};

@@ -1,7 +1,9 @@
+use super::super::util::hash_json;
 use super::super::ResourceDelta;
 use super::super::WorldError;
 use super::super::{
-    MaterialLedgerId, MaterialStack, NodeAssetBalance, ProtocolPowerReserve, RewardAssetConfig,
+    EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
+    ProtocolPowerReserve, RewardAssetConfig,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -39,6 +41,58 @@ impl World {
             .get(node_id)
             .map(|balance| balance.power_credit_balance)
             .unwrap_or(0)
+    }
+
+    pub fn reward_mint_records(&self) -> &[NodeRewardMintRecord] {
+        self.state.reward_mint_records.as_slice()
+    }
+
+    pub fn apply_node_points_settlement_mint(
+        &mut self,
+        report: &EpochSettlementReport,
+        signer_node_id: &str,
+    ) -> Result<Vec<NodeRewardMintRecord>, WorldError> {
+        if signer_node_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "signer_node_id cannot be empty".to_string(),
+            });
+        }
+        let points_per_credit = self.state.reward_asset_config.points_per_credit;
+        if points_per_credit == 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "points_per_credit must be positive".to_string(),
+            });
+        }
+
+        let settlement_hash = hash_json(report)?;
+        let mut minted_records = Vec::new();
+        for settlement in &report.settlements {
+            if self.state.reward_mint_records.iter().any(|record| {
+                record.epoch_index == report.epoch_index && record.node_id == settlement.node_id
+            }) {
+                continue;
+            }
+
+            let minted_power_credits = settlement.awarded_points / points_per_credit;
+            if minted_power_credits == 0 {
+                continue;
+            }
+            self.mint_node_power_credits(settlement.node_id.as_str(), minted_power_credits)?;
+
+            let record = NodeRewardMintRecord {
+                epoch_index: report.epoch_index,
+                node_id: settlement.node_id.clone(),
+                source_awarded_points: settlement.awarded_points,
+                minted_power_credits,
+                settlement_hash: settlement_hash.clone(),
+                signer_node_id: signer_node_id.to_string(),
+                signature: String::new(),
+            };
+            self.state.reward_mint_records.push(record.clone());
+            minted_records.push(record);
+        }
+
+        Ok(minted_records)
     }
 
     pub fn mint_node_power_credits(

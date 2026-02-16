@@ -41,3 +41,15 @@ pub struct ProtocolPowerReserve {
     pub available_power_units: i64,
     pub redeemed_power_units: i64,
 }
+
+/// On-chain mint record derived from node points settlement.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct NodeRewardMintRecord {
+    pub epoch_index: u64,
+    pub node_id: String,
+    pub source_awarded_points: u64,
+    pub minted_power_credits: u64,
+    pub settlement_hash: String,
+    pub signer_node_id: String,
+    pub signature: String,
+}

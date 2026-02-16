@@ -9,7 +9,9 @@ use std::collections::BTreeMap;
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
 use super::events::DomainEvent;
-use super::reward_asset::{NodeAssetBalance, ProtocolPowerReserve, RewardAssetConfig};
+use super::reward_asset::{
+    NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
+};
 use super::types::{ActionId, MaterialLedgerId, WorldTime};
 
 fn default_world_material_ledger() -> MaterialLedgerId {
@@ -109,6 +111,8 @@ pub struct WorldState {
     pub node_asset_balances: BTreeMap<String, NodeAssetBalance>,
     #[serde(default)]
     pub protocol_power_reserve: ProtocolPowerReserve,
+    #[serde(default)]
+    pub reward_mint_records: Vec<NodeRewardMintRecord>,
 }
 
 impl Default for WorldState {
@@ -127,6 +131,7 @@ impl Default for WorldState {
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
+            reward_mint_records: Vec::new(),
         }
     }
 }
