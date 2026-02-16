@@ -481,6 +481,7 @@ mod tests {
         RR_GET_BLOCK,
     };
 
+    use super::super::distributed_dht::InMemoryDht;
     use super::super::distributed_head_follow::HeadFollower;
     use super::super::distributed_net::InMemoryNetwork;
     use super::super::distributed_storage::{
@@ -696,6 +697,119 @@ mod tests {
                 &store,
             )
             .expect_err("network-only should fail without handlers");
+        assert!(matches!(
+            network_only_error,
+            WorldError::NetworkProtocolUnavailable { .. }
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_dht_mode_network_with_dht_only_applies_world() {
+        const WORLD_ID: &str = "w1";
+        let dir = temp_dir("observer-dht-mode-network");
+        let store = LocalCasStore::new(&dir);
+        let (write, journal_len) = write_world_fixture(WORLD_ID, &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        register_block_fetch_handlers(&network, WORLD_ID, &store, &write);
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe(WORLD_ID).expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_dht_mode(
+                HeadSyncSourceModeWithDht::NetworkWithDhtOnly,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("sync");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal_len);
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_dht_mode_path_index_only_applies_world() {
+        let dir = temp_dir("observer-dht-mode-path-index");
+        let store = LocalCasStore::new(&dir);
+        let (write, journal_len) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_dht_mode(
+                HeadSyncSourceModeWithDht::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("sync");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal_len);
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_dht_mode_falls_back_to_path_index() {
+        let dir = temp_dir("observer-dht-mode-fallback");
+        let store = LocalCasStore::new(&dir);
+        let (write, journal_len) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_dht_mode(
+                HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("sync with fallback");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal_len);
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let network_only_sub = observer.subscribe("w1").expect("second subscribe");
+        publish_head(&network, &write.head_announce);
+        let mut network_only_follower = HeadFollower::new("w1");
+        let network_only_error = observer
+            .sync_heads_with_dht_mode(
+                HeadSyncSourceModeWithDht::NetworkWithDhtOnly,
+                &network_only_sub,
+                &mut network_only_follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect_err("network+dht-only should fail without handlers");
         assert!(matches!(
             network_only_error,
             WorldError::NetworkProtocolUnavailable { .. }

@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] OSDM-1：设计文档与项目管理文档落地。
 - [x] OSDM-2：实现 `HeadSyncSourceModeWithDht` 与 `ObserverClient` 模式化同步入口。
-- [ ] OSDM-3：补齐单元测试并完成 `agent_world_net` 回归。
+- [x] OSDM-3：补齐单元测试并完成 `agent_world_net` 回归。
 - [ ] OSDM-4：回写状态文档与 devlog。
 
 ## 依赖
@@ -13,6 +13,6 @@
 - `doc/world-runtime/observer-sync-source-mode.md`
 
 ## 状态
-- 当前阶段：OSDM-1~OSDM-2 已完成（DHT 组合模式接口已实现）。
-- 下一步：OSDM-3（补齐模式测试并回归）。
+- 当前阶段：OSDM-1~OSDM-3 已完成（DHT 组合模式接口与测试已落地）。
+- 下一步：OSDM-4（状态文档与收口日志）。
 - 最近更新：2026-02-16。
