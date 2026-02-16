@@ -1,6 +1,5 @@
-use std::collections::{hash_map::DefaultHasher, BTreeMap};
+use std::collections::BTreeMap;
 use std::fmt;
-use std::hash::{Hash, Hasher};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -14,6 +13,8 @@ mod consensus_signature;
 mod gossip_udp;
 mod libp2p_replication_network;
 mod network_bridge;
+mod pos_schedule;
+mod pos_state_store;
 mod pos_validation;
 mod replication;
 mod runtime_util;
@@ -32,6 +33,7 @@ pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 
 use network_bridge::ReplicationNetworkEndpoint;
+use pos_state_store::PosNodeStateStore;
 use pos_validation::{decide_status, validate_pos_config, validated_pos_state};
 use replication::ReplicationRuntime;
 use runtime_util::{lock_state, now_unix_ms};
@@ -349,6 +351,16 @@ impl NodeRuntime {
                 return Err(err);
             }
         };
+        let pos_state_store = self
+            .config
+            .replication
+            .as_ref()
+            .map(PosNodeStateStore::from_replication);
+        if let Some(store) = pos_state_store.as_ref() {
+            if let Ok(Some(snapshot)) = store.load() {
+                engine.restore_state_snapshot(snapshot);
+            }
+        }
         let mut gossip = if let Some(config) = &self.config.gossip {
             match GossipEndpoint::bind(config) {
                 Ok(endpoint) => Some(endpoint),
@@ -418,6 +430,11 @@ impl NodeRuntime {
                                 Ok(consensus_snapshot) => {
                                     current.consensus = consensus_snapshot;
                                     current.last_error = None;
+                                    if let Some(store) = pos_state_store.as_ref() {
+                                        if let Err(err) = store.save_engine_state(&engine) {
+                                            current.last_error = Some(err.to_string());
+                                        }
+                                    }
                                 }
                                 Err(err) => {
                                     current.last_error = Some(err.to_string());
@@ -819,26 +836,6 @@ impl PosNodeEngine {
             last_status: Some(decision.status),
             last_block_hash: Some(decision.block_hash.clone()),
         }
-    }
-
-    fn expected_proposer(&self, slot: u64) -> Option<String> {
-        if self.validators.is_empty() || self.total_stake == 0 {
-            return None;
-        }
-        let mut hasher = DefaultHasher::new();
-        slot.hash(&mut hasher);
-        let mut target = hasher.finish() % self.total_stake;
-        for (validator_id, stake) in &self.validators {
-            if target < *stake {
-                return Some(validator_id.clone());
-            }
-            target = target.saturating_sub(*stake);
-        }
-        self.validators.keys().next().cloned()
-    }
-
-    fn slot_epoch(&self, slot: u64) -> u64 {
-        slot / self.epoch_length_slots
     }
 
     fn broadcast_local_proposal(

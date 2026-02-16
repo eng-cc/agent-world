@@ -417,6 +417,45 @@ fn runtime_rejects_double_start() {
 }
 
 #[test]
+fn runtime_pos_state_persists_across_restart() {
+    let dir = temp_dir("pos-state-restart");
+    let build_config = || {
+        NodeConfig::new("node-a", "world-pos-state", NodeRole::Sequencer)
+            .expect("config")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("tick")
+            .with_replication_root(dir.clone())
+            .expect("replication")
+    };
+
+    let mut runtime = NodeRuntime::new(build_config());
+    runtime.start().expect("start first");
+    thread::sleep(Duration::from_millis(180));
+    runtime.stop().expect("stop first");
+    let first = runtime.snapshot();
+    assert!(first.last_error.is_none());
+    assert!(first.consensus.committed_height >= 8);
+
+    let state_path = dir.join("node_pos_state.json");
+    assert!(state_path.exists());
+    let persisted = serde_json::from_slice::<super::pos_state_store::PosNodeStateSnapshot>(
+        &fs::read(&state_path).expect("read pos state"),
+    )
+    .expect("parse pos state");
+    assert!(persisted.committed_height >= first.consensus.committed_height);
+
+    let mut runtime = NodeRuntime::new(build_config());
+    runtime.start().expect("start second");
+    thread::sleep(Duration::from_millis(40));
+    runtime.stop().expect("stop second");
+    let second = runtime.snapshot();
+    assert!(second.last_error.is_none());
+    assert!(second.consensus.committed_height > first.consensus.committed_height);
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn config_with_gossip_rejects_empty_peers() {
     let bind_socket = UdpSocket::bind("127.0.0.1:0").expect("bind");
     let bind_addr = bind_socket.local_addr().expect("addr");
