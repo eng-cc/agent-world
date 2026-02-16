@@ -34,6 +34,9 @@ pub struct NodePointsRuntimeObservation {
     pub running: bool,
     pub uptime_checks_passed: u64,
     pub uptime_checks_total: u64,
+    pub storage_checks_passed: u64,
+    pub storage_checks_total: u64,
+    pub staked_storage_bytes: u64,
     pub observed_at_unix_ms: i64,
     pub has_error: bool,
     pub effective_storage_bytes: u64,
@@ -52,6 +55,13 @@ impl NodePointsRuntimeObservation {
             running: snapshot.running,
             uptime_checks_passed: if snapshot.running { 1 } else { 0 },
             uptime_checks_total: 1,
+            storage_checks_passed: if snapshot.role == NodeRole::Storage && snapshot.running {
+                1
+            } else {
+                0
+            },
+            storage_checks_total: if snapshot.role == NodeRole::Storage { 1 } else { 0 },
+            staked_storage_bytes: effective_storage_bytes,
             observed_at_unix_ms,
             has_error: snapshot.last_error.is_some(),
             effective_storage_bytes,
@@ -74,6 +84,9 @@ struct NodeEpochAccumulator {
     uptime_ms: u64,
     uptime_checks_passed: u64,
     uptime_checks_total: u64,
+    storage_checks_passed: u64,
+    storage_checks_total: u64,
+    staked_storage_bytes: u64,
     max_storage_bytes: u64,
     error_samples: u64,
 }
@@ -183,9 +196,9 @@ impl NodePointsRuntimeCollector {
                     uptime_seconds: accumulator.uptime_ms / 1000,
                     uptime_valid_checks: accumulator.uptime_checks_passed,
                     uptime_total_checks: accumulator.uptime_checks_total,
-                    storage_valid_checks: 0,
-                    storage_total_checks: 0,
-                    staked_storage_bytes: 0,
+                    storage_valid_checks: accumulator.storage_checks_passed,
+                    storage_total_checks: accumulator.storage_checks_total,
+                    staked_storage_bytes: accumulator.staked_storage_bytes,
                     verify_pass_ratio,
                     availability_ratio,
                     explicit_penalty_points: self.heuristics.error_penalty_points.max(0.0)
@@ -213,6 +226,15 @@ impl NodePointsRuntimeCollector {
         accumulator.uptime_checks_total = accumulator
             .uptime_checks_total
             .saturating_add(observation.uptime_checks_total);
+        accumulator.storage_checks_passed = accumulator
+            .storage_checks_passed
+            .saturating_add(observation.storage_checks_passed);
+        accumulator.storage_checks_total = accumulator
+            .storage_checks_total
+            .saturating_add(observation.storage_checks_total);
+        accumulator.staked_storage_bytes = accumulator
+            .staked_storage_bytes
+            .max(observation.staked_storage_bytes);
 
         if let Some(cursor) = self.cursors.get(observation.node_id.as_str()) {
             let delta_ticks = observation.tick_count.saturating_sub(cursor.tick_count);
@@ -348,6 +370,9 @@ mod tests {
             running: true,
             uptime_checks_passed: 1,
             uptime_checks_total: 1,
+            storage_checks_passed: 0,
+            storage_checks_total: 0,
+            staked_storage_bytes: 0,
             observed_at_unix_ms: 1_000,
             has_error: false,
             effective_storage_bytes: 1024,
@@ -384,6 +409,9 @@ mod tests {
             running: true,
             uptime_checks_passed: 1,
             uptime_checks_total: 1,
+            storage_checks_passed: 0,
+            storage_checks_total: 0,
+            staked_storage_bytes: 0,
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: 100,
@@ -420,6 +448,9 @@ mod tests {
             running: true,
             uptime_checks_passed: 1,
             uptime_checks_total: 1,
+            storage_checks_passed: 0,
+            storage_checks_total: 0,
+            staked_storage_bytes: 0,
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: 100,
@@ -462,6 +493,85 @@ mod tests {
 
         assert_eq!(settlement_a.uptime_score, 1.0);
         assert_eq!(settlement_b.uptime_score, 0.0);
+        assert_eq!(settlement_a.awarded_points, 100);
+        assert_eq!(settlement_b.awarded_points, 0);
+    }
+
+    #[test]
+    fn collector_propagates_storage_challenge_counts_into_storage_rewards() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 0;
+        config.storage_pool_points = 100;
+        config.epoch_duration_seconds = 1;
+        config.min_storage_challenge_pass_ratio = 0.75;
+        config.min_storage_challenge_checks = 2;
+        config.weight_compute = 0.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 0.0;
+        config.weight_reliability = 0.0;
+        let mut collector =
+            NodePointsRuntimeCollector::new(config, NodePointsRuntimeHeuristics::default());
+
+        let gib16 = 16_u64 * 1024 * 1024 * 1024;
+        let node_a_first = NodePointsRuntimeObservation {
+            node_id: "node-a".to_string(),
+            role: NodeRole::Storage,
+            tick_count: 10,
+            running: true,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
+            storage_checks_passed: 1,
+            storage_checks_total: 1,
+            staked_storage_bytes: gib16,
+            observed_at_unix_ms: 0,
+            has_error: false,
+            effective_storage_bytes: gib16,
+        };
+        let node_a_second = NodePointsRuntimeObservation {
+            tick_count: 11,
+            observed_at_unix_ms: 500,
+            ..node_a_first.clone()
+        };
+
+        let node_b_first = NodePointsRuntimeObservation {
+            node_id: "node-b".to_string(),
+            storage_checks_passed: 0,
+            storage_checks_total: 1,
+            ..node_a_first.clone()
+        };
+        let node_b_second = NodePointsRuntimeObservation {
+            tick_count: 11,
+            observed_at_unix_ms: 500,
+            storage_checks_passed: 1,
+            storage_checks_total: 1,
+            ..node_b_first.clone()
+        };
+
+        assert!(collector.observe(node_a_first).is_none());
+        assert!(collector.observe(node_a_second).is_none());
+        assert!(collector.observe(node_b_first).is_none());
+        assert!(collector.observe(node_b_second).is_none());
+
+        let report = collector.force_settle().expect("settlement");
+        let settlement_a = report
+            .settlements
+            .iter()
+            .find(|entry| entry.node_id == "node-a")
+            .expect("node-a settlement");
+        let settlement_b = report
+            .settlements
+            .iter()
+            .find(|entry| entry.node_id == "node-b")
+            .expect("node-b settlement");
+
+        assert_eq!(report.pool_points, 0);
+        assert_eq!(report.storage_pool_points, 100);
+        assert_eq!(report.distributed_points, 0);
+        assert_eq!(report.storage_distributed_points, 100);
+        assert_eq!(settlement_a.storage_awarded_points, 100);
+        assert_eq!(settlement_b.storage_awarded_points, 0);
+        assert!(settlement_a.storage_reward_score > 0.0);
+        assert_eq!(settlement_b.storage_reward_score, 0.0);
         assert_eq!(settlement_a.awarded_points, 100);
         assert_eq!(settlement_b.awarded_points, 0);
     }
