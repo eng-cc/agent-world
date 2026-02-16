@@ -155,6 +155,41 @@ pub struct SnapshotManifest {
     pub state_root: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StorageChallengeSampleSource {
+    LocalStoreIndex,
+    ReplicationCommit,
+    GossipReplicaHint,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StorageChallengeFailureReason {
+    MissingSample,
+    HashMismatch,
+    Timeout,
+    ReadIoError,
+    SignatureInvalid,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageChallengeProofSemantics {
+    pub node_id: String,
+    pub sample_source: StorageChallengeSampleSource,
+    pub sample_reference: String,
+    #[serde(default)]
+    pub failure_reason: Option<StorageChallengeFailureReason>,
+    #[serde(default)]
+    pub proof_kind_hint: String,
+    #[serde(default)]
+    pub vrf_seed_hint: Option<String>,
+    #[serde(default)]
+    pub post_commitment_hint: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GetWorldHeadRequest {
     pub world_id: String,
@@ -348,6 +383,23 @@ mod tests {
         let encoded = serde_cbor::to_vec(&head).expect("encode head");
         let decoded: WorldHeadAnnounce = serde_cbor::from_slice(&encoded).expect("decode head");
         assert_eq!(decoded, head);
+    }
+
+    #[test]
+    fn cbor_round_trip_storage_challenge_proof_semantics() {
+        let semantics = StorageChallengeProofSemantics {
+            node_id: "node-a".to_string(),
+            sample_source: StorageChallengeSampleSource::LocalStoreIndex,
+            sample_reference: "distfs://node-a/tick/10".to_string(),
+            failure_reason: Some(StorageChallengeFailureReason::HashMismatch),
+            proof_kind_hint: "reserved".to_string(),
+            vrf_seed_hint: Some("seed-1".to_string()),
+            post_commitment_hint: Some("commit-1".to_string()),
+        };
+        let encoded = serde_cbor::to_vec(&semantics).expect("encode semantics");
+        let decoded: StorageChallengeProofSemantics =
+            serde_cbor::from_slice(&encoded).expect("decode semantics");
+        assert_eq!(decoded, semantics);
     }
 
     #[test]

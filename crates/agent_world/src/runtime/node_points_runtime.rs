@@ -7,6 +7,38 @@ use serde::{Deserialize, Serialize};
 
 use super::{EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DistFsChallengeSampleSource {
+    LocalStoreIndex,
+    ReplicationCommit,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DistFsChallengeFailureReason {
+    MissingSample,
+    HashMismatch,
+    Timeout,
+    ReadIoError,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DistFsChallengeProofHint {
+    pub sample_source: DistFsChallengeSampleSource,
+    pub sample_reference: String,
+    #[serde(default)]
+    pub failure_reason: Option<DistFsChallengeFailureReason>,
+    #[serde(default)]
+    pub proof_kind_hint: String,
+    #[serde(default)]
+    pub vrf_seed_hint: Option<String>,
+    #[serde(default)]
+    pub post_commitment_hint: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NodePointsRuntimeHeuristics {
     pub error_penalty_points: f64,
@@ -40,6 +72,7 @@ pub struct NodePointsRuntimeObservation {
     pub observed_at_unix_ms: i64,
     pub has_error: bool,
     pub effective_storage_bytes: u64,
+    pub storage_challenge_proof_hint: Option<DistFsChallengeProofHint>,
 }
 
 impl NodePointsRuntimeObservation {
@@ -69,7 +102,40 @@ impl NodePointsRuntimeObservation {
             observed_at_unix_ms,
             has_error: snapshot.last_error.is_some(),
             effective_storage_bytes,
+            storage_challenge_proof_hint: if snapshot.role == NodeRole::Storage {
+                Some(DistFsChallengeProofHint {
+                    sample_source: DistFsChallengeSampleSource::LocalStoreIndex,
+                    sample_reference: format!(
+                        "distfs://{}/tick/{}",
+                        snapshot.node_id, snapshot.tick_count
+                    ),
+                    failure_reason: snapshot
+                        .last_error
+                        .as_deref()
+                        .map(classify_storage_failure_reason),
+                    proof_kind_hint: "reserved".to_string(),
+                    vrf_seed_hint: None,
+                    post_commitment_hint: None,
+                })
+            } else {
+                None
+            },
         }
+    }
+}
+
+fn classify_storage_failure_reason(error: &str) -> DistFsChallengeFailureReason {
+    let lower = error.to_ascii_lowercase();
+    if lower.contains("hash") || lower.contains("integrity") {
+        DistFsChallengeFailureReason::HashMismatch
+    } else if lower.contains("timeout") {
+        DistFsChallengeFailureReason::Timeout
+    } else if lower.contains("not found") || lower.contains("missing") {
+        DistFsChallengeFailureReason::MissingSample
+    } else if lower.contains("io") || lower.contains("read") {
+        DistFsChallengeFailureReason::ReadIoError
+    } else {
+        DistFsChallengeFailureReason::Unknown
     }
 }
 
@@ -340,11 +406,12 @@ pub fn measure_directory_storage_bytes(path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
+        measure_directory_storage_bytes, DistFsChallengeFailureReason,
+        DistFsChallengeSampleSource, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
         NodePointsRuntimeObservation,
     };
     use crate::runtime::NodePointsConfig;
-    use agent_world_node::NodeRole;
+    use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -380,6 +447,7 @@ mod tests {
             observed_at_unix_ms: 1_000,
             has_error: false,
             effective_storage_bytes: 1024,
+            storage_challenge_proof_hint: None,
         };
         let second = NodePointsRuntimeObservation {
             tick_count: 30,
@@ -419,6 +487,7 @@ mod tests {
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: 100,
+            storage_challenge_proof_hint: None,
         };
         let second = NodePointsRuntimeObservation {
             tick_count: 20,
@@ -458,6 +527,7 @@ mod tests {
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: 100,
+            storage_challenge_proof_hint: None,
         };
         let node_a_second = NodePointsRuntimeObservation {
             tick_count: 11,
@@ -530,6 +600,7 @@ mod tests {
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: gib16,
+            storage_challenge_proof_hint: None,
         };
         let node_a_second = NodePointsRuntimeObservation {
             tick_count: 11,
@@ -578,6 +649,51 @@ mod tests {
         assert_eq!(settlement_b.storage_reward_score, 0.0);
         assert_eq!(settlement_a.awarded_points, 100);
         assert_eq!(settlement_b.awarded_points, 0);
+    }
+
+    #[test]
+    fn observation_from_snapshot_sets_distfs_proof_semantics() {
+        let snapshot = NodeSnapshot {
+            node_id: "node-storage".to_string(),
+            world_id: "world-1".to_string(),
+            role: NodeRole::Storage,
+            running: true,
+            tick_count: 42,
+            last_tick_unix_ms: Some(1_000),
+            consensus: NodeConsensusSnapshot::default(),
+            last_error: Some("hash mismatch for sampled chunk".to_string()),
+        };
+
+        let observation = NodePointsRuntimeObservation::from_snapshot(&snapshot, 1024, 2_000);
+        let hint = observation
+            .storage_challenge_proof_hint
+            .expect("storage proof hint");
+        assert_eq!(hint.sample_source, DistFsChallengeSampleSource::LocalStoreIndex);
+        assert_eq!(hint.sample_reference, "distfs://node-storage/tick/42");
+        assert_eq!(
+            hint.failure_reason,
+            Some(DistFsChallengeFailureReason::HashMismatch)
+        );
+        assert_eq!(hint.proof_kind_hint, "reserved");
+        assert!(hint.vrf_seed_hint.is_none());
+        assert!(hint.post_commitment_hint.is_none());
+    }
+
+    #[test]
+    fn observation_from_snapshot_non_storage_has_no_distfs_proof_hint() {
+        let snapshot = NodeSnapshot {
+            node_id: "node-observer".to_string(),
+            world_id: "world-1".to_string(),
+            role: NodeRole::Observer,
+            running: true,
+            tick_count: 7,
+            last_tick_unix_ms: Some(50),
+            consensus: NodeConsensusSnapshot::default(),
+            last_error: None,
+        };
+
+        let observation = NodePointsRuntimeObservation::from_snapshot(&snapshot, 0, 100);
+        assert!(observation.storage_challenge_proof_hint.is_none());
     }
 
     #[test]
