@@ -21,4 +21,5 @@ mod governance;
 mod modules;
 mod persistence;
 mod power_bootstrap;
+mod reward_asset;
 mod rules;

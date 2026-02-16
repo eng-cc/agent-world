@@ -1,12 +1,95 @@
 use super::super::ResourceDelta;
 use super::super::WorldError;
-use super::super::{MaterialLedgerId, MaterialStack};
+use super::super::{
+    MaterialLedgerId, MaterialStack, NodeAssetBalance, ProtocolPowerReserve, RewardAssetConfig,
+};
 use super::World;
 use crate::simulator::ResourceKind;
 use crate::simulator::StockError;
 use std::collections::BTreeMap;
 
 impl World {
+    // ---------------------------------------------------------------------
+    // Reward asset ledger
+    // ---------------------------------------------------------------------
+
+    pub fn reward_asset_config(&self) -> &RewardAssetConfig {
+        &self.state.reward_asset_config
+    }
+
+    pub fn set_reward_asset_config(&mut self, config: RewardAssetConfig) {
+        self.state.reward_asset_config = config;
+    }
+
+    pub fn protocol_power_reserve(&self) -> &ProtocolPowerReserve {
+        &self.state.protocol_power_reserve
+    }
+
+    pub fn set_protocol_power_reserve(&mut self, reserve: ProtocolPowerReserve) {
+        self.state.protocol_power_reserve = reserve;
+    }
+
+    pub fn node_asset_balance(&self, node_id: &str) -> Option<&NodeAssetBalance> {
+        self.state.node_asset_balances.get(node_id)
+    }
+
+    pub fn node_power_credit_balance(&self, node_id: &str) -> u64 {
+        self.state
+            .node_asset_balances
+            .get(node_id)
+            .map(|balance| balance.power_credit_balance)
+            .unwrap_or(0)
+    }
+
+    pub fn mint_node_power_credits(
+        &mut self,
+        node_id: &str,
+        amount: u64,
+    ) -> Result<u64, WorldError> {
+        let balance = self.node_asset_balance_entry_mut(node_id)?;
+        balance.power_credit_balance = balance.power_credit_balance.saturating_add(amount);
+        balance.total_minted_credits = balance.total_minted_credits.saturating_add(amount);
+        Ok(balance.power_credit_balance)
+    }
+
+    pub fn burn_node_power_credits(
+        &mut self,
+        node_id: &str,
+        amount: u64,
+    ) -> Result<u64, WorldError> {
+        let balance = self.node_asset_balance_entry_mut(node_id)?;
+        if amount > balance.power_credit_balance {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "insufficient power credits for {}: balance={} burn={}",
+                    node_id, balance.power_credit_balance, amount
+                ),
+            });
+        }
+        balance.power_credit_balance -= amount;
+        balance.total_burned_credits = balance.total_burned_credits.saturating_add(amount);
+        Ok(balance.power_credit_balance)
+    }
+
+    fn node_asset_balance_entry_mut(
+        &mut self,
+        node_id: &str,
+    ) -> Result<&mut NodeAssetBalance, WorldError> {
+        if node_id.trim().is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "node_id cannot be empty".to_string(),
+            });
+        }
+        Ok(self
+            .state
+            .node_asset_balances
+            .entry(node_id.to_string())
+            .or_insert_with(|| NodeAssetBalance {
+                node_id: node_id.to_string(),
+                ..NodeAssetBalance::default()
+            }))
+    }
+
     // ---------------------------------------------------------------------
     // Resource ledger
     // ---------------------------------------------------------------------

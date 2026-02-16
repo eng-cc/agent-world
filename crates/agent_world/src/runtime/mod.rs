@@ -24,6 +24,7 @@ mod modules;
 mod node_points;
 mod node_points_runtime;
 mod policy;
+mod reward_asset;
 mod rules;
 mod segmenter;
 mod signer;
@@ -92,6 +93,7 @@ pub use node_points_runtime::{
     measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
     NodePointsRuntimeObservation,
 };
+pub use reward_asset::{NodeAssetBalance, ProtocolPowerReserve, RewardAssetConfig};
 
 // Blob store
 pub use blob_store::{blake3_hex, BlobStore, HashAlgorithm, LocalCasStore};
