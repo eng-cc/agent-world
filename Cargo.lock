@@ -150,6 +150,7 @@ dependencies = [
  "blake3",
  "hex",
  "hmac",
+ "node",
  "reqwest",
  "serde",
  "serde_cbor",
@@ -5791,6 +5792,10 @@ dependencies = [
  "cfg_aliases",
  "libc",
 ]
+
+[[package]]
+name = "node"
+version = "0.1.0"
 
 [[package]]
 name = "nohash-hasher"
