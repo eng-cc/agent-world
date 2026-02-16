@@ -293,8 +293,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         resolved = true;
                                     }
                                 } else {
-                                    let (guarded_decision, guardrail_note) =
-                                        self.apply_decision_guardrails(parsed_decision);
+                                    let (guarded_decision, guardrail_note) = self
+                                        .apply_decision_guardrails(parsed_decision, observation);
                                     decision = guarded_decision;
                                     parse_error = decision_parse_error;
                                     repair_context = None;
@@ -328,7 +328,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     );
                                 }
                                 let (guarded_directive, guardrail_note) =
-                                    self.apply_execute_until_guardrails(directive);
+                                    self.apply_execute_until_guardrails(directive, observation);
                                 decision = AgentDecision::Act(guarded_directive.action.clone());
                                 self.active_execute_until =
                                     Some(ActiveExecuteUntil::from_directive(
@@ -484,7 +484,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     }
                                 } else {
                                     let (guarded_decision, guardrail_note) =
-                                        self.apply_decision_guardrails(draft.decision);
+                                        self.apply_decision_guardrails(draft.decision, observation);
                                     decision = guarded_decision;
                                     repair_context = None;
                                     resolved = true;

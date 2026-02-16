@@ -1048,6 +1048,41 @@ fn llm_agent_clamps_harvest_max_amount_to_configured_cap() {
 }
 
 #[test]
+fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.logistics_drone","batches":5}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let mut observation = make_observation();
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 7)
+        .expect("add test hardware");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.logistics_drone".to_string(),
+            batches: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("batches clamped")));
+}
+
+#[test]
 fn llm_agent_clamps_execute_until_harvest_action_to_configured_cap() {
     let client = MockClient {
         output: Some(

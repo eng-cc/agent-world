@@ -262,6 +262,8 @@ impl PromptAssembler {
 - factory_kind 当前支持：factory.assembler.mk1（留空将被拒绝）
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
 - schedule_recipe.batches 必须是正整数
+- 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8
+- 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.hardware / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - [Failure Recovery Policy] 当 observation.last_action.success=false 时，必须优先按 reject_reason 切换下一动作：
   - insufficient_resource.hardware -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=hardware)
@@ -955,6 +957,12 @@ mod tests {
         assert!(output.user_prompt.contains("schedule_recipe"));
         assert!(output.user_prompt.contains("factory_kind 当前支持"));
         assert!(output.user_prompt.contains("recipe_id 当前支持"));
+        assert!(output
+            .user_prompt
+            .contains("默认 recipe_hardware_cost_per_batch"));
+        assert!(output
+            .user_prompt
+            .contains("schedule_recipe.batches 必须 <= floor(self_resources.hardware"));
         assert!(output.user_prompt.contains("compound_mass_g >= 1000"));
         assert!(output
             .user_prompt

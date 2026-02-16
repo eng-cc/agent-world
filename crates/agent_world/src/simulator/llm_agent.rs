@@ -19,7 +19,7 @@ use super::agent::{
 };
 use super::kernel::{Observation, RejectReason, WorldEvent};
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
-use super::types::{Action, ResourceKind};
+use super::types::{Action, ResourceKind, ResourceOwner};
 
 mod behavior_loop;
 mod config_helpers;
@@ -139,6 +139,7 @@ pub const DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: usize = 4;
 pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
 pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
 pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
+const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -979,17 +980,23 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
     fn apply_decision_guardrails(
         &self,
         decision: AgentDecision,
+        observation: &Observation,
     ) -> (AgentDecision, Option<String>) {
         match decision {
             AgentDecision::Act(action) => {
-                let (guarded_action, note) = self.apply_action_guardrails(action);
+                let (guarded_action, note) =
+                    self.apply_action_guardrails(action, Some(observation));
                 (AgentDecision::Act(guarded_action), note)
             }
             other => (other, None),
         }
     }
 
-    fn apply_action_guardrails(&self, action: Action) -> (Action, Option<String>) {
+    fn apply_action_guardrails(
+        &self,
+        action: Action,
+        observation: Option<&Observation>,
+    ) -> (Action, Option<String>) {
         match action {
             Action::HarvestRadiation {
                 agent_id,
@@ -1007,6 +1014,91 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     )),
                 )
             }
+            Action::ScheduleRecipe {
+                owner,
+                factory_id,
+                recipe_id,
+                batches,
+            } => {
+                let Some(observation) = observation else {
+                    return (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches,
+                        },
+                        None,
+                    );
+                };
+                let Some(cost_per_batch) =
+                    Self::default_recipe_hardware_cost_per_batch(recipe_id.as_str())
+                else {
+                    return (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches,
+                        },
+                        None,
+                    );
+                };
+                if cost_per_batch <= 0 {
+                    return (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches,
+                        },
+                        None,
+                    );
+                }
+
+                let owner_is_self = matches!(
+                    &owner,
+                    ResourceOwner::Agent { agent_id } if agent_id == self.agent_id.as_str()
+                );
+                if !owner_is_self {
+                    return (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches,
+                        },
+                        None,
+                    );
+                }
+
+                let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
+                let max_batches = (available_hardware / cost_per_batch).max(1);
+                if batches > max_batches {
+                    (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches: max_batches,
+                        },
+                        Some(format!(
+                            "schedule_recipe.batches clamped by hardware guardrail: {} -> {} (available_hardware={}, recipe_hardware_cost_per_batch={})",
+                            batches, max_batches, available_hardware, cost_per_batch
+                        )),
+                    )
+                } else {
+                    (
+                        Action::ScheduleRecipe {
+                            owner,
+                            factory_id,
+                            recipe_id,
+                            batches,
+                        },
+                        None,
+                    )
+                }
+            }
             other => (other, None),
         }
     }
@@ -1014,9 +1106,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
     fn apply_execute_until_guardrails(
         &self,
         mut directive: ExecuteUntilDirective,
+        observation: &Observation,
     ) -> (ExecuteUntilDirective, Option<String>) {
         let mut notes = Vec::new();
-        let (guarded_action, action_note) = self.apply_action_guardrails(directive.action);
+        let (guarded_action, action_note) =
+            self.apply_action_guardrails(directive.action, Some(observation));
         directive.action = guarded_action;
         if let Some(action_note) = action_note {
             notes.push(action_note);
@@ -1039,6 +1133,15 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Some(notes.join("; "))
         };
         (directive, note)
+    }
+
+    fn default_recipe_hardware_cost_per_batch(recipe_id: &str) -> Option<i64> {
+        match recipe_id.trim() {
+            "recipe.assembler.control_chip" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH),
+            "recipe.assembler.motor_mk1" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH * 2),
+            "recipe.assembler.logistics_drone" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH * 4),
+            _ => None,
+        }
     }
 
     fn observe_memory_summary(observation: &Observation) -> String {

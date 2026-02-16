@@ -34,7 +34,12 @@
 ### LFO6 用户指令 TODO 收口（2026-02-16）
 - [x] LFO6.1 修复 `facility_already_exists` 在 prompt `last_action.reject_reason` 被降级为 `other` 的问题
 - [x] LFO6.2 收敛 `execute_until` 尾段长 harvest（增加 harvest 连续轮次硬上限与回切提示）
-- [ ] LFO6.3 增加 `schedule_recipe.batches` 与可用硬件上界约束（含 guardrail 与提示文案）
+- [x] LFO6.3 增加 `schedule_recipe.batches` 与可用硬件上界约束（含 guardrail 与提示文案）
+
+### LFO6 实施结果摘要（2026-02-16）
+- `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
+- `execute_until` 收敛：`harvest_radiation` 的 `max_ticks` 运行时硬上限为 `3`（含 auto-reentry 路径）。
+- `schedule_recipe` 防过配：在 `owner=self` 且配方可识别时，`batches` 按 `self_resources.hardware` 与默认配方硬件成本上界裁剪，并回写 trace 提示。
 
 ### LFO4 在线闭环结果摘要（2026-02-16）
 - 运行产物：
@@ -83,6 +88,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO5 与 LFO6.1-LFO6.2 已完成；LFO6.3 进行中。
-- 下一步：完成 LFO6.3，并执行在线复跑确认 TODO 收口效果。
-- 最近更新：2026-02-16（完成 LFO6.2 harvest execute_until 收敛）。
+- 当前阶段：LFO0-LFO6 全部完成。
+- 下一步：可选执行新一轮在线复跑，验证 LFO6 约束对长窗口策略稳定性的提升幅度。
+- 最近更新：2026-02-16（完成 LFO6.3 schedule_recipe 批次数上界约束）。
