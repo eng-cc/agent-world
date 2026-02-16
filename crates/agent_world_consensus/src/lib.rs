@@ -9,6 +9,7 @@ mod mempool;
 mod pos;
 mod quorum;
 mod sequencer_mainloop;
+mod signature;
 
 pub mod distributed {
     pub use agent_world_proto::distributed::*;
@@ -194,6 +195,7 @@ pub use quorum::{
 pub use sequencer_mainloop::{
     SequencerMainloop, SequencerMainloopConfig, SequencerTickReport, SequencerTickState,
 };
+pub use signature::HmacSha256Signer;
 
 #[cfg(test)]
 mod membership_dead_letter_replay_archive_tests;
@@ -221,6 +223,7 @@ mod tests {
         let _ = std::any::type_name::<PosConsensusConfig>();
         let _ = std::any::type_name::<PosConsensus>();
         let _ = std::any::type_name::<SequencerMainloop>();
+        let _ = std::any::type_name::<HmacSha256Signer>();
         let _ = std::any::type_name::<MembershipSyncClient>();
         let _ = std::any::type_name::<MembershipRevocationSyncReport>();
     }
