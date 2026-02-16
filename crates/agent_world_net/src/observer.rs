@@ -252,11 +252,29 @@ impl ObserverClient {
 
 #[cfg(all(test, feature = "self_tests"))]
 mod tests {
+    use std::fs;
     use std::sync::Arc;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
+    use agent_world::runtime::{Action, World};
+    use agent_world::GeoPos;
+    use agent_world_distfs::LocalCasStore;
+
+    use super::super::distributed_head_follow::HeadFollower;
     use super::super::distributed_net::InMemoryNetwork;
+    use super::super::distributed_storage::{
+        store_execution_result_with_path_index, ExecutionWriteConfig,
+    };
     use super::super::util::to_canonical_cbor;
     use super::*;
+
+    fn temp_dir(prefix: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration since epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
+    }
 
     #[test]
     fn observer_subscribes_and_drains_head_updates() {
@@ -280,5 +298,51 @@ mod tests {
         let heads = observer.drain_heads(&subscription).expect("drain");
         assert_eq!(heads.len(), 1);
         assert_eq!(heads[0], head);
+    }
+
+    #[test]
+    fn observer_sync_heads_with_path_index_applies_world() {
+        let dir = temp_dir("observer-path-index-sync");
+        let store = LocalCasStore::new(&dir);
+
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        let write = store_execution_result_with_path_index(
+            "w1",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write");
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        let payload = to_canonical_cbor(&write.head_announce).expect("head cbor");
+        network
+            .publish(&topic_head("w1"), &payload)
+            .expect("publish");
+
+        let mut follower = HeadFollower::new("w1");
+        let result = observer
+            .sync_heads_with_path_index(&subscription, &mut follower, &store)
+            .expect("sync");
+        let applied = result.expect("applied world");
+        assert_eq!(applied.journal().len(), journal.len());
+        assert_eq!(follower.current_head(), Some(&write.head_announce));
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }
