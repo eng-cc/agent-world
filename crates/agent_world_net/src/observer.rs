@@ -37,6 +37,26 @@ pub enum HeadSyncSourceModeWithDht {
     NetworkWithDhtThenPathIndex,
 }
 
+#[derive(Debug)]
+pub struct HeadSyncModeReport {
+    pub mode: HeadSyncSourceMode,
+    pub report: HeadSyncReport,
+    pub fallback_used: bool,
+}
+
+#[derive(Debug)]
+pub struct HeadSyncModeWithDhtReport {
+    pub mode: HeadSyncSourceModeWithDht,
+    pub report: HeadSyncReport,
+    pub fallback_used: bool,
+}
+
+#[derive(Debug)]
+struct ModeSyncOutcome {
+    world: Option<World>,
+    fallback_used: bool,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -272,7 +292,9 @@ impl ObserverClient {
         store: &(impl BlobStore + FileStore),
     ) -> Result<Option<World>, WorldError> {
         let heads = self.drain_heads(subscription)?;
-        self.sync_heads_with_mode_from_heads(mode, &heads, follower, client, store)
+        let outcome =
+            self.sync_heads_with_mode_observed_from_heads(mode, &heads, follower, client, store)?;
+        Ok(outcome.world)
     }
 
     pub fn sync_heads_with_mode_report(
@@ -285,7 +307,9 @@ impl ObserverClient {
     ) -> Result<HeadSyncReport, WorldError> {
         let heads = self.drain_heads(subscription)?;
         let drained = heads.len();
-        let world = self.sync_heads_with_mode_from_heads(mode, &heads, follower, client, store)?;
+        let world = self
+            .sync_heads_with_mode_observed_from_heads(mode, &heads, follower, client, store)?
+            .world;
         compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
             WorldError::DistributedValidationFailed {
                 reason: "head follower did not record applied head".to_string(),
@@ -329,25 +353,62 @@ impl ObserverClient {
         })
     }
 
-    fn sync_heads_with_mode_from_heads(
+    pub fn sync_heads_with_mode_observed_report(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<HeadSyncModeReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let ModeSyncOutcome {
+            world,
+            fallback_used,
+        } = self.sync_heads_with_mode_observed_from_heads(mode, &heads, follower, client, store)?;
+        let report =
+            compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+                WorldError::DistributedValidationFailed {
+                    reason: "head follower did not record applied head".to_string(),
+                }
+            })?;
+        Ok(HeadSyncModeReport {
+            mode,
+            report,
+            fallback_used,
+        })
+    }
+
+    fn sync_heads_with_mode_observed_from_heads(
         &self,
         mode: HeadSyncSourceMode,
         heads: &[WorldHeadAnnounce],
         follower: &mut HeadFollower,
         client: &DistributedClient,
         store: &(impl BlobStore + FileStore),
-    ) -> Result<Option<World>, WorldError> {
+    ) -> Result<ModeSyncOutcome, WorldError> {
         match mode {
-            HeadSyncSourceMode::NetworkOnly => follower.sync_from_heads(heads, client, store),
-            HeadSyncSourceMode::PathIndexOnly => {
-                follower.sync_from_heads_with_path_index(heads, store)
-            }
+            HeadSyncSourceMode::NetworkOnly => Ok(ModeSyncOutcome {
+                world: follower.sync_from_heads(heads, client, store)?,
+                fallback_used: false,
+            }),
+            HeadSyncSourceMode::PathIndexOnly => Ok(ModeSyncOutcome {
+                world: follower.sync_from_heads_with_path_index(heads, store)?,
+                fallback_used: false,
+            }),
             HeadSyncSourceMode::NetworkThenPathIndex => {
                 match follower.sync_from_heads(heads, client, store) {
-                    Ok(world) => Ok(world),
+                    Ok(world) => Ok(ModeSyncOutcome {
+                        world,
+                        fallback_used: false,
+                    }),
                     Err(network_error) => {
                         match follower.sync_from_heads_with_path_index(heads, store) {
-                            Ok(world) => Ok(world),
+                            Ok(world) => Ok(ModeSyncOutcome {
+                                world,
+                                fallback_used: true,
+                            }),
                             Err(path_index_error) => Err(WorldError::DistributedValidationFailed {
                                 reason: format!(
                                     "head sync fallback failed: mode={mode:?}, network_error={network_error:?}, path_index_error={path_index_error:?}",
@@ -370,7 +431,10 @@ impl ObserverClient {
         store: &(impl BlobStore + FileStore),
     ) -> Result<Option<World>, WorldError> {
         let heads = self.drain_heads(subscription)?;
-        self.sync_heads_with_dht_mode_from_heads(mode, &heads, follower, dht, client, store)
+        let outcome = self.sync_heads_with_dht_mode_observed_from_heads(
+            mode, &heads, follower, dht, client, store,
+        )?;
+        Ok(outcome.world)
     }
 
     pub fn sync_heads_with_dht_mode_report(
@@ -384,8 +448,11 @@ impl ObserverClient {
     ) -> Result<HeadSyncReport, WorldError> {
         let heads = self.drain_heads(subscription)?;
         let drained = heads.len();
-        let world =
-            self.sync_heads_with_dht_mode_from_heads(mode, &heads, follower, dht, client, store)?;
+        let world = self
+            .sync_heads_with_dht_mode_observed_from_heads(
+                mode, &heads, follower, dht, client, store,
+            )?
+            .world;
         compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
             WorldError::DistributedValidationFailed {
                 reason: "head follower did not record applied head".to_string(),
@@ -432,7 +499,37 @@ impl ObserverClient {
         })
     }
 
-    fn sync_heads_with_dht_mode_from_heads(
+    pub fn sync_heads_with_dht_mode_observed_report(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<HeadSyncModeWithDhtReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let ModeSyncOutcome {
+            world,
+            fallback_used,
+        } = self.sync_heads_with_dht_mode_observed_from_heads(
+            mode, &heads, follower, dht, client, store,
+        )?;
+        let report =
+            compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+                WorldError::DistributedValidationFailed {
+                    reason: "head follower did not record applied head".to_string(),
+                }
+            })?;
+        Ok(HeadSyncModeWithDhtReport {
+            mode,
+            report,
+            fallback_used,
+        })
+    }
+
+    fn sync_heads_with_dht_mode_observed_from_heads(
         &self,
         mode: HeadSyncSourceModeWithDht,
         heads: &[WorldHeadAnnounce],
@@ -440,20 +537,28 @@ impl ObserverClient {
         dht: &impl DistributedDht,
         client: &DistributedClient,
         store: &(impl BlobStore + FileStore),
-    ) -> Result<Option<World>, WorldError> {
+    ) -> Result<ModeSyncOutcome, WorldError> {
         match mode {
-            HeadSyncSourceModeWithDht::NetworkWithDhtOnly => {
-                follower.sync_from_heads_with_dht(heads, dht, client, store)
-            }
-            HeadSyncSourceModeWithDht::PathIndexOnly => {
-                follower.sync_from_heads_with_path_index(heads, store)
-            }
+            HeadSyncSourceModeWithDht::NetworkWithDhtOnly => Ok(ModeSyncOutcome {
+                world: follower.sync_from_heads_with_dht(heads, dht, client, store)?,
+                fallback_used: false,
+            }),
+            HeadSyncSourceModeWithDht::PathIndexOnly => Ok(ModeSyncOutcome {
+                world: follower.sync_from_heads_with_path_index(heads, store)?,
+                fallback_used: false,
+            }),
             HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex => {
                 match follower.sync_from_heads_with_dht(heads, dht, client, store) {
-                    Ok(world) => Ok(world),
+                    Ok(world) => Ok(ModeSyncOutcome {
+                        world,
+                        fallback_used: false,
+                    }),
                     Err(network_error) => {
                         match follower.sync_from_heads_with_path_index(heads, store) {
-                            Ok(world) => Ok(world),
+                            Ok(world) => Ok(ModeSyncOutcome {
+                                world,
+                                fallback_used: true,
+                            }),
                             Err(path_index_error) => Err(WorldError::DistributedValidationFailed {
                                 reason: format!(
                                     "head sync fallback failed: mode={mode:?}, network_error={network_error:?}, path_index_error={path_index_error:?}",
@@ -814,6 +919,103 @@ mod tests {
             network_only_error,
             WorldError::NetworkProtocolUnavailable { .. }
         ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_mode_observed_report_marks_no_fallback() {
+        const WORLD_ID: &str = "w1";
+        let dir = temp_dir("observer-mode-observed-no-fallback");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture(WORLD_ID, &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        register_block_fetch_handlers(&network, WORLD_ID, &store, &write);
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe(WORLD_ID).expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new(WORLD_ID);
+        let observed = observer
+            .sync_heads_with_mode_observed_report(
+                HeadSyncSourceMode::NetworkOnly,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert_eq!(observed.mode, HeadSyncSourceMode::NetworkOnly);
+        assert!(!observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_mode_observed_report_marks_fallback() {
+        let dir = temp_dir("observer-mode-observed-fallback");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let observed = observer
+            .sync_heads_with_mode_observed_report(
+                HeadSyncSourceMode::NetworkThenPathIndex,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert_eq!(observed.mode, HeadSyncSourceMode::NetworkThenPathIndex);
+        assert!(observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_dht_mode_observed_report_marks_fallback() {
+        let dir = temp_dir("observer-dht-mode-observed-fallback");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let observed = observer
+            .sync_heads_with_dht_mode_observed_report(
+                HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert_eq!(
+            observed.mode,
+            HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex
+        );
+        assert!(observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
 
         let _ = fs::remove_dir_all(&dir);
     }
