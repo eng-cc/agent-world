@@ -8,7 +8,7 @@ use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
-use node::{NodeConfig, NodeRole, NodeRuntime};
+use agent_world_node::{NodeConfig, NodeRole, NodeRuntime};
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {

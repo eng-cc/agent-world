@@ -141,6 +141,7 @@ version = "0.1.0"
 dependencies = [
  "agent_world_builtin_wasm",
  "agent_world_distfs",
+ "agent_world_node",
  "agent_world_proto",
  "agent_world_wasm_abi",
  "agent_world_wasm_executor",
@@ -150,7 +151,6 @@ dependencies = [
  "blake3",
  "hex",
  "hmac",
- "node",
  "reqwest",
  "serde",
  "serde_cbor",
@@ -211,6 +211,10 @@ dependencies = [
  "serde",
  "serde_cbor",
 ]
+
+[[package]]
+name = "agent_world_node"
+version = "0.1.0"
 
 [[package]]
 name = "agent_world_proto"
@@ -5792,10 +5796,6 @@ dependencies = [
  "cfg_aliases",
  "libc",
 ]
-
-[[package]]
-name = "node"
-version = "0.1.0"
 
 [[package]]
 name = "nohash-hasher"
