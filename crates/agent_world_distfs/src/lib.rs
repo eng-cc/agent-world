@@ -734,4 +734,125 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn file_store_write_read_roundtrip() {
+        let dir = temp_dir("file-roundtrip");
+        let store = LocalCasStore::new(&dir);
+
+        let metadata = store
+            .write_file("docs/readme.txt", b"hello distfs file")
+            .expect("write");
+        assert_eq!(metadata.path, "docs/readme.txt");
+        assert_eq!(metadata.size_bytes, 17);
+        assert!(!metadata.content_hash.is_empty());
+        assert!(metadata.updated_at_ms > 0);
+
+        let loaded = store.read_file("docs/readme.txt").expect("read");
+        assert_eq!(loaded, b"hello distfs file");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_overwrite_updates_hash_and_metadata() {
+        let dir = temp_dir("file-overwrite");
+        let store = LocalCasStore::new(&dir);
+
+        let first = store.write_file("a/note.txt", b"v1").expect("write first");
+        let second = store
+            .write_file("a/note.txt", b"v2-data")
+            .expect("write second");
+
+        assert_eq!(first.path, second.path);
+        assert_ne!(first.content_hash, second.content_hash);
+        assert!(second.updated_at_ms >= first.updated_at_ms);
+        assert_eq!(second.size_bytes, 7);
+
+        let loaded = store.read_file("a/note.txt").expect("read");
+        assert_eq!(loaded, b"v2-data");
+        let stat = store
+            .stat_file("a/note.txt")
+            .expect("stat")
+            .expect("exists");
+        assert_eq!(stat.content_hash, second.content_hash);
+        assert_eq!(stat.size_bytes, 7);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_delete_removes_mapping() {
+        let dir = temp_dir("file-delete");
+        let store = LocalCasStore::new(&dir);
+
+        store
+            .write_file("workspace/a.log", b"to-delete")
+            .expect("write");
+        let removed = store.delete_file("workspace/a.log").expect("delete");
+        assert!(removed);
+        assert!(store.stat_file("workspace/a.log").expect("stat").is_none());
+        assert!(!store.delete_file("workspace/a.log").expect("delete again"));
+
+        let read_result = store.read_file("workspace/a.log");
+        assert!(matches!(
+            read_result,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_list_and_stat_return_indexed_entries() {
+        let dir = temp_dir("file-list");
+        let store = LocalCasStore::new(&dir);
+
+        store.write_file("b/file.txt", b"bbb").expect("write b");
+        store.write_file("./a/file.txt", b"aaa").expect("write a");
+
+        let files = store.list_files().expect("list");
+        let paths: Vec<String> = files.iter().map(|item| item.path.clone()).collect();
+        assert_eq!(
+            paths,
+            vec!["a/file.txt".to_string(), "b/file.txt".to_string()]
+        );
+
+        let stat_a = store
+            .stat_file("a/file.txt")
+            .expect("stat a")
+            .expect("exists");
+        assert_eq!(stat_a.size_bytes, 3);
+        let bytes = store.read_file("a/file.txt").expect("read a");
+        assert_eq!(bytes, b"aaa");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_rejects_invalid_paths() {
+        let dir = temp_dir("file-invalid-path");
+        let store = LocalCasStore::new(&dir);
+
+        for invalid in ["", "/", "/root.txt", "..", "../a.txt", "a/../../b"] {
+            assert!(matches!(
+                store.write_file(invalid, b"bad"),
+                Err(WorldError::DistributedValidationFailed { .. })
+            ));
+            assert!(matches!(
+                store.read_file(invalid),
+                Err(WorldError::DistributedValidationFailed { .. })
+            ));
+            assert!(matches!(
+                store.delete_file(invalid),
+                Err(WorldError::DistributedValidationFailed { .. })
+            ));
+            assert!(matches!(
+                store.stat_file(invalid),
+                Err(WorldError::DistributedValidationFailed { .. })
+            ));
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
