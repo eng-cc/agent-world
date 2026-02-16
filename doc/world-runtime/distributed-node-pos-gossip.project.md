@@ -4,7 +4,7 @@
 - [x] NPG-1：设计文档与项目管理文档落地。
 - [x] NPG-2：在 `agent_world_node` 实现 UDP gossip endpoint 与 committed head 同步。
 - [x] NPG-3：在 `world_viewer_live` 增加 gossip 参数接线与测试。
-- [ ] NPG-4：执行回归测试并收口文档/devlog。
+- [x] NPG-4：执行回归测试并收口文档/devlog。
 
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/node/src/lib.rs`
@@ -12,6 +12,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/world-runtime/distributed-node-pos-mainloop.md`
 
 ## 状态
-- 当前阶段：NPG-3 完成，进入 NPG-4。
-- 下一步：执行 Node + live 回归并完成文档/devlog 收口。
+- 当前阶段：NPG-4 完成，Node PoS gossip 协同已收口。
+- 下一步：按需扩展为提案/投票消息 gossip 与跨节点 attestation 协同。
 - 最近更新：2026-02-16。
