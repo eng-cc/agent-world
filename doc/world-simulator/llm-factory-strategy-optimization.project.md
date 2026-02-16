@@ -22,9 +22,29 @@
 - [x] LFO3.3 归并到 `test_tier_required` 并验证稳定通过
 
 ### LFO4 在线闭环验证与收口
-- [ ] LFO4.1 复跑 `llm_bootstrap --ticks 20` 并记录 `action_kind_counts`
-- [ ] LFO4.2 复跑 `llm_bootstrap --ticks 30` 对比策略收敛性
-- [ ] LFO4.3 回写文档状态、任务日志并按任务提交
+- [x] LFO4.1 复跑 `llm_bootstrap --ticks 20` 并记录 `action_kind_counts`
+- [x] LFO4.2 复跑 `llm_bootstrap --ticks 30` 对比策略收敛性
+- [x] LFO4.3 回写文档状态、任务日志并按任务提交
+
+### LFO4 在线闭环结果摘要（2026-02-16）
+- 运行产物：
+  - `output/llm_bootstrap/factory_schedule_lfo4_20_2026-02-16/run.log`
+  - `output/llm_bootstrap/factory_schedule_lfo4_20_2026-02-16/report.json`
+  - `output/llm_bootstrap/factory_schedule_lfo4_30_2026-02-16/run.log`
+  - `output/llm_bootstrap/factory_schedule_lfo4_30_2026-02-16/report.json`
+- 20 tick 结果：
+  - `action_kind_counts`: `harvest_radiation=9`、`refine_compound=6`、`build_factory=1`、`schedule_recipe=4`
+  - `action_kind_success_counts.schedule_recipe=3`
+  - `first_action_tick`: `refine_compound=10`、`build_factory=11`、`schedule_recipe=12`
+  - 结论：20 tick 内可完成“失败恢复 -> 建厂 -> 多次排产”。
+- 30 tick 结果：
+  - `action_kind_counts`: `harvest_radiation=19`、`refine_compound=5`、`build_factory=1`、`schedule_recipe=5`
+  - `action_kind_success_counts.schedule_recipe=3`、`action_kind_failure_counts.schedule_recipe=2`
+  - `first_action_tick` 与 20 tick 一致（`10/11/12`）。
+  - 结论：长时窗口仍存在“电力不足后回退到连续 harvest”现象，后半程调度稳定性有待继续优化。
+- 下一步优化建议（进入后续迭代）：
+  - 增加“电力不足 -> harvest 上限轮次 + 立即回切 schedule”硬约束，避免尾段长 harvest。
+  - 在 LLM 目标中加入“每 N tick 至少一次 schedule_recipe”的节奏约束，并结合 `action_kind_counts` 做回归门槛。
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
@@ -35,6 +55,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO3 完成，LFO4 待开始。
-- 下一步：执行 LFO4（在线 20/30 tick 复跑并记录新报告指标）。
-- 最近更新：2026-02-16（完成 LFO3：固定序列离线回归与反循环测试）。
+- 当前阶段：LFO0-LFO4 全部完成。
+- 下一步：基于 LFO4 指标继续迭代策略约束（重点处理长窗口 harvest 回退）。
+- 最近更新：2026-02-16（完成 LFO4 在线复跑与指标对比收口）。
