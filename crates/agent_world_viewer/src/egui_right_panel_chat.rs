@@ -16,6 +16,7 @@ const CHAT_BUBBLE_MAX_WIDTH: f32 = 380.0;
 const TOOL_CALL_PREVIEW_CHARS: usize = 180;
 const TOOL_CALL_CARD_MAX_WIDTH: f32 = 380.0;
 const PROMPT_PRESET_DEFAULT_CONTENT_ROWS: usize = 4;
+const PROMPT_PRESET_SCROLL_MAX_HEIGHT: f32 = 320.0;
 const PROMPT_UPDATED_BY_VIEWER_CHAT: &str = "viewer-chat-panel";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -332,6 +333,15 @@ fn apply_selected_preset_to_input(draft: &mut AgentChatDraftState) -> bool {
     true
 }
 
+fn prompt_preset_scroll_max_height(available_height: f32) -> f32 {
+    if !available_height.is_finite() {
+        return PROMPT_PRESET_SCROLL_MAX_HEIGHT;
+    }
+    available_height
+        .max(0.0)
+        .min(PROMPT_PRESET_SCROLL_MAX_HEIGHT)
+}
+
 fn render_prompt_preset_editor(
     ui: &mut egui::Ui,
     locale: crate::i18n::UiLocale,
@@ -377,233 +387,237 @@ fn render_prompt_preset_editor(
         }
 
         ui.add_space(4.0);
-
-        let mut selected_index = draft.selected_preset_index;
-        egui::ComboBox::from_label(if locale.is_zh() {
-            "预设项"
-        } else {
-            "Preset"
-        })
-        .selected_text(selected_preset_label(draft))
-        .show_ui(ui, |ui| {
-            for (index, preset) in draft.prompt_presets.iter().enumerate() {
-                let label = if preset.name.trim().is_empty() {
-                    if locale.is_zh() {
-                        format!("预设 {}", index + 1)
-                    } else {
-                        format!("Preset {}", index + 1)
+        let preset_panel_max_height = prompt_preset_scroll_max_height(ui.available_height());
+        egui::ScrollArea::vertical()
+            .max_height(preset_panel_max_height)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                let mut selected_index = draft.selected_preset_index;
+                egui::ComboBox::from_label(if locale.is_zh() {
+                    "预设项"
+                } else {
+                    "Preset"
+                })
+                .selected_text(selected_preset_label(draft))
+                .show_ui(ui, |ui| {
+                    for (index, preset) in draft.prompt_presets.iter().enumerate() {
+                        let label = if preset.name.trim().is_empty() {
+                            if locale.is_zh() {
+                                format!("预设 {}", index + 1)
+                            } else {
+                                format!("Preset {}", index + 1)
+                            }
+                        } else {
+                            preset.name.clone()
+                        };
+                        if ui
+                            .selectable_label(selected_index == index, label.as_str())
+                            .clicked()
+                        {
+                            selected_index = index;
+                        }
                     }
-                } else {
-                    preset.name.clone()
-                };
-                if ui
-                    .selectable_label(selected_index == index, label.as_str())
-                    .clicked()
-                {
-                    selected_index = index;
+                });
+                draft.selected_preset_index = selected_index;
+
+                let mut add_preset = false;
+                let mut remove_preset = false;
+                let mut fill_input = false;
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .small_button(if locale.is_zh() { "新增" } else { "Add" })
+                        .clicked()
+                    {
+                        add_preset = true;
+                    }
+                    if ui
+                        .small_button(if locale.is_zh() { "删除" } else { "Delete" })
+                        .clicked()
+                    {
+                        remove_preset = true;
+                    }
+                    if ui
+                        .small_button(if locale.is_zh() {
+                            "填充到输入框"
+                        } else {
+                            "Fill Input"
+                        })
+                        .clicked()
+                    {
+                        fill_input = true;
+                    }
+                });
+
+                if add_preset {
+                    let next_name = next_preset_name(locale, draft.prompt_presets.len());
+                    draft.prompt_presets.push(PromptPresetDraft {
+                        name: next_name,
+                        content: String::new(),
+                    });
+                    draft.selected_preset_index = draft.prompt_presets.len().saturating_sub(1);
                 }
-            }
-        });
-        draft.selected_preset_index = selected_index;
-
-        let mut add_preset = false;
-        let mut remove_preset = false;
-        let mut fill_input = false;
-        ui.horizontal_wrapped(|ui| {
-            if ui
-                .small_button(if locale.is_zh() { "新增" } else { "Add" })
-                .clicked()
-            {
-                add_preset = true;
-            }
-            if ui
-                .small_button(if locale.is_zh() { "删除" } else { "Delete" })
-                .clicked()
-            {
-                remove_preset = true;
-            }
-            if ui
-                .small_button(if locale.is_zh() {
-                    "填充到输入框"
-                } else {
-                    "Fill Input"
-                })
-                .clicked()
-            {
-                fill_input = true;
-            }
-        });
-
-        if add_preset {
-            let next_name = next_preset_name(locale, draft.prompt_presets.len());
-            draft.prompt_presets.push(PromptPresetDraft {
-                name: next_name,
-                content: String::new(),
-            });
-            draft.selected_preset_index = draft.prompt_presets.len().saturating_sub(1);
-        }
-        if remove_preset && !draft.prompt_presets.is_empty() {
-            draft.prompt_presets.remove(draft.selected_preset_index);
-            sync_prompt_presets(draft);
-        }
-        if fill_input {
-            if apply_selected_preset_to_input(draft) {
-                draft.status_message = if locale.is_zh() {
-                    "已将预设填充到输入框，可直接发送或继续修改。".to_string()
-                } else {
-                    "Preset filled into input. You can send or keep editing.".to_string()
-                };
-            } else {
-                draft.status_message = if locale.is_zh() {
-                    "当前预设内容为空，无法填充。".to_string()
-                } else {
-                    "Selected preset is empty.".to_string()
-                };
-            }
-        }
-
-        if let Some(preset) = draft.prompt_presets.get_mut(draft.selected_preset_index) {
-            ui.label(if locale.is_zh() {
-                "预设名称"
-            } else {
-                "Preset Name"
-            });
-            ui.text_edit_singleline(&mut preset.name);
-
-            ui.label(if locale.is_zh() {
-                "预设内容"
-            } else {
-                "Preset Content"
-            });
-            ui.add(
-                egui::TextEdit::multiline(&mut preset.content)
-                    .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
-                    .hint_text(if locale.is_zh() {
-                        "输入预设 prompt 内容"
-                    } else {
-                        "Type preset prompt content"
-                    }),
-            );
-        }
-
-        ui.add_space(8.0);
-        ui.separator();
-        ui.add_space(4.0);
-
-        ui.horizontal_wrapped(|ui| {
-            ui.strong(if locale.is_zh() {
-                "Agent Prompt 草稿"
-            } else {
-                "Agent Prompt Draft"
-            });
-            ui.label(
-                egui::RichText::new(if locale.is_zh() {
-                    format!(
-                        "目标: {} 版本: {}",
-                        selected_agent_id, current_profile.version
-                    )
-                } else {
-                    format!(
-                        "Target: {} Version: {}",
-                        selected_agent_id, current_profile.version
-                    )
-                })
-                .size(10.5)
-                .color(egui::Color32::from_gray(170)),
-            );
-        });
-
-        let mut reload_profile = false;
-        let mut apply_profile = false;
-        ui.horizontal_wrapped(|ui| {
-            if ui
-                .small_button(if locale.is_zh() {
-                    "加载当前配置"
-                } else {
-                    "Load Current"
-                })
-                .clicked()
-            {
-                reload_profile = true;
-            }
-            if ui
-                .small_button(if locale.is_zh() {
-                    "应用到 Agent"
-                } else {
-                    "Apply to Agent"
-                })
-                .clicked()
-            {
-                apply_profile = true;
-            }
-        });
-
-        if reload_profile {
-            load_profile_draft_from_profile(draft, selected_agent_id, &current_profile);
-            draft.status_message = if locale.is_zh() {
-                "已加载当前 Agent Prompt 配置。".to_string()
-            } else {
-                "Loaded current agent prompt profile.".to_string()
-            };
-        }
-
-        ui.label(if locale.is_zh() {
-            "System Prompt"
-        } else {
-            "System Prompt"
-        });
-        ui.add(
-            egui::TextEdit::multiline(&mut draft.profile_system_prompt)
-                .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
-                .hint_text(DEFAULT_LLM_SYSTEM_PROMPT),
-        );
-
-        ui.label(if locale.is_zh() {
-            "短期目标"
-        } else {
-            "Short-term Goal"
-        });
-        ui.add(
-            egui::TextEdit::multiline(&mut draft.profile_short_term_goal)
-                .desired_rows(3)
-                .hint_text(DEFAULT_LLM_SHORT_TERM_GOAL),
-        );
-
-        ui.label(if locale.is_zh() {
-            "长期目标"
-        } else {
-            "Long-term Goal"
-        });
-        ui.add(
-            egui::TextEdit::multiline(&mut draft.profile_long_term_goal)
-                .desired_rows(3)
-                .hint_text(DEFAULT_LLM_LONG_TERM_GOAL),
-        );
-
-        if apply_profile {
-            match send_prompt_profile_apply_command(
-                client,
-                selected_agent_id,
-                &current_profile,
-                draft,
-            ) {
-                Ok(()) => {
-                    draft.status_message = if locale.is_zh() {
-                        "Prompt 配置已提交，等待服务端应用。".to_string()
-                    } else {
-                        "Prompt profile request sent. Waiting for server apply.".to_string()
-                    };
-                    draft.profile_loaded_agent_id = Some(selected_agent_id.to_string());
+                if remove_preset && !draft.prompt_presets.is_empty() {
+                    draft.prompt_presets.remove(draft.selected_preset_index);
+                    sync_prompt_presets(draft);
                 }
-                Err(err) => {
-                    draft.status_message = if locale.is_zh() {
-                        format!("提交失败: {err}")
+                if fill_input {
+                    if apply_selected_preset_to_input(draft) {
+                        draft.status_message = if locale.is_zh() {
+                            "已将预设填充到输入框，可直接发送或继续修改。".to_string()
+                        } else {
+                            "Preset filled into input. You can send or keep editing.".to_string()
+                        };
                     } else {
-                        format!("Apply failed: {err}")
+                        draft.status_message = if locale.is_zh() {
+                            "当前预设内容为空，无法填充。".to_string()
+                        } else {
+                            "Selected preset is empty.".to_string()
+                        };
+                    }
+                }
+
+                if let Some(preset) = draft.prompt_presets.get_mut(draft.selected_preset_index) {
+                    ui.label(if locale.is_zh() {
+                        "预设名称"
+                    } else {
+                        "Preset Name"
+                    });
+                    ui.text_edit_singleline(&mut preset.name);
+
+                    ui.label(if locale.is_zh() {
+                        "预设内容"
+                    } else {
+                        "Preset Content"
+                    });
+                    ui.add(
+                        egui::TextEdit::multiline(&mut preset.content)
+                            .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
+                            .hint_text(if locale.is_zh() {
+                                "输入预设 prompt 内容"
+                            } else {
+                                "Type preset prompt content"
+                            }),
+                    );
+                }
+                ui.add_space(8.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.strong(if locale.is_zh() {
+                        "Agent Prompt 草稿"
+                    } else {
+                        "Agent Prompt Draft"
+                    });
+                    ui.label(
+                        egui::RichText::new(if locale.is_zh() {
+                            format!(
+                                "目标: {} 版本: {}",
+                                selected_agent_id, current_profile.version
+                            )
+                        } else {
+                            format!(
+                                "Target: {} Version: {}",
+                                selected_agent_id, current_profile.version
+                            )
+                        })
+                        .size(10.5)
+                        .color(egui::Color32::from_gray(170)),
+                    );
+                });
+
+                let mut reload_profile = false;
+                let mut apply_profile = false;
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .small_button(if locale.is_zh() {
+                            "加载当前配置"
+                        } else {
+                            "Load Current"
+                        })
+                        .clicked()
+                    {
+                        reload_profile = true;
+                    }
+                    if ui
+                        .small_button(if locale.is_zh() {
+                            "应用到 Agent"
+                        } else {
+                            "Apply to Agent"
+                        })
+                        .clicked()
+                    {
+                        apply_profile = true;
+                    }
+                });
+
+                if reload_profile {
+                    load_profile_draft_from_profile(draft, selected_agent_id, &current_profile);
+                    draft.status_message = if locale.is_zh() {
+                        "已加载当前 Agent Prompt 配置。".to_string()
+                    } else {
+                        "Loaded current agent prompt profile.".to_string()
                     };
                 }
-            }
-        }
+
+                ui.label(if locale.is_zh() {
+                    "System Prompt"
+                } else {
+                    "System Prompt"
+                });
+                ui.add(
+                    egui::TextEdit::multiline(&mut draft.profile_system_prompt)
+                        .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
+                        .hint_text(DEFAULT_LLM_SYSTEM_PROMPT),
+                );
+
+                ui.label(if locale.is_zh() {
+                    "短期目标"
+                } else {
+                    "Short-term Goal"
+                });
+                ui.add(
+                    egui::TextEdit::multiline(&mut draft.profile_short_term_goal)
+                        .desired_rows(3)
+                        .hint_text(DEFAULT_LLM_SHORT_TERM_GOAL),
+                );
+
+                ui.label(if locale.is_zh() {
+                    "长期目标"
+                } else {
+                    "Long-term Goal"
+                });
+                ui.add(
+                    egui::TextEdit::multiline(&mut draft.profile_long_term_goal)
+                        .desired_rows(3)
+                        .hint_text(DEFAULT_LLM_LONG_TERM_GOAL),
+                );
+
+                if apply_profile {
+                    match send_prompt_profile_apply_command(
+                        client,
+                        selected_agent_id,
+                        &current_profile,
+                        draft,
+                    ) {
+                        Ok(()) => {
+                            draft.status_message = if locale.is_zh() {
+                                "Prompt 配置已提交，等待服务端应用。".to_string()
+                            } else {
+                                "Prompt profile request sent. Waiting for server apply.".to_string()
+                            };
+                            draft.profile_loaded_agent_id = Some(selected_agent_id.to_string());
+                        }
+                        Err(err) => {
+                            draft.status_message = if locale.is_zh() {
+                                format!("提交失败: {err}")
+                            } else {
+                                format!("Apply failed: {err}")
+                            };
+                        }
+                    }
+                }
+            });
     });
 }
 
@@ -1441,6 +1455,28 @@ mod tests {
         draft.selected_preset_index = 0;
         assert!(apply_selected_preset_to_input(&mut draft));
         assert_eq!(draft.input_message, "hello preset");
+    }
+
+    #[test]
+    fn prompt_preset_scroll_max_height_clamps_by_available_height() {
+        assert_eq!(
+            prompt_preset_scroll_max_height(PROMPT_PRESET_SCROLL_MAX_HEIGHT + 120.0),
+            PROMPT_PRESET_SCROLL_MAX_HEIGHT
+        );
+        assert_eq!(prompt_preset_scroll_max_height(180.0), 180.0);
+        assert_eq!(prompt_preset_scroll_max_height(-10.0), 0.0);
+    }
+
+    #[test]
+    fn prompt_preset_scroll_max_height_handles_non_finite_input() {
+        assert_eq!(
+            prompt_preset_scroll_max_height(f32::INFINITY),
+            PROMPT_PRESET_SCROLL_MAX_HEIGHT
+        );
+        assert_eq!(
+            prompt_preset_scroll_max_height(f32::NAN),
+            PROMPT_PRESET_SCROLL_MAX_HEIGHT
+        );
     }
 
     #[test]
