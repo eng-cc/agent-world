@@ -1,0 +1,392 @@
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+
+use agent_world_node::{NodeRole, NodeSnapshot};
+use serde::{Deserialize, Serialize};
+
+use super::{EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NodePointsRuntimeHeuristics {
+    pub error_penalty_points: f64,
+    pub degraded_verify_ratio: f64,
+    pub degraded_availability_ratio: f64,
+    pub storage_role_delegated_tick_ratio: f64,
+}
+
+impl Default for NodePointsRuntimeHeuristics {
+    fn default() -> Self {
+        Self {
+            error_penalty_points: 2.0,
+            degraded_verify_ratio: 0.7,
+            degraded_availability_ratio: 0.8,
+            storage_role_delegated_tick_ratio: 0.5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodePointsRuntimeObservation {
+    pub node_id: String,
+    pub role: NodeRole,
+    pub tick_count: u64,
+    pub running: bool,
+    pub observed_at_unix_ms: i64,
+    pub has_error: bool,
+    pub effective_storage_bytes: u64,
+}
+
+impl NodePointsRuntimeObservation {
+    pub fn from_snapshot(
+        snapshot: &NodeSnapshot,
+        effective_storage_bytes: u64,
+        observed_at_unix_ms: i64,
+    ) -> Self {
+        Self {
+            node_id: snapshot.node_id.clone(),
+            role: snapshot.role,
+            tick_count: snapshot.tick_count,
+            running: snapshot.running,
+            observed_at_unix_ms,
+            has_error: snapshot.last_error.is_some(),
+            effective_storage_bytes,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct NodeCursor {
+    tick_count: u64,
+    observed_at_unix_ms: i64,
+}
+
+#[derive(Debug, Clone, Default)]
+struct NodeEpochAccumulator {
+    role: Option<NodeRole>,
+    self_sim_compute_units: u64,
+    delegated_sim_compute_units: u64,
+    world_maintenance_compute_units: u64,
+    uptime_ms: u64,
+    max_storage_bytes: u64,
+    error_samples: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct NodePointsRuntimeCollector {
+    ledger: NodePointsLedger,
+    heuristics: NodePointsRuntimeHeuristics,
+    epoch_started_at_unix_ms: Option<i64>,
+    cursors: BTreeMap<String, NodeCursor>,
+    current_epoch: BTreeMap<String, NodeEpochAccumulator>,
+}
+
+impl NodePointsRuntimeCollector {
+    pub fn new(config: NodePointsConfig, heuristics: NodePointsRuntimeHeuristics) -> Self {
+        Self {
+            ledger: NodePointsLedger::new(config),
+            heuristics,
+            epoch_started_at_unix_ms: None,
+            cursors: BTreeMap::new(),
+            current_epoch: BTreeMap::new(),
+        }
+    }
+
+    pub fn ledger(&self) -> &NodePointsLedger {
+        &self.ledger
+    }
+
+    pub fn observe(
+        &mut self,
+        observation: NodePointsRuntimeObservation,
+    ) -> Option<EpochSettlementReport> {
+        if self.epoch_started_at_unix_ms.is_none() {
+            self.epoch_started_at_unix_ms = Some(observation.observed_at_unix_ms);
+        }
+
+        self.apply_observation(observation);
+
+        let epoch_ms = self.epoch_duration_ms();
+        if let Some(start_ms) = self.epoch_started_at_unix_ms {
+            if epoch_ms > 0 {
+                let elapsed_ms = observation_time_delta(start_ms, self.latest_observed_at_unix_ms());
+                if elapsed_ms >= epoch_ms {
+                    let report = self.settle_epoch_internal();
+                    self.epoch_started_at_unix_ms = Some(self.latest_observed_at_unix_ms());
+                    return report;
+                }
+            }
+        }
+        None
+    }
+
+    pub fn observe_snapshot(
+        &mut self,
+        snapshot: &NodeSnapshot,
+        effective_storage_bytes: u64,
+        observed_at_unix_ms: i64,
+    ) -> Option<EpochSettlementReport> {
+        self.observe(NodePointsRuntimeObservation::from_snapshot(
+            snapshot,
+            effective_storage_bytes,
+            observed_at_unix_ms,
+        ))
+    }
+
+    pub fn force_settle(&mut self) -> Option<EpochSettlementReport> {
+        if self.current_epoch.is_empty() {
+            return None;
+        }
+        let report = self.settle_epoch_internal();
+        self.epoch_started_at_unix_ms = Some(self.latest_observed_at_unix_ms());
+        report
+    }
+
+    fn settle_epoch_internal(&mut self) -> Option<EpochSettlementReport> {
+        let samples = self.build_epoch_samples();
+        if samples.is_empty() {
+            self.current_epoch.clear();
+            return None;
+        }
+        let report = self.ledger.settle_epoch(samples.as_slice());
+        self.current_epoch.clear();
+        Some(report)
+    }
+
+    fn build_epoch_samples(&self) -> Vec<NodeContributionSample> {
+        self.current_epoch
+            .iter()
+            .map(|(node_id, accumulator)| {
+                let epoch_seconds = self.ledger.config().epoch_duration_seconds.max(1);
+                let mut availability_ratio =
+                    (accumulator.uptime_ms as f64 / (epoch_seconds as f64 * 1000.0)).clamp(0.0, 1.0);
+                let mut verify_pass_ratio = 1.0;
+                if accumulator.error_samples > 0 {
+                    verify_pass_ratio = self.heuristics.degraded_verify_ratio.clamp(0.0, 1.0);
+                    availability_ratio = availability_ratio.min(
+                        self.heuristics
+                            .degraded_availability_ratio
+                            .clamp(0.0, 1.0),
+                    );
+                }
+                NodeContributionSample {
+                    node_id: node_id.clone(),
+                    self_sim_compute_units: accumulator.self_sim_compute_units,
+                    delegated_sim_compute_units: accumulator.delegated_sim_compute_units,
+                    world_maintenance_compute_units: accumulator.world_maintenance_compute_units,
+                    effective_storage_bytes: accumulator.max_storage_bytes,
+                    uptime_seconds: accumulator.uptime_ms / 1000,
+                    verify_pass_ratio,
+                    availability_ratio,
+                    explicit_penalty_points: self.heuristics.error_penalty_points.max(0.0)
+                        * accumulator.error_samples as f64,
+                }
+            })
+            .collect()
+    }
+
+    fn apply_observation(&mut self, observation: NodePointsRuntimeObservation) {
+        let accumulator = self
+            .current_epoch
+            .entry(observation.node_id.clone())
+            .or_default();
+        accumulator.role = Some(observation.role);
+        accumulator.max_storage_bytes = accumulator
+            .max_storage_bytes
+            .max(observation.effective_storage_bytes);
+        if observation.has_error {
+            accumulator.error_samples = accumulator.error_samples.saturating_add(1);
+        }
+
+        if let Some(cursor) = self.cursors.get(observation.node_id.as_str()) {
+            let delta_ticks = observation.tick_count.saturating_sub(cursor.tick_count);
+            let delta_ms =
+                observation_time_delta(cursor.observed_at_unix_ms, observation.observed_at_unix_ms);
+            if observation.running {
+                accumulator.uptime_ms = accumulator.uptime_ms.saturating_add(delta_ms);
+            }
+            accumulator.self_sim_compute_units =
+                accumulator.self_sim_compute_units.saturating_add(delta_ticks);
+
+            match observation.role {
+                NodeRole::Sequencer => {
+                    accumulator.world_maintenance_compute_units = accumulator
+                        .world_maintenance_compute_units
+                        .saturating_add(delta_ticks);
+                }
+                NodeRole::Observer => {
+                    accumulator.delegated_sim_compute_units = accumulator
+                        .delegated_sim_compute_units
+                        .saturating_add(delta_ticks);
+                }
+                NodeRole::Storage => {
+                    let delegated = scale_ticks(delta_ticks, self.heuristics.storage_role_delegated_tick_ratio);
+                    accumulator.delegated_sim_compute_units = accumulator
+                        .delegated_sim_compute_units
+                        .saturating_add(delegated);
+                }
+            }
+        }
+
+        self.cursors.insert(
+            observation.node_id,
+            NodeCursor {
+                tick_count: observation.tick_count,
+                observed_at_unix_ms: observation.observed_at_unix_ms,
+            },
+        );
+    }
+
+    fn epoch_duration_ms(&self) -> u64 {
+        self.ledger
+            .config()
+            .epoch_duration_seconds
+            .saturating_mul(1000)
+    }
+
+    fn latest_observed_at_unix_ms(&self) -> i64 {
+        self.cursors
+            .values()
+            .map(|cursor| cursor.observed_at_unix_ms)
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+fn scale_ticks(ticks: u64, ratio: f64) -> u64 {
+    if !ratio.is_finite() || ratio <= 0.0 {
+        return 0;
+    }
+    (ticks as f64 * ratio).floor() as u64
+}
+
+fn observation_time_delta(start_ms: i64, end_ms: i64) -> u64 {
+    if end_ms <= start_ms {
+        return 0;
+    }
+    (end_ms - start_ms) as u64
+}
+
+pub fn measure_directory_storage_bytes(path: &Path) -> u64 {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return 0,
+    };
+
+    if metadata.is_file() {
+        return metadata.len();
+    }
+    if !metadata.is_dir() {
+        return 0;
+    }
+
+    let mut total = 0_u64;
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(_) => return 0,
+    };
+    for entry in entries.flatten() {
+        total = total.saturating_add(measure_directory_storage_bytes(entry.path().as_path()));
+    }
+    total
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
+        NodePointsRuntimeObservation,
+    };
+    use crate::runtime::NodePointsConfig;
+    use agent_world_node::NodeRole;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("agent-world-{prefix}-{now}"));
+        fs::create_dir_all(&path).expect("mkdir");
+        path
+    }
+
+    #[test]
+    fn collector_observes_ticks_and_force_settles() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.epoch_duration_seconds = 60;
+        let mut collector =
+            NodePointsRuntimeCollector::new(config, NodePointsRuntimeHeuristics::default());
+
+        let first = NodePointsRuntimeObservation {
+            node_id: "node-a".to_string(),
+            role: NodeRole::Sequencer,
+            tick_count: 10,
+            running: true,
+            observed_at_unix_ms: 1_000,
+            has_error: false,
+            effective_storage_bytes: 1024,
+        };
+        let second = NodePointsRuntimeObservation {
+            tick_count: 30,
+            observed_at_unix_ms: 11_000,
+            effective_storage_bytes: 2048,
+            ..first.clone()
+        };
+
+        assert!(collector.observe(first).is_none());
+        assert!(collector.observe(second).is_none());
+
+        let report = collector.force_settle().expect("report");
+        assert_eq!(report.settlements.len(), 1);
+        let settlement = &report.settlements[0];
+        assert!(settlement.compute_score > 0.0 || settlement.storage_score > 0.0);
+        assert_eq!(report.distributed_points, 100);
+    }
+
+    #[test]
+    fn collector_auto_settles_when_epoch_elapsed() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 50;
+        config.epoch_duration_seconds = 1;
+        let mut collector =
+            NodePointsRuntimeCollector::new(config, NodePointsRuntimeHeuristics::default());
+
+        let first = NodePointsRuntimeObservation {
+            node_id: "node-a".to_string(),
+            role: NodeRole::Observer,
+            tick_count: 5,
+            running: true,
+            observed_at_unix_ms: 0,
+            has_error: false,
+            effective_storage_bytes: 100,
+        };
+        let second = NodePointsRuntimeObservation {
+            tick_count: 20,
+            observed_at_unix_ms: 1_200,
+            ..first.clone()
+        };
+
+        assert!(collector.observe(first).is_none());
+        let report = collector.observe(second).expect("epoch report");
+        assert_eq!(report.pool_points, 50);
+        assert_eq!(report.distributed_points, 50);
+    }
+
+    #[test]
+    fn measure_directory_storage_counts_nested_files() {
+        let root = temp_dir("measure-storage");
+        let nested = root.join("a").join("b");
+        fs::create_dir_all(&nested).expect("nested");
+        fs::write(root.join("root.bin"), vec![1_u8; 11]).expect("root file");
+        fs::write(nested.join("leaf.bin"), vec![1_u8; 29]).expect("leaf file");
+
+        let bytes = measure_directory_storage_bytes(root.as_path());
+        assert_eq!(bytes, 40);
+
+        let _ = fs::remove_dir_all(root);
+    }
+}

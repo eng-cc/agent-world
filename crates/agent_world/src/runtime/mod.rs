@@ -22,6 +22,7 @@ mod manifest;
 mod module_store;
 mod modules;
 mod node_points;
+mod node_points_runtime;
 mod policy;
 mod rules;
 mod segmenter;
@@ -86,6 +87,10 @@ pub use modules::{
 pub use node_points::{
     EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
     NodeSettlement,
+};
+pub use node_points_runtime::{
+    measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
+    NodePointsRuntimeObservation,
 };
 
 // Blob store
