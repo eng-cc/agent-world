@@ -6,6 +6,7 @@ const DEFAULT_WEIGHT_COMPUTE: f64 = 0.45;
 const DEFAULT_WEIGHT_STORAGE: f64 = 0.35;
 const DEFAULT_WEIGHT_UPTIME: f64 = 0.10;
 const DEFAULT_WEIGHT_RELIABILITY: f64 = 0.10;
+const DEFAULT_MIN_UPTIME_CHALLENGE_PASS_RATIO: f64 = 0.85;
 const BYTES_PER_GIB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 /// Node points settlement configuration.
@@ -14,6 +15,7 @@ pub struct NodePointsConfig {
     pub epoch_duration_seconds: u64,
     pub epoch_pool_points: u64,
     pub min_self_sim_compute_units: u64,
+    pub min_uptime_challenge_pass_ratio: f64,
     pub delegated_compute_multiplier: f64,
     pub maintenance_compute_multiplier: f64,
     pub weight_compute: f64,
@@ -29,6 +31,7 @@ impl Default for NodePointsConfig {
             epoch_duration_seconds: 3600,
             epoch_pool_points: 1000,
             min_self_sim_compute_units: 1,
+            min_uptime_challenge_pass_ratio: DEFAULT_MIN_UPTIME_CHALLENGE_PASS_RATIO,
             delegated_compute_multiplier: 1.0,
             maintenance_compute_multiplier: 1.2,
             weight_compute: DEFAULT_WEIGHT_COMPUTE,
@@ -68,6 +71,8 @@ pub struct NodeContributionSample {
     pub world_maintenance_compute_units: u64,
     pub effective_storage_bytes: u64,
     pub uptime_seconds: u64,
+    pub uptime_valid_checks: u64,
+    pub uptime_total_checks: u64,
     pub verify_pass_ratio: f64,
     pub availability_ratio: f64,
     pub explicit_penalty_points: f64,
@@ -177,11 +182,11 @@ impl NodePointsLedger {
         let storage_gib = sample.effective_storage_bytes as f64 / BYTES_PER_GIB;
         let storage_score = storage_gib.max(0.0).sqrt() * availability_ratio;
 
-        let uptime_score = if self.config.epoch_duration_seconds == 0 {
-            0.0
-        } else {
-            (sample.uptime_seconds as f64 / self.config.epoch_duration_seconds as f64).min(1.0)
-        };
+        let raw_uptime_ratio = self.raw_uptime_ratio(sample);
+        let uptime_score = normalize_uptime_ratio(
+            raw_uptime_ratio,
+            clamp_ratio(self.config.min_uptime_challenge_pass_ratio),
+        );
 
         let reliability_score = (verify_pass_ratio + availability_ratio) / 2.0;
         let obligation_met =
@@ -212,6 +217,17 @@ impl NodePointsLedger {
             awarded_points: 0,
             cumulative_points: 0,
         }
+    }
+
+    fn raw_uptime_ratio(&self, sample: &NodeContributionSample) -> f64 {
+        if sample.uptime_total_checks > 0 {
+            return (sample.uptime_valid_checks as f64 / sample.uptime_total_checks as f64)
+                .clamp(0.0, 1.0);
+        }
+        if self.config.epoch_duration_seconds == 0 {
+            return 0.0;
+        }
+        (sample.uptime_seconds as f64 / self.config.epoch_duration_seconds as f64).clamp(0.0, 1.0)
     }
 }
 
@@ -283,6 +299,20 @@ fn clamp_ratio(value: f64) -> f64 {
     value.clamp(0.0, 1.0)
 }
 
+fn normalize_uptime_ratio(raw_ratio: f64, min_ratio: f64) -> f64 {
+    let raw = clamp_ratio(raw_ratio);
+    if min_ratio >= 1.0 {
+        if raw >= 1.0 {
+            return 1.0;
+        }
+        return 0.0;
+    }
+    if raw <= min_ratio {
+        return 0.0;
+    }
+    ((raw - min_ratio) / (1.0 - min_ratio)).clamp(0.0, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -298,6 +328,8 @@ mod tests {
             world_maintenance_compute_units: 0,
             effective_storage_bytes: 0,
             uptime_seconds: 0,
+            uptime_valid_checks: 0,
+            uptime_total_checks: 0,
             verify_pass_ratio: 1.0,
             availability_ratio: 1.0,
             explicit_penalty_points: 0.0,
@@ -555,5 +587,67 @@ mod tests {
             + settlement_b1.cumulative_points
             + settlement_c1.cumulative_points;
         assert_eq!(total_cumulative, 2000);
+    }
+
+    #[test]
+    fn uptime_score_uses_challenge_ratio_with_threshold() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.weight_compute = 0.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 1.0;
+        config.weight_reliability = 0.0;
+        config.min_uptime_challenge_pass_ratio = 0.85;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut below = sample("node-below");
+        below.uptime_seconds = 100;
+        below.uptime_valid_checks = 8;
+        below.uptime_total_checks = 10;
+
+        let mut above = sample("node-above");
+        above.uptime_seconds = 10;
+        above.uptime_valid_checks = 9;
+        above.uptime_total_checks = 10;
+
+        let report = ledger.settle_epoch(&[below, above]);
+        assert_eq!(report.distributed_points, 100);
+        assert_eq!(report.settlements[0].uptime_score, 0.0);
+        assert!(
+            (report.settlements[1].uptime_score - (1.0 / 3.0)).abs() <= 1e-6,
+            "uptime score should be normalized by threshold"
+        );
+        assert_eq!(report.settlements[0].awarded_points, 0);
+        assert_eq!(report.settlements[1].awarded_points, 100);
+    }
+
+    #[test]
+    fn uptime_score_falls_back_to_uptime_seconds_when_no_checks() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 10;
+        config.epoch_duration_seconds = 100;
+        config.weight_compute = 0.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 1.0;
+        config.weight_reliability = 0.0;
+        config.min_uptime_challenge_pass_ratio = 0.5;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut a = sample("node-a");
+        a.uptime_seconds = 80;
+        a.uptime_valid_checks = 0;
+        a.uptime_total_checks = 0;
+
+        let mut b = sample("node-b");
+        b.uptime_seconds = 60;
+        b.uptime_valid_checks = 0;
+        b.uptime_total_checks = 0;
+
+        let report = ledger.settle_epoch(&[a, b]);
+        assert!(
+            (report.settlements[0].uptime_score - 0.6).abs() <= 1e-9,
+            "fallback uptime score should use uptime seconds ratio"
+        );
+        assert!(report.settlements[0].awarded_points > report.settlements[1].awarded_points);
     }
 }

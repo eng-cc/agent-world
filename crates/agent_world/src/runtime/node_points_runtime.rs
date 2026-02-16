@@ -175,6 +175,8 @@ impl NodePointsRuntimeCollector {
                     world_maintenance_compute_units: accumulator.world_maintenance_compute_units,
                     effective_storage_bytes: accumulator.max_storage_bytes,
                     uptime_seconds: accumulator.uptime_ms / 1000,
+                    uptime_valid_checks: 0,
+                    uptime_total_checks: 0,
                     verify_pass_ratio,
                     availability_ratio,
                     explicit_penalty_points: self.heuristics.error_penalty_points.max(0.0)
