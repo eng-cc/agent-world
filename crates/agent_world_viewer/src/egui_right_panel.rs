@@ -9,10 +9,10 @@ use crate::event_click_list::{
     apply_event_click_action, event_row_label, event_window, focus_tick,
 };
 use crate::i18n::{
-    camera_mode_button_label, camera_mode_section_label, control_button_label,
-    copyable_panel_toggle_label, language_toggle_label, locale_or_default, module_switches_title,
-    module_toggle_label, panel_mode_button_label, panel_mode_section_label, step_button_label,
-    top_controls_label, top_panel_toggle_label, UiI18n,
+    advanced_debug_toggle_label, camera_mode_button_label, camera_mode_section_label,
+    control_button_label, copyable_panel_toggle_label, language_toggle_label, locale_or_default,
+    module_switches_title, module_toggle_label, panel_mode_button_label, panel_mode_section_label,
+    play_pause_toggle_label, step_button_label, top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
@@ -61,6 +61,12 @@ const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
+
+#[derive(Default)]
+pub(super) struct ControlPanelUiState {
+    playing: bool,
+    advanced_debug_expanded: bool,
+}
 
 fn env_toggle_enabled(raw: Option<&str>) -> bool {
     raw.map(|value| value.trim().to_ascii_lowercase())
@@ -120,6 +126,7 @@ pub(super) fn render_right_side_panel_egui(
     mut cjk_font_initialized: Local<bool>,
     mut prompt_ops_draft: Local<PromptOpsDraftState>,
     mut chat_draft: Local<AgentChatDraftState>,
+    mut control_panel: Local<ControlPanelUiState>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -312,7 +319,14 @@ pub(super) fn render_right_side_panel_egui(
 
             if module_visibility.show_controls {
                 ui.separator();
-                render_control_buttons(ui, locale, &state, loading.as_mut(), client.as_deref());
+                render_control_buttons(
+                    ui,
+                    locale,
+                    &state,
+                    loading.as_mut(),
+                    &mut control_panel,
+                    client.as_deref(),
+                );
             }
 
             if module_visibility.show_overview {
@@ -521,43 +535,78 @@ fn render_control_buttons(
     locale: crate::i18n::UiLocale,
     state: &ViewerState,
     loading: &mut StepControlLoadingState,
+    control_ui: &mut ControlPanelUiState,
     client: Option<&ViewerClient>,
 ) {
     ui.horizontal_wrapped(|ui| {
-        let controls = [
-            (
-                control_button_label(&ViewerControl::Play, locale),
-                ViewerControl::Play,
-            ),
-            (
-                control_button_label(&ViewerControl::Pause, locale),
-                ViewerControl::Pause,
-            ),
-            (
-                step_button_label(locale, loading.pending),
-                ViewerControl::Step { count: 1 },
-            ),
-            (
-                control_button_label(&ViewerControl::Seek { tick: 0 }, locale),
-                ViewerControl::Seek { tick: 0 },
-            ),
-        ];
+        let play_pause = if control_ui.playing {
+            ViewerControl::Pause
+        } else {
+            ViewerControl::Play
+        };
+        if ui
+            .button(play_pause_toggle_label(control_ui.playing, locale))
+            .clicked()
+        {
+            send_control_request(play_pause, state, loading, control_ui, client);
+        }
 
-        for (label, control) in controls {
-            let disabled = matches!(control, ViewerControl::Step { .. }) && loading.pending;
-            if ui
-                .add_enabled(!disabled, egui::Button::new(label))
-                .clicked()
-            {
-                mark_step_loading_on_control(&control, state, loading);
-                if let Some(client) = client {
-                    let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-                        mode: control.clone(),
-                    });
-                }
-            }
+        if ui
+            .button(advanced_debug_toggle_label(
+                control_ui.advanced_debug_expanded,
+                locale,
+            ))
+            .clicked()
+        {
+            control_ui.advanced_debug_expanded = !control_ui.advanced_debug_expanded;
         }
     });
+
+    if !control_ui.advanced_debug_expanded {
+        return;
+    }
+
+    ui.horizontal_wrapped(|ui| {
+        let step_control = ViewerControl::Step { count: 1 };
+        if ui
+            .add_enabled(
+                !loading.pending,
+                egui::Button::new(step_button_label(locale, loading.pending)),
+            )
+            .clicked()
+        {
+            send_control_request(step_control, state, loading, control_ui, client);
+        }
+
+        let seek_zero = ViewerControl::Seek { tick: 0 };
+        if ui
+            .button(control_button_label(&seek_zero, locale))
+            .clicked()
+        {
+            send_control_request(seek_zero, state, loading, control_ui, client);
+        }
+    });
+}
+
+fn send_control_request(
+    control: ViewerControl,
+    state: &ViewerState,
+    loading: &mut StepControlLoadingState,
+    control_ui: &mut ControlPanelUiState,
+    client: Option<&ViewerClient>,
+) {
+    mark_step_loading_on_control(&control, state, loading);
+    if let Some(client) = client {
+        let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
+            mode: control.clone(),
+        });
+    }
+    match control {
+        ViewerControl::Play => control_ui.playing = true,
+        ViewerControl::Pause | ViewerControl::Step { .. } | ViewerControl::Seek { .. } => {
+            control_ui.playing = false;
+        }
+    }
 }
 
 fn render_overview_section(

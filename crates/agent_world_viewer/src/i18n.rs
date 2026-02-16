@@ -179,6 +179,22 @@ pub(super) fn control_button_label(control: &ViewerControl, locale: UiLocale) ->
     }
 }
 
+pub(super) fn play_pause_toggle_label(playing: bool, locale: UiLocale) -> &'static str {
+    if playing {
+        control_button_label(&ViewerControl::Pause, locale)
+    } else {
+        control_button_label(&ViewerControl::Play, locale)
+    }
+}
+
+pub(super) fn advanced_debug_toggle_label(expanded: bool, locale: UiLocale) -> String {
+    if locale.is_zh() {
+        format!("高级调试:{}", if expanded { "开" } else { "关" })
+    } else {
+        format!("Advanced Debug:{}", if expanded { "on" } else { "off" })
+    }
+}
+
 pub(super) fn step_button_label(locale: UiLocale, pending: bool) -> &'static str {
     if locale.is_zh() {
         if pending {
@@ -335,6 +351,31 @@ mod tests {
         assert_eq!(
             module_toggle_label("timeline", false, UiLocale::EnUs),
             "Timeline:off"
+        );
+    }
+
+    #[test]
+    fn play_pause_and_advanced_debug_labels_are_stateful() {
+        assert_eq!(play_pause_toggle_label(false, UiLocale::ZhCn), "播放");
+        assert_eq!(play_pause_toggle_label(true, UiLocale::ZhCn), "暂停");
+        assert_eq!(play_pause_toggle_label(false, UiLocale::EnUs), "Play");
+        assert_eq!(play_pause_toggle_label(true, UiLocale::EnUs), "Pause");
+
+        assert_eq!(
+            advanced_debug_toggle_label(false, UiLocale::ZhCn),
+            "高级调试:关"
+        );
+        assert_eq!(
+            advanced_debug_toggle_label(true, UiLocale::ZhCn),
+            "高级调试:开"
+        );
+        assert_eq!(
+            advanced_debug_toggle_label(false, UiLocale::EnUs),
+            "Advanced Debug:off"
+        );
+        assert_eq!(
+            advanced_debug_toggle_label(true, UiLocale::EnUs),
+            "Advanced Debug:on"
         );
     }
 }

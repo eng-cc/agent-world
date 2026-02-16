@@ -405,6 +405,88 @@ fn health_signal_uses_three_levels() {
 }
 
 #[test]
+fn send_control_request_updates_playing_state() {
+    let state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let mut loading = crate::button_feedback::StepControlLoadingState::default();
+    let mut control_ui = ControlPanelUiState::default();
+
+    send_control_request(
+        ViewerControl::Play,
+        &state,
+        &mut loading,
+        &mut control_ui,
+        None,
+    );
+    assert!(control_ui.playing);
+
+    send_control_request(
+        ViewerControl::Pause,
+        &state,
+        &mut loading,
+        &mut control_ui,
+        None,
+    );
+    assert!(!control_ui.playing);
+
+    send_control_request(
+        ViewerControl::Play,
+        &state,
+        &mut loading,
+        &mut control_ui,
+        None,
+    );
+    assert!(control_ui.playing);
+
+    send_control_request(
+        ViewerControl::Step { count: 1 },
+        &state,
+        &mut loading,
+        &mut control_ui,
+        None,
+    );
+    assert!(!control_ui.playing);
+}
+
+#[derive(Default)]
+struct ControlButtonsHarnessState {
+    viewer_state: crate::ViewerState,
+    loading: crate::button_feedback::StepControlLoadingState,
+    control_ui: ControlPanelUiState,
+}
+
+#[test]
+fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
+    let mut harness = Harness::new_ui_state(
+        |ui, state: &mut ControlButtonsHarnessState| {
+            render_control_buttons(
+                ui,
+                crate::i18n::UiLocale::ZhCn,
+                &state.viewer_state,
+                &mut state.loading,
+                &mut state.control_ui,
+                None,
+            );
+        },
+        ControlButtonsHarnessState::default(),
+    );
+
+    harness.fit_contents();
+    harness.get_by_label("播放");
+    harness.get_by_label("高级调试:关");
+
+    harness.get_by_label("播放").click();
+    harness.run();
+    assert!(harness.state().control_ui.playing);
+    harness.get_by_label("暂停");
+
+    harness.get_by_label("高级调试:关").click();
+    harness.run();
+    assert!(harness.state().control_ui.advanced_debug_expanded);
+    harness.get_by_label("单步");
+    harness.get_by_label("跳转 0");
+}
+
+#[test]
 fn mode_signal_reflects_timeline_state() {
     let live_timeline = TimelineUiState::default();
     let (live_text, live_color) = mode_signal(&live_timeline, crate::i18n::UiLocale::EnUs);
