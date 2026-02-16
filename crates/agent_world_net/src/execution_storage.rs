@@ -279,7 +279,7 @@ mod tests {
 
     use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
-    use agent_world_distfs::{BlobStore as _, LocalCasStore};
+    use agent_world_distfs::{BlobStore as _, FileStore as _, LocalCasStore};
 
     use super::super::distributed_storage::ExecutionWriteConfig;
     use super::*;
@@ -336,6 +336,103 @@ mod tests {
             result.journal_segments_ref.content_hash
         );
         assert_eq!(result.block.world_id, "w1");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn store_execution_result_with_path_index_writes_lookup_paths() {
+        let dir = temp_dir("exec-store-path-index");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+
+        let result = store_execution_result_with_path_index(
+            "w_path_1",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("store execution with path index");
+
+        let height_segment = format!("{:020}", 1);
+        let latest_head_path = "worlds/w_path_1/heads/latest_head.cbor";
+        let block_path = format!("worlds/w_path_1/blocks/{height_segment}/block.cbor");
+        let snapshot_manifest_path =
+            format!("worlds/w_path_1/blocks/{height_segment}/snapshot_manifest.cbor");
+        let journal_segments_path =
+            format!("worlds/w_path_1/blocks/{height_segment}/journal_segments.cbor");
+
+        assert!(store
+            .stat_file(latest_head_path)
+            .expect("latest head stat")
+            .is_some());
+        assert!(store.stat_file(&block_path).expect("block stat").is_some());
+        assert!(store
+            .stat_file(&snapshot_manifest_path)
+            .expect("manifest stat")
+            .is_some());
+        assert!(store
+            .stat_file(&journal_segments_path)
+            .expect("journal stat")
+            .is_some());
+
+        let loaded_block =
+            load_block_by_height_from_path_index("w_path_1", 1, &store).expect("load block");
+        let loaded_head =
+            load_latest_head_from_path_index("w_path_1", &store).expect("load latest head");
+
+        assert_eq!(loaded_block, result.block);
+        assert_eq!(loaded_head.block_hash, result.block_hash);
+        assert_eq!(loaded_head.world_id, "w_path_1");
+        assert_eq!(loaded_head.height, 1);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn store_execution_result_with_path_index_rejects_invalid_world_id() {
+        let dir = temp_dir("exec-store-path-index-invalid-world");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+
+        let result = store_execution_result_with_path_index(
+            "bad/world",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        );
+        assert!(matches!(
+            result,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
 
         let _ = fs::remove_dir_all(&dir);
     }
