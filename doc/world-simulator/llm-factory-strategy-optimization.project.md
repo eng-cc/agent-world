@@ -26,6 +26,11 @@
 - [x] LFO4.2 复跑 `llm_bootstrap --ticks 30` 对比策略收敛性
 - [x] LFO4.3 回写文档状态、任务日志并按任务提交
 
+### LFO5 用户指令闭环抽样（2026-02-16）
+- [x] LFO5.1 使用“建工厂 + 制成品”硬目标 prompt 复跑 `llm_bootstrap --ticks 30`（含 `--print-llm-io`）
+- [x] LFO5.2 验证主链路达成：`build_factory` 成功且 `schedule_recipe` 至少 2 次成功，`data` 正增长
+- [x] LFO5.3 记录本轮新发现 TODO 并回写项目文档/任务日志
+
 ### LFO4 在线闭环结果摘要（2026-02-16）
 - 运行产物：
   - `output/llm_bootstrap/factory_schedule_lfo4_20_2026-02-16/run.log`
@@ -46,6 +51,24 @@
   - 增加“电力不足 -> harvest 上限轮次 + 立即回切 schedule”硬约束，避免尾段长 harvest。
   - 在 LLM 目标中加入“每 N tick 至少一次 schedule_recipe”的节奏约束，并结合 `action_kind_counts` 做回归门槛。
 
+### LFO5 在线闭环结果摘要（2026-02-16，用户指令复跑）
+- 运行产物：
+  - `output/llm_bootstrap/user_factory_closedloop_2026-02-16_230752/run.log`
+  - `output/llm_bootstrap/user_factory_closedloop_2026-02-16_230752/report.json`
+- 关键指标：
+  - `action_success=27`、`action_failure=3`、`llm_errors=0`、`parse_errors=0`
+  - `action_kind_counts={harvest_radiation:18, refine_compound:5, build_factory:2, schedule_recipe:5}`
+  - `action_kind_success_counts.schedule_recipe=3`
+  - `first_action_tick={refine_compound:10, build_factory:11, schedule_recipe:12}`
+- 链路确认（run.log 证据）：
+  - `tick=11` 建厂成功（`build_factory`）。
+  - `tick=14`、`tick=16`、`tick=18` 三次排产成功（`schedule_recipe`）。
+  - `data` 由初始 `12` 增长到 `24`，已达成“建工厂 + 制成品（data）”闭环。
+- 新增产品 TODO（进入下一轮优化）：
+  - TODO-1：`facility_already_exists` 在下一轮 observation 被降级为 `reject_reason=other`，导致模型缺少可恢复语义；需要补 reject_reason 枚举透传映射。
+  - TODO-2：尾段仍出现 `execute_until` 长 harvest（`tick=19..27`），建议加入“能量补足后立即退出 execute_until 并优先回切排产”约束。
+  - TODO-3：模型会在硬件不足时发出 `batches=2` 的排产（`tick=30`，请求16仅有7）；建议在 prompt 增加 `batches <= available_hardware / recipe_hardware_cost_per_batch` 的上界规则。
+
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
 - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
@@ -55,6 +78,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO4 全部完成。
-- 下一步：基于 LFO4 指标继续迭代策略约束（重点处理长窗口 harvest 回退）。
-- 最近更新：2026-02-16（完成 LFO4 在线复跑与指标对比收口）。
+- 当前阶段：LFO0-LFO5 全部完成。
+- 下一步：基于 LFO5 TODO 继续迭代（优先修复 reject_reason 透传，再收敛长 harvest 与批次数过配）。
+- 最近更新：2026-02-16（完成 LFO5 用户指令闭环复跑与 TODO 回写）。
