@@ -6,6 +6,7 @@ mod membership_logic;
 mod membership_reconciliation;
 mod membership_recovery;
 mod mempool;
+mod pos;
 mod quorum;
 
 pub mod distributed {
@@ -24,6 +25,14 @@ pub mod distributed_consensus {
     pub use super::quorum::{
         ConsensusMembershipChange, ConsensusMembershipChangeRequest,
         ConsensusMembershipChangeResult, QuorumConsensus,
+    };
+}
+
+pub mod distributed_pos_consensus {
+    pub use super::pos::{
+        attest_world_head_with_pos, propose_world_head_with_pos, PosAttestation, PosConsensus,
+        PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord, PosValidator,
+        POS_CONSENSUS_SNAPSHOT_VERSION,
     };
 }
 
@@ -170,6 +179,11 @@ pub use membership_recovery::{
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
+pub use pos::{
+    attest_world_head_with_pos, propose_world_head_with_pos, PosAttestation, PosConsensus,
+    PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord, PosValidator,
+    POS_CONSENSUS_SNAPSHOT_VERSION,
+};
 pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,
     ConsensusConfig, ConsensusDecision, ConsensusMembershipChange,
@@ -200,6 +214,8 @@ mod tests {
     fn consensus_exports_are_available() {
         let _ = std::any::type_name::<ConsensusConfig>();
         let _ = std::any::type_name::<QuorumConsensus>();
+        let _ = std::any::type_name::<PosConsensusConfig>();
+        let _ = std::any::type_name::<PosConsensus>();
         let _ = std::any::type_name::<MembershipSyncClient>();
         let _ = std::any::type_name::<MembershipRevocationSyncReport>();
     }
