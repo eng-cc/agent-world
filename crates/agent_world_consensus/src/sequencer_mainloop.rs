@@ -10,7 +10,7 @@ use super::pos::{
     attest_world_head_with_pos, propose_world_head_with_pos, PosConsensus, PosConsensusConfig,
     PosConsensusDecision, PosConsensusStatus,
 };
-use super::signature::HmacSha256Signer;
+use super::signature::{Ed25519SignatureSigner, HmacSha256Signer, ED25519_SIGNATURE_V1_PREFIX};
 
 #[derive(Debug, Clone)]
 pub struct SequencerMainloopConfig {
@@ -23,6 +23,8 @@ pub struct SequencerMainloopConfig {
     pub require_action_signature: bool,
     pub sign_head: bool,
     pub hmac_signer: Option<HmacSha256Signer>,
+    pub ed25519_signer: Option<Ed25519SignatureSigner>,
+    pub accepted_action_signer_public_keys: Vec<String>,
     pub initial_prev_block_hash: String,
 }
 
@@ -38,6 +40,8 @@ impl Default for SequencerMainloopConfig {
             require_action_signature: false,
             sign_head: false,
             hmac_signer: None,
+            ed25519_signer: None,
+            accepted_action_signer_public_keys: Vec::new(),
             initial_prev_block_hash: "genesis".to_string(),
         }
     }
@@ -70,14 +74,27 @@ impl SequencerMainloopConfig {
                 reason: "sequencer batch_rules.max_payload_bytes must be positive".to_string(),
             });
         }
-        if self.require_action_signature && self.hmac_signer.is_none() {
+        if self
+            .accepted_action_signer_public_keys
+            .iter()
+            .any(|key| key.trim().is_empty())
+        {
             return Err(WorldError::DistributedValidationFailed {
-                reason: "require_action_signature requires hmac_signer".to_string(),
+                reason: "accepted_action_signer_public_keys cannot contain empty key".to_string(),
             });
         }
-        if self.sign_head && self.hmac_signer.is_none() {
+        if self.require_action_signature
+            && self.hmac_signer.is_none()
+            && self.accepted_action_signer_public_keys.is_empty()
+        {
             return Err(WorldError::DistributedValidationFailed {
-                reason: "sign_head requires hmac_signer".to_string(),
+                reason: "require_action_signature requires hmac_signer or accepted_action_signer_public_keys"
+                    .to_string(),
+            });
+        }
+        if self.sign_head && self.hmac_signer.is_none() && self.ed25519_signer.is_none() {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "sign_head requires hmac_signer or ed25519_signer".to_string(),
             });
         }
         Ok(())
@@ -254,12 +271,25 @@ impl SequencerMainloop {
     }
 
     fn verify_action_signature(&self, action: &ActionEnvelope) -> bool {
-        let Some(signer) = &self.config.hmac_signer else {
-            return !self.config.require_action_signature;
-        };
         if action.signature.is_empty() {
             return !self.config.require_action_signature;
         }
+        if action.signature.starts_with(ED25519_SIGNATURE_V1_PREFIX) {
+            let Ok(signer_public_key) = Ed25519SignatureSigner::verify_action(action) else {
+                return false;
+            };
+            if self.config.accepted_action_signer_public_keys.is_empty() {
+                return !self.config.require_action_signature;
+            }
+            return self
+                .config
+                .accepted_action_signer_public_keys
+                .iter()
+                .any(|accepted| accepted == &signer_public_key);
+        }
+        let Some(signer) = &self.config.hmac_signer else {
+            return !self.config.require_action_signature;
+        };
         signer.verify_action(action).is_ok()
     }
 
@@ -267,9 +297,14 @@ impl SequencerMainloop {
         if !self.config.sign_head {
             return Ok(());
         }
+        if let Some(signer) = self.config.ed25519_signer.as_ref() {
+            head.signature = signer.sign_head(head)?;
+            Ed25519SignatureSigner::verify_head(head)?;
+            return Ok(());
+        }
         let signer = self.config.hmac_signer.as_ref().ok_or_else(|| {
             WorldError::DistributedValidationFailed {
-                reason: "sign_head requires hmac_signer".to_string(),
+                reason: "sign_head requires hmac_signer or ed25519_signer".to_string(),
             }
         })?;
         head.signature = signer.sign_head(head)?;
@@ -476,7 +511,9 @@ mod tests {
     use super::super::distributed::ActionEnvelope;
     use super::super::distributed_dht::InMemoryDht;
     use super::super::pos::PosValidator;
-    use super::super::signature::HmacSha256Signer;
+    use super::super::signature::{
+        Ed25519SignatureSigner, HmacSha256Signer, ED25519_SIGNATURE_V1_PREFIX,
+    };
     use agent_world_proto::distributed_dht::DistributedDht as _;
 
     fn action(id: &str, ts: i64) -> ActionEnvelope {
@@ -502,6 +539,14 @@ mod tests {
 
     fn signer() -> HmacSha256Signer {
         HmacSha256Signer::new(b"sequencer-test-key".to_vec()).expect("signer")
+    }
+
+    fn ed25519_signer() -> Ed25519SignatureSigner {
+        let private_key_hex = hex::encode([11_u8; 32]);
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&[11_u8; 32]);
+        let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+        Ed25519SignatureSigner::new(private_key_hex.as_str(), public_key_hex.as_str())
+            .expect("ed25519 signer")
     }
 
     #[test]
@@ -599,6 +644,38 @@ mod tests {
     }
 
     #[test]
+    fn submit_action_accepts_ed25519_signed_when_signature_required() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            require_action_signature: true,
+            accepted_action_signer_public_keys: vec![signer.public_key_hex().to_string()],
+            ..SequencerMainloopConfig::default()
+        };
+        let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
+
+        let mut signed = action("a-signed-ed25519", 13);
+        signed.signature = signer.sign_action(&signed).expect("sign action");
+        assert!(loop_state.submit_action(signed));
+        assert_eq!(loop_state.pending_actions(), 1);
+    }
+
+    #[test]
+    fn submit_action_rejects_ed25519_signed_when_signer_not_allowed() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            require_action_signature: true,
+            accepted_action_signer_public_keys: vec!["deadbeef".to_string()],
+            ..SequencerMainloopConfig::default()
+        };
+        let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
+
+        let mut signed = action("a-signed-ed25519", 14);
+        signed.signature = signer.sign_action(&signed).expect("sign action");
+        assert!(!loop_state.submit_action(signed));
+        assert_eq!(loop_state.pending_actions(), 0);
+    }
+
+    #[test]
     fn sequencer_tick_signs_head_when_enabled() {
         let signer = signer();
         let config = SequencerMainloopConfig {
@@ -622,6 +699,30 @@ mod tests {
     }
 
     #[test]
+    fn sequencer_tick_signs_head_with_ed25519_when_enabled() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            sign_head: true,
+            ed25519_signer: Some(signer.clone()),
+            ..SequencerMainloopConfig::default()
+        };
+        let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
+        let dht = InMemoryDht::new();
+
+        assert!(loop_state.submit_action(action("a-1", 10)));
+        let report = loop_state.tick(&dht, 100).expect("tick");
+        assert_eq!(report.state, SequencerTickState::Committed);
+
+        let head = dht
+            .get_world_head("w1")
+            .expect("head query")
+            .expect("head exists");
+        assert!(head.signature.starts_with(ED25519_SIGNATURE_V1_PREFIX));
+        let signer_public_key = Ed25519SignatureSigner::verify_head(&head).expect("verify head");
+        assert_eq!(signer_public_key, signer.public_key_hex());
+    }
+
+    #[test]
     fn config_rejects_signature_requirements_without_signer() {
         let missing_action_signer = SequencerMainloopConfig {
             require_action_signature: true,
@@ -642,5 +743,18 @@ mod tests {
             SequencerMainloop::new(missing_head_signer, test_pos_config()),
             Err(WorldError::DistributedValidationFailed { .. })
         ));
+    }
+
+    #[test]
+    fn config_accepts_signature_requirements_with_ed25519_allowlist_only() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            require_action_signature: true,
+            accepted_action_signer_public_keys: vec![signer.public_key_hex().to_string()],
+            hmac_signer: None,
+            ..SequencerMainloopConfig::default()
+        };
+        let loop_state = SequencerMainloop::new(config, test_pos_config());
+        assert!(loop_state.is_ok());
     }
 }
