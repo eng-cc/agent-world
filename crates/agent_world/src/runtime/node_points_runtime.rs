@@ -183,6 +183,9 @@ impl NodePointsRuntimeCollector {
                     uptime_seconds: accumulator.uptime_ms / 1000,
                     uptime_valid_checks: accumulator.uptime_checks_passed,
                     uptime_total_checks: accumulator.uptime_checks_total,
+                    storage_valid_checks: 0,
+                    storage_total_checks: 0,
+                    staked_storage_bytes: 0,
                     verify_pass_ratio,
                     availability_ratio,
                     explicit_penalty_points: self.heuristics.error_penalty_points.max(0.0)

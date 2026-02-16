@@ -7,6 +7,8 @@ const DEFAULT_WEIGHT_STORAGE: f64 = 0.35;
 const DEFAULT_WEIGHT_UPTIME: f64 = 0.10;
 const DEFAULT_WEIGHT_RELIABILITY: f64 = 0.10;
 const DEFAULT_MIN_UPTIME_CHALLENGE_PASS_RATIO: f64 = 0.85;
+const DEFAULT_MIN_STORAGE_CHALLENGE_PASS_RATIO: f64 = 0.85;
+const DEFAULT_MIN_STORAGE_CHALLENGE_CHECKS: u64 = 1;
 const BYTES_PER_GIB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 /// Node points settlement configuration.
@@ -14,8 +16,12 @@ const BYTES_PER_GIB: f64 = 1024.0 * 1024.0 * 1024.0;
 pub struct NodePointsConfig {
     pub epoch_duration_seconds: u64,
     pub epoch_pool_points: u64,
+    pub storage_pool_points: u64,
     pub min_self_sim_compute_units: u64,
     pub min_uptime_challenge_pass_ratio: f64,
+    pub min_storage_challenge_pass_ratio: f64,
+    pub min_storage_challenge_checks: u64,
+    pub max_rewardable_storage_to_staked_ratio: f64,
     pub delegated_compute_multiplier: f64,
     pub maintenance_compute_multiplier: f64,
     pub weight_compute: f64,
@@ -30,8 +36,12 @@ impl Default for NodePointsConfig {
         Self {
             epoch_duration_seconds: 3600,
             epoch_pool_points: 1000,
+            storage_pool_points: 0,
             min_self_sim_compute_units: 1,
             min_uptime_challenge_pass_ratio: DEFAULT_MIN_UPTIME_CHALLENGE_PASS_RATIO,
+            min_storage_challenge_pass_ratio: DEFAULT_MIN_STORAGE_CHALLENGE_PASS_RATIO,
+            min_storage_challenge_checks: DEFAULT_MIN_STORAGE_CHALLENGE_CHECKS,
+            max_rewardable_storage_to_staked_ratio: 0.0,
             delegated_compute_multiplier: 1.0,
             maintenance_compute_multiplier: 1.2,
             weight_compute: DEFAULT_WEIGHT_COMPUTE,
@@ -46,7 +56,11 @@ impl Default for NodePointsConfig {
 impl NodePointsConfig {
     fn normalized_weights(&self) -> (f64, f64, f64, f64) {
         let wc = self.weight_compute.max(0.0);
-        let ws = self.weight_storage.max(0.0);
+        let ws = if self.storage_pool_points > 0 {
+            0.0
+        } else {
+            self.weight_storage.max(0.0)
+        };
         let wu = self.weight_uptime.max(0.0);
         let wr = self.weight_reliability.max(0.0);
         let sum = wc + ws + wu + wr;
@@ -73,6 +87,9 @@ pub struct NodeContributionSample {
     pub uptime_seconds: u64,
     pub uptime_valid_checks: u64,
     pub uptime_total_checks: u64,
+    pub storage_valid_checks: u64,
+    pub storage_total_checks: u64,
+    pub staked_storage_bytes: u64,
     pub verify_pass_ratio: f64,
     pub availability_ratio: f64,
     pub explicit_penalty_points: f64,
@@ -87,8 +104,12 @@ pub struct NodeSettlement {
     pub storage_score: f64,
     pub uptime_score: f64,
     pub reliability_score: f64,
+    pub storage_reward_score: f64,
+    pub rewardable_storage_bytes: u64,
     pub penalty_score: f64,
     pub total_score: f64,
+    pub main_awarded_points: u64,
+    pub storage_awarded_points: u64,
     pub awarded_points: u64,
     pub cumulative_points: u64,
 }
@@ -98,7 +119,10 @@ pub struct NodeSettlement {
 pub struct EpochSettlementReport {
     pub epoch_index: u64,
     pub pool_points: u64,
+    pub storage_pool_points: u64,
     pub distributed_points: u64,
+    pub storage_distributed_points: u64,
+    pub total_distributed_points: u64,
     pub settlements: Vec<NodeSettlement>,
 }
 
@@ -143,15 +167,23 @@ impl NodePointsLedger {
             .iter()
             .map(|sample| self.build_settlement(sample))
             .collect::<Vec<_>>();
-        let total_score = settlements
-            .iter()
-            .map(|settlement| settlement.total_score)
-            .sum();
-
-        let distributed_points =
-            allocate_awards(self.config.epoch_pool_points, total_score, &mut settlements);
+        let distributed_points = allocate_awards_for_score(
+            self.config.epoch_pool_points,
+            &mut settlements,
+            settlement_total_score,
+            settlement_main_award_mut,
+        );
+        let storage_distributed_points = allocate_awards_for_score(
+            self.config.storage_pool_points,
+            &mut settlements,
+            settlement_storage_reward_score,
+            settlement_storage_award_mut,
+        );
 
         for settlement in &mut settlements {
+            settlement.awarded_points = settlement
+                .main_awarded_points
+                .saturating_add(settlement.storage_awarded_points);
             let cumulative = self
                 .cumulative_points
                 .entry(settlement.node_id.clone())
@@ -163,7 +195,11 @@ impl NodePointsLedger {
         let report = EpochSettlementReport {
             epoch_index: self.epoch_index,
             pool_points: self.config.epoch_pool_points,
+            storage_pool_points: self.config.storage_pool_points,
             distributed_points,
+            storage_distributed_points,
+            total_distributed_points: distributed_points
+                .saturating_add(storage_distributed_points),
             settlements,
         };
         self.epoch_index = self.epoch_index.saturating_add(1);
@@ -181,9 +217,11 @@ impl NodePointsLedger {
 
         let storage_gib = sample.effective_storage_bytes as f64 / BYTES_PER_GIB;
         let storage_score = storage_gib.max(0.0).sqrt() * availability_ratio;
+        let (rewardable_storage_bytes, storage_reward_score) =
+            self.storage_reward_score(sample, availability_ratio);
 
         let raw_uptime_ratio = self.raw_uptime_ratio(sample);
-        let uptime_score = normalize_uptime_ratio(
+        let uptime_score = normalize_ratio_with_threshold(
             raw_uptime_ratio,
             clamp_ratio(self.config.min_uptime_challenge_pass_ratio),
         );
@@ -212,8 +250,12 @@ impl NodePointsLedger {
             storage_score,
             uptime_score,
             reliability_score,
+            storage_reward_score,
+            rewardable_storage_bytes,
             penalty_score,
             total_score,
+            main_awarded_points: 0,
+            storage_awarded_points: 0,
             awarded_points: 0,
             cumulative_points: 0,
         }
@@ -229,6 +271,60 @@ impl NodePointsLedger {
         }
         (sample.uptime_seconds as f64 / self.config.epoch_duration_seconds as f64).clamp(0.0, 1.0)
     }
+
+    fn storage_reward_score(
+        &self,
+        sample: &NodeContributionSample,
+        availability_ratio: f64,
+    ) -> (u64, f64) {
+        let rewardable_storage_bytes = self.rewardable_storage_bytes(sample);
+        if rewardable_storage_bytes == 0 {
+            return (0, 0.0);
+        }
+        if sample.storage_total_checks < self.config.min_storage_challenge_checks {
+            return (rewardable_storage_bytes, 0.0);
+        }
+
+        let raw_storage_pass_ratio = self.raw_storage_challenge_pass_ratio(sample);
+        let normalized_pass_ratio = normalize_ratio_with_threshold(
+            raw_storage_pass_ratio,
+            clamp_ratio(self.config.min_storage_challenge_pass_ratio),
+        );
+        if normalized_pass_ratio <= 0.0 {
+            return (rewardable_storage_bytes, 0.0);
+        }
+
+        let rewardable_storage_gib = rewardable_storage_bytes as f64 / BYTES_PER_GIB;
+        let storage_reward_score =
+            rewardable_storage_gib.sqrt() * normalized_pass_ratio * availability_ratio;
+        (rewardable_storage_bytes, storage_reward_score.max(0.0))
+    }
+
+    fn raw_storage_challenge_pass_ratio(&self, sample: &NodeContributionSample) -> f64 {
+        if sample.storage_total_checks == 0 {
+            return 0.0;
+        }
+        (sample.storage_valid_checks as f64 / sample.storage_total_checks as f64).clamp(0.0, 1.0)
+    }
+
+    fn rewardable_storage_bytes(&self, sample: &NodeContributionSample) -> u64 {
+        let mut rewardable_storage_bytes = sample.effective_storage_bytes;
+        let ratio = self.config.max_rewardable_storage_to_staked_ratio;
+        if !ratio.is_finite() || ratio <= 0.0 {
+            return rewardable_storage_bytes;
+        }
+        if sample.staked_storage_bytes == 0 {
+            return 0;
+        }
+
+        let staked_cap = (sample.staked_storage_bytes as f64 * ratio).floor();
+        if !staked_cap.is_finite() || staked_cap <= 0.0 {
+            return 0;
+        }
+        let staked_cap = staked_cap.min(u64::MAX as f64) as u64;
+        rewardable_storage_bytes = rewardable_storage_bytes.min(staked_cap);
+        rewardable_storage_bytes
+    }
 }
 
 impl Default for NodePointsLedger {
@@ -237,8 +333,40 @@ impl Default for NodePointsLedger {
     }
 }
 
-fn allocate_awards(pool_points: u64, total_score: f64, settlements: &mut [NodeSettlement]) -> u64 {
-    if pool_points == 0 || total_score <= f64::EPSILON || settlements.is_empty() {
+fn settlement_total_score(settlement: &NodeSettlement) -> f64 {
+    settlement.total_score
+}
+
+fn settlement_storage_reward_score(settlement: &NodeSettlement) -> f64 {
+    settlement.storage_reward_score
+}
+
+fn settlement_main_award_mut(settlement: &mut NodeSettlement) -> &mut u64 {
+    &mut settlement.main_awarded_points
+}
+
+fn settlement_storage_award_mut(settlement: &mut NodeSettlement) -> &mut u64 {
+    &mut settlement.storage_awarded_points
+}
+
+fn allocate_awards_for_score(
+    pool_points: u64,
+    settlements: &mut [NodeSettlement],
+    score_of: fn(&NodeSettlement) -> f64,
+    award_mut: for<'a> fn(&'a mut NodeSettlement) -> &'a mut u64,
+) -> u64 {
+    for settlement in settlements.iter_mut() {
+        *award_mut(settlement) = 0;
+    }
+    if pool_points == 0 || settlements.is_empty() {
+        return 0;
+    }
+
+    let total_score = settlements
+        .iter()
+        .map(|settlement| score_of(settlement).max(0.0))
+        .sum::<f64>();
+    if total_score <= f64::EPSILON {
         return 0;
     }
 
@@ -246,7 +374,8 @@ fn allocate_awards(pool_points: u64, total_score: f64, settlements: &mut [NodeSe
     let mut remainders = Vec::with_capacity(settlements.len());
 
     for (index, settlement) in settlements.iter_mut().enumerate() {
-        if settlement.total_score <= 0.0 {
+        let score = score_of(settlement).max(0.0);
+        if score <= 0.0 {
             remainders.push(RemainderEntry {
                 settlement_index: index,
                 node_id: settlement.node_id.clone(),
@@ -255,9 +384,9 @@ fn allocate_awards(pool_points: u64, total_score: f64, settlements: &mut [NodeSe
             continue;
         }
 
-        let exact_points = (pool_points as f64) * settlement.total_score / total_score;
+        let exact_points = (pool_points as f64) * score / total_score;
         let floor_points = exact_points.floor() as u64;
-        settlement.awarded_points = floor_points;
+        *award_mut(settlement) = floor_points;
         distributed = distributed.saturating_add(floor_points);
         remainders.push(RemainderEntry {
             settlement_index: index,
@@ -279,12 +408,11 @@ fn allocate_awards(pool_points: u64, total_score: f64, settlements: &mut [NodeSe
         if remaining == 0 {
             break;
         }
-        if settlements[entry.settlement_index].total_score <= 0.0 {
+        if score_of(&settlements[entry.settlement_index]) <= 0.0 {
             continue;
         }
-        settlements[entry.settlement_index].awarded_points = settlements[entry.settlement_index]
-            .awarded_points
-            .saturating_add(1);
+        let award = award_mut(&mut settlements[entry.settlement_index]);
+        *award = award.saturating_add(1);
         distributed = distributed.saturating_add(1);
         remaining = remaining.saturating_sub(1);
     }
@@ -299,7 +427,7 @@ fn clamp_ratio(value: f64) -> f64 {
     value.clamp(0.0, 1.0)
 }
 
-fn normalize_uptime_ratio(raw_ratio: f64, min_ratio: f64) -> f64 {
+fn normalize_ratio_with_threshold(raw_ratio: f64, min_ratio: f64) -> f64 {
     let raw = clamp_ratio(raw_ratio);
     if min_ratio >= 1.0 {
         if raw >= 1.0 {
@@ -330,6 +458,9 @@ mod tests {
             uptime_seconds: 0,
             uptime_valid_checks: 0,
             uptime_total_checks: 0,
+            storage_valid_checks: 0,
+            storage_total_checks: 0,
+            staked_storage_bytes: 0,
             verify_pass_ratio: 1.0,
             availability_ratio: 1.0,
             explicit_penalty_points: 0.0,
@@ -587,6 +718,94 @@ mod tests {
             + settlement_b1.cumulative_points
             + settlement_c1.cumulative_points;
         assert_eq!(total_cumulative, 2000);
+    }
+
+    #[test]
+    fn storage_system_pool_distributes_with_challenge_threshold() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 0;
+        config.storage_pool_points = 100;
+        config.min_storage_challenge_pass_ratio = 0.8;
+        config.min_storage_challenge_checks = 2;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut good = sample("node-good");
+        good.effective_storage_bytes = gib(16);
+        good.storage_valid_checks = 10;
+        good.storage_total_checks = 10;
+
+        let mut weak = sample("node-weak");
+        weak.effective_storage_bytes = gib(16);
+        weak.storage_valid_checks = 8;
+        weak.storage_total_checks = 10;
+
+        let report = ledger.settle_epoch(&[good, weak]);
+        assert_eq!(report.pool_points, 0);
+        assert_eq!(report.storage_pool_points, 100);
+        assert_eq!(report.distributed_points, 0);
+        assert_eq!(report.storage_distributed_points, 100);
+        assert_eq!(report.total_distributed_points, 100);
+        assert_eq!(report.settlements[0].main_awarded_points, 0);
+        assert_eq!(report.settlements[1].main_awarded_points, 0);
+        assert_eq!(report.settlements[0].storage_awarded_points, 100);
+        assert_eq!(report.settlements[1].storage_awarded_points, 0);
+        assert_eq!(report.settlements[0].awarded_points, 100);
+        assert_eq!(report.settlements[1].awarded_points, 0);
+    }
+
+    #[test]
+    fn storage_system_pool_requires_minimum_checks() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 0;
+        config.storage_pool_points = 50;
+        config.min_storage_challenge_pass_ratio = 0.5;
+        config.min_storage_challenge_checks = 3;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut low_checks = sample("node-low-checks");
+        low_checks.effective_storage_bytes = gib(20);
+        low_checks.storage_valid_checks = 2;
+        low_checks.storage_total_checks = 2;
+
+        let mut pass = sample("node-pass");
+        pass.effective_storage_bytes = gib(5);
+        pass.storage_valid_checks = 3;
+        pass.storage_total_checks = 3;
+
+        let report = ledger.settle_epoch(&[low_checks, pass]);
+        assert_eq!(report.storage_distributed_points, 50);
+        assert_eq!(report.settlements[0].storage_reward_score, 0.0);
+        assert_eq!(report.settlements[0].storage_awarded_points, 0);
+        assert_eq!(report.settlements[1].storage_awarded_points, 50);
+    }
+
+    #[test]
+    fn storage_system_pool_caps_rewardable_storage_by_stake_ratio() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 0;
+        config.storage_pool_points = 100;
+        config.min_storage_challenge_pass_ratio = 0.0;
+        config.min_storage_challenge_checks = 1;
+        config.max_rewardable_storage_to_staked_ratio = 1.0;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut capped = sample("node-capped");
+        capped.effective_storage_bytes = gib(100);
+        capped.staked_storage_bytes = gib(10);
+        capped.storage_valid_checks = 1;
+        capped.storage_total_checks = 1;
+
+        let mut uncapped = sample("node-uncapped");
+        uncapped.effective_storage_bytes = gib(20);
+        uncapped.staked_storage_bytes = gib(20);
+        uncapped.storage_valid_checks = 1;
+        uncapped.storage_total_checks = 1;
+
+        let report = ledger.settle_epoch(&[capped, uncapped]);
+        assert_eq!(report.storage_distributed_points, 100);
+        assert_eq!(report.settlements[0].rewardable_storage_bytes, gib(10));
+        assert_eq!(report.settlements[1].rewardable_storage_bytes, gib(20));
+        assert!(report.settlements[1].storage_awarded_points > report.settlements[0].storage_awarded_points);
     }
 
     #[test]
