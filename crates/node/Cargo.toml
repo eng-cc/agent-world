@@ -8,6 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 agent_world_distfs = { path = "../agent_world_distfs" }
+agent_world_proto = { path = "../agent_world_proto" }
 ed25519-dalek = "2"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }

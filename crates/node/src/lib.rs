@@ -12,10 +12,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+mod network_bridge;
 mod replication;
 
+pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 
+use network_bridge::ReplicationNetworkEndpoint;
 use replication::{GossipReplicationMessage, ReplicationRuntime};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -262,9 +265,9 @@ pub struct NodeSnapshot {
     pub last_error: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct NodeRuntime {
     config: NodeConfig,
+    replication_network: Option<NodeReplicationNetworkHandle>,
     running: Arc<AtomicBool>,
     state: Arc<Mutex<RuntimeState>>,
     stop_tx: Option<mpsc::Sender<()>>,
@@ -294,11 +297,17 @@ impl NodeRuntime {
     pub fn new(config: NodeConfig) -> Self {
         Self {
             config,
+            replication_network: None,
             running: Arc::new(AtomicBool::new(false)),
             state: Arc::new(Mutex::new(RuntimeState::default())),
             stop_tx: None,
             worker: None,
         }
+    }
+
+    pub fn with_replication_network(mut self, network: NodeReplicationNetworkHandle) -> Self {
+        self.replication_network = Some(network);
+        self
     }
 
     pub fn config(&self) -> &NodeConfig {
@@ -346,6 +355,18 @@ impl NodeRuntime {
         } else {
             None
         };
+        let mut replication_network = if let Some(network) = &self.replication_network {
+            let subscribe = !matches!(self.config.role, NodeRole::Sequencer);
+            match ReplicationNetworkEndpoint::new(network, &self.config.world_id, subscribe) {
+                Ok(endpoint) => Some(endpoint),
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let tick_interval = self.config.tick_interval;
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
@@ -374,6 +395,7 @@ impl NodeRuntime {
                                 now_ms,
                                 gossip.as_mut(),
                                 replication.as_mut(),
+                                replication_network.as_mut(),
                             );
                             let mut current = lock_state(&state);
                             match tick_result {
@@ -635,9 +657,18 @@ impl PosNodeEngine {
         now_ms: i64,
         gossip: Option<&mut GossipEndpoint>,
         mut replication: Option<&mut ReplicationRuntime>,
+        replication_network: Option<&mut ReplicationNetworkEndpoint>,
     ) -> Result<NodeConsensusSnapshot, NodeError> {
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+        }
+        if let Some(endpoint) = replication_network.as_ref() {
+            self.ingest_network_replications(
+                endpoint,
+                node_id,
+                world_id,
+                replication.as_deref_mut(),
+            )?;
         }
 
         let mut decision = if self.pending.is_some() {
@@ -651,17 +682,28 @@ impl PosNodeEngine {
         }
 
         self.apply_decision(&decision);
-        if let Some(endpoint) = gossip {
+        if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
-            self.broadcast_local_replication(
+        }
+        self.broadcast_local_replication(
+            gossip.as_deref(),
+            replication_network.as_deref(),
+            node_id,
+            world_id,
+            now_ms,
+            &decision,
+            replication.as_deref_mut(),
+        )?;
+        if let Some(endpoint) = gossip.as_ref() {
+            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+        }
+        if let Some(endpoint) = replication_network.as_ref() {
+            self.ingest_network_replications(
                 endpoint,
                 node_id,
                 world_id,
-                now_ms,
-                &decision,
                 replication.as_deref_mut(),
             )?;
-            self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
         }
         Ok(self.snapshot_from_decision(&decision))
     }
@@ -885,7 +927,8 @@ impl PosNodeEngine {
 
     fn broadcast_local_replication(
         &mut self,
-        endpoint: &GossipEndpoint,
+        gossip_endpoint: Option<&GossipEndpoint>,
+        network_endpoint: Option<&ReplicationNetworkEndpoint>,
         node_id: &str,
         world_id: &str,
         now_ms: i64,
@@ -901,7 +944,27 @@ impl PosNodeEngine {
         if let Some(message) =
             replication.build_local_commit_message(node_id, world_id, now_ms, decision)?
         {
-            endpoint.broadcast_replication(&message)?;
+            if let Some(endpoint) = network_endpoint {
+                endpoint.publish_replication(&message)?;
+            } else if let Some(endpoint) = gossip_endpoint {
+                endpoint.broadcast_replication(&message)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn ingest_network_replications(
+        &mut self,
+        endpoint: &ReplicationNetworkEndpoint,
+        node_id: &str,
+        world_id: &str,
+        mut replication: Option<&mut ReplicationRuntime>,
+    ) -> Result<(), NodeError> {
+        let messages = endpoint.drain_replications()?;
+        for message in messages {
+            if let Some(replication_runtime) = replication.as_deref_mut() {
+                let _ = replication_runtime.apply_remote_message(node_id, world_id, &message);
+            }
         }
         Ok(())
     }

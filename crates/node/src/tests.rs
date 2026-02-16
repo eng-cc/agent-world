@@ -1,9 +1,14 @@
 use super::*;
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
+use agent_world_proto::distributed_net::NetworkSubscription;
+use agent_world_proto::world_error::WorldError;
 use ed25519_dalek::SigningKey;
+use std::collections::HashMap;
 use std::fs;
 use std::net::UdpSocket;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn multi_validators() -> Vec<PosValidator> {
@@ -48,6 +53,45 @@ fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConf
         .expect("signing keypair")
 }
 
+#[derive(Clone, Default)]
+struct TestInMemoryNetwork {
+    inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
+}
+
+impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
+    fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
+        let mut inbox = self.inbox.lock().expect("lock inbox");
+        inbox
+            .entry(topic.to_string())
+            .or_default()
+            .push(payload.to_vec());
+        Ok(())
+    }
+
+    fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
+        let mut inbox = self.inbox.lock().expect("lock inbox");
+        inbox.entry(topic.to_string()).or_default();
+        Ok(NetworkSubscription::new(
+            topic.to_string(),
+            Arc::clone(&self.inbox),
+        ))
+    }
+
+    fn request(&self, _protocol: &str, _payload: &[u8]) -> Result<Vec<u8>, WorldError> {
+        Err(WorldError::NetworkProtocolUnavailable {
+            protocol: "test".to_string(),
+        })
+    }
+
+    fn register_handler(
+        &self,
+        _protocol: &str,
+        _handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
+    ) -> Result<(), WorldError> {
+        Ok(())
+    }
+}
+
 #[test]
 fn role_parse_roundtrip() {
     for role in [NodeRole::Sequencer, NodeRole::Storage, NodeRole::Observer] {
@@ -70,7 +114,7 @@ fn pos_engine_commits_single_validator_head() {
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
     let snapshot = engine
-        .tick(&config.node_id, &config.world_id, 1_000, None, None)
+        .tick(&config.node_id, &config.world_id, 1_000, None, None, None)
         .expect("tick");
     assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
     assert_eq!(snapshot.latest_height, 1);
@@ -95,6 +139,7 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
                 &config.node_id,
                 &config.world_id,
                 2_000 + offset,
+                None,
                 None,
                 None,
             )
@@ -263,6 +308,60 @@ fn runtime_gossip_replication_syncs_distfs_commit_files() {
         .iter()
         .any(|item| item.path.starts_with("consensus/commits/")));
     assert!(dir_b.join("replication_guard.json").exists());
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
+fn runtime_network_replication_syncs_distfs_commit_files() {
+    let dir_a = temp_dir("network-repl-a");
+    let dir_b = temp_dir("network-repl-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let config_a = NodeConfig::new("node-a", "world-network-repl", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators.clone())
+        .expect("validators a")
+        .with_replication(signed_replication_config(dir_a.clone(), 71));
+    let config_b = NodeConfig::new("node-b", "world-network-repl", NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_validators(validators)
+        .expect("validators b")
+        .with_replication(signed_replication_config(dir_b.clone(), 72));
+
+    let mut runtime_a = NodeRuntime::new(config_a)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    let mut runtime_b = NodeRuntime::new(config_b)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b");
+    thread::sleep(Duration::from_millis(220));
+
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b");
+
+    let store_b = LocalCasStore::new(dir_b.join("store"));
+    let files = store_b.list_files().expect("list files");
+    assert!(files
+        .iter()
+        .any(|item| item.path.starts_with("consensus/commits/")));
 
     let _ = fs::remove_dir_all(&dir_a);
     let _ = fs::remove_dir_all(&dir_b);
