@@ -282,3 +282,181 @@ fn clamp_ratio(value: f64) -> f64 {
     }
     value.clamp(0.0, 1.0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        NodeContributionSample, NodePointsConfig, NodePointsLedger, DEFAULT_WEIGHT_COMPUTE,
+        DEFAULT_WEIGHT_RELIABILITY, DEFAULT_WEIGHT_STORAGE, DEFAULT_WEIGHT_UPTIME,
+    };
+
+    fn sample(node_id: &str) -> NodeContributionSample {
+        NodeContributionSample {
+            node_id: node_id.to_string(),
+            self_sim_compute_units: 5,
+            delegated_sim_compute_units: 0,
+            world_maintenance_compute_units: 0,
+            effective_storage_bytes: 0,
+            uptime_seconds: 0,
+            verify_pass_ratio: 1.0,
+            availability_ratio: 1.0,
+            explicit_penalty_points: 0.0,
+        }
+    }
+
+    fn gib(value: u64) -> u64 {
+        value * 1024 * 1024 * 1024
+    }
+
+    fn compute_only_config(pool: u64) -> NodePointsConfig {
+        NodePointsConfig {
+            epoch_pool_points: pool,
+            weight_compute: 1.0,
+            weight_storage: 0.0,
+            weight_uptime: 0.0,
+            weight_reliability: 0.0,
+            ..NodePointsConfig::default()
+        }
+    }
+
+    #[test]
+    fn rewards_extra_compute_not_self_obligation_compute() {
+        let mut ledger = NodePointsLedger::new(compute_only_config(100));
+        let mut high = sample("node-high");
+        high.delegated_sim_compute_units = 10;
+        high.self_sim_compute_units = 5;
+
+        let mut baseline = sample("node-baseline");
+        baseline.self_sim_compute_units = 100;
+
+        let report = ledger.settle_epoch(&[high, baseline]);
+        assert_eq!(report.distributed_points, 100);
+        assert_eq!(report.settlements[0].awarded_points, 100);
+        assert_eq!(report.settlements[1].awarded_points, 0);
+        assert_eq!(report.settlements[0].compute_score, 10.0);
+        assert_eq!(report.settlements[1].compute_score, 0.0);
+    }
+
+    #[test]
+    fn applies_obligation_penalty_when_self_compute_is_too_low() {
+        let mut config = compute_only_config(100);
+        config.min_self_sim_compute_units = 3;
+        config.obligation_penalty_points = 4.0;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut weak = sample("node-weak");
+        weak.self_sim_compute_units = 2;
+        weak.delegated_sim_compute_units = 10;
+
+        let mut good = sample("node-good");
+        good.self_sim_compute_units = 3;
+        good.delegated_sim_compute_units = 6;
+
+        let report = ledger.settle_epoch(&[weak, good]);
+        assert_eq!(report.distributed_points, 100);
+        assert!(!report.settlements[0].obligation_met);
+        assert!(report.settlements[1].obligation_met);
+        assert_eq!(report.settlements[0].penalty_score, 4.0);
+        assert_eq!(report.settlements[0].total_score, 6.0);
+        assert_eq!(report.settlements[1].total_score, 6.0);
+        assert_eq!(report.settlements[0].awarded_points, 50);
+        assert_eq!(report.settlements[1].awarded_points, 50);
+    }
+
+    #[test]
+    fn storage_score_uses_sqrt_curve_with_availability() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.weight_compute = 0.0;
+        config.weight_storage = 1.0;
+        config.weight_uptime = 0.0;
+        config.weight_reliability = 0.0;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut one_gib = sample("node-a");
+        one_gib.effective_storage_bytes = gib(1);
+
+        let mut four_gib = sample("node-b");
+        four_gib.effective_storage_bytes = gib(4);
+
+        let mut nine_gib_half = sample("node-c");
+        nine_gib_half.effective_storage_bytes = gib(9);
+        nine_gib_half.availability_ratio = 0.5;
+
+        let report = ledger.settle_epoch(&[one_gib, four_gib, nine_gib_half]);
+        assert_eq!(report.distributed_points, 100);
+        assert_eq!(report.settlements[0].storage_score, 1.0);
+        assert_eq!(report.settlements[1].storage_score, 2.0);
+        assert_eq!(report.settlements[2].storage_score, 1.5);
+        assert!(report.settlements[1].awarded_points > report.settlements[2].awarded_points);
+        assert!(report.settlements[2].awarded_points > report.settlements[0].awarded_points);
+    }
+
+    #[test]
+    fn remainder_distribution_is_stable_when_scores_tie() {
+        let mut ledger = NodePointsLedger::new(compute_only_config(10));
+
+        let mut a = sample("node-a");
+        a.delegated_sim_compute_units = 1;
+        let mut b = sample("node-b");
+        b.delegated_sim_compute_units = 1;
+        let mut c = sample("node-c");
+        c.delegated_sim_compute_units = 1;
+
+        let report = ledger.settle_epoch(&[a, b, c]);
+        assert_eq!(report.distributed_points, 10);
+        assert_eq!(report.settlements[0].awarded_points, 4);
+        assert_eq!(report.settlements[1].awarded_points, 3);
+        assert_eq!(report.settlements[2].awarded_points, 3);
+    }
+
+    #[test]
+    fn cumulative_points_accumulate_across_epochs() {
+        let mut ledger = NodePointsLedger::new(compute_only_config(10));
+        let mut a = sample("node-a");
+        a.delegated_sim_compute_units = 1;
+
+        let first = ledger.settle_epoch(&[a.clone()]);
+        assert_eq!(first.epoch_index, 0);
+        assert_eq!(first.settlements[0].awarded_points, 10);
+        assert_eq!(first.settlements[0].cumulative_points, 10);
+
+        let second = ledger.settle_epoch(&[a]);
+        assert_eq!(second.epoch_index, 1);
+        assert_eq!(second.settlements[0].awarded_points, 10);
+        assert_eq!(second.settlements[0].cumulative_points, 20);
+        assert_eq!(ledger.cumulative_points("node-a"), 20);
+        assert_eq!(ledger.epoch_index(), 2);
+    }
+
+    #[test]
+    fn uses_default_weights_when_input_weights_are_all_zero() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.weight_compute = 0.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 0.0;
+        config.weight_reliability = 0.0;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut rich_compute = sample("node-compute");
+        rich_compute.delegated_sim_compute_units = 10;
+
+        let mut rich_storage = sample("node-storage");
+        rich_storage.effective_storage_bytes = gib(16);
+
+        let report = ledger.settle_epoch(&[rich_compute, rich_storage]);
+        assert_eq!(report.distributed_points, 100);
+        let compute_settlement = &report.settlements[0];
+        let storage_settlement = &report.settlements[1];
+        assert!(compute_settlement.total_score > 0.0);
+        assert!(storage_settlement.total_score > 0.0);
+        assert_eq!(
+            DEFAULT_WEIGHT_COMPUTE
+                + DEFAULT_WEIGHT_STORAGE
+                + DEFAULT_WEIGHT_UPTIME
+                + DEFAULT_WEIGHT_RELIABILITY,
+            1.0
+        );
+    }
+}
