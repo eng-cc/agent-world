@@ -60,7 +60,11 @@ impl NodePointsRuntimeObservation {
             } else {
                 0
             },
-            storage_checks_total: if snapshot.role == NodeRole::Storage { 1 } else { 0 },
+            storage_checks_total: if snapshot.role == NodeRole::Storage {
+                1
+            } else {
+                0
+            },
             staked_storage_bytes: effective_storage_bytes,
             observed_at_unix_ms,
             has_error: snapshot.last_error.is_some(),

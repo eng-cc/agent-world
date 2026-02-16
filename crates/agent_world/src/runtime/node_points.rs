@@ -198,8 +198,7 @@ impl NodePointsLedger {
             storage_pool_points: self.config.storage_pool_points,
             distributed_points,
             storage_distributed_points,
-            total_distributed_points: distributed_points
-                .saturating_add(storage_distributed_points),
+            total_distributed_points: distributed_points.saturating_add(storage_distributed_points),
             settlements,
         };
         self.epoch_index = self.epoch_index.saturating_add(1);
@@ -805,7 +804,10 @@ mod tests {
         assert_eq!(report.storage_distributed_points, 100);
         assert_eq!(report.settlements[0].rewardable_storage_bytes, gib(10));
         assert_eq!(report.settlements[1].rewardable_storage_bytes, gib(20));
-        assert!(report.settlements[1].storage_awarded_points > report.settlements[0].storage_awarded_points);
+        assert!(
+            report.settlements[1].storage_awarded_points
+                > report.settlements[0].storage_awarded_points
+        );
     }
 
     #[test]
