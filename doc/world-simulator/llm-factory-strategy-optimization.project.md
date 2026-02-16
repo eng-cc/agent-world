@@ -12,9 +12,9 @@
 - [x] LFO1.3 增加/更新 prompt 断言测试（拒绝原因驱动动作切换）
 
 ### LFO2 动作触发率统计（TODO-2）
-- [ ] LFO2.1 扩展 `world_llm_agent_demo` report 结构（`action_kind_counts` 等）
-- [ ] LFO2.2 在运行汇总阶段写入 `first_action_tick` 等关键字段
-- [ ] LFO2.3 增加 report JSON 结构回归测试
+- [x] LFO2.1 扩展 `world_llm_agent_demo` report 结构（`action_kind_counts` 等）
+- [x] LFO2.2 在运行汇总阶段写入 `first_action_tick` 等关键字段
+- [x] LFO2.3 增加 report JSON 结构回归测试
 
 ### LFO3 固定序列离线回归（TODO-3）
 - [ ] LFO3.1 新增 mock 决策序列测试（失败恢复 -> 建厂 -> 排产成功）
@@ -35,6 +35,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO1 完成，LFO2 待开始。
-- 下一步：执行 LFO2（接入 `action_kind_counts`/`first_action_tick` 报告指标）。
-- 最近更新：2026-02-16（完成 LFO1：恢复规则、`last_action` 透出与断言测试）。
+- 当前阶段：LFO0-LFO2 完成，LFO3 待开始。
+- 下一步：执行 LFO3（固定 mock 序列离线回归：成功链路 + 反循环）。
+- 最近更新：2026-02-16（完成 LFO2：动作触发率/首达 tick 指标与回归测试）。

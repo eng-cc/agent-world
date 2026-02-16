@@ -64,6 +64,10 @@ struct DemoRunReport {
     action_success: u64,
     action_failure: u64,
     action_reject_reason_counts: BTreeMap<String, u64>,
+    action_kind_counts: BTreeMap<String, u64>,
+    action_kind_success_counts: BTreeMap<String, u64>,
+    action_kind_failure_counts: BTreeMap<String, u64>,
+    first_action_tick: BTreeMap<String, u64>,
     decision_counts: DecisionCounts,
     trace_counts: TraceCounts,
     world_time: u64,
@@ -81,6 +85,10 @@ impl DemoRunReport {
             action_success: 0,
             action_failure: 0,
             action_reject_reason_counts: BTreeMap::new(),
+            action_kind_counts: BTreeMap::new(),
+            action_kind_success_counts: BTreeMap::new(),
+            action_kind_failure_counts: BTreeMap::new(),
+            first_action_tick: BTreeMap::new(),
             decision_counts: DecisionCounts::default(),
             trace_counts: TraceCounts::default(),
             world_time: 0,
@@ -145,12 +153,26 @@ impl DemoRunReport {
         }
     }
 
-    fn observe_action_result(&mut self, action_result: &ActionResult) {
+    fn observe_action_result(&mut self, tick: u64, action_result: &ActionResult) {
+        let action_kind = action_metric_key(&action_result.action);
+        *self
+            .action_kind_counts
+            .entry(action_kind.clone())
+            .or_insert(0) += 1;
+        self.first_action_tick
+            .entry(action_kind.clone())
+            .or_insert(tick);
+
         if action_result.success {
             self.action_success += 1;
+            *self
+                .action_kind_success_counts
+                .entry(action_kind)
+                .or_insert(0) += 1;
             return;
         }
         self.action_failure += 1;
+        *self.action_kind_failure_counts.entry(action_kind).or_insert(0) += 1;
         if let Some(reason) = action_result.reject_reason() {
             let key = reject_reason_metric_key(reason);
             *self.action_reject_reason_counts.entry(key).or_insert(0) += 1;
@@ -230,6 +252,18 @@ fn print_llm_io_trace(
 
 fn reject_reason_metric_key(reason: &RejectReason) -> String {
     serde_json::to_value(reason)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("type")
+                .and_then(|inner| inner.as_str())
+                .map(normalize_reason_metric_key)
+        })
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn action_metric_key(action: &agent_world::simulator::Action) -> String {
+    serde_json::to_value(action)
         .ok()
         .and_then(|value| {
             value
@@ -336,7 +370,7 @@ fn main() {
                 }
 
                 if let Some(action_result) = result.action_result.as_ref() {
-                    run_report.observe_action_result(action_result);
+                    run_report.observe_action_result(idx + 1, action_result);
                     println!(
                         "tick={} agent={} success={} action={:?}",
                         idx + 1,
@@ -393,6 +427,16 @@ fn main() {
     if !run_report.action_reject_reason_counts.is_empty() {
         for (reason, count) in &run_report.action_reject_reason_counts {
             println!("action_reject_reason_{}: {}", reason, count);
+        }
+    }
+    if !run_report.action_kind_counts.is_empty() {
+        for (kind, count) in &run_report.action_kind_counts {
+            println!("action_kind_{}: {}", kind, count);
+        }
+    }
+    if !run_report.first_action_tick.is_empty() {
+        for (kind, tick) in &run_report.first_action_tick {
+            println!("first_action_tick_{}: {}", kind, tick);
         }
     }
     println!("decision_wait: {}", run_report.decision_counts.wait);
@@ -612,6 +656,19 @@ mod tests {
     }
 
     #[test]
+    fn action_metric_key_uses_serde_tag_name() {
+        let key = action_metric_key(&Action::BuildFactory {
+            owner: agent_world::simulator::ResourceOwner::Agent {
+                agent_id: "agent-0".to_string(),
+            },
+            location_id: "loc-0".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        });
+        assert_eq!(key, "build_factory");
+    }
+
+    #[test]
     fn observe_action_result_counts_reject_reason_breakdown() {
         let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 1);
         let action_result = ActionResult {
@@ -630,13 +687,84 @@ mod tests {
             },
         };
 
-        report.observe_action_result(&action_result);
+        report.observe_action_result(3, &action_result);
 
         assert_eq!(report.action_success, 0);
         assert_eq!(report.action_failure, 1);
+        assert_eq!(report.action_kind_counts.get("harvest_radiation"), Some(&1));
+        assert_eq!(
+            report.action_kind_failure_counts.get("harvest_radiation"),
+            Some(&1)
+        );
+        assert_eq!(report.first_action_tick.get("harvest_radiation"), Some(&3));
         assert_eq!(
             report.action_reject_reason_counts.get("invalid_amount"),
             Some(&1)
         );
+    }
+
+    #[test]
+    fn observe_action_result_counts_success_and_first_tick_per_action_kind() {
+        let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 1);
+        let success = ActionResult {
+            action: Action::BuildFactory {
+                owner: agent_world::simulator::ResourceOwner::Agent {
+                    agent_id: "agent-0".to_string(),
+                },
+                location_id: "loc-0".to_string(),
+                factory_id: "factory.alpha".to_string(),
+                factory_kind: "factory.assembler.mk1".to_string(),
+            },
+            action_id: 7,
+            success: true,
+            event: WorldEvent {
+                id: 7,
+                time: 7,
+                kind: WorldEventKind::FactoryBuilt {
+                    owner: agent_world::simulator::ResourceOwner::Agent {
+                        agent_id: "agent-0".to_string(),
+                    },
+                    location_id: "loc-0".to_string(),
+                    factory_id: "factory.alpha".to_string(),
+                    factory_kind: "factory.assembler.mk1".to_string(),
+                    electricity_cost: 10,
+                    hardware_cost: 2,
+                },
+            },
+        };
+        let failure = ActionResult {
+            action: Action::ScheduleRecipe {
+                owner: agent_world::simulator::ResourceOwner::Agent {
+                    agent_id: "agent-0".to_string(),
+                },
+                factory_id: "factory.alpha".to_string(),
+                recipe_id: "recipe.assembler.logistics_drone".to_string(),
+                batches: 1,
+            },
+            action_id: 8,
+            success: false,
+            event: WorldEvent {
+                id: 8,
+                time: 8,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::FacilityNotFound {
+                        facility_id: "factory.alpha".to_string(),
+                    },
+                },
+            },
+        };
+
+        report.observe_action_result(5, &success);
+        report.observe_action_result(9, &failure);
+
+        assert_eq!(report.action_kind_counts.get("build_factory"), Some(&1));
+        assert_eq!(report.action_kind_counts.get("schedule_recipe"), Some(&1));
+        assert_eq!(report.action_kind_success_counts.get("build_factory"), Some(&1));
+        assert_eq!(
+            report.action_kind_failure_counts.get("schedule_recipe"),
+            Some(&1)
+        );
+        assert_eq!(report.first_action_tick.get("build_factory"), Some(&5));
+        assert_eq!(report.first_action_tick.get("schedule_recipe"), Some(&9));
     }
 }
