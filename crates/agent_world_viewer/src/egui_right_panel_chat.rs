@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use agent_world::simulator::{LlmChatMessageTrace, LlmChatRole};
+use agent_world::simulator::{
+    AgentPromptProfile, LlmChatMessageTrace, LlmChatRole, WorldEventKind,
+};
 use bevy_egui::egui;
 
 use crate::{ViewerClient, ViewerState};
@@ -13,6 +15,7 @@ const CHAT_BUBBLE_MAX_WIDTH: f32 = 380.0;
 const TOOL_CALL_PREVIEW_CHARS: usize = 180;
 const TOOL_CALL_CARD_MAX_WIDTH: f32 = 380.0;
 const PROMPT_PRESET_DEFAULT_CONTENT_ROWS: usize = 4;
+const PROMPT_UPDATED_BY_VIEWER_CHAT: &str = "viewer-chat-panel";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ToolCallView {
@@ -50,6 +53,10 @@ pub(crate) struct AgentChatDraftState {
     preset_panel_open: bool,
     prompt_presets: Vec<PromptPresetDraft>,
     selected_preset_index: usize,
+    profile_loaded_agent_id: Option<String>,
+    profile_system_prompt: String,
+    profile_short_term_goal: String,
+    profile_long_term_goal: String,
 }
 
 impl Default for AgentChatDraftState {
@@ -64,6 +71,10 @@ impl Default for AgentChatDraftState {
             preset_panel_open: false,
             prompt_presets: default_prompt_presets(),
             selected_preset_index: 0,
+            profile_loaded_agent_id: None,
+            profile_system_prompt: String::new(),
+            profile_short_term_goal: String::new(),
+            profile_long_term_goal: String::new(),
         }
     }
 }
@@ -170,7 +181,7 @@ pub(super) fn render_chat_section(
             }
         }
     });
-    render_prompt_preset_editor(ui, locale, draft);
+    render_prompt_preset_editor(ui, locale, state, client, draft, selected_agent_id.as_str());
     ui.add_space(4.0);
 
     let input_response = ui.add(
@@ -323,9 +334,14 @@ fn apply_selected_preset_to_input(draft: &mut AgentChatDraftState) -> bool {
 fn render_prompt_preset_editor(
     ui: &mut egui::Ui,
     locale: crate::i18n::UiLocale,
+    state: &ViewerState,
+    client: Option<&ViewerClient>,
     draft: &mut AgentChatDraftState,
+    selected_agent_id: &str,
 ) {
     sync_prompt_presets(draft);
+    let current_profile = current_prompt_profile_for_agent(state, selected_agent_id);
+    load_profile_draft_if_needed(draft, selected_agent_id, &current_profile);
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
@@ -468,7 +484,251 @@ fn render_prompt_preset_editor(
                     }),
             );
         }
+
+        ui.add_space(8.0);
+        ui.separator();
+        ui.add_space(4.0);
+
+        ui.horizontal_wrapped(|ui| {
+            ui.strong(if locale.is_zh() {
+                "Agent Prompt 草稿"
+            } else {
+                "Agent Prompt Draft"
+            });
+            ui.label(
+                egui::RichText::new(if locale.is_zh() {
+                    format!(
+                        "目标: {} 版本: {}",
+                        selected_agent_id, current_profile.version
+                    )
+                } else {
+                    format!(
+                        "Target: {} Version: {}",
+                        selected_agent_id, current_profile.version
+                    )
+                })
+                .size(10.5)
+                .color(egui::Color32::from_gray(170)),
+            );
+        });
+
+        let mut reload_profile = false;
+        let mut apply_profile = false;
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .small_button(if locale.is_zh() {
+                    "加载当前配置"
+                } else {
+                    "Load Current"
+                })
+                .clicked()
+            {
+                reload_profile = true;
+            }
+            if ui
+                .small_button(if locale.is_zh() {
+                    "应用到 Agent"
+                } else {
+                    "Apply to Agent"
+                })
+                .clicked()
+            {
+                apply_profile = true;
+            }
+        });
+
+        if reload_profile {
+            load_profile_draft_from_profile(draft, selected_agent_id, &current_profile);
+            draft.status_message = if locale.is_zh() {
+                "已加载当前 Agent Prompt 配置。".to_string()
+            } else {
+                "Loaded current agent prompt profile.".to_string()
+            };
+        }
+
+        ui.label(if locale.is_zh() {
+            "System Prompt"
+        } else {
+            "System Prompt"
+        });
+        ui.add(
+            egui::TextEdit::multiline(&mut draft.profile_system_prompt)
+                .desired_rows(PROMPT_PRESET_DEFAULT_CONTENT_ROWS)
+                .hint_text(if locale.is_zh() {
+                    "输入 system prompt 覆盖内容"
+                } else {
+                    "Type system prompt override"
+                }),
+        );
+
+        ui.label(if locale.is_zh() {
+            "短期目标"
+        } else {
+            "Short-term Goal"
+        });
+        ui.add(
+            egui::TextEdit::multiline(&mut draft.profile_short_term_goal)
+                .desired_rows(3)
+                .hint_text(if locale.is_zh() {
+                    "输入 short-term goal 覆盖内容"
+                } else {
+                    "Type short-term goal override"
+                }),
+        );
+
+        ui.label(if locale.is_zh() {
+            "长期目标"
+        } else {
+            "Long-term Goal"
+        });
+        ui.add(
+            egui::TextEdit::multiline(&mut draft.profile_long_term_goal)
+                .desired_rows(3)
+                .hint_text(if locale.is_zh() {
+                    "输入 long-term goal 覆盖内容"
+                } else {
+                    "Type long-term goal override"
+                }),
+        );
+
+        if apply_profile {
+            match send_prompt_profile_apply_command(
+                client,
+                selected_agent_id,
+                &current_profile,
+                draft,
+            ) {
+                Ok(()) => {
+                    draft.status_message = if locale.is_zh() {
+                        "Prompt 配置已提交，等待服务端应用。".to_string()
+                    } else {
+                        "Prompt profile request sent. Waiting for server apply.".to_string()
+                    };
+                    draft.profile_loaded_agent_id = Some(selected_agent_id.to_string());
+                }
+                Err(err) => {
+                    draft.status_message = if locale.is_zh() {
+                        format!("提交失败: {err}")
+                    } else {
+                        format!("Apply failed: {err}")
+                    };
+                }
+            }
+        }
     });
+}
+
+fn load_profile_draft_if_needed(
+    draft: &mut AgentChatDraftState,
+    selected_agent_id: &str,
+    profile: &AgentPromptProfile,
+) {
+    if draft.profile_loaded_agent_id.as_deref() == Some(selected_agent_id) {
+        return;
+    }
+    load_profile_draft_from_profile(draft, selected_agent_id, profile);
+}
+
+fn load_profile_draft_from_profile(
+    draft: &mut AgentChatDraftState,
+    selected_agent_id: &str,
+    profile: &AgentPromptProfile,
+) {
+    draft.profile_system_prompt = profile.system_prompt_override.clone().unwrap_or_default();
+    draft.profile_short_term_goal = profile.short_term_goal_override.clone().unwrap_or_default();
+    draft.profile_long_term_goal = profile.long_term_goal_override.clone().unwrap_or_default();
+    draft.profile_loaded_agent_id = Some(selected_agent_id.to_string());
+}
+
+fn current_prompt_profile_for_agent(state: &ViewerState, agent_id: &str) -> AgentPromptProfile {
+    for event in state.events.iter().rev() {
+        let WorldEventKind::AgentPromptUpdated { profile, .. } = &event.kind else {
+            continue;
+        };
+        if profile.agent_id == agent_id {
+            return profile.clone();
+        }
+    }
+
+    state
+        .snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.model.agent_prompt_profiles.get(agent_id).cloned())
+        .unwrap_or_else(|| AgentPromptProfile::for_agent(agent_id.to_string()))
+}
+
+fn send_prompt_profile_apply_command(
+    client: Option<&ViewerClient>,
+    selected_agent_id: &str,
+    current_profile: &AgentPromptProfile,
+    draft: &AgentChatDraftState,
+) -> Result<(), String> {
+    let Some(client) = client else {
+        return Err("viewer client unavailable".to_string());
+    };
+    let request = build_prompt_profile_apply_request(selected_agent_id, current_profile, draft);
+    if !prompt_apply_request_has_patch(&request) {
+        return Err("no prompt profile changes".to_string());
+    }
+    client
+        .tx
+        .send(agent_world::viewer::ViewerRequest::PromptControl {
+            command: agent_world::viewer::PromptControlCommand::Apply { request },
+        })
+        .map_err(|err| err.to_string())
+}
+
+fn build_prompt_profile_apply_request(
+    selected_agent_id: &str,
+    current_profile: &AgentPromptProfile,
+    draft: &AgentChatDraftState,
+) -> agent_world::viewer::PromptControlApplyRequest {
+    let next_system = normalize_prompt_text(draft.profile_system_prompt.as_str());
+    let next_short = normalize_prompt_text(draft.profile_short_term_goal.as_str());
+    let next_long = normalize_prompt_text(draft.profile_long_term_goal.as_str());
+
+    agent_world::viewer::PromptControlApplyRequest {
+        agent_id: selected_agent_id.to_string(),
+        expected_version: Some(current_profile.version),
+        updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
+        system_prompt_override: patch_override(
+            current_profile.system_prompt_override.as_ref(),
+            next_system.as_ref(),
+        ),
+        short_term_goal_override: patch_override(
+            current_profile.short_term_goal_override.as_ref(),
+            next_short.as_ref(),
+        ),
+        long_term_goal_override: patch_override(
+            current_profile.long_term_goal_override.as_ref(),
+            next_long.as_ref(),
+        ),
+    }
+}
+
+fn patch_override(current: Option<&String>, next: Option<&String>) -> Option<Option<String>> {
+    if current.map(|value| value.as_str()) == next.map(|value| value.as_str()) {
+        None
+    } else {
+        Some(next.cloned())
+    }
+}
+
+fn normalize_prompt_text(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn prompt_apply_request_has_patch(
+    request: &agent_world::viewer::PromptControlApplyRequest,
+) -> bool {
+    request.system_prompt_override.is_some()
+        || request.short_term_goal_override.is_some()
+        || request.long_term_goal_override.is_some()
 }
 
 fn render_info_stream(
@@ -958,7 +1218,9 @@ fn collect_chat_messages_for_agent(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agent_world::simulator::{AgentDecision, AgentDecisionTrace};
+    use agent_world::simulator::{
+        AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldEvent,
+    };
 
     fn message(agent_id: &str, time: u64, role: LlmChatRole, content: &str) -> LlmChatMessageTrace {
         LlmChatMessageTrace {
@@ -994,6 +1256,35 @@ mod tests {
             events: Vec::new(),
             decision_traces: traces,
             metrics: None,
+        }
+    }
+
+    fn prompt_event(
+        tick: u64,
+        agent_id: &str,
+        version: u64,
+        system_prompt: Option<&str>,
+        short_goal: Option<&str>,
+        long_goal: Option<&str>,
+    ) -> WorldEvent {
+        WorldEvent {
+            id: tick,
+            time: tick,
+            kind: WorldEventKind::AgentPromptUpdated {
+                profile: AgentPromptProfile {
+                    agent_id: agent_id.to_string(),
+                    version,
+                    updated_at_tick: tick,
+                    updated_by: "tester".to_string(),
+                    system_prompt_override: system_prompt.map(str::to_string),
+                    short_term_goal_override: short_goal.map(str::to_string),
+                    long_term_goal_override: long_goal.map(str::to_string),
+                },
+                operation: PromptUpdateOperation::Apply,
+                applied_fields: Vec::new(),
+                digest: "digest".to_string(),
+                rolled_back_to_version: None,
+            },
         }
     }
 
@@ -1130,5 +1421,64 @@ mod tests {
         draft.selected_preset_index = 0;
         assert!(apply_selected_preset_to_input(&mut draft));
         assert_eq!(draft.input_message, "hello preset");
+    }
+
+    #[test]
+    fn current_prompt_profile_for_agent_prefers_latest_event_profile() {
+        let mut state = viewer_state_with_traces(Vec::new());
+        state.events = vec![
+            prompt_event(1, "agent-a", 1, Some("s1"), None, None),
+            prompt_event(2, "agent-a", 2, Some("s2"), Some("g2"), None),
+        ];
+
+        let profile = current_prompt_profile_for_agent(&state, "agent-a");
+        assert_eq!(profile.version, 2);
+        assert_eq!(profile.system_prompt_override.as_deref(), Some("s2"));
+        assert_eq!(profile.short_term_goal_override.as_deref(), Some("g2"));
+    }
+
+    #[test]
+    fn build_prompt_profile_apply_request_only_patches_changed_fields() {
+        let current = AgentPromptProfile {
+            agent_id: "agent-a".to_string(),
+            version: 3,
+            updated_at_tick: 10,
+            updated_by: "tester".to_string(),
+            system_prompt_override: Some("system-a".to_string()),
+            short_term_goal_override: Some("short-a".to_string()),
+            long_term_goal_override: None,
+        };
+        let draft = AgentChatDraftState {
+            profile_system_prompt: "system-a".to_string(),
+            profile_short_term_goal: "short-updated".to_string(),
+            profile_long_term_goal: "long-new".to_string(),
+            ..AgentChatDraftState::default()
+        };
+
+        let request = build_prompt_profile_apply_request("agent-a", &current, &draft);
+        assert_eq!(request.expected_version, Some(3));
+        assert!(request.system_prompt_override.is_none());
+        assert_eq!(
+            request.short_term_goal_override,
+            Some(Some("short-updated".to_string()))
+        );
+        assert_eq!(
+            request.long_term_goal_override,
+            Some(Some("long-new".to_string()))
+        );
+        assert!(prompt_apply_request_has_patch(&request));
+    }
+
+    #[test]
+    fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
+        let request = agent_world::viewer::PromptControlApplyRequest {
+            agent_id: "agent-a".to_string(),
+            expected_version: Some(1),
+            updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
+            system_prompt_override: None,
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        };
+        assert!(!prompt_apply_request_has_patch(&request));
     }
 }
