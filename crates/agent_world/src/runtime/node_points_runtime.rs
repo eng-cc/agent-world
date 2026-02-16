@@ -32,6 +32,8 @@ pub struct NodePointsRuntimeObservation {
     pub role: NodeRole,
     pub tick_count: u64,
     pub running: bool,
+    pub uptime_checks_passed: u64,
+    pub uptime_checks_total: u64,
     pub observed_at_unix_ms: i64,
     pub has_error: bool,
     pub effective_storage_bytes: u64,
@@ -48,6 +50,8 @@ impl NodePointsRuntimeObservation {
             role: snapshot.role,
             tick_count: snapshot.tick_count,
             running: snapshot.running,
+            uptime_checks_passed: if snapshot.running { 1 } else { 0 },
+            uptime_checks_total: 1,
             observed_at_unix_ms,
             has_error: snapshot.last_error.is_some(),
             effective_storage_bytes,
@@ -68,6 +72,8 @@ struct NodeEpochAccumulator {
     delegated_sim_compute_units: u64,
     world_maintenance_compute_units: u64,
     uptime_ms: u64,
+    uptime_checks_passed: u64,
+    uptime_checks_total: u64,
     max_storage_bytes: u64,
     error_samples: u64,
 }
@@ -175,8 +181,8 @@ impl NodePointsRuntimeCollector {
                     world_maintenance_compute_units: accumulator.world_maintenance_compute_units,
                     effective_storage_bytes: accumulator.max_storage_bytes,
                     uptime_seconds: accumulator.uptime_ms / 1000,
-                    uptime_valid_checks: 0,
-                    uptime_total_checks: 0,
+                    uptime_valid_checks: accumulator.uptime_checks_passed,
+                    uptime_total_checks: accumulator.uptime_checks_total,
                     verify_pass_ratio,
                     availability_ratio,
                     explicit_penalty_points: self.heuristics.error_penalty_points.max(0.0)
@@ -198,6 +204,12 @@ impl NodePointsRuntimeCollector {
         if observation.has_error {
             accumulator.error_samples = accumulator.error_samples.saturating_add(1);
         }
+        accumulator.uptime_checks_passed = accumulator
+            .uptime_checks_passed
+            .saturating_add(observation.uptime_checks_passed);
+        accumulator.uptime_checks_total = accumulator
+            .uptime_checks_total
+            .saturating_add(observation.uptime_checks_total);
 
         if let Some(cursor) = self.cursors.get(observation.node_id.as_str()) {
             let delta_ticks = observation.tick_count.saturating_sub(cursor.tick_count);
@@ -331,6 +343,8 @@ mod tests {
             role: NodeRole::Sequencer,
             tick_count: 10,
             running: true,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
             observed_at_unix_ms: 1_000,
             has_error: false,
             effective_storage_bytes: 1024,
@@ -365,6 +379,8 @@ mod tests {
             role: NodeRole::Observer,
             tick_count: 5,
             running: true,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
             observed_at_unix_ms: 0,
             has_error: false,
             effective_storage_bytes: 100,
@@ -379,6 +395,72 @@ mod tests {
         let report = collector.observe(second).expect("epoch report");
         assert_eq!(report.pool_points, 50);
         assert_eq!(report.distributed_points, 50);
+    }
+
+    #[test]
+    fn collector_propagates_uptime_challenge_counts_into_rewards() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.epoch_duration_seconds = 10;
+        config.min_uptime_challenge_pass_ratio = 0.5;
+        config.weight_compute = 0.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 1.0;
+        config.weight_reliability = 0.0;
+        let mut collector =
+            NodePointsRuntimeCollector::new(config, NodePointsRuntimeHeuristics::default());
+
+        let node_a_first = NodePointsRuntimeObservation {
+            node_id: "node-a".to_string(),
+            role: NodeRole::Observer,
+            tick_count: 10,
+            running: true,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
+            observed_at_unix_ms: 0,
+            has_error: false,
+            effective_storage_bytes: 100,
+        };
+        let node_a_second = NodePointsRuntimeObservation {
+            tick_count: 11,
+            observed_at_unix_ms: 500,
+            ..node_a_first.clone()
+        };
+        let node_b_first = NodePointsRuntimeObservation {
+            node_id: "node-b".to_string(),
+            uptime_checks_passed: 0,
+            uptime_checks_total: 1,
+            ..node_a_first.clone()
+        };
+        let node_b_second = NodePointsRuntimeObservation {
+            tick_count: 11,
+            observed_at_unix_ms: 500,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
+            ..node_b_first.clone()
+        };
+
+        assert!(collector.observe(node_a_first).is_none());
+        assert!(collector.observe(node_a_second).is_none());
+        assert!(collector.observe(node_b_first).is_none());
+        assert!(collector.observe(node_b_second).is_none());
+
+        let report = collector.force_settle().expect("settlement");
+        let settlement_a = report
+            .settlements
+            .iter()
+            .find(|entry| entry.node_id == "node-a")
+            .expect("node-a settlement");
+        let settlement_b = report
+            .settlements
+            .iter()
+            .find(|entry| entry.node_id == "node-b")
+            .expect("node-b settlement");
+
+        assert_eq!(settlement_a.uptime_score, 1.0);
+        assert_eq!(settlement_b.uptime_score, 0.0);
+        assert_eq!(settlement_a.awarded_points, 100);
+        assert_eq!(settlement_b.awarded_points, 0);
     }
 
     #[test]
