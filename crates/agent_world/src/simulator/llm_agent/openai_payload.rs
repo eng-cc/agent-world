@@ -143,23 +143,21 @@ pub(super) fn decode_tool_arguments(arguments: &str) -> serde_json::Value {
     }
 }
 
-pub(super) fn function_call_to_module_call_json(name: &str, arguments: &str) -> String {
+pub(super) fn function_call_to_completion_turn(name: &str, arguments: &str) -> LlmCompletionTurn {
     if name == OPENAI_TOOL_AGENT_SUBMIT_DECISION {
-        return decode_tool_arguments(arguments).to_string();
+        return LlmCompletionTurn::Decision {
+            payload: decode_tool_arguments(arguments),
+        };
     }
-    let module = module_name_from_tool_name(name);
-    let args = decode_tool_arguments(arguments);
-    serde_json::json!({
-        "type": "module_call",
-        "module": module,
-        "args": args,
-    })
-    .to_string()
+    LlmCompletionTurn::ModuleCall {
+        module: module_name_from_tool_name(name).to_string(),
+        args: decode_tool_arguments(arguments),
+    }
 }
 
-pub(super) fn output_item_to_module_call_json(item: &OutputItem) -> Option<String> {
+pub(super) fn output_item_to_completion_turn(item: &OutputItem) -> Option<LlmCompletionTurn> {
     match item {
-        OutputItem::FunctionCall(function_call) => Some(function_call_to_module_call_json(
+        OutputItem::FunctionCall(function_call) => Some(function_call_to_completion_turn(
             function_call.name.as_str(),
             function_call.arguments.as_str(),
         )),
@@ -167,69 +165,31 @@ pub(super) fn output_item_to_module_call_json(item: &OutputItem) -> Option<Strin
     }
 }
 
-pub(super) fn extract_module_call_from_raw_response(value: &serde_json::Value) -> Option<String> {
-    let output_items = value.get("output")?.as_array()?;
-    let mut tool_outputs = Vec::new();
-    for item in output_items {
-        if item.get("type").and_then(|kind| kind.as_str()) != Some("function_call") {
-            continue;
-        }
-        let name = item.get("name").and_then(|name| name.as_str())?;
-        let arguments = item
-            .get("arguments")
-            .and_then(|arguments| arguments.as_str())
-            .unwrap_or("{}");
-        tool_outputs.push(function_call_to_module_call_json(name, arguments));
+pub(super) fn completion_turn_to_trace_json(turn: &LlmCompletionTurn) -> String {
+    match turn {
+        LlmCompletionTurn::Decision { payload } => payload.to_string(),
+        LlmCompletionTurn::ModuleCall { module, args } => serde_json::json!({
+            "type": "module_call",
+            "module": module,
+            "args": args,
+        })
+        .to_string(),
     }
-    if tool_outputs.is_empty() {
-        None
-    } else {
-        Some(tool_outputs.join("\n"))
-    }
-}
-
-pub(super) fn completion_result_from_raw_response_json(
-    raw: &str,
-) -> Result<LlmCompletionResult, LlmClientError> {
-    let value: serde_json::Value =
-        serde_json::from_str(raw).map_err(|err| LlmClientError::DecodeResponse {
-            message: format!("compat parse failed: {err}"),
-        })?;
-
-    let output = extract_module_call_from_raw_response(&value).unwrap_or_default();
-
-    if output.trim().is_empty() {
-        return Err(LlmClientError::EmptyChoice);
-    }
-
-    let usage = value.get("usage");
-    Ok(LlmCompletionResult {
-        output,
-        model: value
-            .get("model")
-            .and_then(|model| model.as_str())
-            .map(|model| model.to_string()),
-        prompt_tokens: usage
-            .and_then(|usage| usage.get("input_tokens"))
-            .and_then(|value| value.as_u64()),
-        completion_tokens: usage
-            .and_then(|usage| usage.get("output_tokens"))
-            .and_then(|value| value.as_u64()),
-        total_tokens: usage
-            .and_then(|usage| usage.get("total_tokens"))
-            .and_then(|value| value.as_u64()),
-    })
 }
 
 pub(super) fn completion_result_from_sdk_response(
     response: Response,
 ) -> Result<LlmCompletionResult, LlmClientError> {
-    let outputs = response
+    let turns = response
         .output
         .iter()
-        .filter_map(output_item_to_module_call_json)
+        .filter_map(output_item_to_completion_turn)
         .collect::<Vec<_>>();
-    let output = outputs.join("\n");
+    let output = turns
+        .iter()
+        .map(completion_turn_to_trace_json)
+        .collect::<Vec<_>>()
+        .join("\n");
 
     if output.trim().is_empty() {
         return Err(LlmClientError::EmptyChoice);
@@ -237,6 +197,7 @@ pub(super) fn completion_result_from_sdk_response(
 
     let usage = response.usage.as_ref();
     Ok(LlmCompletionResult {
+        turns,
         output,
         model: Some(response.model),
         prompt_tokens: usage.map(|usage| usage.input_tokens as u64),

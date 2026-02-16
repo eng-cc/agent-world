@@ -1278,7 +1278,7 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
 
 #[test]
 fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
-    let parsed = super::decision_flow::parse_llm_turn_responses(
+    let turns = completion_turns_from_output(
         r#"{"type":"module_call","module":"agent.modules.list","args":{}}
 
 ---
@@ -1288,8 +1288,8 @@ fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
 ---
 
 {"decision":"wait"}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1");
 
     assert_eq!(parsed.len(), 3);
     assert!(matches!(
@@ -1311,10 +1311,13 @@ fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
 
 #[test]
 fn llm_parse_execute_until_accepts_event_any_of() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event_any_of":["new_visible_agent","new_visible_location"]},"max_ticks":5}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::ExecuteUntil { directive, .. } => {
@@ -1340,10 +1343,13 @@ fn llm_parse_execute_until_accepts_event_any_of() {
 
 #[test]
 fn llm_parse_execute_until_accepts_threshold_event_with_value_lte() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event":"harvest_yield_below","value_lte":2},"max_ticks":5}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::ExecuteUntil { directive, .. } => {
@@ -1362,10 +1368,13 @@ fn llm_parse_execute_until_accepts_threshold_event_with_value_lte() {
 
 #[test]
 fn llm_parse_execute_until_rejects_threshold_event_without_value_lte() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"decision":"execute_until","action":{"decision":"harvest_radiation","max_amount":3},"until":{"event":"harvest_available_below"},"max_ticks":5}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::Invalid(err) => {
@@ -1377,10 +1386,13 @@ fn llm_parse_execute_until_rejects_threshold_event_without_value_lte() {
 
 #[test]
 fn llm_parse_decision_draft_accepts_shorthand_decision_payload() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"type":"decision_draft","decision":"harvest_radiation","max_amount":7,"need_verify":false}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::DecisionDraft { draft, .. } => {
@@ -1396,10 +1408,13 @@ fn llm_parse_decision_draft_accepts_shorthand_decision_payload() {
 
 #[test]
 fn llm_parse_turn_response_extracts_message_to_user() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"decision":"wait","message_to_user":"先暂停一回合观察环境。"}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::Decision {
@@ -1416,10 +1431,13 @@ fn llm_parse_turn_response_extracts_message_to_user() {
 
 #[test]
 fn llm_parse_turn_response_normalizes_module_alias_name() {
-    let parsed = super::decision_flow::parse_llm_turn_response(
+    let turns = completion_turns_from_output(
         r#"{"type":"module_call","module":"agent_modules_list","args":{}}"#,
-        "agent-1",
     );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
 
     match parsed {
         super::decision_flow::ParsedLlmTurn::ModuleCall { request, .. } => {

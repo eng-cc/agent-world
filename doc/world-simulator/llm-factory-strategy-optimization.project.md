@@ -51,9 +51,22 @@
 
 ### LFO9 Tool-only 类型化输入收敛（2026-02-17）
 - [x] LFO9.1 更新增量设计文档与项目拆解（删除 #1，重构 #3/#4，保留 #2/#5）
-- [ ] LFO9.2 删除 OpenAI raw-body fallback 解析路径（#1）
-- [ ] LFO9.3 类型化重构：移除字符串中间 JSON 映射与解析链路（#3/#4）
-- [ ] LFO9.4 迁移/补齐 required-tier 测试并回填文档与日志
+- [x] LFO9.2 删除 OpenAI raw-body fallback 解析路径（#1）
+- [x] LFO9.3 类型化重构：移除字符串中间 JSON 映射与解析链路（#3/#4）
+- [x] LFO9.4 迁移/补齐 required-tier 测试并回填文档与日志
+
+### LFO9 实施结果摘要（2026-02-17）
+- #1 删除（compat fallback）：
+  - `OpenAiChatCompletionClient::complete` 在 `ParseBody(raw)` 分支不再走 raw-body JSON fallback，统一返回 `DecodeResponse` 错误（主请求与重试请求均一致）。
+- #3/#4 删除（字符串中间链路）：
+  - `LlmCompletionResult` 增加 typed turns（`LlmCompletionTurn::{Decision, ModuleCall}`）。
+  - `openai_payload` 从 function_call 直接映射 typed turn，不再先序列化为字符串 JSON 再反解析。
+  - `behavior_loop` 改为消费 `parse_llm_turn_payloads(turns, agent_id)`，不再依赖 `parse_llm_turn_responses(output_text, ...)`。
+  - `decision_flow` 移除 JSON block 提取与文本解析函数，保留并复用决策语义解析（#2/#5）。
+- 测试迁移：
+  - OpenAI payload 单测迁移为 typed turn 断言；
+  - `tests_part2` 解析测试改为通过 typed turn 入口验证；
+  - mock client 在测试层将输出文本转换为 typed turns，仅用于测试数据构造兼容。
 
 ### LFO7 实施结果摘要（2026-02-17）
 - tool 注册：
@@ -152,6 +165,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO9 进行中（已完成 LFO9.1）。
-- 下一步：执行 LFO9.2-LFO9.4，完成 #1 删除与 #3/#4 类型化收敛。
-- 最近更新：2026-02-17（完成 LFO9 文档立项与任务拆解）。
+- 当前阶段：LFO0-LFO9 全部完成（含 #1 删除与 #3/#4 类型化收敛）。
+- 下一步：继续推进 TODO-5（`execute_until + wait` 语义收敛），降低在线长窗口 repair/parse_error。
+- 最近更新：2026-02-17（完成 LFO9.2-LFO9.4 代码与测试回填）。

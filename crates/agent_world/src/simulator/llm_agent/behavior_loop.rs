@@ -251,8 +251,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     let mut retry_next_turn = false;
                     let mut tool_called_this_turn = false;
 
-                    let parsed_turns = parse_llm_turn_responses(
-                        completion.output.as_str(),
+                    let parsed_turns = parse_llm_turn_payloads(
+                        completion.turns.as_slice(),
                         self.agent_id.as_str(),
                     );
 

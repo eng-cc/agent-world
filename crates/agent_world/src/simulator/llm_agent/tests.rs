@@ -18,6 +18,108 @@ struct MockClient {
     err: Option<LlmClientError>,
 }
 
+fn completion_turn_from_value(value: serde_json::Value) -> LlmCompletionTurn {
+    if value
+        .get("type")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("module_call"))
+    {
+        return LlmCompletionTurn::ModuleCall {
+            module: value
+                .get("module")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            args: value
+                .get("args")
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!({})),
+        };
+    }
+
+    LlmCompletionTurn::Decision { payload: value }
+}
+
+fn next_json_start(raw: &str, from: usize) -> Option<usize> {
+    raw.get(from..)?
+        .char_indices()
+        .find_map(|(offset, ch)| match ch {
+            '{' | '[' => Some(from + offset),
+            _ => None,
+        })
+}
+
+fn extract_json_block_from(raw: &str, start: usize) -> Option<(usize, usize)> {
+    let open_char = raw.get(start..)?.chars().next()?;
+    if open_char != '{' && open_char != '[' {
+        return None;
+    }
+    let close_char = if open_char == '{' { '}' } else { ']' };
+
+    let mut depth: u32 = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (offset, ch) in raw[start..].char_indices() {
+        let index = start + offset;
+        if in_string {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            c if c == open_char => depth = depth.saturating_add(1),
+            c if c == close_char => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some((start, index));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn extract_json_blocks(raw: &str) -> Vec<&str> {
+    let mut blocks = Vec::new();
+    let mut cursor = 0_usize;
+
+    while let Some(start) = next_json_start(raw, cursor) {
+        let Some((_, end)) = extract_json_block_from(raw, start) else {
+            break;
+        };
+        if let Some(block) = raw.get(start..=end) {
+            blocks.push(block);
+        }
+        cursor = end.saturating_add(1);
+    }
+
+    blocks
+}
+
+pub(super) fn completion_turns_from_output(output: &str) -> Vec<LlmCompletionTurn> {
+    let blocks = extract_json_blocks(output);
+    if blocks.is_empty() {
+        return Vec::new();
+    }
+    blocks
+        .into_iter()
+        .filter_map(|block| serde_json::from_str::<serde_json::Value>(block).ok())
+        .map(completion_turn_from_value)
+        .collect()
+}
+
 impl LlmCompletionClient for MockClient {
     fn complete(
         &self,
@@ -26,11 +128,13 @@ impl LlmCompletionClient for MockClient {
         if let Some(err) = &self.err {
             return Err(err.clone());
         }
+        let output = self
+            .output
+            .clone()
+            .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string());
         Ok(LlmCompletionResult {
-            output: self
-                .output
-                .clone()
-                .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string()),
+            turns: completion_turns_from_output(output.as_str()),
+            output,
             model: Some(request.model.clone()),
             prompt_tokens: Some(12),
             completion_tokens: Some(4),
@@ -65,6 +169,7 @@ impl LlmCompletionClient for SequenceMockClient {
             .pop_front()
             .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string());
         Ok(LlmCompletionResult {
+            turns: completion_turns_from_output(output.as_str()),
             output,
             model: Some(self.model.clone()),
             prompt_tokens: Some(12),
@@ -101,6 +206,7 @@ impl LlmCompletionClient for StressMockClient {
         .to_string();
 
         Ok(LlmCompletionResult {
+            turns: completion_turns_from_output(output.as_str()),
             output,
             model: Some("gpt-stress".to_string()),
             prompt_tokens: Some(16),
@@ -137,6 +243,7 @@ impl LlmCompletionClient for CountingSequenceMockClient {
             .pop_front()
             .unwrap_or_else(|| "{\"decision\":\"wait\"}".to_string());
         Ok(LlmCompletionResult {
+            turns: completion_turns_from_output(output.as_str()),
             output,
             model: Some("gpt-count".to_string()),
             prompt_tokens: Some(12),
@@ -559,7 +666,7 @@ fn responses_tools_register_expected_function_names() {
 }
 
 #[test]
-fn response_function_call_maps_to_module_call_json() {
+fn response_function_call_maps_to_typed_module_call_turn() {
     let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
         arguments: "{\"limit\":5}".to_string(),
         call_id: "call_1".to_string(),
@@ -568,24 +675,14 @@ fn response_function_call_maps_to_module_call_json() {
         status: None,
     });
 
-    let output_json = output_item_to_module_call_json(&output_item).expect("module_call json");
-    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
-
-    assert_eq!(
-        value.get("type").and_then(|v| v.as_str()),
-        Some("module_call")
-    );
-    assert_eq!(
-        value.get("module").and_then(|v| v.as_str()),
-        Some("memory.short_term.recent")
-    );
-    assert_eq!(
-        value
-            .get("args")
-            .and_then(|args| args.get("limit"))
-            .and_then(|v| v.as_i64()),
-        Some(5)
-    );
+    let turn = output_item_to_completion_turn(&output_item).expect("module_call turn");
+    match turn {
+        LlmCompletionTurn::ModuleCall { module, args } => {
+            assert_eq!(module, "memory.short_term.recent");
+            assert_eq!(args.get("limit").and_then(|v| v.as_i64()), Some(5));
+        }
+        other => panic!("expected module_call turn, got {other:?}"),
+    }
 }
 
 #[test]
@@ -598,20 +695,20 @@ fn response_function_call_invalid_json_arguments_are_preserved_as_raw() {
         status: None,
     });
 
-    let output_json = output_item_to_module_call_json(&output_item).expect("module_call json");
-    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
-
-    assert_eq!(
-        value
-            .get("args")
-            .and_then(|args| args.get("_raw"))
-            .and_then(|v| v.as_str()),
-        Some("not-json")
-    );
+    let turn = output_item_to_completion_turn(&output_item).expect("module_call turn");
+    match turn {
+        LlmCompletionTurn::ModuleCall { args, .. } => {
+            assert_eq!(
+                args.get("_raw").and_then(|value| value.as_str()),
+                Some("not-json")
+            );
+        }
+        other => panic!("expected module_call turn, got {other:?}"),
+    }
 }
 
 #[test]
-fn response_function_call_maps_decision_tool_to_decision_json() {
+fn response_function_call_maps_decision_tool_to_typed_decision_turn() {
     let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
         arguments: "{\"decision\":\"wait_ticks\",\"ticks\":2}".to_string(),
         call_id: "call_decision".to_string(),
@@ -620,14 +717,20 @@ fn response_function_call_maps_decision_tool_to_decision_json() {
         status: None,
     });
 
-    let output_json = output_item_to_module_call_json(&output_item).expect("decision json");
-    let value: serde_json::Value = serde_json::from_str(output_json.as_str()).expect("json");
-
-    assert_eq!(
-        value.get("decision").and_then(|value| value.as_str()),
-        Some("wait_ticks")
-    );
-    assert_eq!(value.get("ticks").and_then(|value| value.as_i64()), Some(2));
+    let turn = output_item_to_completion_turn(&output_item).expect("decision turn");
+    match turn {
+        LlmCompletionTurn::Decision { payload } => {
+            assert_eq!(
+                payload.get("decision").and_then(|value| value.as_str()),
+                Some("wait_ticks")
+            );
+            assert_eq!(
+                payload.get("ticks").and_then(|value| value.as_i64()),
+                Some(2)
+            );
+        }
+        other => panic!("expected decision turn, got {other:?}"),
+    }
 }
 
 #[test]
@@ -677,86 +780,6 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
             OPENAI_TOOL_AGENT_SUBMIT_DECISION,
         ]
     );
-}
-
-#[test]
-fn completion_result_from_raw_response_json_parses_function_call_without_annotations() {
-    let raw = r#"{
-      "model":"gpt-test",
-      "output":[
-        {
-          "type":"function_call",
-          "name":"memory_short_term_recent",
-          "arguments":"{\"limit\":3}"
-        }
-      ],
-      "usage":{
-        "input_tokens":11,
-        "output_tokens":7,
-        "total_tokens":18
-      }
-    }"#;
-
-    let result = completion_result_from_raw_response_json(raw).expect("result");
-    let output: serde_json::Value = serde_json::from_str(result.output.as_str()).expect("json");
-
-    assert_eq!(result.model.as_deref(), Some("gpt-test"));
-    assert_eq!(result.prompt_tokens, Some(11));
-    assert_eq!(result.completion_tokens, Some(7));
-    assert_eq!(result.total_tokens, Some(18));
-    assert_eq!(
-        output.get("module").and_then(|value| value.as_str()),
-        Some("memory.short_term.recent")
-    );
-    assert_eq!(
-        output
-            .get("args")
-            .and_then(|value| value.get("limit"))
-            .and_then(|value| value.as_i64()),
-        Some(3)
-    );
-}
-
-#[test]
-fn completion_result_from_raw_response_json_parses_decision_tool_call_without_annotations() {
-    let raw = r#"{
-      "model":"gpt-test",
-      "output":[
-        {
-          "type":"function_call",
-          "name":"agent_submit_decision",
-          "arguments":"{\"decision\":\"wait\"}"
-        }
-      ]
-    }"#;
-
-    let result = completion_result_from_raw_response_json(raw).expect("result");
-    let output: serde_json::Value = serde_json::from_str(result.output.as_str()).expect("json");
-
-    assert_eq!(result.model.as_deref(), Some("gpt-test"));
-    assert_eq!(
-        output.get("decision").and_then(|value| value.as_str()),
-        Some("wait")
-    );
-}
-
-#[test]
-fn completion_result_from_raw_response_json_rejects_output_text_without_tool_call() {
-    let raw = r#"{
-      "model":"gpt-test",
-      "output":[
-        {
-          "type":"message",
-          "role":"assistant",
-          "content":[
-            {"type":"output_text","text":"{\"decision\":\"wait\"}"}
-          ]
-        }
-      ]
-    }"#;
-
-    let result = completion_result_from_raw_response_json(raw);
-    assert!(matches!(result, Err(LlmClientError::EmptyChoice)));
 }
 
 #[test]

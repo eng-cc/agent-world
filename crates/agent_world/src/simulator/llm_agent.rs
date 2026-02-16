@@ -35,7 +35,7 @@ pub use prompt_assembly::{
 };
 
 use decision_flow::{
-    parse_limit_arg, parse_llm_turn_responses, prompt_section_kind_name,
+    parse_limit_arg, parse_llm_turn_payloads, prompt_section_kind_name,
     prompt_section_priority_name, summarize_trace_text, ExecuteUntilDirective,
     LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
 };
@@ -46,11 +46,11 @@ use config_helpers::{
     toml_value_to_string,
 };
 use openai_payload::{
-    build_responses_request_payload, completion_result_from_raw_response_json,
-    completion_result_from_sdk_response, normalize_openai_api_base_url,
+    build_responses_request_payload, completion_result_from_sdk_response,
+    normalize_openai_api_base_url,
 };
 #[cfg(test)]
-use openai_payload::{output_item_to_module_call_json, responses_tools};
+use openai_payload::{output_item_to_completion_turn, responses_tools};
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
 pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
@@ -407,6 +407,17 @@ pub struct LlmCompletionRequest {
     pub user_prompt: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LlmCompletionTurn {
+    Decision {
+        payload: serde_json::Value,
+    },
+    ModuleCall {
+        module: String,
+        args: serde_json::Value,
+    },
+}
+
 pub trait LlmCompletionClient {
     fn complete(
         &self,
@@ -414,8 +425,9 @@ pub trait LlmCompletionClient {
     ) -> Result<LlmCompletionResult, LlmClientError>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LlmCompletionResult {
+    pub turns: Vec<LlmCompletionTurn>,
     pub output: String,
     pub model: Option<String>,
     pub prompt_tokens: Option<u64>,
@@ -580,7 +592,12 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
         match self.send_responses_request(&self.client, payload.clone()) {
             Ok(response) => return completion_result_from_sdk_response(response),
             Err(OpenAiRequestError::ParseBody(raw_body)) => {
-                return completion_result_from_raw_response_json(raw_body.as_str());
+                return Err(LlmClientError::DecodeResponse {
+                    message: format!(
+                        "responses sdk decode failed (primary request): {}",
+                        summarize_trace_text(raw_body.as_str(), 320)
+                    ),
+                });
             }
             Err(OpenAiRequestError::Timeout(err)) => {
                 if let (Some(retry_client), Some(retry_timeout_ms)) =
@@ -589,7 +606,12 @@ impl LlmCompletionClient for OpenAiChatCompletionClient {
                     match self.send_responses_request(retry_client, payload) {
                         Ok(response) => return completion_result_from_sdk_response(response),
                         Err(OpenAiRequestError::ParseBody(raw_body)) => {
-                            return completion_result_from_raw_response_json(raw_body.as_str());
+                            return Err(LlmClientError::DecodeResponse {
+                                message: format!(
+                                    "responses sdk decode failed (retry request): {}",
+                                    summarize_trace_text(raw_body.as_str(), 320)
+                                ),
+                            });
                         }
                         Err(retry_err) => {
                             let retry_message = match retry_err {

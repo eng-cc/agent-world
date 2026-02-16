@@ -1,6 +1,7 @@
 use super::super::agent::AgentDecision;
 use super::super::types::{Action, ResourceKind, ResourceOwner};
 use super::prompt_assembly::{PromptSectionKind, PromptSectionPriority};
+use super::LlmCompletionTurn;
 use serde::{Deserialize, Serialize};
 
 pub(super) fn parse_limit_arg(
@@ -221,33 +222,32 @@ pub(super) enum ParsedLlmTurn {
     Invalid(String),
 }
 
-pub(super) fn parse_llm_turn_responses(output: &str, agent_id: &str) -> Vec<ParsedLlmTurn> {
-    let blocks = extract_json_blocks(output);
-    if blocks.is_empty() {
-        return vec![parse_llm_turn_response(output, agent_id)];
-    }
-
-    blocks
-        .into_iter()
-        .map(
-            |json| match serde_json::from_str::<serde_json::Value>(json) {
-                Ok(value) => parse_llm_turn_value(value, agent_id),
-                Err(err) => ParsedLlmTurn::Invalid(format!("json parse failed: {err}")),
-            },
-        )
+pub(super) fn parse_llm_turn_payloads(
+    turns: &[LlmCompletionTurn],
+    agent_id: &str,
+) -> Vec<ParsedLlmTurn> {
+    turns
+        .iter()
+        .map(|turn| match turn {
+            LlmCompletionTurn::Decision { payload } => {
+                parse_llm_turn_value(payload.clone(), agent_id)
+            }
+            LlmCompletionTurn::ModuleCall { module, args } => {
+                let normalized_module = normalize_prompt_module_name(module.as_str());
+                if normalized_module.trim().is_empty() {
+                    ParsedLlmTurn::Invalid("module_call missing `module`".to_string())
+                } else {
+                    ParsedLlmTurn::ModuleCall {
+                        request: LlmModuleCallRequest {
+                            module: normalized_module,
+                            args: args.clone(),
+                        },
+                        message_to_user: None,
+                    }
+                }
+            }
+        })
         .collect()
-}
-
-pub(super) fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlmTurn {
-    let json = extract_json_block(output).unwrap_or(output);
-    let value: serde_json::Value = match serde_json::from_str(json) {
-        Ok(value) => value,
-        Err(err) => {
-            return ParsedLlmTurn::Invalid(format!("json parse failed: {err}"));
-        }
-    };
-
-    parse_llm_turn_value(value, agent_id)
 }
 
 fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTurn {
@@ -344,9 +344,7 @@ fn parse_llm_decision_draft(
         decision_draft_shorthand_value(&raw_value).unwrap_or(payload.decision)
     };
 
-    let decision_json = serde_json::to_string(&decision_value)
-        .map_err(|err| format!("decision_draft serialize failed: {err}"))?;
-    let (decision, parse_error) = parse_llm_decision_with_error(decision_json.as_str(), agent_id);
+    let (decision, parse_error) = parse_llm_decision_value_with_error(decision_value, agent_id);
     if let Some(err) = parse_error {
         return Err(format!("decision_draft invalid decision: {err}"));
     }
@@ -466,21 +464,6 @@ fn parse_execute_until_conditions(
     }
 
     Ok(conditions)
-}
-
-fn parse_llm_decision_with_error(output: &str, agent_id: &str) -> (AgentDecision, Option<String>) {
-    let json = extract_json_block(output).unwrap_or(output);
-    let value = match serde_json::from_str::<serde_json::Value>(json) {
-        Ok(value) => value,
-        Err(err) => {
-            return (
-                AgentDecision::Wait,
-                Some(format!("json parse failed: {err}")),
-            );
-        }
-    };
-
-    parse_llm_decision_value_with_error(value, agent_id)
 }
 
 fn parse_llm_decision_value_with_error(
@@ -760,78 +743,4 @@ pub(super) fn normalize_prompt_module_name(value: &str) -> String {
     canonical
         .map(str::to_string)
         .unwrap_or_else(|| normalized.to_string())
-}
-
-fn extract_json_block(raw: &str) -> Option<&str> {
-    let start = next_json_start(raw, 0)?;
-    let (_, end) = extract_json_block_from(raw, start)?;
-    raw.get(start..=end)
-}
-
-fn extract_json_blocks(raw: &str) -> Vec<&str> {
-    let mut blocks = Vec::new();
-    let mut cursor = 0_usize;
-
-    while let Some(start) = next_json_start(raw, cursor) {
-        let Some((_, end)) = extract_json_block_from(raw, start) else {
-            break;
-        };
-        if let Some(block) = raw.get(start..=end) {
-            blocks.push(block);
-        }
-        cursor = end.saturating_add(1);
-    }
-
-    blocks
-}
-
-fn next_json_start(raw: &str, from: usize) -> Option<usize> {
-    raw.get(from..)?
-        .char_indices()
-        .find_map(|(offset, ch)| match ch {
-            '{' | '[' => Some(from + offset),
-            _ => None,
-        })
-}
-
-fn extract_json_block_from(raw: &str, start: usize) -> Option<(usize, usize)> {
-    let open_char = raw.get(start..)?.chars().next()?;
-    if open_char != '{' && open_char != '[' {
-        return None;
-    }
-    let close_char = if open_char == '{' { '}' } else { ']' };
-
-    let mut depth: u32 = 0;
-    let mut in_string = false;
-    let mut escaped = false;
-
-    for (offset, ch) in raw[start..].char_indices() {
-        let index = start + offset;
-        if in_string {
-            if escaped {
-                escaped = false;
-                continue;
-            }
-            match ch {
-                '\\' => escaped = true,
-                '"' => in_string = false,
-                _ => {}
-            }
-            continue;
-        }
-
-        match ch {
-            '"' => in_string = true,
-            c if c == open_char => depth = depth.saturating_add(1),
-            c if c == close_char => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    return Some((start, index));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    None
 }
