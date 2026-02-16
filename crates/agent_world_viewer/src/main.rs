@@ -83,6 +83,8 @@ mod ui_state_types;
 mod ui_text;
 mod viewer_3d_config;
 mod viewer_automation;
+#[cfg(target_arch = "wasm32")]
+mod wasm_egui_input_bridge;
 mod world_overlay;
 
 use app_bootstrap::run_ui;
@@ -146,11 +148,25 @@ use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
 };
+#[cfg(target_arch = "wasm32")]
+use wasm_egui_input_bridge::{
+    pump_wasm_egui_input_bridge_events, setup_wasm_egui_input_bridge,
+    sync_wasm_egui_input_bridge_focus,
+};
 use world_overlay::{
     handle_world_overlay_toggle_buttons, spawn_world_overlay_controls,
     update_world_overlay_status_text, update_world_overlays_3d, world_overlay_config_from_env,
     OverlayRenderRuntime, WorldOverlayConfig, WorldOverlayUiState,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+fn setup_wasm_egui_input_bridge() {}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn sync_wasm_egui_input_bridge_focus() {}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn pump_wasm_egui_input_bridge_events() {}
 
 const WORLD_MIN_AXIS: f32 = 0.1;
 const WORLD_FLOOR_THICKNESS: f32 = 0.03;
