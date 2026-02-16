@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] POBI-1：设计文档与项目管理文档落地。
-- [ ] POBI-2：实现 bootstrap/head_follow/observer 的路径索引入口。
+- [x] POBI-2：实现 bootstrap/head_follow/observer 的路径索引入口。
 - [ ] POBI-3：补齐单元测试并完成 `agent_world_net` 回归。
 - [ ] POBI-4：回写状态文档与 devlog。
 
@@ -14,6 +14,6 @@
 - `doc/world-runtime/distfs-runtime-path-index.md`
 
 ## 状态
-- 当前阶段：POBI-1 完成（文档已建立）。
-- 下一步：POBI-2（代码实现）。
+- 当前阶段：POBI-2 完成（路径索引入口已接入 bootstrap/head_follow/observer）。
+- 下一步：POBI-3（补齐验证与回归）。
 - 最近更新：2026-02-16。

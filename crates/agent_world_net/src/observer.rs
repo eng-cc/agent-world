@@ -11,7 +11,7 @@ use super::head_sync::{
     HeadSyncReport as GenericHeadSyncReport, HeadSyncResult as GenericHeadSyncResult,
 };
 use agent_world::runtime::World;
-use agent_world_distfs::BlobStore;
+use agent_world_distfs::{BlobStore, FileStore};
 
 #[derive(Debug, Clone)]
 pub struct ObserverSubscription {
@@ -188,6 +188,64 @@ impl ObserverClient {
     ) -> Result<HeadFollowReport, WorldError> {
         follow_head_sync(max_rounds, || {
             self.sync_heads_with_dht_report(subscription, follower, dht, client, store)
+        })
+    }
+
+    pub fn sync_heads_with_path_index(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        follower.sync_from_heads_with_path_index(&heads, store)
+    }
+
+    pub fn sync_heads_with_path_index_report(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<HeadSyncReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let world = follower.sync_from_heads_with_path_index(&heads, store)?;
+        compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+            WorldError::DistributedValidationFailed {
+                reason: "head follower did not record applied head".to_string(),
+            }
+        })
+    }
+
+    pub fn sync_heads_with_path_index_result(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<HeadSyncResult>, WorldError> {
+        let world = self.sync_heads_with_path_index(subscription, follower, store)?;
+        match world {
+            Some(world) => {
+                let head = follower.current_head().cloned().ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    }
+                })?;
+                Ok(Some(HeadSyncResult { head, world }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn follow_heads_with_path_index(
+        &self,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        store: &(impl BlobStore + FileStore),
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        follow_head_sync(max_rounds, || {
+            self.sync_heads_with_path_index_report(subscription, follower, store)
         })
     }
 }

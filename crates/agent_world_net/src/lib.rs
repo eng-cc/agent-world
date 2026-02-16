@@ -126,6 +126,7 @@ pub use provider_cache::{ProviderCache, ProviderCacheConfig};
 #[cfg(feature = "runtime_bridge")]
 pub use bootstrap::{
     bootstrap_world_from_dht, bootstrap_world_from_head, bootstrap_world_from_head_with_dht,
+    bootstrap_world_from_head_with_path_index, bootstrap_world_from_latest_path_index,
 };
 #[cfg(feature = "runtime_bridge")]
 pub use distributed_storage::{

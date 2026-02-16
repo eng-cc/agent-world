@@ -1,11 +1,14 @@
 use super::distributed::WorldHeadAnnounce;
-use super::distributed_bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
+use super::distributed_bootstrap::{
+    bootstrap_world_from_head, bootstrap_world_from_head_with_dht,
+    bootstrap_world_from_head_with_path_index,
+};
 use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
 use super::head_tracking::{HeadTracker, HeadUpdateDecision};
 use agent_world::runtime::World;
-use agent_world_distfs::BlobStore;
+use agent_world_distfs::{BlobStore, FileStore};
 
 #[derive(Debug, Clone)]
 pub struct HeadFollower {
@@ -87,5 +90,31 @@ impl HeadFollower {
             return Ok(None);
         };
         self.apply_head_with_dht(&best, dht, client, store)
+    }
+
+    pub fn apply_head_with_path_index(
+        &mut self,
+        head: &WorldHeadAnnounce,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        match self.tracker.decide_head(head)? {
+            HeadUpdateDecision::Apply => {
+                let world = bootstrap_world_from_head_with_path_index(head, store)?;
+                self.tracker.record_applied(head);
+                Ok(Some(world))
+            }
+            HeadUpdateDecision::IgnoreDuplicate | HeadUpdateDecision::IgnoreStale => Ok(None),
+        }
+    }
+
+    pub fn sync_from_heads_with_path_index(
+        &mut self,
+        heads: &[WorldHeadAnnounce],
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        let Some(best) = self.select_best_head(heads) else {
+            return Ok(None);
+        };
+        self.apply_head_with_path_index(&best, store)
     }
 }
