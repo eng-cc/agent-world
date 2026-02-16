@@ -376,6 +376,7 @@ fn reward_runtime_loop(
         require_mintsig_v2: true,
         allow_mintsig_v1_fallback: false,
         require_redeem_signature: true,
+        require_redeem_signer_match_node_id: true,
     });
     reward_world.set_protocol_power_reserve(ProtocolPowerReserve {
         epoch_index: 0,

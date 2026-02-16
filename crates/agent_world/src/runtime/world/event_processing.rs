@@ -722,6 +722,23 @@ impl World {
                     "redeem signature cannot be empty".to_string(),
                 );
             }
+            if self
+                .state
+                .reward_signature_governance_policy
+                .require_redeem_signer_match_node_id
+                && signer_node_id != node_id
+            {
+                return self.power_redeem_rejected(
+                    node_id,
+                    target_agent_id,
+                    redeem_credits,
+                    nonce,
+                    format!(
+                        "redeem signer_node_id must match node_id by governance policy: signer={} node={}",
+                        signer_node_id, node_id
+                    ),
+                );
+            }
             if let Err(reason) = self.verify_redeem_power_signature(
                 node_id,
                 target_agent_id,

@@ -38,6 +38,8 @@ pub struct RewardSignatureGovernancePolicy {
     pub require_mintsig_v2: bool,
     pub allow_mintsig_v1_fallback: bool,
     pub require_redeem_signature: bool,
+    #[serde(default)]
+    pub require_redeem_signer_match_node_id: bool,
 }
 
 impl Default for RewardSignatureGovernancePolicy {
@@ -46,6 +48,7 @@ impl Default for RewardSignatureGovernancePolicy {
             require_mintsig_v2: false,
             allow_mintsig_v1_fallback: true,
             require_redeem_signature: false,
+            require_redeem_signer_match_node_id: false,
         }
     }
 }

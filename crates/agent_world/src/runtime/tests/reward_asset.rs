@@ -274,6 +274,7 @@ fn reward_asset_settlement_governance_requires_v2_rejects_legacy_mint() {
         require_mintsig_v2: true,
         allow_mintsig_v1_fallback: false,
         require_redeem_signature: false,
+        require_redeem_signer_match_node_id: false,
     });
     let report = settlement_report(13, vec![settlement("node-a", 20)]);
 
@@ -609,6 +610,7 @@ fn reward_asset_redeem_power_signed_action_succeeds_when_policy_requires_signatu
         require_mintsig_v2: false,
         allow_mintsig_v1_fallback: true,
         require_redeem_signature: true,
+        require_redeem_signer_match_node_id: false,
     });
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -657,6 +659,70 @@ fn reward_asset_redeem_power_signed_action_succeeds_when_policy_requires_signatu
 }
 
 #[test]
+fn reward_asset_redeem_power_signed_rejects_signer_node_mismatch_when_policy_requires_match() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let signer_private_key = bind_node_identity_with_seed(&mut world, "node-signer", 34);
+    world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
+        require_mintsig_v2: false,
+        allow_mintsig_v1_fallback: true,
+        require_redeem_signature: true,
+        require_redeem_signer_match_node_id: true,
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 2,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 15,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 6)
+        .expect("mint node credits");
+
+    let signer_public_key = world
+        .node_identity_public_key("node-signer")
+        .expect("signer public key");
+    let signature = reward_redeem_signature_v1(
+        "node-a",
+        "agent-1",
+        4,
+        3,
+        "node-signer",
+        signer_public_key,
+        signer_private_key.as_str(),
+    )
+    .expect("build redeem signature");
+    world.submit_action(Action::RedeemPowerSigned {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 4,
+        nonce: 3,
+        signer_node_id: "node-signer".to_string(),
+        signature,
+    });
+    world.step().expect("redeem should be rejected");
+
+    let event = world.journal().events.last().expect("reject event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemRejected { reason, .. }) => {
+            assert!(reason.contains("must match node_id"));
+        }
+        other => panic!("expected PowerRedeemRejected, got {other:?}"),
+    }
+    assert_eq!(world.node_power_credit_balance("node-a"), 6);
+    assert_eq!(world.protocol_power_reserve().available_power_units, 100);
+    assert_eq!(world.protocol_power_reserve().redeemed_power_units, 0);
+}
+
+#[test]
 fn reward_asset_redeem_power_rejects_unsigned_when_policy_requires_signature() {
     let mut world = World::new();
     bind_node_identity(&mut world, "node-a");
@@ -664,6 +730,7 @@ fn reward_asset_redeem_power_rejects_unsigned_when_policy_requires_signature() {
         require_mintsig_v2: false,
         allow_mintsig_v1_fallback: true,
         require_redeem_signature: true,
+        require_redeem_signer_match_node_id: false,
     });
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
@@ -704,6 +771,7 @@ fn reward_asset_redeem_power_signed_rejects_invalid_signature() {
         require_mintsig_v2: false,
         allow_mintsig_v1_fallback: true,
         require_redeem_signature: true,
+        require_redeem_signer_match_node_id: false,
     });
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
