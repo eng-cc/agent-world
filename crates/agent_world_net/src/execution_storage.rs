@@ -10,7 +10,15 @@ use super::distributed_storage::{
 use super::error::WorldError;
 use super::util::to_canonical_cbor;
 use agent_world::runtime::{ActionId, CausedBy, Journal, Snapshot, WorldEventBody};
-use agent_world_distfs::{blake3_hex, segment_journal, segment_snapshot, BlobStore};
+use agent_world_distfs::{blake3_hex, segment_journal, segment_snapshot, BlobStore, FileStore};
+
+const WORLDS_ROOT_DIR: &str = "worlds";
+const HEADS_DIR: &str = "heads";
+const BLOCKS_DIR: &str = "blocks";
+const LATEST_HEAD_FILE: &str = "latest_head.cbor";
+const BLOCK_FILE: &str = "block.cbor";
+const SNAPSHOT_MANIFEST_FILE: &str = "snapshot_manifest.cbor";
+const JOURNAL_SEGMENTS_FILE: &str = "journal_segments.cbor";
 
 pub fn store_execution_result(
     world_id: &str,
@@ -119,6 +127,116 @@ pub fn store_execution_result(
         journal_segments,
         journal_segments_ref,
     })
+}
+
+pub fn store_execution_result_with_path_index(
+    world_id: &str,
+    height: u64,
+    prev_block_hash: &str,
+    proposer_id: &str,
+    snapshot_epoch: u64,
+    snapshot: &Snapshot,
+    journal: &Journal,
+    store: &(impl BlobStore + FileStore),
+    config: DistributedExecutionWriteConfig,
+) -> Result<DistributedExecutionWriteResult, WorldError> {
+    let result = store_execution_result(
+        world_id,
+        height,
+        prev_block_hash,
+        proposer_id,
+        snapshot_epoch,
+        snapshot,
+        journal,
+        store,
+        config,
+    )?;
+    write_execution_path_index(world_id, height, &result, store)?;
+    Ok(result)
+}
+
+pub fn load_block_by_height_from_path_index(
+    world_id: &str,
+    height: u64,
+    store: &impl FileStore,
+) -> Result<WorldBlock, WorldError> {
+    let path_index = ExecutionPathIndexLayout::new(world_id, height)?;
+    let block_bytes = store.read_file(&path_index.block_path)?;
+    Ok(serde_cbor::from_slice(&block_bytes)?)
+}
+
+pub fn load_latest_head_from_path_index(
+    world_id: &str,
+    store: &impl FileStore,
+) -> Result<WorldHeadAnnounce, WorldError> {
+    let world_segment = normalize_world_segment(world_id)?;
+    let latest_head_path =
+        format!("{WORLDS_ROOT_DIR}/{world_segment}/{HEADS_DIR}/{LATEST_HEAD_FILE}");
+    let head_bytes = store.read_file(&latest_head_path)?;
+    Ok(serde_cbor::from_slice(&head_bytes)?)
+}
+
+fn write_execution_path_index(
+    world_id: &str,
+    height: u64,
+    result: &DistributedExecutionWriteResult,
+    store: &impl FileStore,
+) -> Result<(), WorldError> {
+    let path_index = ExecutionPathIndexLayout::new(world_id, height)?;
+    let block_bytes = to_canonical_cbor(&result.block)?;
+    let snapshot_manifest_bytes = to_canonical_cbor(&result.snapshot_manifest)?;
+    let journal_segments_bytes = to_canonical_cbor(&result.journal_segments)?;
+    let latest_head_bytes = to_canonical_cbor(&result.head_announce)?;
+
+    store.write_file(&path_index.latest_head_path, &latest_head_bytes)?;
+    store.write_file(&path_index.block_path, &block_bytes)?;
+    store.write_file(&path_index.snapshot_manifest_path, &snapshot_manifest_bytes)?;
+    store.write_file(&path_index.journal_segments_path, &journal_segments_bytes)?;
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct ExecutionPathIndexLayout {
+    latest_head_path: String,
+    block_path: String,
+    snapshot_manifest_path: String,
+    journal_segments_path: String,
+}
+
+impl ExecutionPathIndexLayout {
+    fn new(world_id: &str, height: u64) -> Result<Self, WorldError> {
+        let world_segment = normalize_world_segment(world_id)?;
+        let height_segment = format!("{height:020}");
+        let block_dir = format!("{WORLDS_ROOT_DIR}/{world_segment}/{BLOCKS_DIR}/{height_segment}");
+
+        Ok(Self {
+            latest_head_path: format!(
+                "{WORLDS_ROOT_DIR}/{world_segment}/{HEADS_DIR}/{LATEST_HEAD_FILE}"
+            ),
+            block_path: format!("{block_dir}/{BLOCK_FILE}"),
+            snapshot_manifest_path: format!("{block_dir}/{SNAPSHOT_MANIFEST_FILE}"),
+            journal_segments_path: format!("{block_dir}/{JOURNAL_SEGMENTS_FILE}"),
+        })
+    }
+}
+
+fn normalize_world_segment(world_id: &str) -> Result<String, WorldError> {
+    if world_id.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "invalid world_id for path index: empty".to_string(),
+        });
+    }
+
+    if world_id
+        .chars()
+        .any(|ch| !(ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.'))
+    {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("invalid world_id for path index: {world_id}"),
+        });
+    }
+
+    Ok(world_id.to_string())
 }
 
 fn hash_actions(journal: &Journal) -> Result<String, WorldError> {

@@ -83,7 +83,10 @@ pub mod distributed_storage {
     pub use agent_world_proto::distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
 
     #[cfg(feature = "runtime_bridge")]
-    pub use super::execution_storage::store_execution_result;
+    pub use super::execution_storage::{
+        load_block_by_height_from_path_index, load_latest_head_from_path_index,
+        store_execution_result, store_execution_result_with_path_index,
+    };
 }
 
 #[cfg(feature = "runtime_bridge")]
@@ -125,7 +128,10 @@ pub use bootstrap::{
     bootstrap_world_from_dht, bootstrap_world_from_head, bootstrap_world_from_head_with_dht,
 };
 #[cfg(feature = "runtime_bridge")]
-pub use distributed_storage::store_execution_result;
+pub use distributed_storage::{
+    load_block_by_height_from_path_index, load_latest_head_from_path_index, store_execution_result,
+    store_execution_result_with_path_index,
+};
 #[cfg(feature = "runtime_bridge")]
 pub use head_follow::HeadFollower;
 #[cfg(feature = "runtime_bridge")]
