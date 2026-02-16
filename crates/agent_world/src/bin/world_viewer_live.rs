@@ -8,7 +8,7 @@ use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
-use agent_world_node::{NodeConfig, NodeRole, NodeRuntime};
+use agent_world_node::{NodeConfig, NodeRole, NodeRuntime, PosValidator};
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -21,6 +21,8 @@ struct CliOptions {
     node_id: String,
     node_role: NodeRole,
     node_tick_ms: u64,
+    node_auto_attest_all_validators: bool,
+    node_validators: Vec<PosValidator>,
 }
 
 impl Default for CliOptions {
@@ -35,6 +37,8 @@ impl Default for CliOptions {
             node_id: "viewer-live-node".to_string(),
             node_role: NodeRole::Observer,
             node_tick_ms: 200,
+            node_auto_attest_all_validators: true,
+            node_validators: Vec::new(),
         }
     }
 }
@@ -112,9 +116,15 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
     }
 
     let world_id = format!("live-{}", options.scenario.as_str());
-    let config = NodeConfig::new(options.node_id.clone(), world_id, options.node_role)
+    let mut config = NodeConfig::new(options.node_id.clone(), world_id, options.node_role)
         .and_then(|config| config.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
         .map_err(|err| format!("failed to build node config: {err:?}"))?;
+    if !options.node_validators.is_empty() {
+        config = config
+            .with_pos_validators(options.node_validators.clone())
+            .map_err(|err| format!("failed to apply node validators: {err:?}"))?;
+    }
+    config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
 
     let mut runtime = NodeRuntime::new(config);
     runtime
@@ -193,6 +203,15 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     .filter(|value| *value > 0)
                     .ok_or_else(|| "--node-tick-ms requires a positive integer".to_string())?;
             }
+            "--node-validator" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-validator requires <validator_id:stake>".to_string())?;
+                options.node_validators.push(parse_validator_spec(raw)?);
+            }
+            "--node-no-auto-attest-all" => {
+                options.node_auto_attest_all_validators = false;
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -217,7 +236,7 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
 fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node]"
+        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...]"
     );
     println!("Options:");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
@@ -229,10 +248,32 @@ fn print_help() {
     println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
     println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
     println!("  --node-tick-ms <ms> Node runtime tick interval (default: 200)");
+    println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
+    println!("  --node-no-auto-attest-all Disable auto-attesting all validators per tick");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
     );
+}
+
+fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
+    let (validator_id_raw, stake_raw) = raw
+        .split_once(':')
+        .ok_or_else(|| "--node-validator requires <validator_id:stake>".to_string())?;
+    let validator_id = validator_id_raw.trim();
+    if validator_id.is_empty() {
+        return Err("--node-validator validator_id cannot be empty".to_string());
+    }
+    let stake = stake_raw
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .filter(|value| *value > 0)
+        .ok_or_else(|| "--node-validator stake must be a positive integer".to_string())?;
+    Ok(PosValidator {
+        validator_id: validator_id.to_string(),
+        stake,
+    })
 }
 
 #[cfg(test)]
@@ -251,6 +292,8 @@ mod tests {
         assert_eq!(options.node_id, "viewer-live-node");
         assert_eq!(options.node_role, NodeRole::Observer);
         assert_eq!(options.node_tick_ms, 200);
+        assert!(options.node_auto_attest_all_validators);
+        assert!(options.node_validators.is_empty());
     }
 
     #[test]
@@ -276,6 +319,11 @@ mod tests {
                 "storage",
                 "--node-tick-ms",
                 "30",
+                "--node-validator",
+                "node-a:60",
+                "--node-validator",
+                "node-b:40",
+                "--node-no-auto-attest-all",
             ]
             .into_iter(),
         )
@@ -287,6 +335,21 @@ mod tests {
         assert_eq!(options.node_id, "viewer-live-1");
         assert_eq!(options.node_role, NodeRole::Storage);
         assert_eq!(options.node_tick_ms, 30);
+        assert!(!options.node_auto_attest_all_validators);
+        assert_eq!(options.node_validators.len(), 2);
+        assert_eq!(
+            options.node_validators,
+            vec![
+                PosValidator {
+                    validator_id: "node-a".to_string(),
+                    stake: 60,
+                },
+                PosValidator {
+                    validator_id: "node-b".to_string(),
+                    stake: 40,
+                }
+            ]
+        );
     }
 
     #[test]
@@ -306,5 +369,44 @@ mod tests {
         let err =
             parse_options(["--node-role", "unknown"].into_iter()).expect_err("invalid node role");
         assert!(err.contains("--node-role"));
+    }
+
+    #[test]
+    fn parse_options_rejects_invalid_node_validator_spec() {
+        let err =
+            parse_options(["--node-validator", "missing_stake"].into_iter()).expect_err("spec");
+        assert!(err.contains("--node-validator"));
+    }
+
+    #[test]
+    fn start_live_node_applies_pos_options() {
+        let options = parse_options(
+            [
+                "--node-id",
+                "node-main",
+                "--node-tick-ms",
+                "20",
+                "--node-validator",
+                "node-main:70",
+                "--node-validator",
+                "node-backup:30",
+                "--node-no-auto-attest-all",
+            ]
+            .into_iter(),
+        )
+        .expect("options");
+
+        let mut runtime = start_live_node(&options)
+            .expect("start")
+            .expect("runtime exists");
+        let config = runtime.config();
+        assert_eq!(config.pos_config.validators.len(), 2);
+        assert_eq!(config.pos_config.validators[0].validator_id, "node-main");
+        assert_eq!(config.pos_config.validators[0].stake, 70);
+        assert_eq!(config.pos_config.validators[1].validator_id, "node-backup");
+        assert_eq!(config.pos_config.validators[1].stake, 30);
+        assert!(!config.auto_attest_all_validators);
+
+        runtime.stop().expect("stop");
     }
 }
