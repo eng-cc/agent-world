@@ -459,4 +459,99 @@ mod tests {
             1.0
         );
     }
+
+    #[test]
+    fn multi_node_closure_rewards_compute_and_storage_with_penalty() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 1000;
+        config.epoch_duration_seconds = 100;
+        config.min_self_sim_compute_units = 5;
+        config.obligation_penalty_points = 10.0;
+        let mut ledger = NodePointsLedger::new(config);
+
+        let mut node_a = sample("node-a-compute");
+        node_a.self_sim_compute_units = 8;
+        node_a.delegated_sim_compute_units = 120;
+        node_a.world_maintenance_compute_units = 20;
+        node_a.effective_storage_bytes = gib(20);
+        node_a.uptime_seconds = 100;
+        node_a.verify_pass_ratio = 1.0;
+        node_a.availability_ratio = 0.95;
+
+        let mut node_b = sample("node-b-storage");
+        node_b.self_sim_compute_units = 7;
+        node_b.delegated_sim_compute_units = 20;
+        node_b.world_maintenance_compute_units = 10;
+        node_b.effective_storage_bytes = gib(400);
+        node_b.uptime_seconds = 98;
+        node_b.verify_pass_ratio = 0.98;
+        node_b.availability_ratio = 0.99;
+
+        let mut node_c = sample("node-c-penalized");
+        node_c.self_sim_compute_units = 1;
+        node_c.delegated_sim_compute_units = 80;
+        node_c.world_maintenance_compute_units = 40;
+        node_c.effective_storage_bytes = gib(120);
+        node_c.uptime_seconds = 40;
+        node_c.verify_pass_ratio = 0.4;
+        node_c.availability_ratio = 0.4;
+        node_c.explicit_penalty_points = 20.0;
+
+        let epoch0 = ledger.settle_epoch(&[node_a.clone(), node_b.clone(), node_c.clone()]);
+        assert_eq!(epoch0.epoch_index, 0);
+        assert_eq!(epoch0.pool_points, 1000);
+        assert_eq!(epoch0.distributed_points, 1000);
+
+        let settlement_a0 = &epoch0.settlements[0];
+        let settlement_b0 = &epoch0.settlements[1];
+        let settlement_c0 = &epoch0.settlements[2];
+
+        assert!(settlement_a0.obligation_met);
+        assert!(settlement_b0.obligation_met);
+        assert!(!settlement_c0.obligation_met);
+        assert!(settlement_c0.penalty_score >= 30.0);
+        assert_eq!(settlement_c0.total_score, 0.0);
+
+        assert!(settlement_a0.awarded_points > settlement_b0.awarded_points);
+        assert_eq!(settlement_c0.awarded_points, 0);
+        assert_eq!(
+            settlement_a0.awarded_points + settlement_b0.awarded_points + settlement_c0.awarded_points,
+            1000
+        );
+
+        // Epoch 1: node-b improves compute output; node-c recovers but still trails.
+        node_b.delegated_sim_compute_units = 140;
+        node_b.world_maintenance_compute_units = 30;
+        node_b.effective_storage_bytes = gib(420);
+        node_b.uptime_seconds = 100;
+        node_b.verify_pass_ratio = 1.0;
+        node_b.availability_ratio = 1.0;
+
+        node_c.self_sim_compute_units = 6;
+        node_c.verify_pass_ratio = 0.7;
+        node_c.availability_ratio = 0.8;
+        node_c.uptime_seconds = 90;
+        node_c.explicit_penalty_points = 5.0;
+
+        let epoch1 = ledger.settle_epoch(&[node_a, node_b, node_c]);
+        assert_eq!(epoch1.epoch_index, 1);
+        assert_eq!(epoch1.pool_points, 1000);
+        assert_eq!(epoch1.distributed_points, 1000);
+
+        let settlement_a1 = &epoch1.settlements[0];
+        let settlement_b1 = &epoch1.settlements[1];
+        let settlement_c1 = &epoch1.settlements[2];
+
+        assert!(settlement_c1.obligation_met);
+        assert!(settlement_c1.awarded_points > 0);
+        assert!(settlement_b1.awarded_points > settlement_a1.awarded_points);
+        assert!(settlement_a1.cumulative_points > settlement_a1.awarded_points);
+        assert!(settlement_b1.cumulative_points > settlement_b1.awarded_points);
+        assert!(settlement_c1.cumulative_points > settlement_c0.cumulative_points);
+
+        let total_cumulative = settlement_a1.cumulative_points
+            + settlement_b1.cumulative_points
+            + settlement_c1.cumulative_points;
+        assert_eq!(total_cumulative, 2000);
+    }
 }
