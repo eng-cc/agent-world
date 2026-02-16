@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::RequestRedraw;
 use bevy_egui::input::EguiInputEvent;
-use bevy_egui::{egui, EguiOutput, PrimaryEguiContext};
+use bevy_egui::{egui, EguiContext, EguiInput, EguiOutput, PrimaryEguiContext};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc::{self, Receiver};
@@ -152,7 +152,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         if let Some(text) = event.data() {
             if !text.is_empty() {
                 state.suppress_next_input = true;
-                let _ = tx_for_end.send(egui::Event::Text(text));
+                let _ = tx_for_end.send(egui::Event::Ime(egui::ImeEvent::Commit(text)));
             }
         }
 
@@ -234,17 +234,20 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
 
 pub(super) fn sync_wasm_egui_input_bridge_focus(
     bridge: Option<NonSendMut<WasmEguiInputBridgeState>>,
-    output_query: Query<&EguiOutput, With<PrimaryEguiContext>>,
+    mut context_query: Query<(&EguiInput, &EguiOutput, &mut EguiContext), With<PrimaryEguiContext>>,
 ) {
     let Some(mut bridge) = bridge else {
         return;
     };
-    let Ok(output) = output_query.single() else {
+    let Ok((input, output, mut context)) = context_query.single_mut() else {
         return;
     };
 
-    let editing_text =
-        output.platform_output.ime.is_some() || output.platform_output.mutable_text_under_cursor;
+    let wants_keyboard_input = context.get_mut().wants_keyboard_input();
+    let editing_text = input.focused
+        && (wants_keyboard_input
+            || output.platform_output.ime.is_some()
+            || output.platform_output.mutable_text_under_cursor);
     if editing_text == bridge.focused {
         return;
     }
