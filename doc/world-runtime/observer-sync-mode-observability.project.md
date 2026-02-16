@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] OSMO-1：设计文档与项目管理文档落地。
 - [x] OSMO-2：实现可观测报告结构与模式化报告接口。
-- [ ] OSMO-3：补齐单元测试并完成 `agent_world_net` 回归。
+- [x] OSMO-3：补齐单元测试并完成 `agent_world_net` 回归。
 - [ ] OSMO-4：回写状态文档与 devlog。
 
 ## 依赖
@@ -13,6 +13,6 @@
 - `doc/world-runtime/observer-sync-source-dht-mode.md`
 
 ## 状态
-- 当前阶段：OSMO-1~OSMO-2 已完成（可观测报告接口已实现）。
-- 下一步：OSMO-3（补齐剩余测试并回归）。
+- 当前阶段：OSMO-1~OSMO-3 已完成（可观测接口与测试已落地）。
+- 下一步：OSMO-4（状态文档与收口日志）。
 - 最近更新：2026-02-16。

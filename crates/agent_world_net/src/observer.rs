@@ -1019,4 +1019,97 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn observer_mode_observed_report_marks_no_fallback_for_path_index_only() {
+        let dir = temp_dir("observer-mode-observed-path-index");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let observed = observer
+            .sync_heads_with_mode_observed_report(
+                HeadSyncSourceMode::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert!(!observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_dht_mode_observed_report_marks_no_fallback_for_network_with_dht() {
+        const WORLD_ID: &str = "w1";
+        let dir = temp_dir("observer-dht-mode-observed-network");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture(WORLD_ID, &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        register_block_fetch_handlers(&network, WORLD_ID, &store, &write);
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe(WORLD_ID).expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new(WORLD_ID);
+        let observed = observer
+            .sync_heads_with_dht_mode_observed_report(
+                HeadSyncSourceModeWithDht::NetworkWithDhtOnly,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert!(!observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_dht_mode_observed_report_marks_no_fallback_for_path_index_only() {
+        let dir = temp_dir("observer-dht-mode-observed-path-index");
+        let store = LocalCasStore::new(&dir);
+        let (write, _) = write_world_fixture("w1", &store);
+
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let observed = observer
+            .sync_heads_with_dht_mode_observed_report(
+                HeadSyncSourceModeWithDht::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+            )
+            .expect("observed report");
+        assert!(!observed.fallback_used);
+        assert_eq!(observed.report.drained, 1);
+        assert!(observed.report.applied.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
