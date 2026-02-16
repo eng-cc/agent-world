@@ -10,9 +10,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
     measure_directory_storage_bytes, reward_redeem_signature_v1, Action as RuntimeAction,
-    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
-    ProtocolPowerReserve, RewardAssetConfig, RewardAssetInvariantReport,
-    RewardSignatureGovernancePolicy, World as RuntimeWorld,
+    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+    NodePointsRuntimeHeuristics, ProtocolPowerReserve, RewardAssetConfig,
+    RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -31,6 +31,7 @@ const NODE_TABLE_KEY: &str = "node";
 const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
+const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -102,6 +103,7 @@ struct RewardRuntimeLoopConfig {
     signer_private_key_hex: String,
     signer_public_key_hex: String,
     report_dir: String,
+    state_path: std::path::PathBuf,
     storage_root: std::path::PathBuf,
     auto_redeem: bool,
     reward_asset_config: RewardAssetConfig,
@@ -304,6 +306,8 @@ fn start_reward_runtime_worker(
         signer_private_key_hex: signer_keypair.private_key_hex,
         signer_public_key_hex: signer_keypair.public_key_hex,
         report_dir,
+        state_path: Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
         storage_root: Path::new("output")
             .join("node-distfs")
             .join(options.node_id.as_str())
@@ -352,10 +356,20 @@ fn reward_runtime_loop(
         );
     }
 
-    let mut collector = NodePointsRuntimeCollector::new(
-        NodePointsConfig::default(),
-        NodePointsRuntimeHeuristics::default(),
-    );
+    let mut collector = match load_reward_runtime_collector_state(config.state_path.as_path()) {
+        Ok(Some(restored)) => restored,
+        Ok(None) => NodePointsRuntimeCollector::new(
+            NodePointsConfig::default(),
+            NodePointsRuntimeHeuristics::default(),
+        ),
+        Err(err) => {
+            eprintln!("reward runtime load collector state failed: {err}");
+            NodePointsRuntimeCollector::new(
+                NodePointsConfig::default(),
+                NodePointsRuntimeHeuristics::default(),
+            )
+        }
+    };
     let mut reward_world = RuntimeWorld::new();
     reward_world.set_reward_asset_config(config.reward_asset_config.clone());
     reward_world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
@@ -390,9 +404,14 @@ fn reward_runtime_loop(
         let effective_storage_bytes =
             measure_directory_storage_bytes(config.storage_root.as_path());
 
-        let Some(report) =
-            collector.observe_snapshot(&snapshot, effective_storage_bytes, observed_at_unix_ms)
-        else {
+        let maybe_report =
+            collector.observe_snapshot(&snapshot, effective_storage_bytes, observed_at_unix_ms);
+        if let Err(err) =
+            persist_reward_runtime_collector_state(config.state_path.as_path(), &collector)
+        {
+            eprintln!("reward runtime persist collector state failed: {err}");
+        }
+        let Some(report) = maybe_report else {
             continue;
         };
 
@@ -565,6 +584,49 @@ fn reward_invariant_status_payload(report: &RewardAssetInvariantReport) -> serde
     serde_json::json!({
         "ok": report.is_ok(),
         "violation_count": report.violations.len(),
+    })
+}
+
+fn load_reward_runtime_collector_state(
+    path: &Path,
+) -> Result<Option<NodePointsRuntimeCollector>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = fs::read(path)
+        .map_err(|err| format!("read collector state {} failed: {}", path.display(), err))?;
+    let snapshot: NodePointsRuntimeCollectorSnapshot = serde_json::from_slice(bytes.as_slice())
+        .map_err(|err| format!("parse collector state {} failed: {}", path.display(), err))?;
+    Ok(Some(NodePointsRuntimeCollector::from_snapshot(snapshot)))
+}
+
+fn persist_reward_runtime_collector_state(
+    path: &Path,
+    collector: &NodePointsRuntimeCollector,
+) -> Result<(), String> {
+    let snapshot = collector.snapshot();
+    let bytes = serde_json::to_vec_pretty(&snapshot)
+        .map_err(|err| format!("serialize collector state failed: {}", err))?;
+    write_bytes_atomic(path, bytes.as_slice())
+}
+
+fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("create state dir {} failed: {}", parent.display(), err))?;
+        }
+    }
+    let temp_path = path.with_extension("json.tmp");
+    fs::write(&temp_path, bytes)
+        .map_err(|err| format!("write state temp {} failed: {}", temp_path.display(), err))?;
+    fs::rename(&temp_path, path).map_err(|err| {
+        format!(
+            "rename state temp {} -> {} failed: {}",
+            temp_path.display(),
+            path.display(),
+            err
+        )
     })
 }
 

@@ -126,6 +126,14 @@ pub struct EpochSettlementReport {
     pub settlements: Vec<NodeSettlement>,
 }
 
+/// Serializable snapshot for restoring a node points ledger.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NodePointsLedgerSnapshot {
+    pub config: NodePointsConfig,
+    pub epoch_index: u64,
+    pub cumulative_points: BTreeMap<String, u64>,
+}
+
 #[derive(Debug, Clone)]
 struct RemainderEntry {
     settlement_index: usize,
@@ -150,6 +158,14 @@ impl NodePointsLedger {
         }
     }
 
+    pub fn from_snapshot(snapshot: NodePointsLedgerSnapshot) -> Self {
+        Self {
+            config: snapshot.config,
+            epoch_index: snapshot.epoch_index,
+            cumulative_points: snapshot.cumulative_points,
+        }
+    }
+
     pub fn config(&self) -> &NodePointsConfig {
         &self.config
     }
@@ -160,6 +176,14 @@ impl NodePointsLedger {
 
     pub fn cumulative_points(&self, node_id: &str) -> u64 {
         *self.cumulative_points.get(node_id).unwrap_or(&0)
+    }
+
+    pub fn snapshot(&self) -> NodePointsLedgerSnapshot {
+        NodePointsLedgerSnapshot {
+            config: self.config.clone(),
+            epoch_index: self.epoch_index,
+            cumulative_points: self.cumulative_points.clone(),
+        }
     }
 
     pub fn settle_epoch(&mut self, samples: &[NodeContributionSample]) -> EpochSettlementReport {
@@ -443,8 +467,9 @@ fn normalize_ratio_with_threshold(raw_ratio: f64, min_ratio: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        NodeContributionSample, NodePointsConfig, NodePointsLedger, DEFAULT_WEIGHT_COMPUTE,
-        DEFAULT_WEIGHT_RELIABILITY, DEFAULT_WEIGHT_STORAGE, DEFAULT_WEIGHT_UPTIME,
+        NodeContributionSample, NodePointsConfig, NodePointsLedger, NodePointsLedgerSnapshot,
+        DEFAULT_WEIGHT_COMPUTE, DEFAULT_WEIGHT_RELIABILITY, DEFAULT_WEIGHT_STORAGE,
+        DEFAULT_WEIGHT_UPTIME,
     };
 
     fn sample(node_id: &str) -> NodeContributionSample {
@@ -589,6 +614,33 @@ mod tests {
         assert_eq!(second.settlements[0].cumulative_points, 20);
         assert_eq!(ledger.cumulative_points("node-a"), 20);
         assert_eq!(ledger.epoch_index(), 2);
+    }
+
+    #[test]
+    fn ledger_snapshot_roundtrip_restores_epoch_and_cumulative_points() {
+        let mut ledger = NodePointsLedger::new(compute_only_config(10));
+        let mut a = sample("node-a");
+        a.delegated_sim_compute_units = 1;
+        let mut b = sample("node-b");
+        b.delegated_sim_compute_units = 1;
+
+        let _ = ledger.settle_epoch(&[a.clone(), b.clone()]);
+        let snapshot = ledger.snapshot();
+        let restored = NodePointsLedger::from_snapshot(snapshot.clone());
+
+        assert_eq!(restored.epoch_index(), snapshot.epoch_index);
+        assert_eq!(restored.config(), &snapshot.config);
+        assert_eq!(
+            restored.cumulative_points("node-a"),
+            *snapshot.cumulative_points.get("node-a").unwrap_or(&0)
+        );
+        assert_eq!(
+            restored.cumulative_points("node-b"),
+            *snapshot.cumulative_points.get("node-b").unwrap_or(&0)
+        );
+
+        let restored_snapshot: NodePointsLedgerSnapshot = restored.snapshot();
+        assert_eq!(restored_snapshot, snapshot);
     }
 
     #[test]

@@ -87,11 +87,12 @@ pub use modules::{
 // Node points
 pub use node_points::{
     EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
-    NodeSettlement,
+    NodePointsLedgerSnapshot, NodeSettlement,
 };
 pub use node_points_runtime::{
-    measure_directory_storage_bytes, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
-    NodePointsRuntimeObservation,
+    measure_directory_storage_bytes, NodePointsRuntimeAccumulatorSnapshot,
+    NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+    NodePointsRuntimeCursorSnapshot, NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
 };
 pub use reward_asset::{
     reward_redeem_signature_v1, NodeAssetBalance, NodeRewardMintRecord, ProtocolPowerReserve,

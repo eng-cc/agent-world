@@ -5,7 +5,10 @@ use std::path::Path;
 use agent_world_node::{NodeRole, NodeSnapshot};
 use serde::{Deserialize, Serialize};
 
-use super::{EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger};
+use super::{
+    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
+    NodePointsLedgerSnapshot,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -56,6 +59,37 @@ impl Default for NodePointsRuntimeHeuristics {
             storage_role_delegated_tick_ratio: 0.5,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodePointsRuntimeCursorSnapshot {
+    pub tick_count: u64,
+    pub observed_at_unix_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct NodePointsRuntimeAccumulatorSnapshot {
+    pub role: Option<String>,
+    pub self_sim_compute_units: u64,
+    pub delegated_sim_compute_units: u64,
+    pub world_maintenance_compute_units: u64,
+    pub uptime_ms: u64,
+    pub uptime_checks_passed: u64,
+    pub uptime_checks_total: u64,
+    pub storage_checks_passed: u64,
+    pub storage_checks_total: u64,
+    pub staked_storage_bytes: u64,
+    pub max_storage_bytes: u64,
+    pub error_samples: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NodePointsRuntimeCollectorSnapshot {
+    pub ledger: NodePointsLedgerSnapshot,
+    pub heuristics: NodePointsRuntimeHeuristics,
+    pub epoch_started_at_unix_ms: Option<i64>,
+    pub cursors: BTreeMap<String, NodePointsRuntimeCursorSnapshot>,
+    pub current_epoch: BTreeMap<String, NodePointsRuntimeAccumulatorSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,6 +179,22 @@ struct NodeCursor {
     observed_at_unix_ms: i64,
 }
 
+impl NodeCursor {
+    fn to_snapshot(&self) -> NodePointsRuntimeCursorSnapshot {
+        NodePointsRuntimeCursorSnapshot {
+            tick_count: self.tick_count,
+            observed_at_unix_ms: self.observed_at_unix_ms,
+        }
+    }
+
+    fn from_snapshot(snapshot: NodePointsRuntimeCursorSnapshot) -> Self {
+        Self {
+            tick_count: snapshot.tick_count,
+            observed_at_unix_ms: snapshot.observed_at_unix_ms,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 struct NodeEpochAccumulator {
     role: Option<NodeRole>,
@@ -159,6 +209,45 @@ struct NodeEpochAccumulator {
     staked_storage_bytes: u64,
     max_storage_bytes: u64,
     error_samples: u64,
+}
+
+impl NodeEpochAccumulator {
+    fn to_snapshot(&self) -> NodePointsRuntimeAccumulatorSnapshot {
+        NodePointsRuntimeAccumulatorSnapshot {
+            role: self.role.map(|role| role.as_str().to_string()),
+            self_sim_compute_units: self.self_sim_compute_units,
+            delegated_sim_compute_units: self.delegated_sim_compute_units,
+            world_maintenance_compute_units: self.world_maintenance_compute_units,
+            uptime_ms: self.uptime_ms,
+            uptime_checks_passed: self.uptime_checks_passed,
+            uptime_checks_total: self.uptime_checks_total,
+            storage_checks_passed: self.storage_checks_passed,
+            storage_checks_total: self.storage_checks_total,
+            staked_storage_bytes: self.staked_storage_bytes,
+            max_storage_bytes: self.max_storage_bytes,
+            error_samples: self.error_samples,
+        }
+    }
+
+    fn from_snapshot(snapshot: NodePointsRuntimeAccumulatorSnapshot) -> Self {
+        Self {
+            role: snapshot
+                .role
+                .as_deref()
+                .and_then(|role| role.parse::<NodeRole>().ok()),
+            self_sim_compute_units: snapshot.self_sim_compute_units,
+            delegated_sim_compute_units: snapshot.delegated_sim_compute_units,
+            world_maintenance_compute_units: snapshot.world_maintenance_compute_units,
+            uptime_ms: snapshot.uptime_ms,
+            uptime_checks_passed: snapshot.uptime_checks_passed,
+            uptime_checks_total: snapshot.uptime_checks_total,
+            storage_checks_passed: snapshot.storage_checks_passed,
+            storage_checks_total: snapshot.storage_checks_total,
+            staked_storage_bytes: snapshot.staked_storage_bytes,
+            max_storage_bytes: snapshot.max_storage_bytes,
+            error_samples: snapshot.error_samples,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -181,8 +270,46 @@ impl NodePointsRuntimeCollector {
         }
     }
 
+    pub fn from_snapshot(snapshot: NodePointsRuntimeCollectorSnapshot) -> Self {
+        Self {
+            ledger: NodePointsLedger::from_snapshot(snapshot.ledger),
+            heuristics: snapshot.heuristics,
+            epoch_started_at_unix_ms: snapshot.epoch_started_at_unix_ms,
+            cursors: snapshot
+                .cursors
+                .into_iter()
+                .map(|(node_id, cursor)| (node_id, NodeCursor::from_snapshot(cursor)))
+                .collect(),
+            current_epoch: snapshot
+                .current_epoch
+                .into_iter()
+                .map(|(node_id, accumulator)| {
+                    (node_id, NodeEpochAccumulator::from_snapshot(accumulator))
+                })
+                .collect(),
+        }
+    }
+
     pub fn ledger(&self) -> &NodePointsLedger {
         &self.ledger
+    }
+
+    pub fn snapshot(&self) -> NodePointsRuntimeCollectorSnapshot {
+        NodePointsRuntimeCollectorSnapshot {
+            ledger: self.ledger.snapshot(),
+            heuristics: self.heuristics.clone(),
+            epoch_started_at_unix_ms: self.epoch_started_at_unix_ms,
+            cursors: self
+                .cursors
+                .iter()
+                .map(|(node_id, cursor)| (node_id.clone(), cursor.to_snapshot()))
+                .collect(),
+            current_epoch: self
+                .current_epoch
+                .iter()
+                .map(|(node_id, accumulator)| (node_id.clone(), accumulator.to_snapshot()))
+                .collect(),
+        }
     }
 
     pub fn observe(
@@ -407,7 +534,8 @@ pub fn measure_directory_storage_bytes(path: &Path) -> u64 {
 mod tests {
     use super::{
         measure_directory_storage_bytes, DistFsChallengeFailureReason, DistFsChallengeSampleSource,
-        NodePointsRuntimeCollector, NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
+        NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+        NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
     };
     use crate::runtime::NodePointsConfig;
     use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
@@ -463,6 +591,49 @@ mod tests {
         let settlement = &report.settlements[0];
         assert!(settlement.compute_score > 0.0 || settlement.storage_score > 0.0);
         assert_eq!(report.distributed_points, 100);
+    }
+
+    #[test]
+    fn collector_snapshot_roundtrip_restores_state() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = 100;
+        config.epoch_duration_seconds = 60;
+        let mut collector =
+            NodePointsRuntimeCollector::new(config, NodePointsRuntimeHeuristics::default());
+
+        let first = NodePointsRuntimeObservation {
+            node_id: "node-a".to_string(),
+            role: NodeRole::Observer,
+            tick_count: 1,
+            running: true,
+            uptime_checks_passed: 1,
+            uptime_checks_total: 1,
+            storage_checks_passed: 0,
+            storage_checks_total: 0,
+            staked_storage_bytes: 0,
+            observed_at_unix_ms: 100,
+            has_error: false,
+            effective_storage_bytes: 128,
+            storage_challenge_proof_hint: None,
+        };
+        let second = NodePointsRuntimeObservation {
+            tick_count: 9,
+            observed_at_unix_ms: 8_100,
+            ..first.clone()
+        };
+        assert!(collector.observe(first).is_none());
+        assert!(collector.observe(second).is_none());
+
+        let snapshot = collector.snapshot();
+        let mut restored = NodePointsRuntimeCollector::from_snapshot(snapshot.clone());
+        let restored_snapshot: NodePointsRuntimeCollectorSnapshot = restored.snapshot();
+        assert_eq!(restored_snapshot, snapshot);
+
+        let report = restored.force_settle().expect("settle from restored");
+        assert_eq!(report.pool_points, 100);
+        assert_eq!(report.distributed_points, 100);
+        assert_eq!(report.settlements.len(), 1);
+        assert_eq!(report.settlements[0].node_id, "node-a");
     }
 
     #[test]
