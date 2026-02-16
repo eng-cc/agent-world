@@ -8,7 +8,7 @@
 - [x] CIB5 Web 闭环验证（Playwright 快照、console、截图）
 - [x] CIB6 文档回写、devlog、提交收口
 - [x] CIB7 现场反馈回修：桥接焦点判定改为 `wants_keyboard_input`，并使用 IME Commit 事件
-- [ ] CIB8 回归验证与提交收口（CIB7）
+- [x] CIB8 回归验证与提交收口（CIB7）
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -17,6 +17,6 @@
 - `crates/agent_world_viewer/Cargo.toml`
 
 ## 状态
-- 当前阶段：进行中（CIB8）
-- 下一步：完成 CIB7 回修的文档回写与提交
-- 最近更新：CIB7 完成（2026-02-16）
+- 当前阶段：已完成
+- 下一步：无
+- 最近更新：CIB8 完成（2026-02-16）
