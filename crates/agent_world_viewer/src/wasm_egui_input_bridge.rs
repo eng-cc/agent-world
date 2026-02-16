@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::RequestRedraw;
 use bevy_egui::input::EguiInputEvent;
-use bevy_egui::{egui, EguiContext, EguiInput, EguiOutput, PrimaryEguiContext};
+use bevy_egui::{egui, EguiContext, EguiOutput, PrimaryEguiContext};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc::{self, Receiver};
@@ -60,6 +60,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
     input.set_id(EGUI_IME_BRIDGE_INPUT_ID);
     input.set_type("text");
     input.set_tab_index(-1);
+    input.set_hidden(true);
     let _ = input.set_attribute("style", EGUI_IME_BRIDGE_STYLE);
     let _ = input.set_attribute("aria-hidden", "true");
     let _ = input.set_attribute("autocapitalize", "off");
@@ -234,29 +235,30 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
 
 pub(super) fn sync_wasm_egui_input_bridge_focus(
     bridge: Option<NonSendMut<WasmEguiInputBridgeState>>,
-    mut context_query: Query<(&EguiInput, &EguiOutput, &mut EguiContext), With<PrimaryEguiContext>>,
+    mut context_query: Query<(&EguiOutput, &mut EguiContext), With<PrimaryEguiContext>>,
 ) {
     let Some(mut bridge) = bridge else {
         return;
     };
-    let Ok((input, output, mut context)) = context_query.single_mut() else {
+    let Ok((output, mut context)) = context_query.single_mut() else {
         return;
     };
 
     let wants_keyboard_input = context.get_mut().wants_keyboard_input();
-    let editing_text = input.focused
-        && (wants_keyboard_input
-            || output.platform_output.ime.is_some()
-            || output.platform_output.mutable_text_under_cursor);
+    let editing_text = wants_keyboard_input
+        || output.platform_output.ime.is_some()
+        || output.platform_output.mutable_text_under_cursor;
     if editing_text == bridge.focused {
         return;
     }
 
     if editing_text {
+        bridge.input.set_hidden(false);
         let _ = bridge.input.focus();
     } else {
         bridge.input.set_value("");
         let _ = bridge.input.blur();
+        bridge.input.set_hidden(true);
     }
     bridge.focused = editing_text;
 }

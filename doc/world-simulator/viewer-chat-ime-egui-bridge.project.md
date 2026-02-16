@@ -9,6 +9,8 @@
 - [x] CIB6 文档回写、devlog、提交收口
 - [x] CIB7 现场反馈回修：桥接焦点判定改为 `wants_keyboard_input`，并使用 IME Commit 事件
 - [x] CIB8 回归验证与提交收口（CIB7）
+- [x] CIB9 现场反馈回修：修复桥接焦点抖动导致输入框无法聚焦
+- [ ] CIB10 回归验证与提交收口（CIB9）
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -17,6 +19,6 @@
 - `crates/agent_world_viewer/Cargo.toml`
 
 ## 状态
-- 当前阶段：已完成
-- 下一步：无
-- 最近更新：CIB8 完成（2026-02-16）
+- 当前阶段：进行中（CIB10）
+- 下一步：完成 CIB9 回修的文档回写与提交
+- 最近更新：CIB9 完成（2026-02-16）
