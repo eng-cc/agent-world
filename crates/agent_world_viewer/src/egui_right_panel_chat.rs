@@ -10,6 +10,17 @@ const CHAT_THREAD_LIMIT: usize = 64;
 const CHAT_THREAD_SCAN_MESSAGE_LIMIT: usize = 320;
 const CHAT_PREVIEW_CHARS: usize = 42;
 const CHAT_BUBBLE_MAX_WIDTH: f32 = 380.0;
+const TOOL_CALL_PREVIEW_CHARS: usize = 180;
+const TOOL_CALL_CARD_MAX_WIDTH: f32 = 380.0;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ToolCallView {
+    module: String,
+    status: String,
+    args_preview: String,
+    result_preview: String,
+    raw_preview: String,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ChatThread {
@@ -120,15 +131,9 @@ pub(super) fn render_chat_section(
                 "No chat messages yet."
             });
         } else {
-            egui::ScrollArea::vertical()
-                .max_height(300.0)
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    for message in &active_messages {
-                        render_chat_message_bubble(ui, message, locale);
-                        ui.add_space(2.0);
-                    }
-                });
+            render_info_stream(ui, &active_messages, locale);
+            ui.add_space(6.0);
+            render_tool_call_stream(ui, &active_messages, locale);
         }
     });
 
@@ -234,6 +239,226 @@ pub(super) fn render_chat_section(
     }
 
     input_active
+}
+
+fn render_info_stream(
+    ui: &mut egui::Ui,
+    messages: &[LlmChatMessageTrace],
+    locale: crate::i18n::UiLocale,
+) {
+    ui.strong(if locale.is_zh() {
+        "信息流"
+    } else {
+        "Info Stream"
+    });
+    let info_messages = messages
+        .iter()
+        .filter(|message| !matches!(message.role, LlmChatRole::Tool))
+        .collect::<Vec<_>>();
+    if info_messages.is_empty() {
+        ui.label(if locale.is_zh() {
+            "暂无信息消息。"
+        } else {
+            "No info messages."
+        });
+        return;
+    }
+
+    egui::ScrollArea::vertical()
+        .max_height(220.0)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for message in info_messages {
+                render_chat_message_bubble(ui, message, locale);
+                ui.add_space(2.0);
+            }
+        });
+}
+
+fn render_tool_call_stream(
+    ui: &mut egui::Ui,
+    messages: &[LlmChatMessageTrace],
+    locale: crate::i18n::UiLocale,
+) {
+    ui.strong(if locale.is_zh() {
+        "工具调用"
+    } else {
+        "Tool Calls"
+    });
+    let tool_messages = messages
+        .iter()
+        .filter(|message| matches!(message.role, LlmChatRole::Tool))
+        .collect::<Vec<_>>();
+    if tool_messages.is_empty() {
+        ui.label(if locale.is_zh() {
+            "暂无工具调用。"
+        } else {
+            "No tool calls."
+        });
+        return;
+    }
+
+    egui::ScrollArea::vertical()
+        .max_height(160.0)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for message in tool_messages {
+                render_tool_call_card(ui, message, locale);
+                ui.add_space(4.0);
+            }
+        });
+}
+
+fn render_tool_call_card(
+    ui: &mut egui::Ui,
+    message: &LlmChatMessageTrace,
+    locale: crate::i18n::UiLocale,
+) {
+    let tool_call = parse_tool_call_view(message);
+    egui::Frame::group(ui.style())
+        .fill(egui::Color32::from_rgb(62, 58, 43))
+        .corner_radius(egui::CornerRadius::same(10))
+        .inner_margin(egui::Margin::same(8))
+        .show(ui, |ui| {
+            ui.set_max_width(TOOL_CALL_CARD_MAX_WIDTH);
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    egui::RichText::new(if locale.is_zh() {
+                        format!("模块: {}", tool_call.module)
+                    } else {
+                        format!("Module: {}", tool_call.module)
+                    })
+                    .color(egui::Color32::from_gray(235))
+                    .strong(),
+                );
+                ui.add_space(6.0);
+                ui.label(
+                    egui::RichText::new(if locale.is_zh() {
+                        format!("状态: {}", tool_call.status)
+                    } else {
+                        format!("Status: {}", tool_call.status)
+                    })
+                    .color(tool_status_color(tool_call.status.as_str())),
+                );
+            });
+
+            ui.label(
+                egui::RichText::new(if locale.is_zh() {
+                    format!("参数: {}", tool_call.args_preview)
+                } else {
+                    format!("Args: {}", tool_call.args_preview)
+                })
+                .color(egui::Color32::from_gray(220)),
+            );
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(if locale.is_zh() {
+                        format!("结果: {}", tool_call.result_preview)
+                    } else {
+                        format!("Result: {}", tool_call.result_preview)
+                    })
+                    .color(egui::Color32::from_gray(236)),
+                )
+                .wrap()
+                .selectable(true),
+            );
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(if locale.is_zh() {
+                        format!("原始: {}", tool_call.raw_preview)
+                    } else {
+                        format!("Raw: {}", tool_call.raw_preview)
+                    })
+                    .size(10.5)
+                    .color(egui::Color32::from_gray(186)),
+                )
+                .wrap()
+                .selectable(true),
+            );
+            ui.label(
+                egui::RichText::new(format!("T{}", message.time))
+                    .size(10.0)
+                    .color(egui::Color32::from_gray(205)),
+            );
+        });
+}
+
+fn parse_tool_call_view(message: &LlmChatMessageTrace) -> ToolCallView {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&message.content) {
+        if value
+            .get("type")
+            .and_then(|value| value.as_str())
+            .is_some_and(|value| value == "module_call_result")
+        {
+            return ToolCallView {
+                module: value
+                    .get("module")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("-")
+                    .to_string(),
+                status: value
+                    .get("status")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("-")
+                    .to_string(),
+                args_preview: compact_json_preview(value.get("args")),
+                result_preview: compact_json_preview(value.get("result")),
+                raw_preview: truncate_text(message.content.as_str(), TOOL_CALL_PREVIEW_CHARS),
+            };
+        }
+    }
+
+    parse_legacy_tool_call_view(message.content.as_str()).unwrap_or_else(|| ToolCallView {
+        module: "-".to_string(),
+        status: "-".to_string(),
+        args_preview: "-".to_string(),
+        result_preview: truncate_text(message.content.as_str(), TOOL_CALL_PREVIEW_CHARS),
+        raw_preview: truncate_text(message.content.as_str(), TOOL_CALL_PREVIEW_CHARS),
+    })
+}
+
+fn parse_legacy_tool_call_view(content: &str) -> Option<ToolCallView> {
+    let module = extract_legacy_field(content, "module")?;
+    let status = extract_legacy_field(content, "status").unwrap_or_else(|| "-".to_string());
+    let result_preview = content
+        .split_once("result=")
+        .map(|(_, result)| truncate_text(result, TOOL_CALL_PREVIEW_CHARS))
+        .unwrap_or_else(|| truncate_text(content, TOOL_CALL_PREVIEW_CHARS));
+
+    Some(ToolCallView {
+        module,
+        status,
+        args_preview: "-".to_string(),
+        result_preview,
+        raw_preview: truncate_text(content, TOOL_CALL_PREVIEW_CHARS),
+    })
+}
+
+fn extract_legacy_field(content: &str, key: &str) -> Option<String> {
+    let marker = format!("{key}=");
+    let start = content.find(marker.as_str())?;
+    let value = &content[start + marker.len()..];
+    let token = value.split_whitespace().next().unwrap_or_default().trim();
+    if token.is_empty() {
+        return None;
+    }
+    Some(token.to_string())
+}
+
+fn compact_json_preview(value: Option<&serde_json::Value>) -> String {
+    let Some(value) = value else {
+        return "-".to_string();
+    };
+    let json = serde_json::to_string(value).unwrap_or_else(|_| "\"<serialize_error>\"".to_string());
+    truncate_text(json.as_str(), TOOL_CALL_PREVIEW_CHARS)
+}
+
+fn tool_status_color(status: &str) -> egui::Color32 {
+    match status.trim().to_ascii_lowercase().as_str() {
+        "ok" | "success" => egui::Color32::from_rgb(104, 211, 145),
+        "error" | "failed" => egui::Color32::from_rgb(244, 114, 114),
+        _ => egui::Color32::from_gray(214),
+    }
 }
 
 fn should_submit_chat_on_enter(
@@ -608,5 +833,37 @@ mod tests {
         let mut shift_mod = egui::Modifiers::default();
         shift_mod.shift = true;
         assert!(!should_submit_chat_on_enter(true, true, shift_mod));
+    }
+
+    #[test]
+    fn parse_tool_call_view_reads_structured_payload() {
+        let tool_message = message(
+            "agent-a",
+            10,
+            LlmChatRole::Tool,
+            r#"{"type":"module_call_result","module":"environment.current_observation","status":"ok","args":{"limit":3},"result":{"ok":true,"module":"environment.current_observation"}}"#,
+        );
+
+        let parsed = parse_tool_call_view(&tool_message);
+        assert_eq!(parsed.module, "environment.current_observation");
+        assert_eq!(parsed.status, "ok");
+        assert!(parsed.args_preview.contains("\"limit\":3"));
+        assert!(parsed.result_preview.contains("\"ok\":true"));
+    }
+
+    #[test]
+    fn parse_tool_call_view_falls_back_to_legacy_text_format() {
+        let tool_message = message(
+            "agent-a",
+            10,
+            LlmChatRole::Tool,
+            "module=agent.modules.list status=ok result={\"ok\":true}",
+        );
+
+        let parsed = parse_tool_call_view(&tool_message);
+        assert_eq!(parsed.module, "agent.modules.list");
+        assert_eq!(parsed.status, "ok");
+        assert_eq!(parsed.args_preview, "-");
+        assert!(parsed.result_preview.contains("\"ok\":true"));
     }
 }
