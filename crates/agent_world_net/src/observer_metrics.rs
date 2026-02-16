@@ -193,11 +193,65 @@ impl ObserverClient {
 
 #[cfg(all(test, feature = "self_tests"))]
 mod tests {
-    use agent_world::runtime::World;
+    use std::fs;
+    use std::sync::Arc;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
+    use agent_world::runtime::{Action, World};
+    use agent_world::GeoPos;
+    use agent_world_distfs::LocalCasStore;
+
+    use super::super::distributed::topic_head;
     use super::super::distributed::WorldHeadAnnounce;
+    use super::super::distributed_client::DistributedClient;
+    use super::super::distributed_dht::InMemoryDht;
+    use super::super::distributed_head_follow::HeadFollower;
+    use super::super::distributed_net::{DistributedNetwork, InMemoryNetwork};
+    use super::super::distributed_storage::{
+        store_execution_result_with_path_index, ExecutionWriteConfig, ExecutionWriteResult,
+    };
     use super::super::observer::HeadSyncReport;
+    use super::super::util::to_canonical_cbor;
     use super::*;
+
+    fn temp_dir(prefix: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration since epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-net-{prefix}-{unique}"))
+    }
+
+    fn write_world_fixture(world_id: &str, store: &LocalCasStore) -> ExecutionWriteResult {
+        let mut world = World::new();
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let snapshot = world.snapshot();
+        let journal = world.journal().clone();
+        store_execution_result_with_path_index(
+            world_id,
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            store,
+            ExecutionWriteConfig::default(),
+        )
+        .expect("write fixture")
+    }
+
+    fn publish_head(network: &Arc<dyn DistributedNetwork + Send + Sync>, head: &WorldHeadAnnounce) {
+        let payload = to_canonical_cbor(head).expect("head cbor");
+        network
+            .publish(&topic_head(&head.world_id), &payload)
+            .expect("publish");
+    }
 
     fn sample_head(height: u64) -> WorldHeadAnnounce {
         WorldHeadAnnounce {
@@ -351,5 +405,166 @@ mod tests {
             metrics.snapshot(),
             ObserverRuntimeMetricsSnapshot::default()
         );
+    }
+
+    #[test]
+    fn observer_bridge_sync_mode_records_metrics_on_fallback() {
+        let dir = temp_dir("observer-bridge-sync-mode");
+        let store = LocalCasStore::new(&dir);
+        let write = write_world_fixture("w1", &store);
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let mut metrics = ObserverRuntimeMetrics::new();
+        let observed = observer
+            .sync_heads_with_mode_observed_report_and_record(
+                HeadSyncSourceMode::NetworkThenPathIndex,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+                &mut metrics,
+            )
+            .expect("bridge sync");
+
+        assert!(observed.fallback_used);
+        assert_eq!(
+            metrics.snapshot().mode.network_then_path_index,
+            ObserverModeCounters {
+                total: 1,
+                applied: 1,
+                fallback: 1,
+            }
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_bridge_follow_mode_records_metrics_per_round() {
+        let dir = temp_dir("observer-bridge-follow-mode");
+        let store = LocalCasStore::new(&dir);
+        let write = write_world_fixture("w1", &store);
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let mut metrics = ObserverRuntimeMetrics::new();
+        let follow = observer
+            .follow_heads_with_mode_and_metrics(
+                HeadSyncSourceMode::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &client,
+                &store,
+                &mut metrics,
+                4,
+            )
+            .expect("bridge follow");
+
+        assert_eq!(follow.rounds, 2);
+        assert_eq!(follow.drained, 1);
+        assert!(follow.applied.is_some());
+        assert_eq!(
+            metrics.snapshot().mode.path_index_only,
+            ObserverModeCounters {
+                total: 2,
+                applied: 1,
+                fallback: 0,
+            }
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_bridge_sync_dht_mode_records_metrics_on_fallback() {
+        let dir = temp_dir("observer-bridge-sync-dht-mode");
+        let store = LocalCasStore::new(&dir);
+        let write = write_world_fixture("w1", &store);
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let mut metrics = ObserverRuntimeMetrics::new();
+        let observed = observer
+            .sync_heads_with_dht_mode_observed_report_and_record(
+                HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+                &mut metrics,
+            )
+            .expect("bridge sync dht");
+
+        assert!(observed.fallback_used);
+        assert_eq!(
+            metrics
+                .snapshot()
+                .mode_with_dht
+                .network_with_dht_then_path_index,
+            ObserverModeCounters {
+                total: 1,
+                applied: 1,
+                fallback: 1,
+            }
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn observer_bridge_follow_dht_mode_records_metrics_per_round() {
+        let dir = temp_dir("observer-bridge-follow-dht-mode");
+        let store = LocalCasStore::new(&dir);
+        let write = write_world_fixture("w1", &store);
+        let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+        let observer = ObserverClient::new(Arc::clone(&network));
+        let client = DistributedClient::new(Arc::clone(&network));
+        let dht = InMemoryDht::new();
+        let subscription = observer.subscribe("w1").expect("subscribe");
+        publish_head(&network, &write.head_announce);
+
+        let mut follower = HeadFollower::new("w1");
+        let mut metrics = ObserverRuntimeMetrics::new();
+        let follow = observer
+            .follow_heads_with_dht_mode_and_metrics(
+                HeadSyncSourceModeWithDht::PathIndexOnly,
+                &subscription,
+                &mut follower,
+                &dht,
+                &client,
+                &store,
+                &mut metrics,
+                4,
+            )
+            .expect("bridge follow dht");
+
+        assert_eq!(follow.rounds, 2);
+        assert_eq!(follow.drained, 1);
+        assert!(follow.applied.is_some());
+        assert_eq!(
+            metrics.snapshot().mode_with_dht.path_index_only,
+            ObserverModeCounters {
+                total: 2,
+                applied: 1,
+                fallback: 0,
+            }
+        );
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }
