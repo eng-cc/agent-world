@@ -406,9 +406,8 @@ pub fn measure_directory_storage_bytes(path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        measure_directory_storage_bytes, DistFsChallengeFailureReason,
-        DistFsChallengeSampleSource, NodePointsRuntimeCollector, NodePointsRuntimeHeuristics,
-        NodePointsRuntimeObservation,
+        measure_directory_storage_bytes, DistFsChallengeFailureReason, DistFsChallengeSampleSource,
+        NodePointsRuntimeCollector, NodePointsRuntimeHeuristics, NodePointsRuntimeObservation,
     };
     use crate::runtime::NodePointsConfig;
     use agent_world_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
@@ -668,7 +667,10 @@ mod tests {
         let hint = observation
             .storage_challenge_proof_hint
             .expect("storage proof hint");
-        assert_eq!(hint.sample_source, DistFsChallengeSampleSource::LocalStoreIndex);
+        assert_eq!(
+            hint.sample_source,
+            DistFsChallengeSampleSource::LocalStoreIndex
+        );
         assert_eq!(hint.sample_reference, "distfs://node-storage/tick/42");
         assert_eq!(
             hint.failure_reason,
