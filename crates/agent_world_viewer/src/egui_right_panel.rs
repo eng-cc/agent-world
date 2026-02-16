@@ -46,8 +46,11 @@ use crate::{prompt_ops_panel::render_prompt_ops_section, prompt_ops_panel::Promp
 
 #[path = "egui_observe_section_card.rs"]
 mod egui_observe_section_card;
+#[path = "egui_right_panel_chat.rs"]
+mod egui_right_panel_chat;
 
 use egui_observe_section_card::render_observe_section_card;
+use egui_right_panel_chat::{render_chat_section, AgentChatDraftState};
 
 const DEFAULT_PANEL_WIDTH: f32 = 320.0;
 const MIN_PANEL_WIDTH: f32 = 240.0;
@@ -115,6 +118,7 @@ pub(super) fn render_right_side_panel_egui(
     mut contexts: EguiContexts,
     mut cjk_font_initialized: Local<bool>,
     mut prompt_ops_draft: Local<PromptOpsDraftState>,
+    mut chat_draft: Local<AgentChatDraftState>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -271,6 +275,7 @@ pub(super) fn render_right_side_panel_egui(
                     &mut module_visibility.show_overview,
                     locale,
                 );
+                render_module_toggle_button(ui, "chat", &mut module_visibility.show_chat, locale);
                 render_module_toggle_button(
                     ui,
                     "overlay",
@@ -317,6 +322,11 @@ pub(super) fn render_right_side_panel_egui(
                     timeline.as_ref(),
                     render_perf.as_deref(),
                 );
+            }
+
+            if module_visibility.show_chat {
+                ui.separator();
+                render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
             }
 
             if module_visibility.show_overlay {

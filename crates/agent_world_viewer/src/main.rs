@@ -1232,6 +1232,13 @@ fn poll_viewer_messages(
                         );
                     }
                 }
+                ViewerResponse::AgentChatAck { .. } => {}
+                ViewerResponse::AgentChatError { error } => {
+                    state.status = ConnectionStatus::Error(format!(
+                        "agent chat error: {} ({})",
+                        error.message, error.code
+                    ));
+                }
             },
             Err(mpsc::TryRecvError::Empty) => break,
             Err(mpsc::TryRecvError::Disconnected) => {

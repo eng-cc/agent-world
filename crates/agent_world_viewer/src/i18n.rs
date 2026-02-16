@@ -118,6 +118,7 @@ pub(super) fn module_toggle_label(module_key: &str, visible: bool, locale: UiLoc
     let (zh, en) = match module_key {
         "controls" => ("控制", "Controls"),
         "overview" => ("总览", "Overview"),
+        "chat" => ("对话", "Chat"),
         "overlay" => ("覆盖层", "Overlay"),
         "diagnosis" => ("诊断", "Diagnosis"),
         "event_link" => ("事件联动", "Event Link"),

@@ -14,6 +14,7 @@ const MODULE_VISIBILITY_VERSION: u32 = 1;
 pub(super) struct RightPanelModuleVisibilityState {
     pub show_controls: bool,
     pub show_overview: bool,
+    pub show_chat: bool,
     pub show_overlay: bool,
     pub show_diagnosis: bool,
     pub show_event_link: bool,
@@ -26,6 +27,7 @@ impl Default for RightPanelModuleVisibilityState {
         Self {
             show_controls: true,
             show_overview: true,
+            show_chat: true,
             show_overlay: false,
             show_diagnosis: false,
             show_event_link: true,
@@ -49,6 +51,8 @@ struct PersistedRightPanelModuleVisibility {
     #[serde(default = "default_visible")]
     show_overview: bool,
     #[serde(default = "default_visible")]
+    show_chat: bool,
+    #[serde(default = "default_visible")]
     show_overlay: bool,
     #[serde(default = "default_visible")]
     show_diagnosis: bool,
@@ -66,6 +70,7 @@ impl Default for PersistedRightPanelModuleVisibility {
             version: MODULE_VISIBILITY_VERSION,
             show_controls: true,
             show_overview: true,
+            show_chat: true,
             show_overlay: true,
             show_diagnosis: true,
             show_event_link: true,
@@ -80,6 +85,7 @@ impl From<PersistedRightPanelModuleVisibility> for RightPanelModuleVisibilitySta
         Self {
             show_controls: value.show_controls,
             show_overview: value.show_overview,
+            show_chat: value.show_chat,
             show_overlay: value.show_overlay,
             show_diagnosis: value.show_diagnosis,
             show_event_link: value.show_event_link,
@@ -94,6 +100,7 @@ impl From<RightPanelModuleVisibilityState> for PersistedRightPanelModuleVisibili
         Self {
             show_controls: value.show_controls,
             show_overview: value.show_overview,
+            show_chat: value.show_chat,
             show_overlay: value.show_overlay,
             show_diagnosis: value.show_diagnosis,
             show_event_link: value.show_event_link,
@@ -212,6 +219,7 @@ mod tests {
         let state = RightPanelModuleVisibilityState::default();
         assert!(state.show_controls);
         assert!(state.show_overview);
+        assert!(state.show_chat);
         assert!(!state.show_overlay);
         assert!(!state.show_diagnosis);
         assert!(state.show_event_link);
@@ -251,6 +259,7 @@ mod tests {
 
         assert!(!state.show_controls);
         assert!(state.show_overview);
+        assert!(state.show_chat);
         assert!(state.show_overlay);
         assert!(state.show_diagnosis);
         assert!(state.show_event_link);
@@ -265,6 +274,7 @@ mod tests {
         let state = RightPanelModuleVisibilityState {
             show_controls: true,
             show_overview: false,
+            show_chat: true,
             show_overlay: true,
             show_diagnosis: false,
             show_event_link: true,

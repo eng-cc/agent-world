@@ -222,6 +222,7 @@ mod tests {
                 llm_effect_receipts: Vec::new(),
                 llm_step_trace: Vec::new(),
                 llm_prompt_section_trace: Vec::new(),
+                llm_chat_messages: Vec::new(),
             }],
             metrics: None,
         };
