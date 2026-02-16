@@ -59,7 +59,22 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         }))
         .add_plugins(EguiPlugin::default())
         .insert_resource(OfflineConfig { offline })
-        .add_systems(Startup, (setup_startup_state, setup_3d_scene))
+        .add_systems(
+            Startup,
+            (
+                setup_startup_state,
+                setup_3d_scene,
+                setup_wasm_egui_input_bridge,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                sync_wasm_egui_input_bridge_focus,
+                pump_wasm_egui_input_bridge_events,
+            )
+                .chain(),
+        )
         .add_systems(
             Update,
             (
