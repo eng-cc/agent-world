@@ -220,8 +220,11 @@ version = "0.1.0"
 dependencies = [
  "agent_world_distfs",
  "agent_world_proto",
+ "async-std",
  "ed25519-dalek",
+ "futures",
  "hex",
+ "libp2p",
  "serde",
  "serde_json",
 ]

@@ -3,6 +3,7 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -11,7 +12,10 @@ use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
-use agent_world_node::{NodeConfig, NodeReplicationConfig, NodeRole, NodeRuntime, PosValidator};
+use agent_world_node::{
+    Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
+    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosValidator,
+};
 use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
 
@@ -35,6 +39,9 @@ struct CliOptions {
     node_validators: Vec<PosValidator>,
     node_gossip_bind: Option<SocketAddr>,
     node_gossip_peers: Vec<SocketAddr>,
+    node_repl_libp2p_listen: Vec<String>,
+    node_repl_libp2p_peers: Vec<String>,
+    node_repl_topic: Option<String>,
 }
 
 impl Default for CliOptions {
@@ -53,6 +60,9 @@ impl Default for CliOptions {
             node_validators: Vec::new(),
             node_gossip_bind: None,
             node_gossip_peers: Vec::new(),
+            node_repl_libp2p_listen: Vec::new(),
+            node_repl_libp2p_peers: Vec::new(),
+            node_repl_topic: None,
         }
     }
 }
@@ -162,6 +172,30 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
     config = config.with_replication(replication);
 
     let mut runtime = NodeRuntime::new(config);
+    if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty() {
+        let mut net_config = Libp2pReplicationNetworkConfig::default();
+        for raw in &options.node_repl_libp2p_listen {
+            let addr = raw.parse().map_err(|err| {
+                format!("--node-repl-libp2p-listen invalid multiaddr `{raw}`: {err}")
+            })?;
+            net_config.listen_addrs.push(addr);
+        }
+        for raw in &options.node_repl_libp2p_peers {
+            let addr = raw.parse().map_err(|err| {
+                format!("--node-repl-libp2p-peer invalid multiaddr `{raw}`: {err}")
+            })?;
+            net_config.bootstrap_peers.push(addr);
+        }
+
+        let network = Arc::new(Libp2pReplicationNetwork::new(net_config));
+        let mut handle = NodeReplicationNetworkHandle::new(network);
+        if let Some(topic) = options.node_repl_topic.as_deref() {
+            handle = handle
+                .with_topic(topic)
+                .map_err(|err| format!("failed to configure replication topic: {err}"))?;
+        }
+        runtime = runtime.with_replication_network(handle);
+    }
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
@@ -261,6 +295,28 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     .node_gossip_peers
                     .push(parse_socket_addr(raw, "--node-gossip-peer")?);
             }
+            "--node-repl-libp2p-listen" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-repl-libp2p-listen requires <multiaddr>".to_string())?;
+                options.node_repl_libp2p_listen.push(raw.to_string());
+            }
+            "--node-repl-libp2p-peer" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-repl-libp2p-peer requires <multiaddr>".to_string())?;
+                options.node_repl_libp2p_peers.push(raw.to_string());
+            }
+            "--node-repl-topic" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--node-repl-topic requires <topic>".to_string())?;
+                let topic = raw.trim();
+                if topic.is_empty() {
+                    return Err("--node-repl-topic requires non-empty value".to_string());
+                }
+                options.node_repl_topic = Some(topic.to_string());
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -278,6 +334,15 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 WorldScenario::variants().join(", ")
             )
         })?;
+    }
+    if options.node_repl_topic.is_some()
+        && options.node_repl_libp2p_listen.is_empty()
+        && options.node_repl_libp2p_peers.is_empty()
+    {
+        return Err(
+            "--node-repl-topic requires --node-repl-libp2p-listen or --node-repl-libp2p-peer"
+                .to_string(),
+        );
     }
 
     Ok(options)
@@ -301,6 +366,13 @@ fn print_help() {
     println!("  --node-no-auto-attest-all Disable auto-attesting all validators per tick");
     println!("  --node-gossip-bind <addr:port> Bind UDP endpoint for node gossip");
     println!("  --node-gossip-peer <addr:port> Add UDP peer endpoint for node gossip");
+    println!(
+        "  --node-repl-libp2p-listen <multiaddr> Add libp2p listen addr for replication network"
+    );
+    println!(
+        "  --node-repl-libp2p-peer <multiaddr> Add libp2p bootstrap peer for replication network"
+    );
+    println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -497,6 +569,9 @@ mod tests {
         assert!(options.node_validators.is_empty());
         assert!(options.node_gossip_bind.is_none());
         assert!(options.node_gossip_peers.is_empty());
+        assert!(options.node_repl_libp2p_listen.is_empty());
+        assert!(options.node_repl_libp2p_peers.is_empty());
+        assert!(options.node_repl_topic.is_none());
     }
 
     #[test]
@@ -533,6 +608,12 @@ mod tests {
                 "127.0.0.1:6002",
                 "--node-gossip-peer",
                 "127.0.0.1:6003",
+                "--node-repl-libp2p-listen",
+                "/ip4/127.0.0.1/tcp/7001",
+                "--node-repl-libp2p-peer",
+                "/ip4/127.0.0.1/tcp/7002/p2p/12D3KooWR6f1fVQqfJ9WQnB8GL9QykgjM7RzQ2xZQW6hUGNfj9t7",
+                "--node-repl-topic",
+                "aw.custom.replication",
             ]
             .into_iter(),
         )
@@ -556,6 +637,21 @@ mod tests {
                 "127.0.0.1:6002".parse::<SocketAddr>().expect("addr"),
                 "127.0.0.1:6003".parse::<SocketAddr>().expect("addr"),
             ]
+        );
+        assert_eq!(
+            options.node_repl_libp2p_listen,
+            vec!["/ip4/127.0.0.1/tcp/7001".to_string()]
+        );
+        assert_eq!(
+            options.node_repl_libp2p_peers,
+            vec![
+                "/ip4/127.0.0.1/tcp/7002/p2p/12D3KooWR6f1fVQqfJ9WQnB8GL9QykgjM7RzQ2xZQW6hUGNfj9t7"
+                    .to_string()
+            ]
+        );
+        assert_eq!(
+            options.node_repl_topic.as_deref(),
+            Some("aw.custom.replication")
         );
         assert_eq!(
             options.node_validators,
@@ -657,6 +753,32 @@ mod tests {
             parse_options(["--node-gossip-peer", "127.0.0.1:6202"].into_iter()).expect("options");
         let err = start_live_node(&options).expect_err("must fail");
         assert!(err.contains("--node-gossip-bind"));
+    }
+
+    #[test]
+    fn parse_options_rejects_repl_topic_without_repl_network() {
+        let err = parse_options(["--node-repl-topic", "aw.topic"].into_iter())
+            .expect_err("repl topic should require network");
+        assert!(err.contains("--node-repl-topic"));
+    }
+
+    #[test]
+    fn start_live_node_supports_libp2p_replication_injection() {
+        let options = parse_options(
+            [
+                "--node-repl-libp2p-listen",
+                "/ip4/127.0.0.1/tcp/0",
+                "--node-repl-topic",
+                "aw.test.replication",
+            ]
+            .into_iter(),
+        )
+        .expect("options");
+
+        let mut runtime = start_live_node(&options)
+            .expect("start")
+            .expect("runtime exists");
+        runtime.stop().expect("stop");
     }
 
     #[test]
