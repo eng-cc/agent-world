@@ -5,12 +5,15 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const BLOBS_DIR: &str = "blobs";
 const PINS_FILE: &str = "pins.json";
+const FILES_INDEX_FILE: &str = "files_index.json";
+const FILE_INDEX_VERSION: u64 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
@@ -30,12 +33,29 @@ pub trait BlobStore {
     }
 }
 
+pub trait FileStore {
+    fn write_file(&self, path: &str, bytes: &[u8]) -> Result<FileMetadata, WorldError>;
+    fn read_file(&self, path: &str) -> Result<Vec<u8>, WorldError>;
+    fn delete_file(&self, path: &str) -> Result<bool, WorldError>;
+    fn stat_file(&self, path: &str) -> Result<Option<FileMetadata>, WorldError>;
+    fn list_files(&self) -> Result<Vec<FileMetadata>, WorldError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileMetadata {
+    pub path: String,
+    pub content_hash: String,
+    pub size_bytes: u64,
+    pub updated_at_ms: i64,
+}
+
 #[derive(Debug, Clone)]
 pub struct LocalCasStore {
     root: PathBuf,
     blobs_dir: PathBuf,
     pins_path: PathBuf,
     hash_algorithm: HashAlgorithm,
+    files_index_path: PathBuf,
 }
 
 impl LocalCasStore {
@@ -47,11 +67,13 @@ impl LocalCasStore {
         let root = root.as_ref().to_path_buf();
         let blobs_dir = root.join(BLOBS_DIR);
         let pins_path = root.join(PINS_FILE);
+        let files_index_path = root.join(FILES_INDEX_FILE);
         Self {
             root,
             blobs_dir,
             pins_path,
             hash_algorithm,
+            files_index_path,
         }
     }
 
@@ -92,6 +114,8 @@ impl LocalCasStore {
                 format!("{:x}", hasher.finalize())
             }
         }
+    pub fn files_index_path(&self) -> &Path {
+        &self.files_index_path
     }
 
     fn ensure_dirs(&self) -> Result<(), WorldError> {
@@ -115,6 +139,27 @@ impl LocalCasStore {
     fn save_pins(&self, pins: &PinFile) -> Result<(), WorldError> {
         self.ensure_dirs()?;
         write_json_atomic(pins, &self.pins_path)
+    }
+
+    fn load_file_index(&self) -> Result<FileIndexFile, WorldError> {
+        if !self.files_index_path.exists() {
+            return Ok(FileIndexFile::default());
+        }
+        let file_index: FileIndexFile = read_json_from_path(&self.files_index_path)?;
+        if file_index.version != FILE_INDEX_VERSION {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "unsupported files index version: expected={}, actual={}",
+                    FILE_INDEX_VERSION, file_index.version
+                ),
+            });
+        }
+        Ok(file_index)
+    }
+
+    fn save_file_index(&self, file_index: &FileIndexFile) -> Result<(), WorldError> {
+        self.ensure_dirs()?;
+        write_json_atomic(file_index, &self.files_index_path)
     }
 
     pub fn pin(&self, content_hash: &str) -> Result<(), WorldError> {
@@ -240,6 +285,55 @@ impl BlobStore for LocalCasStore {
     fn has(&self, content_hash: &str) -> Result<bool, WorldError> {
         let path = self.blob_path(content_hash)?;
         Ok(path.exists())
+    }
+}
+
+impl FileStore for LocalCasStore {
+    fn write_file(&self, path: &str, bytes: &[u8]) -> Result<FileMetadata, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let content_hash = self.put_bytes(bytes)?;
+        let metadata = FileMetadata {
+            path: normalized_path.clone(),
+            content_hash,
+            size_bytes: bytes.len() as u64,
+            updated_at_ms: now_unix_time_ms(),
+        };
+        let mut file_index = self.load_file_index()?;
+        file_index.files.insert(normalized_path, metadata.clone());
+        self.save_file_index(&file_index)?;
+        Ok(metadata)
+    }
+
+    fn read_file(&self, path: &str) -> Result<Vec<u8>, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let file_index = self.load_file_index()?;
+        let metadata = file_index.files.get(&normalized_path).ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: format!("file not found: {normalized_path}"),
+            }
+        })?;
+        self.get(&metadata.content_hash)
+    }
+
+    fn delete_file(&self, path: &str) -> Result<bool, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let mut file_index = self.load_file_index()?;
+        let removed = file_index.files.remove(&normalized_path).is_some();
+        if removed {
+            self.save_file_index(&file_index)?;
+        }
+        Ok(removed)
+    }
+
+    fn stat_file(&self, path: &str) -> Result<Option<FileMetadata>, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let file_index = self.load_file_index()?;
+        Ok(file_index.files.get(&normalized_path).cloned())
+    }
+
+    fn list_files(&self) -> Result<Vec<FileMetadata>, WorldError> {
+        let file_index = self.load_file_index()?;
+        Ok(file_index.files.values().cloned().collect())
     }
 }
 
@@ -407,10 +501,83 @@ fn validate_hash(content_hash: &str) -> Result<(), WorldError> {
     Ok(())
 }
 
+fn normalize_file_path(path: &str) -> Result<String, WorldError> {
+    if path.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "invalid file path: empty path".to_string(),
+        });
+    }
+    let raw_path = Path::new(path);
+    if raw_path.is_absolute() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("invalid file path: absolute path not allowed ({path})"),
+        });
+    }
+
+    let mut normalized = Vec::new();
+    for component in raw_path.components() {
+        match component {
+            std::path::Component::Normal(part) => {
+                let segment =
+                    part.to_str()
+                        .ok_or_else(|| WorldError::DistributedValidationFailed {
+                            reason: format!("invalid file path: non-utf8 segment ({path})"),
+                        })?;
+                normalized.push(segment.to_string());
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!("invalid file path: parent traversal not allowed ({path})"),
+                });
+            }
+            std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                return Err(WorldError::DistributedValidationFailed {
+                    reason: format!("invalid file path: absolute path not allowed ({path})"),
+                });
+            }
+        }
+    }
+    if normalized.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("invalid file path: no path segment ({path})"),
+        });
+    }
+    Ok(normalized.join("/"))
+}
+
+fn now_unix_time_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| i64::try_from(duration.as_millis()).unwrap_or(i64::MAX))
+        .unwrap_or(0)
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct PinFile {
     #[serde(default)]
     pins: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct FileIndexFile {
+    #[serde(default = "default_file_index_version")]
+    version: u64,
+    #[serde(default)]
+    files: BTreeMap<String, FileMetadata>,
+}
+
+impl Default for FileIndexFile {
+    fn default() -> Self {
+        Self {
+            version: FILE_INDEX_VERSION,
+            files: BTreeMap::new(),
+        }
+    }
+}
+
+fn default_file_index_version() -> u64 {
+    FILE_INDEX_VERSION
 }
 
 #[derive(Debug, Clone)]
