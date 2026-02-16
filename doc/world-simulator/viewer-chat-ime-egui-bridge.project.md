@@ -6,7 +6,7 @@
 - [x] CIB3 实现 wasm EGUI IME bridge（DOM 事件桥接 + EGUI 事件注入）
 - [x] CIB4 接入启动流程并完成本地编译/测试回归
 - [x] CIB5 Web 闭环验证（Playwright 快照、console、截图）
-- [ ] CIB6 文档回写、devlog、提交收口
+- [x] CIB6 文档回写、devlog、提交收口
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -15,6 +15,6 @@
 - `crates/agent_world_viewer/Cargo.toml`
 
 ## 状态
-- 当前阶段：进行中（CIB6）
-- 下一步：完成文档回写与提交收口
-- 最近更新：CIB5 完成（2026-02-16）
+- 当前阶段：已完成
+- 下一步：无
+- 最近更新：CIB6 完成（2026-02-16）
