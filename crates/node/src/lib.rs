@@ -210,24 +210,12 @@ impl Drop for NodeRuntime {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeError {
-    InvalidRole {
-        role: String,
-    },
-    InvalidConfig {
-        reason: String,
-    },
-    AlreadyRunning {
-        node_id: String,
-    },
-    NotRunning {
-        node_id: String,
-    },
-    ThreadSpawnFailed {
-        reason: String,
-    },
-    ThreadJoinFailed {
-        node_id: String,
-    },
+    InvalidRole { role: String },
+    InvalidConfig { reason: String },
+    AlreadyRunning { node_id: String },
+    NotRunning { node_id: String },
+    ThreadSpawnFailed { reason: String },
+    ThreadJoinFailed { node_id: String },
 }
 
 fn now_unix_ms() -> i64 {

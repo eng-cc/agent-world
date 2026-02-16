@@ -303,8 +303,8 @@ mod tests {
 
     #[test]
     fn parse_options_rejects_invalid_node_role() {
-        let err = parse_options(["--node-role", "unknown"].into_iter())
-            .expect_err("invalid node role");
+        let err =
+            parse_options(["--node-role", "unknown"].into_iter()).expect_err("invalid node role");
         assert!(err.contains("--node-role"));
     }
 }
