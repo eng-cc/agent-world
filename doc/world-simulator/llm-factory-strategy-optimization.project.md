@@ -38,6 +38,12 @@
 - [x] LFO6.4 当 `schedule_recipe` 连单批也不可执行时，guardrail 自动回切 `refine_compound/harvest_radiation`
 - [x] LFO6.5 基于 LFO6.1-LFO6.4 在线复跑 `llm_bootstrap --ticks 30` 并回填对比指标
 
+### LFO7 决策全量 Tool 化（2026-02-17）
+- [x] LFO7.1 输出增量设计文档并补充项目拆解（tool-only 协议）
+- [ ] LFO7.2 扩展 Responses tools：新增 `agent_submit_decision`，并切换 `tool_choice=required`
+- [ ] LFO7.3 调整 prompt/behavior 约束为“只允许 tool call 输出”，更新解析路径与单测
+- [ ] LFO7.4 跑通 required-tier 测试并记录 devlog/状态回填
+
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
 - `execute_until` 收敛：`harvest_radiation` 的 `max_ticks` 运行时硬上限为 `3`（含 auto-reentry 路径）。
@@ -106,6 +112,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO6.5 已完成，LFO6.1-LFO6.4 已通过在线复跑验证。
-- 下一步：评估 TODO-4（多段 JSON 协议违规输出）并决定是否纳入下一轮收口任务。
-- 最近更新：2026-02-17（完成 LFO6.5 在线复跑验证与结果回填）。
+- 当前阶段：LFO0-LFO6.5 已完成，进入 LFO7 决策全量 Tool 化。
+- 下一步：执行 LFO7.2-LFO7.4，完成 tool-only 协议改造与回归验证。
+- 最近更新：2026-02-17（新增 LFO7 任务拆解并完成 LFO7.1）。
