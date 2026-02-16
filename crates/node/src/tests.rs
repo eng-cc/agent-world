@@ -368,6 +368,75 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
 }
 
 #[test]
+fn replication_network_handle_rejects_empty_topic() {
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+    let err = NodeReplicationNetworkHandle::new(network)
+        .with_topic("   ")
+        .expect_err("empty topic");
+    assert!(matches!(err, NodeError::InvalidConfig { .. }));
+}
+
+#[test]
+fn runtime_network_replication_respects_topic_isolation() {
+    let dir_a = temp_dir("network-topic-a");
+    let dir_b = temp_dir("network-topic-b");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let config_a = NodeConfig::new("node-a", "world-topic-repl", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators.clone())
+        .expect("validators a")
+        .with_replication(signed_replication_config(dir_a.clone(), 81));
+    let config_b = NodeConfig::new("node-b", "world-topic-repl", NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_validators(validators)
+        .expect("validators b")
+        .with_replication(signed_replication_config(dir_b.clone(), 82));
+
+    let mut runtime_a = NodeRuntime::new(config_a).with_replication_network(
+        NodeReplicationNetworkHandle::new(Arc::clone(&network))
+            .with_topic("aw.world-topic-repl.replication.a")
+            .expect("topic a"),
+    );
+    let mut runtime_b = NodeRuntime::new(config_b).with_replication_network(
+        NodeReplicationNetworkHandle::new(Arc::clone(&network))
+            .with_topic("aw.world-topic-repl.replication.b")
+            .expect("topic b"),
+    );
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b");
+    thread::sleep(Duration::from_millis(220));
+
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b");
+
+    let store_b = LocalCasStore::new(dir_b.join("store"));
+    let files = store_b.list_files().expect("list files");
+    assert!(files.is_empty());
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
 fn runtime_gossip_replication_with_signature_applies_files() {
     let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
     let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
