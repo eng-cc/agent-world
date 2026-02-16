@@ -265,6 +265,7 @@ pub struct NodeSnapshot {
     pub last_error: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct NodeRuntime {
     config: NodeConfig,
     replication_network: Option<NodeReplicationNetworkHandle>,
