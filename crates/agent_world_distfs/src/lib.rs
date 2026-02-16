@@ -14,6 +14,10 @@ const PINS_FILE: &str = "pins.json";
 const FILES_INDEX_FILE: &str = "files_index.json";
 const FILE_INDEX_VERSION: u64 = 1;
 
+mod replication;
+
+pub use replication::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
     Blake3,

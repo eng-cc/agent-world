@@ -4,7 +4,7 @@
 - [x] BPFS-0：输出设计文档与项目管理文档。
 - [x] BPFS-1：落地 Sequencer Mainloop（action->mempool->batch->pos->dht）与单元测试。
 - [x] BPFS-2：接入签名/验签最小闭环（提交校验、拒绝路径、测试）。
-- [ ] BPFS-3：落地 DistFS 最小跨节点复制一致（单写者冲突保护 + 回放恢复测试）。
+- [x] BPFS-3：落地 DistFS 最小跨节点复制一致（单写者冲突保护 + 回放恢复测试）。
 
 ## 依赖
 - `crates/agent_world_consensus`
@@ -14,6 +14,6 @@
 - `doc/world-runtime/distributed-pos-consensus.md`
 
 ## 状态
-- 当前阶段：BPFS-2 完成，进入 BPFS-3。
-- 下一步：在 `agent_world_distfs` 落地最小复制记录与单写者冲突保护。
+- 当前阶段：BPFS-1 ~ BPFS-3 全部完成。
+- 下一步：将 `FileReplicationRecord` 与网络分发链路打通（node/net 层复制消息接线）。
 - 最近更新：2026-02-16。
