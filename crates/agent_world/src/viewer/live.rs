@@ -15,9 +15,10 @@ use crate::simulator::{
 use sha2::{Digest, Sha256};
 
 use super::protocol::{
-    viewer_event_kind_matches, PromptControlAck, PromptControlApplyRequest, PromptControlCommand,
-    PromptControlError, PromptControlOperation, PromptControlRollbackRequest, ViewerControl,
-    ViewerEventKind, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck,
+    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
+    PromptControlRollbackRequest, ViewerControl, ViewerEventKind, ViewerRequest, ViewerResponse,
+    ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -513,6 +514,59 @@ impl LiveWorld {
         })
     }
 
+    fn agent_chat(&mut self, request: AgentChatRequest) -> Result<AgentChatAck, AgentChatError> {
+        let player_id = request
+            .player_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned);
+        let message = request.message.trim().to_string();
+        if message.is_empty() {
+            return Err(AgentChatError {
+                code: "empty_message".to_string(),
+                message: "chat message cannot be empty".to_string(),
+                agent_id: Some(request.agent_id),
+            });
+        }
+
+        match &mut self.driver {
+            LiveDriver::Script(_) => Err(AgentChatError {
+                code: "llm_mode_required".to_string(),
+                message: "agent chat requires live server running with --llm".to_string(),
+                agent_id: Some(request.agent_id),
+            }),
+            LiveDriver::Llm(runner) => {
+                let Some(agent) = runner.get_mut(request.agent_id.as_str()) else {
+                    return Err(AgentChatError {
+                        code: "agent_not_registered".to_string(),
+                        message: format!(
+                            "agent {} is not registered in llm runner",
+                            request.agent_id
+                        ),
+                        agent_id: Some(request.agent_id),
+                    });
+                };
+                if !agent
+                    .behavior
+                    .push_player_message(self.kernel.time(), message.as_str())
+                {
+                    return Err(AgentChatError {
+                        code: "empty_message".to_string(),
+                        message: "chat message cannot be empty".to_string(),
+                        agent_id: Some(request.agent_id),
+                    });
+                }
+                Ok(AgentChatAck {
+                    agent_id: request.agent_id,
+                    accepted_at_tick: self.kernel.time(),
+                    message_len: message.chars().count(),
+                    player_id,
+                })
+            }
+        }
+    }
+
     fn current_prompt_profile(
         &self,
         agent_id: &str,
@@ -922,6 +976,14 @@ impl ViewerLiveSession {
                     }
                 }
             }
+            ViewerRequest::AgentChat { request } => match world.agent_chat(request) {
+                Ok(ack) => {
+                    send_response(writer, &ViewerResponse::AgentChatAck { ack })?;
+                }
+                Err(error) => {
+                    send_response(writer, &ViewerResponse::AgentChatError { error })?;
+                }
+            },
             ViewerRequest::Control { mode } => match mode {
                 ViewerControl::Pause => {
                     self.playing = false;

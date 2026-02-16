@@ -5,14 +5,15 @@ use crate::simulator::{
 };
 
 pub use proto::{
-    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
-    PromptControlRollbackRequest, ViewerControl, ViewerEventKind, ViewerRequest, ViewerStream,
-    VIEWER_PROTOCOL_VERSION,
+    AgentChatError, AgentChatRequest, PromptControlApplyRequest, PromptControlCommand,
+    PromptControlError, PromptControlOperation, PromptControlRollbackRequest, ViewerControl,
+    ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =
     proto::ViewerResponse<WorldSnapshot, WorldEvent, AgentDecisionTrace, RunnerMetrics, WorldTime>;
 pub type PromptControlAck = proto::PromptControlAck<WorldTime>;
+pub type AgentChatAck = proto::AgentChatAck<WorldTime>;
 
 pub fn viewer_event_kind_matches(filter: &ViewerEventKind, kind: &WorldEventKind) -> bool {
     match (filter, kind) {

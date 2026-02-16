@@ -11,8 +11,8 @@ use crate::simulator::{
 };
 
 use super::protocol::{
-    viewer_event_kind_matches, PromptControlError, ViewerControl, ViewerEventKind, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    viewer_event_kind_matches, AgentChatError, PromptControlError, ViewerControl, ViewerEventKind,
+    ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 #[derive(Debug, Clone)]
@@ -268,6 +268,18 @@ impl<'a> ViewerSession<'a> {
                             message: "prompt_control is only available in live mode".to_string(),
                             agent_id: None,
                             current_version: None,
+                        },
+                    },
+                )?;
+            }
+            ViewerRequest::AgentChat { request } => {
+                send_response(
+                    writer,
+                    &ViewerResponse::AgentChatError {
+                        error: AgentChatError {
+                            code: "unsupported_in_offline_server".to_string(),
+                            message: "agent_chat is only available in live mode".to_string(),
+                            agent_id: Some(request.agent_id),
                         },
                     },
                 )?;

@@ -21,6 +21,9 @@ pub enum ViewerRequest {
     PromptControl {
         command: PromptControlCommand,
     },
+    AgentChat {
+        request: AgentChatRequest,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +85,14 @@ pub struct PromptControlRollbackRequest {
     pub updated_by: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentChatRequest {
+    pub agent_id: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_id: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ViewerStream {
@@ -139,6 +150,12 @@ pub enum ViewerResponse<Snapshot, Event, DecisionTrace, Metrics, Time> {
     PromptControlError {
         error: PromptControlError,
     },
+    AgentChatAck {
+        ack: AgentChatAck<Time>,
+    },
+    AgentChatError {
+        error: AgentChatError,
+    },
     Error {
         message: String,
     },
@@ -172,6 +189,23 @@ pub struct PromptControlError {
     pub agent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_version: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentChatAck<Time> {
+    pub agent_id: String,
+    pub accepted_at_tick: Time,
+    pub message_len: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentChatError {
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
 }
 
 #[cfg(test)]
@@ -219,6 +253,20 @@ mod tests {
     }
 
     #[test]
+    fn viewer_agent_chat_request_round_trip() {
+        let request = ViewerRequest::AgentChat {
+            request: AgentChatRequest {
+                agent_id: "agent-0".to_string(),
+                message: "go to loc-2".to_string(),
+                player_id: Some("player-1".to_string()),
+            },
+        };
+        let json = serde_json::to_string(&request).expect("serialize request");
+        let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
+        assert_eq!(parsed, request);
+    }
+
+    #[test]
     fn viewer_response_round_trip_prompt_ack() {
         let response = ViewerResponse::<
             serde_json::Value,
@@ -239,6 +287,33 @@ mod tests {
                 ],
                 digest: "abc".to_string(),
                 rolled_back_to_version: Some(5),
+            },
+        };
+        let json = serde_json::to_string(&response).expect("serialize response");
+        let parsed: ViewerResponse<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        > = serde_json::from_str(&json).expect("deserialize response");
+        assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn viewer_response_round_trip_agent_chat_ack() {
+        let response = ViewerResponse::<
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            serde_json::Value,
+            u64,
+        >::AgentChatAck {
+            ack: AgentChatAck {
+                agent_id: "agent-0".to_string(),
+                accepted_at_tick: 42,
+                message_len: 11,
+                player_id: Some("player-1".to_string()),
             },
         };
         let json = serde_json::to_string(&response).expect("serialize response");
