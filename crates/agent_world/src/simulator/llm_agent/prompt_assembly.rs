@@ -53,6 +53,7 @@ pub struct PromptAssemblyInput<'a> {
     pub long_term_goal: &'a str,
     pub observation_json: &'a str,
     pub module_history_json: &'a str,
+    pub conversation_history_json: &'a str,
     pub memory_digest: Option<&'a str>,
     pub step_context: PromptStepContext,
     pub harvest_max_amount_cap: i64,
@@ -74,10 +75,10 @@ pub enum PromptSectionKind {
     Goals,
     Context,
     Tools,
+    Conversation,
     History,
     Memory,
     OutputSchema,
-    StepMeta,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -203,6 +204,14 @@ impl PromptAssembler {
             },
             false,
         ));
+        sections.push(SectionState::new(
+            PromptSection {
+                kind: PromptSectionKind::Conversation,
+                priority: PromptSectionPriority::Medium,
+                content: format!("[Conversation]\n{}", input.conversation_history_json),
+            },
+            false,
+        ));
 
         if let Some(memory_digest) = input.memory_digest {
             if !memory_digest.trim().is_empty() {
@@ -217,37 +226,6 @@ impl PromptAssembler {
             }
         }
 
-        let turns_remaining = input
-            .step_context
-            .max_steps
-            .saturating_sub(input.step_context.step_index.saturating_add(1));
-        let module_calls_remaining = input
-            .step_context
-            .module_calls_max
-            .saturating_sub(input.step_context.module_calls_used);
-        let must_finalize_hint = if turns_remaining <= 1 || module_calls_remaining <= 1 {
-            "yes"
-        } else {
-            "no"
-        };
-
-        sections.push(SectionState::new(
-            PromptSection {
-                kind: PromptSectionKind::StepMeta,
-                priority: PromptSectionPriority::Low,
-                content: format!(
-                    "[Step]\n- step_index: {}\n- max_steps: {}\n- module_calls_used: {}\n- module_calls_max: {}\n- module_calls_remaining: {}\n- turns_remaining: {}\n- must_finalize_hint: {}",
-                    input.step_context.step_index,
-                    input.step_context.max_steps,
-                    input.step_context.module_calls_used,
-                    input.step_context.module_calls_max,
-                    module_calls_remaining,
-                    turns_remaining,
-                    must_finalize_hint,
-                ),
-            },
-            false,
-        ));
         sections.push(SectionState::new(
             PromptSection {
                 kind: PromptSectionKind::OutputSchema,
@@ -276,7 +254,7 @@ impl PromptAssembler {
 
 [Output Hard Rules]
 - 每轮只输出一个 JSON 对象（非数组），不要输出多个 JSON 块，不要使用 `---` 分隔
-- 当 Step 中 `module_calls_remaining <= 1` 或 `turns_remaining <= 1` 时，必须直接输出最终 decision（可 execute_until）
+- 当前上下文若已足够，请直接输出最终 decision（可 execute_until），不要额外输出自然语言解释
 
 若你需要查询信息，请输出模块调用 JSON：
 {{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
@@ -335,9 +313,9 @@ impl PromptAssembler {
                 matches!(
                     section.kind,
                     PromptSectionKind::Context
+                        | PromptSectionKind::Conversation
                         | PromptSectionKind::History
                         | PromptSectionKind::Memory
-                        | PromptSectionKind::StepMeta
                         | PromptSectionKind::OutputSchema
                 )
             })
@@ -397,9 +375,9 @@ impl PromptAssembler {
         }
 
         let removable_order = [
-            PromptSectionKind::StepMeta,
             PromptSectionKind::Memory,
             PromptSectionKind::History,
+            PromptSectionKind::Conversation,
         ];
 
         for kind in removable_order {
@@ -465,7 +443,11 @@ impl PromptAssembler {
             );
         }
         if Self::included_tokens(sections) > peak_soft_tokens {
-            Self::drop_optional_section(sections, PromptSectionKind::StepMeta);
+            Self::truncate_soft_section(
+                sections,
+                PromptSectionKind::Conversation,
+                PEAK_HISTORY_SOFT_CAP_TOKENS,
+            );
         }
 
         if Self::included_tokens(sections) > peak_hard_tokens {
@@ -487,6 +469,9 @@ impl PromptAssembler {
         }
         if Self::included_tokens(sections) > peak_hard_tokens {
             Self::drop_optional_section(sections, PromptSectionKind::History);
+        }
+        if Self::included_tokens(sections) > peak_hard_tokens {
+            Self::drop_optional_section(sections, PromptSectionKind::Conversation);
         }
         if Self::included_tokens(sections) > peak_hard_tokens {
             Self::truncate_required_context(sections, peak_hard_tokens);
@@ -586,6 +571,7 @@ mod tests {
             long_term_goal: "long goal",
             observation_json: "{\"time\":1}",
             module_history_json: "[]",
+            conversation_history_json: r#"[{"role":"player","content":"hello"}]"#,
             memory_digest: Some("obs@T1 ..."),
             step_context: PromptStepContext {
                 step_index: 0,
@@ -616,6 +602,7 @@ mod tests {
         assert!(output.system_prompt.contains("module_call"));
 
         assert!(output.user_prompt.contains("observation(json)"));
+        assert!(output.user_prompt.contains("[Conversation]"));
         assert!(output.user_prompt.contains("[Memory Digest]"));
         assert!(output.user_prompt.contains("Decision JSON Schema"));
     }
@@ -650,6 +637,7 @@ mod tests {
     #[test]
     fn prompt_budget_removes_low_priority_sections_first() {
         let history = "h".repeat(4_000);
+        let conversation = "c".repeat(2_000);
         let memory = "m".repeat(2_000);
         let input = PromptAssemblyInput {
             agent_id: "agent-1",
@@ -658,6 +646,7 @@ mod tests {
             long_term_goal: "long goal",
             observation_json: "{\"time\":1}",
             module_history_json: history.as_str(),
+            conversation_history_json: conversation.as_str(),
             memory_digest: Some(memory.as_str()),
             step_context: PromptStepContext {
                 step_index: 0,
@@ -675,12 +664,12 @@ mod tests {
 
         let output = PromptAssembler::assemble(input);
 
-        let step_meta = output
+        let conversation = output
             .section_trace
             .iter()
-            .find(|trace| trace.kind == PromptSectionKind::StepMeta)
-            .expect("step meta trace");
-        assert!(!step_meta.included);
+            .find(|trace| trace.kind == PromptSectionKind::Conversation)
+            .expect("conversation trace");
+        assert!(!conversation.included);
 
         let schema = output
             .section_trace
@@ -701,6 +690,7 @@ mod tests {
             long_term_goal: "long goal",
             observation_json: "{\"time\":1}",
             module_history_json: history.as_str(),
+            conversation_history_json: "[]",
             memory_digest: Some("obs@T1 ..."),
             step_context: PromptStepContext {
                 step_index: 0,
@@ -736,6 +726,7 @@ mod tests {
             long_term_goal: "long goal",
             observation_json: "{\"time\":1}",
             module_history_json: history.as_str(),
+            conversation_history_json: "[]",
             memory_digest: Some("obs@T1 ..."),
             step_context: PromptStepContext {
                 step_index: 0,
@@ -876,6 +867,7 @@ mod tests {
             long_term_goal: "long goal",
             observation_json: "{\"time\":1}",
             module_history_json: history.as_str(),
+            conversation_history_json: "[]",
             memory_digest: Some(memory.as_str()),
             step_context,
             harvest_max_amount_cap: 100,
@@ -904,7 +896,7 @@ mod tests {
     }
 
     #[test]
-    fn prompt_assembly_step_meta_contains_remaining_budget_hints() {
+    fn prompt_assembly_omits_step_meta_hints_in_dialogue_mode() {
         let mut input = sample_input();
         input.step_context.step_index = 2;
         input.step_context.max_steps = 4;
@@ -912,9 +904,9 @@ mod tests {
         input.step_context.module_calls_max = 3;
 
         let output = PromptAssembler::assemble(input);
-        assert!(output.user_prompt.contains("module_calls_remaining: 1"));
-        assert!(output.user_prompt.contains("turns_remaining: 1"));
-        assert!(output.user_prompt.contains("must_finalize_hint: yes"));
+        assert!(!output.user_prompt.contains("[Step]"));
+        assert!(!output.user_prompt.contains("module_calls_remaining"));
+        assert!(!output.user_prompt.contains("turns_remaining"));
     }
 
     #[test]

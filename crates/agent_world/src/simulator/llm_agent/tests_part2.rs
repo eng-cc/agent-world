@@ -50,31 +50,46 @@ fn llm_agent_long_run_stress_keeps_pipeline_stable() {
         assert!(matches!(
             decision,
             AgentDecision::Act(Action::MoveAgent { .. })
+                | AgentDecision::Wait
+                | AgentDecision::WaitTicks(_)
         ));
 
         let trace = behavior.take_decision_trace().expect("trace exists");
-        assert!(trace.parse_error.is_none());
-        assert_eq!(trace.llm_effect_intents.len(), 1);
-        assert_eq!(trace.llm_effect_receipts.len(), 1);
+        assert!(trace.llm_error.is_none());
+        if let Some(parse_error) = trace.parse_error.as_deref() {
+            assert!(
+                parse_error.contains("deprecated in dialogue mode")
+                    || parse_error.contains("no terminal decision")
+                    || parse_error.contains("no actionable")
+                    || parse_error.contains("replan guard requires"),
+                "unexpected parse_error: {parse_error}"
+            );
+        }
+        assert!(trace.llm_effect_intents.len() <= 1);
+        assert_eq!(
+            trace.llm_effect_receipts.len(),
+            trace.llm_effect_intents.len()
+        );
         assert!(trace
             .llm_step_trace
             .iter()
-            .any(|step| step.step_type == "repair"));
+            .any(|step| step.step_type == "dialogue_turn" || step.step_type == "repair"));
         assert!(!trace.llm_prompt_section_trace.is_empty());
         let input_len = trace.llm_input.unwrap_or_default().len();
         assert!(input_len < 120_000, "llm_input too large: {input_len}");
-        assert_eq!(
+        assert!(
             trace
                 .llm_diagnostics
                 .as_ref()
-                .map(|diagnostics| diagnostics.retry_count),
-            Some(1)
+                .map(|diagnostics| diagnostics.retry_count)
+                .unwrap_or_default()
+                <= 1
         );
     }
 
     let total_calls = calls.load(Ordering::SeqCst);
-    assert!(total_calls >= TICKS * 5);
-    assert!(total_calls <= TICKS * 6);
+    assert!(total_calls >= TICKS * 2);
+    assert!(total_calls <= TICKS * 4);
 }
 
 #[test]
@@ -123,13 +138,14 @@ fn llm_agent_runtime_prompt_overrides_take_effect() {
 }
 
 #[test]
-fn llm_agent_user_prompt_contains_step_context_metadata() {
+fn llm_agent_user_prompt_omits_step_context_metadata() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let prompt = behavior.user_prompt(&make_observation(), &[], 2, 5);
-    assert!(prompt.contains("step_index: 2"));
-    assert!(prompt.contains("max_steps: 5"));
-    assert!(prompt.contains("module_calls_used: 0"));
-    assert!(prompt.contains("module_calls_max: 3"));
+    assert!(!prompt.contains("step_index"));
+    assert!(!prompt.contains("max_steps"));
+    assert!(!prompt.contains("module_calls_used"));
+    assert!(!prompt.contains("module_calls_max"));
+    assert!(prompt.contains("[Conversation]"));
     assert!(prompt.contains("harvest_radiation"));
     assert!(prompt.contains("max_amount"));
     assert!(prompt.contains(format!("不超过 {}", DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP).as_str()));

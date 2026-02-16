@@ -9,6 +9,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     fn decide(&mut self, observation: &Observation) -> AgentDecision {
         self.memory
             .record_observation(observation.time, Self::observe_memory_summary(observation));
+        let trace_chat_start = self
+            .conversation_trace_cursor
+            .min(self.conversation_history.len());
 
         if let Some(active_execute_until) = self.active_execute_until.as_mut() {
             match active_execute_until.evaluate_next_step(observation) {
@@ -22,6 +25,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     self.replan_guard_state.record_decision(&decision);
                     self.memory
                         .record_decision(observation.time, decision.clone());
+                    let trace_chat_messages =
+                        self.conversation_history[trace_chat_start..].to_vec();
+                    self.conversation_trace_cursor = self.conversation_history.len();
                     self.pending_trace = Some(AgentDecisionTrace {
                         agent_id: self.agent_id.clone(),
                         time: observation.time,
@@ -48,6 +54,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                             status: "ok".to_string(),
                         }],
                         llm_prompt_section_trace: vec![],
+                        llm_chat_messages: trace_chat_messages,
                     });
                     return decision;
                 }
@@ -106,22 +113,13 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             String::new()
         };
 
-        let mut phase = DecisionPhase::Plan;
-        let mut pending_draft: Option<AgentDecision> = None;
         let mut repair_rounds_used = 0_u32;
         let mut repair_context: Option<String> = None;
         let mut deferred_parse_error: Option<String> = None;
         let mut resolved_via_execute_until = false;
 
         for turn in 0..max_turns {
-            let active_phase = phase;
             let is_repair_turn = repair_context.is_some();
-            let step_type = if is_repair_turn {
-                "repair"
-            } else {
-                active_phase.step_type()
-            };
-
             let prompt_output =
                 self.assemble_prompt_output(observation, &module_history, turn, max_turns);
             llm_prompt_section_trace.extend(prompt_output.section_trace.iter().map(|section| {
@@ -135,111 +133,69 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 }
             }));
 
-            let mut user_prompt = prompt_output.user_prompt.clone();
             let module_calls_remaining = self
                 .config
                 .max_module_calls
                 .saturating_sub(module_history.len());
             let turns_remaining = max_turns.saturating_sub(turn.saturating_add(1));
-            let must_finalize_due_budget = turns_remaining <= 1 || module_calls_remaining <= 1;
 
+            let mut user_prompt = prompt_output.user_prompt.clone();
             user_prompt.push_str(
-                "
-
-[Step Orchestration]
-",
-            );
-            user_prompt.push_str(active_phase.prompt_instruction());
-            user_prompt.push_str(
-                "
-
-[Output Constraints]
-- 本轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔与代码块包裹 JSON。
-",
+                "\n\n[Dialogue Constraints]\n- 本轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔与代码块包裹 JSON。\n",
             );
             user_prompt.push_str(
                 format!(
-                    "- module_calls_remaining={} turns_remaining={}
-",
-                    module_calls_remaining, turns_remaining
+                    "- dialogue_turn={}; turns_remaining={}; module_calls_remaining={}.\n",
+                    turn, turns_remaining, module_calls_remaining,
                 )
                 .as_str(),
             );
             user_prompt.push_str(
                 format!(
-                    "- harvest_radiation.max_amount 必须在 [1, {}]；超限将被运行时裁剪。
-",
+                    "- harvest_radiation.max_amount 必须在 [1, {}]；超限将被运行时裁剪。\n",
                     self.config.harvest_max_amount_cap
                 )
                 .as_str(),
             );
             user_prompt.push_str(
-                "- move_agent.to 不能是当前所在位置（observation 中 distance_cm=0 的 location）。
-",
+                "- move_agent.to 不能是当前所在位置（observation 中 distance_cm=0 的 location）。\n",
             );
             user_prompt.push_str(
+                "- 若需要信息查询，只能输出一个 module_call JSON；拿到工具结果后下一轮再输出最终 decision。\n",
+            );
+            user_prompt
+                .push_str("- 若上下文已足够，请直接输出最终 decision，不要输出自然语言解释。\n");
+            user_prompt.push_str(
                 format!(
-                    "- 若连续两轮输出同一可执行动作，优先使用 execute_until（参考 schema 推荐模板）减少重复决策；auto_reenter_ticks={}。
-",
+                    "- 若连续两轮输出同一可执行动作，优先使用 execute_until（auto_reenter_ticks={}）。\n",
                     self.config.execute_until_auto_reenter_ticks
                 )
                 .as_str(),
             );
-            if must_finalize_due_budget {
-                user_prompt.push_str("- 预算接近上限：本轮必须直接输出最终 decision（可 execute_until），禁止 plan/module_call/decision_draft。
-");
-            } else {
-                user_prompt.push_str(
-                    "- observation/context 已覆盖当前动作判断时，优先直接输出最终 decision，不要先输出 plan/module_call。
-",
-                );
-                user_prompt.push_str("- 若输出 module_call，本轮仅允许一个 module_call；不要在同一回复混合 module_call 与 decision*。
-");
-            }
 
             if should_force_replan {
+                user_prompt.push_str("\n[Anti-Repetition Guard]\n");
                 user_prompt.push_str(
-                    "
-
-[Anti-Repetition Guard]
-",
+                    "- 检测到连续重复动作，请避免原样重复动作；应先查询新证据或切换动作。\n",
                 );
                 user_prompt.push_str(
-                    "- 检测到连续重复动作，请避免原样重复动作；可通过 plan/module_call 重新取数，或直接切换为新动作/execute_until。
-",
+                    "- 若确需连续执行同一动作，请使用 execute_until，并设置 until.event（阈值事件需附 until.value_lte）与 max_ticks。\n",
                 );
-                user_prompt.push_str("- 若确实需要重复执行同一动作，请使用 execute_until，并提供 until.event（阈值事件需附 until.value_lte）与 max_ticks。
-");
                 user_prompt.push_str("- guard_state: ");
                 user_prompt.push_str(replan_guard_summary.as_str());
+                user_prompt.push('\n');
             }
-            if let Some(draft) = pending_draft.as_ref() {
-                let draft_json = serialize_decision_for_prompt(draft);
-                user_prompt.push_str(
-                    "
-- 已有 decision_draft，可直接输出最终 decision：",
-                );
-                user_prompt.push_str(draft_json.as_str());
-                user_prompt.push_str(
-                    "
-- 已存在 decision_draft，本轮禁止再次输出 decision_draft，必须输出最终 decision。
-",
-                );
-            }
-            if let Some(repair_reason) = repair_context.as_ref() {
-                user_prompt.push_str(
-                    "
 
-[Repair]
-",
-                );
-                user_prompt.push_str("上一轮输出解析失败，请修复为合法 JSON：");
-                user_prompt.push_str(repair_reason.as_str());
+            if module_calls_remaining <= 1 || turns_remaining <= 1 {
                 user_prompt.push_str(
-                    "
-仅返回一个合法 JSON 对象，不要追加其他 JSON 块。
-",
+                    "- 预算接近上限：本轮必须输出最终 decision（可 execute_until），不要继续 module_call。\n",
                 );
+            }
+
+            if let Some(repair_reason) = repair_context.as_ref() {
+                user_prompt.push_str("\n[Repair]\n上一轮输出解析失败，请修复为合法 JSON：");
+                user_prompt.push_str(repair_reason.as_str());
+                user_prompt.push_str("\n仅返回一个合法 JSON 对象，不要追加其他 JSON 块。\n");
             }
 
             let request = LlmCompletionRequest {
@@ -248,7 +204,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 user_prompt,
             };
             let input_summary = format!(
-                "phase={step_type}; module_calls={}/{}; repair_rounds={}/{}; force_replan={}; prompt_profile={}",
+                "turn={turn}; module_calls={}/{}; repair_rounds={}/{}; force_replan={}; prompt_profile={}",
                 module_history.len(),
                 self.config.max_module_calls,
                 repair_rounds_used,
@@ -284,10 +240,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     }
 
                     trace_outputs.push(completion.output.clone());
+                    let _ = self.append_conversation_message(
+                        observation.time,
+                        LlmChatRole::Agent,
+                        completion.output.as_str(),
+                    );
 
-                    let mut step_status = "ok".to_string();
-                    let mut step_output_summary =
+                    let mut turn_status = "ok".to_string();
+                    let mut turn_output_summary =
                         summarize_trace_text(completion.output.as_str(), 220);
+                    let mut retry_next_turn = false;
+                    let mut tool_called_this_turn = false;
 
                     let parsed_turns = parse_llm_turn_responses(
                         completion.output.as_str(),
@@ -308,31 +271,36 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                 {
                                     let err = "replan guard requires module_call or execute_until before repeating same terminal action"
                                         .to_string();
-                                    step_status = "error".to_string();
-                                    step_output_summary = err.clone();
+                                    turn_status = "error".to_string();
+                                    turn_output_summary = err.clone();
                                     if repair_rounds_used < self.config.max_repair_rounds as u32 {
                                         repair_rounds_used = repair_rounds_used.saturating_add(1);
                                         repair_context = Some(err);
+                                        retry_next_turn = true;
                                     } else {
                                         parse_error = Some(err);
+                                        turn_status = "degraded".to_string();
                                         resolved = true;
-                                        step_status = "degraded".to_string();
                                     }
                                 } else {
                                     let (guarded_decision, guardrail_note) =
                                         self.apply_decision_guardrails(parsed_decision);
                                     decision = guarded_decision;
                                     parse_error = decision_parse_error;
-                                    pending_draft = None;
                                     repair_context = None;
-                                    phase = DecisionPhase::Finalize;
                                     resolved = true;
                                     resolved_via_execute_until = false;
+
                                     if let Some(note) = guardrail_note {
                                         self.memory.record_note(observation.time, note.clone());
-                                        step_output_summary = format!(
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::System,
+                                            note.as_str(),
+                                        );
+                                        turn_output_summary = format!(
                                             "{}; {}",
-                                            step_output_summary,
+                                            turn_output_summary,
                                             summarize_trace_text(note.as_str(), 160)
                                         );
                                     }
@@ -349,12 +317,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         guarded_directive.clone(),
                                         observation,
                                     ));
-                                pending_draft = None;
                                 repair_context = None;
-                                phase = DecisionPhase::Finalize;
                                 resolved = true;
                                 resolved_via_execute_until = true;
-                                step_output_summary = format!(
+
+                                turn_output_summary = format!(
                                     "execute_until events={} max_ticks={}",
                                     guarded_directive
                                         .until_conditions
@@ -364,59 +331,30 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         .join("|"),
                                     guarded_directive.max_ticks
                                 );
+
                                 if let Some(note) = guardrail_note {
                                     self.memory.record_note(observation.time, note.clone());
-                                    step_output_summary = format!(
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::System,
+                                        note.as_str(),
+                                    );
+                                    turn_output_summary = format!(
                                         "{}; {}",
-                                        step_output_summary,
+                                        turn_output_summary,
                                         summarize_trace_text(note.as_str(), 160)
                                     );
                                 }
                             }
-                            ParsedLlmTurn::Plan(plan) => {
-                                repair_context = None;
-                                let wants_module_call = plan
-                                    .next
-                                    .as_deref()
-                                    .is_some_and(|next| next.eq_ignore_ascii_case("module_call"));
-                                let force_replan_optional_module_call = should_force_replan
-                                    && module_history.is_empty()
-                                    && plan.missing.is_empty();
-                                let effective_wants_module_call =
-                                    wants_module_call && !force_replan_optional_module_call;
-                                let must_keep_module_loop = should_force_replan
-                                    && module_history.is_empty()
-                                    && !plan.missing.is_empty();
-                                phase = if must_keep_module_loop
-                                    || effective_wants_module_call
-                                    || !plan.missing.is_empty()
-                                {
-                                    DecisionPhase::ModuleLoop
-                                } else {
-                                    DecisionPhase::DecisionDraft
-                                };
-
-                                let missing_summary = if plan.missing.is_empty() {
-                                    "-".to_string()
-                                } else {
-                                    plan.missing.join(",")
-                                };
-                                let next_summary = plan.next.unwrap_or_else(|| "-".to_string());
-                                step_output_summary = format!(
-                                    "plan missing={missing_summary}; next={next_summary}; force_module_loop={must_keep_module_loop}"
-                                );
-                            }
                             ParsedLlmTurn::ModuleCall(module_request) => {
-                                repair_context = None;
                                 if module_history.len() >= self.config.max_module_calls {
                                     deferred_parse_error = Some(format!(
                                         "module call limit exceeded: max_module_calls={}",
                                         self.config.max_module_calls
                                     ));
-                                    step_status = "error".to_string();
-                                    step_output_summary =
+                                    turn_status = "error".to_string();
+                                    turn_output_summary =
                                         "module_call skipped: limit exceeded".to_string();
-                                    phase = DecisionPhase::DecisionDraft;
                                 } else {
                                     let module_name = module_request.module.clone();
                                     let intent_id = self.next_prompt_intent_id();
@@ -451,8 +389,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     llm_effect_intents.push(intent);
                                     llm_effect_receipts.push(receipt);
                                     trace_inputs.push(format!(
-                                        "[module_result:{}]
-{}",
+                                        "[module_result:{}]\n{}",
                                         module_name,
                                         serde_json::to_string(&module_result)
                                             .unwrap_or_else(|_| "{}".to_string())
@@ -460,17 +397,25 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     module_history.push(ModuleCallExchange {
                                         module: module_request.module,
                                         args: module_request.args,
-                                        result: module_result,
+                                        result: module_result.clone(),
                                     });
 
-                                    phase = if module_history.len() >= self.config.max_module_calls
-                                    {
-                                        DecisionPhase::DecisionDraft
-                                    } else {
-                                        DecisionPhase::ModuleLoop
-                                    };
-                                    step_output_summary =
+                                    let tool_feedback = format!(
+                                        "module={} status={} result={}",
+                                        module_name,
+                                        status_label,
+                                        serde_json::to_string(&module_result)
+                                            .unwrap_or_else(|_| "{}".to_string())
+                                    );
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Tool,
+                                        tool_feedback.as_str(),
+                                    );
+
+                                    turn_output_summary =
                                         format!("module_call {module_name} status={status_label}");
+                                    tool_called_this_turn = true;
                                 }
                             }
                             ParsedLlmTurn::DecisionDraft(draft) => {
@@ -486,77 +431,116 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     let err =
                                         "replan guard requires module_call or execute_until before repeating same decision_draft"
                                             .to_string();
-                                    step_status = "error".to_string();
-                                    step_output_summary = err.clone();
+                                    turn_status = "error".to_string();
+                                    turn_output_summary = err.clone();
                                     if repair_rounds_used < self.config.max_repair_rounds as u32 {
                                         repair_rounds_used = repair_rounds_used.saturating_add(1);
                                         repair_context = Some(err);
+                                        retry_next_turn = true;
                                     } else {
                                         parse_error = Some(err);
+                                        turn_status = "degraded".to_string();
                                         resolved = true;
-                                        step_status = "degraded".to_string();
                                     }
                                 } else {
-                                    let confidence = draft.confidence;
-                                    let need_verify = draft.need_verify;
                                     let (guarded_decision, guardrail_note) =
                                         self.apply_decision_guardrails(draft.decision);
-                                    pending_draft = Some(guarded_decision);
+                                    decision = guarded_decision;
                                     repair_context = None;
-                                    phase = if need_verify
-                                        && module_history.len() < self.config.max_module_calls
-                                    {
-                                        DecisionPhase::ModuleLoop
-                                    } else {
-                                        DecisionPhase::Finalize
-                                    };
-                                    step_output_summary = format!(
-                                        "decision_draft confidence={:?}; need_verify={}",
-                                        confidence, need_verify
+                                    resolved = true;
+                                    resolved_via_execute_until = false;
+                                    turn_output_summary = format!(
+                                        "decision_draft accepted: confidence={:?}; need_verify={}",
+                                        draft.confidence, draft.need_verify
                                     );
+
                                     if let Some(note) = guardrail_note {
                                         self.memory.record_note(observation.time, note.clone());
-                                        step_output_summary = format!(
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::System,
+                                            note.as_str(),
+                                        );
+                                        turn_output_summary = format!(
                                             "{}; {}",
-                                            step_output_summary,
+                                            turn_output_summary,
                                             summarize_trace_text(note.as_str(), 160)
                                         );
                                     }
                                 }
                             }
+                            ParsedLlmTurn::Plan(plan) => {
+                                let missing = if plan.missing.is_empty() {
+                                    "-".to_string()
+                                } else {
+                                    plan.missing.join(",")
+                                };
+                                let next = plan.next.unwrap_or_else(|| "-".to_string());
+                                let err = format!(
+                                    "plan output is deprecated in dialogue mode (missing={missing}, next={next}); return module_call or final decision"
+                                );
+                                turn_status = "error".to_string();
+                                turn_output_summary = summarize_trace_text(err.as_str(), 180);
+                                if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                    repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                    repair_context = Some(err);
+                                    retry_next_turn = true;
+                                } else {
+                                    parse_error = Some(err);
+                                    turn_status = "degraded".to_string();
+                                    resolved = true;
+                                }
+                            }
                             ParsedLlmTurn::Invalid(err) => {
-                                step_status = "error".to_string();
-                                step_output_summary = format!(
+                                turn_status = "error".to_string();
+                                turn_output_summary = format!(
                                     "parse_error: {}",
                                     summarize_trace_text(err.as_str(), 180)
                                 );
                                 if repair_rounds_used < self.config.max_repair_rounds as u32 {
                                     repair_rounds_used = repair_rounds_used.saturating_add(1);
                                     repair_context = Some(err);
+                                    retry_next_turn = true;
                                 } else {
                                     parse_error = Some(err);
+                                    turn_status = "degraded".to_string();
                                     resolved = true;
-                                    step_status = "degraded".to_string();
                                 }
                             }
                         }
 
-                        if resolved || repair_context.is_some() {
+                        if resolved || retry_next_turn {
                             break;
                         }
                     }
 
                     llm_step_trace.push(LlmStepTrace {
                         step_index: turn,
-                        step_type: step_type.to_string(),
+                        step_type: if is_repair_turn {
+                            "repair".to_string()
+                        } else {
+                            "dialogue_turn".to_string()
+                        },
                         input_summary: input_summary.clone(),
-                        output_summary: step_output_summary,
-                        status: step_status,
+                        output_summary: turn_output_summary,
+                        status: turn_status,
                     });
 
                     if resolved {
                         break;
                     }
+                    if retry_next_turn || tool_called_this_turn {
+                        continue;
+                    }
+
+                    let err = "no actionable JSON object found in assistant output".to_string();
+                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                        repair_rounds_used = repair_rounds_used.saturating_add(1);
+                        repair_context = Some(err);
+                        continue;
+                    }
+                    parse_error = Some(err);
+                    resolved = true;
                 }
                 Err(err) => {
                     llm_error = Some(err.to_string());
@@ -564,7 +548,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         .saturating_add(request_started_at.elapsed().as_millis() as u64);
                     llm_step_trace.push(LlmStepTrace {
                         step_index: turn,
-                        step_type: step_type.to_string(),
+                        step_type: if is_repair_turn {
+                            "repair".to_string()
+                        } else {
+                            "dialogue_turn".to_string()
+                        },
                         input_summary,
                         output_summary: summarize_trace_text(err.to_string().as_str(), 220),
                         status: "degraded".to_string(),
@@ -576,17 +564,12 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         }
 
         if !resolved {
-            if let Some(draft_decision) = pending_draft.take() {
-                decision = draft_decision;
-                parse_error = Some(format!(
-                    "no terminal decision after {} turn(s); fallback to decision_draft",
+            parse_error = deferred_parse_error.take().or_else(|| {
+                Some(format!(
+                    "no terminal decision after {} dialogue turns",
                     max_turns
-                ));
-            } else {
-                parse_error = deferred_parse_error
-                    .take()
-                    .or_else(|| Some(format!("no terminal decision after {} turn(s)", max_turns)));
-            }
+                ))
+            });
         }
 
         if self.config.execute_until_auto_reenter_ticks > 0
@@ -614,6 +597,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                             max_ticks, until_summary
                         );
                         self.memory.record_note(observation.time, note.clone());
+                        let _ = self.append_conversation_message(
+                            observation.time,
+                            LlmChatRole::System,
+                            note.as_str(),
+                        );
                         llm_step_trace.push(LlmStepTrace {
                             step_index: max_turns,
                             step_type: "execute_until_auto_reentry".to_string(),
@@ -629,6 +617,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         self.replan_guard_state.record_decision(&decision);
         self.memory
             .record_decision(observation.time, decision.clone());
+        let trace_chat_messages = self.conversation_history[trace_chat_start..].to_vec();
+        self.conversation_trace_cursor = self.conversation_history.len();
 
         self.pending_trace = Some(AgentDecisionTrace {
             agent_id: self.agent_id.clone(),
@@ -650,6 +640,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             llm_effect_receipts,
             llm_step_trace,
             llm_prompt_section_trace,
+            llm_chat_messages: trace_chat_messages,
         });
 
         decision
@@ -672,6 +663,20 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         if let Some(active_execute_until) = self.active_execute_until.as_mut() {
             active_execute_until.update_from_action_result(result);
         }
+
+        let feedback = if result.success {
+            format!(
+                "action_feedback: success=true action={:?} event={:?}",
+                result.action, result.event.kind
+            )
+        } else {
+            format!(
+                "action_feedback: success=false action={:?} reject_reason={:?}",
+                result.action,
+                result.reject_reason(),
+            )
+        };
+        let _ = self.append_conversation_message(time, LlmChatRole::System, feedback.as_str());
 
         self.memory.consolidate(time, 0.9);
     }

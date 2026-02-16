@@ -977,12 +977,10 @@ fn llm_agent_skips_extra_module_calls_and_consumes_later_terminal_decision() {
 }
 
 #[test]
-fn llm_agent_supports_plan_module_draft_finalize_flow() {
+fn llm_agent_supports_dialogue_module_and_draft_flow() {
     let client = SequenceMockClient::new(vec![
-        r#"{"type":"plan","missing":["memory"],"next":"module_call"}"#.to_string(),
         r#"{"type":"module_call","module":"agent.modules.list","args":{}}"#.to_string(),
         r#"{"type":"decision_draft","decision":{"decision":"move_agent","to":"loc-2"},"confidence":0.78,"need_verify":false}"#.to_string(),
-        r#"{"decision":"move_agent","to":"loc-2"}"#.to_string(),
     ]);
     let mut config = base_config();
     config.max_decision_steps = 6;
@@ -1002,11 +1000,7 @@ fn llm_agent_supports_plan_module_draft_finalize_flow() {
     assert!(trace
         .llm_step_trace
         .iter()
-        .any(|step| step.step_type == "plan"));
-    assert!(trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.step_type == "module_call"));
+        .all(|step| step.step_type == "dialogue_turn" || step.step_type == "repair"));
     assert!(trace
         .llm_step_trace
         .iter()
@@ -1059,11 +1053,7 @@ fn llm_agent_force_replan_plan_can_finalize_without_module_call_when_missing_is_
     assert!(trace
         .llm_step_trace
         .iter()
-        .any(|step| step.output_summary.contains("plan missing=-")));
-    assert!(!trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.step_type == "module_call"));
+        .any(|step| step.output_summary.contains("deprecated in dialogue mode")));
 }
 
 #[path = "tests_part2.rs"]

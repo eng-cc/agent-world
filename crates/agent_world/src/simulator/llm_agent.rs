@@ -13,8 +13,9 @@ use std::fs;
 use std::path::Path;
 
 use super::agent::{
-    ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmDecisionDiagnostics,
-    LlmEffectIntentTrace, LlmEffectReceiptTrace, LlmPromptSectionTrace, LlmStepTrace,
+    ActionResult, AgentBehavior, AgentDecision, AgentDecisionTrace, LlmChatMessageTrace,
+    LlmChatRole, LlmDecisionDiagnostics, LlmEffectIntentTrace, LlmEffectReceiptTrace,
+    LlmPromptSectionTrace, LlmStepTrace,
 };
 use super::kernel::Observation;
 use super::kernel::WorldEvent;
@@ -36,8 +37,8 @@ pub use prompt_assembly::{
 
 use decision_flow::{
     parse_limit_arg, parse_llm_turn_responses, prompt_section_kind_name,
-    prompt_section_priority_name, serialize_decision_for_prompt, summarize_trace_text,
-    DecisionPhase, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
+    prompt_section_priority_name, summarize_trace_text, LlmModuleCallRequest, ModuleCallExchange,
+    ParsedLlmTurn,
 };
 use execution_controls::{ActionReplanGuardState, ActiveExecuteUntil};
 
@@ -147,8 +148,11 @@ const LLM_PROMPT_MODULE_CALL_ORIGIN: &str = "llm_agent";
 const PROMPT_MODULE_RESULT_MAX_CHARS: usize = 520;
 const PROMPT_MODULE_ARGS_MAX_CHARS: usize = 192;
 const PROMPT_MEMORY_DIGEST_MAX_CHARS: usize = 360;
+const PROMPT_CONVERSATION_ITEM_MAX_CHARS: usize = 320;
+const PROMPT_CONVERSATION_MAX_ITEMS: usize = 12;
 const PROMPT_OBSERVATION_VISIBLE_AGENTS_MAX: usize = 5;
 const PROMPT_OBSERVATION_VISIBLE_LOCATIONS_MAX: usize = 5;
+const CONVERSATION_HISTORY_MAX_ITEMS: usize = 64;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct LlmPromptOverrides {
@@ -617,6 +621,8 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     pending_trace: Option<AgentDecisionTrace>,
     replan_guard_state: ActionReplanGuardState,
     active_execute_until: Option<ActiveExecuteUntil>,
+    conversation_history: Vec<LlmChatMessageTrace>,
+    conversation_trace_cursor: usize,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -659,6 +665,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             pending_trace: None,
             replan_guard_state: ActionReplanGuardState::default(),
             active_execute_until: None,
+            conversation_history: Vec::new(),
+            conversation_trace_cursor: 0,
         }
     }
 
@@ -675,6 +683,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
     pub fn prompt_overrides(&self) -> LlmPromptOverrides {
         self.prompt_overrides.clone()
+    }
+
+    pub fn push_player_message(&mut self, time: u64, message: impl AsRef<str>) -> bool {
+        self.append_conversation_message(time, LlmChatRole::Player, message.as_ref())
+            .is_some()
     }
 
     fn effective_system_prompt(&self) -> &str {
@@ -708,6 +721,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             long_term_goal: self.effective_long_term_goal(),
             observation_json: "{}",
             module_history_json: "[]",
+            conversation_history_json: "[]",
             memory_digest: None,
             step_context: PromptStepContext::default(),
             harvest_max_amount_cap: self.config.harvest_max_amount_cap,
@@ -745,6 +759,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         let memory_selection =
             MemorySelector::select(&self.memory, observation.time, &memory_selector_config);
         let memory_digest = Self::memory_digest_for_prompt(memory_selection.digest.as_str());
+        let conversation_json = self.conversation_history_json_for_prompt();
         let prompt_budget = self.config.prompt_budget();
         PromptAssembler::assemble(PromptAssemblyInput {
             agent_id: self.agent_id.as_str(),
@@ -753,6 +768,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             long_term_goal: self.effective_long_term_goal(),
             observation_json: observation_json.as_str(),
             module_history_json: history_json.as_str(),
+            conversation_history_json: conversation_json.as_str(),
             memory_digest: Some(memory_digest.as_str()),
             step_context: PromptStepContext {
                 step_index,
@@ -815,6 +831,32 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
     fn memory_digest_for_prompt(digest: &str) -> String {
         summarize_trace_text(digest, PROMPT_MEMORY_DIGEST_MAX_CHARS)
+    }
+
+    fn conversation_history_json_for_prompt(&self) -> String {
+        let start = self
+            .conversation_history
+            .len()
+            .saturating_sub(PROMPT_CONVERSATION_MAX_ITEMS);
+        let compact = self.conversation_history[start..]
+            .iter()
+            .map(|entry| {
+                serde_json::json!({
+                    "time": entry.time,
+                    "role": match entry.role {
+                        LlmChatRole::Player => "player",
+                        LlmChatRole::Agent => "agent",
+                        LlmChatRole::Tool => "tool",
+                        LlmChatRole::System => "system",
+                    },
+                    "content": summarize_trace_text(
+                        entry.content.as_str(),
+                        PROMPT_CONVERSATION_ITEM_MAX_CHARS,
+                    ),
+                })
+            })
+            .collect::<Vec<_>>();
+        serde_json::to_string(&compact).unwrap_or_else(|_| "[]".to_string())
     }
 
     fn module_history_json_for_prompt(module_history: &[ModuleCallExchange]) -> String {
@@ -1006,6 +1048,32 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         let intent_id = format!("llm-intent-{}", self.next_effect_intent_id);
         self.next_effect_intent_id = self.next_effect_intent_id.saturating_add(1);
         intent_id
+    }
+
+    fn append_conversation_message(
+        &mut self,
+        time: u64,
+        role: LlmChatRole,
+        content: &str,
+    ) -> Option<LlmChatMessageTrace> {
+        let normalized = content.trim();
+        if normalized.is_empty() {
+            return None;
+        }
+        let trace = LlmChatMessageTrace {
+            time,
+            agent_id: self.agent_id.clone(),
+            role,
+            content: summarize_trace_text(normalized, PROMPT_CONVERSATION_ITEM_MAX_CHARS * 2),
+        };
+        self.conversation_history.push(trace.clone());
+        if self.conversation_history.len() > CONVERSATION_HISTORY_MAX_ITEMS {
+            let overflow = self.conversation_history.len() - CONVERSATION_HISTORY_MAX_ITEMS;
+            self.conversation_history.drain(0..overflow);
+            self.conversation_trace_cursor =
+                self.conversation_trace_cursor.saturating_sub(overflow);
+        }
+        Some(trace)
     }
 }
 

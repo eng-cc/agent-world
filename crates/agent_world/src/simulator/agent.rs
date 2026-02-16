@@ -96,6 +96,8 @@ pub struct AgentDecisionTrace {
     pub llm_step_trace: Vec<LlmStepTrace>,
     #[serde(default)]
     pub llm_prompt_section_trace: Vec<LlmPromptSectionTrace>,
+    #[serde(default)]
+    pub llm_chat_messages: Vec<LlmChatMessageTrace>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -132,6 +134,23 @@ pub struct LlmPromptSectionTrace {
     pub included: bool,
     pub estimated_tokens: usize,
     pub emitted_tokens: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LlmChatRole {
+    Player,
+    Agent,
+    Tool,
+    System,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LlmChatMessageTrace {
+    pub time: WorldTime,
+    pub agent_id: String,
+    pub role: LlmChatRole,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]

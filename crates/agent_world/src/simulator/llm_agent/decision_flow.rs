@@ -21,52 +21,16 @@ pub(super) struct ModuleCallExchange {
     pub result: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum DecisionPhase {
-    Plan,
-    ModuleLoop,
-    DecisionDraft,
-    Finalize,
-}
-
-impl DecisionPhase {
-    pub(super) fn step_type(self) -> &'static str {
-        match self {
-            Self::Plan => "plan",
-            Self::ModuleLoop => "module_call",
-            Self::DecisionDraft => "decision_draft",
-            Self::Finalize => "final_decision",
-        }
-    }
-
-    pub(super) fn prompt_instruction(self) -> &'static str {
-        match self {
-            Self::Plan => {
-                "本轮是 plan 阶段：只输出一个 JSON 对象（禁止 `---`/代码块）；优先输出 {\"type\":\"plan\",...}，若信息充足可直接输出最终 decision JSON。"
-            }
-            Self::ModuleLoop => {
-                "本轮是 module_call 阶段：只输出一个 JSON 对象；若需要查询仅允许一个 module_call，若信息充分请直接输出最终 decision JSON。"
-            }
-            Self::DecisionDraft => {
-                "本轮是 decision_draft 阶段：只输出一个 JSON 对象；decision_draft.decision 必须是完整 decision 对象，不要在 decision_draft 中输出 execute_until。"
-            }
-            Self::Finalize => {
-                "本轮是 final_decision 阶段：只输出最终 decision JSON（可 execute_until），不要输出 plan/module_call/decision_draft 或额外文本。"
-            }
-        }
-    }
-}
-
 pub(super) fn prompt_section_kind_name(kind: PromptSectionKind) -> &'static str {
     match kind {
         PromptSectionKind::Policy => "policy",
         PromptSectionKind::Goals => "goals",
         PromptSectionKind::Context => "context",
         PromptSectionKind::Tools => "tools",
+        PromptSectionKind::Conversation => "conversation",
         PromptSectionKind::History => "history",
         PromptSectionKind::Memory => "memory",
         PromptSectionKind::OutputSchema => "output_schema",
-        PromptSectionKind::StepMeta => "step_meta",
     }
 }
 
@@ -92,47 +56,6 @@ pub(super) fn summarize_trace_text(text: &str, max_chars: usize) -> String {
     }
     truncated.push_str("...(truncated)");
     truncated
-}
-
-pub(super) fn serialize_decision_for_prompt(decision: &AgentDecision) -> String {
-    let value = match decision {
-        AgentDecision::Wait => serde_json::json!({ "decision": "wait" }),
-        AgentDecision::WaitTicks(ticks) => serde_json::json!({
-            "decision": "wait_ticks",
-            "ticks": ticks,
-        }),
-        AgentDecision::Act(Action::MoveAgent { to, .. }) => serde_json::json!({
-            "decision": "move_agent",
-            "to": to,
-        }),
-        AgentDecision::Act(Action::HarvestRadiation { max_amount, .. }) => serde_json::json!({
-            "decision": "harvest_radiation",
-            "max_amount": max_amount,
-        }),
-        AgentDecision::Act(Action::TransferResource {
-            from,
-            to,
-            kind,
-            amount,
-        }) => serde_json::json!({
-            "decision": "transfer_resource",
-            "from_owner": owner_to_prompt_spec(from),
-            "to_owner": owner_to_prompt_spec(to),
-            "kind": resource_kind_to_prompt_value(*kind),
-            "amount": amount,
-        }),
-        AgentDecision::Act(Action::RefineCompound {
-            owner,
-            compound_mass_g,
-        }) => serde_json::json!({
-            "decision": "refine_compound",
-            "owner": owner_to_prompt_spec(owner),
-            "compound_mass_g": compound_mass_g,
-        }),
-        AgentDecision::Act(_) => serde_json::json!({ "decision": "wait" }),
-    };
-
-    serde_json::to_string(&value).unwrap_or_else(|_| "{\"decision\":\"wait\"}".to_string())
 }
 
 #[derive(Debug, Deserialize)]
@@ -676,21 +599,6 @@ fn parse_resource_kind(value: &str) -> Option<ResourceKind> {
         "hardware" => Some(ResourceKind::Hardware),
         "data" => Some(ResourceKind::Data),
         _ => None,
-    }
-}
-
-fn resource_kind_to_prompt_value(kind: ResourceKind) -> &'static str {
-    match kind {
-        ResourceKind::Electricity => "electricity",
-        ResourceKind::Hardware => "hardware",
-        ResourceKind::Data => "data",
-    }
-}
-
-fn owner_to_prompt_spec(owner: &ResourceOwner) -> String {
-    match owner {
-        ResourceOwner::Agent { agent_id } => format!("agent:{agent_id}"),
-        ResourceOwner::Location { location_id } => format!("location:{location_id}"),
     }
 }
 
