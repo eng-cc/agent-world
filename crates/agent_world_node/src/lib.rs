@@ -1,7 +1,7 @@
 use std::collections::{hash_map::DefaultHasher, BTreeMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::net::{SocketAddr, UdpSocket};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,18 +10,23 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
-
+mod gossip_udp;
 mod libp2p_replication_network;
 mod network_bridge;
+mod pos_validation;
 mod replication;
 
+use gossip_udp::{
+    GossipAttestationMessage, GossipCommitMessage, GossipEndpoint, GossipMessage,
+    GossipProposalMessage,
+};
 pub use libp2p_replication_network::{Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig};
 pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 
 use network_bridge::ReplicationNetworkEndpoint;
-use replication::{GossipReplicationMessage, ReplicationRuntime};
+use pos_validation::{decide_status, validate_pos_config, validated_pos_state};
+use replication::ReplicationRuntime;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -488,6 +493,8 @@ struct PosNodeEngine {
     network_committed_height: u64,
     pending: Option<PendingProposal>,
     auto_attest_all_validators: bool,
+    last_broadcast_proposal_height: u64,
+    last_broadcast_local_attestation_height: u64,
     last_broadcast_committed_height: u64,
     replicate_local_commits: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
@@ -536,102 +543,6 @@ struct PeerCommittedHead {
     committed_at_ms: i64,
 }
 
-#[derive(Debug)]
-struct GossipEndpoint {
-    socket: UdpSocket,
-    peers: Vec<SocketAddr>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct GossipCommitMessage {
-    version: u8,
-    world_id: String,
-    node_id: String,
-    height: u64,
-    slot: u64,
-    epoch: u64,
-    block_hash: String,
-    committed_at_ms: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum GossipMessage {
-    Commit(GossipCommitMessage),
-    Replication(GossipReplicationMessage),
-}
-
-impl GossipEndpoint {
-    fn bind(config: &NodeGossipConfig) -> Result<Self, NodeError> {
-        let socket = UdpSocket::bind(config.bind_addr).map_err(|err| NodeError::Gossip {
-            reason: format!("bind {} failed: {}", config.bind_addr, err),
-        })?;
-        socket
-            .set_nonblocking(true)
-            .map_err(|err| NodeError::Gossip {
-                reason: format!("set_nonblocking failed: {}", err),
-            })?;
-        Ok(Self {
-            socket,
-            peers: config.peers.clone(),
-        })
-    }
-
-    fn broadcast_commit(&self, message: &GossipCommitMessage) -> Result<(), NodeError> {
-        let envelope = GossipMessage::Commit(message.clone());
-        let bytes = serde_json::to_vec(&envelope).map_err(|err| NodeError::Gossip {
-            reason: format!("serialize gossip message failed: {}", err),
-        })?;
-        self.broadcast_bytes(&bytes)
-    }
-
-    fn broadcast_replication(&self, message: &GossipReplicationMessage) -> Result<(), NodeError> {
-        let envelope = GossipMessage::Replication(message.clone());
-        let bytes = serde_json::to_vec(&envelope).map_err(|err| NodeError::Gossip {
-            reason: format!("serialize replication message failed: {}", err),
-        })?;
-        self.broadcast_bytes(&bytes)
-    }
-
-    fn broadcast_bytes(&self, bytes: &[u8]) -> Result<(), NodeError> {
-        for peer in &self.peers {
-            self.socket
-                .send_to(&bytes, peer)
-                .map_err(|err| NodeError::Gossip {
-                    reason: format!("send_to {} failed: {}", peer, err),
-                })?;
-        }
-        Ok(())
-    }
-
-    fn drain_messages(&self) -> Result<Vec<GossipMessage>, NodeError> {
-        let mut buf = [0u8; 2048];
-        let mut messages = Vec::new();
-        loop {
-            match self.socket.recv_from(&mut buf) {
-                Ok((size, _from)) => {
-                    let payload = &buf[..size];
-                    if let Ok(message) = serde_json::from_slice::<GossipMessage>(payload) {
-                        messages.push(message);
-                        continue;
-                    }
-                    // Backward compatibility for legacy commit payload format.
-                    if let Ok(commit) = serde_json::from_slice::<GossipCommitMessage>(payload) {
-                        messages.push(GossipMessage::Commit(commit));
-                    }
-                }
-                Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
-                Err(err) => {
-                    return Err(NodeError::Gossip {
-                        reason: format!("recv_from failed: {}", err),
-                    });
-                }
-            }
-        }
-        Ok(messages)
-    }
-}
-
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, total_stake, required_stake) = validated_pos_state(&config.pos_config)?;
@@ -646,6 +557,8 @@ impl PosNodeEngine {
             network_committed_height: 0,
             pending: None,
             auto_attest_all_validators: config.auto_attest_all_validators,
+            last_broadcast_proposal_height: 0,
+            last_broadcast_local_attestation_height: 0,
             last_broadcast_committed_height: 0,
             replicate_local_commits: matches!(config.role, NodeRole::Sequencer)
                 && config.replication.is_some(),
@@ -682,6 +595,11 @@ impl PosNodeEngine {
 
         if matches!(decision.status, PosConsensusStatus::Pending) {
             decision = self.advance_pending_attestations(now_ms)?;
+        }
+
+        if let Some(endpoint) = gossip.as_ref() {
+            self.broadcast_local_proposal(endpoint, node_id, world_id, now_ms)?;
+            self.broadcast_local_attestation(endpoint, node_id, world_id, now_ms)?;
         }
 
         self.apply_decision(&decision);
@@ -899,6 +817,75 @@ impl PosNodeEngine {
         slot / self.epoch_length_slots
     }
 
+    fn broadcast_local_proposal(
+        &mut self,
+        endpoint: &GossipEndpoint,
+        node_id: &str,
+        world_id: &str,
+        now_ms: i64,
+    ) -> Result<(), NodeError> {
+        let Some(proposal) = self.pending.as_ref() else {
+            return Ok(());
+        };
+        if proposal.proposer_id != node_id {
+            return Ok(());
+        }
+        if proposal.height <= self.last_broadcast_proposal_height {
+            return Ok(());
+        }
+        let message = GossipProposalMessage {
+            version: 1,
+            world_id: world_id.to_string(),
+            node_id: node_id.to_string(),
+            proposer_id: proposal.proposer_id.clone(),
+            height: proposal.height,
+            slot: proposal.slot,
+            epoch: proposal.epoch,
+            block_hash: proposal.block_hash.clone(),
+            proposed_at_ms: now_ms,
+        };
+        endpoint.broadcast_proposal(&message)?;
+        self.last_broadcast_proposal_height = proposal.height;
+        Ok(())
+    }
+
+    fn broadcast_local_attestation(
+        &mut self,
+        endpoint: &GossipEndpoint,
+        node_id: &str,
+        world_id: &str,
+        now_ms: i64,
+    ) -> Result<(), NodeError> {
+        let Some(proposal) = self.pending.as_ref() else {
+            return Ok(());
+        };
+        let Some(attestation) = proposal.attestations.get(node_id) else {
+            return Ok(());
+        };
+        if proposal.height <= self.last_broadcast_local_attestation_height {
+            return Ok(());
+        }
+
+        let message = GossipAttestationMessage {
+            version: 1,
+            world_id: world_id.to_string(),
+            node_id: node_id.to_string(),
+            validator_id: attestation.validator_id.clone(),
+            height: proposal.height,
+            slot: proposal.slot,
+            epoch: proposal.epoch,
+            block_hash: proposal.block_hash.clone(),
+            approve: attestation.approve,
+            source_epoch: attestation.source_epoch,
+            target_epoch: attestation.target_epoch,
+            voted_at_ms: now_ms,
+            reason: attestation.reason.clone(),
+        };
+        endpoint.broadcast_attestation(&message)?;
+        self.last_broadcast_local_attestation_height = proposal.height;
+        Ok(())
+    }
+
     fn broadcast_local_commit(
         &mut self,
         endpoint: &GossipEndpoint,
@@ -972,6 +959,84 @@ impl PosNodeEngine {
         Ok(())
     }
 
+    fn ingest_proposal_message(
+        &mut self,
+        world_id: &str,
+        message: &GossipProposalMessage,
+    ) -> Result<(), NodeError> {
+        if message.version != 1 || message.world_id != world_id {
+            return Ok(());
+        }
+        if message.height < self.next_height {
+            return Ok(());
+        }
+        if let Some(current) = self.pending.as_ref() {
+            if current.height > message.height {
+                return Ok(());
+            }
+            if current.height == message.height && current.block_hash == message.block_hash {
+                return Ok(());
+            }
+        }
+
+        let mut proposal = PendingProposal {
+            height: message.height,
+            slot: message.slot,
+            epoch: message.epoch,
+            proposer_id: message.proposer_id.clone(),
+            block_hash: message.block_hash.clone(),
+            attestations: BTreeMap::new(),
+            approved_stake: 0,
+            rejected_stake: 0,
+            status: PosConsensusStatus::Pending,
+        };
+        self.insert_attestation(
+            &mut proposal,
+            &message.proposer_id,
+            true,
+            message.proposed_at_ms,
+            message.epoch.saturating_sub(1),
+            message.epoch,
+            Some(format!("proposal gossiped from {}", message.node_id)),
+        )?;
+        if proposal.height > self.next_height {
+            self.next_height = proposal.height;
+        }
+        if proposal.slot >= self.next_slot {
+            self.next_slot = proposal.slot.saturating_add(1);
+        }
+        self.pending = Some(proposal);
+        Ok(())
+    }
+
+    fn ingest_attestation_message(
+        &mut self,
+        world_id: &str,
+        message: &GossipAttestationMessage,
+    ) -> Result<(), NodeError> {
+        if message.version != 1 || message.world_id != world_id {
+            return Ok(());
+        }
+        let Some(mut proposal) = self.pending.clone() else {
+            return Ok(());
+        };
+        if proposal.height != message.height || proposal.block_hash != message.block_hash {
+            return Ok(());
+        }
+
+        self.insert_attestation(
+            &mut proposal,
+            &message.validator_id,
+            message.approve,
+            message.voted_at_ms,
+            message.source_epoch,
+            message.target_epoch,
+            message.reason.clone(),
+        )?;
+        self.pending = Some(proposal);
+        Ok(())
+    }
+
     fn ingest_peer_messages(
         &mut self,
         endpoint: &GossipEndpoint,
@@ -1005,6 +1070,12 @@ impl PosNodeEngine {
                     if commit.height > self.network_committed_height {
                         self.network_committed_height = commit.height;
                     }
+                }
+                GossipMessage::Proposal(proposal) => {
+                    self.ingest_proposal_message(world_id, &proposal)?;
+                }
+                GossipMessage::Attestation(attestation) => {
+                    self.ingest_attestation_message(world_id, &attestation)?;
                 }
                 GossipMessage::Replication(replication_msg) => {
                     if let Some(replication_runtime) = replication.as_deref_mut() {
@@ -1059,125 +1130,6 @@ impl fmt::Display for NodeError {
 }
 
 impl std::error::Error for NodeError {}
-
-fn validate_pos_config(pos_config: &NodePosConfig) -> Result<(), NodeError> {
-    let _ = validated_pos_state(pos_config)?;
-    Ok(())
-}
-
-fn validated_pos_state(
-    pos_config: &NodePosConfig,
-) -> Result<(BTreeMap<String, u64>, u64, u64), NodeError> {
-    if pos_config.validators.is_empty() {
-        return Err(NodeError::InvalidConfig {
-            reason: "pos validators cannot be empty".to_string(),
-        });
-    }
-    if pos_config.epoch_length_slots == 0 {
-        return Err(NodeError::InvalidConfig {
-            reason: "epoch_length_slots must be positive".to_string(),
-        });
-    }
-    if pos_config.supermajority_denominator == 0
-        || pos_config.supermajority_numerator == 0
-        || pos_config.supermajority_numerator > pos_config.supermajority_denominator
-    {
-        return Err(NodeError::InvalidConfig {
-            reason: format!(
-                "invalid supermajority ratio {}/{}",
-                pos_config.supermajority_numerator, pos_config.supermajority_denominator
-            ),
-        });
-    }
-    if pos_config.supermajority_numerator.saturating_mul(2) <= pos_config.supermajority_denominator
-    {
-        return Err(NodeError::InvalidConfig {
-            reason: "supermajority ratio must be greater than 1/2".to_string(),
-        });
-    }
-
-    let mut validators = BTreeMap::new();
-    let mut total_stake = 0u64;
-    for validator in &pos_config.validators {
-        let validator_id = validator.validator_id.trim();
-        if validator_id.is_empty() {
-            return Err(NodeError::InvalidConfig {
-                reason: "validator_id cannot be empty".to_string(),
-            });
-        }
-        if validator.stake == 0 {
-            return Err(NodeError::InvalidConfig {
-                reason: format!("validator {} stake must be positive", validator_id),
-            });
-        }
-        if validators
-            .insert(validator_id.to_string(), validator.stake)
-            .is_some()
-        {
-            return Err(NodeError::InvalidConfig {
-                reason: format!("duplicate validator: {}", validator_id),
-            });
-        }
-        total_stake =
-            total_stake
-                .checked_add(validator.stake)
-                .ok_or_else(|| NodeError::InvalidConfig {
-                    reason: "total stake overflow".to_string(),
-                })?;
-    }
-
-    let required_stake = required_supermajority_stake(
-        total_stake,
-        pos_config.supermajority_numerator,
-        pos_config.supermajority_denominator,
-    )?;
-    Ok((validators, total_stake, required_stake))
-}
-
-fn required_supermajority_stake(
-    total_stake: u64,
-    numerator: u64,
-    denominator: u64,
-) -> Result<u64, NodeError> {
-    let multiplied = u128::from(total_stake)
-        .checked_mul(u128::from(numerator))
-        .ok_or_else(|| NodeError::InvalidConfig {
-            reason: "required stake overflow".to_string(),
-        })?;
-    let denominator = u128::from(denominator);
-    let mut required = multiplied / denominator;
-    if multiplied % denominator != 0 {
-        required += 1;
-    }
-    let required = u64::try_from(required).map_err(|_| NodeError::InvalidConfig {
-        reason: "required stake overflow".to_string(),
-    })?;
-    if required == 0 || required > total_stake {
-        return Err(NodeError::InvalidConfig {
-            reason: format!(
-                "invalid required stake {} for total stake {}",
-                required, total_stake
-            ),
-        });
-    }
-    Ok(required)
-}
-
-fn decide_status(
-    total_stake: u64,
-    required_stake: u64,
-    approved_stake: u64,
-    rejected_stake: u64,
-) -> PosConsensusStatus {
-    if approved_stake >= required_stake {
-        return PosConsensusStatus::Committed;
-    }
-    if total_stake.saturating_sub(rejected_stake) < required_stake {
-        PosConsensusStatus::Rejected
-    } else {
-        PosConsensusStatus::Pending
-    }
-}
 
 fn lock_state<'a>(state: &'a Arc<Mutex<RuntimeState>>) -> std::sync::MutexGuard<'a, RuntimeState> {
     state
