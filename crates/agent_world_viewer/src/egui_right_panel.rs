@@ -107,6 +107,18 @@ fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
     (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, CHAT_PANEL_MAX_WIDTH)
 }
 
+fn should_show_chat_panel(
+    layout_state: &RightPanelLayoutState,
+    panel_mode: ViewerPanelMode,
+    show_chat: bool,
+) -> bool {
+    !layout_state.top_panel_collapsed && panel_mode == ViewerPanelMode::Observe && show_chat
+}
+
+fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 {
+    main_panel_width.max(0.0) + chat_panel_width.max(0.0)
+}
+
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
@@ -178,9 +190,11 @@ pub(super) fn render_right_side_panel_egui(
     }
     chat_focus_signal.wants_ime_focus = false;
 
-    let show_chat_panel = !layout_state.top_panel_collapsed
-        && *panel_mode == ViewerPanelMode::Observe
-        && module_visibility.show_chat;
+    let show_chat_panel = should_show_chat_panel(
+        layout_state.as_ref(),
+        *panel_mode,
+        module_visibility.show_chat,
+    );
     let chat_panel_width = if show_chat_panel {
         let default_chat_width =
             adaptive_chat_panel_default_width(context.available_rect().width());
@@ -540,7 +554,8 @@ pub(super) fn render_right_side_panel_egui(
             }
         });
 
-    panel_width.width_px = panel_response.response.rect.width() + chat_panel_width;
+    panel_width.width_px =
+        total_right_panel_width(panel_response.response.rect.width(), chat_panel_width);
 }
 
 fn render_module_toggle_button(

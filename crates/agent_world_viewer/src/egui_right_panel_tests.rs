@@ -320,10 +320,62 @@ fn sample_prompt_ops_state() -> crate::ViewerState {
 
 #[test]
 fn adaptive_panel_width_clamps_to_bounds() {
-    assert_eq!(adaptive_panel_default_width(200.0), MIN_PANEL_WIDTH);
-    assert_eq!(adaptive_panel_default_width(10_000.0), MAX_PANEL_WIDTH);
+    assert_eq!(adaptive_panel_default_width(200.0), MAIN_PANEL_MIN_WIDTH);
+    assert_eq!(adaptive_panel_default_width(10_000.0), MAIN_PANEL_MAX_WIDTH);
     assert_eq!(adaptive_panel_default_width(1200.0), 264.0);
     assert_eq!(adaptive_panel_default_width(1500.0), 330.0);
+}
+
+#[test]
+fn adaptive_chat_panel_width_clamps_to_bounds() {
+    assert_eq!(
+        adaptive_chat_panel_default_width(200.0),
+        CHAT_PANEL_MIN_WIDTH
+    );
+    assert_eq!(
+        adaptive_chat_panel_default_width(10_000.0),
+        CHAT_PANEL_MAX_WIDTH
+    );
+    assert_eq!(adaptive_chat_panel_default_width(1200.0), 300.0);
+    assert_eq!(adaptive_chat_panel_default_width(1800.0), 450.0);
+}
+
+#[test]
+fn show_chat_panel_requires_observe_mode_expanded_top_and_visibility_enabled() {
+    let expanded_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+    };
+    assert!(should_show_chat_panel(
+        &expanded_layout,
+        ViewerPanelMode::Observe,
+        true
+    ));
+    assert!(!should_show_chat_panel(
+        &expanded_layout,
+        ViewerPanelMode::PromptOps,
+        true
+    ));
+    assert!(!should_show_chat_panel(
+        &expanded_layout,
+        ViewerPanelMode::Observe,
+        false
+    ));
+
+    let collapsed_layout = RightPanelLayoutState {
+        top_panel_collapsed: true,
+    };
+    assert!(!should_show_chat_panel(
+        &collapsed_layout,
+        ViewerPanelMode::Observe,
+        true
+    ));
+}
+
+#[test]
+fn total_right_panel_width_adds_main_and_chat_width() {
+    assert_eq!(total_right_panel_width(320.0, 360.0), 680.0);
+    assert_eq!(total_right_panel_width(320.0, 0.0), 320.0);
+    assert_eq!(total_right_panel_width(-10.0, 100.0), 100.0);
 }
 
 #[test]
