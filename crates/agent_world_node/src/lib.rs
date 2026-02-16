@@ -11,7 +11,10 @@ use std::time::Duration;
 
 mod consensus_signature;
 mod gossip_udp;
+#[cfg(not(target_arch = "wasm32"))]
 mod libp2p_replication_network;
+#[cfg(target_arch = "wasm32")]
+mod libp2p_replication_network_wasm;
 mod network_bridge;
 mod pos_schedule;
 mod pos_state_store;
@@ -28,7 +31,12 @@ use gossip_udp::{
     GossipAttestationMessage, GossipCommitMessage, GossipEndpoint, GossipMessage,
     GossipProposalMessage,
 };
+#[cfg(not(target_arch = "wasm32"))]
 pub use libp2p_replication_network::{Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig};
+#[cfg(target_arch = "wasm32")]
+pub use libp2p_replication_network_wasm::{
+    Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig,
+};
 pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 

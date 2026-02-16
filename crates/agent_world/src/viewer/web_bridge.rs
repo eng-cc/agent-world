@@ -231,19 +231,24 @@ mod tests {
 
             reader_one
                 .get_mut()
-                .set_read_timeout(Some(Duration::from_millis(500)))
+                .set_read_timeout(Some(Duration::from_millis(50)))
                 .expect("set timeout on first session");
-            line.clear();
-            let first_closed = match reader_one.read_line(&mut line) {
-                Ok(0) => true,
-                Ok(_) => false,
-                Err(err)
-                    if err.kind() == io::ErrorKind::WouldBlock
-                        || err.kind() == io::ErrorKind::TimedOut =>
-                {
-                    false
+            let close_wait_start = Instant::now();
+            let first_closed = loop {
+                line.clear();
+                match reader_one.read_line(&mut line) {
+                    Ok(0) => break true,
+                    Ok(_) => break false,
+                    Err(err)
+                        if err.kind() == io::ErrorKind::WouldBlock
+                            || err.kind() == io::ErrorKind::TimedOut =>
+                    {
+                        if close_wait_start.elapsed() >= Duration::from_secs(2) {
+                            break false;
+                        }
+                    }
+                    Err(_) => break false,
                 }
-                Err(_) => false,
             };
             upstream_tx
                 .send(format!("session1_closed:{first_closed}"))
@@ -317,6 +322,7 @@ mod tests {
         loop {
             match listener.accept() {
                 Ok((stream, _)) => {
+                    stream.set_nonblocking(false)?;
                     listener.set_nonblocking(false)?;
                     return Ok(stream);
                 }
