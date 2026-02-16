@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] OSSM-1：设计文档与项目管理文档落地。
-- [ ] OSSM-2：实现 `HeadSyncSourceMode` 与 `ObserverClient` 模式化同步入口。
+- [x] OSSM-2：实现 `HeadSyncSourceMode` 与 `ObserverClient` 模式化同步入口。
 - [ ] OSSM-3：补齐单元测试并完成 `agent_world_net` 回归。
 - [ ] OSSM-4：回写状态文档与 devlog。
 
@@ -13,6 +13,6 @@
 - `doc/world-runtime/distfs-path-index-observer-bootstrap.md`
 
 ## 状态
-- 当前阶段：OSSM-1 完成（文档已建立）。
-- 下一步：OSSM-2（代码实现）。
+- 当前阶段：OSSM-1~OSSM-2 已完成（策略枚举与模式化接口已实现）。
+- 下一步：OSSM-3（补齐模式测试并回归）。
 - 最近更新：2026-02-16。

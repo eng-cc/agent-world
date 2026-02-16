@@ -23,6 +23,13 @@ pub type HeadSyncResult = GenericHeadSyncResult<World>;
 pub type HeadSyncReport = GenericHeadSyncReport<World>;
 pub type HeadFollowReport = GenericHeadFollowReport<World>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeadSyncSourceMode {
+    NetworkOnly,
+    PathIndexOnly,
+    NetworkThenPathIndex,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -247,6 +254,103 @@ impl ObserverClient {
         follow_head_sync(max_rounds, || {
             self.sync_heads_with_path_index_report(subscription, follower, store)
         })
+    }
+
+    pub fn sync_heads_with_mode(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        self.sync_heads_with_mode_from_heads(mode, &heads, follower, client, store)
+    }
+
+    pub fn sync_heads_with_mode_report(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<HeadSyncReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let world = self.sync_heads_with_mode_from_heads(mode, &heads, follower, client, store)?;
+        compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+            WorldError::DistributedValidationFailed {
+                reason: "head follower did not record applied head".to_string(),
+            }
+        })
+    }
+
+    pub fn sync_heads_with_mode_result(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<HeadSyncResult>, WorldError> {
+        let world = self.sync_heads_with_mode(mode, subscription, follower, client, store)?;
+        match world {
+            Some(world) => {
+                let head = follower.current_head().cloned().ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    }
+                })?;
+                Ok(Some(HeadSyncResult { head, world }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn follow_heads_with_mode(
+        &self,
+        mode: HeadSyncSourceMode,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        follow_head_sync(max_rounds, || {
+            self.sync_heads_with_mode_report(mode, subscription, follower, client, store)
+        })
+    }
+
+    fn sync_heads_with_mode_from_heads(
+        &self,
+        mode: HeadSyncSourceMode,
+        heads: &[WorldHeadAnnounce],
+        follower: &mut HeadFollower,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        match mode {
+            HeadSyncSourceMode::NetworkOnly => follower.sync_from_heads(heads, client, store),
+            HeadSyncSourceMode::PathIndexOnly => {
+                follower.sync_from_heads_with_path_index(heads, store)
+            }
+            HeadSyncSourceMode::NetworkThenPathIndex => {
+                match follower.sync_from_heads(heads, client, store) {
+                    Ok(world) => Ok(world),
+                    Err(network_error) => {
+                        match follower.sync_from_heads_with_path_index(heads, store) {
+                            Ok(world) => Ok(world),
+                            Err(path_index_error) => Err(WorldError::DistributedValidationFailed {
+                                reason: format!(
+                                    "head sync fallback failed: mode={mode:?}, network_error={network_error:?}, path_index_error={path_index_error:?}",
+                                ),
+                            }),
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
