@@ -225,8 +225,8 @@
 - [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
 ### 15. 分布式能力彻底拆分（R7）
-- [x] 输出 R7 设计文档（`doc/world-runtime/distributed-hard-split-phase7.md`）
-- [x] 输出 R7 项目管理文档（`doc/world-runtime/distributed-hard-split-phase7.project.md`）
+- [x] 输出 R7 设计文档（`doc/p2p/distributed-hard-split-phase7.md`）
+- [x] 输出 R7 项目管理文档（`doc/p2p/distributed-hard-split-phase7.project.md`）
 - [x] R7-1 新建 `agent_world_distfs` 并迁移 CAS/分片/组装能力，接入 runtime 基础路径
 - [x] R7-2 删除 `agent_world` 内分布式实现文件并切换调用方到 split crates
 - [x] R7-3 拆分 `agent_world` 大 facade，收敛导出边界
