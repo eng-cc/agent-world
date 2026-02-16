@@ -158,9 +158,9 @@ pub(super) fn render_chat_section(
             .id_source(crate::EGUI_CHAT_INPUT_WIDGET_ID)
             .desired_rows(3)
             .hint_text(if locale.is_zh() {
-                "输入玩家消息后发送给 Agent"
+                "输入玩家消息后发送给 Agent（Enter 发送，Shift+Enter 换行）"
             } else {
-                "Type player message and send to agent"
+                "Type player message and send to agent (Enter to send, Shift+Enter for newline)"
             }),
     );
     if input_response.gained_focus() || input_response.clicked() {
@@ -170,16 +170,23 @@ pub(super) fn render_chat_section(
         draft.input_focused = false;
     }
     let input_active = draft.input_focused || input_response.has_focus();
+    let submit_by_enter = ui.input(|input| {
+        should_submit_chat_on_enter(
+            input_response.has_focus(),
+            input.key_pressed(egui::Key::Enter),
+            input.modifiers,
+        )
+    });
 
     ui.horizontal_wrapped(|ui| {
         let can_send = !draft.input_message.trim().is_empty();
-        if ui
+        let submit_by_button = ui
             .add_enabled(
                 can_send,
                 egui::Button::new(if locale.is_zh() { "发送" } else { "Send" }),
             )
-            .clicked()
-        {
+            .clicked();
+        if can_send && (submit_by_button || submit_by_enter) {
             let message = draft.input_message.trim().to_string();
             if let Some(client) = client {
                 let request = agent_world::viewer::ViewerRequest::AgentChat {
@@ -226,6 +233,14 @@ pub(super) fn render_chat_section(
     }
 
     input_active
+}
+
+fn should_submit_chat_on_enter(
+    input_has_focus: bool,
+    enter_pressed: bool,
+    modifiers: egui::Modifiers,
+) -> bool {
+    input_has_focus && enter_pressed && modifiers.is_none()
 }
 
 fn render_chat_message_bubble(
@@ -569,5 +584,28 @@ mod tests {
     fn truncate_text_marks_ellipsis_when_exceeding_limit() {
         assert_eq!(truncate_text("abcdef", 3), "abc…");
         assert_eq!(truncate_text("abc", 3), "abc");
+    }
+
+    #[test]
+    fn should_submit_chat_on_enter_requires_focus_and_no_modifiers() {
+        assert!(should_submit_chat_on_enter(
+            true,
+            true,
+            egui::Modifiers::default()
+        ));
+        assert!(!should_submit_chat_on_enter(
+            false,
+            true,
+            egui::Modifiers::default()
+        ));
+        assert!(!should_submit_chat_on_enter(
+            true,
+            false,
+            egui::Modifiers::default()
+        ));
+
+        let mut shift_mod = egui::Modifiers::default();
+        shift_mod.shift = true;
+        assert!(!should_submit_chat_on_enter(true, true, shift_mod));
     }
 }
