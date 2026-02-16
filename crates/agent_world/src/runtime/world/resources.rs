@@ -47,6 +47,36 @@ impl World {
         self.state.node_redeem_nonces.get(node_id).copied()
     }
 
+    pub fn node_identity_public_key(&self, node_id: &str) -> Option<&str> {
+        self.state
+            .node_identity_bindings
+            .get(node_id)
+            .map(String::as_str)
+    }
+
+    pub fn bind_node_identity(
+        &mut self,
+        node_id: &str,
+        public_key_hex: &str,
+    ) -> Result<(), WorldError> {
+        let node_id = node_id.trim();
+        if node_id.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "node_id cannot be empty".to_string(),
+            });
+        }
+        let public_key_hex = public_key_hex.trim();
+        if public_key_hex.is_empty() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "public_key_hex cannot be empty".to_string(),
+            });
+        }
+        self.state
+            .node_identity_bindings
+            .insert(node_id.to_string(), public_key_hex.to_string());
+        Ok(())
+    }
+
     pub fn reward_mint_records(&self) -> &[NodeRewardMintRecord] {
         self.state.reward_mint_records.as_slice()
     }
@@ -84,6 +114,10 @@ impl World {
                 reason: "points_per_credit must be positive".to_string(),
             });
         }
+        let signer_public_key = self.require_bound_node_identity(signer_node_id)?.to_string();
+        for settlement in &report.settlements {
+            self.require_bound_node_identity(settlement.node_id.as_str())?;
+        }
         self.ensure_system_order_budget_caps_for_epoch(report);
 
         let settlement_hash = hash_json(report)?;
@@ -113,7 +147,7 @@ impl World {
                 minted_power_credits,
                 settlement_hash: settlement_hash.clone(),
                 signer_node_id: signer_node_id.to_string(),
-                signature: String::new(),
+                signature: format!("bound:{signer_public_key}"),
             };
             self.state.reward_mint_records.push(record.clone());
             minted_records.push(record);
@@ -208,6 +242,16 @@ impl World {
             .and_modify(|value| *value = value.saturating_add(allowed))
             .or_insert(allowed);
         allowed
+    }
+
+    fn require_bound_node_identity(&self, node_id: &str) -> Result<&str, WorldError> {
+        self.state
+            .node_identity_bindings
+            .get(node_id)
+            .map(String::as_str)
+            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                reason: format!("node identity is not bound: {node_id}"),
+            })
     }
 
     pub fn mint_node_power_credits(

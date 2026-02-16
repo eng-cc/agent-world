@@ -35,6 +35,13 @@ fn settlement_report(epoch_index: u64, settlements: Vec<NodeSettlement>) -> Epoc
     }
 }
 
+fn bind_node_identity(world: &mut World, node_id: &str) {
+    let public_key = format!("public-key-{node_id}");
+    world
+        .bind_node_identity(node_id, public_key.as_str())
+        .expect("bind node identity");
+}
+
 #[test]
 fn reward_asset_mint_and_burn_updates_balance() {
     let mut world = World::new();
@@ -113,6 +120,9 @@ fn reward_asset_snapshot_roundtrip_persists_state() {
 #[test]
 fn reward_asset_settlement_mint_records_balance_changes() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-b");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 10,
         ..RewardAssetConfig::default()
@@ -140,6 +150,9 @@ fn reward_asset_settlement_mint_records_balance_changes() {
 #[test]
 fn reward_asset_settlement_mint_is_idempotent_per_epoch_node() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-b");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 5,
         ..RewardAssetConfig::default()
@@ -190,8 +203,44 @@ fn reward_asset_settlement_rejects_empty_signer_node_id() {
 }
 
 #[test]
+fn reward_asset_settlement_rejects_unbound_signer_node_id() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    let report = settlement_report(1, vec![settlement("node-a", 10)]);
+
+    let err = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect_err("unbound signer should fail");
+    match err {
+        WorldError::ResourceBalanceInvalid { reason } => {
+            assert!(reason.contains("node identity is not bound"));
+        }
+        other => panic!("expected ResourceBalanceInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn reward_asset_settlement_rejects_unbound_settlement_node() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-signer");
+    let report = settlement_report(2, vec![settlement("node-a", 10)]);
+
+    let err = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect_err("unbound settlement node should fail");
+    match err {
+        WorldError::ResourceBalanceInvalid { reason } => {
+            assert!(reason.contains("node identity is not bound: node-a"));
+        }
+        other => panic!("expected ResourceBalanceInvalid, got {other:?}"),
+    }
+}
+
+#[test]
 fn reward_asset_snapshot_roundtrip_persists_mint_records() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 10,
         ..RewardAssetConfig::default()
@@ -213,8 +262,29 @@ fn reward_asset_snapshot_roundtrip_persists_mint_records() {
 }
 
 #[test]
+fn reward_asset_snapshot_roundtrip_persists_node_identity_bindings() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+
+    let snapshot = world.snapshot();
+    let restored = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
+    assert_eq!(
+        restored.node_identity_public_key("node-a"),
+        Some("public-key-node-a")
+    );
+    assert_eq!(
+        restored.node_identity_public_key("node-signer"),
+        Some("public-key-node-signer")
+    );
+}
+
+#[test]
 fn reward_asset_settlement_mint_respects_system_order_pool_budget() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-b");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 10,
         ..RewardAssetConfig::default()
@@ -252,6 +322,9 @@ fn reward_asset_settlement_mint_respects_system_order_pool_budget() {
 #[test]
 fn reward_asset_settlement_mint_budget_remainder_prefers_higher_points() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-b");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 10,
         ..RewardAssetConfig::default()
@@ -284,6 +357,9 @@ fn reward_asset_settlement_mint_budget_remainder_prefers_higher_points() {
 #[test]
 fn reward_asset_snapshot_roundtrip_persists_system_order_pool_budget() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-b");
+    bind_node_identity(&mut world, "node-signer");
     world.set_reward_asset_config(RewardAssetConfig {
         points_per_credit: 10,
         ..RewardAssetConfig::default()
@@ -309,8 +385,46 @@ fn reward_asset_snapshot_roundtrip_persists_system_order_pool_budget() {
 }
 
 #[test]
+fn reward_asset_redeem_power_rejects_unbound_node_identity() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 1,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 15,
+        available_power_units: 100,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 5)
+        .expect("mint node credits");
+
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 2,
+        nonce: 1,
+    });
+    world.step().expect("redeem should be rejected");
+    let event = world.journal().events.last().expect("reject event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemRejected { reason, .. }) => {
+            assert!(reason.contains("node identity not bound"));
+        }
+        other => panic!("expected PowerRedeemRejected, got {other:?}"),
+    }
+}
+
+#[test]
 fn reward_asset_redeem_power_action_updates_balances_and_reserve() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -375,6 +489,7 @@ fn reward_asset_redeem_power_action_updates_balances_and_reserve() {
 #[test]
 fn reward_asset_redeem_power_rejected_when_reserve_insufficient() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -437,6 +552,7 @@ fn reward_asset_redeem_power_rejected_when_reserve_insufficient() {
 #[test]
 fn reward_asset_redeem_power_rejects_below_min_redeem_unit() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -482,6 +598,7 @@ fn reward_asset_redeem_power_rejects_below_min_redeem_unit() {
 #[test]
 fn reward_asset_redeem_power_rejects_epoch_cap_exceeded() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -527,6 +644,7 @@ fn reward_asset_redeem_power_rejects_epoch_cap_exceeded() {
 #[test]
 fn reward_asset_redeem_power_rejects_nonce_replay() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
@@ -589,6 +707,7 @@ fn reward_asset_redeem_power_rejects_nonce_replay() {
 #[test]
 fn reward_asset_snapshot_roundtrip_persists_redeem_nonce() {
     let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
     world.submit_action(Action::RegisterAgent {
         agent_id: "agent-1".to_string(),
         pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),

@@ -8,7 +8,7 @@
 - [x] RPA-4：实现守恒与风控（储备池、每 epoch 额度、最小兑换单位、nonce 防重放）。
 - [x] RPA-5：接线运行时主链路（`world_viewer_live`/runtime 开关与配置）。
 - [x] RPA-6：实现最小需求侧支付入口（系统订单池预算分配）并接入结算。
-- [ ] RPA-7：实现身份签名治理最小收口（`node_id <-> public_key` 校验，拒绝未绑定提交）。
+- [x] RPA-7：实现身份签名治理最小收口（`node_id <-> public_key` 校验，拒绝未绑定提交）。
 - [ ] RPA-8：增强 DistFS 证明语义字段并补齐 `test_tier_required`/`test_tier_full` 回归。
 - [ ] RPA-9：文档状态回写、devlog 收口、发布说明整理。
 
@@ -25,6 +25,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-16.md`
 
 ## 状态
-- 当前阶段：RPA-6 完成（系统订单池预算分配已接入结算）。
-- 下一步：执行 RPA-7（身份签名治理最小收口）。
+- 当前阶段：RPA-7 完成（身份绑定与拒绝策略已接入结算/兑换）。
+- 下一步：执行 RPA-8（DistFS 证明语义增强与回归补齐）。
 - 最近更新：2026-02-16。

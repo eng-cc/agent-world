@@ -354,6 +354,10 @@ fn reward_runtime_loop(
         available_power_units: config.initial_reserve_power_units.max(0),
         redeemed_power_units: 0,
     });
+    let _ = reward_world.bind_node_identity(
+        config.signer_node_id.as_str(),
+        format!("runtime-signer-{}", config.signer_node_id).as_str(),
+    );
 
     loop {
         match stop_rx.recv_timeout(config.poll_interval) {
@@ -378,6 +382,12 @@ fn reward_runtime_loop(
         };
 
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
+        for settlement in &report.settlements {
+            let _ = reward_world.bind_node_identity(
+                settlement.node_id.as_str(),
+                format!("runtime-node-{}", settlement.node_id).as_str(),
+            );
+        }
         let minted_records =
             match reward_world.apply_node_points_settlement_mint(&report, config.signer_node_id.as_str()) {
                 Ok(records) => records,

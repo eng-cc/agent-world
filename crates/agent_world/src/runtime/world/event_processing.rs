@@ -178,6 +178,15 @@ impl World {
                         reason: "node_id cannot be empty".to_string(),
                     }));
                 }
+                if !self.state.node_identity_bindings.contains_key(node_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!("node identity not bound: {node_id}"),
+                    }));
+                }
                 if !self.state.agents.contains_key(target_agent_id) {
                     return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
                         node_id: node_id.clone(),
