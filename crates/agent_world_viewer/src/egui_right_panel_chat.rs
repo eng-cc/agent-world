@@ -264,17 +264,19 @@ fn render_info_stream(
         return;
     }
 
-    egui::ScrollArea::vertical()
-        .max_height(220.0)
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            for (index, message) in info_messages.into_iter().enumerate() {
-                ui.push_id(("info", index, message.time), |ui| {
-                    render_chat_message_bubble(ui, message, locale);
-                    ui.add_space(2.0);
-                });
-            }
-        });
+    ui.push_id("chat-info-scroll", |ui| {
+        egui::ScrollArea::vertical()
+            .max_height(220.0)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for (index, message) in info_messages.into_iter().enumerate() {
+                    ui.push_id(("info", index, message.time), |ui| {
+                        render_chat_message_bubble(ui, message, locale);
+                        ui.add_space(2.0);
+                    });
+                }
+            });
+    });
 }
 
 fn render_tool_call_stream(
@@ -300,17 +302,19 @@ fn render_tool_call_stream(
         return;
     }
 
-    egui::ScrollArea::vertical()
-        .max_height(160.0)
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            for (index, message) in tool_messages.into_iter().enumerate() {
-                ui.push_id(("tool", index, message.time), |ui| {
-                    render_tool_call_card(ui, message, locale);
-                    ui.add_space(4.0);
-                });
-            }
-        });
+    ui.push_id("chat-tool-scroll", |ui| {
+        egui::ScrollArea::vertical()
+            .max_height(160.0)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for (index, message) in tool_messages.into_iter().enumerate() {
+                    ui.push_id(("tool", index, message.time), |ui| {
+                        render_tool_call_card(ui, message, locale);
+                        ui.add_space(4.0);
+                    });
+                }
+            });
+    });
 }
 
 fn render_tool_call_card(
