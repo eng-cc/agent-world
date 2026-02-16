@@ -7,7 +7,7 @@
 - [x] NRX-3：补齐多节点复制与重启恢复测试，完成收口。
 
 ## 依赖
-- `crates/node`
+- `crates/agent_world_node`
 - `crates/agent_world_distfs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
 - `doc/world-runtime/blockchain-p2pfs-foundation-closure.md`

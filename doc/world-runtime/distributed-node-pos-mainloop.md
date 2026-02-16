@@ -8,7 +8,7 @@
 ## 范围
 
 ### In Scope
-- 在 `crates/node` 内实现 PoS 驱动节点主循环：
+- 在 `crates/agent_world_node` 内实现 PoS 驱动节点主循环：
   - 每 tick 推进 slot。
   - 按 slot 选择 proposer。
   - 生成 world head proposal。
@@ -40,7 +40,7 @@
 
 ## 里程碑
 - NPOS-1：设计文档与项目管理文档落地。
-- NPOS-2：重构 `crates/node`，落地 PoS 驱动主循环并更名为 `agent_world_node` 包。
+- NPOS-2：重构 `crates/agent_world_node`，落地 PoS 驱动主循环并更名为 `agent_world_node` 包。
 - NPOS-3：`world_viewer_live` 启动链路接线与测试更新。
 - NPOS-4：回归测试、文档状态收口与 devlog 收口。
 

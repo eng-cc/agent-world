@@ -9,7 +9,7 @@ use std::net::UdpSocket;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 fn multi_validators() -> Vec<PosValidator> {
     vec![
@@ -614,7 +614,22 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
     let mut runtime_b = NodeRuntime::new(build_config_b());
     runtime_a.start().expect("start a second");
     runtime_b.start().expect("start b second");
-    thread::sleep(Duration::from_millis(220));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        let maybe_guard = fs::read(&guard_path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<SingleWriterReplicationGuard>(&bytes).ok());
+        if maybe_guard
+            .as_ref()
+            .is_some_and(|guard| guard.last_sequence > guard_before.last_sequence)
+        {
+            break;
+        }
+        if Instant::now() >= deadline {
+            break;
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
     let snapshot_b_second = runtime_b.snapshot();
     runtime_a.stop().expect("stop a second");
     runtime_b.stop().expect("stop b second");

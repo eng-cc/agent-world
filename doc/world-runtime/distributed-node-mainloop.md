@@ -8,7 +8,7 @@
 ## 范围
 
 ### In Scope
-- 新增 `crates/node`，包含：
+- 新增 `crates/agent_world_node`，包含：
   - `NodeRole`：节点角色枚举（`sequencer` / `storage` / `observer`）。
   - `NodeConfig`：节点配置（`node_id` / `world_id` / `tick_interval` / `role`）。
   - `NodeRuntime`：节点主循环生命周期接口（`start` / `stop` / `snapshot`）。

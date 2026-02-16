@@ -9,7 +9,7 @@
 ## 依赖
 - `crates/agent_world/src/bin/world_viewer_live.rs`
 - `config.example.toml`
-- `crates/node`
+- `crates/agent_world_node`
 
 ## 状态
 - 当前阶段：NKEY-1~NKEY-4 全部完成。

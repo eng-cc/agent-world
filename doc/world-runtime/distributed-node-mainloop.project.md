@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] DNM-1：设计文档与项目管理文档落地。
-- [x] DNM-2：新增 `crates/node`，实现 `NodeRole/NodeConfig/NodeRuntime/NodeSnapshot` 与单元测试。
+- [x] DNM-2：新增 `crates/agent_world_node`，实现 `NodeRole/NodeConfig/NodeRuntime/NodeSnapshot` 与单元测试。
 - [x] DNM-3：在 `world_viewer_live` 启动流程中接入节点自动启动，并补充 CLI 参数解析测试。
 - [x] DNM-4：执行回归测试、回写文档状态与 devlog 收口。
 

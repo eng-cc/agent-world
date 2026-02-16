@@ -7,7 +7,7 @@
 - [x] NPG-4：执行回归测试并收口文档/devlog。
 
 ## 依赖
-- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/node/src/lib.rs`
+- `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/world-runtime/distributed-node-pos-mainloop.md`
 
