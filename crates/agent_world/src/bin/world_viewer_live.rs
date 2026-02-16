@@ -3,10 +3,16 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use agent_world::geometry::GeoPos;
+use agent_world::runtime::{
+    measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
+    NodePointsRuntimeCollector, NodePointsRuntimeHeuristics, ProtocolPowerReserve,
+    RewardAssetConfig, World as RuntimeWorld,
+};
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
@@ -23,6 +29,8 @@ const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
 const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
+const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
+const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -42,6 +50,15 @@ struct CliOptions {
     node_repl_libp2p_listen: Vec<String>,
     node_repl_libp2p_peers: Vec<String>,
     node_repl_topic: Option<String>,
+    reward_runtime_enabled: bool,
+    reward_runtime_auto_redeem: bool,
+    reward_runtime_signer_node_id: Option<String>,
+    reward_runtime_report_dir: String,
+    reward_points_per_credit: u64,
+    reward_credits_per_power_unit: u64,
+    reward_max_redeem_power_per_epoch: i64,
+    reward_min_redeem_power_unit: i64,
+    reward_initial_reserve_power_units: i64,
 }
 
 impl Default for CliOptions {
@@ -63,8 +80,35 @@ impl Default for CliOptions {
             node_repl_libp2p_listen: Vec::new(),
             node_repl_libp2p_peers: Vec::new(),
             node_repl_topic: None,
+            reward_runtime_enabled: false,
+            reward_runtime_auto_redeem: false,
+            reward_runtime_signer_node_id: None,
+            reward_runtime_report_dir: DEFAULT_REWARD_RUNTIME_REPORT_DIR.to_string(),
+            reward_points_per_credit: RewardAssetConfig::default().points_per_credit,
+            reward_credits_per_power_unit: RewardAssetConfig::default().credits_per_power_unit,
+            reward_max_redeem_power_per_epoch: RewardAssetConfig::default()
+                .max_redeem_power_per_epoch,
+            reward_min_redeem_power_unit: RewardAssetConfig::default().min_redeem_power_unit,
+            reward_initial_reserve_power_units: DEFAULT_REWARD_RUNTIME_RESERVE_UNITS,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct RewardRuntimeLoopConfig {
+    poll_interval: Duration,
+    signer_node_id: String,
+    report_dir: String,
+    storage_root: std::path::PathBuf,
+    auto_redeem: bool,
+    reward_asset_config: RewardAssetConfig,
+    initial_reserve_power_units: i64,
+}
+
+#[derive(Debug)]
+struct RewardRuntimeWorker {
+    stop_tx: mpsc::Sender<()>,
+    join_handle: thread::JoinHandle<()>,
 }
 
 fn main() {
@@ -78,10 +122,19 @@ fn main() {
         }
     };
 
-    let mut node_runtime = match start_live_node(&options) {
+    let node_runtime = match start_live_node(&options) {
         Ok(runtime) => runtime,
         Err(err) => {
             eprintln!("{err}");
+            process::exit(1);
+        }
+    };
+    let mut reward_runtime_worker = match start_reward_runtime_worker(&options, node_runtime.clone())
+    {
+        Ok(worker) => worker,
+        Err(err) => {
+            eprintln!("{err}");
+            stop_live_node(node_runtime.as_ref());
             process::exit(1);
         }
     };
@@ -112,21 +165,15 @@ fn main() {
         Ok(server) => server,
         Err(err) => {
             eprintln!("failed to start live viewer server: {err:?}");
-            if let Some(runtime) = node_runtime.as_mut() {
-                if let Err(stop_err) = runtime.stop() {
-                    eprintln!("failed to stop node runtime: {stop_err:?}");
-                }
-            }
+            stop_reward_runtime_worker(reward_runtime_worker.take());
+            stop_live_node(node_runtime.as_ref());
             process::exit(1);
         }
     };
 
     let run_result = server.run();
-    if let Some(runtime) = node_runtime.as_mut() {
-        if let Err(stop_err) = runtime.stop() {
-            eprintln!("failed to stop node runtime: {stop_err:?}");
-        }
-    }
+    stop_reward_runtime_worker(reward_runtime_worker.take());
+    stop_live_node(node_runtime.as_ref());
 
     if let Err(err) = run_result {
         eprintln!("live viewer server failed: {err:?}");
@@ -134,7 +181,7 @@ fn main() {
     }
 }
 
-fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> {
+fn start_live_node(options: &CliOptions) -> Result<Option<Arc<Mutex<NodeRuntime>>>, String> {
     if !options.node_enabled {
         return Ok(None);
     }
@@ -199,7 +246,251 @@ fn start_live_node(options: &CliOptions) -> Result<Option<NodeRuntime>, String> 
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
-    Ok(Some(runtime))
+    Ok(Some(Arc::new(Mutex::new(runtime))))
+}
+
+fn stop_live_node(node_runtime: Option<&Arc<Mutex<NodeRuntime>>>) {
+    let Some(runtime) = node_runtime else {
+        return;
+    };
+    let mut locked = match runtime.lock() {
+        Ok(locked) => locked,
+        Err(_) => {
+            eprintln!("failed to stop node runtime: lock poisoned");
+            return;
+        }
+    };
+    if let Err(stop_err) = locked.stop() {
+        eprintln!("failed to stop node runtime: {stop_err:?}");
+    }
+}
+
+fn start_reward_runtime_worker(
+    options: &CliOptions,
+    node_runtime: Option<Arc<Mutex<NodeRuntime>>>,
+) -> Result<Option<RewardRuntimeWorker>, String> {
+    if !options.reward_runtime_enabled {
+        return Ok(None);
+    }
+    let runtime = node_runtime.ok_or_else(|| {
+        "reward runtime requires embedded node runtime; disable --no-node or reward runtime"
+            .to_string()
+    })?;
+
+    let signer_node_id = options
+        .reward_runtime_signer_node_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| options.node_id.clone());
+    if signer_node_id.trim().is_empty() {
+        return Err("reward runtime signer node id cannot be empty".to_string());
+    }
+
+    let report_dir = options.reward_runtime_report_dir.trim().to_string();
+    if report_dir.is_empty() {
+        return Err("reward runtime report dir cannot be empty".to_string());
+    }
+
+    let config = RewardRuntimeLoopConfig {
+        poll_interval: Duration::from_millis(options.tick_ms),
+        signer_node_id,
+        report_dir,
+        storage_root: Path::new("output")
+            .join("node-distfs")
+            .join(options.node_id.as_str())
+            .join("store"),
+        auto_redeem: options.reward_runtime_auto_redeem,
+        reward_asset_config: RewardAssetConfig {
+            points_per_credit: options.reward_points_per_credit,
+            credits_per_power_unit: options.reward_credits_per_power_unit,
+            max_redeem_power_per_epoch: options.reward_max_redeem_power_per_epoch,
+            min_redeem_power_unit: options.reward_min_redeem_power_unit,
+        },
+        initial_reserve_power_units: options.reward_initial_reserve_power_units,
+    };
+
+    let (stop_tx, stop_rx) = mpsc::channel::<()>();
+    let join_handle = thread::Builder::new()
+        .name("reward-runtime".to_string())
+        .spawn(move || reward_runtime_loop(runtime, config, stop_rx))
+        .map_err(|err| format!("failed to spawn reward runtime worker: {err}"))?;
+
+    Ok(Some(RewardRuntimeWorker {
+        stop_tx,
+        join_handle,
+    }))
+}
+
+fn stop_reward_runtime_worker(worker: Option<RewardRuntimeWorker>) {
+    let Some(worker) = worker else {
+        return;
+    };
+    let _ = worker.stop_tx.send(());
+    if worker.join_handle.join().is_err() {
+        eprintln!("reward runtime worker join failed");
+    }
+}
+
+fn reward_runtime_loop(
+    node_runtime: Arc<Mutex<NodeRuntime>>,
+    config: RewardRuntimeLoopConfig,
+    stop_rx: mpsc::Receiver<()>,
+) {
+    if let Err(err) = fs::create_dir_all(config.report_dir.as_str()) {
+        eprintln!(
+            "reward runtime create report dir failed {}: {}",
+            config.report_dir, err
+        );
+    }
+
+    let mut collector =
+        NodePointsRuntimeCollector::new(NodePointsConfig::default(), NodePointsRuntimeHeuristics::default());
+    let mut reward_world = RuntimeWorld::new();
+    reward_world.set_reward_asset_config(config.reward_asset_config.clone());
+    reward_world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 0,
+        available_power_units: config.initial_reserve_power_units.max(0),
+        redeemed_power_units: 0,
+    });
+
+    loop {
+        match stop_rx.recv_timeout(config.poll_interval) {
+            Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+        }
+
+        let snapshot = match node_runtime.lock() {
+            Ok(locked) => locked.snapshot(),
+            Err(_) => {
+                eprintln!("reward runtime failed to read node snapshot: lock poisoned");
+                break;
+            }
+        };
+        let observed_at_unix_ms = now_unix_ms();
+        let effective_storage_bytes = measure_directory_storage_bytes(config.storage_root.as_path());
+
+        let Some(report) =
+            collector.observe_snapshot(&snapshot, effective_storage_bytes, observed_at_unix_ms)
+        else {
+            continue;
+        };
+
+        rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
+        let minted_records =
+            match reward_world.apply_node_points_settlement_mint(&report, config.signer_node_id.as_str()) {
+                Ok(records) => records,
+                Err(err) => {
+                    eprintln!("reward runtime settlement mint failed: {err:?}");
+                    continue;
+                }
+            };
+
+        if config.auto_redeem {
+            auto_redeem_runtime_rewards(&mut reward_world, minted_records.as_slice());
+        }
+
+        let payload = serde_json::json!({
+            "observed_at_unix_ms": observed_at_unix_ms,
+            "node_snapshot": {
+                "node_id": snapshot.node_id,
+                "world_id": snapshot.world_id,
+                "role": snapshot.role.as_str(),
+                "running": snapshot.running,
+                "tick_count": snapshot.tick_count,
+                "last_tick_unix_ms": snapshot.last_tick_unix_ms,
+                "last_error": snapshot.last_error,
+                "consensus": {
+                    "mode": format!("{:?}", snapshot.consensus.mode),
+                    "slot": snapshot.consensus.slot,
+                    "epoch": snapshot.consensus.epoch,
+                    "latest_height": snapshot.consensus.latest_height,
+                    "committed_height": snapshot.consensus.committed_height,
+                    "network_committed_height": snapshot.consensus.network_committed_height,
+                    "known_peer_heads": snapshot.consensus.known_peer_heads,
+                    "last_status": snapshot.consensus.last_status.map(|status| format!("{status:?}")),
+                    "last_block_hash": snapshot.consensus.last_block_hash,
+                }
+            },
+            "settlement_report": report,
+            "minted_records": minted_records,
+            "node_balances": reward_world.state().node_asset_balances,
+            "reserve": reward_world.protocol_power_reserve(),
+        });
+        let report_path = Path::new(config.report_dir.as_str())
+            .join(format!("epoch-{}.json", report.epoch_index));
+        match serde_json::to_vec_pretty(&payload) {
+            Ok(bytes) => {
+                if let Err(err) = fs::write(&report_path, bytes) {
+                    eprintln!(
+                        "reward runtime write report failed {}: {}",
+                        report_path.display(),
+                        err
+                    );
+                }
+            }
+            Err(err) => {
+                eprintln!("reward runtime serialize report failed: {err}");
+            }
+        }
+    }
+}
+
+fn auto_redeem_runtime_rewards(
+    reward_world: &mut RuntimeWorld,
+    minted_records: &[agent_world::runtime::NodeRewardMintRecord],
+) {
+    for record in minted_records {
+        let node_id = record.node_id.as_str();
+        if !reward_world.state().agents.contains_key(node_id) {
+            reward_world.submit_action(RuntimeAction::RegisterAgent {
+                agent_id: node_id.to_string(),
+                pos: GeoPos::new(0.0, 0.0, 0.0),
+            });
+            if let Err(err) = reward_world.step() {
+                eprintln!("reward runtime register auto-redeem agent failed: {err:?}");
+                continue;
+            }
+        }
+
+        let redeem_credits = reward_world.node_power_credit_balance(node_id);
+        if redeem_credits == 0 {
+            continue;
+        }
+        let nonce = reward_world
+            .node_last_redeem_nonce(node_id)
+            .unwrap_or(0)
+            .saturating_add(1);
+        reward_world.submit_action(RuntimeAction::RedeemPower {
+            node_id: node_id.to_string(),
+            target_agent_id: node_id.to_string(),
+            redeem_credits,
+            nonce,
+        });
+        if let Err(err) = reward_world.step() {
+            eprintln!("reward runtime auto-redeem failed: {err:?}");
+        }
+    }
+}
+
+fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u64) {
+    let current = reward_world.protocol_power_reserve().clone();
+    if current.epoch_index == epoch_index {
+        return;
+    }
+    reward_world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index,
+        available_power_units: current.available_power_units,
+        redeemed_power_units: 0,
+    });
+}
+
+fn now_unix_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -317,6 +608,95 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 }
                 options.node_repl_topic = Some(topic.to_string());
             }
+            "--reward-runtime-enable" => {
+                options.reward_runtime_enabled = true;
+            }
+            "--reward-runtime-auto-redeem" => {
+                options.reward_runtime_auto_redeem = true;
+            }
+            "--reward-runtime-signer" => {
+                let signer = iter
+                    .next()
+                    .ok_or_else(|| "--reward-runtime-signer requires <node_id>".to_string())?;
+                let signer = signer.trim();
+                if signer.is_empty() {
+                    return Err("--reward-runtime-signer requires non-empty <node_id>".to_string());
+                }
+                options.reward_runtime_signer_node_id = Some(signer.to_string());
+            }
+            "--reward-runtime-report-dir" => {
+                let dir = iter.next().ok_or_else(|| {
+                    "--reward-runtime-report-dir requires <path>".to_string()
+                })?;
+                let dir = dir.trim();
+                if dir.is_empty() {
+                    return Err("--reward-runtime-report-dir requires non-empty <path>".to_string());
+                }
+                options.reward_runtime_report_dir = dir.to_string();
+            }
+            "--reward-points-per-credit" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-points-per-credit requires a positive integer".to_string()
+                })?;
+                options.reward_points_per_credit = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-points-per-credit requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-credits-per-power-unit" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-credits-per-power-unit requires a positive integer".to_string()
+                })?;
+                options.reward_credits_per_power_unit = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-credits-per-power-unit requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-max-redeem-power-per-epoch" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-max-redeem-power-per-epoch requires a positive integer".to_string()
+                })?;
+                options.reward_max_redeem_power_per_epoch = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-max-redeem-power-per-epoch requires a positive integer"
+                            .to_string()
+                    })?;
+            }
+            "--reward-min-redeem-power-unit" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-min-redeem-power-unit requires a positive integer".to_string()
+                })?;
+                options.reward_min_redeem_power_unit = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-min-redeem-power-unit requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-initial-reserve-power-units" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-initial-reserve-power-units requires a non-negative integer"
+                        .to_string()
+                })?;
+                options.reward_initial_reserve_power_units = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value >= 0)
+                    .ok_or_else(|| {
+                        "--reward-initial-reserve-power-units requires a non-negative integer"
+                            .to_string()
+                    })?;
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -341,6 +721,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     {
         return Err(
             "--node-repl-topic requires --node-repl-libp2p-listen or --node-repl-libp2p-peer"
+                .to_string(),
+        );
+    }
+    if options.reward_runtime_enabled && !options.node_enabled {
+        return Err(
+            "--reward-runtime-enable requires embedded node runtime (remove --no-node)"
                 .to_string(),
         );
     }
@@ -373,6 +759,17 @@ fn print_help() {
         "  --node-repl-libp2p-peer <multiaddr> Add libp2p bootstrap peer for replication network"
     );
     println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
+    println!("  --reward-runtime-enable Enable reward runtime settlement loop (default: off)");
+    println!("  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent");
+    println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
+    println!(
+        "  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)"
+    );
+    println!("  --reward-points-per-credit <n> points -> credit conversion ratio");
+    println!("  --reward-credits-per-power-unit <n> credit -> power conversion ratio");
+    println!("  --reward-max-redeem-power-per-epoch <n> per-epoch redeem power cap");
+    println!("  --reward-min-redeem-power-unit <n> minimum redeem power unit");
+    println!("  --reward-initial-reserve-power-units <n> initial protocol power reserve");
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -572,6 +969,33 @@ mod tests {
         assert!(options.node_repl_libp2p_listen.is_empty());
         assert!(options.node_repl_libp2p_peers.is_empty());
         assert!(options.node_repl_topic.is_none());
+        assert!(!options.reward_runtime_enabled);
+        assert!(!options.reward_runtime_auto_redeem);
+        assert!(options.reward_runtime_signer_node_id.is_none());
+        assert_eq!(
+            options.reward_runtime_report_dir,
+            DEFAULT_REWARD_RUNTIME_REPORT_DIR
+        );
+        assert_eq!(
+            options.reward_points_per_credit,
+            RewardAssetConfig::default().points_per_credit
+        );
+        assert_eq!(
+            options.reward_credits_per_power_unit,
+            RewardAssetConfig::default().credits_per_power_unit
+        );
+        assert_eq!(
+            options.reward_max_redeem_power_per_epoch,
+            RewardAssetConfig::default().max_redeem_power_per_epoch
+        );
+        assert_eq!(
+            options.reward_min_redeem_power_unit,
+            RewardAssetConfig::default().min_redeem_power_unit
+        );
+        assert_eq!(
+            options.reward_initial_reserve_power_units,
+            DEFAULT_REWARD_RUNTIME_RESERVE_UNITS
+        );
     }
 
     #[test]
@@ -614,6 +1038,22 @@ mod tests {
                 "/ip4/127.0.0.1/tcp/7002/p2p/12D3KooWR6f1fVQqfJ9WQnB8GL9QykgjM7RzQ2xZQW6hUGNfj9t7",
                 "--node-repl-topic",
                 "aw.custom.replication",
+                "--reward-runtime-enable",
+                "--reward-runtime-auto-redeem",
+                "--reward-runtime-signer",
+                "reward-signer-1",
+                "--reward-runtime-report-dir",
+                "output/reward-custom",
+                "--reward-points-per-credit",
+                "7",
+                "--reward-credits-per-power-unit",
+                "3",
+                "--reward-max-redeem-power-per-epoch",
+                "1200",
+                "--reward-min-redeem-power-unit",
+                "2",
+                "--reward-initial-reserve-power-units",
+                "888",
             ]
             .into_iter(),
         )
@@ -653,6 +1093,18 @@ mod tests {
             options.node_repl_topic.as_deref(),
             Some("aw.custom.replication")
         );
+        assert!(options.reward_runtime_enabled);
+        assert!(options.reward_runtime_auto_redeem);
+        assert_eq!(
+            options.reward_runtime_signer_node_id.as_deref(),
+            Some("reward-signer-1")
+        );
+        assert_eq!(options.reward_runtime_report_dir, "output/reward-custom");
+        assert_eq!(options.reward_points_per_credit, 7);
+        assert_eq!(options.reward_credits_per_power_unit, 3);
+        assert_eq!(options.reward_max_redeem_power_per_epoch, 1200);
+        assert_eq!(options.reward_min_redeem_power_unit, 2);
+        assert_eq!(options.reward_initial_reserve_power_units, 888);
         assert_eq!(
             options.node_validators,
             vec![
@@ -678,6 +1130,13 @@ mod tests {
     fn parse_options_disables_node() {
         let options = parse_options(["--no-node"].into_iter()).expect("parse");
         assert!(!options.node_enabled);
+    }
+
+    #[test]
+    fn parse_options_rejects_reward_runtime_with_no_node() {
+        let err = parse_options(["--no-node", "--reward-runtime-enable"].into_iter())
+            .expect_err("reward runtime requires node");
+        assert!(err.contains("--reward-runtime-enable"));
     }
 
     #[test]
@@ -723,10 +1182,11 @@ mod tests {
         )
         .expect("options");
 
-        let mut runtime = start_live_node(&options)
+        let runtime = start_live_node(&options)
             .expect("start")
             .expect("runtime exists");
-        let config = runtime.config();
+        let mut locked = runtime.lock().expect("lock runtime");
+        let config = locked.config();
         assert_eq!(config.pos_config.validators.len(), 2);
         assert_eq!(config.pos_config.validators[0].validator_id, "node-main");
         assert_eq!(config.pos_config.validators[0].stake, 70);
@@ -744,7 +1204,7 @@ mod tests {
             "127.0.0.1:6102".parse::<SocketAddr>().expect("addr")
         );
 
-        runtime.stop().expect("stop");
+        locked.stop().expect("stop");
     }
 
     #[test]
@@ -775,10 +1235,10 @@ mod tests {
         )
         .expect("options");
 
-        let mut runtime = start_live_node(&options)
+        let runtime = start_live_node(&options)
             .expect("start")
             .expect("runtime exists");
-        runtime.stop().expect("stop");
+        runtime.lock().expect("lock runtime").stop().expect("stop");
     }
 
     #[test]
