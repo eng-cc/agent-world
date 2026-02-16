@@ -26,10 +26,10 @@
 - [x] LBA3.4 更新文档状态与任务日志
 
 ### LBA4 在线 LLM 实测 TODO（2026-02-16）
-- [ ] LBA4.1 Prompt 显式暴露“当前动作集不含 `build_factory/schedule_recipe`”，避免目标与动作能力错配。
-- [ ] LBA4.2 Prompt 补充 `refine_compound` 最小有效质量提示（默认 `refine_hardware_yield_ppm=1000` 时，`compound_mass_g < 1000` 不会产出硬件）。
-- [ ] LBA4.3 Prompt/解析层增加非法 module 别名纠正或错误提示（例如 `agent_modules_list` -> `agent.modules.list`）。
-- [ ] LBA4.4 `world_llm_agent_demo` 报告新增 `reject_reason` 聚合统计，便于回归判断“失败是策略问题还是能力缺失”。
+- [x] LBA4.1 Prompt 显式暴露“当前动作集不含 `build_factory/schedule_recipe`”，避免目标与动作能力错配。
+- [x] LBA4.2 Prompt 补充 `refine_compound` 最小有效质量提示（默认 `refine_hardware_yield_ppm=1000` 时，`compound_mass_g < 1000` 不会产出硬件）。
+- [x] LBA4.3 Prompt/解析层增加非法 module 别名纠正或错误提示（例如 `agent_modules_list` -> `agent.modules.list`）。
+- [x] LBA4.4 `world_llm_agent_demo` 报告新增 `reject_reason` 聚合统计，便于回归判断“失败是策略问题还是能力缺失”。
 
 ## 依赖
 - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
@@ -39,6 +39,6 @@
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 
 ## 状态
-- 当前阶段：LBA0~LBA3 已完成，LBA4（在线实测优化）待执行。
-- 下一阶段：优先推进 LBA4.1~LBA4.4，降低“目标是建工厂/制成品但动作能力不匹配”导致的无效决策回合。
-- 最近更新：2026-02-16（完成 `llm_bootstrap` 在线实测，产物：`output/llm_bootstrap/factory_finished/`，并沉淀 LBA4 TODO）。
+- 当前阶段：LBA0~LBA4 全部完成。
+- 下一阶段：在真实在线模型下复跑 20~30 tick，观察 `action_reject_reason_*` 指标是否从参数类失败转向策略类失败。
+- 最近更新：2026-02-16（完成 LBA4 优化：prompt 约束增强、module 别名纠正、report 拒绝原因统计）。

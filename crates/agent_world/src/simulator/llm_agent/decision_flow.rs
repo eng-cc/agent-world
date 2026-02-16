@@ -255,7 +255,8 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
     {
         return match turn_type.as_str() {
             "module_call" => match serde_json::from_value::<LlmModuleCallRequest>(value) {
-                Ok(request) => {
+                Ok(mut request) => {
+                    request.module = normalize_prompt_module_name(request.module.as_str());
                     if request.module.trim().is_empty() {
                         ParsedLlmTurn::Invalid("module_call missing `module`".to_string())
                     } else {
@@ -647,6 +648,35 @@ fn parse_resource_kind(value: &str) -> Option<ResourceKind> {
         "data" => Some(ResourceKind::Data),
         _ => None,
     }
+}
+
+pub(super) fn normalize_prompt_module_name(value: &str) -> String {
+    let normalized = value.trim();
+    if normalized.is_empty() {
+        return String::new();
+    }
+
+    let canonical = match normalized.to_ascii_lowercase().as_str() {
+        "agent.modules.list" | "agent_modules_list" | "agent-modules-list" => {
+            Some("agent.modules.list")
+        }
+        "environment.current_observation"
+        | "environment_current_observation"
+        | "environment-current-observation" => Some("environment.current_observation"),
+        "memory.short_term.recent"
+        | "memory_short_term_recent"
+        | "memory-short-term-recent"
+        | "memory.short.term.recent" => Some("memory.short_term.recent"),
+        "memory.long_term.search"
+        | "memory_long_term_search"
+        | "memory-long-term-search"
+        | "memory.long.term.search" => Some("memory.long_term.search"),
+        _ => None,
+    };
+
+    canonical
+        .map(str::to_string)
+        .unwrap_or_else(|| normalized.to_string())
 }
 
 fn extract_json_block(raw: &str) -> Option<&str> {

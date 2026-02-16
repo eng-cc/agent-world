@@ -1015,3 +1015,18 @@ fn llm_parse_turn_response_extracts_message_to_user() {
         other => panic!("expected decision, got {other:?}"),
     }
 }
+
+#[test]
+fn llm_parse_turn_response_normalizes_module_alias_name() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"type":"module_call","module":"agent_modules_list","args":{}}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::ModuleCall { request, .. } => {
+            assert_eq!(request.module, "agent.modules.list");
+        }
+        other => panic!("expected module_call, got {other:?}"),
+    }
+}

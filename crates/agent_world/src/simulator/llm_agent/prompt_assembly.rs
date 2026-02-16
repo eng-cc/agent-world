@@ -18,6 +18,8 @@ const PEAK_HISTORY_SOFT_CAP_TOKENS: usize = 192;
 const PEAK_MEMORY_SOFT_CAP_TOKENS: usize = 128;
 const PEAK_HISTORY_HARD_CAP_TOKENS: usize = 128;
 const PEAK_MEMORY_HARD_CAP_TOKENS: usize = 96;
+const DEFAULT_REFINE_HARDWARE_YIELD_PPM: i64 = 1_000;
+const DEFAULT_REFINE_MIN_EFFECTIVE_MASS_G: i64 = 1_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromptBudget {
@@ -177,6 +179,7 @@ impl PromptAssembler {
                 content: r#"[Tool Protocol]
 - 如果需要更多信息，可输出模块调用 JSON：{"type":"module_call","module":"<module_name>","args":{...}}
 - 仅允许模块名：agent.modules.list / environment.current_observation / memory.short_term.recent / memory.long_term.search
+- 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search
 - 每轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔多段 JSON，禁止代码块包裹 JSON
 - 若本轮输出 module_call，则只能输出 1 个 module_call；不要在同一回复混合 module_call 与 decision*
 - 若需要对玩家说明意图，请在 JSON 中使用可选字段 `message_to_user`（字符串）
@@ -252,6 +255,8 @@ impl PromptAssembler {
 - transfer_resource.kind 仅允许 electricity/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
+- 当前可用决策动作不包含 build_factory/schedule_recipe；若目标包含建厂，请先执行可用动作并在 message_to_user 中说明阻塞原因
+- 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
 
@@ -265,6 +270,8 @@ impl PromptAssembler {
                     input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
                     input.harvest_max_amount_cap,
+                    DEFAULT_REFINE_HARDWARE_YIELD_PPM,
+                    DEFAULT_REFINE_MIN_EFFECTIVE_MASS_G,
                 ),
             },
             true,
@@ -928,6 +935,10 @@ mod tests {
             .contains("move_agent.to 不能是当前所在位置"));
         assert!(output.user_prompt.contains("transfer_resource"));
         assert!(output.user_prompt.contains("refine_compound"));
+        assert!(output
+            .user_prompt
+            .contains("不包含 build_factory/schedule_recipe"));
+        assert!(output.user_prompt.contains("compound_mass_g >= 1000"));
         assert!(output
             .user_prompt
             .contains("owner 字段仅允许 self/agent:<id>/location:<id>"));

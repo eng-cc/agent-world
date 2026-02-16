@@ -5,8 +5,8 @@ use std::path::Path;
 use std::process;
 
 use agent_world::simulator::{
-    initialize_kernel, AgentDecision, AgentDecisionTrace, AgentRunner, LlmAgentBehavior,
-    WorldConfig, WorldInitConfig, WorldScenario,
+    initialize_kernel, ActionResult, AgentDecision, AgentDecisionTrace, AgentRunner,
+    LlmAgentBehavior, RejectReason, WorldConfig, WorldInitConfig, WorldScenario,
 };
 use serde::Serialize;
 
@@ -63,6 +63,7 @@ struct DemoRunReport {
     total_decisions: u64,
     action_success: u64,
     action_failure: u64,
+    action_reject_reason_counts: BTreeMap<String, u64>,
     decision_counts: DecisionCounts,
     trace_counts: TraceCounts,
     world_time: u64,
@@ -79,6 +80,7 @@ impl DemoRunReport {
             total_decisions: 0,
             action_success: 0,
             action_failure: 0,
+            action_reject_reason_counts: BTreeMap::new(),
             decision_counts: DecisionCounts::default(),
             trace_counts: TraceCounts::default(),
             world_time: 0,
@@ -140,6 +142,18 @@ impl DemoRunReport {
             if !section.included || section.emitted_tokens < section.estimated_tokens {
                 self.trace_counts.prompt_section_clipped += 1;
             }
+        }
+    }
+
+    fn observe_action_result(&mut self, action_result: &ActionResult) {
+        if action_result.success {
+            self.action_success += 1;
+            return;
+        }
+        self.action_failure += 1;
+        if let Some(reason) = action_result.reject_reason() {
+            let key = reject_reason_metric_key(reason);
+            *self.action_reject_reason_counts.entry(key).or_insert(0) += 1;
         }
     }
 
@@ -214,6 +228,47 @@ fn print_llm_io_trace(
     println!("tick={} agent={} llm_io_end", tick, agent_id);
 }
 
+fn reject_reason_metric_key(reason: &RejectReason) -> String {
+    serde_json::to_value(reason)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("type")
+                .and_then(|inner| inner.as_str())
+                .map(normalize_reason_metric_key)
+        })
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn normalize_reason_metric_key(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return "unknown".to_string();
+    }
+
+    if trimmed
+        .chars()
+        .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        return trimmed.to_string();
+    }
+
+    let mut normalized = String::with_capacity(trimmed.len() + 8);
+    for (index, ch) in trimmed.chars().enumerate() {
+        if ch.is_ascii_uppercase() {
+            if index > 0 {
+                normalized.push('_');
+            }
+            normalized.push(ch.to_ascii_lowercase());
+        } else if ch == '-' || ch == ' ' {
+            normalized.push('_');
+        } else {
+            normalized.push(ch.to_ascii_lowercase());
+        }
+    }
+    normalized
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let options = match parse_options(args.iter().skip(1).map(|arg| arg.as_str())) {
@@ -281,11 +336,7 @@ fn main() {
                 }
 
                 if let Some(action_result) = result.action_result.as_ref() {
-                    if action_result.success {
-                        run_report.action_success += 1;
-                    } else {
-                        run_report.action_failure += 1;
-                    }
+                    run_report.observe_action_result(action_result);
                     println!(
                         "tick={} agent={} success={} action={:?}",
                         idx + 1,
@@ -293,6 +344,14 @@ fn main() {
                         action_result.success,
                         action_result.action
                     );
+                    if let Some(reason) = action_result.reject_reason() {
+                        println!(
+                            "tick={} agent={} reject_reason={:?}",
+                            idx + 1,
+                            result.agent_id,
+                            reason
+                        );
+                    }
                 } else {
                     println!(
                         "tick={} agent={} decision={:?}",
@@ -331,6 +390,11 @@ fn main() {
     println!("journal_events: {}", run_report.journal_events);
     println!("action_success: {}", run_report.action_success);
     println!("action_failure: {}", run_report.action_failure);
+    if !run_report.action_reject_reason_counts.is_empty() {
+        for (reason, count) in &run_report.action_reject_reason_counts {
+            println!("action_reject_reason_{}: {}", reason, count);
+        }
+    }
     println!("decision_wait: {}", run_report.decision_counts.wait);
     println!(
         "decision_wait_ticks: {}",
@@ -472,6 +536,7 @@ fn print_help() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_world::simulator::{Action, WorldEvent, WorldEventKind};
 
     #[test]
     fn parse_options_defaults() {
@@ -538,5 +603,40 @@ mod tests {
         let truncated = truncate_for_llm_io_log("abcdef", Some(3));
         assert!(truncated.starts_with("abc"));
         assert!(truncated.contains("truncated"));
+    }
+
+    #[test]
+    fn reject_reason_metric_key_uses_serde_tag_name() {
+        let key = reject_reason_metric_key(&RejectReason::InvalidAmount { amount: 0 });
+        assert_eq!(key, "invalid_amount");
+    }
+
+    #[test]
+    fn observe_action_result_counts_reject_reason_breakdown() {
+        let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 1);
+        let action_result = ActionResult {
+            action: Action::HarvestRadiation {
+                agent_id: "agent-0".to_string(),
+                max_amount: 1,
+            },
+            action_id: 1,
+            success: false,
+            event: WorldEvent {
+                id: 1,
+                time: 1,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 0 },
+                },
+            },
+        };
+
+        report.observe_action_result(&action_result);
+
+        assert_eq!(report.action_success, 0);
+        assert_eq!(report.action_failure, 1);
+        assert_eq!(
+            report.action_reject_reason_counts.get("invalid_amount"),
+            Some(&1)
+        );
     }
 }
