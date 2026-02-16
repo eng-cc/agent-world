@@ -5,14 +5,113 @@ use bevy_egui::egui;
 
 use crate::{ViewerClient, ViewerState};
 
-const CHAT_MESSAGE_LIMIT: usize = 80;
+const CHAT_MESSAGE_LIMIT: usize = 96;
+const CHAT_THREAD_LIMIT: usize = 64;
+const CHAT_THREAD_SCAN_MESSAGE_LIMIT: usize = 320;
+const CHAT_PREVIEW_CHARS: usize = 42;
+const CHAT_BUBBLE_MAX_WIDTH: f32 = 380.0;
 
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ChatThread {
+    id: String,
+    agent_id: String,
+    title: String,
+    preview: String,
+    started_at: u64,
+    updated_at: u64,
+    messages: Vec<LlmChatMessageTrace>,
+}
+
+#[derive(Debug)]
 pub(crate) struct AgentChatDraftState {
     selected_agent_id: Option<String>,
+    selected_thread_id: Option<String>,
     input_message: String,
     status_message: String,
     input_focused: bool,
+    follow_latest_thread: bool,
+}
+
+impl Default for AgentChatDraftState {
+    fn default() -> Self {
+        Self {
+            selected_agent_id: None,
+            selected_thread_id: None,
+            input_message: String::new(),
+            status_message: String::new(),
+            input_focused: false,
+            follow_latest_thread: true,
+        }
+    }
+}
+
+pub(super) fn render_chat_history_panel(
+    ui: &mut egui::Ui,
+    locale: crate::i18n::UiLocale,
+    state: &ViewerState,
+    draft: &mut AgentChatDraftState,
+) {
+    ui.spacing_mut().item_spacing = egui::vec2(6.0, 8.0);
+
+    ui.strong(if locale.is_zh() {
+        "聊天记录"
+    } else {
+        "Chat History"
+    });
+
+    let agent_ids = collect_chat_agent_ids(state);
+    let threads = collect_chat_threads(state, CHAT_THREAD_LIMIT, CHAT_MESSAGE_LIMIT);
+    sync_chat_selection(draft, &threads, &agent_ids);
+
+    if threads.is_empty() {
+        ui.label(if locale.is_zh() {
+            "暂无会话（等待 Agent 产生对话）"
+        } else {
+            "No chat thread yet (waiting for agent conversation)"
+        });
+        return;
+    }
+
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for thread in &threads {
+                let selected = draft
+                    .selected_thread_id
+                    .as_ref()
+                    .is_some_and(|selected_id| selected_id == &thread.id);
+                let title = format!("{} · {}", thread.agent_id, thread.title);
+
+                let response = ui
+                    .add(egui::Button::new(title).selected(selected).wrap())
+                    .on_hover_text(if locale.is_zh() {
+                        "点击切换会话"
+                    } else {
+                        "Click to switch thread"
+                    });
+
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(thread.preview.as_str())
+                            .size(11.5)
+                            .color(egui::Color32::from_gray(190)),
+                    )
+                    .wrap(),
+                );
+                ui.label(
+                    egui::RichText::new(format!("T{}", thread.updated_at))
+                        .size(10.0)
+                        .color(egui::Color32::from_gray(140)),
+                );
+                ui.add_space(4.0);
+
+                if response.clicked() {
+                    draft.selected_thread_id = Some(thread.id.clone());
+                    draft.selected_agent_id = Some(thread.agent_id.clone());
+                    draft.follow_latest_thread = false;
+                }
+            }
+        });
 }
 
 pub(super) fn render_chat_section(
@@ -39,14 +138,10 @@ pub(super) fn render_chat_section(
         return false;
     }
 
-    let selected_valid = draft
-        .selected_agent_id
-        .as_ref()
-        .is_some_and(|current| agent_ids.iter().any(|id| id == current));
-    if !selected_valid {
-        draft.selected_agent_id = Some(agent_ids[0].clone());
-    }
-    let selected_agent_id = draft
+    let chat_threads = collect_chat_threads(state, CHAT_THREAD_LIMIT, CHAT_MESSAGE_LIMIT);
+    sync_chat_selection(draft, &chat_threads, &agent_ids);
+
+    let mut selected_agent_id = draft
         .selected_agent_id
         .clone()
         .unwrap_or_else(|| agent_ids[0].clone());
@@ -63,15 +158,76 @@ pub(super) fn render_chat_section(
                 .selectable_label(selected_agent_id == *agent_id, agent_id.as_str())
                 .clicked()
             {
+                selected_agent_id = agent_id.clone();
                 draft.selected_agent_id = Some(agent_id.clone());
+                draft.follow_latest_thread = true;
             }
         }
     });
 
+    let active_thread = draft.selected_thread_id.as_ref().and_then(|thread_id| {
+        chat_threads
+            .iter()
+            .find(|thread| &thread.id == thread_id)
+            .cloned()
+    });
+
+    if let Some(thread) = active_thread.as_ref() {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(if locale.is_zh() {
+                "当前会话"
+            } else {
+                "Current Thread"
+            });
+            ui.label(
+                egui::RichText::new(thread.title.as_str())
+                    .color(egui::Color32::from_gray(220))
+                    .strong(),
+            );
+            ui.label(
+                egui::RichText::new(format!("T{}", thread.updated_at))
+                    .size(10.5)
+                    .color(egui::Color32::from_gray(150)),
+            );
+        });
+    } else {
+        ui.label(if locale.is_zh() {
+            "当前 Agent 暂无会话历史。"
+        } else {
+            "No thread history for the selected agent yet."
+        });
+    }
+
+    ui.separator();
+
+    let active_messages = active_thread
+        .as_ref()
+        .map(|thread| thread.messages.clone())
+        .unwrap_or_default();
+    if active_messages.is_empty() {
+        ui.label(if locale.is_zh() {
+            "暂无对话消息。"
+        } else {
+            "No chat messages yet."
+        });
+    } else {
+        egui::ScrollArea::vertical()
+            .max_height(280.0)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for message in &active_messages {
+                    render_chat_message_bubble(ui, message, locale);
+                    ui.add_space(2.0);
+                }
+            });
+    }
+
+    ui.separator();
+
     let input_response = ui.add(
         egui::TextEdit::multiline(&mut draft.input_message)
             .id_source(crate::EGUI_CHAT_INPUT_WIDGET_ID)
-            .desired_rows(2)
+            .desired_rows(3)
             .hint_text(if locale.is_zh() {
                 "输入玩家消息后发送给 Agent"
             } else {
@@ -112,6 +268,7 @@ pub(super) fn render_chat_section(
                             "Message sent (waiting for next agent decision trace)".to_string()
                         };
                         draft.input_message.clear();
+                        draft.follow_latest_thread = true;
                     }
                     Err(err) => {
                         draft.status_message = if locale.is_zh() {
@@ -139,29 +296,124 @@ pub(super) fn render_chat_section(
         );
     }
 
-    let messages =
-        collect_chat_messages_for_agent(state, selected_agent_id.as_str(), CHAT_MESSAGE_LIMIT);
-    ui.separator();
-    if messages.is_empty() {
-        ui.label(if locale.is_zh() {
-            "暂无对话消息。"
+    input_active
+}
+
+fn render_chat_message_bubble(
+    ui: &mut egui::Ui,
+    message: &LlmChatMessageTrace,
+    locale: crate::i18n::UiLocale,
+) {
+    let (role_label, align_right, fill_color) = match message.role {
+        LlmChatRole::Player => (
+            if locale.is_zh() { "玩家" } else { "Player" },
+            true,
+            egui::Color32::from_rgb(37, 91, 167),
+        ),
+        LlmChatRole::Agent => (
+            if locale.is_zh() { "Agent" } else { "Agent" },
+            false,
+            egui::Color32::from_rgb(54, 56, 66),
+        ),
+        LlmChatRole::Tool => (
+            if locale.is_zh() { "工具" } else { "Tool" },
+            false,
+            egui::Color32::from_rgb(74, 72, 50),
+        ),
+        LlmChatRole::System => (
+            if locale.is_zh() { "系统" } else { "System" },
+            false,
+            egui::Color32::from_rgb(70, 48, 52),
+        ),
+    };
+
+    ui.horizontal(|ui| {
+        let layout = if align_right {
+            egui::Layout::right_to_left(egui::Align::TOP)
         } else {
-            "No chat messages yet."
+            egui::Layout::left_to_right(egui::Align::TOP)
+        };
+
+        ui.with_layout(layout, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(fill_color)
+                .corner_radius(egui::CornerRadius::same(10))
+                .inner_margin(egui::Margin::same(8))
+                .show(ui, |ui| {
+                    ui.set_max_width(CHAT_BUBBLE_MAX_WIDTH);
+                    ui.label(
+                        egui::RichText::new(role_label)
+                            .size(10.5)
+                            .color(egui::Color32::from_gray(214)),
+                    );
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(message.content.as_str())
+                                .color(egui::Color32::WHITE),
+                        )
+                        .wrap()
+                        .selectable(true),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("T{}", message.time))
+                            .size(10.0)
+                            .color(egui::Color32::from_gray(205)),
+                    );
+                });
         });
-        return input_active;
+    });
+}
+
+fn sync_chat_selection(
+    draft: &mut AgentChatDraftState,
+    threads: &[ChatThread],
+    agent_ids: &[String],
+) {
+    if !agent_ids.is_empty() {
+        let selected_agent_valid = draft
+            .selected_agent_id
+            .as_ref()
+            .is_some_and(|current| agent_ids.iter().any(|agent_id| agent_id == current));
+        if !selected_agent_valid {
+            draft.selected_agent_id = Some(agent_ids[0].clone());
+            draft.follow_latest_thread = true;
+        }
+    } else {
+        draft.selected_agent_id = None;
     }
 
-    egui::ScrollArea::vertical()
-        .max_height(260.0)
-        .show(ui, |ui| {
-            for message in messages {
-                let role = chat_role_label(message.role, locale);
-                let line = format!("[T{}][{}] {}", message.time, role, message.content);
-                ui.add(egui::Label::new(line).wrap().selectable(true));
-            }
-        });
+    if threads.is_empty() {
+        draft.selected_thread_id = None;
+        return;
+    }
 
-    input_active
+    if draft.follow_latest_thread {
+        let latest_for_agent = draft.selected_agent_id.as_ref().and_then(|agent_id| {
+            threads
+                .iter()
+                .find(|thread| &thread.agent_id == agent_id)
+                .map(|thread| thread.id.clone())
+        });
+        draft.selected_thread_id = latest_for_agent.or_else(|| Some(threads[0].id.clone()));
+    } else {
+        let selected_thread_valid = draft
+            .selected_thread_id
+            .as_ref()
+            .is_some_and(|thread_id| threads.iter().any(|thread| &thread.id == thread_id));
+        if !selected_thread_valid {
+            draft.selected_thread_id = Some(threads[0].id.clone());
+            draft.follow_latest_thread = true;
+        }
+    }
+
+    if let Some(selected_thread_id) = draft.selected_thread_id.as_ref() {
+        if let Some(selected_thread) = threads
+            .iter()
+            .find(|thread| &thread.id == selected_thread_id)
+        {
+            draft.selected_agent_id = Some(selected_thread.agent_id.clone());
+        }
+    }
 }
 
 fn collect_chat_agent_ids(state: &ViewerState) -> Vec<String> {
@@ -177,6 +429,105 @@ fn collect_chat_agent_ids(state: &ViewerState) -> Vec<String> {
     }
 
     ids.into_iter().collect()
+}
+
+fn collect_chat_threads(
+    state: &ViewerState,
+    thread_limit: usize,
+    message_limit: usize,
+) -> Vec<ChatThread> {
+    let mut threads = Vec::new();
+
+    for agent_id in collect_chat_agent_ids(state) {
+        let messages = collect_chat_messages_for_agent(
+            state,
+            agent_id.as_str(),
+            CHAT_THREAD_SCAN_MESSAGE_LIMIT,
+        );
+        if messages.is_empty() {
+            continue;
+        }
+
+        let mut sequence = 0usize;
+        let mut current_thread: Option<ChatThread> = None;
+
+        for message in messages {
+            let starts_new_thread =
+                matches!(message.role, LlmChatRole::Player) || current_thread.is_none();
+
+            if starts_new_thread {
+                if let Some(mut thread) = current_thread.take() {
+                    trim_messages_for_thread(&mut thread, message_limit);
+                    threads.push(thread);
+                }
+                current_thread = Some(ChatThread {
+                    id: format!("{agent_id}:{}:{sequence}", message.time),
+                    agent_id: agent_id.clone(),
+                    title: chat_thread_title(message.content.as_str(), message.time),
+                    preview: truncate_text(message.content.as_str(), CHAT_PREVIEW_CHARS),
+                    started_at: message.time,
+                    updated_at: message.time,
+                    messages: vec![message],
+                });
+                sequence += 1;
+                continue;
+            }
+
+            if let Some(thread) = current_thread.as_mut() {
+                thread.updated_at = message.time;
+                thread.preview = truncate_text(message.content.as_str(), CHAT_PREVIEW_CHARS);
+                thread.messages.push(message);
+            }
+        }
+
+        if let Some(mut thread) = current_thread.take() {
+            trim_messages_for_thread(&mut thread, message_limit);
+            threads.push(thread);
+        }
+    }
+
+    threads.sort_by(|left, right| {
+        right
+            .updated_at
+            .cmp(&left.updated_at)
+            .then_with(|| right.started_at.cmp(&left.started_at))
+    });
+    if threads.len() > thread_limit {
+        threads.truncate(thread_limit);
+    }
+
+    threads
+}
+
+fn trim_messages_for_thread(thread: &mut ChatThread, message_limit: usize) {
+    if thread.messages.len() > message_limit {
+        let overflow = thread.messages.len() - message_limit;
+        thread.messages.drain(0..overflow);
+    }
+}
+
+fn chat_thread_title(content: &str, time: u64) -> String {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return format!("Chat @ T{time}");
+    }
+    truncate_text(trimmed, CHAT_PREVIEW_CHARS)
+}
+
+fn truncate_text(content: &str, max_chars: usize) -> String {
+    let mut chars = content.trim().chars();
+    let mut preview = String::new();
+    for _ in 0..max_chars {
+        let Some(ch) = chars.next() else {
+            return preview;
+        };
+        preview.push(ch);
+    }
+
+    if chars.next().is_some() {
+        preview.push('…');
+    }
+    preview
 }
 
 fn collect_chat_messages_for_agent(
@@ -198,15 +549,98 @@ fn collect_chat_messages_for_agent(
     messages
 }
 
-fn chat_role_label(role: LlmChatRole, locale: crate::i18n::UiLocale) -> &'static str {
-    match (locale.is_zh(), role) {
-        (true, LlmChatRole::Player) => "玩家",
-        (true, LlmChatRole::Agent) => "Agent",
-        (true, LlmChatRole::Tool) => "工具",
-        (true, LlmChatRole::System) => "系统",
-        (false, LlmChatRole::Player) => "Player",
-        (false, LlmChatRole::Agent) => "Agent",
-        (false, LlmChatRole::Tool) => "Tool",
-        (false, LlmChatRole::System) => "System",
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agent_world::simulator::{AgentDecision, AgentDecisionTrace};
+
+    fn message(agent_id: &str, time: u64, role: LlmChatRole, content: &str) -> LlmChatMessageTrace {
+        LlmChatMessageTrace {
+            time,
+            agent_id: agent_id.to_string(),
+            role,
+            content: content.to_string(),
+        }
+    }
+
+    fn trace(agent_id: &str, time: u64, messages: Vec<LlmChatMessageTrace>) -> AgentDecisionTrace {
+        AgentDecisionTrace {
+            agent_id: agent_id.to_string(),
+            time,
+            decision: AgentDecision::Wait,
+            llm_input: None,
+            llm_output: None,
+            llm_error: None,
+            parse_error: None,
+            llm_diagnostics: None,
+            llm_effect_intents: Vec::new(),
+            llm_effect_receipts: Vec::new(),
+            llm_step_trace: Vec::new(),
+            llm_prompt_section_trace: Vec::new(),
+            llm_chat_messages: messages,
+        }
+    }
+
+    fn viewer_state_with_traces(traces: Vec<AgentDecisionTrace>) -> ViewerState {
+        ViewerState {
+            status: crate::ConnectionStatus::Connected,
+            snapshot: None,
+            events: Vec::new(),
+            decision_traces: traces,
+            metrics: None,
+        }
+    }
+
+    #[test]
+    fn collect_chat_threads_splits_by_player_message() {
+        let state = viewer_state_with_traces(vec![trace(
+            "agent-a",
+            4,
+            vec![
+                message("agent-a", 1, LlmChatRole::Player, "hello"),
+                message("agent-a", 2, LlmChatRole::Agent, "ack"),
+                message("agent-a", 3, LlmChatRole::Player, "next topic"),
+                message("agent-a", 4, LlmChatRole::Agent, "done"),
+            ],
+        )]);
+
+        let threads = collect_chat_threads(&state, 16, 16);
+        assert_eq!(threads.len(), 2);
+        assert_eq!(threads[0].messages.len(), 2);
+        assert_eq!(threads[1].messages.len(), 2);
+        assert_eq!(threads[0].messages[0].content, "next topic");
+    }
+
+    #[test]
+    fn collect_chat_threads_orders_latest_first_across_agents() {
+        let state = viewer_state_with_traces(vec![
+            trace(
+                "agent-a",
+                4,
+                vec![
+                    message("agent-a", 1, LlmChatRole::Player, "a1"),
+                    message("agent-a", 2, LlmChatRole::Agent, "a2"),
+                ],
+            ),
+            trace(
+                "agent-b",
+                8,
+                vec![
+                    message("agent-b", 5, LlmChatRole::Player, "b1"),
+                    message("agent-b", 8, LlmChatRole::Agent, "b2"),
+                ],
+            ),
+        ]);
+
+        let threads = collect_chat_threads(&state, 16, 16);
+        assert_eq!(threads.len(), 2);
+        assert_eq!(threads[0].agent_id, "agent-b");
+        assert_eq!(threads[1].agent_id, "agent-a");
+    }
+
+    #[test]
+    fn truncate_text_marks_ellipsis_when_exceeding_limit() {
+        assert_eq!(truncate_text("abcdef", 3), "abc…");
+        assert_eq!(truncate_text("abc", 3), "abc");
     }
 }
