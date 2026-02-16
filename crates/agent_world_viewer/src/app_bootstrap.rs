@@ -1,4 +1,6 @@
 use super::*;
+#[cfg(target_arch = "wasm32")]
+use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 pub(super) fn run_ui(addr: String, offline: bool) {
@@ -11,6 +13,17 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     let panel_mode = resolve_panel_mode_from_env();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
+    let default_plugins = DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(primary_window_config()),
+        ..default()
+    });
+    #[cfg(target_arch = "wasm32")]
+    let default_plugins = default_plugins.set(AssetPlugin {
+        // Web runtime may receive empty fallback bodies for missing `.meta` files.
+        // Skip meta probing so font/asset loading stays on the unprocessed path.
+        meta_check: AssetMetaCheck::Never,
+        ..default()
+    });
 
     App::new()
         .insert_resource(ViewerConfig {
@@ -54,10 +67,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(module_visibility_state)
         .insert_resource(module_visibility_path)
         .insert_resource(StepControlLoadingState::default())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(primary_window_config()),
-            ..default()
-        }))
+        .add_plugins(default_plugins)
         .add_plugins(EguiPlugin::default())
         .insert_resource(OfflineConfig { offline })
         .add_systems(

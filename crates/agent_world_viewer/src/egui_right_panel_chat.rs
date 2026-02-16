@@ -169,10 +169,11 @@ pub(super) fn render_chat_section(
     if input_response.lost_focus() {
         draft.input_focused = false;
     }
-    let input_active = draft.input_focused || input_response.has_focus();
+    let input_has_focus = input_response.has_focus();
+    let input_active = draft.input_focused || input_has_focus;
     let submit_by_enter = ui.input(|input| {
         should_submit_chat_on_enter(
-            input_response.has_focus(),
+            input_active,
             input.key_pressed(egui::Key::Enter),
             input.modifiers,
         )

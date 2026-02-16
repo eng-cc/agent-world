@@ -14,3 +14,8 @@ members = [
     "crates/agent_world_viewer",
 ]
 resolver = "2"
+
+[profile.dev.package.epaint]
+# On wasm32-unknown-unknown, `std::time::Instant` is unavailable.
+# epaint's debug deadlock checks call `parking_lot::try_*_for`, which panics there.
+debug-assertions = false

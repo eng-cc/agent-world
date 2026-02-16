@@ -3,8 +3,8 @@ use bevy::window::RequestRedraw;
 use bevy_egui::input::EguiInputEvent;
 use bevy_egui::{egui, EguiContext, EguiOutput, PrimaryEguiContext};
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::rc::Rc;
-use std::sync::mpsc::{self, Receiver};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{CompositionEvent, HtmlInputElement, InputEvent, KeyboardEvent};
@@ -29,7 +29,7 @@ struct WasmEguiInputBridgeClosures {
 
 pub(super) struct WasmEguiInputBridgeState {
     input: HtmlInputElement,
-    rx: Receiver<egui::Event>,
+    queue: Rc<RefCell<VecDeque<egui::Event>>>,
     focused: bool,
     _closures: WasmEguiInputBridgeClosures,
 }
@@ -84,11 +84,11 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         }
     }
 
-    let (tx, rx) = mpsc::channel::<egui::Event>();
+    let queue = Rc::new(RefCell::new(VecDeque::<egui::Event>::new()));
     let state = Rc::new(RefCell::new(BridgeInputState::default()));
 
     let input_for_input = input.clone();
-    let tx_for_input = tx.clone();
+    let queue_for_input = queue.clone();
     let state_for_input = state.clone();
     let input_closure = Closure::wrap(Box::new(move |event: InputEvent| {
         let mut state = state_for_input.borrow_mut();
@@ -107,7 +107,9 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
             return;
         }
 
-        let _ = tx_for_input.send(egui::Event::Text(text));
+        queue_for_input
+            .borrow_mut()
+            .push_back(egui::Event::Text(text));
     }) as Box<dyn FnMut(_)>);
     if input
         .add_event_listener_with_callback("input", input_closure.as_ref().unchecked_ref())
@@ -118,14 +120,16 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
     }
 
     let input_for_start = input.clone();
-    let tx_for_start = tx.clone();
+    let queue_for_start = queue.clone();
     let state_for_start = state.clone();
     let composition_start_closure = Closure::wrap(Box::new(move |_event: CompositionEvent| {
         let mut state = state_for_start.borrow_mut();
         state.composing = true;
         state.suppress_next_input = false;
         input_for_start.set_value("");
-        let _ = tx_for_start.send(egui::Event::Ime(egui::ImeEvent::Enabled));
+        queue_for_start
+            .borrow_mut()
+            .push_back(egui::Event::Ime(egui::ImeEvent::Enabled));
     }) as Box<dyn FnMut(_)>);
     if input
         .add_event_listener_with_callback(
@@ -138,10 +142,12 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         return;
     }
 
-    let tx_for_update = tx.clone();
+    let queue_for_update = queue.clone();
     let composition_update_closure = Closure::wrap(Box::new(move |event: CompositionEvent| {
         if let Some(text) = event.data() {
-            let _ = tx_for_update.send(egui::Event::Ime(egui::ImeEvent::Preedit(text)));
+            queue_for_update
+                .borrow_mut()
+                .push_back(egui::Event::Ime(egui::ImeEvent::Preedit(text)));
         }
     }) as Box<dyn FnMut(_)>);
     if input
@@ -155,7 +161,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         return;
     }
 
-    let tx_for_end = tx.clone();
+    let queue_for_end = queue.clone();
     let state_for_end = state.clone();
     let composition_end_closure = Closure::wrap(Box::new(move |event: CompositionEvent| {
         let mut state = state_for_end.borrow_mut();
@@ -164,11 +170,15 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         if let Some(text) = event.data() {
             if !text.is_empty() {
                 state.suppress_next_input = true;
-                let _ = tx_for_end.send(egui::Event::Ime(egui::ImeEvent::Commit(text)));
+                queue_for_end
+                    .borrow_mut()
+                    .push_back(egui::Event::Ime(egui::ImeEvent::Commit(text)));
             }
         }
 
-        let _ = tx_for_end.send(egui::Event::Ime(egui::ImeEvent::Disabled));
+        queue_for_end
+            .borrow_mut()
+            .push_back(egui::Event::Ime(egui::ImeEvent::Disabled));
     }) as Box<dyn FnMut(_)>);
     if input
         .add_event_listener_with_callback(
@@ -181,7 +191,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         return;
     }
 
-    let tx_for_keydown = tx.clone();
+    let queue_for_keydown = queue.clone();
     let keydown_closure = Closure::wrap(Box::new(move |event: KeyboardEvent| {
         if event.is_composing() {
             return;
@@ -189,7 +199,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         let Some(key) = map_web_key(&event.key()) else {
             return;
         };
-        let _ = tx_for_keydown.send(egui::Event::Key {
+        queue_for_keydown.borrow_mut().push_back(egui::Event::Key {
             key,
             physical_key: None,
             pressed: true,
@@ -205,7 +215,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         return;
     }
 
-    let tx_for_keyup = tx.clone();
+    let queue_for_keyup = queue.clone();
     let keyup_closure = Closure::wrap(Box::new(move |event: KeyboardEvent| {
         if event.is_composing() {
             return;
@@ -213,7 +223,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
         let Some(key) = map_web_key(&event.key()) else {
             return;
         };
-        let _ = tx_for_keyup.send(egui::Event::Key {
+        queue_for_keyup.borrow_mut().push_back(egui::Event::Key {
             key,
             physical_key: None,
             pressed: false,
@@ -231,7 +241,7 @@ pub(super) fn setup_wasm_egui_input_bridge(world: &mut World) {
 
     world.insert_non_send_resource(WasmEguiInputBridgeState {
         input,
-        rx,
+        queue,
         focused: false,
         _closures: WasmEguiInputBridgeClosures {
             _input: input_closure,
@@ -313,7 +323,14 @@ pub(super) fn pump_wasm_egui_input_bridge_events(
     };
 
     let mut emitted = false;
-    while let Ok(event) = bridge.rx.try_recv() {
+    loop {
+        let event = {
+            let mut queue = bridge.queue.borrow_mut();
+            queue.pop_front()
+        };
+        let Some(event) = event else {
+            break;
+        };
         writer.write(EguiInputEvent { context, event });
         emitted = true;
     }

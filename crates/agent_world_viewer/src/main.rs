@@ -1,11 +1,16 @@
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(target_arch = "wasm32")]
+use std::collections::VecDeque;
 #[cfg(not(target_arch = "wasm32"))]
 use std::io::{BufRead, Write};
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::TcpStream;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::mpsc::{Receiver, Sender};
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Mutex;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
@@ -207,6 +212,78 @@ struct WasmWsRuntime {
 #[cfg(target_arch = "wasm32")]
 thread_local! {
     static WASM_WS_RUNTIME: RefCell<Option<WasmWsRuntime>> = RefCell::new(None);
+    static WASM_WS_REQUEST_QUEUE: RefCell<VecDeque<ViewerRequest>> = RefCell::new(VecDeque::new());
+    static WASM_WS_RESPONSE_QUEUE: RefCell<VecDeque<ViewerResponse>> = RefCell::new(VecDeque::new());
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Debug, Clone, Copy)]
+struct WasmQueueSendError;
+
+#[cfg(target_arch = "wasm32")]
+impl std::fmt::Display for WasmQueueSendError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("wasm queue unavailable")
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl std::error::Error for WasmQueueSendError {}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Copy, Default)]
+struct WasmViewerRequestTx;
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Copy, Default)]
+struct WasmViewerResponseTx;
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Copy, Default)]
+struct WasmViewerResponseRx;
+
+#[cfg(target_arch = "wasm32")]
+impl WasmViewerRequestTx {
+    fn send(&self, request: ViewerRequest) -> Result<(), WasmQueueSendError> {
+        WASM_WS_REQUEST_QUEUE.with(|queue| {
+            queue.borrow_mut().push_back(request);
+        });
+        Ok(())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl WasmViewerResponseTx {
+    fn send(&self, response: ViewerResponse) -> Result<(), WasmQueueSendError> {
+        WASM_WS_RESPONSE_QUEUE.with(|queue| {
+            queue.borrow_mut().push_back(response);
+        });
+        Ok(())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl WasmViewerResponseRx {
+    fn try_recv(&self) -> Result<ViewerResponse, mpsc::TryRecvError> {
+        WASM_WS_RESPONSE_QUEUE.with(|queue| match queue.borrow_mut().pop_front() {
+            Some(value) => Ok(value),
+            None => Err(mpsc::TryRecvError::Empty),
+        })
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn wasm_reset_ws_queues() {
+    WASM_WS_REQUEST_QUEUE.with(|queue| queue.borrow_mut().clear());
+    WASM_WS_RESPONSE_QUEUE.with(|queue| queue.borrow_mut().clear());
+}
+
+#[cfg(target_arch = "wasm32")]
+fn wasm_try_recv_request() -> Result<ViewerRequest, mpsc::TryRecvError> {
+    WASM_WS_REQUEST_QUEUE.with(|queue| match queue.borrow_mut().pop_front() {
+        Some(request) => Ok(request),
+        None => Err(mpsc::TryRecvError::Empty),
+    })
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -262,10 +339,18 @@ struct OfflineConfig {
     offline: bool,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Resource)]
 struct ViewerClient {
     tx: Sender<ViewerRequest>,
     rx: Mutex<Receiver<ViewerResponse>>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Resource, Clone)]
+struct ViewerClient {
+    tx: WasmViewerRequestTx,
+    rx: WasmViewerResponseRx,
 }
 
 #[derive(Resource)]
@@ -474,10 +559,13 @@ struct BaseScale(Vec3);
 
 fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
     let (tx, rx) = spawn_viewer_client(config.addr.clone());
+    #[cfg(not(target_arch = "wasm32"))]
     commands.insert_resource(ViewerClient {
         tx,
         rx: Mutex::new(rx),
     });
+    #[cfg(target_arch = "wasm32")]
+    commands.insert_resource(ViewerClient { tx, rx });
     commands.insert_resource(ViewerState::default());
 }
 
@@ -523,9 +611,11 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
 }
 
 #[cfg(target_arch = "wasm32")]
-fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerResponse>) {
-    let (tx_out, rx_out) = mpsc::channel::<ViewerRequest>();
-    let (tx_in, rx_in) = mpsc::channel::<ViewerResponse>();
+fn spawn_viewer_client(addr: String) -> (WasmViewerRequestTx, WasmViewerResponseRx) {
+    wasm_reset_ws_queues();
+    let tx_out = WasmViewerRequestTx;
+    let tx_in = WasmViewerResponseTx;
+    let rx_in = WasmViewerResponseRx;
 
     let ws_url = normalize_ws_addr(&addr);
     let socket = match WebSocket::new(&ws_url) {
@@ -613,7 +703,7 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
     let sender_socket = socket.clone();
     let sender_tx = tx_in.clone();
     let sender_loop = Interval::new(16, move || {
-        while let Ok(request) = rx_out.try_recv() {
+        while let Ok(request) = wasm_try_recv_request() {
             send_request_ws(&sender_socket, &request, &sender_tx);
         }
     });
@@ -633,7 +723,7 @@ fn spawn_viewer_client(addr: String) -> (Sender<ViewerRequest>, Receiver<ViewerR
 }
 
 #[cfg(target_arch = "wasm32")]
-fn send_request_ws(socket: &WebSocket, request: &ViewerRequest, tx_in: &Sender<ViewerResponse>) {
+fn send_request_ws(socket: &WebSocket, request: &ViewerRequest, tx_in: &WasmViewerResponseTx) {
     match serde_json::to_string(request) {
         Ok(payload) => {
             if let Err(err) = socket.send_with_str(&payload) {
@@ -1207,6 +1297,7 @@ fn poll_viewer_messages(
     let Some(client) = client else {
         return;
     };
+    #[cfg(not(target_arch = "wasm32"))]
     let receiver = match client.rx.lock() {
         Ok(receiver) => receiver,
         Err(_) => {
@@ -1214,6 +1305,8 @@ fn poll_viewer_messages(
             return;
         }
     };
+    #[cfg(target_arch = "wasm32")]
+    let receiver = &client.rx;
 
     loop {
         match receiver.try_recv() {
