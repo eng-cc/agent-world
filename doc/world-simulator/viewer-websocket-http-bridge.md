@@ -31,6 +31,7 @@
 - 规则：
   - `ws -> tcp`：text payload 追加 `\n` 后写入 upstream。
   - `tcp -> ws`：按行读取后去掉换行，作为 text payload 回推。
+  - `ws disconnect -> upstream cleanup`：当浏览器连接关闭时，bridge 必须主动 `shutdown` upstream socket，确保上游 live server 会话立即释放并允许后续刷新重连。
 
 ### 3) Web Viewer 连接约定
 - wasm 默认连接地址：`ws://127.0.0.1:5011`（可被 URL 参数覆盖）。
@@ -45,7 +46,7 @@
 
 ## 风险
 - 协议阻塞风险：bridge 任一侧阻塞可能导致另一侧堆积。
-  - 缓解：采用读写分离与短周期轮询，连接断开即快速回收。
+  - 缓解：采用读写分离与短周期轮询，连接断开时显式关闭 upstream socket 并回收读线程。
 - 浏览器兼容风险：wasm 侧 WebSocket 错误处理不足会导致“假在线”。
   - 缓解：显式上报 `onerror/onclose` 到 `ViewerState.status`。
 - 配置误用风险：`--bind` 与 `--web-bind` 混淆导致连错端口。

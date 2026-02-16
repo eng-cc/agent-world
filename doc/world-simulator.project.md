@@ -150,6 +150,7 @@
 - [x] 输出 Viewer WebSocket/HTTP bridge 设计文档（`doc/world-simulator/viewer-websocket-http-bridge.md`）
 - [x] 输出 Viewer WebSocket/HTTP bridge 项目管理文档（`doc/world-simulator/viewer-websocket-http-bridge.project.md`）
 - [x] Viewer Web 在线 bridge 接入（WebSocket/HTTP -> live TCP）
+- [x] Viewer Web bridge 刷新重连稳定性修复（断连回收 upstream + 重连回归测试）
 
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限

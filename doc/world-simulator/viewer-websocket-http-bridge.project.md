@@ -22,6 +22,10 @@
 - [x] WLB4.2 执行 Web 端闭环验证（live server + web viewer + Playwright）
 - [x] WLB4.3 更新项目状态、开发日志并收口
 
+### WLB5 连接稳定性修复
+- [x] WLB5.1 修复 websocket 刷新后无法重连（断连时主动释放 upstream socket）
+- [x] WLB5.2 增加 bridge 重连回归测试（覆盖“首连断开后二次连接可用”）
+
 ## 依赖
 - `crates/agent_world/src/viewer/live.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
@@ -32,6 +36,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WLB1~WLB4 全部完成。
-- 下一步：按 Web 默认闭环口径维持回归，必要时补充 bridge 稳定性压力测试。
-- 最近更新：2026-02-15（完成 live+web+Playwright 在线闭环并收口文档状态）。
+- 当前阶段：WLB1~WLB5 全部完成。
+- 下一步：按 Web 默认闭环口径维持回归，必要时补充 bridge 稳定性压力测试（慢消费者/并发连接）。
+- 最近更新：2026-02-16（完成刷新重连修复与回归测试）。
