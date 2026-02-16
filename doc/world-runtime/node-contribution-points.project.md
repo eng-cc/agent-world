@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] NCP-1：完成设计文档与项目管理文档。
-- [ ] NCP-2：实现节点积分结算引擎（额外计算/存储/在线/惩罚 + 积分台账）。
+- [x] NCP-2：实现节点积分结算引擎（额外计算/存储/在线/惩罚 + 积分台账）。
 - [ ] NCP-3：补齐单元测试并在 runtime 模块导出接口，执行 test_tier_required 回归。
 - [ ] NCP-4：回写项目状态与 devlog，完成收口。
 
@@ -13,5 +13,5 @@
 - `doc/world-runtime/blockchain-p2pfs-hardening-phase2.md`
 
 ## 状态
-- 当前阶段：NCP-1 已完成，NCP-2~NCP-4 待执行。
+- 当前阶段：NCP-1~NCP-2 已完成，NCP-3~NCP-4 待执行。
 - 最近更新：2026-02-16。

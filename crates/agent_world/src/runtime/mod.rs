@@ -21,6 +21,7 @@ mod m4_builtin_wasm_artifact;
 mod manifest;
 mod module_store;
 mod modules;
+mod node_points;
 mod policy;
 mod rules;
 mod segmenter;
@@ -79,6 +80,12 @@ pub use modules::{
     ModuleSubscriptionStage, ModuleUpgrade, ProductModuleApi, ProductModuleSpec,
     ProductValidationDecision, ProductValidationRequest, RecipeExecutionPlan,
     RecipeExecutionRequest, RecipeModuleApi, RecipeModuleSpec,
+};
+
+// Node points
+pub use node_points::{
+    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
+    NodeSettlement,
 };
 
 // Blob store
