@@ -1,11 +1,11 @@
-use super::blob_store::BlobStore;
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_bootstrap::{bootstrap_world_from_head, bootstrap_world_from_head_with_dht};
 use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
 use super::head_tracking::{HeadTracker, HeadUpdateDecision};
-use super::world::World;
+use agent_world::runtime::World;
+use agent_world_distfs::BlobStore;
 
 #[derive(Debug, Clone)]
 pub struct HeadFollower {

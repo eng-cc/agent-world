@@ -2,17 +2,25 @@
 
 use serde::Serialize;
 
-use super::blob_store::{blake3_hex, BlobStore};
 use super::distributed::{SnapshotManifest, WorldBlock, WorldHeadAnnounce};
-use super::distributed_validation::HeadValidationResult as DistributedHeadValidationResult;
 use super::error::WorldError;
-use super::events::CausedBy;
-use super::segmenter::JournalSegmentRef;
-use super::snapshot::{Journal, Snapshot};
-use super::types::ActionId;
 use super::util::to_canonical_cbor;
-use super::world::World;
-use super::world_event::{WorldEvent, WorldEventBody};
+use agent_world::runtime::{
+    ActionId, CausedBy, Journal, Snapshot, World, WorldError as RuntimeWorldError, WorldEvent,
+    WorldEventBody,
+};
+use agent_world_distfs::{
+    assemble_journal as distfs_assemble_journal, assemble_snapshot as distfs_assemble_snapshot,
+    blake3_hex, BlobStore,
+};
+use agent_world_proto::distributed_storage::JournalSegmentRef;
+
+#[derive(Debug, Clone)]
+pub struct HeadValidationResult {
+    pub block_hash: String,
+    pub snapshot: Snapshot,
+    pub journal: Journal,
+}
 
 pub fn validate_head_update(
     head: &WorldHeadAnnounce,
@@ -20,7 +28,7 @@ pub fn validate_head_update(
     snapshot_manifest: &SnapshotManifest,
     journal_segments: &[JournalSegmentRef],
     store: &impl BlobStore,
-) -> Result<DistributedHeadValidationResult, WorldError> {
+) -> Result<HeadValidationResult, WorldError> {
     if head.world_id != block.world_id {
         return Err(WorldError::DistributedValidationFailed {
             reason: format!(
@@ -115,9 +123,10 @@ pub fn validate_head_update(
         });
     }
 
-    World::from_snapshot(snapshot.clone(), journal.clone())?;
+    World::from_snapshot(snapshot.clone(), journal.clone())
+        .map_err(runtime_world_error_to_proto)?;
 
-    Ok(DistributedHeadValidationResult {
+    Ok(HeadValidationResult {
         block_hash,
         snapshot,
         journal,
@@ -128,86 +137,15 @@ pub fn assemble_snapshot(
     manifest: &SnapshotManifest,
     store: &impl BlobStore,
 ) -> Result<Snapshot, WorldError> {
-    let mut bytes = Vec::new();
-    for chunk in &manifest.chunks {
-        let chunk_bytes = store.get(&chunk.content_hash)?;
-        let actual_hash = blake3_hex(&chunk_bytes);
-        if actual_hash != chunk.content_hash {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "snapshot chunk hash mismatch: expected={}, actual={}",
-                    chunk.content_hash, actual_hash
-                ),
-            });
-        }
-        bytes.extend_from_slice(&chunk_bytes);
-    }
-
-    let actual_root = blake3_hex(&bytes);
-    if actual_root != manifest.state_root {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "snapshot state_root mismatch: expected={}, actual={}",
-                manifest.state_root, actual_root
-            ),
-        });
-    }
-
-    Ok(serde_cbor::from_slice(&bytes)?)
+    distfs_assemble_snapshot(manifest, store)
 }
 
 pub fn assemble_journal(
     segments: &[JournalSegmentRef],
     store: &impl BlobStore,
 ) -> Result<Journal, WorldError> {
-    let mut journal = Journal::new();
-    let mut expected_next: Option<u64> = None;
-
-    for segment in segments {
-        let segment_bytes = store.get(&segment.content_hash)?;
-        let actual_hash = blake3_hex(&segment_bytes);
-        if actual_hash != segment.content_hash {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "journal segment hash mismatch: expected={}, actual={}",
-                    segment.content_hash, actual_hash
-                ),
-            });
-        }
-        let events: Vec<WorldEvent> = serde_cbor::from_slice(&segment_bytes)?;
-        let (first, last) = match (events.first(), events.last()) {
-            (Some(first), Some(last)) => (first, last),
-            _ => {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: "journal segment empty".to_string(),
-                })
-            }
-        };
-        if first.id != segment.from_event_id || last.id != segment.to_event_id {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "journal segment range mismatch: segment={}..{}, events={}..{}",
-                    segment.from_event_id, segment.to_event_id, first.id, last.id
-                ),
-            });
-        }
-        if let Some(expected) = expected_next {
-            if first.id != expected {
-                return Err(WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "journal discontinuity: expected={}, got={}",
-                        expected, first.id
-                    ),
-                });
-            }
-        }
-        expected_next = last.id.checked_add(1);
-        for event in events {
-            journal.append(event);
-        }
-    }
-
-    Ok(journal)
+    let events = distfs_assemble_journal(segments, store, |event: &WorldEvent| event.id)?;
+    Ok(Journal { events })
 }
 
 fn hash_actions(journal: &Journal) -> Result<String, WorldError> {
@@ -243,13 +181,20 @@ fn hash_cbor<T: Serialize>(value: &T) -> Result<String, WorldError> {
     Ok(blake3_hex(&bytes))
 }
 
+fn runtime_world_error_to_proto(error: RuntimeWorldError) -> WorldError {
+    WorldError::DistributedValidationFailed {
+        reason: format!("runtime world validation failed: {error:?}"),
+    }
+}
+
 #[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, LocalCasStore, World};
+    use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
+    use agent_world_distfs::LocalCasStore;
 
     use super::super::distributed_storage::{store_execution_result, ExecutionWriteConfig};
     use super::*;

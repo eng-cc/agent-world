@@ -1,10 +1,10 @@
-use super::blob_store::{blake3_hex, BlobStore};
-use super::distributed::{SnapshotManifest, WorldHeadAnnounce};
+use super::distributed::WorldHeadAnnounce;
 use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
 use super::distributed_validation::{validate_head_update, HeadValidationResult};
 use super::error::WorldError;
 use super::replay_flow::load_manifest_and_segments;
+use agent_world_distfs::{blake3_hex, BlobStore};
 
 pub fn replay_validate_head(
     world_id: &str,
@@ -84,9 +84,9 @@ mod tests {
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::World;
-    use agent_world::runtime::{Action, LocalCasStore};
+    use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
+    use agent_world_distfs::{BlobStore as _, LocalCasStore};
     use agent_world_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse,
         GetWorldHeadRequest, GetWorldHeadResponse, RR_FETCH_BLOB, RR_GET_BLOCK, RR_GET_WORLD_HEAD,

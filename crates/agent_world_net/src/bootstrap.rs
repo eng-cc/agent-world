@@ -1,4 +1,3 @@
-use super::blob_store::BlobStore;
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
@@ -6,7 +5,8 @@ use super::distributed_observer_replay::{
     replay_validate_with_head, replay_validate_with_head_and_dht,
 };
 use super::error::WorldError;
-use super::world::World;
+use agent_world::runtime::{World, WorldError as RuntimeWorldError};
+use agent_world_distfs::BlobStore;
 
 pub fn bootstrap_world_from_head(
     head: &WorldHeadAnnounce,
@@ -14,7 +14,7 @@ pub fn bootstrap_world_from_head(
     store: &impl BlobStore,
 ) -> Result<World, WorldError> {
     let result = replay_validate_with_head(head, client, store)?;
-    World::from_snapshot(result.snapshot, result.journal)
+    World::from_snapshot(result.snapshot, result.journal).map_err(runtime_world_error_to_proto)
 }
 
 pub fn bootstrap_world_from_head_with_dht(
@@ -24,7 +24,7 @@ pub fn bootstrap_world_from_head_with_dht(
     store: &impl BlobStore,
 ) -> Result<World, WorldError> {
     let result = replay_validate_with_head_and_dht(head, dht, client, store)?;
-    World::from_snapshot(result.snapshot, result.journal)
+    World::from_snapshot(result.snapshot, result.journal).map_err(runtime_world_error_to_proto)
 }
 
 pub fn bootstrap_world_from_dht(
@@ -41,15 +41,21 @@ pub fn bootstrap_world_from_dht(
     bootstrap_world_from_head_with_dht(&head, dht, client, store)
 }
 
+fn runtime_world_error_to_proto(error: RuntimeWorldError) -> WorldError {
+    WorldError::DistributedValidationFailed {
+        reason: format!("runtime world validation failed: {error:?}"),
+    }
+}
+
 #[cfg(all(test, feature = "self_tests"))]
 mod tests {
     use std::fs;
     use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::World;
-    use agent_world::runtime::{Action, LocalCasStore};
+    use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
+    use agent_world_distfs::{BlobStore as _, LocalCasStore};
     use agent_world_proto::distributed::{
         FetchBlobRequest, FetchBlobResponse, GetBlockRequest, GetBlockResponse, RR_FETCH_BLOB,
         RR_GET_BLOCK,

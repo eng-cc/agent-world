@@ -2,19 +2,15 @@
 
 use serde::Serialize;
 
-use super::blob_store::{blake3_hex, BlobStore};
 use super::distributed::{BlobRef, BlockAnnounce, WorldBlock, WorldHeadAnnounce};
 use super::distributed_storage::{
     ExecutionWriteConfig as DistributedExecutionWriteConfig,
     ExecutionWriteResult as DistributedExecutionWriteResult,
 };
 use super::error::WorldError;
-use super::events::CausedBy;
-use super::segmenter::{segment_journal, segment_snapshot, SegmentConfig};
-use super::snapshot::{Journal, Snapshot};
-use super::types::ActionId;
 use super::util::to_canonical_cbor;
-use super::world_event::WorldEventBody;
+use agent_world::runtime::{ActionId, CausedBy, Journal, Snapshot, WorldEventBody};
+use agent_world_distfs::{blake3_hex, segment_journal, segment_snapshot, BlobStore};
 
 pub fn store_execution_result(
     world_id: &str,
@@ -31,7 +27,6 @@ pub fn store_execution_result(
         segment: segment_config,
         codec,
     } = config;
-    let segment_config: SegmentConfig = segment_config;
     let snapshot_manifest =
         segment_snapshot(snapshot, world_id, snapshot_epoch, store, segment_config)?;
     let snapshot_manifest_bytes = to_canonical_cbor(&snapshot_manifest)?;
@@ -47,7 +42,8 @@ pub fn store_execution_result(
             .collect(),
     };
 
-    let journal_segments = segment_journal(journal, store, segment_config)?;
+    let journal_segments =
+        segment_journal(&journal.events, store, segment_config, |event| event.id)?;
     let journal_segments_bytes = to_canonical_cbor(&journal_segments)?;
     let journal_segments_hash = store.put_bytes(&journal_segments_bytes)?;
     let journal_segments_ref = BlobRef {
@@ -163,8 +159,9 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use agent_world::runtime::{Action, LocalCasStore, World};
+    use agent_world::runtime::{Action, World};
     use agent_world::GeoPos;
+    use agent_world_distfs::{BlobStore as _, LocalCasStore};
 
     use super::super::distributed_storage::ExecutionWriteConfig;
     use super::*;

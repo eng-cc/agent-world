@@ -88,8 +88,8 @@ pub mod distributed_storage {
 
 #[cfg(feature = "runtime_bridge")]
 pub mod distributed_validation {
+    pub use super::head_validation::HeadValidationResult;
     pub use super::head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
-    pub use super::HeadValidationResult;
 }
 
 pub mod error {

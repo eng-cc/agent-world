@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use super::blob_store::BlobStore;
 use super::distributed::{topic_event, topic_head, WorldHeadAnnounce};
 use super::distributed_client::DistributedClient;
 use super::distributed_dht::DistributedDht;
@@ -11,7 +10,8 @@ use super::head_sync::{
     compose_head_sync_report, follow_head_sync, HeadFollowReport as GenericHeadFollowReport,
     HeadSyncReport as GenericHeadSyncReport, HeadSyncResult as GenericHeadSyncResult,
 };
-use super::world::World;
+use agent_world::runtime::World;
+use agent_world_distfs::BlobStore;
 
 #[derive(Debug, Clone)]
 pub struct ObserverSubscription {
