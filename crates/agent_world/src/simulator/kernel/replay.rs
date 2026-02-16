@@ -5,7 +5,7 @@ use super::super::init::{
 use super::super::persist::PersistError;
 use super::super::power::PowerEvent;
 use super::super::types::{ResourceKind, ResourceOwner, StockError};
-use super::super::world_model::Location;
+use super::super::world_model::{Factory, Location};
 use super::super::ChunkState;
 use super::types::{WorldEvent, WorldEventKind};
 use super::WorldKernel;
@@ -181,6 +181,94 @@ impl WorldKernel {
                     *electricity_cost,
                 )?;
                 self.add_to_owner_for_replay(owner, ResourceKind::Hardware, *hardware_output)?;
+            }
+            WorldEventKind::FactoryBuilt {
+                owner,
+                location_id,
+                factory_id,
+                factory_kind,
+                electricity_cost,
+                hardware_cost,
+            } => {
+                if factory_id.trim().is_empty() || factory_kind.trim().is_empty() {
+                    return Err(PersistError::ReplayConflict {
+                        message: "invalid factory build event payload".to_string(),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid factory owner: {reason:?}"),
+                    })?;
+                if !self.model.locations.contains_key(location_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("factory location not found: {location_id}"),
+                    });
+                }
+                if self.model.factories.contains_key(factory_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("factory already exists: {factory_id}"),
+                    });
+                }
+                self.remove_from_owner_for_replay(
+                    owner,
+                    ResourceKind::Electricity,
+                    *electricity_cost,
+                )?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Hardware, *hardware_cost)?;
+                self.model.factories.insert(
+                    factory_id.clone(),
+                    Factory {
+                        id: factory_id.clone(),
+                        owner: owner.clone(),
+                        location_id: location_id.clone(),
+                        kind: factory_kind.clone(),
+                    },
+                );
+            }
+            WorldEventKind::RecipeScheduled {
+                owner,
+                factory_id,
+                recipe_id,
+                batches,
+                electricity_cost,
+                hardware_cost,
+                data_output,
+                finished_product_id,
+                finished_product_units,
+            } => {
+                if recipe_id.trim().is_empty()
+                    || finished_product_id.trim().is_empty()
+                    || *batches <= 0
+                    || *finished_product_units < 0
+                {
+                    return Err(PersistError::ReplayConflict {
+                        message: "invalid recipe scheduled event payload".to_string(),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid recipe owner: {reason:?}"),
+                    })?;
+                let Some(factory) = self.model.factories.get(factory_id) else {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("factory not found for recipe: {factory_id}"),
+                    });
+                };
+                if &factory.owner != owner {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("factory owner mismatch: {factory_id}"),
+                    });
+                }
+
+                self.remove_from_owner_for_replay(
+                    owner,
+                    ResourceKind::Electricity,
+                    *electricity_cost,
+                )?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Hardware, *hardware_cost)?;
+                if *data_output > 0 {
+                    self.add_to_owner_for_replay(owner, ResourceKind::Data, *data_output)?;
+                }
             }
             WorldEventKind::ChunkGenerated {
                 coord,

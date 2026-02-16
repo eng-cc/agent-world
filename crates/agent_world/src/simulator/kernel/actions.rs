@@ -4,9 +4,18 @@ use super::super::chunking::CHUNK_SIZE_X_CM;
 use super::super::module_visual::ModuleVisualAnchor;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
 use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
-use super::super::world_model::{Agent, Location};
+use super::super::world_model::{Agent, Factory, Location};
 use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
+
+#[derive(Debug, Clone, Copy)]
+struct RecipePlan {
+    electricity_per_batch: i64,
+    hardware_per_batch: i64,
+    data_output_per_batch: i64,
+    finished_product_id: &'static str,
+    finished_product_units_per_batch: i64,
+}
 
 impl WorldKernel {
     pub(super) fn apply_action(&mut self, action: Action) -> WorldEventKind {
@@ -567,6 +576,229 @@ impl WorldKernel {
                     hardware_output,
                 }
             }
+            Action::BuildFactory {
+                owner,
+                location_id,
+                factory_id,
+                factory_kind,
+            } => {
+                if factory_id.trim().is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: 0 },
+                    };
+                }
+                if factory_kind.trim().is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["factory_kind cannot be empty".to_string()],
+                        },
+                    };
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                }
+                if self.model.factories.contains_key(&factory_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityAlreadyExists {
+                            facility_id: factory_id,
+                        },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                let site_owner = ResourceOwner::Location {
+                    location_id: location_id.clone(),
+                };
+                if let Err(reason) = self.ensure_colocated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) = self.ensure_owner_chunks_generated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                let electricity_cost = self.config.economy.factory_build_electricity_cost;
+                let hardware_cost = self.config.economy.factory_build_hardware_cost;
+
+                let available_electricity = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if available_electricity < electricity_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner,
+                            kind: ResourceKind::Electricity,
+                            requested: electricity_cost,
+                            available: available_electricity,
+                        },
+                    };
+                }
+                let available_hardware = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Hardware))
+                    .unwrap_or(0);
+                if available_hardware < hardware_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner,
+                            kind: ResourceKind::Hardware,
+                            requested: hardware_cost,
+                            available: available_hardware,
+                        },
+                    };
+                }
+
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Electricity, electricity_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Hardware, hardware_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                self.model.factories.insert(
+                    factory_id.clone(),
+                    Factory {
+                        id: factory_id.clone(),
+                        owner: owner.clone(),
+                        location_id: location_id.clone(),
+                        kind: factory_kind.clone(),
+                    },
+                );
+                WorldEventKind::FactoryBuilt {
+                    owner,
+                    location_id,
+                    factory_id,
+                    factory_kind,
+                    electricity_cost,
+                    hardware_cost,
+                }
+            }
+            Action::ScheduleRecipe {
+                owner,
+                factory_id,
+                recipe_id,
+                batches,
+            } => {
+                if recipe_id.trim().is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["recipe_id cannot be empty".to_string()],
+                        },
+                    };
+                }
+                if batches <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount: batches },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                let Some(factory) = self.model.factories.get(&factory_id).cloned() else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityNotFound {
+                            facility_id: factory_id,
+                        },
+                    };
+                };
+                if factory.owner != owner {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["factory owner mismatch".to_string()],
+                        },
+                    };
+                }
+                let site_owner = ResourceOwner::Location {
+                    location_id: factory.location_id.clone(),
+                };
+                if let Err(reason) = self.ensure_colocated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) = self.ensure_owner_chunks_generated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                let Some(plan) = self.recipe_plan(recipe_id.as_str()) else {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("unsupported recipe_id: {recipe_id}")],
+                        },
+                    };
+                };
+                let recipe_scale = batches;
+                let electricity_cost = plan.electricity_per_batch.saturating_mul(recipe_scale);
+                let hardware_cost = plan.hardware_per_batch.saturating_mul(recipe_scale);
+                let data_output = plan.data_output_per_batch.saturating_mul(recipe_scale);
+                let finished_product_units = plan
+                    .finished_product_units_per_batch
+                    .saturating_mul(recipe_scale);
+
+                let available_electricity = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if available_electricity < electricity_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner,
+                            kind: ResourceKind::Electricity,
+                            requested: electricity_cost,
+                            available: available_electricity,
+                        },
+                    };
+                }
+                let available_hardware = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Hardware))
+                    .unwrap_or(0);
+                if available_hardware < hardware_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner,
+                            kind: ResourceKind::Hardware,
+                            requested: hardware_cost,
+                            available: available_hardware,
+                        },
+                    };
+                }
+
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Electricity, electricity_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Hardware, hardware_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if data_output > 0 {
+                    if let Err(reason) = self.add_to_owner(&owner, ResourceKind::Data, data_output)
+                    {
+                        return WorldEventKind::ActionRejected { reason };
+                    }
+                }
+
+                WorldEventKind::RecipeScheduled {
+                    owner,
+                    factory_id,
+                    recipe_id,
+                    batches,
+                    electricity_cost,
+                    hardware_cost,
+                    data_output,
+                    finished_product_id: plan.finished_product_id.to_string(),
+                    finished_product_units,
+                }
+            }
         }
     }
 
@@ -932,6 +1164,35 @@ impl WorldKernel {
             .saturating_mul(economy.refine_hardware_yield_ppm)
             .saturating_div(PPM_BASE);
         (electricity_cost, hardware_output)
+    }
+
+    fn recipe_plan(&self, recipe_id: &str) -> Option<RecipePlan> {
+        let economy = &self.config.economy;
+        let normalized = recipe_id.trim().to_ascii_lowercase();
+        match normalized.as_str() {
+            "recipe.assembler.control_chip" | "recipe.control_chip" => Some(RecipePlan {
+                electricity_per_batch: economy.recipe_electricity_cost_per_batch,
+                hardware_per_batch: economy.recipe_hardware_cost_per_batch,
+                data_output_per_batch: economy.recipe_data_output_per_batch,
+                finished_product_id: "control_chip",
+                finished_product_units_per_batch: 1,
+            }),
+            "recipe.assembler.motor_mk1" | "recipe.motor_mk1" => Some(RecipePlan {
+                electricity_per_batch: economy.recipe_electricity_cost_per_batch.saturating_mul(2),
+                hardware_per_batch: economy.recipe_hardware_cost_per_batch.saturating_mul(2),
+                data_output_per_batch: economy.recipe_data_output_per_batch.saturating_mul(2),
+                finished_product_id: "motor_mk1",
+                finished_product_units_per_batch: 1,
+            }),
+            "recipe.assembler.logistics_drone" | "recipe.logistics_drone" => Some(RecipePlan {
+                electricity_per_batch: economy.recipe_electricity_cost_per_batch.saturating_mul(4),
+                hardware_per_batch: economy.recipe_hardware_cost_per_batch.saturating_mul(4),
+                data_output_per_batch: economy.recipe_data_output_per_batch.saturating_mul(4),
+                finished_product_id: "logistics_drone",
+                finished_product_units_per_batch: 1,
+            }),
+            _ => None,
+        }
     }
 
     fn owner_pos(

@@ -1136,6 +1136,187 @@ fn refine_compound_rejects_when_electricity_insufficient() {
     }
 }
 
+#[test]
+fn build_factory_consumes_resources_and_persists_factory_state() {
+    let mut config = WorldConfig::default();
+    config.economy.factory_build_electricity_cost = 7;
+    config.economy.factory_build_hardware_cost = 3;
+    config.economy.refine_electricity_cost_per_kg = 1;
+    config.economy.refine_hardware_yield_ppm = 1_000;
+
+    let mut kernel = WorldKernel::with_config(config);
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 120;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-factory".to_string(),
+        name: "factory-site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-builder".to_string(),
+        location_id: "loc-factory".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-builder".to_string(),
+        max_amount: 30,
+    });
+    kernel.step().expect("harvest for factory build");
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        compound_mass_g: 3_000,
+    });
+    kernel.step().expect("refine hardware for factory build");
+
+    kernel.submit_action(Action::BuildFactory {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        location_id: "loc-factory".to_string(),
+        factory_id: "factory.alpha".to_string(),
+        factory_kind: "factory.assembler.mk1".to_string(),
+    });
+
+    let event = kernel.step().expect("build factory");
+    match event.kind {
+        WorldEventKind::FactoryBuilt {
+            owner,
+            location_id,
+            factory_id,
+            factory_kind,
+            electricity_cost,
+            hardware_cost,
+        } => {
+            assert_eq!(
+                owner,
+                ResourceOwner::Agent {
+                    agent_id: "agent-builder".to_string()
+                }
+            );
+            assert_eq!(location_id, "loc-factory");
+            assert_eq!(factory_id, "factory.alpha");
+            assert_eq!(factory_kind, "factory.assembler.mk1");
+            assert_eq!(electricity_cost, 7);
+            assert_eq!(hardware_cost, 3);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel
+        .model()
+        .agents
+        .get("agent-builder")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 20);
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 0);
+    assert!(kernel.model().factories.contains_key("factory.alpha"));
+}
+
+#[test]
+fn schedule_recipe_consumes_inputs_and_outputs_data() {
+    let mut config = WorldConfig::default();
+    config.economy.factory_build_electricity_cost = 0;
+    config.economy.factory_build_hardware_cost = 0;
+    config.economy.refine_electricity_cost_per_kg = 1;
+    config.economy.refine_hardware_yield_ppm = 1_000;
+    config.economy.recipe_electricity_cost_per_batch = 5;
+    config.economy.recipe_hardware_cost_per_batch = 2;
+    config.economy.recipe_data_output_per_batch = 3;
+    config.physics.max_harvest_per_tick = 100;
+
+    let mut kernel = WorldKernel::with_config(config);
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 200;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-factory".to_string(),
+        name: "factory-site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-builder".to_string(),
+        location_id: "loc-factory".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::HarvestRadiation {
+        agent_id: "agent-builder".to_string(),
+        max_amount: 80,
+    });
+    kernel.step().expect("harvest for recipe");
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        compound_mass_g: 16_000,
+    });
+    kernel.step().expect("refine hardware for recipe");
+
+    kernel.submit_action(Action::BuildFactory {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        location_id: "loc-factory".to_string(),
+        factory_id: "factory.alpha".to_string(),
+        factory_kind: "factory.assembler.mk1".to_string(),
+    });
+    kernel.step().expect("build factory");
+
+    kernel.submit_action(Action::ScheduleRecipe {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        factory_id: "factory.alpha".to_string(),
+        recipe_id: "recipe.assembler.logistics_drone".to_string(),
+        batches: 2,
+    });
+    let event = kernel.step().expect("schedule recipe");
+    match event.kind {
+        WorldEventKind::RecipeScheduled {
+            owner,
+            factory_id,
+            recipe_id,
+            batches,
+            electricity_cost,
+            hardware_cost,
+            data_output,
+            finished_product_id,
+            finished_product_units,
+        } => {
+            assert_eq!(
+                owner,
+                ResourceOwner::Agent {
+                    agent_id: "agent-builder".to_string()
+                }
+            );
+            assert_eq!(factory_id, "factory.alpha");
+            assert_eq!(recipe_id, "recipe.assembler.logistics_drone");
+            assert_eq!(batches, 2);
+            assert_eq!(electricity_cost, 40);
+            assert_eq!(hardware_cost, 16);
+            assert_eq!(data_output, 24);
+            assert_eq!(finished_product_id, "logistics_drone");
+            assert_eq!(finished_product_units, 2);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel
+        .model()
+        .agents
+        .get("agent-builder")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 24);
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 0);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 24);
+}
+
 fn collect_basic_action_sequence(kernel: &mut WorldKernel) -> Vec<WorldEventKind> {
     let mut kinds = Vec::new();
 

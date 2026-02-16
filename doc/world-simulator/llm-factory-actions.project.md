@@ -7,10 +7,10 @@
 - [x] LFA0.2 输出项目管理文档（本文件）
 
 ### LFA1 simulator 动作与状态
-- [ ] LFA1.1 扩展 `Action`：`BuildFactory`、`ScheduleRecipe`
-- [ ] LFA1.2 扩展 `WorldModel`：新增 `factories` 状态
-- [ ] LFA1.3 扩展 `WorldEventKind`：`FactoryBuilt`、`RecipeScheduled`
-- [ ] LFA1.4 实现 kernel 执行与 replay 应用
+- [x] LFA1.1 扩展 `Action`：`BuildFactory`、`ScheduleRecipe`
+- [x] LFA1.2 扩展 `WorldModel`：新增 `factories` 状态
+- [x] LFA1.3 扩展 `WorldEventKind`：`FactoryBuilt`、`RecipeScheduled`
+- [x] LFA1.4 实现 kernel 执行与 replay 应用
 
 ### LFA2 LLM 接线与 Prompt
 - [ ] LFA2.1 扩展 decision 解析：`build_factory`、`schedule_recipe`
@@ -36,6 +36,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFA0 完成，LFA1-LFA3 进行中。
-- 下一步：执行 LFA1（动作与状态接线）。
-- 最近更新：2026-02-16（完成文档立项）。
+- 当前阶段：LFA0-LFA1 完成，LFA2-LFA3 进行中。
+- 下一步：执行 LFA2（LLM 解析与 Prompt 接线）。
+- 最近更新：2026-02-16（完成 LFA1 内核动作/状态接线）。

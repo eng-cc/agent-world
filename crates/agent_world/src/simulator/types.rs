@@ -439,4 +439,16 @@ pub enum Action {
         owner: ResourceOwner,
         compound_mass_g: i64,
     },
+    BuildFactory {
+        owner: ResourceOwner,
+        location_id: LocationId,
+        factory_id: FacilityId,
+        factory_kind: String,
+    },
+    ScheduleRecipe {
+        owner: ResourceOwner,
+        factory_id: FacilityId,
+        recipe_id: String,
+        batches: i64,
+    },
 }

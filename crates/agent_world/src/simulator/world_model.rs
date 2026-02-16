@@ -127,6 +127,14 @@ pub enum AssetKind {
     Resource { kind: ResourceKind },
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Factory {
+    pub id: FacilityId,
+    pub owner: ResourceOwner,
+    pub location_id: LocationId,
+    pub kind: String,
+}
+
 // ============================================================================
 // World Model (aggregate)
 // ============================================================================
@@ -144,6 +152,8 @@ pub struct WorldModel {
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]
     pub power_storages: BTreeMap<FacilityId, PowerStorage>,
+    #[serde(default)]
+    pub factories: BTreeMap<FacilityId, Factory>,
     #[serde(
         default,
         serialize_with = "serialize_chunk_states",
@@ -699,6 +709,11 @@ pub fn physics_parameter_specs() -> &'static [PhysicsParameterSpec] {
 pub struct EconomyConfig {
     pub refine_electricity_cost_per_kg: i64,
     pub refine_hardware_yield_ppm: i64,
+    pub factory_build_electricity_cost: i64,
+    pub factory_build_hardware_cost: i64,
+    pub recipe_electricity_cost_per_batch: i64,
+    pub recipe_hardware_cost_per_batch: i64,
+    pub recipe_data_output_per_batch: i64,
 }
 
 impl Default for EconomyConfig {
@@ -706,6 +721,11 @@ impl Default for EconomyConfig {
         Self {
             refine_electricity_cost_per_kg: 2,
             refine_hardware_yield_ppm: 1_000,
+            factory_build_electricity_cost: 10,
+            factory_build_hardware_cost: 5,
+            recipe_electricity_cost_per_batch: 6,
+            recipe_hardware_cost_per_batch: 2,
+            recipe_data_output_per_batch: 1,
         }
     }
 }
@@ -716,6 +736,21 @@ impl EconomyConfig {
             self.refine_electricity_cost_per_kg = 0;
         }
         self.refine_hardware_yield_ppm = self.refine_hardware_yield_ppm.clamp(0, PPM_BASE);
+        if self.factory_build_electricity_cost < 0 {
+            self.factory_build_electricity_cost = 0;
+        }
+        if self.factory_build_hardware_cost < 0 {
+            self.factory_build_hardware_cost = 0;
+        }
+        if self.recipe_electricity_cost_per_batch < 0 {
+            self.recipe_electricity_cost_per_batch = 0;
+        }
+        if self.recipe_hardware_cost_per_batch < 0 {
+            self.recipe_hardware_cost_per_batch = 0;
+        }
+        if self.recipe_data_output_per_batch < 0 {
+            self.recipe_data_output_per_batch = 0;
+        }
         self
     }
 }

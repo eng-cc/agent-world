@@ -86,7 +86,7 @@ pub use types::{
 };
 pub use world_model::{
     physics_parameter_specs, Agent, AgentPromptProfile, Asset, AssetKind, AsteroidFragmentConfig,
-    BoundaryReservation, ChunkState, EconomyConfig, FragmentResourceError, Location,
+    BoundaryReservation, ChunkState, EconomyConfig, Factory, FragmentResourceError, Location,
     MaterialDistributionStrategy, MaterialRadiationFactors, MaterialWeights, PhysicsConfig,
     PhysicsParameterSpec, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
 };

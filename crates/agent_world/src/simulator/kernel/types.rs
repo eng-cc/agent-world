@@ -8,7 +8,7 @@ use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
 use super::super::types::{
     Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile,
-    ResourceKind, ResourceOwner, WorldEventId, WorldTime,
+    ResourceKind, ResourceOwner, ResourceStock, WorldEventId, WorldTime,
 };
 use super::super::world_model::{AgentPromptProfile, Location};
 
@@ -21,6 +21,7 @@ pub struct Observation {
     pub time: WorldTime,
     pub agent_id: AgentId,
     pub pos: GeoPos,
+    pub self_resources: ResourceStock,
     pub visibility_range_cm: i64,
     pub visible_agents: Vec<ObservedAgent>,
     pub visible_locations: Vec<ObservedLocation>,
@@ -98,6 +99,25 @@ pub enum WorldEventKind {
         compound_mass_g: i64,
         electricity_cost: i64,
         hardware_output: i64,
+    },
+    FactoryBuilt {
+        owner: ResourceOwner,
+        location_id: LocationId,
+        factory_id: FacilityId,
+        factory_kind: String,
+        electricity_cost: i64,
+        hardware_cost: i64,
+    },
+    RecipeScheduled {
+        owner: ResourceOwner,
+        factory_id: FacilityId,
+        recipe_id: String,
+        batches: i64,
+        electricity_cost: i64,
+        hardware_cost: i64,
+        data_output: i64,
+        finished_product_id: String,
+        finished_product_units: i64,
     },
     ModuleVisualEntityUpserted {
         entity: ModuleVisualEntity,
