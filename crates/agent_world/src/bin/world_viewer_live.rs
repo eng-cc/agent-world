@@ -417,12 +417,6 @@ fn reward_runtime_loop(
         };
 
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
-        for settlement in &report.settlements {
-            let _ = reward_world.bind_node_identity(
-                settlement.node_id.as_str(),
-                format!("runtime-node-{}", settlement.node_id).as_str(),
-            );
-        }
         let minted_records = match reward_world.apply_node_points_settlement_mint_v2(
             &report,
             config.signer_node_id.as_str(),

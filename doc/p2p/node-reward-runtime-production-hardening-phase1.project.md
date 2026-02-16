@@ -4,7 +4,7 @@
 - [x] PRH1-1：完成设计文档与项目管理文档。
 - [x] PRH1-2：实现 `NodePointsLedger/Collector` 快照导出与恢复，并接入 reward runtime 状态文件。
 - [x] PRH1-3：实现兑换签名授权策略 `require_redeem_signer_match_node_id` 并接入默认生产配置。
-- [ ] PRH1-4：移除 reward runtime 占位身份绑定，改为显式绑定与错误收口。
+- [x] PRH1-4：移除 reward runtime 占位身份绑定，改为显式绑定与错误收口。
 - [ ] PRH1-5：补齐/更新测试，执行 `test_tier_required` 回归，回写文档状态与 devlog。
 
 ## 依赖
@@ -16,6 +16,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/devlog/2026-02-17.md`
 
 ## 状态
-- 当前阶段：PRH1-1 ~ PRH1-3 已完成，PRH1-4 ~ PRH1-5 进行中。
+- 当前阶段：PRH1-1 ~ PRH1-4 已完成，PRH1-5 进行中。
 - 阻塞项：无。
 - 最近更新：2026-02-17。
