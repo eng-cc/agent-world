@@ -177,6 +177,63 @@ fn reward_asset_settlement_mint_is_idempotent_per_epoch_node() {
 }
 
 #[test]
+fn reward_asset_settlement_mint_emits_verifiable_signature() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+
+    let report = settlement_report(10, vec![settlement("node-a", 25)]);
+    let minted = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("apply settlement mint");
+    assert_eq!(minted.len(), 1);
+    let record = &minted[0];
+    assert!(record.signature.starts_with("mintsig:v1:"));
+    assert_eq!(record.signature.len(), "mintsig:v1:".len() + 64);
+    world
+        .verify_reward_mint_record_signature(record)
+        .expect("mint signature should be verifiable");
+}
+
+#[test]
+fn reward_asset_settlement_signature_verification_rejects_tamper() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    bind_node_identity(&mut world, "node-signer");
+    world.set_reward_asset_config(RewardAssetConfig {
+        points_per_credit: 10,
+        ..RewardAssetConfig::default()
+    });
+
+    let report = settlement_report(11, vec![settlement("node-a", 30)]);
+    let minted = world
+        .apply_node_points_settlement_mint(&report, "node-signer")
+        .expect("apply settlement mint");
+    let record = minted
+        .first()
+        .cloned()
+        .expect("minted record should exist");
+
+    let mut tampered = record.clone();
+    tampered.minted_power_credits = tampered.minted_power_credits.saturating_add(1);
+    let err = world
+        .verify_reward_mint_record_signature(&tampered)
+        .expect_err("tampered signature should fail");
+    assert!(err.contains("signature mismatch"));
+
+    let mut unbound_signer = record.clone();
+    unbound_signer.signer_node_id = "node-unbound".to_string();
+    let err = world
+        .verify_reward_mint_record_signature(&unbound_signer)
+        .expect_err("unbound signer should fail");
+    assert!(err.contains("not bound"));
+}
+
+#[test]
 fn reward_asset_settlement_rejects_zero_points_per_credit() {
     let mut world = World::new();
     world.set_reward_asset_config(RewardAssetConfig {

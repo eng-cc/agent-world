@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use super::util::sha256_hex;
+
 const DEFAULT_POINTS_PER_CREDIT: u64 = 10;
 const DEFAULT_CREDITS_PER_POWER_UNIT: u64 = 1;
 const DEFAULT_MAX_REDEEM_POWER_PER_EPOCH: i64 = 10_000;
 const DEFAULT_MIN_REDEEM_POWER_UNIT: i64 = 1;
+pub const REWARD_MINT_SIGNATURE_V1_PREFIX: &str = "mintsig:v1:";
 
 /// Redeemable reward asset configuration.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,4 +66,22 @@ pub struct SystemOrderPoolBudget {
     pub remaining_credit_budget: u64,
     pub node_credit_caps: BTreeMap<String, u64>,
     pub node_credit_allocated: BTreeMap<String, u64>,
+}
+
+pub fn reward_mint_signature_v1(
+    epoch_index: u64,
+    node_id: &str,
+    source_awarded_points: u64,
+    minted_power_credits: u64,
+    settlement_hash: &str,
+    signer_node_id: &str,
+    signer_public_key: &str,
+) -> String {
+    let payload = format!(
+        "{epoch_index}|{node_id}|{source_awarded_points}|{minted_power_credits}|{settlement_hash}|{signer_node_id}|{signer_public_key}"
+    );
+    format!(
+        "{REWARD_MINT_SIGNATURE_V1_PREFIX}{}",
+        sha256_hex(payload.as_bytes())
+    )
 }

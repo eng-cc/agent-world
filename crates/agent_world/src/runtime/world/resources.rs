@@ -1,6 +1,7 @@
 use super::super::util::hash_json;
 use super::super::ResourceDelta;
 use super::super::WorldError;
+use super::super::reward_asset::reward_mint_signature_v1;
 use super::super::{
     EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeAssetBalance, NodeRewardMintRecord,
     ProtocolPowerReserve, RewardAssetConfig, SystemOrderPoolBudget,
@@ -81,6 +82,36 @@ impl World {
         self.state.reward_mint_records.as_slice()
     }
 
+    pub fn verify_reward_mint_record_signature(
+        &self,
+        record: &NodeRewardMintRecord,
+    ) -> Result<(), String> {
+        let signer_public_key = self
+            .node_identity_public_key(record.signer_node_id.as_str())
+            .ok_or_else(|| {
+                format!(
+                    "reward mint signer identity is not bound: {}",
+                    record.signer_node_id
+                )
+            })?;
+        let expected_signature = reward_mint_signature_v1(
+            record.epoch_index,
+            record.node_id.as_str(),
+            record.source_awarded_points,
+            record.minted_power_credits,
+            record.settlement_hash.as_str(),
+            record.signer_node_id.as_str(),
+            signer_public_key,
+        );
+        if record.signature != expected_signature {
+            return Err(format!(
+                "reward mint signature mismatch for node {} at epoch {}",
+                record.node_id, record.epoch_index
+            ));
+        }
+        Ok(())
+    }
+
     pub fn system_order_pool_budget(&self, epoch_index: u64) -> Option<&SystemOrderPoolBudget> {
         self.state.system_order_pool_budgets.get(&epoch_index)
     }
@@ -147,7 +178,15 @@ impl World {
                 minted_power_credits,
                 settlement_hash: settlement_hash.clone(),
                 signer_node_id: signer_node_id.to_string(),
-                signature: format!("bound:{signer_public_key}"),
+                signature: reward_mint_signature_v1(
+                    report.epoch_index,
+                    settlement.node_id.as_str(),
+                    settlement.awarded_points,
+                    minted_power_credits,
+                    settlement_hash.as_str(),
+                    signer_node_id,
+                    signer_public_key.as_str(),
+                ),
             };
             self.state.reward_mint_records.push(record.clone());
             minted_records.push(record);
