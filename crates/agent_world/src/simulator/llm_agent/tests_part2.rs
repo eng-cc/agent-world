@@ -896,15 +896,18 @@ fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
     assert_eq!(parsed.len(), 3);
     assert!(matches!(
         parsed[0],
-        super::decision_flow::ParsedLlmTurn::ModuleCall(_)
+        super::decision_flow::ParsedLlmTurn::ModuleCall { .. }
     ));
     assert!(matches!(
         parsed[1],
-        super::decision_flow::ParsedLlmTurn::DecisionDraft(_)
+        super::decision_flow::ParsedLlmTurn::DecisionDraft { .. }
     ));
     assert!(matches!(
         parsed[2],
-        super::decision_flow::ParsedLlmTurn::Decision(AgentDecision::Wait, _)
+        super::decision_flow::ParsedLlmTurn::Decision {
+            decision: AgentDecision::Wait,
+            ..
+        }
     ));
 }
 
@@ -916,7 +919,7 @@ fn llm_parse_execute_until_accepts_event_any_of() {
     );
 
     match parsed {
-        super::decision_flow::ParsedLlmTurn::ExecuteUntil(directive) => {
+        super::decision_flow::ParsedLlmTurn::ExecuteUntil { directive, .. } => {
             assert_eq!(directive.until_conditions.len(), 2);
             assert_eq!(
                 directive.until_conditions[0],
@@ -945,7 +948,7 @@ fn llm_parse_execute_until_accepts_threshold_event_with_value_lte() {
     );
 
     match parsed {
-        super::decision_flow::ParsedLlmTurn::ExecuteUntil(directive) => {
+        super::decision_flow::ParsedLlmTurn::ExecuteUntil { directive, .. } => {
             assert_eq!(directive.until_conditions.len(), 1);
             assert_eq!(
                 directive.until_conditions[0],
@@ -982,7 +985,7 @@ fn llm_parse_decision_draft_accepts_shorthand_decision_payload() {
     );
 
     match parsed {
-        super::decision_flow::ParsedLlmTurn::DecisionDraft(draft) => {
+        super::decision_flow::ParsedLlmTurn::DecisionDraft { draft, .. } => {
             assert!(matches!(
                 draft.decision,
                 AgentDecision::Act(Action::HarvestRadiation { max_amount: 7, .. })
@@ -990,5 +993,25 @@ fn llm_parse_decision_draft_accepts_shorthand_decision_payload() {
             assert!(!draft.need_verify);
         }
         other => panic!("expected decision_draft, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_turn_response_extracts_message_to_user() {
+    let parsed = super::decision_flow::parse_llm_turn_response(
+        r#"{"decision":"wait","message_to_user":"先暂停一回合观察环境。"}"#,
+        "agent-1",
+    );
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Decision {
+            decision,
+            message_to_user,
+            ..
+        } => {
+            assert_eq!(decision, AgentDecision::Wait);
+            assert_eq!(message_to_user.as_deref(), Some("先暂停一回合观察环境。"));
+        }
+        other => panic!("expected decision, got {other:?}"),
     }
 }

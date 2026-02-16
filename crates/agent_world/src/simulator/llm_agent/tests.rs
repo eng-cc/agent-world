@@ -1,7 +1,7 @@
 use super::*;
 use crate::geometry::GeoPos;
 use crate::simulator::{
-    Action, Observation, ObservedAgent, ObservedLocation, RejectReason, ResourceKind,
+    Action, LlmChatRole, Observation, ObservedAgent, ObservedLocation, RejectReason, ResourceKind,
     ResourceOwner, WorldEvent, WorldEventKind,
 };
 use std::cell::RefCell;
@@ -867,6 +867,38 @@ fn llm_agent_emits_decision_trace_with_io() {
     assert_eq!(diagnostics.retry_count, 0);
     assert!(diagnostics.latency_ms.is_some());
     assert_eq!(behavior.take_decision_trace(), None);
+}
+
+#[test]
+fn llm_agent_records_message_to_user_in_agent_chat_trace() {
+    let client = MockClient {
+        output: Some(r#"{"decision":"wait","message_to_user":"我会先观察一回合。"}"#.to_string()),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace should exist");
+    assert_eq!(trace.llm_chat_messages.len(), 1);
+    assert_eq!(trace.llm_chat_messages[0].role, LlmChatRole::Agent);
+    assert_eq!(trace.llm_chat_messages[0].content, "我会先观察一回合。");
+}
+
+#[test]
+fn llm_agent_does_not_record_raw_json_as_agent_chat_message_without_user_message() {
+    let client = MockClient {
+        output: Some(r#"{"decision":"wait"}"#.to_string()),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace should exist");
+    assert!(trace.llm_chat_messages.is_empty());
 }
 
 #[test]

@@ -163,8 +163,12 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             user_prompt.push_str(
                 "- 若需要信息查询，只能输出一个 module_call JSON；拿到工具结果后下一轮再输出最终 decision。\n",
             );
-            user_prompt
-                .push_str("- 若上下文已足够，请直接输出最终 decision，不要输出自然语言解释。\n");
+            user_prompt.push_str(
+                "- 若要向玩家解释当前决策，请在 JSON 内使用 message_to_user 字段；不要在 JSON 外输出文本。\n",
+            );
+            user_prompt.push_str(
+                "- 若上下文已足够，请直接输出最终 decision；message_to_user 仅保留关键信息，避免冗长。\n",
+            );
             user_prompt.push_str(
                 format!(
                     "- 若连续两轮输出同一可执行动作，优先使用 execute_until（auto_reenter_ticks={}）。\n",
@@ -240,11 +244,6 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     }
 
                     trace_outputs.push(completion.output.clone());
-                    let _ = self.append_conversation_message(
-                        observation.time,
-                        LlmChatRole::Agent,
-                        completion.output.as_str(),
-                    );
 
                     let mut turn_status = "ok".to_string();
                     let mut turn_output_summary =
@@ -259,7 +258,18 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
                     for parsed_turn in parsed_turns {
                         match parsed_turn {
-                            ParsedLlmTurn::Decision(parsed_decision, decision_parse_error) => {
+                            ParsedLlmTurn::Decision {
+                                decision: parsed_decision,
+                                parse_error: decision_parse_error,
+                                message_to_user,
+                            } => {
+                                if let Some(message_to_user) = message_to_user.as_deref() {
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Agent,
+                                        message_to_user,
+                                    );
+                                }
                                 let repeats_last_action = matches!(
                                     &parsed_decision,
                                     AgentDecision::Act(action)
@@ -306,7 +316,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     }
                                 }
                             }
-                            ParsedLlmTurn::ExecuteUntil(directive) => {
+                            ParsedLlmTurn::ExecuteUntil {
+                                directive,
+                                message_to_user,
+                            } => {
+                                if let Some(message_to_user) = message_to_user.as_deref() {
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Agent,
+                                        message_to_user,
+                                    );
+                                }
                                 let mut guarded_directive = directive;
                                 let (guarded_action, guardrail_note) =
                                     self.apply_action_guardrails(guarded_directive.action);
@@ -346,7 +366,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     );
                                 }
                             }
-                            ParsedLlmTurn::ModuleCall(module_request) => {
+                            ParsedLlmTurn::ModuleCall {
+                                request: module_request,
+                                message_to_user,
+                            } => {
+                                if let Some(message_to_user) = message_to_user.as_deref() {
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Agent,
+                                        message_to_user,
+                                    );
+                                }
                                 if module_history.len() >= self.config.max_module_calls {
                                     deferred_parse_error = Some(format!(
                                         "module call limit exceeded: max_module_calls={}",
@@ -357,13 +387,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         "module_call skipped: limit exceeded".to_string();
                                 } else {
                                     let module_name = module_request.module.clone();
+                                    let module_args = module_request.args.clone();
                                     let intent_id = self.next_prompt_intent_id();
                                     let intent = LlmEffectIntentTrace {
                                         intent_id: intent_id.clone(),
                                         kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
                                         params: serde_json::json!({
-                                            "module": module_request.module,
-                                            "args": module_request.args,
+                                            "module": module_name.clone(),
+                                            "args": module_args,
                                         }),
                                         cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
                                         origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
@@ -395,18 +426,19 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                             .unwrap_or_else(|_| "{}".to_string())
                                     ));
                                     module_history.push(ModuleCallExchange {
-                                        module: module_request.module,
-                                        args: module_request.args,
+                                        module: module_name.clone(),
+                                        args: module_request.args.clone(),
                                         result: module_result.clone(),
                                     });
 
-                                    let tool_feedback = format!(
-                                        "module={} status={} result={}",
-                                        module_name,
-                                        status_label,
-                                        serde_json::to_string(&module_result)
-                                            .unwrap_or_else(|_| "{}".to_string())
-                                    );
+                                    let tool_feedback = serde_json::json!({
+                                        "type": "module_call_result",
+                                        "module": module_name.clone(),
+                                        "status": status_label,
+                                        "args": module_request.args,
+                                        "result": module_result,
+                                    })
+                                    .to_string();
                                     let _ = self.append_conversation_message(
                                         observation.time,
                                         LlmChatRole::Tool,
@@ -418,7 +450,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     tool_called_this_turn = true;
                                 }
                             }
-                            ParsedLlmTurn::DecisionDraft(draft) => {
+                            ParsedLlmTurn::DecisionDraft {
+                                draft,
+                                message_to_user,
+                            } => {
+                                if let Some(message_to_user) = message_to_user.as_deref() {
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Agent,
+                                        message_to_user,
+                                    );
+                                }
                                 let repeats_last_action = matches!(
                                     &draft.decision,
                                     AgentDecision::Act(action)
@@ -469,7 +511,17 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                     }
                                 }
                             }
-                            ParsedLlmTurn::Plan(plan) => {
+                            ParsedLlmTurn::Plan {
+                                payload: plan,
+                                message_to_user,
+                            } => {
+                                if let Some(message_to_user) = message_to_user.as_deref() {
+                                    let _ = self.append_conversation_message(
+                                        observation.time,
+                                        LlmChatRole::Agent,
+                                        message_to_user,
+                                    );
+                                }
                                 let missing = if plan.missing.is_empty() {
                                     "-".to_string()
                                 } else {

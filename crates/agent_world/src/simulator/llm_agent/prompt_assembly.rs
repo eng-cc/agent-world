@@ -179,9 +179,10 @@ impl PromptAssembler {
 - 仅允许模块名：agent.modules.list / environment.current_observation / memory.short_term.recent / memory.long_term.search
 - 每轮只允许输出一个 JSON 对象（非数组）；禁止 `---` 分隔多段 JSON，禁止代码块包裹 JSON
 - 若本轮输出 module_call，则只能输出 1 个 module_call；不要在同一回复混合 module_call 与 decision*
+- 若需要对玩家说明意图，请在 JSON 中使用可选字段 `message_to_user`（字符串）
 - 当连续动作触发反重复门控时，优先输出 plan/module_call，不要直接复读同一决策
 - 若确定需要连续执行某动作，可输出 execute_until（支持 `until.event` 单事件或 `until.event_any_of` 多事件；阈值事件需附 `until.value_lte`）
-- 在获得足够信息后，必须输出最终决策 JSON，不要输出多余文本。"#.to_string(),
+- 在获得足够信息后，必须输出最终决策 JSON；若附带 `message_to_user`，请简洁。"#.to_string(),
             },
             true,
         ));
@@ -239,6 +240,8 @@ impl PromptAssembler {
 {{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|hardware|data>","amount":<i64 >=1>}}
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
+- 任意决策 JSON 或 module_call JSON 可选附带：`"message_to_user":"<string>"`
+- module_call 仍使用：{{"type":"module_call","module":"<module_name>","args":{{...}},"message_to_user":"<optional>"}}（message_to_user 可省略）
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
@@ -254,7 +257,8 @@ impl PromptAssembler {
 
 [Output Hard Rules]
 - 每轮只输出一个 JSON 对象（非数组），不要输出多个 JSON 块，不要使用 `---` 分隔
-- 当前上下文若已足够，请直接输出最终 decision（可 execute_until），不要额外输出自然语言解释
+- 当前上下文若已足够，请直接输出最终 decision（可 execute_until）
+- 若要向玩家提供文本反馈，只能通过 JSON 字段 `message_to_user`，不要在 JSON 外输出文本
 
 若你需要查询信息，请输出模块调用 JSON：
 {{"type":"module_call","module":"<module_name>","args":{{...}}}}"#,
@@ -889,10 +893,12 @@ mod tests {
         assert!(output
             .system_prompt
             .contains("每轮只允许输出一个 JSON 对象"));
+        assert!(output.system_prompt.contains("message_to_user"));
         assert!(output.user_prompt.contains("[Output Hard Rules]"));
         assert!(output
             .user_prompt
             .contains("decision_draft.decision 必须是完整 decision 对象"));
+        assert!(output.user_prompt.contains("message_to_user"));
     }
 
     #[test]

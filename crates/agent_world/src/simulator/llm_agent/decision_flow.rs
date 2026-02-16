@@ -192,11 +192,27 @@ pub(super) struct ExecuteUntilDirective {
 
 #[derive(Debug)]
 pub(super) enum ParsedLlmTurn {
-    Plan(LlmPlanPayload),
-    DecisionDraft(LlmDecisionDraft),
-    Decision(AgentDecision, Option<String>),
-    ExecuteUntil(ExecuteUntilDirective),
-    ModuleCall(LlmModuleCallRequest),
+    Plan {
+        payload: LlmPlanPayload,
+        message_to_user: Option<String>,
+    },
+    DecisionDraft {
+        draft: LlmDecisionDraft,
+        message_to_user: Option<String>,
+    },
+    Decision {
+        decision: AgentDecision,
+        parse_error: Option<String>,
+        message_to_user: Option<String>,
+    },
+    ExecuteUntil {
+        directive: ExecuteUntilDirective,
+        message_to_user: Option<String>,
+    },
+    ModuleCall {
+        request: LlmModuleCallRequest,
+        message_to_user: Option<String>,
+    },
     Invalid(String),
 }
 
@@ -230,6 +246,8 @@ pub(super) fn parse_llm_turn_response(output: &str, agent_id: &str) -> ParsedLlm
 }
 
 fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTurn {
+    let message_to_user = parse_message_to_user(&value);
+
     if let Some(turn_type) = value
         .get("type")
         .and_then(|value| value.as_str())
@@ -241,17 +259,26 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
                     if request.module.trim().is_empty() {
                         ParsedLlmTurn::Invalid("module_call missing `module`".to_string())
                     } else {
-                        ParsedLlmTurn::ModuleCall(request)
+                        ParsedLlmTurn::ModuleCall {
+                            request,
+                            message_to_user,
+                        }
                     }
                 }
                 Err(err) => ParsedLlmTurn::Invalid(format!("module_call parse failed: {err}")),
             },
             "plan" => match serde_json::from_value::<LlmPlanPayload>(value) {
-                Ok(plan) => ParsedLlmTurn::Plan(plan),
+                Ok(payload) => ParsedLlmTurn::Plan {
+                    payload,
+                    message_to_user,
+                },
                 Err(err) => ParsedLlmTurn::Invalid(format!("plan parse failed: {err}")),
             },
             "decision_draft" => match parse_llm_decision_draft(value, agent_id) {
-                Ok(draft) => ParsedLlmTurn::DecisionDraft(draft),
+                Ok(draft) => ParsedLlmTurn::DecisionDraft {
+                    draft,
+                    message_to_user,
+                },
                 Err(err) => ParsedLlmTurn::Invalid(err),
             },
             other => ParsedLlmTurn::Invalid(format!("unsupported turn type: {other}")),
@@ -264,7 +291,10 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
         .is_some_and(|value| value.trim().eq_ignore_ascii_case("execute_until"))
     {
         return match parse_execute_until_decision(value, agent_id) {
-            Ok(directive) => ParsedLlmTurn::ExecuteUntil(directive),
+            Ok(directive) => ParsedLlmTurn::ExecuteUntil {
+                directive,
+                message_to_user,
+            },
             Err(err) => ParsedLlmTurn::Invalid(err),
         };
     }
@@ -273,8 +303,25 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
     if let Some(err) = parse_error {
         ParsedLlmTurn::Invalid(err)
     } else {
-        ParsedLlmTurn::Decision(decision, None)
+        ParsedLlmTurn::Decision {
+            decision,
+            parse_error: None,
+            message_to_user,
+        }
     }
+}
+
+fn parse_message_to_user(value: &serde_json::Value) -> Option<String> {
+    let message = value
+        .get("message_to_user")
+        .or_else(|| value.get("user_message"))
+        .or_else(|| value.get("message"))
+        .and_then(|value| value.as_str())?;
+    let normalized = message.trim();
+    if normalized.is_empty() {
+        return None;
+    }
+    Some(normalized.to_string())
 }
 
 fn parse_llm_decision_draft(
