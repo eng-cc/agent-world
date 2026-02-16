@@ -4,7 +4,6 @@ use agent_world_proto::world_error::WorldError;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -114,6 +113,8 @@ impl LocalCasStore {
                 format!("{:x}", hasher.finalize())
             }
         }
+    }
+
     pub fn files_index_path(&self) -> &Path {
         &self.files_index_path
     }
