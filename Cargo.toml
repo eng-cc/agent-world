@@ -5,6 +5,7 @@ members = [
     "crates/agent_world_consensus",
     "crates/agent_world_distfs",
     "crates/agent_world_net",
+    "crates/node",
     "crates/agent_world_proto",
     "crates/agent_world_wasm_abi",
     "crates/agent_world_wasm_executor",
