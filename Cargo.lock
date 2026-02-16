@@ -179,6 +179,7 @@ dependencies = [
  "agent_world_net",
  "agent_world_proto",
  "blake3",
+ "ed25519-dalek",
  "hex",
  "hmac",
  "serde",

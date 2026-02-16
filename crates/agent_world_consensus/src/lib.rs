@@ -195,7 +195,7 @@ pub use quorum::{
 pub use sequencer_mainloop::{
     SequencerMainloop, SequencerMainloopConfig, SequencerTickReport, SequencerTickState,
 };
-pub use signature::HmacSha256Signer;
+pub use signature::{Ed25519SignatureSigner, HmacSha256Signer};
 
 #[cfg(test)]
 mod membership_dead_letter_replay_archive_tests;
@@ -224,6 +224,7 @@ mod tests {
         let _ = std::any::type_name::<PosConsensus>();
         let _ = std::any::type_name::<SequencerMainloop>();
         let _ = std::any::type_name::<HmacSha256Signer>();
+        let _ = std::any::type_name::<Ed25519SignatureSigner>();
         let _ = std::any::type_name::<MembershipSyncClient>();
         let _ = std::any::type_name::<MembershipRevocationSyncReport>();
     }
