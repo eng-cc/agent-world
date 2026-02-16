@@ -13,9 +13,9 @@
 - [x] LFA1.4 实现 kernel 执行与 replay 应用
 
 ### LFA2 LLM 接线与 Prompt
-- [ ] LFA2.1 扩展 decision 解析：`build_factory`、`schedule_recipe`
-- [ ] LFA2.2 更新 prompt schema 与推荐模板
-- [ ] LFA2.3 更新相关断言测试（prompt/parse）
+- [x] LFA2.1 扩展 decision 解析：`build_factory`、`schedule_recipe`
+- [x] LFA2.2 更新 prompt schema 与推荐模板
+- [x] LFA2.3 更新相关断言测试（prompt/parse）
 
 ### LFA3 闭环验证与收口
 - [ ] LFA3.1 新增/更新 kernel 行为单测（建厂、排产、拒绝路径）
@@ -36,6 +36,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFA0-LFA1 完成，LFA2-LFA3 进行中。
-- 下一步：执行 LFA2（LLM 解析与 Prompt 接线）。
-- 最近更新：2026-02-16（完成 LFA1 内核动作/状态接线）。
+- 当前阶段：LFA0-LFA2 完成，LFA3 进行中。
+- 下一步：执行 LFA3（在线闭环验证与收口）。
+- 最近更新：2026-02-16（完成 LFA2：decision 解析、prompt schema、观测资源透出与测试更新）。

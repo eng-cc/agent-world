@@ -59,6 +59,7 @@ impl WorldKernel {
             time: self.time,
             agent_id: agent_id.to_string(),
             pos: agent.pos,
+            self_resources: agent.resources.clone(),
             visibility_range_cm,
             visible_agents,
             visible_locations,

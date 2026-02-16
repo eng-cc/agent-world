@@ -812,6 +812,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "time": observation.time,
             "agent_id": observation.agent_id,
             "pos": observation.pos,
+            "self_resources": observation.self_resources,
             "visibility_range_cm": observation.visibility_range_cm,
             "visible_agents_total": observation.visible_agents.len(),
             "visible_agents_omitted": observation

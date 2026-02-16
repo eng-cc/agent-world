@@ -337,6 +337,18 @@ fn action_signature(action: &Action) -> String {
         Action::HarvestRadiation { max_amount, .. } => {
             format!("harvest_radiation:{max_amount}")
         }
+        Action::BuildFactory {
+            location_id,
+            factory_id,
+            factory_kind,
+            ..
+        } => format!("build_factory:{location_id}:{factory_id}:{factory_kind}"),
+        Action::ScheduleRecipe {
+            factory_id,
+            recipe_id,
+            batches,
+            ..
+        } => format!("schedule_recipe:{factory_id}:{recipe_id}:{batches}"),
         other => format!("other:{other:?}"),
     }
 }
@@ -356,6 +368,42 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 ..
             },
         ) => left_amount == right_amount,
+        (
+            Action::BuildFactory {
+                location_id: left_location_id,
+                factory_id: left_factory_id,
+                factory_kind: left_factory_kind,
+                ..
+            },
+            Action::BuildFactory {
+                location_id: right_location_id,
+                factory_id: right_factory_id,
+                factory_kind: right_factory_kind,
+                ..
+            },
+        ) => {
+            left_location_id == right_location_id
+                && left_factory_id == right_factory_id
+                && left_factory_kind == right_factory_kind
+        }
+        (
+            Action::ScheduleRecipe {
+                factory_id: left_factory_id,
+                recipe_id: left_recipe_id,
+                batches: left_batches,
+                ..
+            },
+            Action::ScheduleRecipe {
+                factory_id: right_factory_id,
+                recipe_id: right_recipe_id,
+                batches: right_batches,
+                ..
+            },
+        ) => {
+            left_factory_id == right_factory_id
+                && left_recipe_id == right_recipe_id
+                && left_batches == right_batches
+        }
         _ => false,
     }
 }

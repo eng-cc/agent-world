@@ -70,6 +70,11 @@ struct LlmDecisionPayload {
     amount: Option<i64>,
     owner: Option<String>,
     compound_mass_g: Option<i64>,
+    location_id: Option<String>,
+    factory_id: Option<String>,
+    factory_kind: Option<String>,
+    recipe_id: Option<String>,
+    batches: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -597,6 +602,84 @@ fn parse_llm_decision_value_with_error(
             AgentDecision::Act(Action::RefineCompound {
                 owner,
                 compound_mass_g,
+            })
+        }
+        "build_factory" => {
+            let owner = match parsed.owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => ResourceOwner::Agent {
+                    agent_id: agent_id.to_string(),
+                },
+            };
+            let location_id = parsed.location_id.unwrap_or_default();
+            if location_id.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("build_factory missing `location_id`".to_string()),
+                );
+            }
+            let factory_id = parsed.factory_id.unwrap_or_default();
+            if factory_id.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("build_factory missing `factory_id`".to_string()),
+                );
+            }
+            let factory_kind = parsed
+                .factory_kind
+                .unwrap_or_else(|| "factory.assembler.mk1".to_string());
+            if factory_kind.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("build_factory missing `factory_kind`".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::BuildFactory {
+                owner,
+                location_id,
+                factory_id,
+                factory_kind,
+            })
+        }
+        "schedule_recipe" => {
+            let owner = match parsed.owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => ResourceOwner::Agent {
+                    agent_id: agent_id.to_string(),
+                },
+            };
+            let factory_id = parsed.factory_id.unwrap_or_default();
+            if factory_id.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("schedule_recipe missing `factory_id`".to_string()),
+                );
+            }
+            let recipe_id = parsed.recipe_id.unwrap_or_default();
+            if recipe_id.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("schedule_recipe missing `recipe_id`".to_string()),
+                );
+            }
+            let batches = parsed.batches.unwrap_or(1);
+            if batches <= 0 {
+                return (
+                    AgentDecision::Wait,
+                    Some("schedule_recipe requires positive batches".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::ScheduleRecipe {
+                owner,
+                factory_id,
+                recipe_id,
+                batches,
             })
         }
         other => {

@@ -242,6 +242,8 @@ impl PromptAssembler {
 {{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
 {{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|hardware|data>","amount":<i64 >=1>}}
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
+{{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
+{{"decision":"schedule_recipe","owner":"<self|agent:<id>|location:<id>>","factory_id":"<factory_id>","recipe_id":"<recipe_id>","batches":<i64 >=1>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
 - 任意决策 JSON 或 module_call JSON 可选附带：`"message_to_user":"<string>"`
 - module_call 仍使用：{{"type":"module_call","module":"<module_name>","args":{{...}},"message_to_user":"<optional>"}}（message_to_user 可省略）
@@ -249,13 +251,17 @@ impl PromptAssembler {
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
 - 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
+- 推荐 build_factory 模板: {{"decision":"build_factory","owner":"self","location_id":"<location_id>","factory_id":"factory.<name>","factory_kind":"factory.assembler.mk1"}}
+- 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
 - transfer_resource.kind 仅允许 electricity/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
-- 当前可用决策动作不包含 build_factory/schedule_recipe；若目标包含建厂，请先执行可用动作并在 message_to_user 中说明阻塞原因
+- factory_kind 当前支持：factory.assembler.mk1（留空将被拒绝）
+- recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
+- schedule_recipe.batches 必须是正整数
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - 若输出 decision_draft，则 decision_draft.decision 必须是完整 decision 对象（不能是字符串）
 - execute_until 仅允许作为最终 decision 输出，不要放在 decision_draft 中
@@ -935,9 +941,10 @@ mod tests {
             .contains("move_agent.to 不能是当前所在位置"));
         assert!(output.user_prompt.contains("transfer_resource"));
         assert!(output.user_prompt.contains("refine_compound"));
-        assert!(output
-            .user_prompt
-            .contains("不包含 build_factory/schedule_recipe"));
+        assert!(output.user_prompt.contains("build_factory"));
+        assert!(output.user_prompt.contains("schedule_recipe"));
+        assert!(output.user_prompt.contains("factory_kind 当前支持"));
+        assert!(output.user_prompt.contains("recipe_id 当前支持"));
         assert!(output.user_prompt.contains("compound_mass_g >= 1000"));
         assert!(output
             .user_prompt

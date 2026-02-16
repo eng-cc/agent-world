@@ -2,7 +2,7 @@ use super::*;
 use crate::geometry::GeoPos;
 use crate::simulator::{
     Action, LlmChatRole, Observation, ObservedAgent, ObservedLocation, RejectReason, ResourceKind,
-    ResourceOwner, WorldEvent, WorldEventKind,
+    ResourceOwner, ResourceStock, WorldEvent, WorldEventKind,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -147,6 +147,17 @@ impl LlmCompletionClient for CountingSequenceMockClient {
 }
 
 fn make_observation() -> Observation {
+    let mut self_resources = ResourceStock::default();
+    self_resources
+        .add(ResourceKind::Electricity, 30)
+        .expect("seed electricity");
+    self_resources
+        .add(ResourceKind::Hardware, 0)
+        .expect("seed hardware");
+    self_resources
+        .add(ResourceKind::Data, 12)
+        .expect("seed data");
+
     Observation {
         time: 7,
         agent_id: "agent-1".to_string(),
@@ -155,6 +166,7 @@ fn make_observation() -> Observation {
             y_cm: 0.0,
             z_cm: 0.0,
         },
+        self_resources,
         visibility_range_cm: 100,
         visible_agents: vec![ObservedAgent {
             agent_id: "agent-2".to_string(),
@@ -785,6 +797,54 @@ fn llm_agent_rejects_transfer_resource_with_invalid_kind() {
         .as_deref()
         .unwrap_or_default()
         .contains("invalid kind"));
+}
+
+#[test]
+fn llm_agent_parse_build_factory_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"build_factory\",\"owner\":\"self\",\"location_id\":\"loc-1\",\"factory_id\":\"factory.alpha\",\"factory_kind\":\"factory.assembler.mk1\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-1".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_schedule_recipe_action_with_default_batches() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"schedule_recipe\",\"owner\":\"self\",\"factory_id\":\"factory.alpha\",\"recipe_id\":\"recipe.assembler.control_chip\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        })
+    );
 }
 
 #[test]

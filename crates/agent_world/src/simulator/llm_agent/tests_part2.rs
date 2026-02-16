@@ -218,6 +218,8 @@ fn llm_agent_compacts_dense_observation_for_prompt_context() {
     assert!(prompt.contains("\"visible_agents_omitted\":"));
     assert!(prompt.contains("\"visible_locations_total\":41"));
     assert!(prompt.contains("\"visible_locations_omitted\":"));
+    assert!(prompt.contains("\"self_resources\""));
+    assert!(prompt.contains("\"electricity\":30"));
     assert!(!prompt.contains("agent-extra-39"));
     assert!(!prompt.contains("loc-extra-39"));
 }
@@ -875,6 +877,8 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(user_prompt.contains("execute_until"));
     assert!(user_prompt.contains("transfer_resource"));
     assert!(user_prompt.contains("refine_compound"));
+    assert!(user_prompt.contains("build_factory"));
+    assert!(user_prompt.contains("schedule_recipe"));
     assert!(user_prompt.contains("move_agent.to 不能是当前所在位置"));
 }
 
