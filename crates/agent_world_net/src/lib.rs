@@ -139,8 +139,8 @@ pub use head_follow::HeadFollower;
 pub use head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
 #[cfg(feature = "runtime_bridge")]
 pub use observer::{
-    HeadFollowReport, HeadSyncReport, HeadSyncResult, HeadSyncSourceMode, ObserverClient,
-    ObserverSubscription,
+    HeadFollowReport, HeadSyncReport, HeadSyncResult, HeadSyncSourceMode,
+    HeadSyncSourceModeWithDht, ObserverClient, ObserverSubscription,
 };
 #[cfg(feature = "runtime_bridge")]
 pub use observer_replay::{

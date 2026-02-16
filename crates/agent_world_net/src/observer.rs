@@ -30,6 +30,13 @@ pub enum HeadSyncSourceMode {
     NetworkThenPathIndex,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeadSyncSourceModeWithDht {
+    NetworkWithDhtOnly,
+    PathIndexOnly,
+    NetworkWithDhtThenPathIndex,
+}
+
 #[derive(Clone)]
 pub struct ObserverClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
@@ -337,6 +344,112 @@ impl ObserverClient {
             }
             HeadSyncSourceMode::NetworkThenPathIndex => {
                 match follower.sync_from_heads(heads, client, store) {
+                    Ok(world) => Ok(world),
+                    Err(network_error) => {
+                        match follower.sync_from_heads_with_path_index(heads, store) {
+                            Ok(world) => Ok(world),
+                            Err(path_index_error) => Err(WorldError::DistributedValidationFailed {
+                                reason: format!(
+                                    "head sync fallback failed: mode={mode:?}, network_error={network_error:?}, path_index_error={path_index_error:?}",
+                                ),
+                            }),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn sync_heads_with_dht_mode(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        self.sync_heads_with_dht_mode_from_heads(mode, &heads, follower, dht, client, store)
+    }
+
+    pub fn sync_heads_with_dht_mode_report(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<HeadSyncReport, WorldError> {
+        let heads = self.drain_heads(subscription)?;
+        let drained = heads.len();
+        let world =
+            self.sync_heads_with_dht_mode_from_heads(mode, &heads, follower, dht, client, store)?;
+        compose_head_sync_report(drained, world, follower.current_head().cloned(), || {
+            WorldError::DistributedValidationFailed {
+                reason: "head follower did not record applied head".to_string(),
+            }
+        })
+    }
+
+    pub fn sync_heads_with_dht_mode_result(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<HeadSyncResult>, WorldError> {
+        let world =
+            self.sync_heads_with_dht_mode(mode, subscription, follower, dht, client, store)?;
+        match world {
+            Some(world) => {
+                let head = follower.current_head().cloned().ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: "head follower did not record applied head".to_string(),
+                    }
+                })?;
+                Ok(Some(HeadSyncResult { head, world }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn follow_heads_with_dht_mode(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        subscription: &ObserverSubscription,
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+        max_rounds: usize,
+    ) -> Result<HeadFollowReport, WorldError> {
+        follow_head_sync(max_rounds, || {
+            self.sync_heads_with_dht_mode_report(mode, subscription, follower, dht, client, store)
+        })
+    }
+
+    fn sync_heads_with_dht_mode_from_heads(
+        &self,
+        mode: HeadSyncSourceModeWithDht,
+        heads: &[WorldHeadAnnounce],
+        follower: &mut HeadFollower,
+        dht: &impl DistributedDht,
+        client: &DistributedClient,
+        store: &(impl BlobStore + FileStore),
+    ) -> Result<Option<World>, WorldError> {
+        match mode {
+            HeadSyncSourceModeWithDht::NetworkWithDhtOnly => {
+                follower.sync_from_heads_with_dht(heads, dht, client, store)
+            }
+            HeadSyncSourceModeWithDht::PathIndexOnly => {
+                follower.sync_from_heads_with_path_index(heads, store)
+            }
+            HeadSyncSourceModeWithDht::NetworkWithDhtThenPathIndex => {
+                match follower.sync_from_heads_with_dht(heads, dht, client, store) {
                     Ok(world) => Ok(world),
                     Err(network_error) => {
                         match follower.sync_from_heads_with_path_index(heads, store) {
