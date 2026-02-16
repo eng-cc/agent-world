@@ -211,3 +211,129 @@ fn reward_asset_snapshot_roundtrip_persists_mint_records() {
     assert_eq!(record.node_id, "node-a");
     assert_eq!(record.minted_power_credits, 3);
 }
+
+#[test]
+fn reward_asset_redeem_power_action_updates_balances_and_reserve() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    let initial_electricity = world
+        .agent_resource_balance("agent-1", crate::simulator::ResourceKind::Electricity)
+        .expect("query target electricity");
+
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 4,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 2,
+        available_power_units: 50,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 20)
+        .expect("mint node credits");
+
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 9,
+        nonce: 1,
+    });
+    world.step().expect("redeem power");
+
+    assert_eq!(world.node_power_credit_balance("node-a"), 11);
+    assert_eq!(
+        world
+            .agent_resource_balance("agent-1", crate::simulator::ResourceKind::Electricity)
+            .expect("query target electricity after redeem"),
+        initial_electricity + 2
+    );
+    assert_eq!(world.protocol_power_reserve().available_power_units, 48);
+    assert_eq!(world.protocol_power_reserve().redeemed_power_units, 2);
+
+    let event = world.journal().events.last().expect("redeem event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemed {
+            node_id,
+            target_agent_id,
+            burned_credits,
+            granted_power_units,
+            reserve_remaining,
+            nonce,
+        }) => {
+            assert_eq!(node_id, "node-a");
+            assert_eq!(target_agent_id, "agent-1");
+            assert_eq!(*burned_credits, 9);
+            assert_eq!(*granted_power_units, 2);
+            assert_eq!(*reserve_remaining, 48);
+            assert_eq!(*nonce, 1);
+        }
+        other => panic!("expected PowerRedeemed, got {other:?}"),
+    }
+}
+
+#[test]
+fn reward_asset_redeem_power_rejected_when_reserve_insufficient() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    let initial_electricity = world
+        .agent_resource_balance("agent-1", crate::simulator::ResourceKind::Electricity)
+        .expect("query target electricity");
+
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 1,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 4,
+        available_power_units: 1,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 5)
+        .expect("mint node credits");
+
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 3,
+        nonce: 5,
+    });
+    world.step().expect("redeem power rejected");
+
+    assert_eq!(world.node_power_credit_balance("node-a"), 5);
+    assert_eq!(
+        world
+            .agent_resource_balance("agent-1", crate::simulator::ResourceKind::Electricity)
+            .expect("query target electricity after reject"),
+        initial_electricity
+    );
+    assert_eq!(world.protocol_power_reserve().available_power_units, 1);
+    assert_eq!(world.protocol_power_reserve().redeemed_power_units, 0);
+
+    let event = world.journal().events.last().expect("reject event");
+    match &event.body {
+        WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+            node_id,
+            target_agent_id,
+            redeem_credits,
+            nonce,
+            reason,
+        }) => {
+            assert_eq!(node_id, "node-a");
+            assert_eq!(target_agent_id, "agent-1");
+            assert_eq!(*redeem_credits, 3);
+            assert_eq!(*nonce, 5);
+            assert!(reason.contains("insufficient protocol power reserve"));
+        }
+        other => panic!("expected PowerRedeemRejected, got {other:?}"),
+    }
+}

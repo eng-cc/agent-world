@@ -835,6 +835,8 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
                 "domain.body_interface_expand_rejected"
             }
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
+            DomainEvent::PowerRedeemed { .. } => "domain.power_redeemed",
+            DomainEvent::PowerRedeemRejected { .. } => "domain.power_redeem_rejected",
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -870,6 +872,7 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::EmitBodyAttributes { .. } => "action.emit_body_attributes",
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::TransferResource { .. } => "action.transfer_resource",
+        Action::RedeemPower { .. } => "action.redeem_power",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",

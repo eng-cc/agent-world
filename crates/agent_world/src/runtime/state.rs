@@ -289,6 +289,90 @@ impl WorldState {
                     self.agents.insert(to_agent_id.clone(), to);
                 }
             }
+            DomainEvent::PowerRedeemed {
+                node_id,
+                target_agent_id,
+                burned_credits,
+                granted_power_units,
+                reserve_remaining,
+                ..
+            } => {
+                if *burned_credits == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "burned_credits must be > 0".to_string(),
+                    });
+                }
+                if *granted_power_units <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "granted_power_units must be > 0, got {}",
+                            granted_power_units
+                        ),
+                    });
+                }
+                remove_node_power_credits(
+                    &mut self.node_asset_balances,
+                    node_id.as_str(),
+                    *burned_credits,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("power redeem burn failed: {reason}"),
+                })?;
+
+                if self.protocol_power_reserve.available_power_units < *granted_power_units {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "insufficient protocol power reserve: available={} requested={}",
+                            self.protocol_power_reserve.available_power_units, granted_power_units
+                        ),
+                    });
+                }
+                let next_reserve =
+                    self.protocol_power_reserve.available_power_units - *granted_power_units;
+                if next_reserve != *reserve_remaining {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "reserve remaining mismatch: computed={} event={}",
+                            next_reserve, reserve_remaining
+                        ),
+                    });
+                }
+                self.protocol_power_reserve.available_power_units = next_reserve;
+                self.protocol_power_reserve.redeemed_power_units = self
+                    .protocol_power_reserve
+                    .redeemed_power_units
+                    .saturating_add(*granted_power_units);
+
+                let target = self
+                    .agents
+                    .get_mut(target_agent_id)
+                    .ok_or_else(|| WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    })?;
+                target
+                    .state
+                    .resources
+                    .add(ResourceKind::Electricity, *granted_power_units)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!("power redeem add electricity failed: {err:?}"),
+                    })?;
+                target.last_active = now;
+                if let Some(cell) = self.agents.get_mut(node_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::PowerRedeemRejected {
+                node_id,
+                target_agent_id,
+                ..
+            } => {
+                if let Some(cell) = self.agents.get_mut(node_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(target_agent_id) {
+                    cell.last_active = now;
+                }
+            }
             DomainEvent::MaterialTransferred {
                 requester_agent_id,
                 from_ledger,
@@ -661,5 +745,24 @@ fn remove_resource_balance(
     } else {
         balances.insert(kind, next);
     }
+    Ok(())
+}
+
+fn remove_node_power_credits(
+    balances: &mut BTreeMap<String, NodeAssetBalance>,
+    node_id: &str,
+    amount: u64,
+) -> Result<(), String> {
+    let Some(balance) = balances.get_mut(node_id) else {
+        return Err(format!("node balance not found: {node_id}"));
+    };
+    if balance.power_credit_balance < amount {
+        return Err(format!(
+            "insufficient power credits: balance={} burn={}",
+            balance.power_credit_balance, amount
+        ));
+    }
+    balance.power_credit_balance -= amount;
+    balance.total_burned_credits = balance.total_burned_credits.saturating_add(amount);
     Ok(())
 }

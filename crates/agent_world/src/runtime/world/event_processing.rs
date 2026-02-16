@@ -163,6 +163,109 @@ impl World {
                     },
                 }))
             }
+            Action::RedeemPower {
+                node_id,
+                target_agent_id,
+                redeem_credits,
+                nonce,
+            } => {
+                if node_id.trim().is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "node_id cannot be empty".to_string(),
+                    }));
+                }
+                if !self.state.agents.contains_key(target_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!("target agent not found: {target_agent_id}"),
+                    }));
+                }
+                if *redeem_credits == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "redeem_credits must be > 0".to_string(),
+                    }));
+                }
+                let credits_per_power_unit = self.state.reward_asset_config.credits_per_power_unit;
+                if credits_per_power_unit == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "credits_per_power_unit must be positive".to_string(),
+                    }));
+                }
+                let granted_power_units_u64 = redeem_credits / credits_per_power_unit;
+                if granted_power_units_u64 == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!(
+                            "redeem credits below minimum conversion: credits={} per_unit={}",
+                            redeem_credits, credits_per_power_unit
+                        ),
+                    }));
+                }
+                if granted_power_units_u64 > i64::MAX as u64 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: "granted power units overflow".to_string(),
+                    }));
+                }
+                let granted_power_units = granted_power_units_u64 as i64;
+                let available_credits = self.node_power_credit_balance(node_id);
+                if available_credits < *redeem_credits {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!(
+                            "insufficient power credits: balance={} requested={}",
+                            available_credits, redeem_credits
+                        ),
+                    }));
+                }
+                if self.state.protocol_power_reserve.available_power_units < granted_power_units {
+                    return Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemRejected {
+                        node_id: node_id.clone(),
+                        target_agent_id: target_agent_id.clone(),
+                        redeem_credits: *redeem_credits,
+                        nonce: *nonce,
+                        reason: format!(
+                            "insufficient protocol power reserve: available={} requested={}",
+                            self.state.protocol_power_reserve.available_power_units,
+                            granted_power_units
+                        ),
+                    }));
+                }
+
+                Ok(WorldEventBody::Domain(DomainEvent::PowerRedeemed {
+                    node_id: node_id.clone(),
+                    target_agent_id: target_agent_id.clone(),
+                    burned_credits: *redeem_credits,
+                    granted_power_units,
+                    reserve_remaining: self.state.protocol_power_reserve.available_power_units
+                        - granted_power_units,
+                    nonce: *nonce,
+                }))
+            }
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,

@@ -77,6 +77,12 @@ pub enum Action {
         kind: ResourceKind,
         amount: i64,
     },
+    RedeemPower {
+        node_id: String,
+        target_agent_id: String,
+        redeem_credits: u64,
+        nonce: u64,
+    },
     TransferMaterial {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -178,6 +184,21 @@ pub enum DomainEvent {
         kind: ResourceKind,
         amount: i64,
     },
+    PowerRedeemed {
+        node_id: String,
+        target_agent_id: String,
+        burned_credits: u64,
+        granted_power_units: i64,
+        reserve_remaining: i64,
+        nonce: u64,
+    },
+    PowerRedeemRejected {
+        node_id: String,
+        target_agent_id: String,
+        redeem_credits: u64,
+        nonce: u64,
+        reason: String,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -274,6 +295,12 @@ impl DomainEvent {
             DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
+            DomainEvent::PowerRedeemed {
+                target_agent_id, ..
+            } => Some(target_agent_id.as_str()),
+            DomainEvent::PowerRedeemRejected {
+                target_agent_id, ..
+            } => Some(target_agent_id.as_str()),
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
