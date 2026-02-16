@@ -9,7 +9,7 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/quorum.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_consensus/src/lib.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_proto/src/distributed_consensus.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed-consensus.md`
+- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/archive/distributed-consensus.md`
 
 ## 状态
 - 当前阶段：POS-3 完成，PoS head 共识特性已收口。

@@ -7,7 +7,7 @@
 - [x] RB4：回写总文档状态与当日 devlog。
 
 ## 依赖
-- `doc/p2p/distributed-crate-split-net-consensus.project.md`
+- `doc/p2p/archive/distributed-crate-split-net-consensus.project.md`
 - `crates/agent_world_net`
 - `crates/agent_world_distfs`
 - `crates/agent_world`

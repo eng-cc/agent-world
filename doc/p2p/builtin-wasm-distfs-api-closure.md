@@ -9,7 +9,7 @@
 - In Scope：
   - 为 `agent_world_distfs::LocalCasStore` 增加可选 hash 算法策略（默认 `blake3`，新增 `sha256`）。
   - 新增 DistFS 工具入口，用于按 hash manifest + built wasm 目录写入 blob（走 `LocalCasStore::put`）。
-  - `scripts/sync-m1/m4-builtin-wasm-artifacts.sh` 改为调用 DistFS 工具完成写入。
+  - `scripts/sync-m4-builtin-wasm-artifacts.sh` 改为调用 DistFS 工具完成写入。
   - runtime builtin wasm 读取改为使用 `LocalCasStore` API（读取并按 sha256 校验）。
 - Out of Scope：
   - 远程分发与拉取。

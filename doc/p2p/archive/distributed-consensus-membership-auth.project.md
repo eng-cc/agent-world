@@ -1,0 +1,23 @@
+> [!WARNING]
+> 该文档已过期，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-16
+
+# Agent World Runtime：成员目录快照签名与来源校验（项目管理文档）
+
+## 任务拆解
+- [x] 输出设计文档（`doc/p2p/distributed-consensus-membership-auth.md`）
+- [x] 扩展成员目录快照/广播结构支持可选签名字段
+- [x] 实现 `MembershipDirectorySigner`（签名/验签）
+- [x] 实现 `publish_membership_change_with_dht_signed` 发布链路
+- [x] 实现 `restore_membership_from_dht_verified` 来源与签名校验
+- [x] 补充单元测试并执行回归验证
+
+## 依赖
+- `doc/p2p/distributed-consensus-membership-dht.md`
+- `crates/agent_world/src/runtime/distributed_dht.rs`
+- `crates/agent_world/src/runtime/distributed_membership_sync.rs`
+
+## 状态
+- 当前阶段：MA4 完成（签名与来源校验已落地）
+- 后续关联：P3.14 已补齐 key_id 轮换与恢复审计（见 `distributed-consensus-membership-rotation-audit.md`）
+- 最近更新：2026-02-10

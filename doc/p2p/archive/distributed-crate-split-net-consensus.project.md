@@ -1,0 +1,216 @@
+> [!WARNING]
+> 该文档已过期，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-16
+
+# Agent World Runtime：`agent_world_net` + `agent_world_consensus` 拆分（项目管理文档）
+
+## 任务拆解
+- [x] T1：新增设计文档与项目管理文档（本文件）。
+- [x] T2：新建 `agent_world_net` / `agent_world_consensus` crate，并接入 workspace。
+- [x] T3：完成 net/consensus 导出能力面，确保 `distributed_membership_sync` 纳入 `agent_world_consensus`。
+- [x] T4：完成编译与定向测试回归，回写文档状态并收口。
+- [x] T5：将 `distributed_net` 核心实现下沉到 `agent_world_net`（`InMemoryNetwork` 与网络 trait/type）。
+- [x] T6：完成扩展阶段回归验证与文档收口。
+- [x] T7：将 `distributed_dht` 核心实现下沉到 `agent_world_net`（`InMemoryDht` 与 DHT trait/type）。
+- [x] T8：完成二次扩展阶段回归验证与文档收口。
+- [x] T9：将 `distributed_client` 核心实现下沉到 `agent_world_net`（请求编解码、DHT provider 路由、错误映射）。
+- [x] T10：完成三次扩展阶段回归验证与文档收口。
+- [x] T11：将 `distributed_gateway` 核心实现下沉到 `agent_world_net`（Action 发布网关与回执类型）。
+- [x] T12：完成四次扩展阶段回归验证与文档收口。
+- [x] T13：将 `distributed_index` 核心实现下沉到 `agent_world_net`（head/provider 索引发布与查询 helper）。
+- [x] T14：完成五次扩展阶段回归验证与文档收口。
+- [x] T15：完成 `agent_world_net` 内部模块化拆分（`lib.rs` 多文件拆分 + 单测迁移，导出 API 不变）。
+- [x] T16：完成六次扩展阶段回归验证与文档收口。
+- [x] T17：将 `distributed_index_store` / `distributed_provider_cache` / `distributed_dht_cache` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [x] T18：完成七次扩展阶段回归验证与文档收口。
+- [x] T19：将 `distributed_head_follow` / `distributed_observer` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [x] T20：完成八次扩展阶段回归验证与文档收口。
+- [x] T21：将 `distributed_observer_replay` 核心实现下沉到 `agent_world_net`，并由 `head_follow` 复用。
+- [x] T22：完成九次扩展阶段回归验证与文档收口。
+- [x] T23：将 `distributed_bootstrap` 核心实现下沉到 `agent_world_net`，并由 `head_follow` 复用。
+- [x] T24：完成十次扩展阶段回归验证与文档收口。
+- [x] T25：将 `distributed_consensus` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T26：完成十一次扩展阶段回归验证与文档收口。
+- [x] T27：将 `distributed_lease` / `distributed_mempool` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T28：完成十二次扩展阶段回归验证与文档收口。
+- [x] T29：将 `distributed_membership_sync` 的签名/审计/同步核心（不含 recovery/reconciliation）下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T30：完成十三次扩展阶段回归验证与文档收口。
+- [x] T31：将 `distributed_membership_sync/reconciliation.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T32：完成十四次扩展阶段回归验证与文档收口。
+- [x] T33：将 `distributed_membership_sync/recovery.rs` 告警恢复核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T34：完成十五次扩展阶段回归验证与文档收口。
+- [x] T35：将 `distributed_membership_sync/recovery/replay.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T36：完成十六次扩展阶段回归验证与文档收口。
+- [x] T37：将 `distributed_membership_sync/recovery/replay_audit.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T38：完成十七次扩展阶段回归验证与文档收口。
+- [x] T39：将 `distributed_membership_sync/recovery/replay_archive*.rs` 核心实现下沉到 `agent_world_consensus`（导出 API 不变）。
+- [x] T40：完成十八次扩展阶段回归验证与文档收口。
+- [x] T41：将 `distributed_storage.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [x] T42：将 `distributed_validation.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变）。
+- [x] T43：完成十九次扩展阶段回归验证与文档收口。
+- [x] T44：将 `libp2p_net.rs` 核心实现下沉到 `agent_world_net`（导出 API 不变，feature=`libp2p`）。
+- [x] T45：完成二十次扩展阶段回归验证与文档收口。
+- [x] T46：增强 `agent_world_net` 的 `Libp2pNetwork` 可观测性并补齐跨节点 smoke test（feature=`libp2p`）。
+- [x] T47：完成二十一次扩展阶段回归验证与文档收口。
+- [x] T48：将 `agent_world::runtime` 的 `distributed_net/dht/gateway/lease/mempool` 改为直接复用 `agent_world_net`/`agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
+- [x] T49：完成二十二次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T50：将 `agent_world::runtime` 的 `distributed_client/index/index_store/provider_cache/dht_cache` 改为直接复用 `agent_world_net` 同源实现（`include!`），保持导出 API 不变。
+- [x] T51：完成二十三次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T52：将 `agent_world::runtime` 的 `distributed_bootstrap/head_follow/observer/observer_replay/storage/validation` 改为直接复用 `agent_world_net` 同源实现（`include!`），保持导出 API 不变。
+- [x] T53：完成二十四次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T54：将 `agent_world::runtime` 的 `distributed_consensus` 改为直接复用 `agent_world_consensus` 同源实现（`include!`），保持导出 API 不变。
+- [x] T55：完成二十五次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T56：将 `agent_world::runtime` 的 `distributed_membership_sync` 主体改为直接复用 `agent_world_consensus/src/membership.rs`（`include!` + `shared` 包装），保持 runtime 的 `reconciliation/recovery` 导出 API 不变。
+- [x] T57：完成二十六次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T58：将 `agent_world::runtime::distributed_membership_sync::reconciliation` 改为直接复用 `agent_world_consensus/src/membership_reconciliation.rs`（`include!`），保持导出 API 不变。
+- [x] T59：完成二十七次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T60：将 `agent_world::runtime::distributed_membership_sync::recovery` 改为路径模块复用 `agent_world_consensus/src/membership_recovery/mod.rs`（`#[path]` + alias 层），保持导出 API 不变。
+- [x] T61：完成二十八次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T62：删除 `agent_world::runtime/distributed_membership_sync/recovery/*` 未编译旧实现文件，收敛为 `recovery.rs` 单入口同源复用结构。
+- [x] T63：完成二十九次扩展阶段回归验证与文档收口（workspace 级 `cargo test --workspace` + 文档回写）。
+- [x] T64：收敛 `distributed_membership_sync.rs` 中超长 recovery re-export 清单（拆分 `recovery_exports.rs` 并按能力分组维护）。
+- [x] T65：清理 membership recovery composite cursor 相关无效导入 warning（测试门控导出 + recovery 包装层 warning 降噪），并完成定向回归验证。
+- [x] T66：治理 `distributed_membership_sync` 同源复用 dead_code warning（移除 `logic.rs` 重复模块编译路径并统一到 `membership_logic`）。
+- [x] T67：在 runtime recovery 共享包装层增加局部 warning 门控，完成 membership/recovery 定向回归验证并回写文档。
+- [x] T68：治理 `distributed_observer_replay` 同源复用孤立 dead_code warning（runtime 包装层局部门控，不改共享源码与 API）。
+- [x] T69：完成 distributed observer replay 定向回归验证并回写设计/项目管理文档。
+- [x] T70：完成 runtime 与 `agent_world_net` 剩余 include 模块 warning 基线评估（`--all-targets` / `--all-targets --features wasmtime`）。
+- [x] T71：确认本轮评估无新增上下文特异 warning，完成文档与日志收口。
+- [x] T72：新增 include warning 基线检查脚本并接入 `scripts/ci-tests.sh`，统一 pre-commit/CI 门禁入口。
+- [x] T73：完成 `agent_world_net` 去除 `agent_world` 依赖并通过 `--features libp2p --lib` 回归；`agent_world` 首批模块切到直接依赖 `agent_world_net`（net/dht/client/gateway/index_store/provider_cache/dht_cache）。
+- [x] T74：将 `WorldError` 下沉到 `agent_world_proto` 并切换 `agent_world_net` 复用，收敛 net/runtime 错误类型重复定义。
+- [x] T75：将执行产物索引相关公共依赖（`ExecutionWriteResult` / `ExecutionWriteConfig` / `SegmentConfig` / `JournalSegmentRef`）下沉到 `agent_world_proto`，收敛 runtime/net 双类型并将 `distributed_index` 收敛为 net 薄封装。
+- [x] T76：清理 `distributed_storage` / `distributed_validation` 剩余 include 包装层，改为 runtime 本地直接实现并保持 include warning 基线无回归。
+- [x] T77：清理 `distributed_bootstrap` include 包装层，改为 runtime 本地直接实现并完成 bootstrap 定向回归。
+- [x] T78：继续推进 `distributed_head_follow` / `distributed_observer(_replay)` 的 include 替换策略，优先收敛低耦合入口（已完成：`distributed_head_follow.rs` / `distributed_observer.rs` / `distributed_observer_replay.rs` 均去除 include 包装）。
+- [x] T79：继续清理 `distributed_mempool` include 包装层，改为 runtime 本地直接实现并完成 mempool/多节点定向回归。
+- [x] T80：继续清理 `distributed_lease` include 包装层，改为 runtime 本地直接实现并完成 lease/一致性定向回归。
+- [x] T81：解耦 `agent_world_consensus` 对 `agent_world` 依赖，切换到 `agent_world_net`/`agent_world_proto::WorldError` 闭环，并补齐 runtime recovery 同源包装兼容层与定向回归。
+- [x] T82：将 `agent_world::runtime::distributed_consensus` 从 include 复用切到直接依赖 `agent_world_consensus`（包装适配层保留 runtime 错误语义），并完成 membership 定向回归。
+- [x] T83：将 `distributed_membership_sync` / `reconciliation` 的 `include!` 宏收敛为路径模块包装（`#[path]`），并修正 include warning 基线脚本在 0 include 场景下的兼容性。
+- [x] T84：将 runtime `distributed_membership_sync` 的 `membership_logic` 切换为路径复用 `agent_world_consensus/src/membership_logic.rs`，并删除 runtime 本地重复实现文件。
+- [x] T85：将 `distributed_mempool` 从 runtime 本地实现切换为 `agent_world_consensus::ActionMempool` 薄包装，复用 consensus crate 闭环能力并保持 runtime 导出签名不变。
+- [x] T86：将 `distributed_lease` 从 runtime 本地实现切换为 `agent_world_consensus` 直接复用（re-export），去除 runtime 侧重复 lease 逻辑。
+- [x] T87：收敛 `distributed_consensus` 中的 lease 适配冗余，直接复用共享 `LeaseState` 类型并删除 runtime -> consensus 的字段级拷贝转换。
+- [x] T88：将 runtime `distributed_membership_sync` 从 `#[path]` 包装切到 `agent_world_consensus` 直接复用（删除 `reconciliation/recovery` 包装入口），并同步收敛 `distributed_consensus` 到 consensus 直接 re-export 与 DHT trait 对齐。
+- [x] T89：将 runtime `distributed_bootstrap` / `distributed_head_follow` / `distributed_observer` / `distributed_observer_replay` 切换为路径复用 `agent_world_net` 同源文件（保留 runtime alias 兼容层），减少 runtime 本地实现维护面。
+- [x] T90：将 runtime `distributed_storage` / `distributed_validation` 切换为路径复用 `agent_world_net` 同源文件（保留 `HeadValidationResult` 与 runtime alias 兼容层），进一步压缩 runtime 重复实现。
+- [x] T91：将 runtime `distributed_mempool` / `distributed_index` 切换为路径复用 `agent_world_consensus` / `agent_world_net` 同源文件，并在 net `index` 中补齐通用错误转换写法以兼容 runtime 别名上下文。
+- [x] T92：收敛 runtime `distributed_membership_sync` 的重复 recovery/reconciliation 单测面，迁移测试闭环到 `agent_world_consensus` crate，仅保留 runtime 侧核心 API 兼容测试。
+- [x] T93：进一步收敛 runtime `distributed_membership_sync::tests`，将大规模重复单测替换为最小运行时兼容 smoke tests，详细行为验证统一归口到 `agent_world_consensus::membership_tests`。
+- [x] T94：将 runtime `distributed_mempool` / `distributed_index` 从路径包装进一步收敛为 split crate 直接 re-export，减少 runtime alias 层代码与维护面。
+- [x] T95：为路径复用的 net 模块测试增加 `self_tests` 门控（仅在 `agent_world_net` 自测上下文启用），并同步收敛 runtime 包装层测试专用 alias 门控，消除 `--all-targets` include warning 基线噪音。
+- [x] T96：将 `distributed_head_follow` 的 head 选择/判定状态机下沉到 `agent_world_net::HeadTracker`，runtime 改为本地薄适配（保留 bootstrap/world 依赖），并去除该入口的路径包装。
+- [x] T97：将 observer 的 head 同步报告/跟随循环抽象下沉到 `agent_world_net::observer_flow`，并将 runtime `distributed_observer` 从路径包装切换为本地薄适配（复用 net 下沉能力）。
+- [x] T98：将 observer replay 的 manifest/journal 拉取编排抽象下沉到 `agent_world_net::observer_replay_flow`，并将 runtime `distributed_observer_replay` 从路径包装切换为本地薄适配。
+- [x] T99：将 runtime `distributed_bootstrap` 从路径包装切换为本地薄适配（复用 runtime replay 校验链路），进一步收敛跨 crate 路径耦合点。
+- [x] T100：将 runtime `distributed_storage` / `distributed_validation` 从路径包装切换为本地实现（复用 proto 下沉类型），并补齐 storage/validation 定向回归。
+
+## 依赖
+- `crates/agent_world/src/runtime/mod.rs`
+- `crates/agent_world/src/runtime/distributed_net.rs`
+- `crates/agent_world/src/runtime/libp2p_net.rs`
+- `crates/agent_world/src/runtime/distributed_consensus.rs`
+- `crates/agent_world/src/runtime/distributed_membership_sync.rs`
+- `crates/agent_world/src/runtime/distributed_dht.rs`
+- `crates/agent_world/src/runtime/distributed_client.rs`
+- `crates/agent_world/src/runtime/distributed_gateway.rs`
+- `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world/src/runtime/distributed_consensus.rs`
+- `crates/agent_world/src/runtime/distributed_lease.rs`
+- `crates/agent_world/src/runtime/distributed_mempool.rs`
+- `crates/agent_world_net/src/lib.rs`
+- `crates/agent_world_net/src/network.rs`
+- `crates/agent_world_net/src/dht.rs`
+- `crates/agent_world_net/src/index.rs`
+- `crates/agent_world_net/src/client.rs`
+- `crates/agent_world_net/src/gateway.rs`
+- `crates/agent_world_net/src/util.rs`
+- `crates/agent_world_net/src/tests.rs`
+- `crates/agent_world_net/src/index_store.rs`
+- `crates/agent_world_net/src/provider_cache.rs`
+- `crates/agent_world_net/src/dht_cache.rs`
+- `crates/agent_world_net/src/head_follow.rs`
+- `crates/agent_world_net/src/head_sync.rs`
+- `crates/agent_world_net/src/head_tracking.rs`
+- `crates/agent_world_net/src/observer.rs`
+- `crates/agent_world_net/src/observer_replay.rs`
+- `crates/agent_world_net/src/replay_flow.rs`
+- `crates/agent_world_net/src/bootstrap.rs`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/src/quorum.rs`
+- `crates/agent_world_consensus/src/lease.rs`
+- `crates/agent_world_consensus/src/mempool.rs`
+- `crates/agent_world_consensus/src/membership.rs`
+- `crates/agent_world_consensus/src/membership_logic.rs`
+- `crates/agent_world_consensus/src/membership_reconciliation.rs`
+- `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/mod.rs`
+- `crates/agent_world_consensus/src/membership_recovery/types.rs`
+- `crates/agent_world_consensus/src/membership_recovery/stores.rs`
+- `crates/agent_world_consensus/src/membership_recovery/dead_letter.rs`
+- `crates/agent_world_consensus/src/membership_recovery_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_tests.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_persistence_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay_audit.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_audit_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay_archive.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay_archive_tiered.rs`
+- `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs`
+- `crates/agent_world_consensus/src/membership_dead_letter_replay_archive_tests.rs`
+- `crates/agent_world_net/src/execution_storage.rs`
+- `crates/agent_world_net/src/head_validation.rs`
+- `crates/agent_world_net/src/libp2p_net.rs`
+- `crates/agent_world/src/lib.rs`
+- `crates/agent_world/src/runtime/distributed_net.rs`
+- `crates/agent_world/src/runtime/distributed_dht.rs`
+- `crates/agent_world/src/runtime/distributed_gateway.rs`
+- `crates/agent_world/src/runtime/distributed_lease.rs`
+- `crates/agent_world/src/runtime/distributed_mempool.rs`
+- `crates/agent_world/src/runtime/distributed_client.rs`
+- `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world/src/runtime/distributed_index_store.rs`
+- `crates/agent_world/src/runtime/distributed_provider_cache.rs`
+- `crates/agent_world/src/runtime/distributed_dht_cache.rs`
+- `crates/agent_world/src/runtime/distributed_bootstrap.rs`
+- `crates/agent_world/src/runtime/distributed_head_follow.rs`
+- `crates/agent_world/src/runtime/distributed_observer.rs`
+- `crates/agent_world/src/runtime/distributed_observer_replay.rs`
+- `crates/agent_world/src/runtime/distributed_storage.rs`
+- `crates/agent_world/src/runtime/distributed_validation.rs`
+- `crates/agent_world_net/src/client.rs`
+- `crates/agent_world_net/src/index.rs`
+- `crates/agent_world_net/src/index_store.rs`
+- `crates/agent_world_net/src/provider_cache.rs`
+- `crates/agent_world_net/src/dht_cache.rs`
+- `crates/agent_world_net/src/bootstrap.rs`
+- `crates/agent_world_net/src/head_follow.rs`
+- `crates/agent_world_net/src/observer.rs`
+- `crates/agent_world_net/src/observer_replay.rs`
+- `crates/agent_world_net/src/execution_storage.rs`
+- `crates/agent_world_net/src/head_validation.rs`
+- `crates/agent_world_net/src/util.rs`
+- `crates/agent_world/src/runtime/distributed_consensus.rs`
+- `crates/agent_world_consensus/src/quorum.rs`
+- `crates/agent_world_consensus/src/lib.rs`
+- `crates/agent_world_consensus/Cargo.toml`
+- `crates/agent_world_proto/Cargo.toml`
+- `crates/agent_world_proto/src/lib.rs`
+- `crates/agent_world_proto/src/distributed_storage.rs`
+- `crates/agent_world_proto/src/world_error.rs`
+- `scripts/check-include-warning-baseline.sh`
+- `scripts/ci-tests.sh`
+- `crates/agent_world/Cargo.toml`
+- `crates/agent_world/src/runtime/error.rs`
+- `crates/agent_world/src/runtime/distributed_index.rs`
+- `crates/agent_world/src/runtime/distributed_storage.rs`
+- `crates/agent_world/src/runtime/segmenter.rs`
+- `crates/agent_world_net/Cargo.toml`
+- `crates/agent_world_net/src/lib.rs`
+- `crates/agent_world_net/src/tests.rs`
+
+## 状态
+- 当前阶段：六十三次扩展阶段完成（T100 已完成，`distributed_storage` / `distributed_validation` 已去除路径包装并收敛为 runtime 本地实现）。
+- 下一步：继续推进 net 侧 `runtime_bridge` 的解耦抽象（在已可编译闭环基础上减少 `agent_world` 运行时类型耦合），优先将 storage/validation 复用逻辑下沉为独立抽象接口并逐步切到直接依赖。
+- 最近更新：2026-02-16

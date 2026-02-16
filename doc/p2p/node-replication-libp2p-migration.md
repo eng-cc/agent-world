@@ -22,7 +22,7 @@
   - 覆盖 node 测试回归与编译检查。
   - 更新项目文档状态与 devlog。
 - **NRM-4：crate 目录路径去歧义**
-  - 将 `crates/node` 重命名为 `crates/agent_world_node`。
+  - 将历史目录 crates/node 重命名为 `crates/agent_world_node`。
   - 同步 workspace 与依赖路径配置。
 
 ### Out of Scope

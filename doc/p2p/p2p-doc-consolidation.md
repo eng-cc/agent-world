@@ -37,8 +37,17 @@
 - M2：完成文档迁移到 `doc/p2p`。
 - M3：完成过期文档归档并补充过期标识。
 - M4：完成路径引用修复与基础校验。
+- M5：完成二轮“文档-代码”对照核查，追加归档技术口径过期文档。
+
+## 二轮核查结论（2026-02-16）
+- 通过文档路径引用存在性检查，发现一批文档仍依赖已删除路径：
+  - `crates/agent_world/src/runtime/distributed*`
+  - `crates/agent_world/src/runtime/distributed_membership_sync*`
+- 上述能力已迁移到 split crate（`agent_world_consensus` / `agent_world_net` / `agent_world_distfs`），原文档技术落点已过期。
+- 已将该批文档归档到 `doc/p2p/archive`，并统一补充“已过期”标识。
 
 ## 风险
 - 批量迁移后可能存在遗漏引用，导致文档链接断裂。
 - “过期”判定可能存在主观性，需要采用“明确历史分卷/明确被后续阶段替代”作为保守标准。
 - 文档数量较多，需通过迁移映射清单保证可追踪性。
+- 二轮归档后，部分活跃文档依赖关系会指向 archive，需要在后续新设计文档中逐步补齐“当前基线文档”。
