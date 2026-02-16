@@ -268,9 +268,11 @@ fn render_info_stream(
         .max_height(220.0)
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            for message in info_messages {
-                render_chat_message_bubble(ui, message, locale);
-                ui.add_space(2.0);
+            for (index, message) in info_messages.into_iter().enumerate() {
+                ui.push_id(("info", index, message.time), |ui| {
+                    render_chat_message_bubble(ui, message, locale);
+                    ui.add_space(2.0);
+                });
             }
         });
 }
@@ -302,9 +304,11 @@ fn render_tool_call_stream(
         .max_height(160.0)
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            for message in tool_messages {
-                render_tool_call_card(ui, message, locale);
-                ui.add_space(4.0);
+            for (index, message) in tool_messages.into_iter().enumerate() {
+                ui.push_id(("tool", index, message.time), |ui| {
+                    render_tool_call_card(ui, message, locale);
+                    ui.add_space(4.0);
+                });
             }
         });
 }
