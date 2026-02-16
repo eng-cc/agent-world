@@ -1,12 +1,15 @@
 use std::collections::{hash_map::DefaultHasher, BTreeMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::net::{SocketAddr, UdpSocket};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -92,6 +95,13 @@ pub struct NodeConfig {
     pub role: NodeRole,
     pub pos_config: NodePosConfig,
     pub auto_attest_all_validators: bool,
+    pub gossip: Option<NodeGossipConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodeGossipConfig {
+    pub bind_addr: SocketAddr,
+    pub peers: Vec<SocketAddr>,
 }
 
 impl NodeConfig {
@@ -126,6 +136,7 @@ impl NodeConfig {
             role,
             pos_config,
             auto_attest_all_validators: true,
+            gossip: None,
         })
     }
 
@@ -153,6 +164,39 @@ impl NodeConfig {
         self.auto_attest_all_validators = enabled;
         self
     }
+
+    pub fn with_gossip(
+        mut self,
+        bind_addr: SocketAddr,
+        peers: Vec<SocketAddr>,
+    ) -> Result<Self, NodeError> {
+        if peers.is_empty() {
+            return Err(NodeError::InvalidConfig {
+                reason: "gossip peers cannot be empty".to_string(),
+            });
+        }
+        let mut dedup = BTreeMap::new();
+        for peer in peers {
+            dedup.insert(peer, ());
+        }
+        self.gossip = Some(NodeGossipConfig {
+            bind_addr,
+            peers: dedup.keys().copied().collect(),
+        });
+        Ok(self)
+    }
+
+    pub fn with_gossip_optional(mut self, bind_addr: SocketAddr, peers: Vec<SocketAddr>) -> Self {
+        let mut dedup = BTreeMap::new();
+        for peer in peers {
+            dedup.insert(peer, ());
+        }
+        self.gossip = Some(NodeGossipConfig {
+            bind_addr,
+            peers: dedup.keys().copied().collect(),
+        });
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,6 +206,8 @@ pub struct NodeConsensusSnapshot {
     pub epoch: u64,
     pub latest_height: u64,
     pub committed_height: u64,
+    pub network_committed_height: u64,
+    pub known_peer_heads: usize,
     pub last_status: Option<PosConsensusStatus>,
     pub last_block_hash: Option<String>,
 }
@@ -174,6 +220,8 @@ impl Default for NodeConsensusSnapshot {
             epoch: 0,
             latest_height: 0,
             committed_height: 0,
+            network_committed_height: 0,
+            known_peer_heads: 0,
             last_status: None,
             last_block_hash: None,
         }
@@ -247,7 +295,24 @@ impl NodeRuntime {
             *state = RuntimeState::default();
         }
 
-        let mut engine = PosNodeEngine::new(&self.config)?;
+        let mut engine = match PosNodeEngine::new(&self.config) {
+            Ok(engine) => engine,
+            Err(err) => {
+                self.running.store(false, Ordering::SeqCst);
+                return Err(err);
+            }
+        };
+        let mut gossip = if let Some(config) = &self.config.gossip {
+            match GossipEndpoint::bind(config) {
+                Ok(endpoint) => Some(endpoint),
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let tick_interval = self.config.tick_interval;
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
@@ -270,7 +335,8 @@ impl NodeRuntime {
                                 current.last_tick_unix_ms = Some(now_ms);
                             }
 
-                            let tick_result = engine.tick(&node_id, &world_id, now_ms);
+                            let tick_result =
+                                engine.tick(&node_id, &world_id, now_ms, gossip.as_mut());
                             let mut current = lock_state(&state);
                             match tick_result {
                                 Ok(consensus_snapshot) => {
@@ -356,8 +422,11 @@ struct PosNodeEngine {
     next_height: u64,
     next_slot: u64,
     committed_height: u64,
+    network_committed_height: u64,
     pending: Option<PendingProposal>,
     auto_attest_all_validators: bool,
+    last_broadcast_committed_height: u64,
+    peer_heads: BTreeMap<String, PeerCommittedHead>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -396,6 +465,84 @@ struct PosDecision {
     total_stake: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PeerCommittedHead {
+    height: u64,
+    block_hash: String,
+    committed_at_ms: i64,
+}
+
+#[derive(Debug)]
+struct GossipEndpoint {
+    socket: UdpSocket,
+    peers: Vec<SocketAddr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct GossipCommitMessage {
+    version: u8,
+    world_id: String,
+    node_id: String,
+    height: u64,
+    slot: u64,
+    epoch: u64,
+    block_hash: String,
+    committed_at_ms: i64,
+}
+
+impl GossipEndpoint {
+    fn bind(config: &NodeGossipConfig) -> Result<Self, NodeError> {
+        let socket = UdpSocket::bind(config.bind_addr).map_err(|err| NodeError::Gossip {
+            reason: format!("bind {} failed: {}", config.bind_addr, err),
+        })?;
+        socket
+            .set_nonblocking(true)
+            .map_err(|err| NodeError::Gossip {
+                reason: format!("set_nonblocking failed: {}", err),
+            })?;
+        Ok(Self {
+            socket,
+            peers: config.peers.clone(),
+        })
+    }
+
+    fn broadcast_commit(&self, message: &GossipCommitMessage) -> Result<(), NodeError> {
+        let bytes = serde_json::to_vec(message).map_err(|err| NodeError::Gossip {
+            reason: format!("serialize gossip message failed: {}", err),
+        })?;
+        for peer in &self.peers {
+            self.socket
+                .send_to(&bytes, peer)
+                .map_err(|err| NodeError::Gossip {
+                    reason: format!("send_to {} failed: {}", peer, err),
+                })?;
+        }
+        Ok(())
+    }
+
+    fn drain_messages(&self) -> Result<Vec<GossipCommitMessage>, NodeError> {
+        let mut buf = [0u8; 2048];
+        let mut messages = Vec::new();
+        loop {
+            match self.socket.recv_from(&mut buf) {
+                Ok((size, _from)) => {
+                    let payload = &buf[..size];
+                    if let Ok(message) = serde_json::from_slice::<GossipCommitMessage>(payload) {
+                        messages.push(message);
+                    }
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(err) => {
+                    return Err(NodeError::Gossip {
+                        reason: format!("recv_from failed: {}", err),
+                    });
+                }
+            }
+        }
+        Ok(messages)
+    }
+}
+
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, total_stake, required_stake) = validated_pos_state(&config.pos_config)?;
@@ -407,8 +554,11 @@ impl PosNodeEngine {
             next_height: 1,
             next_slot: 0,
             committed_height: 0,
+            network_committed_height: 0,
             pending: None,
             auto_attest_all_validators: config.auto_attest_all_validators,
+            last_broadcast_committed_height: 0,
+            peer_heads: BTreeMap::new(),
         })
     }
 
@@ -417,7 +567,12 @@ impl PosNodeEngine {
         node_id: &str,
         world_id: &str,
         now_ms: i64,
+        gossip: Option<&mut GossipEndpoint>,
     ) -> Result<NodeConsensusSnapshot, NodeError> {
+        if let Some(endpoint) = gossip.as_ref() {
+            self.ingest_peer_commits(endpoint, world_id)?;
+        }
+
         let mut decision = if self.pending.is_some() {
             self.advance_pending_attestations(now_ms)?
         } else {
@@ -429,6 +584,10 @@ impl PosNodeEngine {
         }
 
         self.apply_decision(&decision);
+        if let Some(endpoint) = gossip {
+            self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
+            self.ingest_peer_commits(endpoint, world_id)?;
+        }
         Ok(self.snapshot_from_decision(&decision))
     }
 
@@ -575,6 +734,7 @@ impl PosNodeEngine {
             PosConsensusStatus::Pending => {}
             PosConsensusStatus::Committed => {
                 self.committed_height = decision.height;
+                self.network_committed_height = self.network_committed_height.max(decision.height);
                 self.next_height = decision.height.saturating_add(1);
                 self.pending = None;
             }
@@ -592,6 +752,8 @@ impl PosNodeEngine {
             epoch: self.slot_epoch(self.next_slot),
             latest_height: decision.height,
             committed_height: self.committed_height,
+            network_committed_height: self.network_committed_height.max(self.committed_height),
+            known_peer_heads: self.peer_heads.len(),
             last_status: Some(decision.status),
             last_block_hash: Some(decision.block_hash.clone()),
         }
@@ -616,6 +778,68 @@ impl PosNodeEngine {
     fn slot_epoch(&self, slot: u64) -> u64 {
         slot / self.epoch_length_slots
     }
+
+    fn broadcast_local_commit(
+        &mut self,
+        endpoint: &GossipEndpoint,
+        node_id: &str,
+        world_id: &str,
+        now_ms: i64,
+        decision: &PosDecision,
+    ) -> Result<(), NodeError> {
+        if !matches!(decision.status, PosConsensusStatus::Committed) {
+            return Ok(());
+        }
+        if decision.height <= self.last_broadcast_committed_height {
+            return Ok(());
+        }
+        let message = GossipCommitMessage {
+            version: 1,
+            world_id: world_id.to_string(),
+            node_id: node_id.to_string(),
+            height: decision.height,
+            slot: decision.slot,
+            epoch: decision.epoch,
+            block_hash: decision.block_hash.clone(),
+            committed_at_ms: now_ms,
+        };
+        endpoint.broadcast_commit(&message)?;
+        self.last_broadcast_committed_height = decision.height;
+        Ok(())
+    }
+
+    fn ingest_peer_commits(
+        &mut self,
+        endpoint: &GossipEndpoint,
+        world_id: &str,
+    ) -> Result<(), NodeError> {
+        let messages = endpoint.drain_messages()?;
+        for message in messages {
+            if message.version != 1 || message.world_id != world_id {
+                continue;
+            }
+            let previous_height = self
+                .peer_heads
+                .get(message.node_id.as_str())
+                .map(|head| head.height)
+                .unwrap_or(0);
+            if message.height < previous_height {
+                continue;
+            }
+            self.peer_heads.insert(
+                message.node_id.clone(),
+                PeerCommittedHead {
+                    height: message.height,
+                    block_hash: message.block_hash.clone(),
+                    committed_at_ms: message.committed_at_ms,
+                },
+            );
+            if message.height > self.network_committed_height {
+                self.network_committed_height = message.height;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -623,6 +847,7 @@ pub enum NodeError {
     InvalidRole { role: String },
     InvalidConfig { reason: String },
     Consensus { reason: String },
+    Gossip { reason: String },
     AlreadyRunning { node_id: String },
     NotRunning { node_id: String },
     ThreadSpawnFailed { reason: String },
@@ -637,6 +862,7 @@ impl fmt::Display for NodeError {
             }
             NodeError::InvalidConfig { reason } => write!(f, "invalid node config: {}", reason),
             NodeError::Consensus { reason } => write!(f, "node consensus error: {}", reason),
+            NodeError::Gossip { reason } => write!(f, "node gossip error: {}", reason),
             NodeError::AlreadyRunning { node_id } => {
                 write!(f, "node runtime already running: {}", node_id)
             }
@@ -788,6 +1014,7 @@ fn now_unix_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::UdpSocket;
 
     fn multi_validators() -> Vec<PosValidator> {
         vec![
@@ -828,7 +1055,7 @@ mod tests {
         let mut engine = PosNodeEngine::new(&config).expect("engine");
 
         let snapshot = engine
-            .tick(&config.node_id, &config.world_id, 1_000)
+            .tick(&config.node_id, &config.world_id, 1_000, None)
             .expect("tick");
         assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
         assert_eq!(snapshot.latest_height, 1);
@@ -849,7 +1076,7 @@ mod tests {
         let mut committed_height = 0;
         for offset in 0..12 {
             let snapshot = engine
-                .tick(&config.node_id, &config.world_id, 2_000 + offset)
+                .tick(&config.node_id, &config.world_id, 2_000 + offset, None)
                 .expect("tick");
             committed_height = snapshot.committed_height;
             if committed_height > 0 {
@@ -896,5 +1123,67 @@ mod tests {
         let err = runtime.start().expect_err("second start must fail");
         assert!(matches!(err, NodeError::AlreadyRunning { .. }));
         runtime.stop().expect("stop");
+    }
+
+    #[test]
+    fn config_with_gossip_rejects_empty_peers() {
+        let bind_socket = UdpSocket::bind("127.0.0.1:0").expect("bind");
+        let bind_addr = bind_socket.local_addr().expect("addr");
+        let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
+            .expect("config")
+            .with_gossip(bind_addr, vec![]);
+        assert!(matches!(config, Err(NodeError::InvalidConfig { .. })));
+    }
+
+    #[test]
+    fn runtime_gossip_tracks_peer_committed_heads() {
+        let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+        let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+        let addr_a = socket_a.local_addr().expect("addr a");
+        let addr_b = socket_b.local_addr().expect("addr b");
+        drop(socket_a);
+        drop(socket_b);
+
+        let validators = vec![
+            PosValidator {
+                validator_id: "node-a".to_string(),
+                stake: 60,
+            },
+            PosValidator {
+                validator_id: "node-b".to_string(),
+                stake: 40,
+            },
+        ];
+
+        let config_a = NodeConfig::new("node-a", "world-sync", NodeRole::Sequencer)
+            .expect("config a")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("tick a")
+            .with_pos_validators(validators.clone())
+            .expect("validators a")
+            .with_gossip_optional(addr_a, vec![addr_b]);
+        let config_b = NodeConfig::new("node-b", "world-sync", NodeRole::Observer)
+            .expect("config b")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("tick b")
+            .with_pos_validators(validators)
+            .expect("validators b")
+            .with_gossip_optional(addr_b, vec![addr_a]);
+
+        let mut runtime_a = NodeRuntime::new(config_a);
+        let mut runtime_b = NodeRuntime::new(config_b);
+        runtime_a.start().expect("start a");
+        runtime_b.start().expect("start b");
+        thread::sleep(Duration::from_millis(180));
+
+        let snapshot_a = runtime_a.snapshot();
+        let snapshot_b = runtime_b.snapshot();
+        assert!(snapshot_a.consensus.network_committed_height >= 1);
+        assert!(snapshot_b.consensus.network_committed_height >= 1);
+        assert!(snapshot_a.consensus.known_peer_heads >= 1);
+        assert!(snapshot_b.consensus.known_peer_heads >= 1);
+
+        runtime_a.stop().expect("stop a");
+        runtime_b.stop().expect("stop b");
     }
 }
