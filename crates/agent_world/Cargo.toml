@@ -14,6 +14,7 @@ agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }
 agent_world_wasm_executor = { path = "../agent_world_wasm_executor", default-features = false }
 agent_world_wasm_router = { path = "../agent_world_wasm_router" }
 agent_world_wasm_store = { path = "../agent_world_wasm_store" }
+node = { path = "../node" }
 hmac = "0.12"
 hex = "0.4"
 sha2 = "0.10"
