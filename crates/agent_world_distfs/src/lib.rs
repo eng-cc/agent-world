@@ -15,8 +15,10 @@ const FILES_INDEX_FILE: &str = "files_index.json";
 const FILE_INDEX_VERSION: u64 = 1;
 
 mod replication;
+mod manifest;
 
 pub use replication::*;
+pub use manifest::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
