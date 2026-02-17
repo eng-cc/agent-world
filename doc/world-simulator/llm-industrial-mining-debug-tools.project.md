@@ -56,7 +56,7 @@
 - [x] MMD8.2 协议收敛：单轮多 tool call 硬拒绝 + `schedule_recipe.batches<=0` 自动归一
 - [x] MMD8.3 资源预检：`schedule_recipe` 与 `move_agent` 电力前置预算 guardrail
 - [x] MMD8.4 策略收敛：覆盖后 wait 自动回切持续产出 + 采矿耗尽冷却窗口
-- [ ] MMD8.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样 + 文档收口
+- [x] MMD8.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样 + 文档收口
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -157,6 +157,31 @@
   - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_allows_retry_depleted_location_after_cooldown_expires --features test_tier_required -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
 
+### MMD8.5 验证摘要（2026-02-17）
+- required-tier 回归：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+  - 结果：`llm_agent` 相关 120 个用例通过（含 MMD8.4 新增“覆盖后 wait 回切”和“采矿冷却窗口”用例）。
+- 在线闭环抽样（120 tick，目标“所有工厂 + 所有制成品 + 覆盖后持续产出”）：
+  - 命令：`AGENT_WORLD_LLM_SYSTEM_PROMPT='你是工业闭环调度Agent。必须通过单一tool call输出一个可执行决策，禁止额外文本。主目标：完成所有工厂类型与所有制成品配方，并在覆盖后持续产出。' AGENT_WORLD_LLM_SHORT_TERM_GOAL='120 tick 内至少完成：1) build_factory(factory.power.radiation.mk1) 成功>=1；2) build_factory(factory.assembler.mk1) 成功>=1；3) schedule_recipe(recipe.assembler.control_chip) 成功>=1；4) schedule_recipe(recipe.assembler.motor_mk1) 成功>=1；5) schedule_recipe(recipe.assembler.logistics_drone) 成功>=1。恢复规则：insufficient_resource.electricity -> harvest_radiation；insufficient_resource.hardware -> mine_compound + refine_compound；factory_not_found -> build_factory 或移动到已知工厂；facility_already_exists -> 切换未覆盖 recipe；采矿点若可采为0则切换替代矿点。' AGENT_WORLD_LLM_LONG_TERM_GOAL='形成并保持持续工业链：harvest_radiation -> mine_compound -> refine_compound -> build_factory -> schedule_recipe；全覆盖后持续提升 data，不提前收敛。' env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 120 --print-llm-io --llm-io-max-chars 1800 --report-json output/llm_bootstrap/mmd8_opt_all_factory_all_products_2026-02-17_175323/report.json`
+  - 产物：
+    - `output/llm_bootstrap/mmd8_opt_all_factory_all_products_2026-02-17_175323/run.log`
+    - `output/llm_bootstrap/mmd8_opt_all_factory_all_products_2026-02-17_175323/report.json`
+  - 指标：
+    - `ticks_requested=120`、`active_ticks=120`
+    - `action_success=97`、`action_failure=23`
+    - `parse_errors=0`、`llm_errors=0`、`repair_rounds_total=0`
+    - `action_reject_reason_counts={insufficient_resource:18, agent_not_at_location:4, agent_already_at_location:1}`
+  - 工厂建造成功计数（`run.log`）：
+    - `factory.power.radiation.mk1=1`（首次成功 `tick=15`）
+    - `factory.assembler.mk1=1`（首次成功 `tick=21`）
+  - recipe 成功计数（`run.log`）：
+    - `recipe.assembler.control_chip=2`（首次成功 `tick=22`）
+    - `recipe.assembler.motor_mk1=1`（首次成功 `tick=45`）
+    - `recipe.assembler.logistics_drone=1`（首次成功 `tick=77`）
+  - 观测：
+    - 全程 `decision_wait=0`、`decision_wait_ticks=0`，未出现旧的提前空转。
+    - 日志出现冷却守卫命中记录（`mine_compound cooldown guardrail rerouted...`），验证 TODO-20 跳过窗口在在线样本中生效。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -172,9 +197,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD8 进行中（已完成 MMD8.1~MMD8.4）。
-- 下一阶段：执行 MMD8.5 在线抽样验证与文档收口。
-- 最近更新：2026-02-17（完成 MMD8.4 策略收敛实现与单测回归）。
+- 当前阶段：MMD8 已完成（MMD8.1~MMD8.5 全部收口）。
+- 下一阶段：评估新增遗留项并决定是否开启 MMD9（采矿探索策略强化）。
+- 最近更新：2026-02-17（完成 MMD8.5 在线验证与文档收口）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
@@ -183,3 +208,4 @@
 - TODO-18：已完成（MMD8.2），单轮多 tool call 硬拒绝，且 `schedule_recipe.batches<=0` 自动归一为合法下界。
 - TODO-19：已完成（MMD8.3），`schedule_recipe` 与 `move_agent` 增加电力前置预算预检并可自动回切 `harvest_radiation`。
 - TODO-20：已完成（MMD8.4），矿点耗尽引入短期冷却/跳过窗口并支持冷却过期后重试。
+- TODO-21：在线样本中 `insufficient_resource` 失败仍占 18/23（主要集中在“矿点反复探测 + 电力短缺下的采矿/精炼链路”）；可考虑追加“低收益矿点全局黑名单 + 基于最近失败的矿点优先队列”以进一步压降无效采矿失败。
