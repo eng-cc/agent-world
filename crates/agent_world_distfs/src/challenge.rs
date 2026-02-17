@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use agent_world_proto::distributed::{
-    StorageChallengeFailureReason, StorageChallengeSampleSource,
+    StorageChallengeFailureReason, StorageChallengeProofSemantics, StorageChallengeSampleSource,
 };
 use agent_world_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
@@ -128,6 +128,122 @@ impl LocalCasStore {
     }
 }
 
+pub fn verify_storage_challenge_receipt(
+    challenge: &StorageChallenge,
+    receipt: &StorageChallengeReceipt,
+    allowed_clock_skew_ms: i64,
+) -> Result<(), WorldError> {
+    if allowed_clock_skew_ms < 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "allowed_clock_skew_ms must be >= 0, got {}",
+                allowed_clock_skew_ms
+            ),
+        });
+    }
+    validate_storage_challenge(challenge)?;
+    validate_storage_challenge_receipt(receipt)?;
+
+    if challenge.challenge_id != receipt.challenge_id {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "challenge_id mismatch: expected={} actual={}",
+                challenge.challenge_id, receipt.challenge_id
+            ),
+        });
+    }
+    if challenge.node_id != receipt.node_id {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "node_id mismatch: expected={} actual={}",
+                challenge.node_id, receipt.node_id
+            ),
+        });
+    }
+    if challenge.content_hash != receipt.content_hash {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "content_hash mismatch: expected={} actual={}",
+                challenge.content_hash, receipt.content_hash
+            ),
+        });
+    }
+    if challenge.sample_offset != receipt.sample_offset {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sample_offset mismatch: expected={} actual={}",
+                challenge.sample_offset, receipt.sample_offset
+            ),
+        });
+    }
+    if challenge.sample_size_bytes != receipt.sample_size_bytes {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sample_size_bytes mismatch: expected={} actual={}",
+                challenge.sample_size_bytes, receipt.sample_size_bytes
+            ),
+        });
+    }
+    if receipt.sample_hash != challenge.expected_sample_hash {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "sample_hash mismatch: expected={} actual={}",
+                challenge.expected_sample_hash, receipt.sample_hash
+            ),
+        });
+    }
+    if receipt.proof_kind != STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "unsupported proof kind: expected={} actual={}",
+                STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1, receipt.proof_kind
+            ),
+        });
+    }
+    if receipt.sample_source == StorageChallengeSampleSource::Unknown {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "sample_source cannot be Unknown".to_string(),
+        });
+    }
+    if let Some(reason) = receipt.failure_reason {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("receipt indicates failure: {:?}", reason),
+        });
+    }
+
+    let min_time = challenge
+        .issued_at_unix_ms
+        .saturating_sub(allowed_clock_skew_ms);
+    let max_time = challenge
+        .expires_at_unix_ms
+        .saturating_add(allowed_clock_skew_ms);
+    if receipt.responded_at_unix_ms < min_time || receipt.responded_at_unix_ms > max_time {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "response timestamp out of challenge window: responded_at={} allowed=[{}, {}]",
+                receipt.responded_at_unix_ms, min_time, max_time
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+pub fn storage_challenge_receipt_to_proof_semantics(
+    challenge: &StorageChallenge,
+    receipt: &StorageChallengeReceipt,
+) -> StorageChallengeProofSemantics {
+    StorageChallengeProofSemantics {
+        node_id: receipt.node_id.clone(),
+        sample_source: receipt.sample_source,
+        sample_reference: challenge_sample_reference(challenge),
+        failure_reason: receipt.failure_reason,
+        proof_kind_hint: receipt.proof_kind.clone(),
+        vrf_seed_hint: Some(challenge.vrf_seed.clone()),
+        post_commitment_hint: Some(challenge.expected_sample_hash.clone()),
+    }
+}
+
 fn validate_storage_challenge_request(request: &StorageChallengeRequest) -> Result<(), WorldError> {
     validate_non_empty_field(request.challenge_id.as_str(), "challenge_id")?;
     validate_non_empty_field(request.world_id.as_str(), "world_id")?;
@@ -171,6 +287,34 @@ fn validate_storage_challenge(challenge: &StorageChallenge) -> Result<(), WorldE
         });
     }
     Ok(())
+}
+
+fn validate_storage_challenge_receipt(receipt: &StorageChallengeReceipt) -> Result<(), WorldError> {
+    if receipt.version != STORAGE_CHALLENGE_VERSION {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "unsupported storage challenge receipt version: expected={} actual={}",
+                STORAGE_CHALLENGE_VERSION, receipt.version
+            ),
+        });
+    }
+    validate_non_empty_field(receipt.challenge_id.as_str(), "challenge_id")?;
+    validate_non_empty_field(receipt.node_id.as_str(), "node_id")?;
+    validate_non_empty_field(receipt.proof_kind.as_str(), "proof_kind")?;
+    validate_hash(receipt.content_hash.as_str())?;
+    validate_hash(receipt.sample_hash.as_str())?;
+    Ok(())
+}
+
+fn challenge_sample_reference(challenge: &StorageChallenge) -> String {
+    format!(
+        "distfs://{}/challenge/{}/blob/{}?offset={}&size={}",
+        challenge.node_id,
+        challenge.challenge_id,
+        challenge.content_hash,
+        challenge.sample_offset,
+        challenge.sample_size_bytes
+    )
 }
 
 fn validate_non_empty_field(value: &str, field_name: &str) -> Result<(), WorldError> {
@@ -345,6 +489,132 @@ mod tests {
         assert_eq!(
             receipt.proof_kind,
             STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_storage_challenge_receipt_accepts_valid_receipt() {
+        let dir = temp_dir("verify-valid");
+        let store = LocalCasStore::new(&dir);
+        let content_hash = store.put_bytes(make_blob(160).as_slice()).expect("put bytes");
+        let request = StorageChallengeRequest {
+            challenge_id: "challenge-verify".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-storage-3".to_string(),
+            content_hash,
+            max_sample_bytes: 40,
+            issued_at_unix_ms: 500,
+            challenge_ttl_ms: 1_000,
+            vrf_seed: "seed-verify".to_string(),
+        };
+        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let receipt = store
+            .answer_storage_challenge(&challenge, 900)
+            .expect("answer challenge");
+        verify_storage_challenge_receipt(&challenge, &receipt, 50).expect("verify receipt");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_storage_challenge_receipt_rejects_hash_mismatch() {
+        let dir = temp_dir("verify-hash-mismatch");
+        let store = LocalCasStore::new(&dir);
+        let content_hash = store.put_bytes(make_blob(80).as_slice()).expect("put bytes");
+        let request = StorageChallengeRequest {
+            challenge_id: "challenge-hash-mismatch".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-storage-4".to_string(),
+            content_hash,
+            max_sample_bytes: 16,
+            issued_at_unix_ms: 1_000,
+            challenge_ttl_ms: 500,
+            vrf_seed: "seed-hash".to_string(),
+        };
+        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let mut receipt = store
+            .answer_storage_challenge(&challenge, 1_100)
+            .expect("answer challenge");
+        receipt.sample_hash = blake3_hex(b"tampered");
+
+        let verified = verify_storage_challenge_receipt(&challenge, &receipt, 10);
+        assert!(matches!(
+            verified,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn verify_storage_challenge_receipt_rejects_expired_response() {
+        let dir = temp_dir("verify-expired");
+        let store = LocalCasStore::new(&dir);
+        let content_hash = store.put_bytes(make_blob(64).as_slice()).expect("put bytes");
+        let request = StorageChallengeRequest {
+            challenge_id: "challenge-expired".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-storage-5".to_string(),
+            content_hash,
+            max_sample_bytes: 16,
+            issued_at_unix_ms: 2_000,
+            challenge_ttl_ms: 100,
+            vrf_seed: "seed-expired".to_string(),
+        };
+        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let receipt = store
+            .answer_storage_challenge(&challenge, challenge.expires_at_unix_ms + 200)
+            .expect("answer challenge");
+        let verified = verify_storage_challenge_receipt(&challenge, &receipt, 50);
+        assert!(matches!(
+            verified,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn receipt_to_proof_semantics_projects_expected_fields() {
+        let dir = temp_dir("proof-semantics");
+        let store = LocalCasStore::new(&dir);
+        let content_hash = store.put_bytes(make_blob(88).as_slice()).expect("put bytes");
+        let request = StorageChallengeRequest {
+            challenge_id: "challenge-semantics".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-storage-6".to_string(),
+            content_hash,
+            max_sample_bytes: 20,
+            issued_at_unix_ms: 3_000,
+            challenge_ttl_ms: 100,
+            vrf_seed: "seed-semantics".to_string(),
+        };
+        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let receipt = store
+            .answer_storage_challenge(&challenge, 3_050)
+            .expect("answer challenge");
+        let semantics = storage_challenge_receipt_to_proof_semantics(&challenge, &receipt);
+
+        assert_eq!(semantics.node_id, challenge.node_id);
+        assert_eq!(semantics.sample_source, StorageChallengeSampleSource::LocalStoreIndex);
+        assert_eq!(
+            semantics.sample_reference,
+            challenge_sample_reference(&challenge)
+        );
+        assert_eq!(semantics.failure_reason, None);
+        assert_eq!(
+            semantics.proof_kind_hint,
+            STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1
+        );
+        assert_eq!(
+            semantics.vrf_seed_hint.as_deref(),
+            Some(challenge.vrf_seed.as_str())
+        );
+        assert_eq!(
+            semantics.post_commitment_hint.as_deref(),
+            Some(challenge.expected_sample_hash.as_str())
         );
 
         let _ = fs::remove_dir_all(&dir);
