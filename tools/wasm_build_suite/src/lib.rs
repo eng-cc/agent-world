@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::env;
 use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
@@ -149,6 +150,48 @@ struct CargoPackage {
 struct CargoTarget {
     name: String,
     kind: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BuildStdConfig {
+    enabled: bool,
+    components: String,
+    features: String,
+}
+
+impl BuildStdConfig {
+    fn from_env() -> Self {
+        let enabled = env::var("AGENT_WORLD_WASM_BUILD_STD")
+            .ok()
+            .map(|value| parse_truthy(value.as_str()))
+            .unwrap_or(false);
+        let components = env::var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS")
+            .unwrap_or_else(|_| "std,panic_abort".to_string());
+        let features = env::var("AGENT_WORLD_WASM_BUILD_STD_FEATURES")
+            .unwrap_or_else(|_| "panic_immediate_abort".to_string());
+        Self {
+            enabled,
+            components,
+            features,
+        }
+    }
+
+    fn cargo_unstable_args(&self) -> Vec<String> {
+        if !self.enabled {
+            return Vec::new();
+        }
+
+        let mut args = Vec::new();
+        if !self.components.trim().is_empty() {
+            args.push("-Z".to_string());
+            args.push(format!("build-std={}", self.components.trim()));
+        }
+        if !self.features.trim().is_empty() {
+            args.push("-Z".to_string());
+            args.push(format!("build-std-features={}", self.features.trim()));
+        }
+        args
+    }
 }
 
 pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
@@ -347,7 +390,7 @@ fn resolve_artifact_path(
 }
 
 fn run_cargo_build(manifest_path: &Path, target: &str, profile: &str) -> Result<(), BuildError> {
-    let args = vec![
+    let mut args = vec![
         "build".to_string(),
         "--manifest-path".to_string(),
         manifest_path.to_string_lossy().to_string(),
@@ -356,16 +399,17 @@ fn run_cargo_build(manifest_path: &Path, target: &str, profile: &str) -> Result<
         "--profile".to_string(),
         profile.to_string(),
     ];
-    let output = run_command_capture("cargo", args.as_slice())?;
-    if !output.status.success() {
-        return Err(BuildError::CommandFailed {
-            program: "cargo".to_string(),
-            args,
-            status_code: output.status.code(),
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        });
-    }
+    let build_std = BuildStdConfig::from_env();
+    args.extend(build_std.cargo_unstable_args());
+    run_command_capture("cargo", args.as_slice())?;
     Ok(())
+}
+
+fn parse_truthy(value: &str) -> bool {
+    matches!(
+        value,
+        "1" | "true" | "TRUE" | "True" | "yes" | "YES" | "Yes" | "on" | "ON" | "On"
+    )
 }
 
 fn run_command_capture(program: &str, args: &[String]) -> Result<std::process::Output, BuildError> {
@@ -554,5 +598,43 @@ mod tests {
             !has_custom,
             "canonicalized wasm should not keep custom sections"
         );
+    }
+
+    #[test]
+    fn build_std_config_disabled_emits_no_unstable_args() {
+        let config = BuildStdConfig {
+            enabled: false,
+            components: "std,panic_abort".to_string(),
+            features: "panic_immediate_abort".to_string(),
+        };
+        assert!(config.cargo_unstable_args().is_empty());
+    }
+
+    #[test]
+    fn build_std_config_enabled_emits_expected_unstable_args() {
+        let config = BuildStdConfig {
+            enabled: true,
+            components: "core,std".to_string(),
+            features: "panic_immediate_abort".to_string(),
+        };
+        assert_eq!(
+            config.cargo_unstable_args(),
+            vec![
+                "-Z".to_string(),
+                "build-std=core,std".to_string(),
+                "-Z".to_string(),
+                "build-std-features=panic_immediate_abort".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_truthy_accepts_expected_values() {
+        for value in ["1", "true", "TRUE", "yes", "On"] {
+            assert!(parse_truthy(value), "value should be truthy: {value}");
+        }
+        for value in ["0", "false", "off", "", "random"] {
+            assert!(!parse_truthy(value), "value should be falsey: {value}");
+        }
     }
 }
