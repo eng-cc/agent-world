@@ -12,6 +12,7 @@ use crate::quorum::{
     ConsensusConfig, ConsensusMembershipChange, ConsensusMembershipChangeRequest,
     ConsensusMembershipChangeResult, QuorumConsensus,
 };
+use crate::error::WorldError;
 
 fn membership_request(
     requester_id: &str,
@@ -347,11 +348,13 @@ fn restore_membership_from_dht_rejects_unaccepted_signature_signer_public_key() 
         .expect("publish signed membership change");
 
     let mut consensus = sample_consensus();
+    let unaccepted_public_key_hex = hex::encode([0x42; 32]);
+    assert_ne!(unaccepted_public_key_hex, public_key_hex);
     let policy = MembershipSnapshotRestorePolicy {
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k-ed".to_string()],
-        accepted_signature_signer_public_keys: vec!["deadbeef".to_string()],
+        accepted_signature_signer_public_keys: vec![unaccepted_public_key_hex],
         ..MembershipSnapshotRestorePolicy::default()
     };
     let audit = sync_client
@@ -404,11 +407,12 @@ fn restore_membership_from_dht_rejects_hmac_when_signature_signer_public_key_req
         .expect("publish signed membership change");
 
     let mut consensus = sample_consensus();
+    let accepted_signer_public_key = hex::encode([0x24; 32]);
     let policy = MembershipSnapshotRestorePolicy {
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k-hmac".to_string()],
-        accepted_signature_signer_public_keys: vec!["deadbeef".to_string()],
+        accepted_signature_signer_public_keys: vec![accepted_signer_public_key],
         ..MembershipSnapshotRestorePolicy::default()
     };
     let audit = sync_client
@@ -423,4 +427,114 @@ fn restore_membership_from_dht_rejects_hmac_when_signature_signer_public_key_req
         .expect("restore audit");
     assert!(audit.restored.is_none());
     assert!(audit.audit.reason.contains("signer public key is required"));
+}
+
+#[test]
+fn restore_membership_from_dht_accepts_uppercase_signature_signer_public_key_policy() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht = InMemoryDht::new();
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+    let request = membership_request(
+        "seq-1",
+        100,
+        ConsensusMembershipChange::AddValidator {
+            validator_id: "seq-4".to_string(),
+        },
+    );
+    let result = ConsensusMembershipChangeResult {
+        applied: true,
+        validators: vec![
+            "seq-1".to_string(),
+            "seq-2".to_string(),
+            "seq-3".to_string(),
+            "seq-4".to_string(),
+        ],
+        quorum_threshold: 3,
+    };
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    let (private_key_hex, public_key_hex) = ed25519_keypair_hex(49);
+    keyring
+        .add_ed25519_key("k-ed", private_key_hex.as_str(), public_key_hex.as_str())
+        .expect("add key");
+    keyring.set_active_key("k-ed").expect("set active key");
+    sync_client
+        .publish_membership_change_with_dht_signed_with_keyring(
+            "w1", &request, &result, &dht, &keyring,
+        )
+        .expect("publish signed membership change");
+
+    let mut consensus = sample_consensus();
+    let policy = MembershipSnapshotRestorePolicy {
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["k-ed".to_string()],
+        accepted_signature_signer_public_keys: vec![public_key_hex.to_uppercase()],
+        ..MembershipSnapshotRestorePolicy::default()
+    };
+    let restored = sync_client
+        .restore_membership_from_dht_verified_with_keyring(
+            "w1",
+            &mut consensus,
+            &dht,
+            Some(&keyring),
+            &policy,
+        )
+        .expect("restore membership")
+        .expect("restored result");
+    assert!(restored.applied);
+    assert!(restored.validators.iter().any(|id| id == "seq-4"));
+}
+
+#[test]
+fn restore_membership_from_dht_verified_with_audit_rejects_invalid_signer_public_key_policy() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht = InMemoryDht::new();
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let mut consensus = sample_consensus();
+
+    let policy = MembershipSnapshotRestorePolicy {
+        accepted_signature_signer_public_keys: vec!["not-hex".to_string()],
+        ..MembershipSnapshotRestorePolicy::default()
+    };
+    let err = sync_client
+        .restore_membership_from_dht_verified_with_audit(
+            "w1",
+            &mut consensus,
+            &dht,
+            None,
+            None,
+            &policy,
+        )
+        .expect_err("invalid policy should fail fast");
+    let WorldError::DistributedValidationFailed { reason } = err else {
+        panic!("expected DistributedValidationFailed");
+    };
+    assert!(reason.contains("accepted_signature_signer_public_keys"));
+    assert!(reason.contains("valid hex"));
+}
+
+#[test]
+fn sync_key_revocations_with_policy_rejects_duplicate_normalized_signer_public_keys() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+    let subscription = sync_client.subscribe("w1").expect("subscribe");
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+
+    let (_private_key_hex, public_key_hex) = ed25519_keypair_hex(57);
+    let policy = MembershipRevocationSyncPolicy {
+        accepted_signature_signer_public_keys: vec![
+            public_key_hex.clone(),
+            public_key_hex.to_uppercase(),
+        ],
+        ..MembershipRevocationSyncPolicy::default()
+    };
+    let err = sync_client
+        .sync_key_revocations_with_policy("w1", &subscription, &mut keyring, None, &policy)
+        .expect_err("duplicate signer key policy should fail fast");
+    let WorldError::DistributedValidationFailed { reason } = err else {
+        panic!("expected DistributedValidationFailed");
+    };
+    assert!(reason.contains("duplicate signer public key"));
 }
