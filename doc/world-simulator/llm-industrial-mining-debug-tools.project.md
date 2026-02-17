@@ -43,7 +43,7 @@
 ### MMD6 TODO-14~16 优化迭代（2026-02-17）
 - [x] MMD6.1 文档增量设计：补充 TODO-14/15/16 目标、接口与风险
 - [x] MMD6.2 守卫优化 A：`factory_id` 归一化 + `build_factory` 去重改写
-- [ ] MMD6.3 守卫优化 B：`move_distance_exceeded` 目标记忆与不可见目标分段回退
+- [x] MMD6.3 守卫优化 B：`move_distance_exceeded` 目标记忆与不可见目标分段回退
 - [ ] MMD6.4 守卫优化 C：采矿耗尽感知（可采量记忆 + 质量裁剪 + 迁移回退）
 - [ ] MMD6.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核 + 文档收口
 
@@ -109,7 +109,7 @@
 ## 状态
 - 当前阶段：MMD6 进行中（TODO-14/TODO-15/TODO-16 优化迭代）。
 - 下一阶段：完成 guardrail 改造后执行 120 tick 在线抽样复核失败结构变化。
-- 最近更新：2026-02-17（已完成 MMD6.2：`factory_id` 归一化 + 重复建厂去重守卫）。
+- 最近更新：2026-02-17（已完成 MMD6.3：超距目标记忆 + fallback 中继回退守卫）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。

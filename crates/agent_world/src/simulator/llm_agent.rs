@@ -748,6 +748,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     pending_decision_rewrite: Option<DecisionRewriteReceipt>,
     known_factory_locations: BTreeMap<String, String>,
     known_factory_kind_aliases: BTreeMap<String, String>,
+    move_distance_exceeded_targets: BTreeSet<String>,
     recipe_coverage: RecipeCoverageProgress,
 }
 
@@ -797,6 +798,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             pending_decision_rewrite: None,
             known_factory_locations: BTreeMap::new(),
             known_factory_kind_aliases: BTreeMap::new(),
+            move_distance_exceeded_targets: BTreeSet::new(),
             recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
@@ -1731,6 +1733,37 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         )
     }
 
+    fn find_exploration_move_relay(
+        &self,
+        to: &str,
+        observation: &Observation,
+    ) -> Option<(String, i64)> {
+        if DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK <= 0 {
+            return None;
+        }
+        let mut best: Option<(String, i64)> = None;
+        for candidate in &observation.visible_locations {
+            if candidate.location_id == to
+                || candidate.distance_cm <= 0
+                || candidate.distance_cm > DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK
+            {
+                continue;
+            }
+            let should_replace = match &best {
+                None => true,
+                Some((best_location_id, best_distance)) => {
+                    candidate.distance_cm > *best_distance
+                        || (candidate.distance_cm == *best_distance
+                            && candidate.location_id < *best_location_id)
+                }
+            };
+            if should_replace {
+                best = Some((candidate.location_id.clone(), candidate.distance_cm));
+            }
+        }
+        best
+    }
+
     fn guarded_move_to_location(
         &self,
         to: &str,
@@ -1758,6 +1791,37 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     relay_to_target_distance
                 )),
             );
+        }
+
+        let visible_target_distance = observation
+            .visible_locations
+            .iter()
+            .find(|location| location.location_id == to)
+            .map(|location| location.distance_cm);
+        let target_known_too_far = visible_target_distance
+            .is_some_and(|distance| distance > DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK);
+        let target_blocked_by_history = self.move_distance_exceeded_targets.contains(to);
+        if target_known_too_far || target_blocked_by_history {
+            if let Some((relay_location_id, relay_distance_from_self)) =
+                self.find_exploration_move_relay(to, observation)
+            {
+                return (
+                    Action::MoveAgent {
+                        agent_id: self.agent_id.clone(),
+                        to: relay_location_id.clone(),
+                    },
+                    Some(format!(
+                        "move_agent fallback relay after move_distance_exceeded: target={} target_distance_cm={} blocked_by_history={} rerouted_via={} relay_distance_cm={}",
+                        to,
+                        visible_target_distance
+                            .map(|distance| distance.to_string())
+                            .unwrap_or_else(|| "unknown".to_string()),
+                        target_blocked_by_history,
+                        relay_location_id,
+                        relay_distance_from_self
+                    )),
+                );
+            }
         }
 
         (

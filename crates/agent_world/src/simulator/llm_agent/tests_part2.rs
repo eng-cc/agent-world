@@ -1348,6 +1348,85 @@ fn llm_agent_segments_move_agent_when_target_distance_exceeds_limit() {
 }
 
 #[test]
+fn llm_agent_uses_relay_fallback_after_move_distance_exceeded_history() {
+    let client = SequenceMockClient::new(vec![
+        r#"{"decision":"move_agent","to":"loc-far"}"#.to_string(),
+        r#"{"decision":"move_agent","to":"loc-far"}"#.to_string(),
+    ]);
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-relay".to_string(),
+            name: "relay".to_string(),
+            pos: GeoPos {
+                x_cm: 900_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 900_000,
+        },
+    ];
+
+    let first = behavior.decide(&observation);
+    assert_eq!(
+        first,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-far".to_string(),
+        })
+    );
+    let _ = behavior.take_decision_trace();
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-far".to_string(),
+        },
+        action_id: 611,
+        success: false,
+        event: WorldEvent {
+            id: 711,
+            time: 150,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::MoveDistanceExceeded {
+                    distance_cm: 1_800_000,
+                    max_distance_cm: 1_000_000,
+                },
+            },
+        },
+    });
+
+    observation.time = 151;
+    let second = behavior.decide(&observation);
+    assert_eq!(
+        second,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-relay".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("fallback relay after move_distance_exceeded")));
+}
+
+#[test]
 fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
     let client = MockClient {
         output: Some(

@@ -770,6 +770,16 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         self.memory
             .record_action_result(time, result.action.clone(), result.success);
         match &result.action {
+            Action::MoveAgent { to, .. } => {
+                if result.success {
+                    self.move_distance_exceeded_targets.remove(to.as_str());
+                } else if matches!(
+                    result.reject_reason(),
+                    Some(RejectReason::MoveDistanceExceeded { .. })
+                ) {
+                    self.move_distance_exceeded_targets.insert(to.clone());
+                }
+            }
             Action::BuildFactory {
                 factory_id,
                 location_id,
