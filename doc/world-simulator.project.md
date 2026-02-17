@@ -155,6 +155,7 @@
 ### 6. 维护
 - [x] 拆分 simulator kernel/tests 文件以满足单文件行数上限
 - [x] 对齐 simulator 单元测试与新 API（memory/runner/persist/power/observe）
+- [x] 清理 `doc/world-simulator` 过时设计文档并归档到 `doc/world-simulator/archive/`（含归档标记与替代文档指引）
 
 ### 7. 分块世界生成（探索驱动）
 - [x] 输出分块世界生成与碎片元素池设计文档（`doc/world-simulator/chunked-fragment-generation.md`）
@@ -275,4 +276,4 @@
 ## 状态
 - 当前阶段：M3（Agent 运行时与 SDK）**已完成**
 - 下一步：M4（最小社会与经济）主线推进（背景故事物理一致性清单已收口）
-- 最近更新：完成 FRB4（运行期补种 + 资源类型分布策略 + replay 闭环）（2026-02-15）
+- 最近更新：完成文档归档清理（下线过时 Chat 双栏/默认值独立展示方案并迁移到 `doc/world-simulator/archive/`）（2026-02-17）

@@ -1,4 +1,8 @@
-# Chat Panel Agent Prompt 字段默认值可见化（项目管理文档）
+# [已归档] Chat Panel Agent Prompt 字段默认值可见化（项目管理文档）
+
+> 归档标记（2026-02-17）：该任务对应设计已被后续方案替代。
+> 过时原因：任务口径为“默认值单独文案展示”，当前实现已迁移为预填充/内联输入方案，不再保留该展示形态。
+> 替代文档：`doc/world-simulator/viewer-chat-agent-prompt-default-values-prefill.project.md`、`doc/world-simulator/viewer-chat-agent-prompt-default-values-inline-input.project.md`。
 
 ## 任务拆解
 - [x] VCPDV1 输出设计文档（`doc/world-simulator/viewer-chat-agent-prompt-default-values.md`）

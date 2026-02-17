@@ -1,4 +1,8 @@
-# Agent World Simulator：Viewer Agent Chat 左右双 Panel 与会话历史（设计文档）
+# [已归档] Agent World Simulator：Viewer Agent Chat 左右双 Panel 与会话历史（设计文档）
+
+> 归档标记（2026-02-17）：该设计已过时，不再作为当前实现依据。
+> 过时原因：文档要求“左侧 Chat History SidePanel + 右侧 Chat Panel”，但当前实现已移除左侧历史栏，仅保留右侧主信息面板与最右侧 Chat 面板（见 `crates/agent_world_viewer/src/egui_right_panel.rs`）。
+> 替代文档：`doc/world-simulator/viewer-chat-dedicated-right-panel.md`、`doc/world-simulator/viewer-chat-right-panel-polish.md`。
 
 ## 目标
 - 将 Viewer 中 Agent Chat 从“右侧单模块”升级为“左右双 Panel”形态：

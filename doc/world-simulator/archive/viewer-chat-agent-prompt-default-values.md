@@ -1,4 +1,8 @@
-# Agent World Simulator：Chat Panel Agent Prompt 字段默认值可见化（设计文档）
+# [已归档] Agent World Simulator：Chat Panel Agent Prompt 字段默认值可见化（设计文档）
+
+> 归档标记（2026-02-17）：该设计已过时，不再作为当前实现依据。
+> 过时原因：文档定义“默认值单独展示文案”，而当前实现已采用“输入框预填充 + hint 文本 + patch 语义”路径（见 `crates/agent_world_viewer/src/egui_right_panel_chat.rs`），不再保留独立默认值展示行。
+> 替代文档：`doc/world-simulator/viewer-chat-agent-prompt-default-values-prefill.md`、`doc/world-simulator/viewer-chat-agent-prompt-default-values-inline-input.md`。
 
 ## 目标
 - 在最右侧 Chat Panel 的 `Agent Prompt Draft` 区域中，为 `system prompt`、`短期目标`、`长期目标` 显示默认值。

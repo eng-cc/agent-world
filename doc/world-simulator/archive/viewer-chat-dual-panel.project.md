@@ -1,4 +1,8 @@
-# Viewer Agent Chat 左右双 Panel 与会话历史（项目管理文档）
+# [已归档] Viewer Agent Chat 左右双 Panel 与会话历史（项目管理文档）
+
+> 归档标记（2026-02-17）：该任务对应的设计已被后续方案替代。
+> 过时原因：项目项包含“新增左侧 Chat History Panel（VCD3）”，与当前实现不一致（当前无左侧 Chat History 面板）。
+> 替代文档：`doc/world-simulator/viewer-chat-dedicated-right-panel.project.md`、`doc/world-simulator/viewer-chat-right-panel-polish.project.md`。
 
 ## 任务拆解
 - [x] VCD1 输出设计文档（`doc/world-simulator/viewer-chat-dual-panel.md`）
