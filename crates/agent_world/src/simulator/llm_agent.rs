@@ -152,6 +152,7 @@ const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
 const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
 const DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G: i64 = 5_000;
 const DEFAULT_MINE_ELECTRICITY_COST_PER_KG: i64 = 1;
+const DEFAULT_MINE_DEPLETED_LOCATION_COOLDOWN_TICKS: u64 = 6;
 const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 const TRACKED_RECIPE_IDS: [&str; 3] = [
     "recipe.assembler.control_chip",
@@ -231,6 +232,12 @@ impl RecipeCoverageProgress {
             "completed": completed,
             "missing": missing,
         })
+    }
+
+    fn is_fully_covered(&self) -> bool {
+        TRACKED_RECIPE_IDS
+            .iter()
+            .all(|recipe_id| self.completed.contains(*recipe_id))
     }
 }
 
@@ -753,6 +760,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     known_factory_kind_aliases: BTreeMap<String, String>,
     move_distance_exceeded_targets: BTreeSet<String>,
     known_compound_availability_by_location: BTreeMap<String, i64>,
+    depleted_mine_location_cooldowns: BTreeMap<String, u64>,
     recipe_coverage: RecipeCoverageProgress,
 }
 
@@ -804,6 +812,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             known_factory_kind_aliases: BTreeMap::new(),
             move_distance_exceeded_targets: BTreeSet::new(),
             known_compound_availability_by_location: BTreeMap::new(),
+            depleted_mine_location_cooldowns: BTreeMap::new(),
             recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
@@ -1204,8 +1213,67 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     self.apply_action_guardrails(action, Some(observation));
                 (AgentDecision::Act(guarded_action), note)
             }
-            other => (other, None),
+            AgentDecision::Wait => {
+                if let Some((guarded_action, note)) =
+                    self.rewrite_wait_to_sustained_production("wait", observation)
+                {
+                    return (AgentDecision::Act(guarded_action), Some(note));
+                }
+                (AgentDecision::Wait, None)
+            }
+            AgentDecision::WaitTicks(ticks) => {
+                let wait_label = format!("wait_ticks({ticks})");
+                if let Some((guarded_action, note)) =
+                    self.rewrite_wait_to_sustained_production(wait_label.as_str(), observation)
+                {
+                    return (AgentDecision::Act(guarded_action), Some(note));
+                }
+                (AgentDecision::WaitTicks(ticks), None)
+            }
         }
+    }
+
+    fn rewrite_wait_to_sustained_production(
+        &self,
+        wait_label: &str,
+        observation: &Observation,
+    ) -> Option<(Action, String)> {
+        if !self.recipe_coverage.is_fully_covered() {
+            return None;
+        }
+
+        let Some(factory_id) = self.preferred_sustained_factory_id() else {
+            return Some((
+                Action::HarvestRadiation {
+                    agent_id: self.agent_id.clone(),
+                    max_amount: self.config.harvest_max_amount_cap,
+                },
+                format!(
+                    "recipe coverage complete; {} rewritten to harvest_radiation because no known factory is available for sustained production",
+                    wait_label
+                ),
+            ));
+        };
+        let recipe_id = self.next_recovery_recipe_id_for_existing_factory();
+        let (guarded_action, guard_note) = self.apply_action_guardrails(
+            Action::ScheduleRecipe {
+                owner: ResourceOwner::Agent {
+                    agent_id: self.agent_id.clone(),
+                },
+                factory_id: factory_id.clone(),
+                recipe_id: recipe_id.clone(),
+                batches: 1,
+            },
+            Some(observation),
+        );
+        let mut notes = vec![format!(
+            "recipe coverage complete; {} rewritten to sustained production via schedule_recipe(factory_id={}, recipe_id={}, batches=1)",
+            wait_label, factory_id, recipe_id
+        )];
+        if let Some(guard_note) = guard_note {
+            notes.push(guard_note);
+        }
+        Some((guarded_action, notes.join("; ")))
     }
 
     fn apply_action_guardrails(
@@ -1282,15 +1350,55 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     ));
                 }
 
+                if let Some(cooldown_remaining_ticks) = self
+                    .mine_depletion_cooldown_remaining_ticks(location_id.as_str(), observation.time)
+                {
+                    if let Some(alternative_location_id) = self.find_alternative_mine_location(
+                        observation,
+                        location_id.as_str(),
+                        observation.time,
+                    ) {
+                        let (move_action, move_note) = self.guarded_move_to_location(
+                            alternative_location_id.as_str(),
+                            observation,
+                        );
+                        mine_notes.push(format!(
+                            "mine_compound cooldown guardrail rerouted to move_agent: location_id={} cooldown_remaining_ticks={} alternative_location={}",
+                            location_id, cooldown_remaining_ticks, alternative_location_id
+                        ));
+                        if let Some(move_note) = move_note {
+                            mine_notes.push(move_note);
+                        }
+                        return self.guard_move_action_with_electricity(
+                            move_action,
+                            observation,
+                            mine_notes,
+                        );
+                    }
+                    mine_notes.push(format!(
+                        "mine_compound cooldown guardrail rerouted to harvest_radiation: location_id={} cooldown_remaining_ticks={} and no alternative visible location",
+                        location_id, cooldown_remaining_ticks
+                    ));
+                    return (
+                        Action::HarvestRadiation {
+                            agent_id: self.agent_id.clone(),
+                            max_amount: self.config.harvest_max_amount_cap,
+                        },
+                        Some(mine_notes.join("; ")),
+                    );
+                }
+
                 if let Some(known_available) = self
                     .known_compound_availability_by_location
                     .get(location_id.as_str())
                     .copied()
                 {
                     if known_available <= 0 {
-                        if let Some(alternative_location_id) =
-                            self.find_alternative_mine_location(observation, location_id.as_str())
-                        {
+                        if let Some(alternative_location_id) = self.find_alternative_mine_location(
+                            observation,
+                            location_id.as_str(),
+                            observation.time,
+                        ) {
                             let (move_action, move_note) = self.guarded_move_to_location(
                                 alternative_location_id.as_str(),
                                 observation,
@@ -1849,6 +1957,17 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             .unwrap_or_else(|| TRACKED_RECIPE_IDS[0].to_string())
     }
 
+    fn preferred_sustained_factory_id(&self) -> Option<String> {
+        self.known_factory_kind_aliases
+            .get("factory.assembler.mk1")
+            .filter(|factory_id| {
+                self.known_factory_locations
+                    .contains_key(factory_id.as_str())
+            })
+            .cloned()
+            .or_else(|| self.known_factory_locations.keys().next().cloned())
+    }
+
     fn find_reachable_move_relay(
         &self,
         to: &str,
@@ -1947,12 +2066,21 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         &self,
         observation: &Observation,
         depleted_location_id: &str,
+        current_time: u64,
     ) -> Option<String> {
         let mut best_known_positive: Option<(String, i64, i64)> = None;
         let mut best_unknown: Option<(String, i64)> = None;
 
         for candidate in &observation.visible_locations {
-            if candidate.location_id == depleted_location_id || candidate.distance_cm <= 0 {
+            if candidate.location_id == depleted_location_id
+                || candidate.distance_cm <= 0
+                || self
+                    .mine_depletion_cooldown_remaining_ticks(
+                        candidate.location_id.as_str(),
+                        current_time,
+                    )
+                    .is_some()
+            {
                 continue;
             }
             match self
@@ -2000,6 +2128,21 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         best_known_positive
             .map(|(location_id, _, _)| location_id)
             .or_else(|| best_unknown.map(|(location_id, _)| location_id))
+    }
+
+    fn mine_depletion_cooldown_remaining_ticks(
+        &self,
+        location_id: &str,
+        current_time: u64,
+    ) -> Option<u64> {
+        let cooldown_until_time = self
+            .depleted_mine_location_cooldowns
+            .get(location_id)
+            .copied()?;
+        if current_time > cooldown_until_time {
+            return None;
+        }
+        Some(cooldown_until_time - current_time + 1)
     }
 
     fn guarded_move_to_location(

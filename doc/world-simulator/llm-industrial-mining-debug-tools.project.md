@@ -55,7 +55,7 @@
 - [x] MMD8.1 文档增量设计：补充 TODO-17/18/19/20 目标、接口与风险
 - [x] MMD8.2 协议收敛：单轮多 tool call 硬拒绝 + `schedule_recipe.batches<=0` 自动归一
 - [x] MMD8.3 资源预检：`schedule_recipe` 与 `move_agent` 电力前置预算 guardrail
-- [ ] MMD8.4 策略收敛：覆盖后 wait 自动回切持续产出 + 采矿耗尽冷却窗口
+- [x] MMD8.4 策略收敛：覆盖后 wait 自动回切持续产出 + 采矿耗尽冷却窗口
 - [ ] MMD8.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样 + 文档收口
 
 ### MMD4 结果摘要（2026-02-17）
@@ -143,6 +143,20 @@
   - 已达成“所有工厂 + 所有制成品”目标，且 `active_ticks=120`，无提前收敛。
   - 仍出现 1 次协议解析问题（`tick=119` 多段输出 `---` 且 `schedule_recipe.batches=0` 导致 `parse_error`），以及 12 次资源不足拒绝。
 
+### MMD8.4 实施摘要（2026-02-17）
+- 范围：
+  - TODO-17：`wait/wait_ticks` 在三配方全覆盖后自动改写为持续产出动作（优先 `schedule_recipe`，不可执行时沿现有 guardrail 自动回切恢复动作）。
+  - TODO-20：为矿点耗尽新增 location 级冷却窗口，冷却期内跳过原矿点并优先替代矿点；冷却过期后允许重试。
+- 代码：
+  - `crates/agent_world/src/simulator/llm_agent.rs`
+  - `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
+  - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
+- 单测：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_rewrites_wait --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_skips_depleted_location_during_cooldown_window --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_allows_retry_depleted_location_after_cooldown_expires --features test_tier_required -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -158,14 +172,14 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD8 进行中（已完成 MMD8.1 设计拆解）。
-- 下一阶段：执行 MMD8.2~MMD8.5 代码与回归收口。
-- 最近更新：2026-02-17（启动 TODO-17~TODO-20 收口迭代）。
+- 当前阶段：MMD8 进行中（已完成 MMD8.1~MMD8.4）。
+- 下一阶段：执行 MMD8.5 在线抽样验证与文档收口。
+- 最近更新：2026-02-17（完成 MMD8.4 策略收敛实现与单测回归）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
 - TODO-14~TODO-16：已完成（MMD6），并在在线抽样中验证关键失败项下降（`facility_not_found=0`、`move_distance_exceeded=0`）。
-- TODO-17：将“覆盖后持续产出”从 prompt 约束下沉为默认策略（本轮通过强化 prompt 实现 `active_ticks=120`，但默认策略仍未固化）。
-- TODO-18：tool-only 协议仍会出现多段输出（`---`）+ 非法 `schedule_recipe.batches=0` 组合，需增加“多段输出硬拒绝 + 非法 batches 自动改写（mine/refine）”。
-- TODO-19：`schedule_recipe` 与 `move_agent` 的电力前置检查仍有缺口（本轮 `insufficient_resource=12`），需在 guardrail 增加“动作前电力预算校验 + 自动回切 harvest”。
-- TODO-20：矿点耗尽后仍可能出现重复高质量采矿尝试、失败后再恢复的抖动路径，需补“耗尽点冷却/跳过窗口”降低无效失败。
+- TODO-17：已完成（MMD8.4），`wait/wait_ticks` 在 recipe 全覆盖后默认回切持续产出动作，不再仅依赖 prompt 约束。
+- TODO-18：已完成（MMD8.2），单轮多 tool call 硬拒绝，且 `schedule_recipe.batches<=0` 自动归一为合法下界。
+- TODO-19：已完成（MMD8.3），`schedule_recipe` 与 `move_agent` 增加电力前置预算预检并可自动回切 `harvest_radiation`。
+- TODO-20：已完成（MMD8.4），矿点耗尽引入短期冷却/跳过窗口并支持冷却过期后重试。

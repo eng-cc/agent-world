@@ -793,6 +793,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
     fn on_action_result(&mut self, result: &ActionResult) {
         let time = result.event.time;
+        self.depleted_mine_location_cooldowns
+            .retain(|_, cooldown_until_time| *cooldown_until_time >= time);
         self.last_action_summary = Some(Self::summarize_action_result_for_prompt(
             result,
             self.pending_decision_rewrite.take(),
@@ -814,6 +816,8 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 if result.success {
                     self.known_compound_availability_by_location
                         .remove(location_id.as_str());
+                    self.depleted_mine_location_cooldowns
+                        .remove(location_id.as_str());
                 } else if let Some(RejectReason::InsufficientResource {
                     owner:
                         ResourceOwner::Location {
@@ -824,8 +828,32 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     ..
                 }) = result.reject_reason()
                 {
-                    self.known_compound_availability_by_location
-                        .insert(rejected_location_id.clone(), (*available).max(0));
+                    let known_available = (*available).max(0);
+                    if known_available <= 0 {
+                        self.known_compound_availability_by_location
+                            .remove(rejected_location_id.as_str());
+                        let cooldown_until_time =
+                            time.saturating_add(DEFAULT_MINE_DEPLETED_LOCATION_COOLDOWN_TICKS);
+                        self.depleted_mine_location_cooldowns
+                            .insert(rejected_location_id.clone(), cooldown_until_time);
+                        let cooldown_note = format!(
+                            "mine_compound depletion cooldown armed: location_id={} cooldown_until_time={} duration_ticks={}",
+                            rejected_location_id,
+                            cooldown_until_time,
+                            DEFAULT_MINE_DEPLETED_LOCATION_COOLDOWN_TICKS
+                        );
+                        self.memory.record_note(time, cooldown_note.clone());
+                        let _ = self.append_conversation_message(
+                            time,
+                            LlmChatRole::System,
+                            cooldown_note.as_str(),
+                        );
+                    } else {
+                        self.known_compound_availability_by_location
+                            .insert(rejected_location_id.clone(), known_available);
+                        self.depleted_mine_location_cooldowns
+                            .remove(rejected_location_id.as_str());
+                    }
                 }
             }
             Action::BuildFactory {
@@ -910,6 +938,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         }
         if matches!(event.kind, WorldEventKind::FragmentsReplenished { .. }) {
             self.known_compound_availability_by_location.clear();
+            self.depleted_mine_location_cooldowns.clear();
         }
         self.memory
             .record_event(event.time, format!("event: {:?}", event.kind));
