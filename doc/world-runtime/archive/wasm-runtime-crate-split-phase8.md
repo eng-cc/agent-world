@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时边界收敛（Phase 8）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 去除 `agent_world` 中对沙箱能力的兼容门面（`runtime/sandbox.rs`），避免主 crate 继续承载 WASM ABI/执行器类型转发职责。
 - 统一 `agent_world` 内部调用路径：WASM 协议类型直接来自 `agent_world_wasm_abi`，执行器实现直接来自 `agent_world_wasm_executor`。

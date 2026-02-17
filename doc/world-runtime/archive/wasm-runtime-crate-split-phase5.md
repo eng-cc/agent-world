@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时激进迁移（设计文档，Phase 5）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 继续推进 WASM 运行时数据类型下沉，将模块注册表与生命周期事件结构从 `agent_world` 迁移到 `agent_world_wasm_abi`。
 - 让 `agent_world` 的 `runtime::modules` 收敛为兼容层（re-export），降低主 crate 对模块 ABI 类型定义的耦合。

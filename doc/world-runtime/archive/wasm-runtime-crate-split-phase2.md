@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时拆分后测试加固（设计文档）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 在完成 WRS 拆 crate 后，补齐 `agent_world_wasm_router` 与 `agent_world_wasm_executor` 的单元测试覆盖。
 - 将订阅匹配/过滤器与执行器基础行为转为 crate 内闭环验证，降低回归风险。

@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时激进迁移（设计文档，Phase 4）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 继续推进 WASM 运行时类型下沉，将模块清单与变更计划结构从 `agent_world` 迁移到 `agent_world_wasm_abi`。
 - 让 ABI crate 承载更多跨 crate 通用定义，减少 runtime crate 对模块数据定义的独占耦合。

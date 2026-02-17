@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时激进迁移（设计文档，Phase 6）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 继续收敛 `agent_world` 主 crate 的 WASM 运行时职责，将模块文件存储实现从 runtime 中抽离到独立 crate。
 - 为后续 runtime 最小化与跨 crate 复用做准备，让 `agent_world` 保留编排与兼容层职责。

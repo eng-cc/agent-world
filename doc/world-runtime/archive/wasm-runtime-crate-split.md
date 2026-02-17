@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时激进拆分（设计文档）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 将 WASM 运行时能力从 `agent_world` 主 crate 中拆出，形成稳定、可复用、可测试的独立 crate 边界。
 - 降低 `runtime` 与 `wasmtime`、ABI 协议、订阅路由解析之间的耦合，缩短增量编译路径。

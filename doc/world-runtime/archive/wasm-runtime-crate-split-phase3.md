@@ -1,5 +1,11 @@
 # Agent World Runtime：WASM 运行时激进迁移（设计文档）
 
+> [!WARNING]
+> 归档状态：**过时设计（仅保留历史记录）**  
+> 归档日期：2026-02-17  
+> 说明：本文档描述的迁移阶段已完成并并入当前实现，文中的阶段性任务与兼容路径不再作为现行方案。当前设计以 `doc/world-runtime/runtime-integration.md`、`doc/world-runtime/wasm-interface.md` 与对应源码实现为准。
+
+
 ## 目标
 - 在 WRS（拆 crate）与 R2（测试加固）之后，继续将仍驻留在 `agent_world` 的 WASM 通用类型下沉到独立 crate。
 - 先迁移高复用、低耦合的工件与缓存模型，减少 runtime 主 crate 的“类型负担”。
