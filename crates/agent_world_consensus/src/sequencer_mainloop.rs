@@ -709,9 +709,11 @@ mod tests {
     #[test]
     fn submit_action_rejects_ed25519_signed_when_signer_not_allowed() {
         let signer = ed25519_signer();
+        let unaccepted_signer_public_key = hex::encode([0x77_u8; 32]);
+        assert_ne!(unaccepted_signer_public_key, signer.public_key_hex());
         let config = SequencerMainloopConfig {
             require_action_signature: true,
-            accepted_action_signer_public_keys: vec!["deadbeef".to_string()],
+            accepted_action_signer_public_keys: vec![unaccepted_signer_public_key],
             ..SequencerMainloopConfig::default()
         };
         let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
@@ -720,6 +722,50 @@ mod tests {
         signed.signature = signer.sign_action(&signed).expect("sign action");
         assert!(!loop_state.submit_action(signed));
         assert_eq!(loop_state.pending_actions(), 0);
+    }
+
+    #[test]
+    fn submit_action_accepts_ed25519_signed_when_allowlist_key_is_uppercase() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            require_action_signature: true,
+            accepted_action_signer_public_keys: vec![signer.public_key_hex().to_uppercase()],
+            ..SequencerMainloopConfig::default()
+        };
+        let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
+
+        let mut signed = action("a-signed-ed25519-upper-allowlist", 15);
+        signed.signature = signer.sign_action(&signed).expect("sign action");
+        assert!(loop_state.submit_action(signed));
+        assert_eq!(loop_state.pending_actions(), 1);
+    }
+
+    #[test]
+    fn submit_action_accepts_ed25519_signed_when_signature_public_key_is_uppercase() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            require_action_signature: true,
+            accepted_action_signer_public_keys: vec![signer.public_key_hex().to_string()],
+            ..SequencerMainloopConfig::default()
+        };
+        let mut loop_state = SequencerMainloop::new(config, test_pos_config()).expect("loop");
+
+        let mut signed = action("a-signed-ed25519-upper-signature", 16);
+        signed.signature = signer.sign_action(&signed).expect("sign action");
+        let encoded = signed
+            .signature
+            .strip_prefix(ED25519_SIGNATURE_V1_PREFIX)
+            .expect("ed25519 signature prefix");
+        let (public_key_hex, signature_hex) = encoded
+            .split_once(':')
+            .expect("ed25519 signer and signature hex");
+        signed.signature = format!(
+            "{ED25519_SIGNATURE_V1_PREFIX}{}:{signature_hex}",
+            public_key_hex.to_uppercase()
+        );
+
+        assert!(loop_state.submit_action(signed));
+        assert_eq!(loop_state.pending_actions(), 1);
     }
 
     #[test]
@@ -803,5 +849,37 @@ mod tests {
         };
         let loop_state = SequencerMainloop::new(config, test_pos_config());
         assert!(loop_state.is_ok());
+    }
+
+    #[test]
+    fn config_rejects_invalid_action_signer_public_key_allowlist_entry() {
+        let config = SequencerMainloopConfig {
+            accepted_action_signer_public_keys: vec!["not-hex".to_string()],
+            ..SequencerMainloopConfig::default()
+        };
+        let result = SequencerMainloop::new(config, test_pos_config());
+        assert!(matches!(
+            result,
+            Err(WorldError::DistributedValidationFailed { reason })
+                if reason.contains("accepted_action_signer_public_keys")
+        ));
+    }
+
+    #[test]
+    fn config_rejects_duplicate_normalized_action_signer_public_keys() {
+        let signer = ed25519_signer();
+        let config = SequencerMainloopConfig {
+            accepted_action_signer_public_keys: vec![
+                signer.public_key_hex().to_string(),
+                signer.public_key_hex().to_uppercase(),
+            ],
+            ..SequencerMainloopConfig::default()
+        };
+        let result = SequencerMainloop::new(config, test_pos_config());
+        assert!(matches!(
+            result,
+            Err(WorldError::DistributedValidationFailed { reason })
+                if reason.contains("duplicate signer public key")
+        ));
     }
 }
