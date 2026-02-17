@@ -66,6 +66,11 @@
 - [x] LFO11.3 将 `decision_rewrite` 回灌到下一轮 observation.last_action
 - [x] LFO11.4 补齐 required-tier 回归测试并回填文档/devlog
 
+### LFO12 用户指令全量覆盖闭环复跑（2026-02-17）
+- [x] LFO12.1 使用“全部工厂类型 + 全部制成品配方”强化 prompt 复跑 `llm_bootstrap --ticks 60 --print-llm-io --report-json`
+- [x] LFO12.2 验证闭环覆盖：工厂建造成功 + 三种 recipe（`control_chip/motor_mk1/logistics_drone`）均至少一次成功
+- [x] LFO12.3 记录本轮新增 TODO 并回写项目文档/devlog
+
 ### LFO9 实施结果摘要（2026-02-17）
 - #1 删除（compat fallback）：
   - `OpenAiChatCompletionClient::complete` 在 `ParseBody(raw)` 分支不再走 raw-body JSON fallback，统一返回 `DecodeResponse` 错误（主请求与重试请求均一致）。
@@ -143,8 +148,31 @@
   - 新增用例：
     - `llm_parse_execute_until_rewrites_wait_action_to_minimal_harvest`
     - `llm_agent_rewrites_execute_until_wait_action_to_actionable_harvest`
-  - 更新用例：
-    - `llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch`（校验 `decision_rewrite` trace + prompt 回灌）
+- 更新用例：
+  - `llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch`（校验 `decision_rewrite` trace + prompt 回灌）
+
+### LFO12 在线复跑结果摘要（2026-02-17，用户指令“所有工厂和制成品”）
+- 运行产物：
+  - `output/llm_bootstrap/all_factory_all_products_codex_2026-02-17_123501/run.log`
+  - `output/llm_bootstrap/all_factory_all_products_codex_2026-02-17_123501/report.json`
+- 关键指标（60 tick）：
+  - `action_success=54`、`action_failure=6`、`llm_errors=0`、`parse_errors=0`、`repair_rounds_total=1`
+  - `action_kind_counts={build_factory:3, harvest_radiation:31, refine_compound:10, schedule_recipe:16}`
+  - `action_kind_success_counts={build_factory:1, harvest_radiation:31, refine_compound:10, schedule_recipe:12}`
+  - `action_reject_reason_counts={facility_already_exists:2, insufficient_resource:4}`
+  - `first_action_tick={build_factory:6, schedule_recipe:7}`，`world_time=60`
+- 覆盖验收：
+  - 工厂类型覆盖：`factory.assembler.mk1` 已建成（成功 1 次）。
+  - 制成品配方覆盖（`success=true schedule_recipe`）：
+    - `recipe.assembler.control_chip`: 6 次
+    - `recipe.assembler.motor_mk1`: 4 次
+    - `recipe.assembler.logistics_drone`: 2 次
+  - `data` 由 `12` 增长至 `36`（基于 `run.log` observation 采样）。
+- 新观察 TODO（后续优化）：
+  - TODO-4（持续存在）：仍有多段输出（`---`）协议违规（`tick=1`、`tick=51`）；建议继续推进“多段输出硬拒绝 + 末段决策提取”。
+  - TODO-7：`schedule_recipe` guardrail 当前主要覆盖硬件上界，电力不足仍会直接落到执行拒绝（本轮 4 次 `insufficient_resource.electricity`）；建议新增“电力预检 + 自动回切 `harvest_radiation`”策略。
+  - TODO-8：`facility_already_exists` 已透传，但模型仍会重复对同一 `factory_id` 建厂（`tick=36/55`）；建议增加“已建厂 ID 黑名单/去重记忆”约束。
+  - TODO-9：`report.json` 缺少 recipe 级成功计数与制成品计数字段，当前需要人工解析 `run.log` 才能验收“全配方覆盖”；建议新增结构化 KPI（例如 `recipe_success_counts`、`finished_product_counts`）。
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
@@ -214,6 +242,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO11 全部完成（TODO-5/TODO-6 已收口）。
-- 下一步：推进 TODO-4（多段输出硬拒绝 + 末段决策提取），继续降低协议违规输出不确定性。
-- 最近更新：2026-02-17（完成 LFO11 语义收敛与改写回执闭环）。
+- 当前阶段：LFO0-LFO12 全部完成（TODO-5/TODO-6 已收口）。
+- 下一步：推进 TODO-4 + TODO-7 + TODO-8 + TODO-9，优先收敛协议稳定性与 recipe 级可观测性。
+- 最近更新：2026-02-17（完成 LFO12“所有工厂和制成品”在线闭环复跑与 TODO 回填）。
