@@ -22,6 +22,7 @@
 - 关键构建参数：`RUSTFLAGS` 附加以下 remap 规则：
   - `--remap-path-prefix=$HOME/.cargo=/cargo`
   - `--remap-path-prefix=$HOME/.rustup=/rustup`
+  - `--remap-path-prefix=<RUSTUP_HOME>/toolchains/*=/rustup/toolchain`（覆盖 rustup alias 目录）
   - `--remap-path-prefix=<rustc_sysroot>=/rustup/toolchain`
   - `--remap-path-prefix=<repo_root>=/workspace`
 - 规范化策略：

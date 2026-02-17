@@ -14,6 +14,7 @@
 - [x] RWH-11 重新同步 m1/m4 hash 清单并回归 `sync --check`
 - [x] RWH-12 复跑 required tier，确认门禁本地闭环
 - [ ] RWH-13 推送并验证 GitHub Actions required-gate 在 Ubuntu 通过
+- [x] RWH-14 扩展 `scripts/build-wasm-module.sh`：补充 `RUSTUP_HOME/toolchains/*` 全量 remap，覆盖 toolchain alias 路径
 
 ## 依赖
 - Rust toolchain `1.92.0`
@@ -23,4 +24,4 @@
 
 ## 状态
 - 当前阶段：执行中（待 RWH-13）
-- 最近更新：RWH-1~RWH-12 完成，RWH-13 待验证（2026-02-17）
+- 最近更新：RWH-1~RWH-12、RWH-14 完成，RWH-13 待验证（2026-02-17）
