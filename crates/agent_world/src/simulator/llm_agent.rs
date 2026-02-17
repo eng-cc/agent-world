@@ -7,7 +7,7 @@ use async_openai::types::responses::{
     ToolChoiceOptions, ToolChoiceParam,
 };
 use async_openai::Client as AsyncOpenAiClient;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -150,6 +150,11 @@ const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
 const DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G: i64 = 5_000;
 const DEFAULT_MINE_ELECTRICITY_COST_PER_KG: i64 = 1;
 const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
+const TRACKED_RECIPE_IDS: [&str; 3] = [
+    "recipe.assembler.control_chip",
+    "recipe.assembler.motor_mk1",
+    "recipe.assembler.logistics_drone",
+];
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -171,6 +176,59 @@ struct PromptLastActionSummary {
     success: bool,
     reject_reason: Option<String>,
     decision_rewrite: Option<DecisionRewriteReceipt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct RecipeCoverageProgress {
+    completed: BTreeSet<String>,
+}
+
+impl RecipeCoverageProgress {
+    fn is_tracked(recipe_id: &str) -> bool {
+        TRACKED_RECIPE_IDS
+            .iter()
+            .any(|candidate| candidate == &recipe_id.trim())
+    }
+
+    fn mark_completed(&mut self, recipe_id: &str) {
+        let normalized = recipe_id.trim();
+        if Self::is_tracked(normalized) {
+            self.completed.insert(normalized.to_string());
+        }
+    }
+
+    fn is_completed(&self, recipe_id: &str) -> bool {
+        self.completed.contains(recipe_id.trim())
+    }
+
+    fn missing_recipe_ids(&self) -> Vec<String> {
+        TRACKED_RECIPE_IDS
+            .iter()
+            .filter(|recipe_id| !self.completed.contains(**recipe_id))
+            .map(|recipe_id| (*recipe_id).to_string())
+            .collect()
+    }
+
+    fn next_uncovered_recipe_excluding(&self, current_recipe_id: &str) -> Option<String> {
+        let current_recipe_id = current_recipe_id.trim();
+        self.missing_recipe_ids()
+            .into_iter()
+            .find(|recipe_id| recipe_id.as_str() != current_recipe_id)
+    }
+
+    fn summary_json(&self) -> serde_json::Value {
+        let completed = TRACKED_RECIPE_IDS
+            .iter()
+            .filter(|recipe_id| self.completed.contains(**recipe_id))
+            .map(|recipe_id| (*recipe_id).to_string())
+            .collect::<Vec<_>>();
+        let missing = self.missing_recipe_ids();
+        serde_json::json!({
+            "tracked_total": TRACKED_RECIPE_IDS.len(),
+            "completed": completed,
+            "missing": missing,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -689,6 +747,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     last_action_summary: Option<PromptLastActionSummary>,
     pending_decision_rewrite: Option<DecisionRewriteReceipt>,
     known_factory_locations: BTreeMap<String, String>,
+    recipe_coverage: RecipeCoverageProgress,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -736,6 +795,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             last_action_summary: None,
             pending_decision_rewrite: None,
             known_factory_locations: BTreeMap::new(),
+            recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
 
@@ -889,6 +949,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 })
             })
             .unwrap_or(serde_json::Value::Null);
+        let recipe_coverage = self.recipe_coverage.summary_json();
 
         serde_json::to_string(&serde_json::json!({
             "time": observation.time,
@@ -896,6 +957,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "pos": observation.pos,
             "self_resources": observation.self_resources,
             "last_action": last_action,
+            "recipe_coverage": recipe_coverage,
             "visibility_range_cm": observation.visibility_range_cm,
             "visible_agents_total": observation.visible_agents.len(),
             "visible_agents_omitted": observation
@@ -1182,7 +1244,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         None,
                     );
                 };
-                let Some(cost_per_batch) =
+                let Some(mut cost_per_batch) =
                     Self::default_recipe_hardware_cost_per_batch(recipe_id.as_str())
                 else {
                     return (
@@ -1246,6 +1308,26 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     }
                 }
 
+                let mut recipe_id = recipe_id;
+                let mut schedule_notes = Vec::new();
+                if self.recipe_coverage.is_completed(recipe_id.as_str()) {
+                    if let Some(next_recipe_id) = self
+                        .recipe_coverage
+                        .next_uncovered_recipe_excluding(recipe_id.as_str())
+                    {
+                        schedule_notes.push(format!(
+                            "schedule_recipe coverage hard-switch applied: completed_recipe={} -> next_uncovered_recipe={}",
+                            recipe_id, next_recipe_id
+                        ));
+                        recipe_id = next_recipe_id;
+                        if let Some(next_cost_per_batch) =
+                            Self::default_recipe_hardware_cost_per_batch(recipe_id.as_str())
+                        {
+                            cost_per_batch = next_cost_per_batch;
+                        }
+                    }
+                }
+
                 let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
                 let available_electricity =
                     observation.self_resources.get(ResourceKind::Electricity);
@@ -1277,18 +1359,22 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                                         location_id: current_location_id.to_string(),
                                         compound_mass_g: mine_mass_g,
                                     },
-                                    Some(format!(
-                                        "schedule_recipe guardrail rerouted to mine_compound before refine: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}; available_compound={}; mine_mass_g={}",
-                                        available_hardware,
-                                        cost_per_batch,
-                                        hardware_shortfall,
-                                        recovery_mass_g,
-                                        capped_from
-                                            .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
-                                            .unwrap_or_default(),
-                                        available_compound,
-                                        mine_mass_g
-                                    )),
+                                    Some({
+                                        let mut notes = schedule_notes.clone();
+                                        notes.push(format!(
+                                            "schedule_recipe guardrail rerouted to mine_compound before refine: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}; available_compound={}; mine_mass_g={}",
+                                            available_hardware,
+                                            cost_per_batch,
+                                            hardware_shortfall,
+                                            recovery_mass_g,
+                                            capped_from
+                                                .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
+                                                .unwrap_or_default(),
+                                            available_compound,
+                                            mine_mass_g
+                                        ));
+                                        notes.join("; ")
+                                    }),
                                 );
                             }
                             return (
@@ -1296,13 +1382,17 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                                     agent_id: self.agent_id.clone(),
                                     max_amount: self.config.harvest_max_amount_cap,
                                 },
-                                Some(format!(
-                                    "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} but current_location_id is unknown for mine_compound",
-                                    available_hardware,
-                                    cost_per_batch,
-                                    available_compound,
-                                    recovery_mass_g
-                                )),
+                                Some({
+                                    let mut notes = schedule_notes.clone();
+                                    notes.push(format!(
+                                        "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} but current_location_id is unknown for mine_compound",
+                                        available_hardware,
+                                        cost_per_batch,
+                                        available_compound,
+                                        recovery_mass_g
+                                    ));
+                                    notes.join("; ")
+                                }),
                             );
                         } else {
                             return (
@@ -1310,15 +1400,19 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                                     agent_id: self.agent_id.clone(),
                                     max_amount: self.config.harvest_max_amount_cap,
                                 },
-                                Some(format!(
-                                    "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} with available_electricity={} < mine_required_electricity={}",
-                                    available_hardware,
-                                    cost_per_batch,
-                                    available_compound,
-                                    recovery_mass_g,
-                                    available_electricity,
-                                    mine_required_electricity
-                                )),
+                                Some({
+                                    let mut notes = schedule_notes.clone();
+                                    notes.push(format!(
+                                        "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} with available_electricity={} < mine_required_electricity={}",
+                                        available_hardware,
+                                        cost_per_batch,
+                                        available_compound,
+                                        recovery_mass_g,
+                                        available_electricity,
+                                        mine_required_electricity
+                                    ));
+                                    notes.join("; ")
+                                }),
                             );
                         }
                     }
@@ -1331,16 +1425,20 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                                 owner,
                                 compound_mass_g: recovery_mass_g,
                             },
-                            Some(format!(
-                                "schedule_recipe guardrail rerouted to refine_compound: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}",
-                                available_hardware,
-                                cost_per_batch,
-                                hardware_shortfall,
-                                recovery_mass_g,
-                                capped_from
-                                    .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
-                                    .unwrap_or_default()
-                            )),
+                            Some({
+                                let mut notes = schedule_notes.clone();
+                                notes.push(format!(
+                                    "schedule_recipe guardrail rerouted to refine_compound: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}",
+                                    available_hardware,
+                                    cost_per_batch,
+                                    hardware_shortfall,
+                                    recovery_mass_g,
+                                    capped_from
+                                        .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
+                                        .unwrap_or_default()
+                                ));
+                                notes.join("; ")
+                            }),
                         );
                     }
                     return (
@@ -1348,10 +1446,14 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             agent_id: self.agent_id.clone(),
                             max_amount: self.config.harvest_max_amount_cap,
                         },
-                        Some(format!(
-                            "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_electricity={} < refine_required_electricity={} (recovery_mass_g={})",
-                            available_hardware, cost_per_batch, available_electricity, required_refine_electricity, recovery_mass_g
-                        )),
+                        Some({
+                            let mut notes = schedule_notes.clone();
+                            notes.push(format!(
+                                "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_electricity={} < refine_required_electricity={} (recovery_mass_g={})",
+                                available_hardware, cost_per_batch, available_electricity, required_refine_electricity, recovery_mass_g
+                            ));
+                            notes.join("; ")
+                        }),
                     );
                 }
 
@@ -1364,10 +1466,14 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             recipe_id,
                             batches: max_batches,
                         },
-                        Some(format!(
-                            "schedule_recipe.batches clamped by hardware guardrail: {} -> {} (available_hardware={}, recipe_hardware_cost_per_batch={})",
-                            batches, max_batches, available_hardware, cost_per_batch
-                        )),
+                        Some({
+                            let mut notes = schedule_notes;
+                            notes.push(format!(
+                                "schedule_recipe.batches clamped by hardware guardrail: {} -> {} (available_hardware={}, recipe_hardware_cost_per_batch={})",
+                                batches, max_batches, available_hardware, cost_per_batch
+                            ));
+                            notes.join("; ")
+                        }),
                     )
                 } else {
                     (
@@ -1377,7 +1483,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             recipe_id,
                             batches,
                         },
-                        None,
+                        (!schedule_notes.is_empty()).then_some(schedule_notes.join("; ")),
                     )
                 }
             }

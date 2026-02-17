@@ -1202,6 +1202,111 @@ fn llm_agent_segments_move_agent_when_target_distance_exceeds_limit() {
 }
 
 #[test]
+fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.control_chip","batches":1}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        },
+        action_id: 520,
+        success: true,
+        event: WorldEvent {
+            id: 620,
+            time: 120,
+            kind: WorldEventKind::RecipeScheduled {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                factory_id: "factory.alpha".to_string(),
+                recipe_id: "recipe.assembler.control_chip".to_string(),
+                batches: 1,
+                electricity_cost: 6,
+                hardware_cost: 2,
+                data_output: 1,
+                finished_product_id: "product.component.control_chip".to_string(),
+                finished_product_units: 1,
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 24)
+        .expect("add test hardware");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.motor_mk1".to_string(),
+            batches: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("coverage hard-switch applied")));
+}
+
+#[test]
+fn llm_agent_user_prompt_includes_recipe_coverage_summary() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    behavior.on_action_result(&ActionResult {
+        action: Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        },
+        action_id: 521,
+        success: true,
+        event: WorldEvent {
+            id: 621,
+            time: 121,
+            kind: WorldEventKind::RecipeScheduled {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                factory_id: "factory.alpha".to_string(),
+                recipe_id: "recipe.assembler.control_chip".to_string(),
+                batches: 1,
+                electricity_cost: 6,
+                hardware_cost: 2,
+                data_output: 1,
+                finished_product_id: "product.component.control_chip".to_string(),
+                finished_product_units: 1,
+            },
+        },
+    });
+
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("\"recipe_coverage\""));
+    assert!(prompt.contains("\"recipe.assembler.control_chip\""));
+    assert!(prompt.contains("\"recipe.assembler.motor_mk1\""));
+}
+
+#[test]
 fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
     let client = MockClient {
         output: Some(
@@ -1556,6 +1661,7 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(user_prompt.contains("refine_compound"));
     assert!(user_prompt.contains("build_factory"));
     assert!(user_prompt.contains("schedule_recipe"));
+    assert!(user_prompt.contains("observation.recipe_coverage.missing"));
     assert!(user_prompt.contains("move_agent.to 不能是当前所在位置"));
 }
 

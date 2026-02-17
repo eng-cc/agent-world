@@ -265,6 +265,7 @@ impl PromptAssembler {
 - schedule_recipe.batches 必须是正整数
 - 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8
 - 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.hardware / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe
+- 当 observation.recipe_coverage.missing 非空且你准备重复 observation.recipe_coverage.completed 中的 recipe 时，必须先切换到 missing 列表中的配方（优先 missing[0]）
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - [Failure Recovery Policy] 当 observation.last_action.success=false 时，必须优先按 reject_reason 切换下一动作：
   - insufficient_resource.hardware -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=hardware)
