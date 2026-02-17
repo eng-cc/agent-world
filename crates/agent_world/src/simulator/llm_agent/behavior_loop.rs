@@ -769,6 +769,23 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         ));
         self.memory
             .record_action_result(time, result.action.clone(), result.success);
+        match &result.action {
+            Action::BuildFactory {
+                factory_id,
+                location_id,
+                ..
+            } if result.success => {
+                self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+            }
+            Action::ScheduleRecipe { factory_id, .. } => {
+                if let Some(RejectReason::AgentNotAtLocation { location_id, .. }) =
+                    result.reject_reason()
+                {
+                    self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+                }
+            }
+            _ => {}
+        }
         if !result.success {
             self.memory.long_term.store_with_tags(
                 format!(
@@ -801,6 +818,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     }
 
     fn on_event(&mut self, event: &WorldEvent) {
+        if let WorldEventKind::FactoryBuilt {
+            factory_id,
+            location_id,
+            ..
+        } = &event.kind
+        {
+            self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+        }
         self.memory
             .record_event(event.time, format!("event: {:?}", event.kind));
     }

@@ -1068,6 +1068,140 @@ fn llm_agent_clamps_harvest_max_amount_to_configured_cap() {
 }
 
 #[test]
+fn llm_agent_prechecks_schedule_recipe_location_and_reroutes_to_move_agent() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.control_chip","batches":1}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        },
+        action_id: 410,
+        success: false,
+        event: WorldEvent {
+            id: 510,
+            time: 90,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::AgentNotAtLocation {
+                    agent_id: "agent-1".to_string(),
+                    location_id: "loc-factory".to_string(),
+                },
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-factory".to_string(),
+            name: "factory".to_string(),
+            pos: GeoPos {
+                x_cm: 900_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 900_000,
+        },
+    ];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-factory".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("factory location precheck rerouted")));
+}
+
+#[test]
+fn llm_agent_segments_move_agent_when_target_distance_exceeds_limit() {
+    let client = MockClient {
+        output: Some(r#"{"decision":"move_agent","to":"loc-factory"}"#.to_string()),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-relay".to_string(),
+            name: "relay".to_string(),
+            pos: GeoPos {
+                x_cm: 900_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 900_000,
+        },
+        ObservedLocation {
+            location_id: "loc-factory".to_string(),
+            name: "factory".to_string(),
+            pos: GeoPos {
+                x_cm: 2_500_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 2_500_000,
+        },
+    ];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-relay".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("segmented by distance guardrail")));
+}
+
+#[test]
 fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
     let client = MockClient {
         output: Some(

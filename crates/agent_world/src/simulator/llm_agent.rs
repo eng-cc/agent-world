@@ -7,6 +7,7 @@ use async_openai::types::responses::{
     ToolChoiceOptions, ToolChoiceParam,
 };
 use async_openai::Client as AsyncOpenAiClient;
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -17,7 +18,7 @@ use super::agent::{
     LlmChatRole, LlmDecisionDiagnostics, LlmEffectIntentTrace, LlmEffectReceiptTrace,
     LlmPromptSectionTrace, LlmStepTrace,
 };
-use super::kernel::{Observation, RejectReason, WorldEvent};
+use super::kernel::{Observation, RejectReason, WorldEvent, WorldEventKind};
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
 use super::types::{Action, ResourceKind, ResourceOwner};
 
@@ -146,6 +147,7 @@ pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
 const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
 const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
+const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
 const DEFAULT_LONG_TERM_MEMORY_CAPACITY: usize = 256;
@@ -684,6 +686,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     conversation_trace_cursor: usize,
     last_action_summary: Option<PromptLastActionSummary>,
     pending_decision_rewrite: Option<DecisionRewriteReceipt>,
+    known_factory_locations: BTreeMap<String, String>,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -730,6 +733,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             conversation_trace_cursor: 0,
             last_action_summary: None,
             pending_decision_rewrite: None,
+            known_factory_locations: BTreeMap::new(),
         }
     }
 
@@ -1137,6 +1141,12 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         observation: Option<&Observation>,
     ) -> (Action, Option<String>) {
         match action {
+            Action::MoveAgent { agent_id, to } if agent_id == self.agent_id => {
+                let Some(observation) = observation else {
+                    return (Action::MoveAgent { agent_id, to }, None);
+                };
+                self.guarded_move_to_location(to.as_str(), observation)
+            }
             Action::HarvestRadiation {
                 agent_id,
                 max_amount,
@@ -1209,6 +1219,29 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         },
                         None,
                     );
+                }
+
+                if let Some(factory_location_id) =
+                    self.known_factory_locations.get(factory_id.as_str())
+                {
+                    if let Some(current_location_id) =
+                        Self::current_location_id_from_observation(observation)
+                    {
+                        if current_location_id != factory_location_id {
+                            let (move_action, move_note) = self.guarded_move_to_location(
+                                factory_location_id.as_str(),
+                                observation,
+                            );
+                            let mut notes = vec![format!(
+                                "schedule_recipe factory location precheck rerouted to move_agent: current_location={} factory_location={}",
+                                current_location_id, factory_location_id
+                            )];
+                            if let Some(move_note) = move_note {
+                                notes.push(move_note);
+                            }
+                            return (move_action, Some(notes.join("; ")));
+                        }
+                    }
                 }
 
                 let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
@@ -1313,6 +1346,123 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "recipe.assembler.logistics_drone" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH * 4),
             _ => None,
         }
+    }
+
+    fn current_location_id_from_observation(observation: &Observation) -> Option<&str> {
+        observation
+            .visible_locations
+            .iter()
+            .find(|location| location.distance_cm == 0)
+            .map(|location| location.location_id.as_str())
+    }
+
+    fn find_reachable_move_relay(
+        &self,
+        to: &str,
+        observation: &Observation,
+    ) -> Option<(String, i64, i64, i64)> {
+        if DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK <= 0 {
+            return None;
+        }
+        let target_location = observation
+            .visible_locations
+            .iter()
+            .find(|location| location.location_id == to)?;
+        if target_location.distance_cm <= DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK {
+            return None;
+        }
+
+        let mut best: Option<(String, i64, i64)> = None;
+        for candidate in &observation.visible_locations {
+            if candidate.location_id == target_location.location_id {
+                continue;
+            }
+            if candidate.distance_cm <= 0
+                || candidate.distance_cm > DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK
+            {
+                continue;
+            }
+
+            let candidate_to_target =
+                crate::geometry::space_distance_cm(candidate.pos, target_location.pos);
+            if candidate_to_target >= target_location.distance_cm {
+                continue;
+            }
+
+            let should_replace = match &best {
+                None => true,
+                Some((_, best_candidate_to_target, best_distance_from_self)) => {
+                    candidate_to_target < *best_candidate_to_target
+                        || (candidate_to_target == *best_candidate_to_target
+                            && candidate.distance_cm < *best_distance_from_self)
+                }
+            };
+
+            if should_replace {
+                best = Some((
+                    candidate.location_id.clone(),
+                    candidate_to_target,
+                    candidate.distance_cm,
+                ));
+            }
+        }
+
+        best.map(
+            |(relay_location_id, relay_to_target_distance, relay_distance_from_self)| {
+                (
+                    relay_location_id,
+                    target_location.distance_cm,
+                    relay_distance_from_self,
+                    relay_to_target_distance,
+                )
+            },
+        )
+    }
+
+    fn guarded_move_to_location(
+        &self,
+        to: &str,
+        observation: &Observation,
+    ) -> (Action, Option<String>) {
+        if let Some((
+            relay_location_id,
+            target_distance,
+            relay_distance_from_self,
+            relay_to_target_distance,
+        )) = self.find_reachable_move_relay(to, observation)
+        {
+            return (
+                Action::MoveAgent {
+                    agent_id: self.agent_id.clone(),
+                    to: relay_location_id.clone(),
+                },
+                Some(format!(
+                    "move_agent segmented by distance guardrail: target={} distance_cm={} exceeds max_distance_cm={}; rerouted_via={} relay_distance_cm={} relay_to_target_cm={}",
+                    to,
+                    target_distance,
+                    DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK,
+                    relay_location_id,
+                    relay_distance_from_self,
+                    relay_to_target_distance
+                )),
+            );
+        }
+
+        (
+            Action::MoveAgent {
+                agent_id: self.agent_id.clone(),
+                to: to.to_string(),
+            },
+            None,
+        )
+    }
+
+    fn remember_factory_location_hint(&mut self, factory_id: &str, location_id: &str) {
+        if factory_id.trim().is_empty() || location_id.trim().is_empty() {
+            return;
+        }
+        self.known_factory_locations
+            .insert(factory_id.to_string(), location_id.to_string());
     }
 
     fn observe_memory_summary(observation: &Observation) -> String {
