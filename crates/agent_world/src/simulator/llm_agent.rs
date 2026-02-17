@@ -20,7 +20,9 @@ use super::agent::{
 };
 use super::kernel::{Observation, RejectReason, WorldEvent, WorldEventKind};
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
-use super::types::{Action, ResourceKind, ResourceOwner};
+use super::types::{
+    Action, ResourceKind, ResourceOwner, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+};
 
 mod behavior_loop;
 mod config_helpers;
@@ -145,6 +147,7 @@ pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
 pub const DEFAULT_LLM_DEBUG_MODE: bool = false;
 pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
+const DEFAULT_RECIPE_ELECTRICITY_COST_PER_BATCH: i64 = 6;
 const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
 const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
 const DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G: i64 = 5_000;
@@ -1215,7 +1218,13 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 let Some(observation) = observation else {
                     return (Action::MoveAgent { agent_id, to }, None);
                 };
-                self.guarded_move_to_location(to.as_str(), observation)
+                let (move_action, move_note) =
+                    self.guarded_move_to_location(to.as_str(), observation);
+                self.guard_move_action_with_electricity(
+                    move_action,
+                    observation,
+                    move_note.into_iter().collect(),
+                )
             }
             Action::HarvestRadiation {
                 agent_id,
@@ -1293,7 +1302,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             if let Some(move_note) = move_note {
                                 mine_notes.push(move_note);
                             }
-                            return (move_action, Some(mine_notes.join("; ")));
+                            return self.guard_move_action_with_electricity(
+                                move_action,
+                                observation,
+                                mine_notes,
+                            );
                         }
                         mine_notes.push(format!(
                             "mine_compound depleted location guardrail rerouted to harvest_radiation: location_id={} known_available={} and no alternative visible location",
@@ -1332,7 +1345,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         if let Some(move_note) = move_note {
                             notes.push(move_note);
                         }
-                        return (move_action, Some(notes.join("; ")));
+                        return self.guard_move_action_with_electricity(
+                            move_action,
+                            observation,
+                            notes,
+                        );
                     }
                 }
 
@@ -1453,6 +1470,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         None,
                     );
                 }
+                let mut electricity_cost_per_batch =
+                    Self::default_recipe_electricity_cost_per_batch(recipe_id.as_str())
+                        .unwrap_or(0);
 
                 let owner_is_self = matches!(
                     &owner,
@@ -1502,7 +1522,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             if let Some(move_note) = move_note {
                                 notes.push(move_note);
                             }
-                            return (move_action, Some(notes.join("; ")));
+                            return self.guard_move_action_with_electricity(
+                                move_action,
+                                observation,
+                                notes,
+                            );
                         }
                     }
                 }
@@ -1521,6 +1545,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         {
                             cost_per_batch = next_cost_per_batch;
                         }
+                        electricity_cost_per_batch =
+                            Self::default_recipe_electricity_cost_per_batch(recipe_id.as_str())
+                                .unwrap_or(0);
                     }
                 }
 
@@ -1653,8 +1680,35 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     );
                 }
 
-                let max_batches = available_hardware / cost_per_batch;
-                if batches > max_batches {
+                if electricity_cost_per_batch > 0
+                    && available_electricity < electricity_cost_per_batch
+                {
+                    return (
+                        Action::HarvestRadiation {
+                            agent_id: self.agent_id.clone(),
+                            max_amount: self.config.harvest_max_amount_cap,
+                        },
+                        Some({
+                            let mut notes = schedule_notes.clone();
+                            notes.push(format!(
+                                "schedule_recipe electricity precheck rerouted to harvest_radiation: available_electricity={} < recipe_electricity_cost_per_batch={} (recipe_id={})",
+                                available_electricity, electricity_cost_per_batch, recipe_id
+                            ));
+                            notes.join("; ")
+                        }),
+                    );
+                }
+
+                let requested_batches = batches.max(1);
+                let max_batches_by_hardware = available_hardware / cost_per_batch;
+                let max_batches_by_electricity = if electricity_cost_per_batch > 0 {
+                    available_electricity / electricity_cost_per_batch
+                } else {
+                    i64::MAX
+                };
+                let max_batches = max_batches_by_hardware.min(max_batches_by_electricity);
+
+                if requested_batches > max_batches {
                     (
                         Action::ScheduleRecipe {
                             owner,
@@ -1665,8 +1719,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         Some({
                             let mut notes = schedule_notes;
                             notes.push(format!(
-                                "schedule_recipe.batches clamped by hardware guardrail: {} -> {} (available_hardware={}, recipe_hardware_cost_per_batch={})",
-                                batches, max_batches, available_hardware, cost_per_batch
+                                "schedule_recipe.batches clamped by resource guardrail: {} -> {} (available_hardware={}, recipe_hardware_cost_per_batch={}, available_electricity={}, recipe_electricity_cost_per_batch={})",
+                                requested_batches, max_batches, available_hardware, cost_per_batch, available_electricity, electricity_cost_per_batch
                             ));
                             notes.join("; ")
                         }),
@@ -1677,7 +1731,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             owner,
                             factory_id,
                             recipe_id,
-                            batches,
+                            batches: requested_batches,
                         },
                         (!schedule_notes.is_empty()).then_some(schedule_notes.join("; ")),
                     )
@@ -1724,6 +1778,17 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             "recipe.assembler.control_chip" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH),
             "recipe.assembler.motor_mk1" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH * 2),
             "recipe.assembler.logistics_drone" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH * 4),
+            _ => None,
+        }
+    }
+
+    fn default_recipe_electricity_cost_per_batch(recipe_id: &str) -> Option<i64> {
+        match recipe_id.trim() {
+            "recipe.assembler.control_chip" => Some(DEFAULT_RECIPE_ELECTRICITY_COST_PER_BATCH),
+            "recipe.assembler.motor_mk1" => Some(DEFAULT_RECIPE_ELECTRICITY_COST_PER_BATCH * 2),
+            "recipe.assembler.logistics_drone" => {
+                Some(DEFAULT_RECIPE_ELECTRICITY_COST_PER_BATCH * 4)
+            }
             _ => None,
         }
     }
@@ -2003,6 +2068,67 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 to: to.to_string(),
             },
             None,
+        )
+    }
+
+    fn visible_location_distance_cm(observation: &Observation, location_id: &str) -> Option<i64> {
+        observation
+            .visible_locations
+            .iter()
+            .find(|location| location.location_id == location_id)
+            .map(|location| location.distance_cm.max(0))
+    }
+
+    fn default_move_electricity_cost(distance_cm: i64) -> i64 {
+        if distance_cm <= 0 {
+            return 0;
+        }
+        let distance_km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
+        distance_km.saturating_mul(DEFAULT_MOVE_COST_PER_KM_ELECTRICITY)
+    }
+
+    fn guard_move_action_with_electricity(
+        &self,
+        action: Action,
+        observation: &Observation,
+        mut notes: Vec<String>,
+    ) -> (Action, Option<String>) {
+        let Action::MoveAgent { agent_id, to } = action else {
+            return (action, (!notes.is_empty()).then_some(notes.join("; ")));
+        };
+        if agent_id != self.agent_id {
+            return (
+                Action::MoveAgent { agent_id, to },
+                (!notes.is_empty()).then_some(notes.join("; ")),
+            );
+        }
+
+        let Some(distance_cm) = Self::visible_location_distance_cm(observation, to.as_str()) else {
+            return (
+                Action::MoveAgent { agent_id, to },
+                (!notes.is_empty()).then_some(notes.join("; ")),
+            );
+        };
+
+        let available_electricity = observation.self_resources.get(ResourceKind::Electricity);
+        let required_electricity = Self::default_move_electricity_cost(distance_cm);
+        if required_electricity > 0 && available_electricity < required_electricity {
+            notes.push(format!(
+                "move_agent electricity precheck rerouted to harvest_radiation: to={} distance_cm={} available_electricity={} < required_electricity={}",
+                to, distance_cm, available_electricity, required_electricity
+            ));
+            return (
+                Action::HarvestRadiation {
+                    agent_id: self.agent_id.clone(),
+                    max_amount: self.config.harvest_max_amount_cap,
+                },
+                Some(notes.join("; ")),
+            );
+        }
+
+        (
+            Action::MoveAgent { agent_id, to },
+            (!notes.is_empty()).then_some(notes.join("; ")),
         )
     }
 

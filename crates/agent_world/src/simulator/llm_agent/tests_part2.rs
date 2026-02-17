@@ -1471,6 +1471,14 @@ fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
         .self_resources
         .add(ResourceKind::Hardware, 24)
         .expect("add test hardware");
+    observation
+        .self_resources
+        .add(ResourceKind::Electricity, 100)
+        .expect("add test electricity");
+    observation
+        .self_resources
+        .add(ResourceKind::Electricity, 100)
+        .expect("add test electricity");
 
     let decision = behavior.decide(&observation);
     assert_eq!(
@@ -1800,6 +1808,10 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
         .self_resources
         .add(ResourceKind::Hardware, 24)
         .expect("add test hardware");
+    observation
+        .self_resources
+        .add(ResourceKind::Electricity, 100)
+        .expect("add test electricity");
 
     let decision = behavior.decide(&observation);
     assert_eq!(
@@ -1819,6 +1831,68 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
         .llm_step_trace
         .iter()
         .any(|step| step.output_summary.contains("batches clamped")));
+}
+
+#[test]
+fn llm_agent_reroutes_schedule_recipe_to_harvest_when_electricity_is_insufficient() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.logistics_drone","batches":1}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let mut observation = make_observation();
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 8)
+        .expect("add test hardware");
+    observation
+        .self_resources
+        .remove(ResourceKind::Electricity, 25)
+        .expect("trim electricity");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("schedule_recipe electricity precheck rerouted")));
+}
+
+#[test]
+fn llm_agent_reroutes_move_agent_to_harvest_when_electricity_is_insufficient() {
+    let client = MockClient {
+        output: Some(r#"{"decision":"move_agent","to":"loc-2"}"#.to_string()),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let mut observation = make_observation();
+    observation
+        .self_resources
+        .remove(ResourceKind::Electricity, 30)
+        .expect("drain electricity");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("move_agent electricity precheck rerouted")));
 }
 
 #[test]

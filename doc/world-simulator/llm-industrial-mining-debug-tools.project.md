@@ -54,7 +54,7 @@
 ### MMD8 TODO-17~20 收口迭代（2026-02-17）
 - [x] MMD8.1 文档增量设计：补充 TODO-17/18/19/20 目标、接口与风险
 - [x] MMD8.2 协议收敛：单轮多 tool call 硬拒绝 + `schedule_recipe.batches<=0` 自动归一
-- [ ] MMD8.3 资源预检：`schedule_recipe` 与 `move_agent` 电力前置预算 guardrail
+- [x] MMD8.3 资源预检：`schedule_recipe` 与 `move_agent` 电力前置预算 guardrail
 - [ ] MMD8.4 策略收敛：覆盖后 wait 自动回切持续产出 + 采矿耗尽冷却窗口
 - [ ] MMD8.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样 + 文档收口
 
