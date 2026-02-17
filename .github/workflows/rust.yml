@@ -17,7 +17,6 @@ env:
   AGENT_WORLD_WASM_TARGET: wasm32-unknown-unknown
   AGENT_WORLD_WASM_BUILD_STD: "1"
   AGENT_WORLD_WASM_BUILD_STD_COMPONENTS: std,panic_abort
-  AGENT_WORLD_WASM_BUILD_STD_FEATURES: panic_immediate_abort
 
 jobs:
   required-gate:

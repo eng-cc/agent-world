@@ -23,7 +23,7 @@
   - `AGENT_WORLD_WASM_TOOLCHAIN`（默认 `nightly-2025-12-11`）
   - `AGENT_WORLD_WASM_BUILD_STD`（默认 `1`）
   - `AGENT_WORLD_WASM_BUILD_STD_COMPONENTS`（默认 `std,panic_abort`）
-  - `AGENT_WORLD_WASM_BUILD_STD_FEATURES`（默认 `panic_immediate_abort`）
+  - `AGENT_WORLD_WASM_BUILD_STD_FEATURES`（默认空，不追加 `-Z build-std-features`）
 - wasm build suite：
   - `tools/wasm_build_suite/src/lib.rs` 在 cargo build 参数注入 `-Z build-std*`（受环境变量控制）。
 - 清单与校验：

@@ -167,8 +167,7 @@ impl BuildStdConfig {
             .unwrap_or(false);
         let components = env::var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS")
             .unwrap_or_else(|_| "std,panic_abort".to_string());
-        let features = env::var("AGENT_WORLD_WASM_BUILD_STD_FEATURES")
-            .unwrap_or_else(|_| "panic_immediate_abort".to_string());
+        let features = env::var("AGENT_WORLD_WASM_BUILD_STD_FEATURES").unwrap_or_default();
         Self {
             enabled,
             components,
