@@ -7,11 +7,13 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use agent_world_distfs::StorageChallengeProbeConfig;
 use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
     measure_directory_storage_bytes, reward_redeem_signature_v1, Action as RuntimeAction,
-    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
-    NodePointsRuntimeHeuristics, ProtocolPowerReserve, RewardAssetConfig,
+    LocalCasStore, NodePointsConfig, NodePointsRuntimeCollector,
+    NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
+    NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
     RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
 use agent_world::simulator::WorldScenario;
@@ -33,6 +35,10 @@ const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
+const REWARD_RUNTIME_DISTFS_PROBE_MAX_SAMPLE_BYTES: u32 = 64 * 1024;
+const REWARD_RUNTIME_DISTFS_PROBE_PER_TICK: u32 = 1;
+const REWARD_RUNTIME_DISTFS_PROBE_TTL_MS: i64 = 30_000;
+const REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS: i64 = 5_000;
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -405,8 +411,36 @@ fn reward_runtime_loop(
         let effective_storage_bytes =
             measure_directory_storage_bytes(config.storage_root.as_path());
 
-        let maybe_report =
-            collector.observe_snapshot(&snapshot, effective_storage_bytes, observed_at_unix_ms);
+        let mut observation = NodePointsRuntimeObservation::from_snapshot(
+            &snapshot,
+            effective_storage_bytes,
+            observed_at_unix_ms,
+        );
+        let distfs_challenge_report = if snapshot.role == NodeRole::Storage {
+            match collect_distfs_challenge_report(
+                config.storage_root.as_path(),
+                snapshot.world_id.as_str(),
+                snapshot.node_id.as_str(),
+                observed_at_unix_ms,
+            ) {
+                Ok(report) => {
+                    observation.storage_checks_passed = report.passed_checks;
+                    observation.storage_checks_total = report.total_checks;
+                    if report.failed_checks > 0 {
+                        observation.has_error = true;
+                    }
+                    Some(report)
+                }
+                Err(err) => {
+                    eprintln!("reward runtime distfs probe failed: {err}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let maybe_report = collector.observe(observation);
         if let Err(err) =
             persist_reward_runtime_collector_state(config.state_path.as_path(), &collector)
         {
@@ -467,6 +501,7 @@ fn reward_runtime_loop(
                     "last_block_hash": snapshot.consensus.last_block_hash,
                 }
             },
+            "distfs_challenge_report": distfs_challenge_report,
             "settlement_report": report,
             "minted_records": minted_records,
             "node_balances": reward_world.state().node_asset_balances,
@@ -603,6 +638,28 @@ fn persist_reward_runtime_collector_state(
     let bytes = serde_json::to_vec_pretty(&snapshot)
         .map_err(|err| format!("serialize collector state failed: {}", err))?;
     write_bytes_atomic(path, bytes.as_slice())
+}
+
+fn collect_distfs_challenge_report(
+    storage_root: &Path,
+    world_id: &str,
+    node_id: &str,
+    observed_at_unix_ms: i64,
+) -> Result<agent_world_distfs::StorageChallengeProbeReport, String> {
+    let store = LocalCasStore::new(storage_root);
+    store
+        .probe_storage_challenges(
+            world_id,
+            node_id,
+            observed_at_unix_ms,
+            &StorageChallengeProbeConfig {
+                max_sample_bytes: REWARD_RUNTIME_DISTFS_PROBE_MAX_SAMPLE_BYTES,
+                challenges_per_tick: REWARD_RUNTIME_DISTFS_PROBE_PER_TICK,
+                challenge_ttl_ms: REWARD_RUNTIME_DISTFS_PROBE_TTL_MS,
+                allowed_clock_skew_ms: REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS,
+            },
+        )
+        .map_err(|err| format!("{err:?}"))
 }
 
 fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {

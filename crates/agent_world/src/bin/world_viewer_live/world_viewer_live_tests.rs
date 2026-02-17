@@ -1,4 +1,5 @@
 use super::*;
+use agent_world::runtime::BlobStore;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -9,6 +10,14 @@ fn temp_config_path(prefix: &str) -> PathBuf {
         .expect("duration")
         .as_nanos();
     std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}.toml"))
+}
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_nanos();
+    std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
 }
 
 #[test]
@@ -378,4 +387,36 @@ fn ensure_node_keypair_in_config_fills_missing_public_key() {
     assert_eq!(filled.private_key_hex, generated.private_key_hex);
     assert_eq!(filled.public_key_hex, generated.public_key_hex);
     let _ = fs::remove_file(path);
+}
+
+#[test]
+fn collect_distfs_challenge_report_returns_zero_for_empty_store() {
+    let dir = temp_dir("distfs-probe-empty");
+    let report = collect_distfs_challenge_report(dir.as_path(), "world-1", "node-a", 1_000)
+        .expect("collect challenge report");
+    assert_eq!(report.total_checks, 0);
+    assert_eq!(report.passed_checks, 0);
+    assert_eq!(report.failed_checks, 0);
+    assert!(report.failure_reasons.is_empty());
+    assert!(report.latest_proof_semantics.is_none());
+}
+
+#[test]
+fn collect_distfs_challenge_report_detects_hash_mismatch() {
+    let dir = temp_dir("distfs-probe-mismatch");
+    fs::create_dir_all(dir.as_path()).expect("create dir");
+    let store = LocalCasStore::new(dir.as_path());
+    let hash = store.put_bytes(b"storage-proof-data").expect("put");
+    let blob_path = store.blobs_dir().join(format!("{hash}.blob"));
+    fs::write(blob_path, b"tampered").expect("tamper");
+
+    let report = collect_distfs_challenge_report(dir.as_path(), "world-1", "node-b", 2_000)
+        .expect("collect challenge report");
+    assert_eq!(report.total_checks, 1);
+    assert_eq!(report.passed_checks, 0);
+    assert_eq!(report.failed_checks, 1);
+    assert_eq!(report.failure_reasons.get("HASH_MISMATCH").copied(), Some(1));
+    assert!(report.latest_proof_semantics.is_none());
+
+    let _ = fs::remove_dir_all(dir);
 }
