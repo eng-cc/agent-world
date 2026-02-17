@@ -25,6 +25,16 @@ pub struct StorageChallengeProbeCursorState {
     pub backoff_until_unix_ms: i64,
     #[serde(default)]
     pub last_probe_unix_ms: Option<i64>,
+    #[serde(default)]
+    pub cumulative_backoff_skipped_rounds: u64,
+    #[serde(default)]
+    pub cumulative_backoff_applied_ms: i64,
+    #[serde(default)]
+    pub last_backoff_duration_ms: i64,
+    #[serde(default)]
+    pub last_backoff_reason: Option<String>,
+    #[serde(default)]
+    pub last_backoff_multiplier: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,6 +102,8 @@ impl LocalCasStore {
         if observed_at_unix_ms < state.backoff_until_unix_ms {
             state.rounds_executed = state.rounds_executed.saturating_add(1);
             state.last_probe_unix_ms = Some(observed_at_unix_ms);
+            state.cumulative_backoff_skipped_rounds =
+                state.cumulative_backoff_skipped_rounds.saturating_add(1);
             return Ok(StorageChallengeProbeReport {
                 node_id: node_id.to_string(),
                 world_id: world_id.to_string(),
@@ -346,6 +358,7 @@ fn advance_probe_cursor_state(
     if report.failed_checks > 0 && report.passed_checks == 0 {
         state.consecutive_failure_rounds = state.consecutive_failure_rounds.saturating_add(1);
         let dominant_reason = dominant_failure_reason(&report.failure_reasons);
+        let dominant_reason_key = failure_reason_key(dominant_reason);
         let reason_multiplier = backoff_multiplier_for_reason(policy, dominant_reason);
         let backoff_ms = compute_backoff_ms(
             policy.failure_backoff_base_ms,
@@ -354,6 +367,12 @@ fn advance_probe_cursor_state(
             reason_multiplier,
         );
         state.backoff_until_unix_ms = observed_at_unix_ms.saturating_add(backoff_ms);
+        state.cumulative_backoff_applied_ms = state
+            .cumulative_backoff_applied_ms
+            .saturating_add(backoff_ms);
+        state.last_backoff_duration_ms = backoff_ms;
+        state.last_backoff_reason = Some(dominant_reason_key.to_string());
+        state.last_backoff_multiplier = reason_multiplier;
     } else {
         state.consecutive_failure_rounds = 0;
         state.backoff_until_unix_ms = 0;
@@ -668,6 +687,11 @@ mod tests {
         assert_eq!(first.failed_checks, 1);
         assert_eq!(state.consecutive_failure_rounds, 1);
         assert_eq!(state.backoff_until_unix_ms, 1_100);
+        assert_eq!(state.cumulative_backoff_skipped_rounds, 0);
+        assert_eq!(state.cumulative_backoff_applied_ms, 100);
+        assert_eq!(state.last_backoff_duration_ms, 100);
+        assert_eq!(state.last_backoff_reason.as_deref(), Some("HASH_MISMATCH"));
+        assert_eq!(state.last_backoff_multiplier, 1);
 
         let second = store
             .probe_storage_challenges_with_policy("w1", "node-backoff", 1_050, &config, &mut state, &policy)
@@ -675,6 +699,8 @@ mod tests {
         assert_eq!(second.total_checks, 0);
         assert_eq!(state.consecutive_failure_rounds, 1);
         assert_eq!(state.backoff_until_unix_ms, 1_100);
+        assert_eq!(state.cumulative_backoff_skipped_rounds, 1);
+        assert_eq!(state.cumulative_backoff_applied_ms, 100);
 
         let third = store
             .probe_storage_challenges_with_policy("w1", "node-backoff", 1_200, &config, &mut state, &policy)
@@ -683,6 +709,11 @@ mod tests {
         assert_eq!(third.failed_checks, 1);
         assert_eq!(state.consecutive_failure_rounds, 2);
         assert_eq!(state.backoff_until_unix_ms, 1_400);
+        assert_eq!(state.cumulative_backoff_skipped_rounds, 1);
+        assert_eq!(state.cumulative_backoff_applied_ms, 300);
+        assert_eq!(state.last_backoff_duration_ms, 200);
+        assert_eq!(state.last_backoff_reason.as_deref(), Some("HASH_MISMATCH"));
+        assert_eq!(state.last_backoff_multiplier, 1);
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -705,6 +736,11 @@ mod tests {
         assert_eq!(state.consecutive_failure_rounds, 0);
         assert_eq!(state.backoff_until_unix_ms, 0);
         assert!(state.last_probe_unix_ms.is_none());
+        assert_eq!(state.cumulative_backoff_skipped_rounds, 0);
+        assert_eq!(state.cumulative_backoff_applied_ms, 0);
+        assert_eq!(state.last_backoff_duration_ms, 0);
+        assert!(state.last_backoff_reason.is_none());
+        assert_eq!(state.last_backoff_multiplier, 0);
     }
 
     #[test]
@@ -760,6 +796,9 @@ mod tests {
         advance_probe_cursor_state(&mut state, &hash_report, 0, 1_000, &policy);
         assert_eq!(state.consecutive_failure_rounds, 1);
         assert_eq!(state.backoff_until_unix_ms, 1_400);
+        assert_eq!(state.last_backoff_duration_ms, 400);
+        assert_eq!(state.last_backoff_reason.as_deref(), Some("HASH_MISMATCH"));
+        assert_eq!(state.last_backoff_multiplier, 4);
 
         state.consecutive_failure_rounds = 0;
         state.backoff_until_unix_ms = 0;
@@ -772,5 +811,8 @@ mod tests {
         advance_probe_cursor_state(&mut state, &timeout_report, 0, 2_000, &policy);
         assert_eq!(state.consecutive_failure_rounds, 1);
         assert_eq!(state.backoff_until_unix_ms, 2_200);
+        assert_eq!(state.last_backoff_duration_ms, 200);
+        assert_eq!(state.last_backoff_reason.as_deref(), Some("TIMEOUT"));
+        assert_eq!(state.last_backoff_multiplier, 2);
     }
 }
