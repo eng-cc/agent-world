@@ -23,9 +23,9 @@
 - [x] MMD2.5 补齐 tool/schema/parser/behavior 单测
 
 ### MMD3 闭环验证与收口
-- [ ] MMD3.1 跑 `test_tier_required` 相关测试集
-- [ ] MMD3.2 运行 `llm_bootstrap` 在线闭环抽样，验证先采矿再生产
-- [ ] MMD3.3 回写文档状态与 devlog，提交收口
+- [x] MMD3.1 跑 `test_tier_required` 相关测试集
+- [x] MMD3.2 运行 `llm_bootstrap` 在线闭环抽样，验证先采矿再生产
+- [x] MMD3.3 回写文档状态与 devlog，提交收口
 
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
@@ -42,6 +42,6 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD2 完成，进入 MMD3。
-- 下一阶段：执行 `llm_bootstrap` 在线闭环复跑并收口文档状态。
-- 最近更新：2026-02-17（完成 debug 模式 LLM 补给工具与回归）。
+- 当前阶段：MMD3 完成，主任务收口。
+- 下一阶段：跟进“全配方覆盖策略”优化（避免仅重复 `control_chip`）。
+- 最近更新：2026-02-17（完成闭环复跑与收口提交）。
