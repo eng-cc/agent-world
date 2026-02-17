@@ -248,6 +248,7 @@ fn publish_membership_change_with_dht_signed_with_ed25519_keyring_restores_with_
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k-ed".to_string()],
+        accepted_signature_signer_public_keys: vec![public_key_hex.clone()],
         ..MembershipSnapshotRestorePolicy::default()
     };
     let restored = sync_client
@@ -297,6 +298,7 @@ fn sync_key_revocations_with_policy_accepts_ed25519_signed_revocation() {
         require_signature: true,
         require_signature_key_id: true,
         accepted_signature_key_ids: vec!["k-ed".to_string()],
+        accepted_signature_signer_public_keys: vec![public_key_hex.clone()],
         ..MembershipRevocationSyncPolicy::default()
     };
     let report = sync_client
@@ -306,4 +308,119 @@ fn sync_key_revocations_with_policy_accepts_ed25519_signed_revocation() {
     assert_eq!(report.applied, 1);
     assert_eq!(report.rejected, 0);
     assert!(keyring.is_key_revoked("k-old"));
+}
+
+#[test]
+fn restore_membership_from_dht_rejects_unaccepted_signature_signer_public_key() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht = InMemoryDht::new();
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+    let request = membership_request(
+        "seq-1",
+        100,
+        ConsensusMembershipChange::AddValidator {
+            validator_id: "seq-4".to_string(),
+        },
+    );
+    let result = ConsensusMembershipChangeResult {
+        applied: true,
+        validators: vec![
+            "seq-1".to_string(),
+            "seq-2".to_string(),
+            "seq-3".to_string(),
+            "seq-4".to_string(),
+        ],
+        quorum_threshold: 3,
+    };
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    let (private_key_hex, public_key_hex) = ed25519_keypair_hex(41);
+    keyring
+        .add_ed25519_key("k-ed", private_key_hex.as_str(), public_key_hex.as_str())
+        .expect("add key");
+    keyring.set_active_key("k-ed").expect("set active key");
+    sync_client
+        .publish_membership_change_with_dht_signed_with_keyring(
+            "w1", &request, &result, &dht, &keyring,
+        )
+        .expect("publish signed membership change");
+
+    let mut consensus = sample_consensus();
+    let policy = MembershipSnapshotRestorePolicy {
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["k-ed".to_string()],
+        accepted_signature_signer_public_keys: vec!["deadbeef".to_string()],
+        ..MembershipSnapshotRestorePolicy::default()
+    };
+    let audit = sync_client
+        .restore_membership_from_dht_verified_with_audit(
+            "w1",
+            &mut consensus,
+            &dht,
+            None,
+            Some(&keyring),
+            &policy,
+        )
+        .expect("restore audit");
+    assert!(audit.restored.is_none());
+    assert!(audit.audit.reason.contains("signature signer public key"));
+}
+
+#[test]
+fn restore_membership_from_dht_rejects_hmac_when_signature_signer_public_key_required() {
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
+    let dht = InMemoryDht::new();
+    let sync_client = MembershipSyncClient::new(Arc::clone(&network));
+
+    let request = membership_request(
+        "seq-1",
+        100,
+        ConsensusMembershipChange::AddValidator {
+            validator_id: "seq-4".to_string(),
+        },
+    );
+    let result = ConsensusMembershipChangeResult {
+        applied: true,
+        validators: vec![
+            "seq-1".to_string(),
+            "seq-2".to_string(),
+            "seq-3".to_string(),
+            "seq-4".to_string(),
+        ],
+        quorum_threshold: 3,
+    };
+
+    let mut keyring = MembershipDirectorySignerKeyring::new();
+    keyring
+        .add_hmac_sha256_key("k-hmac", "membership-secret-v1")
+        .expect("add key");
+    keyring.set_active_key("k-hmac").expect("set active key");
+    sync_client
+        .publish_membership_change_with_dht_signed_with_keyring(
+            "w1", &request, &result, &dht, &keyring,
+        )
+        .expect("publish signed membership change");
+
+    let mut consensus = sample_consensus();
+    let policy = MembershipSnapshotRestorePolicy {
+        require_signature: true,
+        require_signature_key_id: true,
+        accepted_signature_key_ids: vec!["k-hmac".to_string()],
+        accepted_signature_signer_public_keys: vec!["deadbeef".to_string()],
+        ..MembershipSnapshotRestorePolicy::default()
+    };
+    let audit = sync_client
+        .restore_membership_from_dht_verified_with_audit(
+            "w1",
+            &mut consensus,
+            &dht,
+            None,
+            Some(&keyring),
+            &policy,
+        )
+        .expect("restore audit");
+    assert!(audit.restored.is_none());
+    assert!(audit.audit.reason.contains("signer public key is required"));
 }

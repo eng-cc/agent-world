@@ -678,6 +678,7 @@ pub struct MembershipSnapshotRestorePolicy {
     pub require_signature: bool,
     pub require_signature_key_id: bool,
     pub accepted_signature_key_ids: Vec<String>,
+    pub accepted_signature_signer_public_keys: Vec<String>,
     pub revoked_signature_key_ids: Vec<String>,
 }
 
@@ -688,6 +689,7 @@ pub struct MembershipRevocationSyncPolicy {
     pub require_signature: bool,
     pub require_signature_key_id: bool,
     pub accepted_signature_key_ids: Vec<String>,
+    pub accepted_signature_signer_public_keys: Vec<String>,
     pub revoked_signature_key_ids: Vec<String>,
 }
 

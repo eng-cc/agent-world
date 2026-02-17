@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use super::error::WorldError;
+use super::signature::ED25519_SIGNATURE_V1_PREFIX;
 use agent_world_proto::distributed_dht::MembershipDirectorySnapshot;
 
 use super::util::to_canonical_cbor;
@@ -8,6 +9,36 @@ use super::{
     MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,
     MembershipRevocationSyncPolicy, MembershipSnapshotRestorePolicy,
 };
+
+fn extract_ed25519_signer_public_key(signature: &str) -> Result<Option<&str>, WorldError> {
+    if !signature.starts_with(ED25519_SIGNATURE_V1_PREFIX) {
+        return Ok(None);
+    }
+    let encoded = &signature[ED25519_SIGNATURE_V1_PREFIX.len()..];
+    let (public_key_hex, signature_hex) =
+        encoded
+            .split_once(':')
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: "membership signature must include signer public key and signature hex"
+                    .to_string(),
+            })?;
+    if public_key_hex.is_empty() || signature_hex.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership signature must include signer public key and signature hex"
+                .to_string(),
+        });
+    }
+    let public_key_bytes =
+        hex::decode(public_key_hex).map_err(|_| WorldError::DistributedValidationFailed {
+            reason: "membership signature signer public key must be valid hex".to_string(),
+        })?;
+    if public_key_bytes.len() != 32 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership signature signer public key must be 32-byte hex".to_string(),
+        });
+    }
+    Ok(Some(public_key_hex))
+}
 
 #[derive(Serialize)]
 struct MembershipDirectorySigningPayload<'a> {
@@ -198,6 +229,38 @@ pub(super) fn validate_key_revocation(
         }
     }
 
+    if !policy.accepted_signature_signer_public_keys.is_empty() {
+        let Some(signature) = announce.signature.as_deref() else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation missing signature for requester {}",
+                    announce.requester_id
+                ),
+            });
+        };
+        let Some(signature_signer_public_key) = extract_ed25519_signer_public_key(signature)?
+        else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation signature signer public key is required for requester {}",
+                    announce.requester_id
+                ),
+            });
+        };
+        if !policy
+            .accepted_signature_signer_public_keys
+            .iter()
+            .any(|key| key == signature_signer_public_key)
+        {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation signature signer public key {} is not accepted",
+                    signature_signer_public_key
+                ),
+            });
+        }
+    }
+
     if has_signature {
         if let Some(keyring) = keyring {
             keyring.verify_revocation(announce)?;
@@ -322,6 +385,38 @@ pub(super) fn validate_membership_snapshot(
                 reason: format!(
                     "membership snapshot signature_key_id {} is not accepted",
                     signature_key_id
+                ),
+            });
+        }
+    }
+
+    if !policy.accepted_signature_signer_public_keys.is_empty() {
+        let Some(signature) = snapshot.signature.as_deref() else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot missing signature for requester {}",
+                    snapshot.requester_id
+                ),
+            });
+        };
+        let Some(signature_signer_public_key) = extract_ed25519_signer_public_key(signature)?
+        else {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot signature signer public key is required for requester {}",
+                    snapshot.requester_id
+                ),
+            });
+        };
+        if !policy
+            .accepted_signature_signer_public_keys
+            .iter()
+            .any(|key| key == signature_signer_public_key)
+        {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership snapshot signature signer public key {} is not accepted",
+                    signature_signer_public_key
                 ),
             });
         }
