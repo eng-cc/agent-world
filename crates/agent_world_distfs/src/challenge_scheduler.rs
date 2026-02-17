@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     storage_challenge_receipt_to_proof_semantics, verify_storage_challenge_receipt, LocalCasStore,
     StorageChallenge, StorageChallengeProbeConfig, StorageChallengeProbeReport,
-    StorageChallengeReceipt, StorageChallengeRequest,
-    STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1,
+    StorageChallengeReceipt, StorageChallengeRequest, STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -270,7 +269,10 @@ fn validate_adaptive_policy(policy: &StorageChallengeAdaptivePolicy) -> Result<(
         policy.backoff_multiplier_missing_sample,
         "backoff_multiplier_missing_sample",
     )?;
-    validate_backoff_multiplier(policy.backoff_multiplier_timeout, "backoff_multiplier_timeout")?;
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_timeout,
+        "backoff_multiplier_timeout",
+    )?;
     validate_backoff_multiplier(
         policy.backoff_multiplier_read_io_error,
         "backoff_multiplier_read_io_error",
@@ -279,7 +281,10 @@ fn validate_adaptive_policy(policy: &StorageChallengeAdaptivePolicy) -> Result<(
         policy.backoff_multiplier_signature_invalid,
         "backoff_multiplier_signature_invalid",
     )?;
-    validate_backoff_multiplier(policy.backoff_multiplier_unknown, "backoff_multiplier_unknown")?;
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_unknown,
+        "backoff_multiplier_unknown",
+    )?;
     Ok(())
 }
 
@@ -386,7 +391,12 @@ fn advance_probe_cursor_state(
     state.next_blob_cursor = (state.next_blob_cursor + advance) % blob_count;
 }
 
-fn compute_backoff_ms(base_ms: i64, max_ms: i64, failure_rounds: u64, reason_multiplier: u32) -> i64 {
+fn compute_backoff_ms(
+    base_ms: i64,
+    max_ms: i64,
+    failure_rounds: u64,
+    reason_multiplier: u32,
+) -> i64 {
     if base_ms <= 0 || max_ms <= 0 || failure_rounds == 0 {
         return 0;
     }
@@ -398,7 +408,9 @@ fn compute_backoff_ms(base_ms: i64, max_ms: i64, failure_rounds: u64, reason_mul
         .min(max_ms)
 }
 
-fn dominant_failure_reason(failure_reasons: &BTreeMap<String, u64>) -> StorageChallengeFailureReason {
+fn dominant_failure_reason(
+    failure_reasons: &BTreeMap<String, u64>,
+) -> StorageChallengeFailureReason {
     let mut dominant = StorageChallengeFailureReason::Unknown;
     let mut dominant_count = 0_u64;
     for (reason, count) in failure_reasons {
@@ -600,7 +612,10 @@ mod tests {
         assert_eq!(report.total_checks, 1);
         assert_eq!(report.passed_checks, 0);
         assert_eq!(report.failed_checks, 1);
-        assert_eq!(report.failure_reasons.get("HASH_MISMATCH").copied(), Some(1));
+        assert_eq!(
+            report.failure_reasons.get("HASH_MISMATCH").copied(),
+            Some(1)
+        );
         assert_eq!(
             state
                 .cumulative_failure_reasons
@@ -649,7 +664,14 @@ mod tests {
         };
         let mut state = StorageChallengeProbeCursorState::default();
         let report = store
-            .probe_storage_challenges_with_policy("w1", "node-limit", 5_000, &config, &mut state, &policy)
+            .probe_storage_challenges_with_policy(
+                "w1",
+                "node-limit",
+                5_000,
+                &config,
+                &mut state,
+                &policy,
+            )
             .expect("probe");
         assert_eq!(report.total_checks, 1);
         assert_eq!(state.cumulative_total_checks, 1);
@@ -681,7 +703,14 @@ mod tests {
         let mut state = StorageChallengeProbeCursorState::default();
 
         let first = store
-            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_000, &config, &mut state, &policy)
+            .probe_storage_challenges_with_policy(
+                "w1",
+                "node-backoff",
+                1_000,
+                &config,
+                &mut state,
+                &policy,
+            )
             .expect("first");
         assert_eq!(first.total_checks, 1);
         assert_eq!(first.failed_checks, 1);
@@ -694,7 +723,14 @@ mod tests {
         assert_eq!(state.last_backoff_multiplier, 1);
 
         let second = store
-            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_050, &config, &mut state, &policy)
+            .probe_storage_challenges_with_policy(
+                "w1",
+                "node-backoff",
+                1_050,
+                &config,
+                &mut state,
+                &policy,
+            )
             .expect("second");
         assert_eq!(second.total_checks, 0);
         assert_eq!(state.consecutive_failure_rounds, 1);
@@ -703,7 +739,14 @@ mod tests {
         assert_eq!(state.cumulative_backoff_applied_ms, 100);
 
         let third = store
-            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_200, &config, &mut state, &policy)
+            .probe_storage_challenges_with_policy(
+                "w1",
+                "node-backoff",
+                1_200,
+                &config,
+                &mut state,
+                &policy,
+            )
             .expect("third");
         assert_eq!(third.total_checks, 1);
         assert_eq!(third.failed_checks, 1);
@@ -756,7 +799,14 @@ mod tests {
             ..StorageChallengeAdaptivePolicy::default()
         };
         let err = store
-            .probe_storage_challenges_with_policy("w1", "node-invalid", 2_000, &config, &mut state, &policy)
+            .probe_storage_challenges_with_policy(
+                "w1",
+                "node-invalid",
+                2_000,
+                &config,
+                &mut state,
+                &policy,
+            )
             .expect_err("zero multiplier should be rejected");
         match err {
             WorldError::DistributedValidationFailed { reason } => {
@@ -807,7 +857,9 @@ mod tests {
         timeout_report
             .failure_reasons
             .insert("HASH_MISMATCH".to_string(), 1);
-        timeout_report.failure_reasons.insert("TIMEOUT".to_string(), 2);
+        timeout_report
+            .failure_reasons
+            .insert("TIMEOUT".to_string(), 2);
         advance_probe_cursor_state(&mut state, &timeout_report, 0, 2_000, &policy);
         assert_eq!(state.consecutive_failure_rounds, 1);
         assert_eq!(state.backoff_until_unix_ms, 2_200);

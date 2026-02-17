@@ -12,9 +12,8 @@ use super::events::DomainEvent;
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
     reward_mint_signature_v1, verify_reward_mint_signature_v2, NodeAssetBalance,
-    NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig,
-    RewardSignatureGovernancePolicy, SystemOrderPoolBudget, REWARD_MINT_SIGNATURE_V1_PREFIX,
-    REWARD_MINT_SIGNATURE_V2_PREFIX,
+    NodeRewardMintRecord, ProtocolPowerReserve, RewardAssetConfig, RewardSignatureGovernancePolicy,
+    SystemOrderPoolBudget, REWARD_MINT_SIGNATURE_V1_PREFIX, REWARD_MINT_SIGNATURE_V2_PREFIX,
 };
 use super::types::{ActionId, MaterialLedgerId, WorldTime};
 use super::util::hash_json;
@@ -779,7 +778,10 @@ fn apply_node_points_settlement_event(
             .is_some()
         {
             return Err(WorldError::ResourceBalanceInvalid {
-                reason: format!("duplicate settlement node in report: {}", settlement.node_id),
+                reason: format!(
+                    "duplicate settlement node in report: {}",
+                    settlement.node_id
+                ),
             });
         }
         if !state
@@ -792,7 +794,10 @@ fn apply_node_points_settlement_event(
         }
     }
 
-    let mut budget = state.system_order_pool_budgets.get(&report.epoch_index).cloned();
+    let mut budget = state
+        .system_order_pool_budgets
+        .get(&report.epoch_index)
+        .cloned();
     if let Some(item) = budget.as_mut() {
         ensure_system_order_budget_caps_for_epoch(report, item);
     }
@@ -858,7 +863,10 @@ fn apply_node_points_settlement_event(
         }
         if seen_nodes.insert(record.node_id.clone(), ()).is_some() {
             return Err(WorldError::ResourceBalanceInvalid {
-                reason: format!("duplicate mint record node in one action: {}", record.node_id),
+                reason: format!(
+                    "duplicate mint record node in one action: {}",
+                    record.node_id
+                ),
             });
         }
         if state.reward_mint_records.iter().any(|existing| {
@@ -935,7 +943,9 @@ fn apply_node_points_settlement_event(
         state.reward_mint_records.push(record.clone());
     }
     if let Some(item) = budget {
-        state.system_order_pool_budgets.insert(report.epoch_index, item);
+        state
+            .system_order_pool_budgets
+            .insert(report.epoch_index, item);
     }
     Ok(())
 }
@@ -1086,7 +1096,10 @@ fn verify_reward_mint_record_signature_with_state(
         .signature
         .starts_with(REWARD_MINT_SIGNATURE_V1_PREFIX)
     {
-        if !state.reward_signature_governance_policy.allow_mintsig_v1_fallback {
+        if !state
+            .reward_signature_governance_policy
+            .allow_mintsig_v1_fallback
+        {
             return Err("mintsig:v1 is disabled by governance policy".to_string());
         }
         let expected_signature = reward_mint_signature_v1(
@@ -1139,7 +1152,9 @@ fn ensure_system_order_budget_caps_for_epoch(
             .saturating_mul(settlement.awarded_points)
             / total_awarded_points;
         distributed = distributed.saturating_add(cap);
-        budget.node_credit_caps.insert(settlement.node_id.clone(), cap);
+        budget
+            .node_credit_caps
+            .insert(settlement.node_id.clone(), cap);
     }
 
     let mut remainder = budget.total_credit_budget.saturating_sub(distributed);

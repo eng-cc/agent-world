@@ -33,10 +33,8 @@ fn extract_ed25519_signer_public_key(signature: &str) -> Result<Option<String>, 
                 .to_string(),
         });
     }
-    let normalized_public_key = normalize_ed25519_public_key_hex(
-        public_key_hex,
-        "membership signature signer public key",
-    )?;
+    let normalized_public_key =
+        normalize_ed25519_public_key_hex(public_key_hex, "membership signature signer public key")?;
     Ok(Some(normalized_public_key))
 }
 

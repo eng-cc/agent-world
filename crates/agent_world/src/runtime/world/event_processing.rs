@@ -1,7 +1,7 @@
 use super::super::{
-    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, DomainEvent, MaterialLedgerId,
-    MaterialStack, NodeRewardMintRecord, EpochSettlementReport, RejectReason, WorldError,
-    WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, DomainEvent,
+    EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeRewardMintRecord, RejectReason,
+    WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -724,9 +724,7 @@ impl World {
             return DomainEvent::ActionRejected {
                 action_id,
                 reason: RejectReason::RuleDenied {
-                    notes: vec![format!(
-                        "apply node points settlement rejected: {err:?}"
-                    )],
+                    notes: vec![format!("apply node points settlement rejected: {err:?}")],
                 },
             };
         }

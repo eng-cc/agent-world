@@ -199,8 +199,13 @@ pub(super) fn load_reward_runtime_distfs_probe_state(
     }
     let bytes = std::fs::read(path)
         .map_err(|err| format!("read distfs probe state {} failed: {}", path.display(), err))?;
-    serde_json::from_slice::<StorageChallengeProbeCursorState>(bytes.as_slice())
-        .map_err(|err| format!("parse distfs probe state {} failed: {}", path.display(), err))
+    serde_json::from_slice::<StorageChallengeProbeCursorState>(bytes.as_slice()).map_err(|err| {
+        format!(
+            "parse distfs probe state {} failed: {}",
+            path.display(),
+            err
+        )
+    })
 }
 
 pub(super) fn persist_reward_runtime_distfs_probe_state(

@@ -4,6 +4,7 @@ use agent_world_net::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 use agent_world_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use ed25519_dalek::SigningKey;
 
+use crate::error::WorldError;
 use crate::membership::{
     MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,
     MembershipRevocationSyncPolicy, MembershipSnapshotRestorePolicy, MembershipSyncClient,
@@ -12,7 +13,6 @@ use crate::quorum::{
     ConsensusConfig, ConsensusMembershipChange, ConsensusMembershipChangeRequest,
     ConsensusMembershipChangeResult, QuorumConsensus,
 };
-use crate::error::WorldError;
 
 fn membership_request(
     requester_id: &str,

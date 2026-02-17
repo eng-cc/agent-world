@@ -7,7 +7,6 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world::runtime::{
     measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
     NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
@@ -19,6 +18,7 @@ use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
+use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
     NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosValidator,
@@ -29,6 +29,8 @@ use rand_core::OsRng;
 mod distfs_probe_runtime;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
+#[cfg(test)]
+use distfs_probe_runtime::collect_distfs_challenge_report;
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
@@ -37,8 +39,6 @@ use distfs_probe_runtime::{
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
 };
-#[cfg(test)]
-use distfs_probe_runtime::collect_distfs_challenge_report;
 
 const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
@@ -46,7 +46,8 @@ const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
-const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str = "reward-runtime-distfs-probe-state.json";
+const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
+    "reward-runtime-distfs-probe-state.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -930,7 +931,9 @@ fn print_help() {
     );
     println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
     println!("  --reward-runtime-enable Enable reward runtime settlement loop (default: off)");
-    println!("  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent");
+    println!(
+        "  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent"
+    );
     println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
     println!("  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)");
     println!(
@@ -991,14 +994,21 @@ fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
     if validator_id.is_empty() {
         return Err("--node-validator validator_id cannot be empty".to_string());
     }
-    let stake = stake_raw.trim().parse::<u64>().ok().filter(|value| *value > 0).ok_or_else(
-        || "--node-validator stake must be a positive integer".to_string(),
-    )?;
-    Ok(PosValidator { validator_id: validator_id.to_string(), stake })
+    let stake = stake_raw
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .filter(|value| *value > 0)
+        .ok_or_else(|| "--node-validator stake must be a positive integer".to_string())?;
+    Ok(PosValidator {
+        validator_id: validator_id.to_string(),
+        stake,
+    })
 }
 
 fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
-    raw.parse::<SocketAddr>().map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
+    raw.parse::<SocketAddr>()
+        .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

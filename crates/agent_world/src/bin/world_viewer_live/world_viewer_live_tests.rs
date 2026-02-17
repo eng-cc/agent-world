@@ -625,12 +625,18 @@ fn collect_distfs_challenge_report_detects_hash_mismatch() {
     assert_eq!(report.total_checks, 1);
     assert_eq!(report.passed_checks, 0);
     assert_eq!(report.failed_checks, 1);
-    assert_eq!(report.failure_reasons.get("HASH_MISMATCH").copied(), Some(1));
+    assert_eq!(
+        report.failure_reasons.get("HASH_MISMATCH").copied(),
+        Some(1)
+    );
     assert!(report.latest_proof_semantics.is_none());
     assert_eq!(state.cumulative_total_checks, 1);
     assert_eq!(state.cumulative_failed_checks, 1);
     assert_eq!(
-        state.cumulative_failure_reasons.get("HASH_MISMATCH").copied(),
+        state
+            .cumulative_failure_reasons
+            .get("HASH_MISMATCH")
+            .copied(),
         Some(1)
     );
 

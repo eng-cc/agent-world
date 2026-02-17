@@ -4,8 +4,8 @@ use agent_world_proto::world_error::WorldError;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    normalize_file_path, to_canonical_cbor, validate_hash, BlobStore, FileIndexFile,
-    FileMetadata, LocalCasStore, FILE_INDEX_VERSION,
+    normalize_file_path, to_canonical_cbor, validate_hash, BlobStore, FileIndexFile, FileMetadata,
+    LocalCasStore, FILE_INDEX_VERSION,
 };
 
 const FILE_INDEX_MANIFEST_VERSION: u64 = 1;
@@ -61,8 +61,7 @@ impl LocalCasStore {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
                     "unsupported file index manifest version: expected={} actual={}",
-                    FILE_INDEX_MANIFEST_VERSION,
-                    manifest.version
+                    FILE_INDEX_MANIFEST_VERSION, manifest.version
                 ),
             });
         }
@@ -159,7 +158,9 @@ mod tests {
             .expect("write file");
         let manifest_ref = store.export_file_index_manifest().expect("export");
 
-        let blob_path = store.blob_path(metadata.content_hash.as_str()).expect("blob path");
+        let blob_path = store
+            .blob_path(metadata.content_hash.as_str())
+            .expect("blob path");
         fs::remove_file(blob_path).expect("remove blob");
 
         let imported = store.import_file_index_manifest(&manifest_ref);

@@ -140,12 +140,11 @@ impl SequencerMainloop {
         config: SequencerMainloopConfig,
         pos_config: PosConsensusConfig,
     ) -> Result<Self, WorldError> {
-        let accepted_action_signer_public_keys =
-            normalize_ed25519_public_key_allowlist(
-                &config.accepted_action_signer_public_keys,
-                "accepted_action_signer_public_keys",
-                "accepted_action_signer_public_keys",
-            )?;
+        let accepted_action_signer_public_keys = normalize_ed25519_public_key_allowlist(
+            &config.accepted_action_signer_public_keys,
+            "accepted_action_signer_public_keys",
+            "accepted_action_signer_public_keys",
+        )?;
         config.validate()?;
         let consensus = PosConsensus::new(pos_config)?;
         Ok(Self {

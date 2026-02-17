@@ -1,5 +1,5 @@
-use std::convert::TryFrom;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 
 use agent_world_proto::distributed::{
     StorageChallengeFailureReason, StorageChallengeProofSemantics, StorageChallengeSampleSource,
@@ -113,11 +113,12 @@ impl LocalCasStore {
             if path.extension().and_then(|ext| ext.to_str()) != Some("blob") {
                 continue;
             }
-            let file_stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| {
-                WorldError::DistributedValidationFailed {
+            let file_stem = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .ok_or_else(|| WorldError::DistributedValidationFailed {
                     reason: format!("invalid blob file name: {}", path.display()),
-                }
-            })?;
+                })?;
             validate_hash(file_stem)?;
             hashes.push(file_stem.to_string());
         }
@@ -139,16 +140,15 @@ impl LocalCasStore {
             request.max_sample_bytes,
             request.vrf_seed.as_str(),
         )?;
-        let expires_at_unix_ms =
-            request
-                .issued_at_unix_ms
-                .checked_add(request.challenge_ttl_ms)
-                .ok_or_else(|| WorldError::DistributedValidationFailed {
-                    reason: format!(
-                        "storage challenge ttl overflow: issued_at={} ttl={}",
-                        request.issued_at_unix_ms, request.challenge_ttl_ms
-                    ),
-                })?;
+        let expires_at_unix_ms = request
+            .issued_at_unix_ms
+            .checked_add(request.challenge_ttl_ms)
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "storage challenge ttl overflow: issued_at={} ttl={}",
+                    request.issued_at_unix_ms, request.challenge_ttl_ms
+                ),
+            })?;
 
         Ok(StorageChallenge {
             version: STORAGE_CHALLENGE_VERSION,
@@ -236,12 +236,8 @@ impl LocalCasStore {
         };
 
         let checks = (config.challenges_per_tick as usize).min(hashes.len());
-        let start_index = deterministic_probe_start_index(
-            world_id,
-            node_id,
-            observed_at_unix_ms,
-            hashes.len(),
-        );
+        let start_index =
+            deterministic_probe_start_index(world_id, node_id, observed_at_unix_ms, hashes.len());
 
         for index in 0..checks {
             let hash = hashes[(start_index + index) % hashes.len()].clone();
@@ -449,15 +445,15 @@ pub fn summarize_node_storage_challenge_stats(
     let mut per_node: BTreeMap<String, NodeStorageChallengeStats> = BTreeMap::new();
 
     for (challenge, receipt) in entries {
-        let stats = per_node.entry(challenge.node_id.clone()).or_insert_with(|| {
-            NodeStorageChallengeStats {
+        let stats = per_node
+            .entry(challenge.node_id.clone())
+            .or_insert_with(|| NodeStorageChallengeStats {
                 node_id: challenge.node_id.clone(),
                 total_checks: 0,
                 passed_checks: 0,
                 failed_checks: 0,
                 failures_by_reason: BTreeMap::new(),
-            }
-        });
+            });
         stats.total_checks = stats.total_checks.saturating_add(1);
 
         match verify_storage_challenge_receipt(challenge, receipt, allowed_clock_skew_ms) {
@@ -466,11 +462,8 @@ pub fn summarize_node_storage_challenge_stats(
             }
             Err(_) => {
                 stats.failed_checks = stats.failed_checks.saturating_add(1);
-                let reason = classify_receipt_failure_reason(
-                    challenge,
-                    receipt,
-                    allowed_clock_skew_ms,
-                );
+                let reason =
+                    classify_receipt_failure_reason(challenge, receipt, allowed_clock_skew_ms);
                 let key = failure_reason_key(reason).to_string();
                 let count = stats.failures_by_reason.entry(key).or_insert(0);
                 *count = count.saturating_add(1);
@@ -594,7 +587,12 @@ fn build_probe_challenge_id(
     )
 }
 
-fn build_probe_seed(world_id: &str, node_id: &str, observed_at_unix_ms: i64, probe_index: u32) -> String {
+fn build_probe_seed(
+    world_id: &str,
+    node_id: &str,
+    observed_at_unix_ms: i64,
+    probe_index: u32,
+) -> String {
     format!(
         "{}:{}:{}:{}",
         world_id, node_id, observed_at_unix_ms, probe_index
@@ -722,14 +720,13 @@ fn sample_window_for_blob(
     }
     let blob_len = blob.len();
     let sample_size = blob_len.min(max_sample_bytes as usize);
-    let sample_size_bytes = u32::try_from(sample_size).map_err(|_| {
-        WorldError::DistributedValidationFailed {
+    let sample_size_bytes =
+        u32::try_from(sample_size).map_err(|_| WorldError::DistributedValidationFailed {
             reason: format!(
                 "sample size conversion overflow: blob_len={} sample_size={}",
                 blob_len, sample_size
             ),
-        }
-    })?;
+        })?;
 
     let offset = deterministic_offset(content_hash, vrf_seed, blob_len, sample_size);
     let sample = extract_sample_slice(blob, offset, sample_size_bytes)?;
@@ -737,7 +734,12 @@ fn sample_window_for_blob(
     Ok((offset, sample_size_bytes, expected_sample_hash))
 }
 
-fn deterministic_offset(content_hash: &str, vrf_seed: &str, blob_len: usize, sample_size: usize) -> u64 {
+fn deterministic_offset(
+    content_hash: &str,
+    vrf_seed: &str,
+    blob_len: usize,
+    sample_size: usize,
+) -> u64 {
     if blob_len <= sample_size {
         return 0;
     }
@@ -758,11 +760,10 @@ fn extract_sample_slice(
     sample_offset: u64,
     sample_size_bytes: u32,
 ) -> Result<&[u8], WorldError> {
-    let offset = usize::try_from(sample_offset).map_err(|_| {
-        WorldError::DistributedValidationFailed {
+    let offset =
+        usize::try_from(sample_offset).map_err(|_| WorldError::DistributedValidationFailed {
             reason: format!("sample_offset overflow: {}", sample_offset),
-        }
-    })?;
+        })?;
     let size = sample_size_bytes as usize;
     let end = offset
         .checked_add(size)
@@ -881,7 +882,9 @@ mod tests {
     fn verify_storage_challenge_receipt_accepts_valid_receipt() {
         let dir = temp_dir("verify-valid");
         let store = LocalCasStore::new(&dir);
-        let content_hash = store.put_bytes(make_blob(160).as_slice()).expect("put bytes");
+        let content_hash = store
+            .put_bytes(make_blob(160).as_slice())
+            .expect("put bytes");
         let request = StorageChallengeRequest {
             challenge_id: "challenge-verify".to_string(),
             world_id: "world-1".to_string(),
@@ -892,7 +895,9 @@ mod tests {
             challenge_ttl_ms: 1_000,
             vrf_seed: "seed-verify".to_string(),
         };
-        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let challenge = store
+            .issue_storage_challenge(&request)
+            .expect("issue challenge");
         let receipt = store
             .answer_storage_challenge(&challenge, 900)
             .expect("answer challenge");
@@ -905,7 +910,9 @@ mod tests {
     fn verify_storage_challenge_receipt_rejects_hash_mismatch() {
         let dir = temp_dir("verify-hash-mismatch");
         let store = LocalCasStore::new(&dir);
-        let content_hash = store.put_bytes(make_blob(80).as_slice()).expect("put bytes");
+        let content_hash = store
+            .put_bytes(make_blob(80).as_slice())
+            .expect("put bytes");
         let request = StorageChallengeRequest {
             challenge_id: "challenge-hash-mismatch".to_string(),
             world_id: "world-1".to_string(),
@@ -916,7 +923,9 @@ mod tests {
             challenge_ttl_ms: 500,
             vrf_seed: "seed-hash".to_string(),
         };
-        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let challenge = store
+            .issue_storage_challenge(&request)
+            .expect("issue challenge");
         let mut receipt = store
             .answer_storage_challenge(&challenge, 1_100)
             .expect("answer challenge");
@@ -935,7 +944,9 @@ mod tests {
     fn verify_storage_challenge_receipt_rejects_expired_response() {
         let dir = temp_dir("verify-expired");
         let store = LocalCasStore::new(&dir);
-        let content_hash = store.put_bytes(make_blob(64).as_slice()).expect("put bytes");
+        let content_hash = store
+            .put_bytes(make_blob(64).as_slice())
+            .expect("put bytes");
         let request = StorageChallengeRequest {
             challenge_id: "challenge-expired".to_string(),
             world_id: "world-1".to_string(),
@@ -946,7 +957,9 @@ mod tests {
             challenge_ttl_ms: 100,
             vrf_seed: "seed-expired".to_string(),
         };
-        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let challenge = store
+            .issue_storage_challenge(&request)
+            .expect("issue challenge");
         let receipt = store
             .answer_storage_challenge(&challenge, challenge.expires_at_unix_ms + 200)
             .expect("answer challenge");
@@ -963,7 +976,9 @@ mod tests {
     fn receipt_to_proof_semantics_projects_expected_fields() {
         let dir = temp_dir("proof-semantics");
         let store = LocalCasStore::new(&dir);
-        let content_hash = store.put_bytes(make_blob(88).as_slice()).expect("put bytes");
+        let content_hash = store
+            .put_bytes(make_blob(88).as_slice())
+            .expect("put bytes");
         let request = StorageChallengeRequest {
             challenge_id: "challenge-semantics".to_string(),
             world_id: "world-1".to_string(),
@@ -974,14 +989,19 @@ mod tests {
             challenge_ttl_ms: 100,
             vrf_seed: "seed-semantics".to_string(),
         };
-        let challenge = store.issue_storage_challenge(&request).expect("issue challenge");
+        let challenge = store
+            .issue_storage_challenge(&request)
+            .expect("issue challenge");
         let receipt = store
             .answer_storage_challenge(&challenge, 3_050)
             .expect("answer challenge");
         let semantics = storage_challenge_receipt_to_proof_semantics(&challenge, &receipt);
 
         assert_eq!(semantics.node_id, challenge.node_id);
-        assert_eq!(semantics.sample_source, StorageChallengeSampleSource::LocalStoreIndex);
+        assert_eq!(
+            semantics.sample_source,
+            StorageChallengeSampleSource::LocalStoreIndex
+        );
         assert_eq!(
             semantics.sample_reference,
             challenge_sample_reference(&challenge)
@@ -1129,7 +1149,10 @@ mod tests {
         assert!(report.failure_reasons.is_empty());
         let semantics = report.latest_proof_semantics.expect("latest semantics");
         assert_eq!(semantics.node_id, "node-storage-7");
-        assert_eq!(semantics.sample_source, StorageChallengeSampleSource::LocalStoreIndex);
+        assert_eq!(
+            semantics.sample_source,
+            StorageChallengeSampleSource::LocalStoreIndex
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1158,7 +1181,10 @@ mod tests {
         assert_eq!(report.total_checks, 1);
         assert_eq!(report.passed_checks, 0);
         assert_eq!(report.failed_checks, 1);
-        assert_eq!(report.failure_reasons.get("HASH_MISMATCH").copied(), Some(1));
+        assert_eq!(
+            report.failure_reasons.get("HASH_MISMATCH").copied(),
+            Some(1)
+        );
         assert!(report.latest_proof_semantics.is_none());
 
         let _ = fs::remove_dir_all(&dir);

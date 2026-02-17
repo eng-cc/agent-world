@@ -14,15 +14,15 @@ const PINS_FILE: &str = "pins.json";
 const FILES_INDEX_FILE: &str = "files_index.json";
 const FILE_INDEX_VERSION: u64 = 1;
 
-mod replication;
-mod manifest;
 mod challenge;
 mod challenge_scheduler;
+mod manifest;
+mod replication;
 
-pub use replication::*;
-pub use manifest::*;
 pub use challenge::*;
 pub use challenge_scheduler::*;
+pub use manifest::*;
+pub use replication::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
@@ -1062,7 +1062,8 @@ mod tests {
         assert_ne!(first.content_hash, second.content_hash);
         assert_eq!(store.read_file("state/a.txt").expect("read"), b"v2");
 
-        let stale_write = store.write_file_if_match("state/a.txt", Some(first.content_hash.as_str()), b"v3");
+        let stale_write =
+            store.write_file_if_match("state/a.txt", Some(first.content_hash.as_str()), b"v3");
         assert!(matches!(
             stale_write,
             Err(WorldError::DistributedValidationFailed { .. })
@@ -1087,8 +1088,7 @@ mod tests {
         let store = LocalCasStore::new(&dir);
 
         let written = store.write_file("state/a.txt", b"v1").expect("write");
-        let mismatch =
-            store.delete_file_if_match("state/a.txt", Some("stale-hash"));
+        let mismatch = store.delete_file_if_match("state/a.txt", Some("stale-hash"));
         assert!(matches!(
             mismatch,
             Err(WorldError::DistributedValidationFailed { .. })
@@ -1100,11 +1100,9 @@ mod tests {
             .expect("delete with match");
         assert!(removed);
         assert!(store.stat_file("state/a.txt").expect("stat").is_none());
-        assert!(
-            !store
-                .delete_file_if_match("state/a.txt", None)
-                .expect("delete missing without precondition")
-        );
+        assert!(!store
+            .delete_file_if_match("state/a.txt", None)
+            .expect("delete missing without precondition"));
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1138,12 +1136,16 @@ mod tests {
         let orphan = store
             .write_file("orphan.txt", b"orphan")
             .expect("write orphan");
-        store.delete_file("orphan.txt").expect("delete orphan mapping");
+        store
+            .delete_file("orphan.txt")
+            .expect("delete orphan mapping");
 
         let missing = store
             .write_file("missing.txt", b"missing")
             .expect("write missing");
-        let missing_path = store.blob_path(missing.content_hash.as_str()).expect("missing path");
+        let missing_path = store
+            .blob_path(missing.content_hash.as_str())
+            .expect("missing path");
         fs::remove_file(missing_path).expect("remove missing blob");
 
         let dangling_pin_hash = store.put_bytes(b"dangling-pin").expect("put dangling");
@@ -1156,7 +1158,9 @@ mod tests {
         let report = store.audit_file_index().expect("audit");
         assert_eq!(report.total_indexed_files, 2);
         assert_eq!(report.total_pins, 1);
-        assert!(report.missing_file_blob_hashes.contains(&missing.content_hash));
+        assert!(report
+            .missing_file_blob_hashes
+            .contains(&missing.content_hash));
         assert!(!report.missing_file_blob_hashes.contains(&live.content_hash));
         assert!(report.dangling_pin_hashes.contains(&dangling_pin_hash));
         assert!(report.orphan_blob_hashes.contains(&orphan.content_hash));
@@ -1170,7 +1174,9 @@ mod tests {
         let dir = temp_dir("prune-orphan");
         let store = LocalCasStore::new(&dir);
 
-        let live = store.write_file("live.txt", b"live-data").expect("write live");
+        let live = store
+            .write_file("live.txt", b"live-data")
+            .expect("write live");
         let orphan = store
             .write_file("old.txt", b"old-data")
             .expect("write orphan");
@@ -1183,7 +1189,9 @@ mod tests {
         assert!(freed > 0);
         assert!(store.has(live.content_hash.as_str()).expect("live exists"));
         assert!(store.has(pinned_hash.as_str()).expect("pinned exists"));
-        assert!(!store.has(orphan.content_hash.as_str()).expect("orphan removed"));
+        assert!(!store
+            .has(orphan.content_hash.as_str())
+            .expect("orphan removed"));
 
         let _ = fs::remove_dir_all(&dir);
     }

@@ -131,18 +131,18 @@ fn reward_asset_settlement_action_rejects_tampered_mint_record() {
         signer_node_id: "node-signer".to_string(),
         mint_records: minted_records,
     });
-    world.step().expect("settlement action should be rejected, not fail");
+    world
+        .step()
+        .expect("settlement action should be rejected, not fail");
 
     assert_eq!(world.node_power_credit_balance("node-a"), 0);
     assert!(world.reward_mint_records().is_empty());
     match &world.journal().events.last().expect("event").body {
         WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
             RejectReason::RuleDenied { notes } => {
-                assert!(
-                    notes
-                        .iter()
-                        .any(|note| note.contains("mint record signature invalid"))
-                );
+                assert!(notes
+                    .iter()
+                    .any(|note| note.contains("mint record signature invalid")));
             }
             other => panic!("expected rule denied reject, got {other:?}"),
         },
