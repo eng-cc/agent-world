@@ -123,3 +123,53 @@
 - 位置映射风险：工厂位置缓存若不及时更新，可能导致错误回退。
 - 分段移动风险：可见地点稀疏时中继选择失败，仍可能出现距离超限拒绝。
 - 覆盖策略风险：硬切换可能降低单一配方产量，应限定为“未覆盖优先”而非“永久禁止重复”。
+
+## MMD6 增量优化（TODO-14 ~ TODO-16）
+
+### 目标
+- 降低 `facility_not_found` 与 `facility_already_exists` 抖动，避免因 `factory_id` 歧义导致的重复建厂/排产失败。
+- 在目标 location 不可见或上一轮移动已超距时，提供可执行分段回退，进一步压降 `move_distance_exceeded`。
+- 为采矿动作补充“矿点可采量记忆”，在矿点耗尽后主动迁移或降级，降低重复 `mine_compound` 空耗。
+
+### 范围
+
+#### In Scope
+- TODO-14：`factory_id` 归一化与去重 guardrail。
+  - `schedule_recipe` 支持把“factory_kind 误填为 factory_id”映射到已知工厂 ID。
+  - `build_factory` 在已知同 ID 工厂存在时改写为生产推进动作，避免重复建造拒绝。
+- TODO-15：`move_agent` 超距回退强化。
+  - 记录 `move_distance_exceeded` 目标；
+  - 对“已知超距目标 + 不可见目标”应用探索式中继移动。
+- TODO-16：采矿耗尽感知。
+  - 记录 location 侧 `compound` 可用量（来自拒绝回执）；
+  - `mine_compound` 质量按已知可用量裁剪；
+  - 当目标点已知耗尽时改写为迁移或电力恢复动作。
+- 补齐 `test_tier_required` 单测，并进行 `llm_bootstrap` 在线复核。
+
+#### Out of Scope
+- 不修改 kernel 真实拒绝规则与地图生成逻辑。
+- 不引入全局寻路器或多步规划器。
+- 不调整 recipe 配方数值平衡。
+
+### 接口 / 数据
+- `LlmAgentBehavior` 新增运行态记忆：
+  - 工厂类型到已知工厂 ID 的映射（用于 `factory_id` 归一化）。
+  - 超距移动目标集合（用于后续回退）。
+  - 位置可采 `compound` 可用量提示（来自 `InsufficientResource` 回执）。
+- guardrail 扩展：
+  - `build_factory` 去重改写；
+  - `schedule_recipe.factory_id` 归一化；
+  - `move_agent` 对已超距目标启用探索中继；
+  - `mine_compound` 位置前置检查、质量裁剪与耗尽回退。
+
+### 里程碑
+- MMD6.1：文档增量设计与任务拆解。
+- MMD6.2：`factory_id` 归一化与建厂去重 guardrail + 单测。
+- MMD6.3：移动超距回退增强 + 单测。
+- MMD6.4：采矿耗尽感知 guardrail + 单测。
+- MMD6.5：`test_tier_required` + 在线闭环抽样复核与文档收口。
+
+### 风险
+- 归一化风险：错误映射 factory_id 可能把动作导向非目标工厂，需要优先使用“明确已知映射”。
+- 回退风险：探索式中继可能出现局部往返，需要保持“已超距目标”触发条件而非全局强制。
+- 采矿记忆风险：可采量提示是时点信息，若 chunk 补给后未清理缓存，可能误判耗尽。
