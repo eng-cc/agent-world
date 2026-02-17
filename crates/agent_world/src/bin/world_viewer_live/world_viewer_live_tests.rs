@@ -478,6 +478,9 @@ fn reward_runtime_distfs_probe_state_roundtrip() {
         cumulative_passed_checks: 16,
         cumulative_failed_checks: 4,
         cumulative_failure_reasons: [("HASH_MISMATCH".to_string(), 4)].into_iter().collect(),
+        consecutive_failure_rounds: 4,
+        backoff_until_unix_ms: 9_999,
+        last_probe_unix_ms: Some(8_888),
     };
 
     persist_reward_runtime_distfs_probe_state(path.as_path(), &expected)
@@ -532,6 +535,9 @@ fn distfs_probe_cursor_state_is_report_serializable() {
         cumulative_passed_checks: 25,
         cumulative_failed_checks: 5,
         cumulative_failure_reasons: [("HASH_MISMATCH".to_string(), 5)].into_iter().collect(),
+        consecutive_failure_rounds: 3,
+        backoff_until_unix_ms: 20_000,
+        last_probe_unix_ms: Some(19_500),
     };
     let value = serde_json::to_value(state).expect("serialize cursor state");
     assert_eq!(
