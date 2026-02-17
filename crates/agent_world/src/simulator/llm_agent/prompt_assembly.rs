@@ -253,6 +253,7 @@ impl PromptAssembler {
 - 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
+- execute_until.action 必须是可执行动作（move/harvest/transfer/refine/build/schedule），不要使用 wait/wait_ticks
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
 - transfer_resource.kind 仅允许 electricity/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>

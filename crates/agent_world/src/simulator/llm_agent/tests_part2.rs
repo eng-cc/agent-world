@@ -1078,6 +1078,38 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
         .llm_step_trace
         .iter()
         .any(|step| step.output_summary.contains("rerouted to refine_compound")));
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("decision_rewrite={")));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::RefineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            compound_mass_g: 8_000,
+        },
+        action_id: 300,
+        success: true,
+        event: WorldEvent {
+            id: 400,
+            time: 99,
+            kind: WorldEventKind::CompoundRefined {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                compound_mass_g: 8_000,
+                electricity_cost: 16,
+                hardware_output: 8,
+            },
+        },
+    });
+    observation.time = 100;
+    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
+    assert!(prompt.contains("\"decision_rewrite\":"));
+    assert!(prompt.contains("\"from\":\"schedule_recipe\""));
+    assert!(prompt.contains("\"to\":\"refine_compound\""));
 }
 
 #[test]
@@ -1113,6 +1145,59 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
         .llm_step_trace
         .iter()
         .any(|step| step.output_summary.contains("batches clamped")));
+}
+
+#[test]
+fn llm_agent_rewrites_execute_until_wait_action_to_actionable_harvest() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"execute_until","action":{"decision":"wait"},"until":{"event":"new_visible_agent"},"max_ticks":4}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let mut observation = make_observation();
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.parse_error.is_none());
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.output_summary.contains("decision_rewrite={")));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 1,
+        },
+        action_id: 301,
+        success: true,
+        event: WorldEvent {
+            id: 401,
+            time: 101,
+            kind: WorldEventKind::RadiationHarvested {
+                agent_id: "agent-1".to_string(),
+                location_id: "loc-1".to_string(),
+                amount: 1,
+                available: 12,
+            },
+        },
+    });
+    observation.time = 102;
+    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
+    assert!(prompt.contains("\"decision_rewrite\":"));
+    assert!(prompt.contains("\"from\":\"wait\""));
+    assert!(prompt.contains("\"to\":\"harvest_radiation\""));
 }
 
 #[test]
@@ -1336,6 +1421,35 @@ fn llm_parse_execute_until_accepts_event_any_of() {
                     value_lte: None,
                 }
             );
+        }
+        other => panic!("expected execute_until, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_execute_until_rewrites_wait_action_to_minimal_harvest() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"execute_until","action":{"decision":"wait"},"until":{"event":"new_visible_agent"},"max_ticks":5}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::ExecuteUntil {
+            directive,
+            rewrite_receipt,
+            ..
+        } => {
+            assert!(matches!(
+                directive.action,
+                Action::HarvestRadiation { max_amount: 1, .. }
+            ));
+            let rewrite_receipt = rewrite_receipt.expect("rewrite receipt");
+            assert_eq!(rewrite_receipt.from, "wait");
+            assert_eq!(rewrite_receipt.to, "harvest_radiation");
+            assert!(rewrite_receipt.reason.contains("non-actionable"));
         }
         other => panic!("expected execute_until, got {other:?}"),
     }

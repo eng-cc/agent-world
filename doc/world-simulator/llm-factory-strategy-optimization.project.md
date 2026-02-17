@@ -60,6 +60,12 @@
 - [x] LFO10.2 验证“建工厂 + 制成品”达成并提取动作/错误指标
 - [x] LFO10.3 记录新 TODO 并更新项目文档/devlog
 
+### LFO11 TODO-5/TODO-6 收口（2026-02-17）
+- [x] LFO11.1 `execute_until + wait` 语义收敛（改写为最小可执行动作，消除该路径 parse_error）
+- [x] LFO11.2 增加结构化 `decision_rewrite` 回执并写入 trace
+- [x] LFO11.3 将 `decision_rewrite` 回灌到下一轮 observation.last_action
+- [x] LFO11.4 补齐 required-tier 回归测试并回填文档/devlog
+
 ### LFO9 实施结果摘要（2026-02-17）
 - #1 删除（compat fallback）：
   - `OpenAiChatCompletionClient::complete` 在 `ParseBody(raw)` 分支不再走 raw-body JSON fallback，统一返回 `DecodeResponse` 错误（主请求与重试请求均一致）。
@@ -117,6 +123,28 @@
   - `data` 从 `12` 增长至 `28`（来自 `run.log` 中 observation 采样）。
 - 新观察 TODO（后续优化）：
   - TODO-6：在硬件不足但仍可恢复时，`schedule_recipe` 决策会被 guardrail 自动改写为 `refine_compound`（例如 `tick=7/9/16/24`），当前 trace 仅呈现“模型输出排产 + 执行精炼”的结果，缺少统一的“决策改写原因回执”。建议为改写链路补充结构化回执（如 `decision_rewrite: schedule_recipe -> refine_compound, reason=insufficient_resource.hardware`）并回灌到下一轮 observation，以减少策略抖动和提示词误判。
+
+### LFO11 实施结果摘要（2026-02-17）
+- 代码变更：
+  - `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
+  - `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
+  - `crates/agent_world/src/simulator/llm_agent.rs`
+  - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
+  - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
+- TODO-5 收口：
+  - `execute_until.action=wait/wait_ticks` 不再直接 parse error；解析阶段自动改写为最小可执行动作 `harvest_radiation(max_amount=1)`。
+  - 线上抽样（LFO8 口径）结果：`output/llm_closed_loop/todo11_lfo8_compare_2026-02-17_121121/report.json`，`parse_errors=0`（此前样本为 20）。
+- TODO-6 收口：
+  - 新增结构化回执：`decision_rewrite={from,to,reason}`。
+  - 回执写入 `llm_step_trace` 和 system note，并在下一轮 observation 的 `last_action.decision_rewrite` 回灌给模型。
+  - 已覆盖场景：`schedule_recipe -> refine_compound` guardrail 改写、`execute_until(wait) -> harvest_radiation` 语义改写。
+- 回归测试：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+  - 新增用例：
+    - `llm_parse_execute_until_rewrites_wait_action_to_minimal_harvest`
+    - `llm_agent_rewrites_execute_until_wait_action_to_actionable_harvest`
+  - 更新用例：
+    - `llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch`（校验 `decision_rewrite` trace + prompt 回灌）
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
@@ -186,6 +214,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO10 全部完成（含用户指令复跑闭环验证）。
-- 下一步：继续推进 TODO-5（`execute_until + wait` 语义收敛）与 TODO-6（决策改写回执可观测性）。
-- 最近更新：2026-02-17（完成 LFO10 在线复跑、指标回填与 TODO 补充）。
+- 当前阶段：LFO0-LFO11 全部完成（TODO-5/TODO-6 已收口）。
+- 下一步：推进 TODO-4（多段输出硬拒绝 + 末段决策提取），继续降低协议违规输出不确定性。
+- 最近更新：2026-02-17（完成 LFO11 语义收敛与改写回执闭环）。

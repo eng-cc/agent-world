@@ -152,3 +152,44 @@
 - provider 兼容风险：移除 fallback 后，SDK 解析失败将直接报错；需通过测试确认常用 provider 响应兼容。
 - 迁移回归风险：历史测试大量依赖字符串输出，需同步改造 mock client 构造路径，避免误报。
 - trace 可读性风险：若 typed turn 序列化展示不稳定，会影响调试日志可读性。
+
+## LFO11 增量设计：TODO-5/TODO-6 收口（2026-02-17）
+
+### 目标
+- 收敛 `execute_until + wait` 语义：当模型在 `execute_until.action` 里给出 `wait/wait_ticks` 时，不再直接判定 parse_error，而是改写为最小可执行动作继续推进。
+- 补齐“决策改写回执”可观测性：将 guardrail/解析层改写结果结构化记录到 trace，并回灌到下一轮 observation 的 `last_action` 语境。
+- 保持 tool-only 闭环稳定：避免引入新的协议分叉，维持现有 `test_tier_required` 稳定通过。
+
+### 范围
+- In Scope:
+  - `decision_flow`：为 `execute_until.action=wait/wait_ticks` 增加可执行改写路径（默认改写为最小 `harvest_radiation(max_amount=1)`）。
+  - `behavior_loop`：消费结构化改写回执，并将其写入 `llm_step_trace`/system message。
+  - `llm_agent` observation 组装：在 `last_action` 中增加 `decision_rewrite` 字段，用于下一轮 prompt 恢复语义。
+  - 增加/更新 `test_tier_required` 单测覆盖：`execute_until + wait` 改写、`schedule_recipe -> refine_compound` 改写回执回灌。
+- Out of Scope:
+  - 不调整经济参数（配方成本、精炼参数、电力参数）。
+  - 不引入新的 world action 类型。
+  - 不改动 viewer UI 展示协议。
+
+### 接口 / 数据
+- 新增结构化回执字段（内部）：
+  - `decision_rewrite.from`
+  - `decision_rewrite.to`
+  - `decision_rewrite.reason`
+- prompt observation 变更：
+  - `last_action` 保持现有字段（`kind/success/reject_reason`）；
+  - 增加可选 `last_action.decision_rewrite`，用于向模型解释“上一轮请求为何被改写”。
+- `execute_until` 解析策略：
+  - 若 `action` 为可执行动作（Act），保持原逻辑；
+  - 若 `action` 为 `wait/wait_ticks`，改写为最小可执行动作并产出结构化 `decision_rewrite`，而非抛出 parse_error。
+
+### 里程碑
+- LFO11.1 更新设计/项目文档并拆解任务。
+- LFO11.2 完成 `execute_until + wait` 语义收敛（TODO-5）。
+- LFO11.3 完成决策改写回执 trace + observation 回灌（TODO-6）。
+- LFO11.4 跑通 required-tier 回归并回填文档/devlog。
+
+### 风险
+- 过度自动改写风险：错误改写可能掩盖模型真实策略问题；通过结构化回执保留可审计性。
+- 行为漂移风险：`wait` 被改写为动作可能改变资源曲线；通过“最小动作 + 回归测试”控制影响范围。
+- 可观测性噪声风险：回执过多可能污染 prompt；通过仅在“决策类型发生变化”时回灌降低噪声。

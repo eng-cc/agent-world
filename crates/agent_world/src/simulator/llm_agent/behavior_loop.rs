@@ -7,6 +7,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     }
 
     fn decide(&mut self, observation: &Observation) -> AgentDecision {
+        self.pending_decision_rewrite = None;
         self.memory
             .record_observation(observation.time, Self::observe_memory_summary(observation));
         let trace_chat_start = self
@@ -89,6 +90,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         let mut has_total_tokens = false;
 
         let mut resolved = false;
+        let mut decision_rewrite_receipt: Option<DecisionRewriteReceipt> = None;
         let max_turns = self.config.max_decision_steps.max(1);
         let force_replan_threshold = if self.config.execute_until_auto_reenter_ticks > 0
             && self.config.force_replan_after_same_action >= 4
@@ -293,8 +295,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         resolved = true;
                                     }
                                 } else {
+                                    let original_decision = parsed_decision.clone();
                                     let (guarded_decision, guardrail_note) = self
                                         .apply_decision_guardrails(parsed_decision, observation);
+                                    let guardrail_reason = guardrail_note.clone();
                                     decision = guarded_decision;
                                     parse_error = decision_parse_error;
                                     repair_context = None;
@@ -314,11 +318,25 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                             summarize_trace_text(note.as_str(), 160)
                                         );
                                     }
+
+                                    if let Some(rewrite_receipt) = Self::decision_rewrite_receipt(
+                                        &original_decision,
+                                        &decision,
+                                        guardrail_reason.as_deref(),
+                                    ) {
+                                        self.record_decision_rewrite_receipt(
+                                            observation.time,
+                                            &rewrite_receipt,
+                                            &mut turn_output_summary,
+                                        );
+                                        decision_rewrite_receipt = Some(rewrite_receipt);
+                                    }
                                 }
                             }
                             ParsedLlmTurn::ExecuteUntil {
                                 directive,
                                 message_to_user,
+                                rewrite_receipt,
                             } => {
                                 if let Some(message_to_user) = message_to_user.as_deref() {
                                     let _ = self.append_conversation_message(
@@ -327,8 +345,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         message_to_user,
                                     );
                                 }
+                                let original_action = directive.action.clone();
                                 let (guarded_directive, guardrail_note) =
                                     self.apply_execute_until_guardrails(directive, observation);
+                                let guardrail_reason = guardrail_note.clone();
                                 decision = AgentDecision::Act(guarded_directive.action.clone());
                                 self.active_execute_until =
                                     Some(ActiveExecuteUntil::from_directive(
@@ -362,6 +382,28 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         turn_output_summary,
                                         summarize_trace_text(note.as_str(), 160)
                                     );
+                                }
+
+                                if let Some(rewrite_receipt) = rewrite_receipt {
+                                    self.record_decision_rewrite_receipt(
+                                        observation.time,
+                                        &rewrite_receipt,
+                                        &mut turn_output_summary,
+                                    );
+                                    decision_rewrite_receipt = Some(rewrite_receipt);
+                                }
+
+                                if let Some(rewrite_receipt) = Self::action_rewrite_receipt(
+                                    &original_action,
+                                    &guarded_directive.action,
+                                    guardrail_reason.as_deref(),
+                                ) {
+                                    self.record_decision_rewrite_receipt(
+                                        observation.time,
+                                        &rewrite_receipt,
+                                        &mut turn_output_summary,
+                                    );
+                                    decision_rewrite_receipt = Some(rewrite_receipt);
                                 }
                             }
                             ParsedLlmTurn::ModuleCall {
@@ -483,8 +525,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                         resolved = true;
                                     }
                                 } else {
+                                    let original_decision = draft.decision.clone();
                                     let (guarded_decision, guardrail_note) =
                                         self.apply_decision_guardrails(draft.decision, observation);
+                                    let guardrail_reason = guardrail_note.clone();
                                     decision = guarded_decision;
                                     repair_context = None;
                                     resolved = true;
@@ -506,6 +550,19 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                             turn_output_summary,
                                             summarize_trace_text(note.as_str(), 160)
                                         );
+                                    }
+
+                                    if let Some(rewrite_receipt) = Self::decision_rewrite_receipt(
+                                        &original_decision,
+                                        &decision,
+                                        guardrail_reason.as_deref(),
+                                    ) {
+                                        self.record_decision_rewrite_receipt(
+                                            observation.time,
+                                            &rewrite_receipt,
+                                            &mut turn_output_summary,
+                                        );
+                                        decision_rewrite_receipt = Some(rewrite_receipt);
                                     }
                                 }
                             }
@@ -672,6 +729,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         self.replan_guard_state.record_decision(&decision);
         self.memory
             .record_decision(observation.time, decision.clone());
+        self.pending_decision_rewrite = decision_rewrite_receipt;
         let trace_chat_messages = self.conversation_history[trace_chat_start..].to_vec();
         self.conversation_trace_cursor = self.conversation_history.len();
 
@@ -703,7 +761,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
 
     fn on_action_result(&mut self, result: &ActionResult) {
         let time = result.event.time;
-        self.last_action_summary = Some(Self::summarize_action_result_for_prompt(result));
+        self.last_action_summary = Some(Self::summarize_action_result_for_prompt(
+            result,
+            self.pending_decision_rewrite.take(),
+        ));
         self.memory
             .record_action_result(time, result.action.clone(), result.success);
         if !result.success {

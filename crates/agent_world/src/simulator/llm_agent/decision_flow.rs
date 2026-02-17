@@ -196,6 +196,13 @@ pub(super) struct ExecuteUntilDirective {
     pub max_ticks: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct DecisionRewriteReceipt {
+    pub from: String,
+    pub to: String,
+    pub reason: String,
+}
+
 #[derive(Debug)]
 pub(super) enum ParsedLlmTurn {
     Plan {
@@ -214,6 +221,7 @@ pub(super) enum ParsedLlmTurn {
     ExecuteUntil {
         directive: ExecuteUntilDirective,
         message_to_user: Option<String>,
+        rewrite_receipt: Option<DecisionRewriteReceipt>,
     },
     ModuleCall {
         request: LlmModuleCallRequest,
@@ -297,9 +305,10 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
         .is_some_and(|value| value.trim().eq_ignore_ascii_case("execute_until"))
     {
         return match parse_execute_until_decision(value, agent_id) {
-            Ok(directive) => ParsedLlmTurn::ExecuteUntil {
+            Ok((directive, rewrite_receipt)) => ParsedLlmTurn::ExecuteUntil {
                 directive,
                 message_to_user,
+                rewrite_receipt,
             },
             Err(err) => ParsedLlmTurn::Invalid(err),
         };
@@ -374,7 +383,7 @@ fn decision_draft_shorthand_value(value: &serde_json::Value) -> Option<serde_jso
 fn parse_execute_until_decision(
     value: serde_json::Value,
     agent_id: &str,
-) -> Result<ExecuteUntilDirective, String> {
+) -> Result<(ExecuteUntilDirective, Option<DecisionRewriteReceipt>), String> {
     const DEFAULT_MAX_TICKS: u64 = 6;
     const MAX_TICKS_CAP: u64 = 256;
 
@@ -394,11 +403,33 @@ fn parse_execute_until_decision(
     if let Some(err) = action_parse_error {
         return Err(format!("execute_until invalid action: {err}"));
     }
-    let action = match action_decision {
-        AgentDecision::Act(action) => action,
-        _ => {
-            return Err("execute_until action must be actionable decision".to_string());
-        }
+    let (action, rewrite_receipt) = match action_decision {
+        AgentDecision::Act(action) => (action, None),
+        AgentDecision::Wait => (
+            Action::HarvestRadiation {
+                agent_id: agent_id.to_string(),
+                max_amount: 1,
+            },
+            Some(DecisionRewriteReceipt {
+                from: "wait".to_string(),
+                to: "harvest_radiation".to_string(),
+                reason: "execute_until.action=wait is non-actionable; rewritten to minimal harvest_radiation(max_amount=1)"
+                    .to_string(),
+            }),
+        ),
+        AgentDecision::WaitTicks(ticks) => (
+            Action::HarvestRadiation {
+                agent_id: agent_id.to_string(),
+                max_amount: 1,
+            },
+            Some(DecisionRewriteReceipt {
+                from: "wait_ticks".to_string(),
+                to: "harvest_radiation".to_string(),
+                reason: format!(
+                    "execute_until.action=wait_ticks({ticks}) is non-actionable; rewritten to minimal harvest_radiation(max_amount=1)"
+                ),
+            }),
+        ),
     };
 
     let until_conditions = parse_execute_until_conditions(&payload.until)?;
@@ -408,11 +439,14 @@ fn parse_execute_until_decision(
         .unwrap_or(DEFAULT_MAX_TICKS)
         .clamp(1, MAX_TICKS_CAP);
 
-    Ok(ExecuteUntilDirective {
-        action,
-        until_conditions,
-        max_ticks,
-    })
+    Ok((
+        ExecuteUntilDirective {
+            action,
+            until_conditions,
+            max_ticks,
+        },
+        rewrite_receipt,
+    ))
 }
 
 fn parse_execute_until_conditions(

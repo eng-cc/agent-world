@@ -36,8 +36,8 @@ pub use prompt_assembly::{
 
 use decision_flow::{
     parse_limit_arg, parse_llm_turn_payloads, prompt_section_kind_name,
-    prompt_section_priority_name, summarize_trace_text, ExecuteUntilDirective,
-    LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
+    prompt_section_priority_name, summarize_trace_text, DecisionRewriteReceipt,
+    ExecuteUntilDirective, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
 };
 use execution_controls::{ActionReplanGuardState, ActiveExecuteUntil};
 
@@ -162,6 +162,7 @@ struct PromptLastActionSummary {
     kind: String,
     success: bool,
     reject_reason: Option<String>,
+    decision_rewrite: Option<DecisionRewriteReceipt>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -657,6 +658,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     conversation_history: Vec<LlmChatMessageTrace>,
     conversation_trace_cursor: usize,
     last_action_summary: Option<PromptLastActionSummary>,
+    pending_decision_rewrite: Option<DecisionRewriteReceipt>,
 }
 
 impl LlmAgentBehavior<OpenAiChatCompletionClient> {
@@ -702,6 +704,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             conversation_history: Vec::new(),
             conversation_trace_cursor: 0,
             last_action_summary: None,
+            pending_decision_rewrite: None,
         }
     }
 
@@ -851,6 +854,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     "kind": summary.kind,
                     "success": summary.success,
                     "reject_reason": summary.reject_reason,
+                    "decision_rewrite": summary.decision_rewrite,
                 })
             })
             .unwrap_or(serde_json::Value::Null);
@@ -919,14 +923,96 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         }
     }
 
-    fn summarize_action_result_for_prompt(result: &ActionResult) -> PromptLastActionSummary {
+    fn summarize_action_result_for_prompt(
+        result: &ActionResult,
+        decision_rewrite: Option<DecisionRewriteReceipt>,
+    ) -> PromptLastActionSummary {
         PromptLastActionSummary {
             kind: Self::action_kind_name_for_prompt(&result.action).to_string(),
             success: result.success,
             reject_reason: result
                 .reject_reason()
                 .map(Self::reject_reason_code_for_prompt),
+            decision_rewrite,
         }
+    }
+
+    fn decision_label_for_rewrite(decision: &AgentDecision) -> String {
+        match decision {
+            AgentDecision::Act(action) => Self::action_label_for_rewrite(action),
+            AgentDecision::Wait => "wait".to_string(),
+            AgentDecision::WaitTicks(_) => "wait_ticks".to_string(),
+        }
+    }
+
+    fn action_label_for_rewrite(action: &Action) -> String {
+        Self::action_kind_name_for_prompt(action).to_string()
+    }
+
+    fn decision_rewrite_receipt(
+        from: &AgentDecision,
+        to: &AgentDecision,
+        reason: Option<&str>,
+    ) -> Option<DecisionRewriteReceipt> {
+        let from_label = Self::decision_label_for_rewrite(from);
+        let to_label = Self::decision_label_for_rewrite(to);
+        if from_label == to_label {
+            return None;
+        }
+        Some(DecisionRewriteReceipt {
+            from: from_label,
+            to: to_label,
+            reason: reason
+                .unwrap_or("decision rewritten by guardrail")
+                .trim()
+                .to_string(),
+        })
+    }
+
+    fn action_rewrite_receipt(
+        from: &Action,
+        to: &Action,
+        reason: Option<&str>,
+    ) -> Option<DecisionRewriteReceipt> {
+        let from_label = Self::action_label_for_rewrite(from);
+        let to_label = Self::action_label_for_rewrite(to);
+        if from_label == to_label {
+            return None;
+        }
+        Some(DecisionRewriteReceipt {
+            from: from_label,
+            to: to_label,
+            reason: reason
+                .unwrap_or("action rewritten by guardrail")
+                .trim()
+                .to_string(),
+        })
+    }
+
+    fn decision_rewrite_receipt_json(receipt: &DecisionRewriteReceipt) -> String {
+        serde_json::to_string(receipt).unwrap_or_else(|_| {
+            format!(
+                r#"{{"from":"{}","to":"{}","reason":"{}"}}"#,
+                receipt.from, receipt.to, receipt.reason
+            )
+        })
+    }
+
+    fn record_decision_rewrite_receipt(
+        &mut self,
+        time: u64,
+        receipt: &DecisionRewriteReceipt,
+        turn_output_summary: &mut String,
+    ) {
+        let receipt_json = Self::decision_rewrite_receipt_json(receipt);
+        let note = format!("decision_rewrite: {receipt_json}");
+        self.memory.record_note(time, note.clone());
+        let _ = self.append_conversation_message(time, LlmChatRole::System, note.as_str());
+        *turn_output_summary = format!(
+            "{}; decision_rewrite={}",
+            turn_output_summary,
+            summarize_trace_text(receipt_json.as_str(), 200)
+        );
     }
 
     fn memory_digest_for_prompt(digest: &str) -> String {
