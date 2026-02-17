@@ -1,6 +1,7 @@
 use super::super::{
-    Action, ActionEnvelope, CausedBy, DomainEvent, MaterialLedgerId, MaterialStack, RejectReason,
-    WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, DomainEvent, MaterialLedgerId,
+    MaterialStack, NodeRewardMintRecord, EpochSettlementReport, RejectReason, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -189,6 +190,18 @@ impl World {
                 *nonce,
                 Some((signer_node_id.as_str(), signature.as_str())),
             ))),
+            Action::ApplyNodePointsSettlementSigned {
+                report,
+                signer_node_id,
+                mint_records,
+            } => Ok(WorldEventBody::Domain(
+                self.evaluate_apply_node_points_settlement_action(
+                    action_id,
+                    report,
+                    signer_node_id.as_str(),
+                    mint_records.as_slice(),
+                ),
+            )),
             Action::TransferMaterial {
                 requester_agent_id,
                 from_ledger,
@@ -679,6 +692,45 @@ impl World {
         } else {
             MaterialLedgerId::world()
         }
+    }
+
+    fn evaluate_apply_node_points_settlement_action(
+        &self,
+        action_id: ActionId,
+        report: &EpochSettlementReport,
+        signer_node_id: &str,
+        mint_records: &[NodeRewardMintRecord],
+    ) -> DomainEvent {
+        let settlement_hash = match hash_json(report) {
+            Ok(hash) => hash,
+            Err(err) => {
+                return DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("settlement hash compute failed: {err:?}")],
+                    },
+                };
+            }
+        };
+
+        let event = DomainEvent::NodePointsSettlementApplied {
+            report: report.clone(),
+            signer_node_id: signer_node_id.to_string(),
+            settlement_hash,
+            minted_records: mint_records.to_vec(),
+        };
+        let mut preview_state = self.state.clone();
+        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+            return DomainEvent::ActionRejected {
+                action_id,
+                reason: RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "apply node points settlement rejected: {err:?}"
+                    )],
+                },
+            };
+        }
+        event
     }
 
     fn evaluate_redeem_power_action(

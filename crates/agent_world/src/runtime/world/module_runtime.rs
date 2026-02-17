@@ -837,6 +837,9 @@ fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
             DomainEvent::PowerRedeemed { .. } => "domain.power_redeemed",
             DomainEvent::PowerRedeemRejected { .. } => "domain.power_redeem_rejected",
+            DomainEvent::NodePointsSettlementApplied { .. } => {
+                "domain.reward.node_points_settlement_applied"
+            }
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -874,6 +877,9 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::RedeemPower { .. } => "action.redeem_power",
         Action::RedeemPowerSigned { .. } => "action.redeem_power_signed",
+        Action::ApplyNodePointsSettlementSigned { .. } => {
+            "action.reward.apply_node_points_settlement_signed"
+        }
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",

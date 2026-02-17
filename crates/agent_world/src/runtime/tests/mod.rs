@@ -22,4 +22,5 @@ mod modules;
 mod persistence;
 mod power_bootstrap;
 mod reward_asset;
+mod reward_asset_settlement_action;
 mod rules;

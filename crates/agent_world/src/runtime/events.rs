@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
+use super::node_points::EpochSettlementReport;
+use super::reward_asset::NodeRewardMintRecord;
 use super::types::{ActionId, MaterialLedgerId, WorldTime};
 
 fn default_world_material_ledger() -> MaterialLedgerId {
@@ -90,6 +92,11 @@ pub enum Action {
         nonce: u64,
         signer_node_id: String,
         signature: String,
+    },
+    ApplyNodePointsSettlementSigned {
+        report: EpochSettlementReport,
+        signer_node_id: String,
+        mint_records: Vec<NodeRewardMintRecord>,
     },
     TransferMaterial {
         requester_agent_id: String,
@@ -207,6 +214,12 @@ pub enum DomainEvent {
         nonce: u64,
         reason: String,
     },
+    NodePointsSettlementApplied {
+        report: EpochSettlementReport,
+        signer_node_id: String,
+        settlement_hash: String,
+        minted_records: Vec<NodeRewardMintRecord>,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -309,6 +322,7 @@ impl DomainEvent {
             DomainEvent::PowerRedeemRejected {
                 target_agent_id, ..
             } => Some(target_agent_id.as_str()),
+            DomainEvent::NodePointsSettlementApplied { .. } => None,
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
