@@ -7,14 +7,14 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world_distfs::{StorageChallengeProbeConfig, StorageChallengeProbeCursorState};
+use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
     measure_directory_storage_bytes, reward_redeem_signature_v1, Action as RuntimeAction,
-    LocalCasStore, NodePointsConfig, NodePointsRuntimeCollector,
-    NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
-    NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
-    RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
+    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
+    NodePointsRuntimeHeuristics, NodePointsRuntimeObservation, ProtocolPowerReserve,
+    RewardAssetConfig, RewardAssetInvariantReport, RewardSignatureGovernancePolicy,
+    World as RuntimeWorld,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -27,6 +27,14 @@ use agent_world_node::{
 };
 use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
+#[path = "world_viewer_live/distfs_probe_runtime.rs"]
+mod distfs_probe_runtime;
+use distfs_probe_runtime::{
+    collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
+    persist_reward_runtime_distfs_probe_state, DistfsProbeRuntimeConfig,
+};
+#[cfg(test)]
+use distfs_probe_runtime::collect_distfs_challenge_report;
 
 const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
@@ -36,10 +44,6 @@ const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str = "reward-runtime-distfs-probe-state.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
-const REWARD_RUNTIME_DISTFS_PROBE_MAX_SAMPLE_BYTES: u32 = 64 * 1024;
-const REWARD_RUNTIME_DISTFS_PROBE_PER_TICK: u32 = 1;
-const REWARD_RUNTIME_DISTFS_PROBE_TTL_MS: i64 = 30_000;
-const REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS: i64 = 5_000;
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -68,6 +72,7 @@ struct CliOptions {
     reward_max_redeem_power_per_epoch: i64,
     reward_min_redeem_power_unit: i64,
     reward_initial_reserve_power_units: i64,
+    reward_distfs_probe_config: DistfsProbeRuntimeConfig,
 }
 
 impl Default for CliOptions {
@@ -99,6 +104,7 @@ impl Default for CliOptions {
                 .max_redeem_power_per_epoch,
             reward_min_redeem_power_unit: RewardAssetConfig::default().min_redeem_power_unit,
             reward_initial_reserve_power_units: DEFAULT_REWARD_RUNTIME_RESERVE_UNITS,
+            reward_distfs_probe_config: DistfsProbeRuntimeConfig::default(),
         }
     }
 }
@@ -113,6 +119,7 @@ struct RewardRuntimeLoopConfig {
     state_path: std::path::PathBuf,
     distfs_probe_state_path: std::path::PathBuf,
     storage_root: std::path::PathBuf,
+    distfs_probe_config: DistfsProbeRuntimeConfig,
     auto_redeem: bool,
     reward_asset_config: RewardAssetConfig,
     initial_reserve_power_units: i64,
@@ -322,6 +329,7 @@ fn start_reward_runtime_worker(
             .join("node-distfs")
             .join(options.node_id.as_str())
             .join("store"),
+        distfs_probe_config: options.reward_distfs_probe_config,
         auto_redeem: options.reward_runtime_auto_redeem,
         reward_asset_config: RewardAssetConfig {
             points_per_credit: options.reward_points_per_credit,
@@ -429,12 +437,13 @@ fn reward_runtime_loop(
             observed_at_unix_ms,
         );
         let distfs_challenge_report = if snapshot.role == NodeRole::Storage {
-            match collect_distfs_challenge_report(
+            match collect_distfs_challenge_report_with_config(
                 config.storage_root.as_path(),
                 snapshot.world_id.as_str(),
                 snapshot.node_id.as_str(),
                 observed_at_unix_ms,
                 &mut distfs_probe_state,
+                &config.distfs_probe_config,
             ) {
                 Ok(report) => {
                     observation.storage_checks_passed = report.passed_checks;
@@ -659,51 +668,6 @@ fn persist_reward_runtime_collector_state(
     write_bytes_atomic(path, bytes.as_slice())
 }
 
-fn load_reward_runtime_distfs_probe_state(
-    path: &Path,
-) -> Result<StorageChallengeProbeCursorState, String> {
-    if !path.exists() {
-        return Ok(StorageChallengeProbeCursorState::default());
-    }
-    let bytes = fs::read(path)
-        .map_err(|err| format!("read distfs probe state {} failed: {}", path.display(), err))?;
-    serde_json::from_slice::<StorageChallengeProbeCursorState>(bytes.as_slice())
-        .map_err(|err| format!("parse distfs probe state {} failed: {}", path.display(), err))
-}
-
-fn persist_reward_runtime_distfs_probe_state(
-    path: &Path,
-    state: &StorageChallengeProbeCursorState,
-) -> Result<(), String> {
-    let bytes = serde_json::to_vec_pretty(state)
-        .map_err(|err| format!("serialize distfs probe state failed: {}", err))?;
-    write_bytes_atomic(path, bytes.as_slice())
-}
-
-fn collect_distfs_challenge_report(
-    storage_root: &Path,
-    world_id: &str,
-    node_id: &str,
-    observed_at_unix_ms: i64,
-    state: &mut StorageChallengeProbeCursorState,
-) -> Result<agent_world_distfs::StorageChallengeProbeReport, String> {
-    let store = LocalCasStore::new(storage_root);
-    store
-        .probe_storage_challenges_with_cursor(
-            world_id,
-            node_id,
-            observed_at_unix_ms,
-            &StorageChallengeProbeConfig {
-                max_sample_bytes: REWARD_RUNTIME_DISTFS_PROBE_MAX_SAMPLE_BYTES,
-                challenges_per_tick: REWARD_RUNTIME_DISTFS_PROBE_PER_TICK,
-                challenge_ttl_ms: REWARD_RUNTIME_DISTFS_PROBE_TTL_MS,
-                allowed_clock_skew_ms: REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS,
-            },
-            state,
-        )
-        .map_err(|err| format!("{err:?}"))
-}
-
 fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
@@ -872,6 +836,58 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 }
                 options.reward_runtime_report_dir = dir.to_string();
             }
+            "--reward-distfs-probe-max-sample-bytes" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-distfs-probe-max-sample-bytes requires a positive integer"
+                        .to_string()
+                })?;
+                options.reward_distfs_probe_config.max_sample_bytes = raw
+                    .parse::<u32>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-distfs-probe-max-sample-bytes requires a positive integer"
+                            .to_string()
+                    })?;
+            }
+            "--reward-distfs-probe-per-tick" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-distfs-probe-per-tick requires a positive integer".to_string()
+                })?;
+                options.reward_distfs_probe_config.challenges_per_tick = raw
+                    .parse::<u32>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-distfs-probe-per-tick requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-distfs-probe-ttl-ms" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-distfs-probe-ttl-ms requires a positive integer".to_string()
+                })?;
+                options.reward_distfs_probe_config.challenge_ttl_ms = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-distfs-probe-ttl-ms requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-distfs-probe-allowed-clock-skew-ms" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-distfs-probe-allowed-clock-skew-ms requires a non-negative integer"
+                        .to_string()
+                })?;
+                options.reward_distfs_probe_config.allowed_clock_skew_ms = raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|value| *value >= 0)
+                    .ok_or_else(|| {
+                        "--reward-distfs-probe-allowed-clock-skew-ms requires a non-negative integer"
+                            .to_string()
+                    })?;
+            }
             "--reward-points-per-credit" => {
                 let raw = iter.next().ok_or_else(|| {
                     "--reward-points-per-credit requires a positive integer".to_string()
@@ -1004,6 +1020,18 @@ fn print_help() {
     println!(
         "  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)"
     );
+    println!(
+        "  --reward-distfs-probe-max-sample-bytes <n> DistFS probe sample size upper bound bytes (default: 65536)"
+    );
+    println!(
+        "  --reward-distfs-probe-per-tick <n> DistFS challenge count per reward tick (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-probe-ttl-ms <n> DistFS challenge ttl milliseconds (default: 30000)"
+    );
+    println!(
+        "  --reward-distfs-probe-allowed-clock-skew-ms <n> DistFS challenge allowed clock skew milliseconds (default: 5000)"
+    );
     println!("  --reward-points-per-credit <n> points -> credit conversion ratio");
     println!("  --reward-credits-per-power-unit <n> credit -> power conversion ratio");
     println!("  --reward-max-redeem-power-per-epoch <n> per-epoch redeem power cap");
@@ -1023,21 +1051,14 @@ fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
     if validator_id.is_empty() {
         return Err("--node-validator validator_id cannot be empty".to_string());
     }
-    let stake = stake_raw
-        .trim()
-        .parse::<u64>()
-        .ok()
-        .filter(|value| *value > 0)
-        .ok_or_else(|| "--node-validator stake must be a positive integer".to_string())?;
-    Ok(PosValidator {
-        validator_id: validator_id.to_string(),
-        stake,
-    })
+    let stake = stake_raw.trim().parse::<u64>().ok().filter(|value| *value > 0).ok_or_else(
+        || "--node-validator stake must be a positive integer".to_string(),
+    )?;
+    Ok(PosValidator { validator_id: validator_id.to_string(), stake })
 }
 
 fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
-    raw.parse::<SocketAddr>()
-        .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
+    raw.parse::<SocketAddr>().map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,5 +1,6 @@
 use super::*;
 use agent_world::runtime::BlobStore;
+use agent_world::runtime::LocalCasStore;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,6 +67,10 @@ fn parse_options_defaults() {
         options.reward_initial_reserve_power_units,
         DEFAULT_REWARD_RUNTIME_RESERVE_UNITS
     );
+    assert_eq!(
+        options.reward_distfs_probe_config,
+        DistfsProbeRuntimeConfig::default()
+    );
 }
 
 #[test]
@@ -114,6 +119,14 @@ fn parse_options_reads_custom_values() {
             "reward-signer-1",
             "--reward-runtime-report-dir",
             "output/reward-custom",
+            "--reward-distfs-probe-max-sample-bytes",
+            "8192",
+            "--reward-distfs-probe-per-tick",
+            "3",
+            "--reward-distfs-probe-ttl-ms",
+            "45000",
+            "--reward-distfs-probe-allowed-clock-skew-ms",
+            "2000",
             "--reward-points-per-credit",
             "7",
             "--reward-credits-per-power-unit",
@@ -175,6 +188,13 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.reward_max_redeem_power_per_epoch, 1200);
     assert_eq!(options.reward_min_redeem_power_unit, 2);
     assert_eq!(options.reward_initial_reserve_power_units, 888);
+    assert_eq!(options.reward_distfs_probe_config.max_sample_bytes, 8192);
+    assert_eq!(options.reward_distfs_probe_config.challenges_per_tick, 3);
+    assert_eq!(options.reward_distfs_probe_config.challenge_ttl_ms, 45000);
+    assert_eq!(
+        options.reward_distfs_probe_config.allowed_clock_skew_ms,
+        2000
+    );
     assert_eq!(
         options.node_validators,
         vec![
@@ -194,6 +214,20 @@ fn parse_options_reads_custom_values() {
 fn parse_options_rejects_zero_tick_ms() {
     let err = parse_options(["--tick-ms", "0"].into_iter()).expect_err("reject zero");
     assert!(err.contains("positive integer"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_distfs_probe_per_tick() {
+    let err = parse_options(["--reward-distfs-probe-per-tick", "0"].into_iter())
+        .expect_err("reject zero probe per tick");
+    assert!(err.contains("--reward-distfs-probe-per-tick"));
+}
+
+#[test]
+fn parse_options_rejects_negative_reward_distfs_probe_allowed_clock_skew_ms() {
+    let err = parse_options(["--reward-distfs-probe-allowed-clock-skew-ms", "-1"].into_iter())
+        .expect_err("reject negative probe clock skew");
+    assert!(err.contains("--reward-distfs-probe-allowed-clock-skew-ms"));
 }
 
 #[test]
