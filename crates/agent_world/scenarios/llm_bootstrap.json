@@ -4,11 +4,11 @@
   "seed": 5,
   "asteroid_fragment": { "enabled": true, "min_fragment_spacing_cm": 50000 },
   "origin": {
-    "resources": { "amounts": { "electricity": 180, "hardware": 30, "data": 40 } }
+    "resources": { "amounts": { "electricity": 80, "data": 16 } }
   },
   "agents": {
     "count": 1,
-    "resources": { "amounts": { "electricity": 30, "data": 12 } }
+    "resources": { "amounts": { "electricity": 24, "data": 8 } }
   },
   "location_generator": { "count": 2, "id_prefix": "llm-site-", "name_prefix": "LLM Site" }
 }

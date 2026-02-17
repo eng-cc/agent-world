@@ -157,6 +157,91 @@ impl WorldKernel {
                         message: format!("failed to apply radiation harvest: {err:?}"),
                     })?;
             }
+            WorldEventKind::CompoundMined {
+                owner,
+                location_id,
+                compound_mass_g,
+                electricity_cost,
+                extracted_elements,
+            } => {
+                if *compound_mass_g <= 0 || *electricity_cost < 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "invalid compound mined event values: mass={}, electricity_cost={}",
+                            compound_mass_g, electricity_cost
+                        ),
+                    });
+                }
+                if !self.model.locations.contains_key(location_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("mining location not found: {location_id}"),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid mining owner: {reason:?}"),
+                    })?;
+                self.ensure_colocated(
+                    owner,
+                    &ResourceOwner::Location {
+                        location_id: location_id.clone(),
+                    },
+                )
+                .map_err(|reason| PersistError::ReplayConflict {
+                    message: format!("mining owner and location not colocated: {reason:?}"),
+                })?;
+
+                let extracted_total: i64 = extracted_elements.values().copied().sum();
+                if extracted_total != *compound_mass_g {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "compound mined extracted total mismatch: mass={}, extracted_total={}",
+                            compound_mass_g, extracted_total
+                        ),
+                    });
+                }
+                for (element, amount) in extracted_elements {
+                    if *amount <= 0 {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "compound mined extracted element amount must be positive: {:?}={}",
+                                element, amount
+                            ),
+                        });
+                    }
+                }
+
+                self.remove_from_owner_for_replay(
+                    owner,
+                    ResourceKind::Electricity,
+                    *electricity_cost,
+                )?;
+                for (element, amount) in extracted_elements {
+                    self.model
+                        .consume_fragment_resource(
+                            location_id,
+                            &self.config.space,
+                            *element,
+                            *amount,
+                        )
+                        .map_err(|err| PersistError::ReplayConflict {
+                            message: format!(
+                                "failed to apply mining fragment consumption at {} for {:?}: {:?}",
+                                location_id, element, err
+                            ),
+                        })?;
+                }
+                self.add_to_owner_for_replay(owner, ResourceKind::Compound, *compound_mass_g)?;
+                let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
+                    PersistError::ReplayConflict {
+                        message: format!("mining location missing after consume: {location_id}"),
+                    }
+                })?;
+                location.mined_compound_g = location
+                    .mined_compound_g
+                    .max(0)
+                    .saturating_add(*compound_mass_g);
+            }
             WorldEventKind::CompoundRefined {
                 owner,
                 compound_mass_g,
@@ -175,6 +260,7 @@ impl WorldKernel {
                     .map_err(|reason| PersistError::ReplayConflict {
                         message: format!("invalid refine owner: {reason:?}"),
                     })?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Compound, *compound_mass_g)?;
                 self.remove_from_owner_for_replay(
                     owner,
                     ResourceKind::Electricity,

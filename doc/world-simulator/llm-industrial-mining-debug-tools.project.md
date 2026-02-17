@@ -7,13 +7,13 @@
 - [x] MMD0.2 输出项目管理文档（本文件）
 
 ### MMD1 机制正确版（采矿 -> 精炼 -> 生产）
-- [ ] MMD1.1 扩展 `ResourceKind`：新增 `compound`
-- [ ] MMD1.2 扩展 `Action`：新增 `mine_compound`
-- [ ] MMD1.3 扩展经济参数：采矿电力成本/单次上限/单 location 上限
-- [ ] MMD1.4 实现 kernel 采矿执行（fragment 预算扣减 + compound 入账）
-- [ ] MMD1.5 升级 `refine_compound`：必须消耗 `compound`
-- [ ] MMD1.6 扩展事件/replay 与相关回归测试
-- [ ] MMD1.7 调整 `llm_bootstrap` 初始资源口径，验证“不能开局直建厂”
+- [x] MMD1.1 扩展 `ResourceKind`：新增 `compound`
+- [x] MMD1.2 扩展 `Action`：新增 `mine_compound`
+- [x] MMD1.3 扩展经济参数：采矿电力成本/单次上限/单 location 上限
+- [x] MMD1.4 实现 kernel 采矿执行（fragment 预算扣减 + compound 入账）
+- [x] MMD1.5 升级 `refine_compound`：必须消耗 `compound`
+- [x] MMD1.6 扩展事件/replay 与相关回归测试
+- [x] MMD1.7 调整 `llm_bootstrap` 初始资源口径，验证“不能开局直建厂”
 
 ### MMD2 Debug 模式 LLM 补给工具
 - [ ] MMD2.1 新增配置开关 `AGENT_WORLD_LLM_DEBUG_MODE`（默认关闭）
@@ -42,6 +42,6 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD0 完成，进入 MMD1。
-- 下一阶段：先落地采矿与精炼硬约束，再接 debug tool。
-- 最近更新：2026-02-17（完成文档立项与任务拆解）。
+- 当前阶段：MMD1 完成，进入 MMD2。
+- 下一阶段：落地 debug 模式 LLM 补给工具与守卫回归。
+- 最近更新：2026-02-17（完成采矿-精炼机制闭环与回归）。

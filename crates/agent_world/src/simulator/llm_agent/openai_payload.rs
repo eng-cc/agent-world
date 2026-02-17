@@ -73,6 +73,7 @@ pub(super) fn responses_tools() -> Vec<Tool> {
                             "move_agent",
                             "harvest_radiation",
                             "transfer_resource",
+                            "mine_compound",
                             "refine_compound",
                             "build_factory",
                             "schedule_recipe",

@@ -38,6 +38,14 @@ fn replay_from_snapshot_matches_same_seed_and_action_sequence() {
     ];
 
     run_action_sequence(&mut kernel, &actions[..1]);
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-0".to_string(),
+        },
+        ResourceKind::Compound,
+        1_000,
+    );
     let mid_snapshot = kernel.snapshot();
 
     run_action_sequence(&mut kernel, &actions[1..]);

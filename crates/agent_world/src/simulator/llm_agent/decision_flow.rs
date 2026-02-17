@@ -599,6 +599,36 @@ fn parse_llm_decision_value_with_error(
                 amount,
             })
         }
+        "mine_compound" => {
+            let owner = match parsed.owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => ResourceOwner::Agent {
+                    agent_id: agent_id.to_string(),
+                },
+            };
+            let location_id = parsed.location_id.unwrap_or_default();
+            if location_id.trim().is_empty() {
+                return (
+                    AgentDecision::Wait,
+                    Some("mine_compound missing `location_id`".to_string()),
+                );
+            }
+            let compound_mass_g = parsed.compound_mass_g.unwrap_or(1);
+            if compound_mass_g <= 0 {
+                return (
+                    AgentDecision::Wait,
+                    Some("mine_compound requires positive compound_mass_g".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::MineCompound {
+                owner,
+                location_id,
+                compound_mass_g,
+            })
+        }
         "refine_compound" => {
             let owner = match parsed.owner.as_deref() {
                 Some(owner) => match parse_owner_spec(owner, agent_id) {
@@ -744,6 +774,7 @@ fn parse_owner_spec(value: &str, default_agent_id: &str) -> Result<ResourceOwner
 fn parse_resource_kind(value: &str) -> Option<ResourceKind> {
     match value.trim().to_ascii_lowercase().as_str() {
         "electricity" | "power" => Some(ResourceKind::Electricity),
+        "compound" | "ore" => Some(ResourceKind::Compound),
         "hardware" => Some(ResourceKind::Hardware),
         "data" => Some(ResourceKind::Data),
         _ => None,

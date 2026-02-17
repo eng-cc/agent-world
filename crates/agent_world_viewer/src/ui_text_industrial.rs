@@ -45,6 +45,7 @@ impl ProductionVisualCounts {
 struct LogisticsRouteStats {
     transfer_events: usize,
     electricity: i64,
+    compound: i64,
     hardware: i64,
     data: i64,
     power: i64,
@@ -97,6 +98,9 @@ pub(super) fn industrial_ops_summary(
                 match kind {
                     ResourceKind::Electricity => {
                         entry.electricity = entry.electricity.saturating_add(*amount);
+                    }
+                    ResourceKind::Compound => {
+                        entry.compound = entry.compound.saturating_add(*amount);
                     }
                     ResourceKind::Hardware => {
                         entry.hardware = entry.hardware.saturating_add(*amount);
@@ -167,11 +171,12 @@ pub(super) fn industrial_ops_summary(
 
     for ((from, to), stats) in top_routes.into_iter().take(INDUSTRIAL_TOP_ROUTE_LIMIT) {
         lines.push(format!(
-            "- Route {} -> {} moves={} electricity={} hardware={} data={} power={} loss={}",
+            "- Route {} -> {} moves={} electricity={} compound={} hardware={} data={} power={} loss={}",
             from,
             to,
             stats.transfer_events,
             stats.electricity,
+            stats.compound,
             stats.hardware,
             stats.data,
             stats.power,
@@ -225,6 +230,7 @@ fn route_weight(stats: &LogisticsRouteStats) -> i64 {
     stats
         .electricity
         .abs()
+        .saturating_add(stats.compound.abs())
         .saturating_add(stats.hardware.abs())
         .saturating_add(stats.data.abs())
         .saturating_add(stats.power.abs())

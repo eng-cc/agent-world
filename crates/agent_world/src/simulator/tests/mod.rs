@@ -13,6 +13,42 @@ fn pos(x: f64, y: f64) -> GeoPos {
     }
 }
 
+fn seed_owner_resource(
+    kernel: &mut WorldKernel,
+    owner: ResourceOwner,
+    kind: ResourceKind,
+    amount: i64,
+) {
+    let mut snapshot = kernel.snapshot();
+    match owner {
+        ResourceOwner::Agent { agent_id } => {
+            let stock = snapshot
+                .model
+                .agents
+                .get_mut(&agent_id)
+                .expect("agent exists in snapshot");
+            stock
+                .resources
+                .add(kind, amount)
+                .expect("seed agent resource");
+        }
+        ResourceOwner::Location { location_id } => {
+            let stock = snapshot
+                .model
+                .locations
+                .get_mut(&location_id)
+                .expect("location exists in snapshot");
+            stock
+                .resources
+                .add(kind, amount)
+                .expect("seed location resource");
+        }
+    }
+    let journal = kernel.journal_snapshot();
+    *kernel =
+        WorldKernel::from_snapshot(snapshot, journal).expect("rebuild kernel from seeded snapshot");
+}
+
 mod asteroid_fragment;
 mod basics;
 mod boundary_extremes;

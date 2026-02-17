@@ -239,7 +239,8 @@ impl PromptAssembler {
 {{"decision":"wait_ticks","ticks":<u64>}}
 {{"decision":"move_agent","to":"<location_id>"}}
 {{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
-{{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|hardware|data>","amount":<i64 >=1>}}
+{{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}
+{{"decision":"mine_compound","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","compound_mass_g":<i64 >=1>}}
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
 {{"decision":"schedule_recipe","owner":"<self|agent:<id>|location:<id>>","factory_id":"<factory_id>","recipe_id":"<recipe_id>","batches":<i64 >=1>}}
@@ -248,14 +249,15 @@ impl PromptAssembler {
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=3>}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
+- 推荐 mine 模板: {{"decision":"mine_compound","owner":"self","location_id":"<location_id>","compound_mass_g":<i64 >=1000>}}
 - 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
 - 推荐 build_factory 模板: {{"decision":"build_factory","owner":"self","location_id":"<location_id>","factory_id":"factory.<name>","factory_kind":"factory.assembler.mk1"}}
 - 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
-- execute_until.action 必须是可执行动作（move/harvest/transfer/refine/build/schedule），不要使用 wait/wait_ticks
+- execute_until.action 必须是可执行动作（move/harvest/transfer/mine/refine/build/schedule），不要使用 wait/wait_ticks
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
-- transfer_resource.kind 仅允许 electricity/hardware/data，amount 必须为正整数
+- transfer_resource.kind 仅允许 electricity/compound/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
 - factory_kind 当前支持：factory.assembler.mk1（留空将被拒绝）

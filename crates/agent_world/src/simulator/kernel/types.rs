@@ -7,8 +7,8 @@ use super::super::chunking::ChunkCoord;
 use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
 use super::super::types::{
-    Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, LocationId, LocationProfile,
-    ResourceKind, ResourceOwner, ResourceStock, WorldEventId, WorldTime,
+    Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, FragmentElementKind, LocationId,
+    LocationProfile, ResourceKind, ResourceOwner, ResourceStock, WorldEventId, WorldTime,
 };
 use super::super::world_model::{AgentPromptProfile, Location};
 
@@ -93,6 +93,13 @@ pub enum WorldEventKind {
         location_id: LocationId,
         amount: i64,
         available: i64,
+    },
+    CompoundMined {
+        owner: ResourceOwner,
+        location_id: LocationId,
+        compound_mass_g: i64,
+        electricity_cost: i64,
+        extracted_elements: BTreeMap<FragmentElementKind, i64>,
     },
     CompoundRefined {
         owner: ResourceOwner,

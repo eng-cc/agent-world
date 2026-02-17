@@ -139,6 +139,14 @@ fn harvest_and_refine_follow_resource_ledger_without_free_gain() {
     };
 
     let refine_mass_g = 2_000;
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-1".to_string(),
+        },
+        ResourceKind::Compound,
+        refine_mass_g,
+    );
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {
             agent_id: "agent-1".to_string(),

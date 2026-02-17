@@ -58,6 +58,14 @@ fn kernel_action_behavior_snapshot_stays_stable() {
         amount: 3,
     });
     kinds.push(event_kind_json(&kernel.step().expect("transfer")));
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-1".to_string(),
+        },
+        ResourceKind::Compound,
+        1_000,
+    );
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {

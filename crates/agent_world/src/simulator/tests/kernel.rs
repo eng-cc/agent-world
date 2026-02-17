@@ -1030,6 +1030,195 @@ fn kernel_consume_fragment_resource_keeps_chunk_budget_in_sync() {
 }
 
 #[test]
+fn mine_compound_consumes_fragment_budget_and_awards_owner_compound() {
+    let mut config = WorldConfig::default();
+    config.economy.mine_electricity_cost_per_kg = 2;
+    config.economy.mine_compound_max_per_action_g = 2_000;
+    config.economy.mine_compound_max_per_location_g = 10_000;
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 91;
+    init.agents.count = 0;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let fragment = kernel
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .cloned()
+        .expect("fragment exists");
+    let location_id = fragment.id.clone();
+    let before_remaining_total = fragment
+        .fragment_budget
+        .as_ref()
+        .expect("fragment budget")
+        .remaining_by_element_g
+        .values()
+        .copied()
+        .sum::<i64>();
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-miner".to_string(),
+        location_id: location_id.clone(),
+    });
+    kernel.step().expect("register miner");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        ResourceKind::Electricity,
+        50,
+    );
+
+    kernel.submit_action(Action::MineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        location_id: location_id.clone(),
+        compound_mass_g: 2_000,
+    });
+    let event = kernel.step().expect("mine compound");
+    match event.kind {
+        WorldEventKind::CompoundMined {
+            owner,
+            location_id: mined_location,
+            compound_mass_g,
+            electricity_cost,
+            extracted_elements,
+        } => {
+            assert_eq!(
+                owner,
+                ResourceOwner::Agent {
+                    agent_id: "agent-miner".to_string()
+                }
+            );
+            assert_eq!(mined_location, location_id);
+            assert_eq!(compound_mass_g, 2_000);
+            assert_eq!(electricity_cost, 4);
+            assert_eq!(
+                extracted_elements.values().copied().sum::<i64>(),
+                compound_mass_g
+            );
+            assert!(!extracted_elements.is_empty());
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel
+        .model()
+        .agents
+        .get("agent-miner")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Compound), 2_000);
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 46);
+
+    let after_fragment = kernel
+        .model()
+        .locations
+        .get(&location_id)
+        .and_then(|location| location.fragment_budget.as_ref())
+        .expect("fragment budget after");
+    let after_remaining_total = after_fragment
+        .remaining_by_element_g
+        .values()
+        .copied()
+        .sum::<i64>();
+    assert_eq!(after_remaining_total, before_remaining_total - 2_000);
+}
+
+#[test]
+fn mine_compound_enforces_location_cap() {
+    let mut config = WorldConfig::default();
+    config.economy.mine_electricity_cost_per_kg = 1;
+    config.economy.mine_compound_max_per_action_g = 1_000;
+    config.economy.mine_compound_max_per_location_g = 1_500;
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 92;
+    init.agents.count = 0;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let location_id = kernel
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .map(|loc| loc.id.clone())
+        .expect("fragment exists");
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-miner".to_string(),
+        location_id: location_id.clone(),
+    });
+    kernel.step().expect("register miner");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        ResourceKind::Electricity,
+        20,
+    );
+
+    kernel.submit_action(Action::MineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        location_id: location_id.clone(),
+        compound_mass_g: 1_000,
+    });
+    let first = kernel.step().expect("first mining");
+    assert!(matches!(first.kind, WorldEventKind::CompoundMined { .. }));
+
+    kernel.submit_action(Action::MineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        location_id: location_id.clone(),
+        compound_mass_g: 600,
+    });
+    let second = kernel.step().expect("second mining");
+    match second.kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(
+                reason,
+                RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Location { .. },
+                    kind: ResourceKind::Compound,
+                    requested: 600,
+                    available: 500,
+                }
+            ));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn refine_compound_consumes_electricity_and_outputs_hardware() {
     let mut config = WorldConfig::default();
     config.economy.refine_electricity_cost_per_kg = 3;
@@ -1055,6 +1244,14 @@ fn refine_compound_consumes_electricity_and_outputs_hardware() {
         max_amount: 50,
     });
     kernel.step().expect("seed electricity");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        ResourceKind::Compound,
+        2_500,
+    );
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {
@@ -1094,6 +1291,58 @@ fn refine_compound_consumes_electricity_and_outputs_hardware() {
 }
 
 #[test]
+fn refine_compound_rejects_when_compound_insufficient() {
+    let mut config = WorldConfig::default();
+    config.economy.refine_electricity_cost_per_kg = 4;
+    config.economy.refine_hardware_yield_ppm = 1_000;
+
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-refine".to_string(),
+        name: "refine".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-refiner".to_string(),
+        location_id: "loc-refine".to_string(),
+    });
+    kernel.step_until_empty();
+
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        ResourceKind::Electricity,
+        100,
+    );
+
+    kernel.submit_action(Action::RefineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        compound_mass_g: 1_500,
+    });
+
+    let event = kernel.step().expect("refine rejected");
+    match event.kind {
+        WorldEventKind::ActionRejected { reason } => {
+            assert!(matches!(
+                reason,
+                RejectReason::InsufficientResource {
+                    kind: ResourceKind::Compound,
+                    requested: 1_500,
+                    available: 0,
+                    ..
+                }
+            ));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn refine_compound_rejects_when_electricity_insufficient() {
     let mut config = WorldConfig::default();
     config.economy.refine_electricity_cost_per_kg = 4;
@@ -1111,6 +1360,14 @@ fn refine_compound_rejects_when_electricity_insufficient() {
         location_id: "loc-refine".to_string(),
     });
     kernel.step_until_empty();
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        ResourceKind::Compound,
+        1_500,
+    );
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {
@@ -1164,6 +1421,14 @@ fn build_factory_consumes_resources_and_persists_factory_state() {
         max_amount: 30,
     });
     kernel.step().expect("harvest for factory build");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        ResourceKind::Compound,
+        3_000,
+    );
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {
@@ -1249,6 +1514,14 @@ fn schedule_recipe_consumes_inputs_and_outputs_data() {
         max_amount: 80,
     });
     kernel.step().expect("harvest for recipe");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        ResourceKind::Compound,
+        16_000,
+    );
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {

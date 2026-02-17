@@ -84,6 +84,8 @@ pub struct Location {
     pub pos: GeoPos,
     pub profile: LocationProfile,
     pub resources: ResourceStock,
+    #[serde(default)]
+    pub mined_compound_g: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fragment_profile: Option<FragmentPhysicalProfile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,6 +109,7 @@ impl Location {
             pos,
             profile,
             resources: ResourceStock::default(),
+            mined_compound_g: 0,
             fragment_profile: None,
             fragment_budget: None,
         }
@@ -707,6 +710,9 @@ pub fn physics_parameter_specs() -> &'static [PhysicsParameterSpec] {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EconomyConfig {
+    pub mine_electricity_cost_per_kg: i64,
+    pub mine_compound_max_per_action_g: i64,
+    pub mine_compound_max_per_location_g: i64,
     pub refine_electricity_cost_per_kg: i64,
     pub refine_hardware_yield_ppm: i64,
     pub factory_build_electricity_cost: i64,
@@ -719,6 +725,9 @@ pub struct EconomyConfig {
 impl Default for EconomyConfig {
     fn default() -> Self {
         Self {
+            mine_electricity_cost_per_kg: 1,
+            mine_compound_max_per_action_g: 5_000,
+            mine_compound_max_per_location_g: 8_000,
             refine_electricity_cost_per_kg: 2,
             refine_hardware_yield_ppm: 1_000,
             factory_build_electricity_cost: 10,
@@ -732,6 +741,20 @@ impl Default for EconomyConfig {
 
 impl EconomyConfig {
     pub fn sanitized(mut self) -> Self {
+        if self.mine_electricity_cost_per_kg < 0 {
+            self.mine_electricity_cost_per_kg = 0;
+        }
+        if self.mine_compound_max_per_action_g < 0 {
+            self.mine_compound_max_per_action_g = 0;
+        }
+        if self.mine_compound_max_per_location_g < 0 {
+            self.mine_compound_max_per_location_g = 0;
+        }
+        if self.mine_compound_max_per_location_g > 0
+            && self.mine_compound_max_per_action_g > self.mine_compound_max_per_location_g
+        {
+            self.mine_compound_max_per_action_g = self.mine_compound_max_per_location_g;
+        }
         if self.refine_electricity_cost_per_kg < 0 {
             self.refine_electricity_cost_per_kg = 0;
         }

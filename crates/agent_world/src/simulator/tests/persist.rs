@@ -344,13 +344,20 @@ fn replay_from_snapshot_applies_compound_refined_event() {
     });
     kernel.step_until_empty();
 
-    let snapshot = kernel.snapshot();
-
     kernel.submit_action(Action::HarvestRadiation {
         agent_id: "agent-refiner".to_string(),
         max_amount: 50,
     });
     kernel.step().expect("seed electricity");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-refiner".to_string(),
+        },
+        ResourceKind::Compound,
+        2_500,
+    );
+    let snapshot = kernel.snapshot();
 
     kernel.submit_action(Action::RefineCompound {
         owner: ResourceOwner::Agent {
@@ -370,6 +377,79 @@ fn replay_from_snapshot_applies_compound_refined_event() {
         .expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
     assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
+}
+
+#[test]
+fn replay_from_snapshot_applies_compound_mined_event() {
+    let mut config = WorldConfig::default();
+    config.economy.mine_electricity_cost_per_kg = 2;
+    config.economy.mine_compound_max_per_action_g = 2_000;
+    config.economy.mine_compound_max_per_location_g = 10_000;
+    config.space = SpaceConfig {
+        width_cm: 200_000,
+        depth_cm: 200_000,
+        height_cm: 200_000,
+    };
+    config.asteroid_fragment.base_density_per_km3 = 5.0;
+    config.asteroid_fragment.voxel_size_km = 1;
+    config.asteroid_fragment.cluster_noise = 0.0;
+    config.asteroid_fragment.layer_scale_height_km = 0.0;
+    config.asteroid_fragment.radius_min_cm = 120;
+    config.asteroid_fragment.radius_max_cm = 120;
+
+    let mut init = WorldInitConfig::default();
+    init.seed = 98;
+    init.agents.count = 0;
+
+    let (mut kernel, _) = initialize_kernel(config.clone(), init).expect("init kernel");
+    let location_id = kernel
+        .model()
+        .locations
+        .values()
+        .find(|loc| loc.id.starts_with("frag-"))
+        .map(|loc| loc.id.clone())
+        .expect("fragment exists");
+
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-miner".to_string(),
+        location_id: location_id.clone(),
+    });
+    kernel.step().expect("register miner");
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        ResourceKind::Electricity,
+        30,
+    );
+
+    let snapshot = kernel.snapshot();
+    kernel.submit_action(Action::MineCompound {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-miner".to_string(),
+        },
+        location_id: location_id.clone(),
+        compound_mass_g: 1_200,
+    });
+    kernel.step().expect("mine");
+
+    let journal = kernel.journal_snapshot();
+    let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
+
+    let agent = replayed
+        .model()
+        .agents
+        .get("agent-miner")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Compound), 1_200);
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 26);
+    let location = replayed
+        .model()
+        .locations
+        .get(&location_id)
+        .expect("location exists");
+    assert_eq!(location.mined_compound_g, 1_200);
 }
 
 #[test]

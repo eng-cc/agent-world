@@ -1,10 +1,14 @@
 use crate::geometry::{space_distance_cm, GeoPos};
+use std::collections::BTreeMap;
 
 use super::super::chunking::CHUNK_SIZE_X_CM;
 use super::super::module_visual::ModuleVisualAnchor;
 use super::super::power::{PlantStatus, PowerEvent, PowerPlant, PowerStorage};
-use super::super::types::{Action, ResourceKind, ResourceOwner, StockError, CM_PER_KM, PPM_BASE};
-use super::super::world_model::{Agent, Factory, Location};
+use super::super::types::{
+    Action, ElementBudgetError, FragmentElementKind, ResourceKind, ResourceOwner, StockError,
+    CM_PER_KM, PPM_BASE,
+};
+use super::super::world_model::{Agent, Factory, FragmentResourceError, Location};
 use super::types::{ChunkGenerationCause, RejectReason, WorldEventKind};
 use super::WorldKernel;
 
@@ -518,6 +522,117 @@ impl WorldKernel {
                     Err(reason) => WorldEventKind::ActionRejected { reason },
                 }
             }
+            Action::MineCompound {
+                owner,
+                location_id,
+                compound_mass_g,
+            } => {
+                if compound_mass_g <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: compound_mass_g,
+                        },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                }
+                let site_owner = ResourceOwner::Location {
+                    location_id: location_id.clone(),
+                };
+                if let Err(reason) = self.ensure_colocated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) = self.ensure_owner_chunks_generated(&owner, &site_owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                let max_per_action = self.config.economy.mine_compound_max_per_action_g;
+                if max_per_action > 0 && compound_mass_g > max_per_action {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount {
+                            amount: compound_mass_g,
+                        },
+                    };
+                }
+
+                let mined_so_far = self
+                    .model
+                    .locations
+                    .get(&location_id)
+                    .map(|location| location.mined_compound_g.max(0))
+                    .unwrap_or(0);
+                let max_per_location = self.config.economy.mine_compound_max_per_location_g;
+                if max_per_location > 0 {
+                    let available = max_per_location.saturating_sub(mined_so_far).max(0);
+                    if compound_mass_g > available {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::InsufficientResource {
+                                owner: site_owner.clone(),
+                                kind: ResourceKind::Compound,
+                                requested: compound_mass_g,
+                                available,
+                            },
+                        };
+                    }
+                }
+
+                let extraction_plan =
+                    match self.plan_compound_extraction(&location_id, compound_mass_g) {
+                        Ok(plan) => plan,
+                        Err(reason) => return WorldEventKind::ActionRejected { reason },
+                    };
+                let electricity_cost = self.compute_mine_compound_electricity_cost(compound_mass_g);
+                let available_electricity = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if available_electricity < electricity_cost {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner: owner.clone(),
+                            kind: ResourceKind::Electricity,
+                            requested: electricity_cost,
+                            available: available_electricity,
+                        },
+                    };
+                }
+
+                for (element, amount_g) in &extraction_plan {
+                    if let Err(reason) =
+                        self.consume_fragment_resource_for_action(&location_id, *element, *amount_g)
+                    {
+                        return WorldEventKind::ActionRejected { reason };
+                    }
+                }
+                if let Some(location) = self.model.locations.get_mut(&location_id) {
+                    location.mined_compound_g = mined_so_far.saturating_add(compound_mass_g);
+                }
+
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Electricity, electricity_cost)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) =
+                    self.add_to_owner(&owner, ResourceKind::Compound, compound_mass_g)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+
+                WorldEventKind::CompoundMined {
+                    owner,
+                    location_id,
+                    compound_mass_g,
+                    electricity_cost,
+                    extracted_elements: extraction_plan.into_iter().collect::<BTreeMap<_, _>>(),
+                }
+            }
             Action::RefineCompound {
                 owner,
                 compound_mass_g,
@@ -543,6 +658,21 @@ impl WorldKernel {
                     };
                 }
 
+                let available_compound = self
+                    .owner_stock(&owner)
+                    .map(|stock| stock.get(ResourceKind::Compound))
+                    .unwrap_or(0);
+                if available_compound < compound_mass_g {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InsufficientResource {
+                            owner: owner.clone(),
+                            kind: ResourceKind::Compound,
+                            requested: compound_mass_g,
+                            available: available_compound,
+                        },
+                    };
+                }
+
                 let available = self
                     .owner_stock(&owner)
                     .map(|stock| stock.get(ResourceKind::Electricity))
@@ -558,6 +688,11 @@ impl WorldKernel {
                     };
                 }
 
+                if let Err(reason) =
+                    self.remove_from_owner(&owner, ResourceKind::Compound, compound_mass_g)
+                {
+                    return WorldEventKind::ActionRejected { reason };
+                }
                 if let Err(reason) =
                     self.remove_from_owner(&owner, ResourceKind::Electricity, electricity_cost)
                 {
@@ -1018,7 +1153,7 @@ impl WorldKernel {
         }
     }
 
-    fn ensure_colocated(
+    pub(super) fn ensure_colocated(
         &self,
         from: &ResourceOwner,
         to: &ResourceOwner,
@@ -1154,6 +1289,137 @@ impl WorldKernel {
         let geometric_attenuation = 1.0 / (1.0 + normalized_distance * normalized_distance);
         let medium_decay = (-self.config.physics.radiation_decay_k * surface_distance_cm).exp();
         emission * geometric_attenuation * medium_decay
+    }
+
+    fn compute_mine_compound_electricity_cost(&self, compound_mass_g: i64) -> i64 {
+        let mass_kg = compound_mass_g.saturating_add(999).saturating_div(1000);
+        mass_kg.saturating_mul(self.config.economy.mine_electricity_cost_per_kg)
+    }
+
+    fn plan_compound_extraction(
+        &self,
+        location_id: &str,
+        compound_mass_g: i64,
+    ) -> Result<Vec<(FragmentElementKind, i64)>, RejectReason> {
+        let location = self.model.locations.get(location_id).ok_or_else(|| {
+            RejectReason::LocationNotFound {
+                location_id: location_id.to_string(),
+            }
+        })?;
+        let budget = location.fragment_budget.as_ref().ok_or_else(|| {
+            RejectReason::InsufficientResource {
+                owner: ResourceOwner::Location {
+                    location_id: location_id.to_string(),
+                },
+                kind: ResourceKind::Compound,
+                requested: compound_mass_g,
+                available: 0,
+            }
+        })?;
+
+        let total_available = budget
+            .remaining_by_element_g
+            .values()
+            .copied()
+            .filter(|amount| *amount > 0)
+            .sum::<i64>();
+        if total_available < compound_mass_g {
+            return Err(RejectReason::InsufficientResource {
+                owner: ResourceOwner::Location {
+                    location_id: location_id.to_string(),
+                },
+                kind: ResourceKind::Compound,
+                requested: compound_mass_g,
+                available: total_available,
+            });
+        }
+
+        let mut remaining = compound_mass_g;
+        let mut plan = Vec::new();
+        for (element, available) in &budget.remaining_by_element_g {
+            if remaining <= 0 {
+                break;
+            }
+            if *available <= 0 {
+                continue;
+            }
+            let consume = (*available).min(remaining);
+            if consume > 0 {
+                plan.push((*element, consume));
+                remaining = remaining.saturating_sub(consume);
+            }
+        }
+        if remaining > 0 {
+            return Err(RejectReason::InsufficientResource {
+                owner: ResourceOwner::Location {
+                    location_id: location_id.to_string(),
+                },
+                kind: ResourceKind::Compound,
+                requested: compound_mass_g,
+                available: compound_mass_g.saturating_sub(remaining),
+            });
+        }
+        Ok(plan)
+    }
+
+    fn consume_fragment_resource_for_action(
+        &mut self,
+        location_id: &str,
+        kind: FragmentElementKind,
+        amount_g: i64,
+    ) -> Result<(), RejectReason> {
+        self.consume_fragment_resource(location_id, kind, amount_g)
+            .map(|_| ())
+            .map_err(|err| self.fragment_error_to_reject_reason(location_id, err))
+    }
+
+    fn fragment_error_to_reject_reason(
+        &self,
+        location_id: &str,
+        err: FragmentResourceError,
+    ) -> RejectReason {
+        match err {
+            FragmentResourceError::LocationNotFound { location_id } => {
+                RejectReason::LocationNotFound { location_id }
+            }
+            FragmentResourceError::FragmentBudgetMissing { location_id } => {
+                RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Location { location_id },
+                    kind: ResourceKind::Compound,
+                    requested: 1,
+                    available: 0,
+                }
+            }
+            FragmentResourceError::ChunkCoordUnavailable { location_id } => {
+                RejectReason::RuleDenied {
+                    notes: vec![format!(
+                        "chunk coord unavailable while mining at location {location_id}"
+                    )],
+                }
+            }
+            FragmentResourceError::ChunkBudgetMissing { coord } => {
+                RejectReason::ChunkGenerationFailed {
+                    x: coord.x,
+                    y: coord.y,
+                    z: coord.z,
+                }
+            }
+            FragmentResourceError::Budget(ElementBudgetError::InvalidAmount { amount_g }) => {
+                RejectReason::InvalidAmount { amount: amount_g }
+            }
+            FragmentResourceError::Budget(ElementBudgetError::Insufficient {
+                requested_g,
+                remaining_g,
+                ..
+            }) => RejectReason::InsufficientResource {
+                owner: ResourceOwner::Location {
+                    location_id: location_id.to_string(),
+                },
+                kind: ResourceKind::Compound,
+                requested: requested_g,
+                available: remaining_g,
+            },
+        }
     }
 
     fn compute_refine_compound_outputs(&self, compound_mass_g: i64) -> (i64, i64) {

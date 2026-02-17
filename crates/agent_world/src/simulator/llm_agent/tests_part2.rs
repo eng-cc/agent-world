@@ -607,6 +607,26 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
             ..
         })
     ));
+    let mut seeded_snapshot = kernel.snapshot();
+    seeded_snapshot
+        .model
+        .agents
+        .get_mut("agent-0")
+        .expect("agent exists")
+        .resources
+        .add(ResourceKind::Compound, 7_000)
+        .expect("seed compound for refine");
+    seeded_snapshot
+        .model
+        .agents
+        .get_mut("agent-0")
+        .expect("agent exists")
+        .resources
+        .add(ResourceKind::Electricity, 20)
+        .expect("seed electricity for schedule");
+    let seeded_journal = kernel.journal_snapshot();
+    kernel = crate::simulator::WorldKernel::from_snapshot(seeded_snapshot, seeded_journal)
+        .expect("restore seeded kernel");
 
     let tick2 = runner.tick(&mut kernel).expect("tick2");
     let action2 = tick2.action_result.expect("tick2 action");
@@ -643,7 +663,7 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
     assert_eq!(factory.kind, "factory.assembler.mk1");
 
     let agent = kernel.model().agents.get("agent-0").expect("agent exists");
-    assert_eq!(agent.resources.get(ResourceKind::Data), 13);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 9);
 }
 
 #[test]

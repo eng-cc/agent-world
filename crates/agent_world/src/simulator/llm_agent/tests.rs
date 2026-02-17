@@ -827,6 +827,30 @@ fn llm_agent_parse_transfer_resource_action() {
 }
 
 #[test]
+fn llm_agent_parse_mine_compound_action_defaults_to_self_owner() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"mine_compound\",\"location_id\":\"frag-1\",\"compound_mass_g\":1200}"
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "frag-1".to_string(),
+            compound_mass_g: 1_200,
+        })
+    );
+}
+
+#[test]
 fn llm_agent_parse_refine_compound_action_defaults_to_self_owner() {
     let client = MockClient {
         output: Some("{\"decision\":\"refine_compound\",\"compound_mass_g\":80}".to_string()),

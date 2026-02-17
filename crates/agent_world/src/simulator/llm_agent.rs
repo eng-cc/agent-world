@@ -897,6 +897,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::BuyPower { .. } => "buy_power",
             Action::SellPower { .. } => "sell_power",
             Action::TransferResource { .. } => "transfer_resource",
+            Action::MineCompound { .. } => "mine_compound",
             Action::RefineCompound { .. } => "refine_compound",
             Action::BuildFactory { .. } => "build_factory",
             Action::ScheduleRecipe { .. } => "schedule_recipe",
@@ -908,6 +909,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             RejectReason::InsufficientResource { kind, .. } => {
                 let kind = match kind {
                     ResourceKind::Electricity => "electricity",
+                    ResourceKind::Compound => "compound",
                     ResourceKind::Hardware => "hardware",
                     ResourceKind::Data => "data",
                 };

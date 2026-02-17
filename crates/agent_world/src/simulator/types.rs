@@ -36,6 +36,7 @@ pub const DEFAULT_ELEMENT_RECOVERABILITY_PPM: i64 = 850_000;
 #[serde(rename_all = "snake_case")]
 pub enum ResourceKind {
     Electricity,
+    Compound,
     Hardware,
     Data,
 }
@@ -434,6 +435,11 @@ pub enum Action {
         to: ResourceOwner,
         kind: ResourceKind,
         amount: i64,
+    },
+    MineCompound {
+        owner: ResourceOwner,
+        location_id: LocationId,
+        compound_mass_g: i64,
     },
     RefineCompound {
         owner: ResourceOwner,

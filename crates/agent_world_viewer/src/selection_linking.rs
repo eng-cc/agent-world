@@ -819,7 +819,8 @@ pub(super) fn event_primary_target(
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_to_target(from, snapshot).or_else(|| owner_to_target(to, snapshot))
         }
-        WorldEventKind::CompoundRefined { owner, .. } => owner_to_target(owner, snapshot),
+        WorldEventKind::CompoundMined { owner, .. }
+        | WorldEventKind::CompoundRefined { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::FactoryBuilt { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::ChunkGenerated { coord, .. } => Some(SelectionTarget {
@@ -1007,7 +1008,8 @@ fn event_matches_agent(event: &WorldEvent, agent_id: &str) -> bool {
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_is_agent(from, agent_id) || owner_is_agent(to, agent_id)
         }
-        WorldEventKind::CompoundRefined { owner, .. }
+        WorldEventKind::CompoundMined { owner, .. }
+        | WorldEventKind::CompoundRefined { owner, .. }
         | WorldEventKind::FactoryBuilt { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_is_agent(owner, agent_id),
         WorldEventKind::ActionRejected { reason } => reject_reason_matches_agent(reason, agent_id),
@@ -1037,6 +1039,11 @@ fn event_matches_location(event: &WorldEvent, location_id: &str) -> bool {
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_is_location(from, location_id) || owner_is_location(to, location_id)
         }
+        WorldEventKind::CompoundMined {
+            owner,
+            location_id: event_location_id,
+            ..
+        } => event_location_id == location_id || owner_is_location(owner, location_id),
         WorldEventKind::CompoundRefined { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_is_location(owner, location_id),
         WorldEventKind::FactoryBuilt {
@@ -1120,7 +1127,10 @@ fn event_matches_owner(event: &WorldEvent, owner: &ResourceOwner) -> bool {
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             from == owner || to == owner
         }
-        WorldEventKind::CompoundRefined {
+        WorldEventKind::CompoundMined {
+            owner: event_owner, ..
+        }
+        | WorldEventKind::CompoundRefined {
             owner: event_owner, ..
         }
         | WorldEventKind::FactoryBuilt {
