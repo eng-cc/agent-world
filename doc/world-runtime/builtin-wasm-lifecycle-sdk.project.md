@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] LIFESDK-1 设计与项目文档落地。
-- [ ] LIFESDK-2 代码迁移：新增 `agent_world_wasm_sdk` + builtin wasm 模块接入生命周期 trait。
+- [x] LIFESDK-2 代码迁移：新增 `agent_world_wasm_sdk` + builtin wasm 模块接入生命周期 trait。
 
 ## 依赖
 - `third_party/agent-os/crates/aos-wasm-sdk`（参考）
@@ -11,5 +11,5 @@
 - `scripts/build-builtin-wasm-modules.sh`
 
 ## 状态
-- 当前阶段：LIFESDK-1 已完成，LIFESDK-2 待执行。
-- 最近更新：新增 lifecycle+sdk 设计方案并进入代码迁移准备（2026-02-17）。
+- 当前阶段：LIFESDK-2 已完成。
+- 最近更新：完成 SDK crate、23 个模块生命周期 trait 接入、构建同步与回归检查（2026-02-17）。
