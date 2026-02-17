@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::Serialize;
 
 use super::distributed::ActionEnvelope;
@@ -74,18 +76,12 @@ impl SequencerMainloopConfig {
                 reason: "sequencer batch_rules.max_payload_bytes must be positive".to_string(),
             });
         }
-        if self
-            .accepted_action_signer_public_keys
-            .iter()
-            .any(|key| key.trim().is_empty())
-        {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: "accepted_action_signer_public_keys cannot contain empty key".to_string(),
-            });
-        }
+        let accepted_action_signer_public_keys = normalized_action_signer_public_key_allowlist(
+            &self.accepted_action_signer_public_keys,
+        )?;
         if self.require_action_signature
             && self.hmac_signer.is_none()
-            && self.accepted_action_signer_public_keys.is_empty()
+            && accepted_action_signer_public_keys.is_none()
         {
             return Err(WorldError::DistributedValidationFailed {
                 reason: "require_action_signature requires hmac_signer or accepted_action_signer_public_keys"
@@ -99,6 +95,47 @@ impl SequencerMainloopConfig {
         }
         Ok(())
     }
+}
+
+fn normalized_ed25519_public_key_hex(public_key_hex: &str, field: &str) -> Result<String, WorldError> {
+    let normalized = public_key_hex.trim();
+    if normalized.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("{field} cannot be empty"),
+        });
+    }
+    let public_key_bytes = hex::decode(normalized).map_err(|_| {
+        WorldError::DistributedValidationFailed {
+            reason: format!("{field} must be valid hex"),
+        }
+    })?;
+    if public_key_bytes.len() != 32 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("{field} must be 32-byte hex"),
+        });
+    }
+    Ok(hex::encode(public_key_bytes))
+}
+
+fn normalized_action_signer_public_key_allowlist(
+    keys: &[String],
+) -> Result<Option<HashSet<String>>, WorldError> {
+    if keys.is_empty() {
+        return Ok(None);
+    }
+    let mut normalized = HashSet::with_capacity(keys.len());
+    for (index, key) in keys.iter().enumerate() {
+        let field = format!("accepted_action_signer_public_keys[{index}]");
+        let key = normalized_ed25519_public_key_hex(key, field.as_str())?;
+        if !normalized.insert(key.clone()) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "accepted_action_signer_public_keys contains duplicate signer public key: {key}"
+                ),
+            });
+        }
+    }
+    Ok(Some(normalized))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,6 +162,7 @@ pub struct SequencerTickReport {
 
 pub struct SequencerMainloop {
     config: SequencerMainloopConfig,
+    accepted_action_signer_public_keys: Option<HashSet<String>>,
     mempool: ActionMempool,
     consensus: PosConsensus,
     lease: LeaseManager,
@@ -138,12 +176,17 @@ impl SequencerMainloop {
         config: SequencerMainloopConfig,
         pos_config: PosConsensusConfig,
     ) -> Result<Self, WorldError> {
+        let accepted_action_signer_public_keys =
+            normalized_action_signer_public_key_allowlist(
+                &config.accepted_action_signer_public_keys,
+            )?;
         config.validate()?;
         let consensus = PosConsensus::new(pos_config)?;
         Ok(Self {
             mempool: ActionMempool::new(config.mempool.clone()),
             lease: LeaseManager::new(),
             prev_block_hash: config.initial_prev_block_hash.clone(),
+            accepted_action_signer_public_keys,
             config,
             consensus,
             next_height: 1,
@@ -278,14 +321,18 @@ impl SequencerMainloop {
             let Ok(signer_public_key) = Ed25519SignatureSigner::verify_action(action) else {
                 return false;
             };
-            if self.config.accepted_action_signer_public_keys.is_empty() {
+            let Ok(signer_public_key) = normalized_ed25519_public_key_hex(
+                signer_public_key.as_str(),
+                "action signature signer public key",
+            ) else {
+                return false;
+            };
+            let Some(accepted_action_signer_public_keys) =
+                self.accepted_action_signer_public_keys.as_ref()
+            else {
                 return !self.config.require_action_signature;
-            }
-            return self
-                .config
-                .accepted_action_signer_public_keys
-                .iter()
-                .any(|accepted| accepted == &signer_public_key);
+            };
+            return accepted_action_signer_public_keys.contains(&signer_public_key);
         }
         let Some(signer) = &self.config.hmac_signer else {
             return !self.config.require_action_signature;
