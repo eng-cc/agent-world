@@ -749,6 +749,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     known_factory_locations: BTreeMap<String, String>,
     known_factory_kind_aliases: BTreeMap<String, String>,
     move_distance_exceeded_targets: BTreeSet<String>,
+    known_compound_availability_by_location: BTreeMap<String, i64>,
     recipe_coverage: RecipeCoverageProgress,
 }
 
@@ -799,6 +800,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             known_factory_locations: BTreeMap::new(),
             known_factory_kind_aliases: BTreeMap::new(),
             move_distance_exceeded_targets: BTreeSet::new(),
+            known_compound_availability_by_location: BTreeMap::new(),
             recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
@@ -1229,6 +1231,118 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         "harvest_radiation.max_amount clamped: {} -> {}",
                         max_amount, capped
                     )),
+                )
+            }
+            Action::MineCompound {
+                owner,
+                location_id,
+                compound_mass_g,
+            } => {
+                let Some(observation) = observation else {
+                    return (
+                        Action::MineCompound {
+                            owner,
+                            location_id,
+                            compound_mass_g,
+                        },
+                        None,
+                    );
+                };
+                let owner_is_self = matches!(
+                    &owner,
+                    ResourceOwner::Agent { agent_id } if agent_id == self.agent_id.as_str()
+                );
+                if !owner_is_self {
+                    return (
+                        Action::MineCompound {
+                            owner,
+                            location_id,
+                            compound_mass_g,
+                        },
+                        None,
+                    );
+                }
+
+                let mut mine_notes = Vec::new();
+                let mut mine_mass_g =
+                    compound_mass_g.clamp(1, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G);
+                if mine_mass_g != compound_mass_g {
+                    mine_notes.push(format!(
+                        "mine_compound.mass clamped by mine_max_per_action_g: {} -> {} (mine_max_per_action_g={})",
+                        compound_mass_g, mine_mass_g, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G
+                    ));
+                }
+
+                if let Some(known_available) = self
+                    .known_compound_availability_by_location
+                    .get(location_id.as_str())
+                    .copied()
+                {
+                    if known_available <= 0 {
+                        if let Some(alternative_location_id) =
+                            self.find_alternative_mine_location(observation, location_id.as_str())
+                        {
+                            let (move_action, move_note) = self.guarded_move_to_location(
+                                alternative_location_id.as_str(),
+                                observation,
+                            );
+                            mine_notes.push(format!(
+                                "mine_compound depleted location guardrail rerouted to move_agent: location_id={} known_available={} alternative_location={}",
+                                location_id, known_available, alternative_location_id
+                            ));
+                            if let Some(move_note) = move_note {
+                                mine_notes.push(move_note);
+                            }
+                            return (move_action, Some(mine_notes.join("; ")));
+                        }
+                        mine_notes.push(format!(
+                            "mine_compound depleted location guardrail rerouted to harvest_radiation: location_id={} known_available={} and no alternative visible location",
+                            location_id, known_available
+                        ));
+                        return (
+                            Action::HarvestRadiation {
+                                agent_id: self.agent_id.clone(),
+                                max_amount: self.config.harvest_max_amount_cap,
+                            },
+                            Some(mine_notes.join("; ")),
+                        );
+                    }
+
+                    if mine_mass_g > known_available {
+                        let clamped = known_available.max(1);
+                        mine_notes.push(format!(
+                            "mine_compound.mass clamped by known_location_compound_available: {} -> {} (location_id={}, known_available={})",
+                            mine_mass_g, clamped, location_id, known_available
+                        ));
+                        mine_mass_g = clamped;
+                    }
+                }
+
+                if let Some(current_location_id) =
+                    Self::current_location_id_from_observation(observation)
+                {
+                    if current_location_id != location_id {
+                        let (move_action, move_note) =
+                            self.guarded_move_to_location(location_id.as_str(), observation);
+                        let mut notes = mine_notes;
+                        notes.push(format!(
+                            "mine_compound location precheck rerouted to move_agent: current_location={} mine_location={}",
+                            current_location_id, location_id
+                        ));
+                        if let Some(move_note) = move_note {
+                            notes.push(move_note);
+                        }
+                        return (move_action, Some(notes.join("; ")));
+                    }
+                }
+
+                (
+                    Action::MineCompound {
+                        owner,
+                        location_id,
+                        compound_mass_g: mine_mass_g,
+                    },
+                    (!mine_notes.is_empty()).then_some(mine_notes.join("; ")),
                 )
             }
             Action::BuildFactory {
@@ -1762,6 +1876,65 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             }
         }
         best
+    }
+
+    fn find_alternative_mine_location(
+        &self,
+        observation: &Observation,
+        depleted_location_id: &str,
+    ) -> Option<String> {
+        let mut best_known_positive: Option<(String, i64, i64)> = None;
+        let mut best_unknown: Option<(String, i64)> = None;
+
+        for candidate in &observation.visible_locations {
+            if candidate.location_id == depleted_location_id || candidate.distance_cm <= 0 {
+                continue;
+            }
+            match self
+                .known_compound_availability_by_location
+                .get(candidate.location_id.as_str())
+                .copied()
+            {
+                Some(known_available) if known_available <= 0 => {}
+                Some(known_available) => {
+                    let should_replace = match &best_known_positive {
+                        None => true,
+                        Some((best_location_id, best_available, best_distance_cm)) => {
+                            known_available > *best_available
+                                || (known_available == *best_available
+                                    && candidate.distance_cm < *best_distance_cm)
+                                || (known_available == *best_available
+                                    && candidate.distance_cm == *best_distance_cm
+                                    && candidate.location_id < *best_location_id)
+                        }
+                    };
+                    if should_replace {
+                        best_known_positive = Some((
+                            candidate.location_id.clone(),
+                            known_available,
+                            candidate.distance_cm,
+                        ));
+                    }
+                }
+                None => {
+                    let should_replace = match &best_unknown {
+                        None => true,
+                        Some((best_location_id, best_distance_cm)) => {
+                            candidate.distance_cm < *best_distance_cm
+                                || (candidate.distance_cm == *best_distance_cm
+                                    && candidate.location_id < *best_location_id)
+                        }
+                    };
+                    if should_replace {
+                        best_unknown = Some((candidate.location_id.clone(), candidate.distance_cm));
+                    }
+                }
+            }
+        }
+
+        best_known_positive
+            .map(|(location_id, _, _)| location_id)
+            .or_else(|| best_unknown.map(|(location_id, _)| location_id))
     }
 
     fn guarded_move_to_location(

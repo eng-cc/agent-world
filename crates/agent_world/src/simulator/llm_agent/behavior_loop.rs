@@ -780,6 +780,24 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     self.move_distance_exceeded_targets.insert(to.clone());
                 }
             }
+            Action::MineCompound { location_id, .. } => {
+                if result.success {
+                    self.known_compound_availability_by_location
+                        .remove(location_id.as_str());
+                } else if let Some(RejectReason::InsufficientResource {
+                    owner:
+                        ResourceOwner::Location {
+                            location_id: rejected_location_id,
+                        },
+                    kind: ResourceKind::Compound,
+                    available,
+                    ..
+                }) = result.reject_reason()
+                {
+                    self.known_compound_availability_by_location
+                        .insert(rejected_location_id.clone(), (*available).max(0));
+                }
+            }
             Action::BuildFactory {
                 factory_id,
                 location_id,
@@ -859,6 +877,9 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         }
         if let WorldEventKind::RecipeScheduled { recipe_id, .. } = &event.kind {
             self.recipe_coverage.mark_completed(recipe_id.as_str());
+        }
+        if matches!(event.kind, WorldEventKind::FragmentsReplenished { .. }) {
+            self.known_compound_availability_by_location.clear();
         }
         self.memory
             .record_event(event.time, format!("event: {:?}", event.kind));
