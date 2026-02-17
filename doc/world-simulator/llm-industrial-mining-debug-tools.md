@@ -79,3 +79,47 @@
 - 行为风险：location 采矿上限过低会导致策略卡死；过高会退化为“原地采矿”。
 - 调试风险：debug tool 暴露边界不严会污染线上策略评估口径。
 - 回归风险：LLM guardrail 与新动作并存可能引入未覆盖的决策重写路径。
+
+## MMD5 增量优化（TODO-10 ~ TODO-13）
+
+### 目标
+- 提升 `llm_bootstrap` 闭环稳定性，减少 `schedule_recipe`/`move_agent` 高频拒绝，确保“所有工厂 + 所有制成品”目标可持续推进。
+- 将“恢复链路”从单步参数猜测改为与经济约束一致的可执行策略，避免无效抖动。
+- 在不依赖外部调度器前提下，通过 guardrail 和记忆实现 recipe 覆盖硬切换。
+
+### 范围
+
+#### In Scope
+- TODO-10：新增 recipe 覆盖进度记忆（已完成/待完成），并在 `schedule_recipe` 守卫中对已覆盖配方执行硬切换。
+- TODO-11：`schedule_recipe` 增加“工厂地点可达性”前置检查，已知工厂地点不共址时优先改写为移动动作。
+- TODO-12：`move_agent` 增加分段规划守卫，单步距离超限时自动降级为中继点移动。
+- TODO-13：`schedule_recipe -> refine_compound` 恢复质量与 `mine_compound` 单次上限对齐，必要时优先回退到 `mine_compound`。
+- 补齐 `test_tier_required` 下的 LLM agent 单测与 prompt 断言。
+
+#### Out of Scope
+- 不改 kernel 原子动作语义（不调整真实经济参数与拒绝条件）。
+- 不引入全局地图寻路模块（仅在 LLM guardrail 层做局部分段）。
+- 不改 viewer 交互面板与可视化样式。
+
+### 接口 / 数据
+- `LlmAgentBehavior` 新增轻量运行态：
+  - recipe 覆盖状态（completed/missing）。
+  - 已知工厂位置映射（factory_id -> location_id）。
+- `schedule_recipe` guardrail 扩展：
+  - owner=self 且工厂已知不共址时，改写为 `move_agent`（必要时分段）。
+  - 硬件不足恢复时按 `mine_compound_max_per_action_g` 限制恢复质量。
+- `move_agent` guardrail 扩展：
+  - 目标地点可见且距离超过 `max_move_distance_cm_per_tick` 时，改写到可达中继 location。
+- prompt 观察上下文新增 recipe 覆盖摘要，用于提示模型主动切换未覆盖配方。
+
+### 里程碑
+- MMD5.1：文档更新与任务拆解。
+- MMD5.2：TODO-11/12/13 守卫与测试落地。
+- MMD5.3：TODO-10 覆盖记忆 + prompt 约束落地。
+- MMD5.4：`llm_bootstrap` 在线抽样回归与文档/devlog 收口。
+
+### 风险
+- 守卫强改写风险：过度改写可能压制模型探索，导致局部最优。
+- 位置映射风险：工厂位置缓存若不及时更新，可能导致错误回退。
+- 分段移动风险：可见地点稀疏时中继选择失败，仍可能出现距离超限拒绝。
+- 覆盖策略风险：硬切换可能降低单一配方产量，应限定为“未覆盖优先”而非“永久禁止重复”。

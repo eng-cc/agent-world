@@ -32,6 +32,14 @@
 - [x] MMD4.2 基于首轮结果迭代 prompt 再抽样，验证是否提升 recipe 覆盖
 - [x] MMD4.3 从两轮日志提取 recipe 级成功计数，回写 TODO 与项目状态
 
+### MMD5 TODO-10~13 优化迭代（2026-02-17）
+- [x] MMD5.1 文档增量设计：补充 TODO-10/11/12/13 优化目标、接口与风险
+- [ ] MMD5.2 守卫优化 A：`schedule_recipe` 位置前置检查 + `move_agent` 分段规划
+- [ ] MMD5.3 守卫优化 B：恢复链路与 `mine_compound` 单次上限对齐
+- [ ] MMD5.4 覆盖优化：recipe 覆盖记忆与硬切换策略
+- [ ] MMD5.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核
+- [ ] MMD5.6 文档收口：状态更新、TODO 回填、devlog 记录
+
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
   - 产物：
@@ -69,9 +77,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD4 完成（用户指令复跑 + TODO 回填）。
-- 下一阶段：优先处理全配方覆盖阻塞项（TODO-10/TODO-11/TODO-12/TODO-13）。
-- 最近更新：2026-02-17（完成两轮“所有工厂与制成品”闭环抽样并提炼阻塞项）。
+- 当前阶段：MMD5 进行中（TODO-10/TODO-11/TODO-12/TODO-13 优化迭代）。
+- 下一阶段：完成守卫与覆盖策略改造后进行在线闭环复核。
+- 最近更新：2026-02-17（已完成 MMD5.1 文档增量设计，准备实现守卫优化）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10：配方覆盖进度记忆与硬切换仍不足，模型会在单一配方上长时间循环。
