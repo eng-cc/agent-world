@@ -9,6 +9,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use agent_world_distfs::blake3_hex;
+
 mod consensus_signature;
 mod gossip_udp;
 #[cfg(not(target_arch = "wasm32"))]
@@ -533,6 +535,7 @@ struct PosNodeEngine {
     consensus_signer: Option<ConsensusMessageSigner>,
     enforce_consensus_signature: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
+    last_committed_block_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -612,6 +615,7 @@ impl PosNodeEngine {
             consensus_signer,
             enforce_consensus_signature,
             peer_heads: BTreeMap::new(),
+            last_committed_block_hash: None,
         })
     }
 
@@ -691,7 +695,18 @@ impl PosNodeEngine {
             .ok_or_else(|| NodeError::Consensus {
                 reason: "no proposer available".to_string(),
             })?;
-        let block_hash = format!("{world_id}:h{}:s{slot}:p{proposer_id}", self.next_height);
+        let parent_block_hash = self
+            .last_committed_block_hash
+            .as_deref()
+            .unwrap_or("genesis");
+        let block_hash = self.compute_block_hash(
+            world_id,
+            self.next_height,
+            slot,
+            epoch,
+            proposer_id.as_str(),
+            parent_block_hash,
+        )?;
 
         let mut proposal = PendingProposal {
             height: self.next_height,
@@ -822,6 +837,7 @@ impl PosNodeEngine {
             PosConsensusStatus::Committed => {
                 self.committed_height = decision.height;
                 self.network_committed_height = self.network_committed_height.max(decision.height);
+                self.last_committed_block_hash = Some(decision.block_hash.clone());
                 self.next_height = decision.height.saturating_add(1);
                 self.pending = None;
             }
@@ -1154,6 +1170,30 @@ impl PosNodeEngine {
             }
         }
         Ok(())
+    }
+
+    fn compute_block_hash(
+        &self,
+        world_id: &str,
+        height: u64,
+        slot: u64,
+        epoch: u64,
+        proposer_id: &str,
+        parent_block_hash: &str,
+    ) -> Result<String, NodeError> {
+        let payload = (
+            1_u8,
+            world_id,
+            height,
+            slot,
+            epoch,
+            proposer_id,
+            parent_block_hash,
+        );
+        let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeError::Consensus {
+            reason: format!("encode block hash payload failed: {err}"),
+        })?;
+        Ok(blake3_hex(bytes.as_slice()))
     }
 }
 

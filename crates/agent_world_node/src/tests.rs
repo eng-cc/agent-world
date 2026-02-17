@@ -128,6 +128,34 @@ fn pos_engine_commits_single_validator_head() {
 }
 
 #[test]
+fn pos_engine_generates_chain_hashed_block_ids() {
+    let config = NodeConfig::new("node-a", "world-hash", NodeRole::Observer).expect("config");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+
+    let first = engine
+        .tick(&config.node_id, &config.world_id, 1_000, None, None, None)
+        .expect("first tick");
+    let second = engine
+        .tick(&config.node_id, &config.world_id, 2_000, None, None, None)
+        .expect("second tick");
+
+    let first_hash = first
+        .last_block_hash
+        .as_deref()
+        .expect("first hash should exist");
+    let second_hash = second
+        .last_block_hash
+        .as_deref()
+        .expect("second hash should exist");
+    assert_eq!(first_hash.len(), 64);
+    assert_eq!(second_hash.len(), 64);
+    assert!(first_hash.chars().all(|ch| ch.is_ascii_hexdigit()));
+    assert!(second_hash.chars().all(|ch| ch.is_ascii_hexdigit()));
+    assert_ne!(first_hash, second_hash);
+    assert!(!first_hash.contains(":h"));
+}
+
+#[test]
 fn pos_engine_progresses_pending_when_auto_attest_disabled() {
     let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
         .expect("config")
