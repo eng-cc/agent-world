@@ -7,7 +7,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use agent_world_distfs::StorageChallengeProbeConfig;
+use agent_world_distfs::{StorageChallengeProbeConfig, StorageChallengeProbeCursorState};
 use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
     measure_directory_storage_bytes, reward_redeem_signature_v1, Action as RuntimeAction,
@@ -34,6 +34,7 @@ const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
+const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str = "reward-runtime-distfs-probe-state.json";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 const REWARD_RUNTIME_DISTFS_PROBE_MAX_SAMPLE_BYTES: u32 = 64 * 1024;
 const REWARD_RUNTIME_DISTFS_PROBE_PER_TICK: u32 = 1;
@@ -110,6 +111,7 @@ struct RewardRuntimeLoopConfig {
     signer_public_key_hex: String,
     report_dir: String,
     state_path: std::path::PathBuf,
+    distfs_probe_state_path: std::path::PathBuf,
     storage_root: std::path::PathBuf,
     auto_redeem: bool,
     reward_asset_config: RewardAssetConfig,
@@ -314,6 +316,8 @@ fn start_reward_runtime_worker(
         report_dir,
         state_path: Path::new(options.reward_runtime_report_dir.as_str())
             .join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
+        distfs_probe_state_path: Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE),
         storage_root: Path::new("output")
             .join("node-distfs")
             .join(options.node_id.as_str())
@@ -376,6 +380,14 @@ fn reward_runtime_loop(
             )
         }
     };
+    let mut distfs_probe_state =
+        match load_reward_runtime_distfs_probe_state(config.distfs_probe_state_path.as_path()) {
+            Ok(state) => state,
+            Err(err) => {
+                eprintln!("reward runtime load distfs probe state failed: {err}");
+                StorageChallengeProbeCursorState::default()
+            }
+        };
     let mut reward_world = RuntimeWorld::new();
     reward_world.set_reward_asset_config(config.reward_asset_config.clone());
     reward_world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
@@ -422,6 +434,7 @@ fn reward_runtime_loop(
                 snapshot.world_id.as_str(),
                 snapshot.node_id.as_str(),
                 observed_at_unix_ms,
+                &mut distfs_probe_state,
             ) {
                 Ok(report) => {
                     observation.storage_checks_passed = report.passed_checks;
@@ -445,6 +458,12 @@ fn reward_runtime_loop(
             persist_reward_runtime_collector_state(config.state_path.as_path(), &collector)
         {
             eprintln!("reward runtime persist collector state failed: {err}");
+        }
+        if let Err(err) = persist_reward_runtime_distfs_probe_state(
+            config.distfs_probe_state_path.as_path(),
+            &distfs_probe_state,
+        ) {
+            eprintln!("reward runtime persist distfs probe state failed: {err}");
         }
         let Some(report) = maybe_report else {
             continue;
@@ -640,15 +659,37 @@ fn persist_reward_runtime_collector_state(
     write_bytes_atomic(path, bytes.as_slice())
 }
 
+fn load_reward_runtime_distfs_probe_state(
+    path: &Path,
+) -> Result<StorageChallengeProbeCursorState, String> {
+    if !path.exists() {
+        return Ok(StorageChallengeProbeCursorState::default());
+    }
+    let bytes = fs::read(path)
+        .map_err(|err| format!("read distfs probe state {} failed: {}", path.display(), err))?;
+    serde_json::from_slice::<StorageChallengeProbeCursorState>(bytes.as_slice())
+        .map_err(|err| format!("parse distfs probe state {} failed: {}", path.display(), err))
+}
+
+fn persist_reward_runtime_distfs_probe_state(
+    path: &Path,
+    state: &StorageChallengeProbeCursorState,
+) -> Result<(), String> {
+    let bytes = serde_json::to_vec_pretty(state)
+        .map_err(|err| format!("serialize distfs probe state failed: {}", err))?;
+    write_bytes_atomic(path, bytes.as_slice())
+}
+
 fn collect_distfs_challenge_report(
     storage_root: &Path,
     world_id: &str,
     node_id: &str,
     observed_at_unix_ms: i64,
+    state: &mut StorageChallengeProbeCursorState,
 ) -> Result<agent_world_distfs::StorageChallengeProbeReport, String> {
     let store = LocalCasStore::new(storage_root);
     store
-        .probe_storage_challenges(
+        .probe_storage_challenges_with_cursor(
             world_id,
             node_id,
             observed_at_unix_ms,
@@ -658,6 +699,7 @@ fn collect_distfs_challenge_report(
                 challenge_ttl_ms: REWARD_RUNTIME_DISTFS_PROBE_TTL_MS,
                 allowed_clock_skew_ms: REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS,
             },
+            state,
         )
         .map_err(|err| format!("{err:?}"))
 }

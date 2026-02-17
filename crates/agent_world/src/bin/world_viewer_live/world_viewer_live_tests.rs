@@ -392,13 +392,16 @@ fn ensure_node_keypair_in_config_fills_missing_public_key() {
 #[test]
 fn collect_distfs_challenge_report_returns_zero_for_empty_store() {
     let dir = temp_dir("distfs-probe-empty");
-    let report = collect_distfs_challenge_report(dir.as_path(), "world-1", "node-a", 1_000)
-        .expect("collect challenge report");
+    let mut state = StorageChallengeProbeCursorState::default();
+    let report =
+        collect_distfs_challenge_report(dir.as_path(), "world-1", "node-a", 1_000, &mut state)
+            .expect("collect challenge report");
     assert_eq!(report.total_checks, 0);
     assert_eq!(report.passed_checks, 0);
     assert_eq!(report.failed_checks, 0);
     assert!(report.failure_reasons.is_empty());
     assert!(report.latest_proof_semantics.is_none());
+    assert_eq!(state.rounds_executed, 1);
 }
 
 #[test]
@@ -410,13 +413,43 @@ fn collect_distfs_challenge_report_detects_hash_mismatch() {
     let blob_path = store.blobs_dir().join(format!("{hash}.blob"));
     fs::write(blob_path, b"tampered").expect("tamper");
 
-    let report = collect_distfs_challenge_report(dir.as_path(), "world-1", "node-b", 2_000)
-        .expect("collect challenge report");
+    let mut state = StorageChallengeProbeCursorState::default();
+    let report =
+        collect_distfs_challenge_report(dir.as_path(), "world-1", "node-b", 2_000, &mut state)
+            .expect("collect challenge report");
     assert_eq!(report.total_checks, 1);
     assert_eq!(report.passed_checks, 0);
     assert_eq!(report.failed_checks, 1);
     assert_eq!(report.failure_reasons.get("HASH_MISMATCH").copied(), Some(1));
     assert!(report.latest_proof_semantics.is_none());
+    assert_eq!(state.cumulative_total_checks, 1);
+    assert_eq!(state.cumulative_failed_checks, 1);
+    assert_eq!(
+        state.cumulative_failure_reasons.get("HASH_MISMATCH").copied(),
+        Some(1)
+    );
 
     let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn reward_runtime_distfs_probe_state_roundtrip() {
+    let root = temp_dir("distfs-probe-state-roundtrip");
+    fs::create_dir_all(root.as_path()).expect("create root");
+    let path = root.join("probe-state.json");
+    let expected = StorageChallengeProbeCursorState {
+        next_blob_cursor: 3,
+        rounds_executed: 7,
+        cumulative_total_checks: 20,
+        cumulative_passed_checks: 16,
+        cumulative_failed_checks: 4,
+        cumulative_failure_reasons: [("HASH_MISMATCH".to_string(), 4)].into_iter().collect(),
+    };
+
+    persist_reward_runtime_distfs_probe_state(path.as_path(), &expected)
+        .expect("persist probe state");
+    let loaded = load_reward_runtime_distfs_probe_state(path.as_path()).expect("load probe state");
+    assert_eq!(loaded, expected);
+
+    let _ = fs::remove_dir_all(root);
 }
