@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
 use std::fs;
+#[cfg(test)]
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process;
@@ -27,18 +28,21 @@ use agent_world_node::{
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
-use ed25519_dalek::SigningKey;
-use rand_core::OsRng;
+#[path = "world_viewer_live/cli.rs"]
+mod cli;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
+#[path = "world_viewer_live/node_keypair_config.rs"]
+mod node_keypair_config;
 #[path = "world_viewer_live/reward_runtime_network.rs"]
 mod reward_runtime_network;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
+use cli::{parse_options, print_help, CliOptions};
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
@@ -48,18 +52,23 @@ use execution_bridge::{
     bridge_committed_heights, load_execution_bridge_state, load_execution_world,
     persist_execution_bridge_state, persist_execution_world,
 };
+use node_keypair_config::ensure_node_keypair_in_config;
 use reward_runtime_network::{
-    decode_reward_settlement_envelope, encode_reward_settlement_envelope,
-    reward_settlement_envelope_id, reward_settlement_topic, RewardSettlementEnvelope,
+    decode_reward_observation_trace, decode_reward_settlement_envelope,
+    encode_reward_observation_trace, encode_reward_settlement_envelope, reward_observation_topic,
+    reward_observation_trace_id, reward_settlement_envelope_id, reward_settlement_topic,
+    sign_reward_observation_trace, verify_reward_observation_trace, RewardObservationPayload,
+    RewardObservationTrace, RewardSettlementEnvelope,
 };
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
 };
 
 const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
-const NODE_TABLE_KEY: &str = "node";
-const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
-const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
+#[cfg(test)]
+const NODE_TABLE_KEY: &str = node_keypair_config::NODE_TABLE_KEY;
+#[cfg(test)]
+const NODE_PUBLIC_KEY_FIELD: &str = node_keypair_config::NODE_PUBLIC_KEY_FIELD;
 const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
@@ -69,70 +78,7 @@ const DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE: &str =
 const DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR: &str = "reward-runtime-execution-world";
 const DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR: &str = "reward-runtime-execution-records";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
-
-#[derive(Debug, Clone, PartialEq)]
-struct CliOptions {
-    scenario: WorldScenario,
-    bind_addr: String,
-    web_bind_addr: Option<String>,
-    tick_ms: u64,
-    llm_mode: bool,
-    node_enabled: bool,
-    node_id: String,
-    node_role: NodeRole,
-    node_tick_ms: u64,
-    node_auto_attest_all_validators: bool,
-    node_validators: Vec<PosValidator>,
-    node_gossip_bind: Option<SocketAddr>,
-    node_gossip_peers: Vec<SocketAddr>,
-    node_repl_libp2p_listen: Vec<String>,
-    node_repl_libp2p_peers: Vec<String>,
-    node_repl_topic: Option<String>,
-    reward_runtime_enabled: bool,
-    reward_runtime_auto_redeem: bool,
-    reward_runtime_signer_node_id: Option<String>,
-    reward_runtime_report_dir: String,
-    reward_points_per_credit: u64,
-    reward_credits_per_power_unit: u64,
-    reward_max_redeem_power_per_epoch: i64,
-    reward_min_redeem_power_unit: i64,
-    reward_initial_reserve_power_units: i64,
-    reward_distfs_probe_config: DistfsProbeRuntimeConfig,
-}
-
-impl Default for CliOptions {
-    fn default() -> Self {
-        Self {
-            scenario: WorldScenario::TwinRegionBootstrap,
-            bind_addr: "127.0.0.1:5010".to_string(),
-            web_bind_addr: None,
-            tick_ms: 200,
-            llm_mode: false,
-            node_enabled: true,
-            node_id: "viewer-live-node".to_string(),
-            node_role: NodeRole::Observer,
-            node_tick_ms: 200,
-            node_auto_attest_all_validators: true,
-            node_validators: Vec::new(),
-            node_gossip_bind: None,
-            node_gossip_peers: Vec::new(),
-            node_repl_libp2p_listen: Vec::new(),
-            node_repl_libp2p_peers: Vec::new(),
-            node_repl_topic: None,
-            reward_runtime_enabled: false,
-            reward_runtime_auto_redeem: false,
-            reward_runtime_signer_node_id: None,
-            reward_runtime_report_dir: DEFAULT_REWARD_RUNTIME_REPORT_DIR.to_string(),
-            reward_points_per_credit: RewardAssetConfig::default().points_per_credit,
-            reward_credits_per_power_unit: RewardAssetConfig::default().credits_per_power_unit,
-            reward_max_redeem_power_per_epoch: RewardAssetConfig::default()
-                .max_redeem_power_per_epoch,
-            reward_min_redeem_power_unit: RewardAssetConfig::default().min_redeem_power_unit,
-            reward_initial_reserve_power_units: DEFAULT_REWARD_RUNTIME_RESERVE_UNITS,
-            reward_distfs_probe_config: DistfsProbeRuntimeConfig::default(),
-        }
-    }
-}
+const DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES: u32 = 1;
 
 #[derive(Clone)]
 struct LiveNodeHandle {
@@ -168,6 +114,7 @@ struct RewardRuntimeLoopConfig {
     auto_redeem: bool,
     reward_asset_config: RewardAssetConfig,
     initial_reserve_power_units: i64,
+    min_observer_traces: u32,
 }
 
 #[derive(Debug)]
@@ -401,6 +348,7 @@ fn start_reward_runtime_worker(
             min_redeem_power_unit: options.reward_min_redeem_power_unit,
         },
         initial_reserve_power_units: options.reward_initial_reserve_power_units,
+        min_observer_traces: options.reward_runtime_min_observer_traces,
     };
 
     let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -506,7 +454,27 @@ fn reward_runtime_loop(
         },
         None => None,
     };
+    let settlement_network_enabled =
+        config.reward_network.is_some() && settlement_subscription.is_some();
+    let observation_topic = reward_observation_topic(config.world_id.as_str());
+    let observation_subscription = match config.reward_network.as_ref() {
+        Some(network) => match network.subscribe(observation_topic.as_str()) {
+            Ok(subscription) => Some(subscription),
+            Err(err) => {
+                eprintln!(
+                    "reward runtime subscribe observation topic failed {}: {:?}",
+                    observation_topic, err
+                );
+                None
+            }
+        },
+        None => None,
+    };
+    let observation_network_enabled =
+        config.reward_network.is_some() && observation_subscription.is_some();
     let mut applied_settlement_envelope_ids = BTreeSet::new();
+    let mut applied_observation_trace_ids = BTreeSet::new();
+    let mut epoch_observer_nodes = BTreeSet::new();
 
     loop {
         match stop_rx.recv_timeout(config.poll_interval) {
@@ -586,6 +554,98 @@ fn reward_runtime_loop(
             None
         };
 
+        let local_trace = match sign_reward_observation_trace(
+            config.world_id.as_str(),
+            snapshot.node_id.as_str(),
+            config.signer_private_key_hex.as_str(),
+            config.signer_public_key_hex.as_str(),
+            RewardObservationPayload::from_observation(observation),
+            observed_at_unix_ms,
+        ) {
+            Ok(trace) => trace,
+            Err(err) => {
+                eprintln!("reward runtime sign local observation trace failed: {err}");
+                continue;
+            }
+        };
+        if observation_network_enabled {
+            if let Some(network) = config.reward_network.as_ref() {
+                match encode_reward_observation_trace(&local_trace) {
+                    Ok(payload) => {
+                        if let Err(err) =
+                            network.publish(observation_topic.as_str(), payload.as_slice())
+                        {
+                            eprintln!("reward runtime publish observation trace failed: {:?}", err);
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("reward runtime encode observation trace failed: {err}");
+                    }
+                }
+            }
+        }
+
+        let mut applied_observation_trace_ids_this_tick = Vec::new();
+        let mut applied_observer_nodes_this_tick = BTreeSet::new();
+        let mut applied_observation_traces_this_tick = Vec::new();
+        let mut maybe_report = None;
+        if let Some(applied) = observe_reward_observation_trace(
+            &mut collector,
+            local_trace.clone(),
+            config.world_id.as_str(),
+            "local",
+            &mut applied_observation_trace_ids,
+            &mut epoch_observer_nodes,
+        ) {
+            if let Some(report) = applied.report {
+                maybe_report = Some(report);
+            }
+            applied_observation_trace_ids_this_tick.push(applied.trace_id.clone());
+            applied_observer_nodes_this_tick.insert(applied.observer_node_id.clone());
+            applied_observation_traces_this_tick.push(serde_json::json!({
+                "trace_id": applied.trace_id,
+                "observer_node_id": applied.observer_node_id,
+                "payload_hash": applied.payload_hash,
+                "source": "local",
+            }));
+        }
+        if observation_network_enabled {
+            if let Some(subscription) = observation_subscription.as_ref() {
+                for payload in subscription.drain() {
+                    let trace = match decode_reward_observation_trace(payload.as_slice()) {
+                        Ok(trace) => trace,
+                        Err(err) => {
+                            eprintln!("reward runtime decode observation trace failed: {err}");
+                            continue;
+                        }
+                    };
+                    if trace.version != 1 || trace.world_id != config.world_id {
+                        continue;
+                    }
+                    if let Some(applied) = observe_reward_observation_trace(
+                        &mut collector,
+                        trace,
+                        config.world_id.as_str(),
+                        "network",
+                        &mut applied_observation_trace_ids,
+                        &mut epoch_observer_nodes,
+                    ) {
+                        if let Some(report) = applied.report {
+                            maybe_report = Some(report);
+                        }
+                        applied_observation_trace_ids_this_tick.push(applied.trace_id.clone());
+                        applied_observer_nodes_this_tick.insert(applied.observer_node_id.clone());
+                        applied_observation_traces_this_tick.push(serde_json::json!({
+                            "trace_id": applied.trace_id,
+                            "observer_node_id": applied.observer_node_id,
+                            "payload_hash": applied.payload_hash,
+                            "source": "network",
+                        }));
+                    }
+                }
+            }
+        }
+
         let mut applied_settlement_ids_this_tick = Vec::new();
         if let Some(subscription) = settlement_subscription.as_ref() {
             for payload in subscription.drain() {
@@ -621,7 +681,6 @@ fn reward_runtime_loop(
             }
         }
 
-        let maybe_report = collector.observe(observation);
         if let Err(err) =
             persist_reward_runtime_collector_state(config.state_path.as_path(), &collector)
         {
@@ -637,16 +696,22 @@ fn reward_runtime_loop(
             continue;
         };
 
+        let observer_trace_count_for_epoch = epoch_observer_nodes.len();
+        let observer_trace_threshold_met =
+            observer_trace_count_for_epoch >= config.min_observer_traces as usize;
+        let observer_nodes_for_epoch: Vec<String> = epoch_observer_nodes.iter().cloned().collect();
+        epoch_observer_nodes.clear();
+
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
-        let settlement_network_enabled =
-            config.reward_network.is_some() && settlement_subscription.is_some();
         let should_publish_settlement = settlement_network_enabled
+            && observer_trace_threshold_met
             && snapshot.role == NodeRole::Sequencer
             && matches!(
                 snapshot.consensus.last_status,
                 Some(PosConsensusStatus::Committed)
             );
-        let requires_local_settlement = should_publish_settlement || !settlement_network_enabled;
+        let requires_local_settlement = observer_trace_threshold_met
+            && (should_publish_settlement || !settlement_network_enabled);
         let minted_records = if requires_local_settlement {
             match build_reward_settlement_mint_records(
                 &reward_world,
@@ -664,7 +729,15 @@ fn reward_runtime_loop(
             Vec::new()
         };
         let mut published_settlement_envelope_id: Option<String> = None;
-        if settlement_network_enabled {
+        let mut settlement_skipped_reason: Option<String> = None;
+        if !observer_trace_threshold_met {
+            settlement_skipped_reason = Some(format!(
+                "observer trace threshold not met: have {}, require {}",
+                observer_trace_count_for_epoch, config.min_observer_traces
+            ));
+        }
+
+        if observer_trace_threshold_met && settlement_network_enabled {
             if should_publish_settlement {
                 let envelope = RewardSettlementEnvelope {
                     version: 1,
@@ -712,7 +785,7 @@ fn reward_runtime_loop(
                     }
                 }
             }
-        } else if !minted_records.is_empty() {
+        } else if observer_trace_threshold_met && !minted_records.is_empty() {
             let envelope = RewardSettlementEnvelope {
                 version: 1,
                 world_id: config.world_id.clone(),
@@ -757,6 +830,8 @@ fn reward_runtime_loop(
                 invariant_report.violations.len()
             );
         }
+        let applied_observer_nodes_this_tick: Vec<String> =
+            applied_observer_nodes_this_tick.into_iter().collect();
 
         let payload = serde_json::json!({
             "observed_at_unix_ms": observed_at_unix_ms,
@@ -787,11 +862,24 @@ fn reward_runtime_loop(
             "execution_bridge_records": execution_bridge_records,
             "settlement_report": report,
             "minted_records": minted_records,
+            "reward_observation_traces": {
+                "network_enabled": observation_network_enabled,
+                "observation_topic": observation_topic,
+                "min_observer_traces": config.min_observer_traces,
+                "observer_trace_count_for_epoch": observer_trace_count_for_epoch,
+                "observer_nodes_for_epoch": observer_nodes_for_epoch,
+                "applied_trace_ids_this_tick": applied_observation_trace_ids_this_tick,
+                "applied_observer_node_ids_this_tick": applied_observer_nodes_this_tick,
+                "applied_traces_this_tick": applied_observation_traces_this_tick,
+            },
             "reward_settlement_transport": {
                 "network_enabled": settlement_network_enabled,
                 "settlement_topic": settlement_topic,
+                "should_publish_settlement": should_publish_settlement,
                 "published_settlement_envelope_id": published_settlement_envelope_id,
                 "applied_settlement_envelope_ids": applied_settlement_ids_this_tick,
+                "observer_trace_threshold_met": observer_trace_threshold_met,
+                "settlement_skipped_reason": settlement_skipped_reason,
             },
             "node_balances": reward_world.state().node_asset_balances,
             "reserve": reward_world.protocol_power_reserve(),
@@ -815,6 +903,59 @@ fn reward_runtime_loop(
             }
         }
     }
+}
+
+struct ObservationTraceApplyResult {
+    report: Option<agent_world::runtime::EpochSettlementReport>,
+    trace_id: String,
+    observer_node_id: String,
+    payload_hash: String,
+}
+
+fn observe_reward_observation_trace(
+    collector: &mut NodePointsRuntimeCollector,
+    trace: RewardObservationTrace,
+    world_id: &str,
+    source: &str,
+    applied_trace_ids: &mut BTreeSet<String>,
+    epoch_observer_nodes: &mut BTreeSet<String>,
+) -> Option<ObservationTraceApplyResult> {
+    if trace.version != 1 || trace.world_id != world_id {
+        return None;
+    }
+    if let Err(err) = verify_reward_observation_trace(&trace) {
+        eprintln!("reward runtime verify observation trace failed: {err}");
+        return None;
+    }
+    let trace_id = match reward_observation_trace_id(&trace) {
+        Ok(id) => id,
+        Err(err) => {
+            eprintln!("reward runtime hash observation trace failed: {err}");
+            return None;
+        }
+    };
+    if applied_trace_ids.contains(trace_id.as_str()) {
+        return None;
+    }
+
+    let observer_node_id = trace.observer_node_id.clone();
+    let payload_hash = trace.payload_hash.clone();
+    let observation = match trace.payload.into_observation() {
+        Ok(observation) => observation,
+        Err(err) => {
+            eprintln!("reward runtime decode observation payload failed ({source}): {err}");
+            return None;
+        }
+    };
+    let report = collector.observe(observation);
+    applied_trace_ids.insert(trace_id.clone());
+    epoch_observer_nodes.insert(observer_node_id.clone());
+    Some(ObservationTraceApplyResult {
+        report,
+        trace_id,
+        observer_node_id,
+        payload_hash,
+    })
 }
 
 fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u64) {
@@ -896,507 +1037,6 @@ fn now_unix_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis() as i64)
         .unwrap_or(0)
-}
-
-fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
-    let mut options = CliOptions::default();
-    let mut scenario_arg: Option<&str> = None;
-    let mut iter = args.peekable();
-
-    while let Some(arg) = iter.next() {
-        match arg {
-            "--help" | "-h" => {
-                print_help();
-                process::exit(0);
-            }
-            "--bind" => {
-                options.bind_addr = iter
-                    .next()
-                    .ok_or_else(|| "--bind requires an address".to_string())?
-                    .to_string();
-            }
-            "--tick-ms" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--tick-ms requires a positive integer".to_string())?;
-                options.tick_ms = raw
-                    .parse::<u64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| "--tick-ms requires a positive integer".to_string())?;
-            }
-            "--web-bind" => {
-                options.web_bind_addr = Some(
-                    iter.next()
-                        .ok_or_else(|| "--web-bind requires an address".to_string())?
-                        .to_string(),
-                );
-            }
-            "--scenario" => {
-                scenario_arg = Some(
-                    iter.next()
-                        .ok_or_else(|| "--scenario requires a name".to_string())?,
-                );
-            }
-            "--llm" => {
-                options.llm_mode = true;
-            }
-            "--no-node" => {
-                options.node_enabled = false;
-            }
-            "--node-id" => {
-                options.node_id = iter
-                    .next()
-                    .ok_or_else(|| "--node-id requires a value".to_string())?
-                    .to_string();
-            }
-            "--node-role" => {
-                let role = iter
-                    .next()
-                    .ok_or_else(|| "--node-role requires a value".to_string())?;
-                options.node_role = role.parse::<NodeRole>().map_err(|_| {
-                    "--node-role must be one of: sequencer, storage, observer".to_string()
-                })?;
-            }
-            "--node-tick-ms" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-tick-ms requires a positive integer".to_string())?;
-                options.node_tick_ms = raw
-                    .parse::<u64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| "--node-tick-ms requires a positive integer".to_string())?;
-            }
-            "--node-validator" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-validator requires <validator_id:stake>".to_string())?;
-                options.node_validators.push(parse_validator_spec(raw)?);
-            }
-            "--node-no-auto-attest-all" => {
-                options.node_auto_attest_all_validators = false;
-            }
-            "--node-gossip-bind" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-gossip-bind requires <addr:port>".to_string())?;
-                options.node_gossip_bind = Some(parse_socket_addr(raw, "--node-gossip-bind")?);
-            }
-            "--node-gossip-peer" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-gossip-peer requires <addr:port>".to_string())?;
-                options
-                    .node_gossip_peers
-                    .push(parse_socket_addr(raw, "--node-gossip-peer")?);
-            }
-            "--node-repl-libp2p-listen" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-repl-libp2p-listen requires <multiaddr>".to_string())?;
-                options.node_repl_libp2p_listen.push(raw.to_string());
-            }
-            "--node-repl-libp2p-peer" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-repl-libp2p-peer requires <multiaddr>".to_string())?;
-                options.node_repl_libp2p_peers.push(raw.to_string());
-            }
-            "--node-repl-topic" => {
-                let raw = iter
-                    .next()
-                    .ok_or_else(|| "--node-repl-topic requires <topic>".to_string())?;
-                let topic = raw.trim();
-                if topic.is_empty() {
-                    return Err("--node-repl-topic requires non-empty value".to_string());
-                }
-                options.node_repl_topic = Some(topic.to_string());
-            }
-            "--reward-runtime-enable" => {
-                options.reward_runtime_enabled = true;
-            }
-            "--reward-runtime-auto-redeem" => {
-                options.reward_runtime_auto_redeem = true;
-            }
-            "--reward-runtime-signer" => {
-                let signer = iter
-                    .next()
-                    .ok_or_else(|| "--reward-runtime-signer requires <node_id>".to_string())?;
-                let signer = signer.trim();
-                if signer.is_empty() {
-                    return Err("--reward-runtime-signer requires non-empty <node_id>".to_string());
-                }
-                options.reward_runtime_signer_node_id = Some(signer.to_string());
-            }
-            "--reward-runtime-report-dir" => {
-                let dir = iter
-                    .next()
-                    .ok_or_else(|| "--reward-runtime-report-dir requires <path>".to_string())?;
-                let dir = dir.trim();
-                if dir.is_empty() {
-                    return Err("--reward-runtime-report-dir requires non-empty <path>".to_string());
-                }
-                options.reward_runtime_report_dir = dir.to_string();
-            }
-            "--reward-points-per-credit" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-points-per-credit requires a positive integer".to_string()
-                })?;
-                options.reward_points_per_credit = raw
-                    .parse::<u64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-points-per-credit requires a positive integer".to_string()
-                    })?;
-            }
-            "--reward-credits-per-power-unit" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-credits-per-power-unit requires a positive integer".to_string()
-                })?;
-                options.reward_credits_per_power_unit = raw
-                    .parse::<u64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-credits-per-power-unit requires a positive integer".to_string()
-                    })?;
-            }
-            "--reward-max-redeem-power-per-epoch" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-max-redeem-power-per-epoch requires a positive integer".to_string()
-                })?;
-                options.reward_max_redeem_power_per_epoch = raw
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-max-redeem-power-per-epoch requires a positive integer"
-                            .to_string()
-                    })?;
-            }
-            "--reward-min-redeem-power-unit" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-min-redeem-power-unit requires a positive integer".to_string()
-                })?;
-                options.reward_min_redeem_power_unit = raw
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-min-redeem-power-unit requires a positive integer".to_string()
-                    })?;
-            }
-            "--reward-initial-reserve-power-units" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-initial-reserve-power-units requires a non-negative integer"
-                        .to_string()
-                })?;
-                options.reward_initial_reserve_power_units = raw
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|value| *value >= 0)
-                    .ok_or_else(|| {
-                        "--reward-initial-reserve-power-units requires a non-negative integer"
-                            .to_string()
-                    })?;
-            }
-            _ => {
-                if parse_distfs_probe_runtime_option(
-                    arg,
-                    &mut iter,
-                    &mut options.reward_distfs_probe_config,
-                )? {
-                    continue;
-                }
-                if scenario_arg.is_none() {
-                    scenario_arg = Some(arg);
-                } else {
-                    return Err(format!("unexpected argument: {arg}"));
-                }
-            }
-        }
-    }
-
-    if let Some(name) = scenario_arg {
-        options.scenario = WorldScenario::parse(name).ok_or_else(|| {
-            format!(
-                "Unknown scenario: {name}. available: {}",
-                WorldScenario::variants().join(", ")
-            )
-        })?;
-    }
-    if options.node_repl_topic.is_some()
-        && options.node_repl_libp2p_listen.is_empty()
-        && options.node_repl_libp2p_peers.is_empty()
-    {
-        return Err(
-            "--node-repl-topic requires --node-repl-libp2p-listen or --node-repl-libp2p-peer"
-                .to_string(),
-        );
-    }
-    if options
-        .reward_distfs_probe_config
-        .adaptive_policy
-        .failure_backoff_max_ms
-        < options
-            .reward_distfs_probe_config
-            .adaptive_policy
-            .failure_backoff_base_ms
-    {
-        return Err(
-            "--reward-distfs-adaptive-backoff-max-ms must be >= --reward-distfs-adaptive-backoff-base-ms"
-                .to_string(),
-        );
-    }
-    if options.reward_runtime_enabled && !options.node_enabled {
-        return Err(
-            "--reward-runtime-enable requires embedded node runtime (remove --no-node)".to_string(),
-        );
-    }
-
-    Ok(options)
-}
-
-fn print_help() {
-    println!(
-        "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
-    );
-    println!("Options:");
-    println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
-    println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
-    println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
-    println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
-    println!("  --llm             Use LLM decisions instead of built-in script");
-    println!("  --no-node         Disable embedded node runtime startup");
-    println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
-    println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
-    println!("  --node-tick-ms <ms> Node runtime tick interval (default: 200)");
-    println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
-    println!("  --node-no-auto-attest-all Disable auto-attesting all validators per tick");
-    println!("  --node-gossip-bind <addr:port> Bind UDP endpoint for node gossip");
-    println!("  --node-gossip-peer <addr:port> Add UDP peer endpoint for node gossip");
-    println!(
-        "  --node-repl-libp2p-listen <multiaddr> Add libp2p listen addr for replication network"
-    );
-    println!(
-        "  --node-repl-libp2p-peer <multiaddr> Add libp2p bootstrap peer for replication network"
-    );
-    println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
-    println!("  --reward-runtime-enable Enable reward runtime settlement loop (default: off)");
-    println!(
-        "  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent"
-    );
-    println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
-    println!("  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)");
-    println!(
-        "  --reward-distfs-probe-max-sample-bytes <n> DistFS probe sample size upper bound bytes (default: 65536)"
-    );
-    println!(
-        "  --reward-distfs-probe-per-tick <n> DistFS challenge count per reward tick (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-probe-ttl-ms <n> DistFS challenge ttl milliseconds (default: 30000)"
-    );
-    println!(
-        "  --reward-distfs-probe-allowed-clock-skew-ms <n> DistFS challenge allowed clock skew milliseconds (default: 5000)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-max-checks-per-round <n> DistFS adaptive per-round check cap (default: u32::MAX)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-backoff-base-ms <n> DistFS adaptive backoff base milliseconds (default: 0)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-backoff-max-ms <n> DistFS adaptive backoff max milliseconds (default: 0)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-hash-mismatch <n> DistFS adaptive backoff multiplier for HASH_MISMATCH (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-missing-sample <n> DistFS adaptive backoff multiplier for MISSING_SAMPLE (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-timeout <n> DistFS adaptive backoff multiplier for TIMEOUT (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-read-io-error <n> DistFS adaptive backoff multiplier for READ_IO_ERROR (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-signature-invalid <n> DistFS adaptive backoff multiplier for SIGNATURE_INVALID (default: 1)"
-    );
-    println!(
-        "  --reward-distfs-adaptive-multiplier-unknown <n> DistFS adaptive backoff multiplier for UNKNOWN (default: 1)"
-    );
-    println!("  --reward-points-per-credit <n> points -> credit conversion ratio");
-    println!("  --reward-credits-per-power-unit <n> credit -> power conversion ratio");
-    println!("  --reward-max-redeem-power-per-epoch <n> per-epoch redeem power cap");
-    println!("  --reward-min-redeem-power-unit <n> minimum redeem power unit");
-    println!("  --reward-initial-reserve-power-units <n> initial protocol power reserve");
-    println!(
-        "Available scenarios: {}",
-        WorldScenario::variants().join(", ")
-    );
-}
-
-fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
-    let (validator_id_raw, stake_raw) = raw
-        .split_once(':')
-        .ok_or_else(|| "--node-validator requires <validator_id:stake>".to_string())?;
-    let validator_id = validator_id_raw.trim();
-    if validator_id.is_empty() {
-        return Err("--node-validator validator_id cannot be empty".to_string());
-    }
-    let stake = stake_raw
-        .trim()
-        .parse::<u64>()
-        .ok()
-        .filter(|value| *value > 0)
-        .ok_or_else(|| "--node-validator stake must be a positive integer".to_string())?;
-    Ok(PosValidator {
-        validator_id: validator_id.to_string(),
-        stake,
-    })
-}
-
-fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
-    raw.parse::<SocketAddr>()
-        .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct NodeKeypairConfig {
-    private_key_hex: String,
-    public_key_hex: String,
-}
-
-fn ensure_node_keypair_in_config(path: &Path) -> Result<NodeKeypairConfig, String> {
-    let mut table = load_config_table(path)?;
-    let mut wrote = false;
-
-    let node_table = table
-        .entry(NODE_TABLE_KEY.to_string())
-        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()));
-    let node_table = node_table
-        .as_table_mut()
-        .ok_or_else(|| "config field 'node' must be a table".to_string())?;
-
-    let existing_private = node_table
-        .get(NODE_PRIVATE_KEY_FIELD)
-        .and_then(toml::Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned);
-    let existing_public = node_table
-        .get(NODE_PUBLIC_KEY_FIELD)
-        .and_then(toml::Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned);
-
-    let keypair = match (existing_private, existing_public) {
-        (Some(private_hex), Some(public_hex)) => {
-            validate_node_keypair_hex(private_hex.as_str(), public_hex.as_str())?;
-            NodeKeypairConfig {
-                private_key_hex: private_hex,
-                public_key_hex: public_hex,
-            }
-        }
-        (Some(private_hex), None) => {
-            let signing_key = signing_key_from_hex(private_hex.as_str())?;
-            let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
-            node_table.insert(
-                NODE_PUBLIC_KEY_FIELD.to_string(),
-                toml::Value::String(public_key_hex.clone()),
-            );
-            wrote = true;
-            NodeKeypairConfig {
-                private_key_hex: private_hex,
-                public_key_hex,
-            }
-        }
-        _ => {
-            let signing_key = SigningKey::generate(&mut OsRng);
-            let private_key_hex = hex::encode(signing_key.to_bytes());
-            let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
-            node_table.insert(
-                NODE_PRIVATE_KEY_FIELD.to_string(),
-                toml::Value::String(private_key_hex.clone()),
-            );
-            node_table.insert(
-                NODE_PUBLIC_KEY_FIELD.to_string(),
-                toml::Value::String(public_key_hex.clone()),
-            );
-            wrote = true;
-            NodeKeypairConfig {
-                private_key_hex,
-                public_key_hex,
-            }
-        }
-    };
-
-    if wrote {
-        write_config_table(path, &table)?;
-    }
-    Ok(keypair)
-}
-
-fn load_config_table(path: &Path) -> Result<toml::map::Map<String, toml::Value>, String> {
-    if !path.exists() {
-        return Ok(toml::map::Map::new());
-    }
-
-    let content = fs::read_to_string(path)
-        .map_err(|err| format!("read {} failed: {}", path.display(), err))?;
-    if content.trim().is_empty() {
-        return Ok(toml::map::Map::new());
-    }
-
-    let value: toml::Value = toml::from_str(content.as_str())
-        .map_err(|err| format!("parse {} failed: {}", path.display(), err))?;
-    value
-        .as_table()
-        .cloned()
-        .ok_or_else(|| format!("{} root must be a table", path.display()))
-}
-
-fn write_config_table(
-    path: &Path,
-    table: &toml::map::Map<String, toml::Value>,
-) -> Result<(), String> {
-    let content = toml::to_string_pretty(table)
-        .map_err(|err| format!("serialize {} failed: {}", path.display(), err))?;
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent).map_err(|err| {
-                format!(
-                    "create config parent dir {} failed: {}",
-                    parent.display(),
-                    err
-                )
-            })?;
-        }
-    }
-    fs::write(path, content).map_err(|err| format!("write {} failed: {}", path.display(), err))
-}
-
-fn validate_node_keypair_hex(private_key_hex: &str, public_key_hex: &str) -> Result<(), String> {
-    let signing_key = signing_key_from_hex(private_key_hex)?;
-    let expected_public_hex = hex::encode(signing_key.verifying_key().to_bytes());
-    if expected_public_hex != public_key_hex {
-        return Err("node.public_key does not match node.private_key".to_string());
-    }
-    Ok(())
-}
-
-fn signing_key_from_hex(private_key_hex: &str) -> Result<SigningKey, String> {
-    let private_bytes = hex::decode(private_key_hex)
-        .map_err(|_| "node.private_key must be valid hex".to_string())?;
-    let private_array: [u8; 32] = private_bytes
-        .try_into()
-        .map_err(|_| "node.private_key must be 32-byte hex".to_string())?;
-    Ok(SigningKey::from_bytes(&private_array))
 }
 
 #[cfg(test)]

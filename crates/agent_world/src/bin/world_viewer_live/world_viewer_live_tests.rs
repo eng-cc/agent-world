@@ -48,6 +48,10 @@ fn parse_options_defaults() {
         DEFAULT_REWARD_RUNTIME_REPORT_DIR
     );
     assert_eq!(
+        options.reward_runtime_min_observer_traces,
+        DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES
+    );
+    assert_eq!(
         options.reward_points_per_credit,
         RewardAssetConfig::default().points_per_credit
     );
@@ -119,6 +123,8 @@ fn parse_options_reads_custom_values() {
             "reward-signer-1",
             "--reward-runtime-report-dir",
             "output/reward-custom",
+            "--reward-runtime-min-observer-traces",
+            "3",
             "--reward-distfs-probe-max-sample-bytes",
             "8192",
             "--reward-distfs-probe-per-tick",
@@ -201,6 +207,7 @@ fn parse_options_reads_custom_values() {
         Some("reward-signer-1")
     );
     assert_eq!(options.reward_runtime_report_dir, "output/reward-custom");
+    assert_eq!(options.reward_runtime_min_observer_traces, 3);
     assert_eq!(options.reward_points_per_credit, 7);
     assert_eq!(options.reward_credits_per_power_unit, 3);
     assert_eq!(options.reward_max_redeem_power_per_epoch, 1200);
@@ -358,6 +365,13 @@ fn parse_options_rejects_reward_runtime_with_no_node() {
     let err = parse_options(["--no-node", "--reward-runtime-enable"].into_iter())
         .expect_err("reward runtime requires node");
     assert!(err.contains("--reward-runtime-enable"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_runtime_min_observer_traces() {
+    let err = parse_options(["--reward-runtime-min-observer-traces", "0"].into_iter())
+        .expect_err("reject zero min observer traces");
+    assert!(err.contains("--reward-runtime-min-observer-traces"));
 }
 
 #[test]
