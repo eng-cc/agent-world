@@ -20,6 +20,7 @@
 - 关键构建参数：`RUSTFLAGS` 附加以下 remap 规则：
   - `--remap-path-prefix=$HOME/.cargo=/cargo`
   - `--remap-path-prefix=$HOME/.rustup=/rustup`
+  - `--remap-path-prefix=<rustc_sysroot>=/rustup/toolchain`
   - `--remap-path-prefix=<repo_root>=/workspace`
 - 校验脚本：
   - `scripts/sync-m1-builtin-wasm-artifacts.sh --check`

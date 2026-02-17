@@ -23,6 +23,13 @@ if [[ -n "${HOME:-}" ]]; then
   append_rustflag_once "--remap-path-prefix=$HOME/.rustup=/rustup"
 fi
 append_rustflag_once "--remap-path-prefix=$ROOT_DIR=/workspace"
+
+# Rust std source paths include host triple under sysroot (for example aarch64-apple-darwin
+# or x86_64-unknown-linux-gnu). Remap the concrete sysroot path to avoid cross-host hash drift.
+RUSTC_SYSROOT="$(rustc --print sysroot 2>/dev/null || true)"
+if [[ -n "$RUSTC_SYSROOT" ]]; then
+  append_rustflag_once "--remap-path-prefix=$RUSTC_SYSROOT=/rustup/toolchain"
+fi
 export RUSTFLAGS="$RUSTFLAGS_EFFECTIVE"
 
 env -u RUSTC_WRAPPER cargo run \

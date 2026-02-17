@@ -7,6 +7,8 @@
 - [x] RWH-4 同步并校验 m1/m4 hash 清单（`sync --check`）
 - [x] RWH-5 运行 required tier 回归
 - [x] RWH-6 更新 devlog 并提交
+- [x] RWH-7 补充 `rustc --print sysroot` remap，消除 host triple 进入 wasm 路径
+- [x] RWH-8 复跑 m1/m4 hash 校验与 required tier，确认修复在本地闭环
 
 ## 依赖
 - Rust toolchain `1.92.0`
@@ -16,4 +18,4 @@
 
 ## 状态
 - 当前阶段：已完成
-- 最近更新：RWH-1~RWH-6 全部完成（2026-02-17）
+- 最近更新：RWH-1~RWH-8 全部完成（2026-02-17）
