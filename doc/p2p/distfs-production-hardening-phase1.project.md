@@ -5,7 +5,7 @@
 - [x] DPH1-2：实现 `write_file_if_match` / `delete_file_if_match` 与单元测试。
 - [x] DPH1-3：实现索引审计报告与孤儿 blob 回收能力，并补齐单元测试。
 - [x] DPH1-4：实现文件索引 manifest 导出/导入，并补齐单元测试。
-- [ ] DPH1-5：执行 `agent_world_distfs` 回归测试，回写文档状态与 devlog。
+- [x] DPH1-5：执行 `agent_world_distfs` 回归测试，回写文档状态与 devlog。
 
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_distfs/src/lib.rs`
@@ -13,6 +13,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distfs-production-hardening-phase1.md`
 
 ## 状态
-- 当前阶段：DPH1-4 已完成，进入 DPH1-5。
+- 当前阶段：DPH1-5 已完成，Phase 1 收口。
 - 阻塞项：无。
 - 最近更新：2026-02-17。
