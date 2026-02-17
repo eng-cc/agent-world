@@ -251,6 +251,53 @@ impl LocalCasStore {
         }
         Ok(freed)
     }
+
+    pub fn write_file_if_match(
+        &self,
+        path: &str,
+        expected_content_hash: Option<&str>,
+        bytes: &[u8],
+    ) -> Result<FileMetadata, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let expected_content_hash = normalize_expected_content_hash(expected_content_hash)?;
+        let mut file_index = self.load_file_index()?;
+        ensure_file_hash_precondition(
+            &file_index,
+            &normalized_path,
+            expected_content_hash.as_deref(),
+        )?;
+
+        let content_hash = self.put_bytes(bytes)?;
+        let metadata = FileMetadata {
+            path: normalized_path.clone(),
+            content_hash,
+            size_bytes: bytes.len() as u64,
+            updated_at_ms: now_unix_time_ms(),
+        };
+        file_index.files.insert(normalized_path, metadata.clone());
+        self.save_file_index(&file_index)?;
+        Ok(metadata)
+    }
+
+    pub fn delete_file_if_match(
+        &self,
+        path: &str,
+        expected_content_hash: Option<&str>,
+    ) -> Result<bool, WorldError> {
+        let normalized_path = normalize_file_path(path)?;
+        let expected_content_hash = normalize_expected_content_hash(expected_content_hash)?;
+        let mut file_index = self.load_file_index()?;
+
+        if let Some(expected_hash) = expected_content_hash.as_deref() {
+            ensure_file_hash_precondition(&file_index, &normalized_path, Some(expected_hash))?;
+        }
+
+        let removed = file_index.files.remove(&normalized_path).is_some();
+        if removed {
+            self.save_file_index(&file_index)?;
+        }
+        Ok(removed)
+    }
 }
 
 impl BlobStore for LocalCasStore {
@@ -549,6 +596,43 @@ fn normalize_file_path(path: &str) -> Result<String, WorldError> {
         });
     }
     Ok(normalized.join("/"))
+}
+
+fn normalize_expected_content_hash(
+    expected_content_hash: Option<&str>,
+) -> Result<Option<String>, WorldError> {
+    let Some(content_hash) = expected_content_hash else {
+        return Ok(None);
+    };
+    validate_hash(content_hash)?;
+    Ok(Some(content_hash.to_string()))
+}
+
+fn ensure_file_hash_precondition(
+    file_index: &FileIndexFile,
+    normalized_path: &str,
+    expected_content_hash: Option<&str>,
+) -> Result<(), WorldError> {
+    let Some(expected_content_hash) = expected_content_hash else {
+        return Ok(());
+    };
+    let current = file_index.files.get(normalized_path).ok_or_else(|| {
+        WorldError::DistributedValidationFailed {
+            reason: format!(
+                "file precondition failed: path missing for expected hash path={} expected={}",
+                normalized_path, expected_content_hash
+            ),
+        }
+    })?;
+    if current.content_hash != expected_content_hash {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "file precondition failed: hash mismatch path={} expected={} actual={}",
+                normalized_path, expected_content_hash, current.content_hash
+            ),
+        });
+    }
+    Ok(())
 }
 
 fn now_unix_time_ms() -> i64 {
@@ -857,6 +941,85 @@ mod tests {
                 Err(WorldError::DistributedValidationFailed { .. })
             ));
         }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_write_if_match_enforces_hash_precondition() {
+        let dir = temp_dir("file-cas-write");
+        let store = LocalCasStore::new(&dir);
+
+        let first = store.write_file("state/a.txt", b"v1").expect("write first");
+        let second = store
+            .write_file_if_match("state/a.txt", Some(first.content_hash.as_str()), b"v2")
+            .expect("write with match");
+        assert_ne!(first.content_hash, second.content_hash);
+        assert_eq!(store.read_file("state/a.txt").expect("read"), b"v2");
+
+        let stale_write = store.write_file_if_match("state/a.txt", Some(first.content_hash.as_str()), b"v3");
+        assert!(matches!(
+            stale_write,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let missing_precondition = store.write_file_if_match(
+            "state/missing.txt",
+            Some(first.content_hash.as_str()),
+            b"new",
+        );
+        assert!(matches!(
+            missing_precondition,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_delete_if_match_enforces_hash_precondition() {
+        let dir = temp_dir("file-cas-delete");
+        let store = LocalCasStore::new(&dir);
+
+        let written = store.write_file("state/a.txt", b"v1").expect("write");
+        let mismatch =
+            store.delete_file_if_match("state/a.txt", Some("stale-hash"));
+        assert!(matches!(
+            mismatch,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+        assert!(store.stat_file("state/a.txt").expect("stat").is_some());
+
+        let removed = store
+            .delete_file_if_match("state/a.txt", Some(written.content_hash.as_str()))
+            .expect("delete with match");
+        assert!(removed);
+        assert!(store.stat_file("state/a.txt").expect("stat").is_none());
+        assert!(
+            !store
+                .delete_file_if_match("state/a.txt", None)
+                .expect("delete missing without precondition")
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_store_if_match_rejects_invalid_expected_hash() {
+        let dir = temp_dir("file-cas-invalid-hash");
+        let store = LocalCasStore::new(&dir);
+
+        let write_result = store.write_file_if_match("a.txt", Some("../bad"), b"hello");
+        assert!(matches!(
+            write_result,
+            Err(WorldError::BlobHashInvalid { .. })
+        ));
+
+        let delete_result = store.delete_file_if_match("a.txt", Some("../bad"));
+        assert!(matches!(
+            delete_result,
+            Err(WorldError::BlobHashInvalid { .. })
+        ));
 
         let _ = fs::remove_dir_all(&dir);
     }
