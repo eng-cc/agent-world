@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use wasmparser::Payload;
 
 use wasm_build_suite::{run_build, BuildMetadata, BuildRequest, DEFAULT_TARGET};
 
@@ -31,6 +32,13 @@ fn has_target_installed(target: &str) -> bool {
         && String::from_utf8_lossy(&output.stdout)
             .lines()
             .any(|line| line.trim() == target)
+}
+
+fn contains_custom_section(bytes: &[u8]) -> bool {
+    wasmparser::Parser::new(0)
+        .parse_all(bytes)
+        .filter_map(Result::ok)
+        .any(|payload| matches!(payload, Payload::CustomSection(_)))
 }
 
 #[test]
@@ -98,6 +106,11 @@ fn minimal_template_real_build_writes_wasm_and_metadata() {
     assert_eq!(
         output.wasm_hash_sha256.as_ref().map(|hash| hash.len()),
         Some(64)
+    );
+    let packaged_wasm_bytes = fs::read(&output.packaged_wasm_path).expect("read packaged wasm");
+    assert!(
+        !contains_custom_section(&packaged_wasm_bytes),
+        "packaged wasm should be canonicalized without custom sections"
     );
 
     let metadata_bytes = fs::read(&output.metadata_path).expect("read metadata json");

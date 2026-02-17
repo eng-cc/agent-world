@@ -5,6 +5,8 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use wasm_encoder::{Module, RawSection};
+use wasmparser::Parser;
 
 pub const DEFAULT_TARGET: &str = "wasm32-unknown-unknown";
 pub const DEFAULT_PROFILE: &str = "release";
@@ -76,6 +78,10 @@ pub enum BuildError {
     ManifestNotFound(PathBuf),
     MetadataInvalid(String),
     ArtifactNotFound(PathBuf),
+    WasmTransform {
+        context: String,
+        source: wasmparser::BinaryReaderError,
+    },
 }
 
 impl fmt::Display for BuildError {
@@ -117,6 +123,9 @@ impl fmt::Display for BuildError {
             BuildError::MetadataInvalid(msg) => write!(f, "cargo metadata invalid: {msg}"),
             BuildError::ArtifactNotFound(path) => {
                 write!(f, "wasm artifact not found: {}", path.display())
+            }
+            BuildError::WasmTransform { context, source } => {
+                write!(f, "wasm transform error ({context}): {source}")
             }
         }
     }
@@ -191,10 +200,11 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
         path: Some(artifact_path.clone()),
         source,
     })?;
-    let wasm_size_bytes = u64::try_from(wasm_bytes.len()).map_err(|_| {
+    let canonical_wasm_bytes = canonicalize_wasm_bytes(&wasm_bytes)?;
+    let wasm_size_bytes = u64::try_from(canonical_wasm_bytes.len()).map_err(|_| {
         BuildError::MetadataInvalid("wasm size overflow while converting usize to u64".to_string())
     })?;
-    let wasm_hash_sha256 = sha256_hex(&wasm_bytes);
+    let wasm_hash_sha256 = sha256_hex(&canonical_wasm_bytes);
 
     if let Some(parent) = packaged_wasm_path.parent() {
         fs::create_dir_all(parent).map_err(|source| BuildError::Io {
@@ -203,7 +213,7 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
         })?;
     }
 
-    fs::copy(&artifact_path, &packaged_wasm_path).map_err(|source| BuildError::Io {
+    fs::write(&packaged_wasm_path, &canonical_wasm_bytes).map_err(|source| BuildError::Io {
         path: Some(packaged_wasm_path.clone()),
         source,
     })?;
@@ -379,6 +389,41 @@ fn run_command_capture(program: &str, args: &[String]) -> Result<std::process::O
     Ok(output)
 }
 
+// Strip custom sections (debug/producers/name/path metadata) so hash checks track
+// executable Wasm semantics instead of host/toolchain metadata drift.
+fn canonicalize_wasm_bytes(wasm_bytes: &[u8]) -> Result<Vec<u8>, BuildError> {
+    let mut module = Module::new();
+    for payload in Parser::new(0).parse_all(wasm_bytes) {
+        let payload = payload.map_err(|source| BuildError::WasmTransform {
+            context: "parse wasm payload".to_string(),
+            source,
+        })?;
+        let Some((section_id, section_range)) = payload.as_section() else {
+            continue;
+        };
+
+        if section_id == 0 {
+            continue;
+        }
+
+        let section_bytes = wasm_bytes
+            .get(section_range.start..section_range.end)
+            .ok_or_else(|| {
+                BuildError::MetadataInvalid(format!(
+                    "invalid wasm section range start={} end={} len={}",
+                    section_range.start,
+                    section_range.end,
+                    wasm_bytes.len()
+                ))
+            })?;
+        module.section(&RawSection {
+            id: section_id,
+            data: section_bytes,
+        });
+    }
+    Ok(module.finish())
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -396,7 +441,10 @@ fn normalize_artifact_name(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
     use std::path::Path;
+    use wasm_encoder::CustomSection;
+    use wasmparser::Payload;
 
     fn sample_request() -> BuildRequest {
         BuildRequest {
@@ -482,5 +530,29 @@ mod tests {
     #[test]
     fn normalize_artifact_name_replaces_hyphen() {
         assert_eq!(normalize_artifact_name("alpha-beta"), "alpha_beta");
+    }
+
+    #[test]
+    fn canonicalize_wasm_bytes_drops_all_custom_sections() {
+        let mut module = Module::new();
+        module.section(&CustomSection {
+            name: Cow::Borrowed("name"),
+            data: Cow::Borrowed(b"debug-name-bytes"),
+        });
+        module.section(&CustomSection {
+            name: Cow::Borrowed("producers"),
+            data: Cow::Borrowed(b"debug-producers-bytes"),
+        });
+        let input = module.finish();
+
+        let canonical = canonicalize_wasm_bytes(&input).expect("canonicalize wasm");
+        let has_custom = Parser::new(0)
+            .parse_all(&canonical)
+            .filter_map(Result::ok)
+            .any(|payload| matches!(payload, Payload::CustomSection(_)));
+        assert!(
+            !has_custom,
+            "canonicalized wasm should not keep custom sections"
+        );
     }
 }
