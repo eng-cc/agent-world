@@ -379,6 +379,7 @@ pub fn build_world_model(
             init.origin.profile.clone(),
         );
         location.resources = init.origin.resources.clone();
+        strip_location_electricity(&mut location.resources);
         insert_location(&mut model, location)?;
     }
 
@@ -410,6 +411,7 @@ pub fn build_world_model(
             location_seed.profile.clone(),
         );
         location.resources = location_seed.resources.clone();
+        strip_location_electricity(&mut location.resources);
         insert_location(&mut model, location)?;
     }
 
@@ -1111,6 +1113,10 @@ fn ensure_valid_stock(stock: &ResourceStock) -> Result<(), WorldInitError> {
         }
     }
     Ok(())
+}
+
+fn strip_location_electricity(stock: &mut ResourceStock) {
+    stock.amounts.remove(&ResourceKind::Electricity);
 }
 
 fn ensure_owner_exists(model: &WorldModel, owner: &ResourceOwner) -> Result<(), WorldInitError> {

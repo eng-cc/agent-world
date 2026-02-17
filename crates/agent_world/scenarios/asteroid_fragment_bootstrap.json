@@ -8,6 +8,6 @@
     "resources": { "amounts": { "electricity": 15 } }
   },
   "origin": {
-    "resources": { "amounts": { "electricity": 50, "hardware": 10 } }
+    "resources": { "amounts": { "hardware": 10 } }
   }
 }

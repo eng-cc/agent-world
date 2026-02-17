@@ -355,7 +355,7 @@ fn resource_bootstrap_seeds_stock() {
     let origin = model.locations.get("origin").expect("origin exists");
     let agent = model.agents.get("agent-0").expect("agent exists");
 
-    assert_eq!(origin.resources.get(ResourceKind::Electricity), 100);
+    assert_eq!(origin.resources.get(ResourceKind::Electricity), 0);
     assert_eq!(origin.resources.get(ResourceKind::Hardware), 20);
     assert_eq!(agent.resources.get(ResourceKind::Data), 10);
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 25);

@@ -1,7 +1,10 @@
 use super::super::power::{AgentPowerState, ConsumeReason, PlantStatus, PowerEvent};
-use super::super::types::{AgentId, FacilityId, ResourceKind, ResourceOwner, StockError};
+use super::super::types::{AgentId, FacilityId, ResourceKind};
 use super::types::{RejectReason, WorldEvent, WorldEventKind};
 use super::WorldKernel;
+
+const LOCATION_ELECTRICITY_POOL_REMOVED_NOTE: &str = "location electricity pool removed";
+const FACTORY_KIND_RADIATION_POWER_MK1: &str = "factory.power.radiation.mk1";
 
 impl WorldKernel {
     /// Process power consumption for all agents (idle consumption).
@@ -96,7 +99,7 @@ impl WorldKernel {
         let plant_ids: Vec<FacilityId> = self.model.power_plants.keys().cloned().collect();
 
         for plant_id in plant_ids {
-            let (output, location_id) = {
+            let (base_output, location_id, owner) = {
                 let plant = match self.model.power_plants.get_mut(&plant_id) {
                     Some(plant) => plant,
                     None => continue,
@@ -106,30 +109,47 @@ impl WorldKernel {
                     continue;
                 }
                 let output = plant.effective_output();
-                plant.current_output = output;
-                (output, plant.location_id.clone())
+                (output, plant.location_id.clone(), plant.owner.clone())
             };
 
+            if base_output <= 0 {
+                continue;
+            }
+            let mut output = base_output;
+
+            let is_radiation_power_factory =
+                self.model.factories.get(&plant_id).is_some_and(|factory| {
+                    factory
+                        .kind
+                        .eq_ignore_ascii_case(FACTORY_KIND_RADIATION_POWER_MK1)
+                });
+            if is_radiation_power_factory {
+                let Some(location) = self.model.locations.get(&location_id) else {
+                    continue;
+                };
+                let available_radiation = self.radiation_available_at(location.pos).max(0);
+                output = output.min(available_radiation);
+            }
+            if let Some(plant) = self.model.power_plants.get_mut(&plant_id) {
+                plant.current_output = output;
+            }
             if output <= 0 {
                 continue;
             }
 
-            if let Some(location) = self.model.locations.get_mut(&location_id) {
-                if location
-                    .resources
-                    .add(ResourceKind::Electricity, output)
-                    .is_err()
-                {
-                    continue;
-                }
-                let power_event = PowerEvent::PowerGenerated {
-                    plant_id: plant_id.clone(),
-                    location_id: location_id.clone(),
-                    amount: output,
-                };
-                let event = self.record_event(super::types::WorldEventKind::Power(power_event));
-                events.push(event);
+            if self
+                .add_to_owner(&owner, ResourceKind::Electricity, output)
+                .is_err()
+            {
+                continue;
             }
+            let power_event = PowerEvent::PowerGenerated {
+                plant_id: plant_id.clone(),
+                location_id: location_id.clone(),
+                amount: output,
+            };
+            let event = self.record_event(super::types::WorldEventKind::Power(power_event));
+            events.push(event);
         }
 
         events
@@ -166,104 +186,9 @@ impl WorldKernel {
         storage_id: &FacilityId,
         requested_input: i64,
     ) -> Result<PowerEvent, RejectReason> {
-        if requested_input <= 0 {
-            return Err(RejectReason::InvalidAmount {
-                amount: requested_input,
-            });
-        }
-        let location_id = self
-            .model
-            .power_storages
-            .get(storage_id)
-            .map(|storage| storage.location_id.clone())
-            .ok_or_else(|| RejectReason::FacilityNotFound {
-                facility_id: storage_id.clone(),
-            })?;
-        let available = self
-            .model
-            .locations
-            .get(&location_id)
-            .map(|location| location.resources.get(ResourceKind::Electricity))
-            .ok_or_else(|| RejectReason::LocationNotFound {
-                location_id: location_id.clone(),
-            })?;
-        if available <= 0 {
-            return Err(RejectReason::InsufficientResource {
-                owner: ResourceOwner::Location { location_id },
-                kind: ResourceKind::Electricity,
-                requested: requested_input,
-                available,
-            });
-        }
-        let (input, stored) = {
-            let storage = self
-                .model
-                .power_storages
-                .get_mut(storage_id)
-                .ok_or_else(|| RejectReason::FacilityNotFound {
-                    facility_id: storage_id.clone(),
-                })?;
-            let remaining_capacity = storage.capacity - storage.current_level;
-            if remaining_capacity <= 0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_input,
-                });
-            }
-            if storage.charge_efficiency <= 0.0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_input,
-                });
-            }
-            let max_input_by_capacity =
-                (remaining_capacity as f64 / storage.charge_efficiency).floor() as i64;
-            let input = requested_input
-                .min(available)
-                .min(storage.max_charge_rate)
-                .min(max_input_by_capacity);
-            if input <= 0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_input,
-                });
-            }
-            let stored = (input as f64 * storage.charge_efficiency).floor() as i64;
-            if stored <= 0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_input,
-                });
-            }
-            storage.current_level = storage.current_level.saturating_add(stored);
-            (input, stored)
-        };
-
-        let location = self.model.locations.get_mut(&location_id).ok_or_else(|| {
-            RejectReason::LocationNotFound {
-                location_id: location_id.clone(),
-            }
-        })?;
-        location
-            .resources
-            .remove(ResourceKind::Electricity, input)
-            .map_err(|err| match err {
-                StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
-                StockError::Insufficient {
-                    requested,
-                    available,
-                    ..
-                } => RejectReason::InsufficientResource {
-                    owner: ResourceOwner::Location {
-                        location_id: location_id.clone(),
-                    },
-                    kind: ResourceKind::Electricity,
-                    requested,
-                    available,
-                },
-            })?;
-
-        Ok(PowerEvent::PowerStored {
-            storage_id: storage_id.clone(),
-            location_id,
-            input,
-            stored,
+        let _ = (storage_id, requested_input);
+        Err(RejectReason::RuleDenied {
+            notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
         })
     }
 
@@ -272,74 +197,9 @@ impl WorldKernel {
         storage_id: &FacilityId,
         requested_output: i64,
     ) -> Result<PowerEvent, RejectReason> {
-        if requested_output <= 0 {
-            return Err(RejectReason::InvalidAmount {
-                amount: requested_output,
-            });
-        }
-        let location_id = self
-            .model
-            .power_storages
-            .get(storage_id)
-            .map(|storage| storage.location_id.clone())
-            .ok_or_else(|| RejectReason::FacilityNotFound {
-                facility_id: storage_id.clone(),
-            })?;
-        if !self.model.locations.contains_key(&location_id) {
-            return Err(RejectReason::LocationNotFound { location_id });
-        }
-        let (output, drawn) = {
-            let storage = self
-                .model
-                .power_storages
-                .get_mut(storage_id)
-                .ok_or_else(|| RejectReason::FacilityNotFound {
-                    facility_id: storage_id.clone(),
-                })?;
-            if storage.discharge_efficiency <= 0.0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_output,
-                });
-            }
-            let max_output_by_storage =
-                (storage.current_level as f64 * storage.discharge_efficiency).floor() as i64;
-            let output = requested_output
-                .min(storage.max_discharge_rate)
-                .min(max_output_by_storage);
-            if output <= 0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_output,
-                });
-            }
-            let drawn = (output as f64 / storage.discharge_efficiency).ceil() as i64;
-            let drawn = drawn.min(storage.current_level);
-            if drawn <= 0 {
-                return Err(RejectReason::InvalidAmount {
-                    amount: requested_output,
-                });
-            }
-            storage.current_level = storage.current_level.saturating_sub(drawn);
-            (output, drawn)
-        };
-
-        let location = self.model.locations.get_mut(&location_id).ok_or_else(|| {
-            RejectReason::LocationNotFound {
-                location_id: location_id.clone(),
-            }
-        })?;
-        location
-            .resources
-            .add(ResourceKind::Electricity, output)
-            .map_err(|err| match err {
-                StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
-                StockError::Insufficient { .. } => RejectReason::InvalidAmount { amount: output },
-            })?;
-
-        Ok(PowerEvent::PowerDischarged {
-            storage_id: storage_id.clone(),
-            location_id,
-            output,
-            drawn,
+        let _ = (storage_id, requested_output);
+        Err(RejectReason::RuleDenied {
+            notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
         })
     }
 

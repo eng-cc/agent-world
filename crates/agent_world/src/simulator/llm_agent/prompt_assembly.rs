@@ -260,7 +260,7 @@ impl PromptAssembler {
 - transfer_resource.kind 仅允许 electricity/compound/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
-- factory_kind 当前支持：factory.assembler.mk1（留空将被拒绝）
+- factory_kind 当前支持：factory.assembler.mk1、factory.power.radiation.mk1（留空将被拒绝）
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
 - schedule_recipe.batches 必须是正整数
 - 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8

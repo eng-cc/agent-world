@@ -7,23 +7,23 @@
 - [x] 输出项目管理文档（本文件）
 
 ### R2 Location 电力池下线
-- [ ] 初始化清洗 Location `electricity` 库存（场景/初始化统一口径）
-- [ ] 下线 `DrawPower` / `StorePower` 动作路径
-- [ ] 限制 `BuyPower` / `SellPower`：Location owner 参与电力交易时拒绝
-- [ ] 发电入账路径不再写 Location 电力库存
+- [x] 初始化清洗 Location `electricity` 库存（场景/初始化统一口径）
+- [x] 下线 `DrawPower` / `StorePower` 动作路径
+- [x] 限制 `BuyPower` / `SellPower`：Location owner 参与电力交易时拒绝
+- [x] 发电入账路径不再写 Location 电力库存
 
 ### R3 Agent 辐射电厂建造
-- [ ] 新增 `factory.power.radiation.mk1` 可建造类型
-- [ ] `BuildFactory` 对该类型同步注册 `PowerPlant`
-- [ ] 发电入账到 owner（Agent）资源
-- [ ] 更新 LLM 提示（`factory_kind` 支持集）
+- [x] 新增 `factory.power.radiation.mk1` 可建造类型
+- [x] `BuildFactory` 对该类型同步注册 `PowerPlant`
+- [x] 发电入账到 owner（Agent）资源
+- [x] 更新 LLM 提示（`factory_kind` 支持集）
 
 ### R4 测试与收口
-- [ ] 更新 simulator 单元测试（power/kernel/init/llm 相关）
-- [ ] 运行 required-tier 测试命令并通过
-- [ ] 更新本项目文档状态
-- [ ] 追加当日 `doc/devlog/2026-02-17.md`
-- [ ] 提交 git commit
+- [x] 更新 simulator 单元测试（power/kernel/init/llm 相关）
+- [x] 运行 required-tier 测试命令并通过
+- [x] 更新本项目文档状态
+- [x] 追加当日 `doc/devlog/2026-02-17.md`
+- [x] 提交 git commit
 
 ## 依赖
 - `crates/agent_world/src/simulator/kernel/actions.rs`
@@ -34,5 +34,5 @@
 - `crates/agent_world/src/simulator/tests/*`
 
 ## 状态
-- 当前阶段：R1 完成，进入 R2
-- 下一阶段：R2 Location 电力池下线
+- 当前阶段：R1-R4 已完成
+- 下一阶段：无（等待新需求）

@@ -47,6 +47,15 @@ fn kernel_action_behavior_snapshot_stays_stable() {
     });
     kinds.push(event_kind_json(&kernel.step().expect("harvest")));
 
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "agent-1".to_string(),
+        },
+        ResourceKind::Data,
+        3,
+    );
+
     kernel.submit_action(Action::TransferResource {
         from: ResourceOwner::Agent {
             agent_id: "agent-1".to_string(),
@@ -54,7 +63,7 @@ fn kernel_action_behavior_snapshot_stays_stable() {
         to: ResourceOwner::Location {
             location_id: "loc-a".to_string(),
         },
-        kind: ResourceKind::Electricity,
+        kind: ResourceKind::Data,
         amount: 3,
     });
     kinds.push(event_kind_json(&kernel.step().expect("transfer")));
@@ -176,7 +185,7 @@ fn kernel_action_behavior_snapshot_stays_stable() {
                     "type": "Location",
                     "data": { "location_id": "loc-a" }
                 },
-                "kind": "electricity",
+                "kind": "data",
                 "amount": 3
             }
         },
@@ -248,7 +257,7 @@ fn kernel_action_behavior_snapshot_stays_stable() {
 
     let agent = kernel.model().agents.get("agent-1").expect("agent exists");
     assert_eq!(agent.location_id, "loc-b");
-    assert_eq!(agent.resources.get(ResourceKind::Electricity), 0);
+    assert_eq!(agent.resources.get(ResourceKind::Electricity), 3);
     assert_eq!(agent.resources.get(ResourceKind::Hardware), 1);
 
     let origin = kernel
@@ -256,5 +265,6 @@ fn kernel_action_behavior_snapshot_stays_stable() {
         .locations
         .get("loc-a")
         .expect("origin exists");
-    assert_eq!(origin.resources.get(ResourceKind::Electricity), 3);
+    assert_eq!(origin.resources.get(ResourceKind::Electricity), 0);
+    assert_eq!(origin.resources.get(ResourceKind::Data), 3);
 }

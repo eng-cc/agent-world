@@ -4,7 +4,7 @@
   "seed": 5,
   "asteroid_fragment": { "enabled": true, "min_fragment_spacing_cm": 50000 },
   "origin": {
-    "resources": { "amounts": { "electricity": 80, "data": 16 } }
+    "resources": { "amounts": { "data": 16 } }
   },
   "agents": {
     "count": 1,

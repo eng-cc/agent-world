@@ -717,6 +717,7 @@ pub struct EconomyConfig {
     pub refine_hardware_yield_ppm: i64,
     pub factory_build_electricity_cost: i64,
     pub factory_build_hardware_cost: i64,
+    pub radiation_power_plant_output_per_tick: i64,
     pub recipe_electricity_cost_per_batch: i64,
     pub recipe_hardware_cost_per_batch: i64,
     pub recipe_data_output_per_batch: i64,
@@ -732,6 +733,7 @@ impl Default for EconomyConfig {
             refine_hardware_yield_ppm: 1_000,
             factory_build_electricity_cost: 10,
             factory_build_hardware_cost: 5,
+            radiation_power_plant_output_per_tick: 8,
             recipe_electricity_cost_per_batch: 6,
             recipe_hardware_cost_per_batch: 2,
             recipe_data_output_per_batch: 1,
@@ -764,6 +766,9 @@ impl EconomyConfig {
         }
         if self.factory_build_hardware_cost < 0 {
             self.factory_build_hardware_cost = 0;
+        }
+        if self.radiation_power_plant_output_per_tick < 0 {
+            self.radiation_power_plant_output_per_tick = 0;
         }
         if self.recipe_electricity_cost_per_batch < 0 {
             self.recipe_electricity_cost_per_batch = 0;

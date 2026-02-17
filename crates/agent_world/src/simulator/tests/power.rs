@@ -1,5 +1,4 @@
 use super::*;
-use crate::geometry::space_distance_cm;
 
 #[test]
 fn power_idle_consumption_depletes_agent() {
@@ -286,11 +285,15 @@ fn power_generation_creates_electricity() {
         pos: pos(0.0, 0.0),
         profile: LocationProfile::default(),
     });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
     kernel.submit_action(Action::RegisterPowerPlant {
         facility_id: "plant-1".to_string(),
         location_id: "loc-1".to_string(),
-        owner: ResourceOwner::Location {
-            location_id: "loc-1".to_string(),
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-1".to_string(),
         },
         capacity_per_tick: 50,
         fuel_cost_per_pu: 0,
@@ -302,6 +305,74 @@ fn power_generation_creates_electricity() {
 
     let events = kernel.process_power_generation_tick();
     assert!(!events.is_empty());
+    let level = kernel
+        .model()
+        .agents
+        .get("agent-1")
+        .expect("agent exists")
+        .resources
+        .get(ResourceKind::Electricity);
+    assert_eq!(level, 50);
+}
+
+#[test]
+fn build_radiation_power_factory_registers_plant_and_generates_to_owner() {
+    let mut config = WorldConfig::default();
+    config.economy.factory_build_electricity_cost = 0;
+    config.economy.factory_build_hardware_cost = 0;
+    config.economy.radiation_power_plant_output_per_tick = 12;
+    config.physics.radiation_floor = 0;
+    config.physics.radiation_floor_cap_per_tick = 0;
+    let mut kernel = WorldKernel::with_config(config);
+
+    let mut profile = LocationProfile::default();
+    profile.radiation_emission_per_tick = 100;
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "plant".to_string(),
+        pos: pos(0.0, 0.0),
+        profile,
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::BuildFactory {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-1".to_string(),
+        },
+        location_id: "loc-1".to_string(),
+        factory_id: "factory.power.alpha".to_string(),
+        factory_kind: "factory.power.radiation.mk1".to_string(),
+    });
+    let event = kernel.step().expect("build radiation power factory");
+    assert!(matches!(event.kind, WorldEventKind::FactoryBuilt { .. }));
+    assert!(kernel.model().factories.contains_key("factory.power.alpha"));
+    assert!(kernel
+        .model()
+        .power_plants
+        .contains_key("factory.power.alpha"));
+
+    let events = kernel.process_power_generation_tick();
+    assert!(!events.is_empty());
+    let level = kernel
+        .model()
+        .agents
+        .get("agent-1")
+        .expect("agent exists")
+        .resources
+        .get(ResourceKind::Electricity);
+    assert_eq!(level, 12);
+    let location_level = kernel
+        .model()
+        .locations
+        .get("loc-1")
+        .expect("location exists")
+        .resources
+        .get(ResourceKind::Electricity);
+    assert_eq!(location_level, 0);
 }
 
 #[test]
@@ -329,10 +400,10 @@ fn power_storage_charge_and_discharge() {
     kernel.step_until_empty();
 
     let discharge_event = kernel.discharge_power_storage(&"storage-1".to_string(), 25);
-    assert!(discharge_event.is_some());
+    assert!(discharge_event.is_none());
 
     let charge_event = kernel.charge_power_storage(&"storage-1".to_string(), 10);
-    assert!(charge_event.is_some());
+    assert!(charge_event.is_none());
 }
 
 #[test]
@@ -343,18 +414,6 @@ fn power_store_and_draw_actions() {
         name: "hub".to_string(),
         pos: pos(0.0, 0.0),
         profile: LocationProfile::default(),
-    });
-    kernel.submit_action(Action::RegisterPowerPlant {
-        facility_id: "plant-1".to_string(),
-        location_id: "loc-1".to_string(),
-        owner: ResourceOwner::Location {
-            location_id: "loc-1".to_string(),
-        },
-        capacity_per_tick: 100,
-        fuel_cost_per_pu: 0,
-        maintenance_cost: 0,
-        efficiency: 1.0,
-        degradation: 0.0,
     });
     kernel.submit_action(Action::RegisterPowerStorage {
         facility_id: "storage-1".to_string(),
@@ -370,154 +429,35 @@ fn power_store_and_draw_actions() {
         max_discharge_rate: 100,
     });
     kernel.step_until_empty();
-    kernel.process_power_generation_tick();
 
     kernel.submit_action(Action::StorePower {
         storage_id: "storage-1".to_string(),
         amount: 40,
     });
     let event = kernel.step().unwrap();
-    match event.kind {
-        WorldEventKind::Power(PowerEvent::PowerStored {
-            storage_id,
-            input,
-            stored,
-            ..
-        }) => {
-            assert_eq!(storage_id, "storage-1");
-            assert_eq!(input, 40);
-            assert_eq!(stored, 40);
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { .. }
         }
-        other => panic!("unexpected event: {other:?}"),
-    }
+    ));
 
     kernel.submit_action(Action::DrawPower {
         storage_id: "storage-1".to_string(),
         amount: 15,
     });
     let event = kernel.step().unwrap();
-    match event.kind {
-        WorldEventKind::Power(PowerEvent::PowerDischarged {
-            storage_id,
-            output,
-            drawn,
-            ..
-        }) => {
-            assert_eq!(storage_id, "storage-1");
-            assert_eq!(output, 15);
-            assert_eq!(drawn, 15);
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { .. }
         }
-        other => panic!("unexpected event: {other:?}"),
-    }
+    ));
 }
 
 #[test]
-fn power_buy_applies_transfer_loss() {
-    let mut config = WorldConfig::default();
-    config.power.transfer_loss_per_km_bps = 1000;
-    config.power.transfer_max_distance_km = 10;
-    let mut kernel = WorldKernel::with_config(config.clone());
-
-    let loc1_pos = pos(0.0, 0.0);
-    let loc2_pos = pos(0.0, CM_PER_KM as f64);
-    kernel.submit_action(Action::RegisterLocation {
-        location_id: "loc-1".to_string(),
-        name: "source".to_string(),
-        pos: loc1_pos,
-        profile: LocationProfile::default(),
-    });
-    kernel.submit_action(Action::RegisterLocation {
-        location_id: "loc-2".to_string(),
-        name: "sink".to_string(),
-        pos: loc2_pos,
-        profile: LocationProfile::default(),
-    });
-    kernel.submit_action(Action::RegisterPowerPlant {
-        facility_id: "plant-1".to_string(),
-        location_id: "loc-1".to_string(),
-        owner: ResourceOwner::Location {
-            location_id: "loc-1".to_string(),
-        },
-        capacity_per_tick: 200,
-        fuel_cost_per_pu: 0,
-        maintenance_cost: 0,
-        efficiency: 1.0,
-        degradation: 0.0,
-    });
-    kernel.step_until_empty();
-    kernel.process_power_generation_tick();
-
-    let distance_cm = space_distance_cm(loc1_pos, loc2_pos);
-    let distance_km = (distance_cm + CM_PER_KM - 1) / CM_PER_KM;
-    let amount = 100;
-    let expected_loss = (amount as i128)
-        .saturating_mul(distance_km as i128)
-        .saturating_mul(config.power.transfer_loss_per_km_bps as i128)
-        / 10_000;
-
-    kernel.submit_action(Action::BuyPower {
-        buyer: ResourceOwner::Location {
-            location_id: "loc-2".to_string(),
-        },
-        seller: ResourceOwner::Location {
-            location_id: "loc-1".to_string(),
-        },
-        amount,
-        price_per_pu: 1,
-    });
-    let event = kernel.step().unwrap();
-    match event.kind {
-        WorldEventKind::Power(PowerEvent::PowerTransferred {
-            from,
-            to,
-            amount: transferred,
-            loss,
-            price_per_pu,
-        }) => {
-            assert_eq!(
-                from,
-                ResourceOwner::Location {
-                    location_id: "loc-1".to_string()
-                }
-            );
-            assert_eq!(
-                to,
-                ResourceOwner::Location {
-                    location_id: "loc-2".to_string()
-                }
-            );
-            assert_eq!(transferred, amount);
-            assert_eq!(loss, expected_loss as i64);
-            assert_eq!(price_per_pu, 1);
-        }
-        other => panic!("unexpected event: {other:?}"),
-    }
-
-    let source_power = kernel
-        .model()
-        .locations
-        .get("loc-1")
-        .unwrap()
-        .resources
-        .get(ResourceKind::Electricity);
-    let sink_power = kernel
-        .model()
-        .locations
-        .get("loc-2")
-        .unwrap()
-        .resources
-        .get(ResourceKind::Electricity);
-    assert_eq!(source_power, 200 - amount);
-    assert_eq!(sink_power, amount - expected_loss as i64);
-}
-
-#[test]
-fn power_transfer_rejects_out_of_range() {
-    let mut config = WorldConfig::default();
-    config.power.transfer_loss_per_km_bps = 10;
-    config.power.transfer_max_distance_km = 0;
-    let mut kernel = WorldKernel::with_config(config);
-
+fn power_buy_rejects_when_location_owner_involved() {
+    let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-1".to_string(),
         name: "source".to_string(),
@@ -527,23 +467,10 @@ fn power_transfer_rejects_out_of_range() {
     kernel.submit_action(Action::RegisterLocation {
         location_id: "loc-2".to_string(),
         name: "sink".to_string(),
-        pos: pos(0.0, 1.0),
+        pos: pos(0.0, CM_PER_KM as f64),
         profile: LocationProfile::default(),
     });
-    kernel.submit_action(Action::RegisterPowerPlant {
-        facility_id: "plant-1".to_string(),
-        location_id: "loc-1".to_string(),
-        owner: ResourceOwner::Location {
-            location_id: "loc-1".to_string(),
-        },
-        capacity_per_tick: 50,
-        fuel_cost_per_pu: 0,
-        maintenance_cost: 0,
-        efficiency: 1.0,
-        degradation: 0.0,
-    });
     kernel.step_until_empty();
-    kernel.process_power_generation_tick();
 
     kernel.submit_action(Action::BuyPower {
         buyer: ResourceOwner::Location {
@@ -556,13 +483,101 @@ fn power_transfer_rejects_out_of_range() {
         price_per_pu: 1,
     });
     let event = kernel.step().unwrap();
-    match event.kind {
-        WorldEventKind::ActionRejected { reason } => {
-            assert!(matches!(
-                reason,
-                RejectReason::PowerTransferDistanceExceeded { .. }
-            ));
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { .. }
         }
-        other => panic!("unexpected event: {other:?}"),
-    }
+    ));
+}
+
+#[test]
+fn power_buy_allows_between_colocated_agents() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "hub".to_string(),
+        name: "hub".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "seller".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "buyer".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.step_until_empty();
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        ResourceKind::Electricity,
+        20,
+    );
+
+    kernel.submit_action(Action::BuyPower {
+        buyer: ResourceOwner::Agent {
+            agent_id: "buyer".to_string(),
+        },
+        seller: ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        amount: 10,
+        price_per_pu: 1,
+    });
+    let event = kernel.step().unwrap();
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::Power(PowerEvent::PowerTransferred { loss: 0, .. })
+    ));
+
+    let seller = kernel.model().agents.get("seller").expect("seller exists");
+    let buyer = kernel.model().agents.get("buyer").expect("buyer exists");
+    assert_eq!(seller.resources.get(ResourceKind::Electricity), 10);
+    assert_eq!(buyer.resources.get(ResourceKind::Electricity), 10);
+}
+
+#[test]
+fn power_transfer_rejects_when_location_owner_involved() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "source".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "seller".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        ResourceKind::Electricity,
+        20,
+    );
+
+    kernel.submit_action(Action::SellPower {
+        seller: ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        buyer: ResourceOwner::Location {
+            location_id: "loc-1".to_string(),
+        },
+        amount: 10,
+        price_per_pu: 1,
+    });
+    let event = kernel.step().unwrap();
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { .. }
+        }
+    ));
 }

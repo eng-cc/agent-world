@@ -21,6 +21,9 @@ struct RecipePlan {
     finished_product_units_per_batch: i64,
 }
 
+const LOCATION_ELECTRICITY_POOL_REMOVED_NOTE: &str = "location electricity pool removed";
+const FACTORY_KIND_RADIATION_POWER_MK1: &str = "factory.power.radiation.mk1";
+
 impl WorldKernel {
     pub(super) fn apply_action(&mut self, action: Action) -> WorldEventKind {
         match action {
@@ -260,18 +263,16 @@ impl WorldKernel {
                 }
                 WorldEventKind::ModuleVisualEntityRemoved { entity_id }
             }
-            Action::DrawPower { storage_id, amount } => {
-                match self.discharge_power_storage_event(&storage_id, amount) {
-                    Ok(power_event) => WorldEventKind::Power(power_event),
-                    Err(reason) => WorldEventKind::ActionRejected { reason },
-                }
-            }
-            Action::StorePower { storage_id, amount } => {
-                match self.charge_power_storage_event(&storage_id, amount) {
-                    Ok(power_event) => WorldEventKind::Power(power_event),
-                    Err(reason) => WorldEventKind::ActionRejected { reason },
-                }
-            }
+            Action::DrawPower { .. } => WorldEventKind::ActionRejected {
+                reason: RejectReason::RuleDenied {
+                    notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
+                },
+            },
+            Action::StorePower { .. } => WorldEventKind::ActionRejected {
+                reason: RejectReason::RuleDenied {
+                    notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
+                },
+            },
             Action::MoveAgent { agent_id, to } => {
                 let to_pos = match self.model.locations.get(&to) {
                     Some(location) => location.pos,
@@ -763,6 +764,18 @@ impl WorldKernel {
                         },
                     };
                 }
+                let is_radiation_power_factory =
+                    factory_kind.eq_ignore_ascii_case(FACTORY_KIND_RADIATION_POWER_MK1);
+                if is_radiation_power_factory
+                    && (self.model.power_plants.contains_key(&factory_id)
+                        || self.model.power_storages.contains_key(&factory_id))
+                {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::FacilityAlreadyExists {
+                            facility_id: factory_id,
+                        },
+                    };
+                }
                 if let Err(reason) = self.ensure_owner_exists(&owner) {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -828,6 +841,26 @@ impl WorldKernel {
                         kind: factory_kind.clone(),
                     },
                 );
+                if is_radiation_power_factory {
+                    self.model.power_plants.insert(
+                        factory_id.clone(),
+                        PowerPlant {
+                            id: factory_id.clone(),
+                            location_id: location_id.clone(),
+                            owner: owner.clone(),
+                            capacity_per_tick: self
+                                .config
+                                .economy
+                                .radiation_power_plant_output_per_tick,
+                            current_output: 0,
+                            fuel_cost_per_pu: 0,
+                            maintenance_cost: 0,
+                            status: PlantStatus::Running,
+                            efficiency: 1.0,
+                            degradation: 0.0,
+                        },
+                    );
+                }
                 WorldEventKind::FactoryBuilt {
                     owner,
                     location_id,
@@ -977,6 +1010,13 @@ impl WorldKernel {
         self.ensure_owner_exists(from)?;
         self.ensure_owner_exists(to)?;
         self.ensure_owner_chunks_generated(from, to)?;
+        if matches!(from, ResourceOwner::Location { .. })
+            || matches!(to, ResourceOwner::Location { .. })
+        {
+            return Err(RejectReason::RuleDenied {
+                notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
+            });
+        }
 
         let from_location = self.owner_location_id(from)?;
         let to_location = self.owner_location_id(to)?;
@@ -1268,7 +1308,7 @@ impl WorldKernel {
         Ok(())
     }
 
-    fn radiation_available_at(&self, harvest_pos: GeoPos) -> i64 {
+    pub(super) fn radiation_available_at(&self, harvest_pos: GeoPos) -> i64 {
         let physics = &self.config.physics;
         let near_range_cm = CHUNK_SIZE_X_CM.max(1) as f64;
         let mut near_sources = 0.0;
@@ -1518,12 +1558,19 @@ impl WorldKernel {
         }
     }
 
-    fn remove_from_owner(
+    pub(super) fn remove_from_owner(
         &mut self,
         owner: &ResourceOwner,
         kind: ResourceKind,
         amount: i64,
     ) -> Result<(), RejectReason> {
+        if matches!(owner, ResourceOwner::Location { .. })
+            && matches!(kind, ResourceKind::Electricity)
+        {
+            return Err(RejectReason::RuleDenied {
+                notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
+            });
+        }
         let stock = match owner {
             ResourceOwner::Agent { agent_id } => self
                 .model
@@ -1558,12 +1605,19 @@ impl WorldKernel {
         })
     }
 
-    fn add_to_owner(
+    pub(super) fn add_to_owner(
         &mut self,
         owner: &ResourceOwner,
         kind: ResourceKind,
         amount: i64,
     ) -> Result<(), RejectReason> {
+        if matches!(owner, ResourceOwner::Location { .. })
+            && matches!(kind, ResourceKind::Electricity)
+        {
+            return Err(RejectReason::RuleDenied {
+                notes: vec![LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string()],
+            });
+        }
         let stock = match owner {
             ResourceOwner::Agent { agent_id } => self
                 .model

@@ -10,6 +10,9 @@ use super::super::ChunkState;
 use super::types::{WorldEvent, WorldEventKind};
 use super::WorldKernel;
 
+const LOCATION_ELECTRICITY_POOL_REMOVED_NOTE: &str = "location electricity pool removed";
+const FACTORY_KIND_RADIATION_POWER_MK1: &str = "factory.power.radiation.mk1";
+
 impl WorldKernel {
     pub(super) fn apply_event(&mut self, event: &WorldEvent) -> Result<(), PersistError> {
         if event.id != self.next_event_id {
@@ -326,6 +329,35 @@ impl WorldKernel {
                         kind: factory_kind.clone(),
                     },
                 );
+                if factory_kind.eq_ignore_ascii_case(FACTORY_KIND_RADIATION_POWER_MK1) {
+                    if self.model.power_plants.contains_key(factory_id)
+                        || self.model.power_storages.contains_key(factory_id)
+                    {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "power facility already exists while replaying factory build: {factory_id}"
+                            ),
+                        });
+                    }
+                    self.model.power_plants.insert(
+                        factory_id.clone(),
+                        super::super::power::PowerPlant {
+                            id: factory_id.clone(),
+                            location_id: location_id.clone(),
+                            owner: owner.clone(),
+                            capacity_per_tick: self
+                                .config
+                                .economy
+                                .radiation_power_plant_output_per_tick,
+                            current_output: 0,
+                            fuel_cost_per_pu: 0,
+                            maintenance_cost: 0,
+                            status: super::super::power::PlantStatus::Running,
+                            efficiency: 1.0,
+                            degradation: 0.0,
+                        },
+                    );
+                }
             }
             WorldEventKind::RecipeScheduled {
                 owner,
@@ -547,123 +579,38 @@ impl WorldKernel {
                             message: format!("invalid power generated amount: {amount}"),
                         });
                     }
-                    let plant = self.model.power_plants.get_mut(plant_id).ok_or_else(|| {
-                        PersistError::ReplayConflict {
-                            message: format!("power plant not found: {plant_id}"),
-                        }
-                    })?;
-                    if &plant.location_id != location_id {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "power plant location mismatch: expected {}, got {}",
-                                plant.location_id, location_id
-                            ),
-                        });
-                    }
-                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
-                        PersistError::ReplayConflict {
-                            message: format!("location not found: {location_id}"),
-                        }
-                    })?;
-                    location
-                        .resources
-                        .add(ResourceKind::Electricity, *amount)
-                        .map_err(|err| PersistError::ReplayConflict {
-                            message: format!("failed to apply power generation: {err:?}"),
+                    let owner = {
+                        let plant = self.model.power_plants.get_mut(plant_id).ok_or_else(|| {
+                            PersistError::ReplayConflict {
+                                message: format!("power plant not found: {plant_id}"),
+                            }
                         })?;
-                    plant.current_output = *amount;
+                        if &plant.location_id != location_id {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power plant location mismatch: expected {}, got {}",
+                                    plant.location_id, location_id
+                                ),
+                            });
+                        }
+                        plant.current_output = *amount;
+                        plant.owner.clone()
+                    };
+                    self.add_to_owner_for_replay(&owner, ResourceKind::Electricity, *amount)?;
                 }
-                PowerEvent::PowerStored {
-                    storage_id,
-                    location_id,
-                    input,
-                    stored,
-                } => {
-                    if *input < 0 || *stored < 0 {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "invalid power stored values: input {input}, stored {stored}"
-                            ),
-                        });
-                    }
-                    let storage =
-                        self.model
-                            .power_storages
-                            .get_mut(storage_id)
-                            .ok_or_else(|| PersistError::ReplayConflict {
-                                message: format!("power storage not found: {storage_id}"),
-                            })?;
-                    if &storage.location_id != location_id {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "power storage location mismatch: expected {}, got {}",
-                                storage.location_id, location_id
-                            ),
-                        });
-                    }
-                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
-                        PersistError::ReplayConflict {
-                            message: format!("location not found: {location_id}"),
-                        }
-                    })?;
-                    location
-                        .resources
-                        .remove(ResourceKind::Electricity, *input)
-                        .map_err(|err| PersistError::ReplayConflict {
-                            message: format!("failed to apply power storage input: {err:?}"),
-                        })?;
-                    if storage.current_level.saturating_add(*stored) > storage.capacity {
-                        return Err(PersistError::ReplayConflict {
-                            message: "power storage capacity exceeded".to_string(),
-                        });
-                    }
-                    storage.current_level = storage.current_level.saturating_add(*stored);
+                PowerEvent::PowerStored { storage_id, .. } => {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "{LOCATION_ELECTRICITY_POOL_REMOVED_NOTE}: PowerStored unsupported in replay for storage {storage_id}"
+                        ),
+                    });
                 }
-                PowerEvent::PowerDischarged {
-                    storage_id,
-                    location_id,
-                    output,
-                    drawn,
-                } => {
-                    if *output < 0 || *drawn < 0 {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "invalid power discharged values: output {output}, drawn {drawn}"
-                            ),
-                        });
-                    }
-                    let storage =
-                        self.model
-                            .power_storages
-                            .get_mut(storage_id)
-                            .ok_or_else(|| PersistError::ReplayConflict {
-                                message: format!("power storage not found: {storage_id}"),
-                            })?;
-                    if &storage.location_id != location_id {
-                        return Err(PersistError::ReplayConflict {
-                            message: format!(
-                                "power storage location mismatch: expected {}, got {}",
-                                storage.location_id, location_id
-                            ),
-                        });
-                    }
-                    if storage.current_level < *drawn {
-                        return Err(PersistError::ReplayConflict {
-                            message: "power storage underflow".to_string(),
-                        });
-                    }
-                    storage.current_level = storage.current_level.saturating_sub(*drawn);
-                    let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
-                        PersistError::ReplayConflict {
-                            message: format!("location not found: {location_id}"),
-                        }
-                    })?;
-                    location
-                        .resources
-                        .add(ResourceKind::Electricity, *output)
-                        .map_err(|err| PersistError::ReplayConflict {
-                            message: format!("failed to apply power discharge output: {err:?}"),
-                        })?;
+                PowerEvent::PowerDischarged { storage_id, .. } => {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "{LOCATION_ELECTRICITY_POOL_REMOVED_NOTE}: PowerDischarged unsupported in replay for storage {storage_id}"
+                        ),
+                    });
                 }
                 PowerEvent::PowerConsumed {
                     agent_id, amount, ..
@@ -706,6 +653,15 @@ impl WorldKernel {
                             message: format!("invalid power transfer target: {reason:?}"),
                         }
                     })?;
+                    if matches!(from, ResourceOwner::Location { .. })
+                        || matches!(to, ResourceOwner::Location { .. })
+                    {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "{LOCATION_ELECTRICITY_POOL_REMOVED_NOTE}: location power transfer unsupported"
+                            ),
+                        });
+                    }
                     self.remove_from_owner_for_replay(from, ResourceKind::Electricity, *amount)?;
                     let delivered = amount.saturating_sub(*loss);
                     if delivered <= 0 {
@@ -731,6 +687,13 @@ impl WorldKernel {
         kind: ResourceKind,
         amount: i64,
     ) -> Result<(), PersistError> {
+        if matches!(owner, ResourceOwner::Location { .. })
+            && matches!(kind, ResourceKind::Electricity)
+        {
+            return Err(PersistError::ReplayConflict {
+                message: LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string(),
+            });
+        }
         let stock = match owner {
             ResourceOwner::Agent { agent_id } => self
                 .model
@@ -773,6 +736,13 @@ impl WorldKernel {
         kind: ResourceKind,
         amount: i64,
     ) -> Result<(), PersistError> {
+        if matches!(owner, ResourceOwner::Location { .. })
+            && matches!(kind, ResourceKind::Electricity)
+        {
+            return Err(PersistError::ReplayConflict {
+                message: LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string(),
+            });
+        }
         let stock = match owner {
             ResourceOwner::Agent { agent_id } => self
                 .model
