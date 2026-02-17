@@ -12,6 +12,7 @@ use agent_world::runtime::{
     NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
     NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
     RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
+    LocalCasStore,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -31,10 +32,16 @@ mod distfs_probe_runtime;
 mod reward_runtime_settlement;
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
+#[path = "world_viewer_live/execution_bridge.rs"]
+mod execution_bridge;
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
     DistfsProbeRuntimeConfig,
+};
+use execution_bridge::{
+    bridge_committed_heights, load_execution_bridge_state, load_execution_world,
+    persist_execution_bridge_state, persist_execution_world,
 };
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
@@ -48,6 +55,11 @@ const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
     "reward-runtime-distfs-probe-state.json";
+const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str = "reward-runtime-distfs-probe-state.json";
+const DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE: &str =
+    "reward-runtime-execution-bridge-state.json";
+const DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR: &str = "reward-runtime-execution-world";
+const DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR: &str = "reward-runtime-execution-records";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -123,6 +135,9 @@ struct RewardRuntimeLoopConfig {
     report_dir: String,
     state_path: std::path::PathBuf,
     distfs_probe_state_path: std::path::PathBuf,
+    execution_bridge_state_path: std::path::PathBuf,
+    execution_world_dir: std::path::PathBuf,
+    execution_records_dir: std::path::PathBuf,
     storage_root: std::path::PathBuf,
     distfs_probe_config: DistfsProbeRuntimeConfig,
     auto_redeem: bool,
@@ -330,6 +345,12 @@ fn start_reward_runtime_worker(
             .join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
         distfs_probe_state_path: Path::new(options.reward_runtime_report_dir.as_str())
             .join(DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE),
+        execution_bridge_state_path: Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+        execution_world_dir: Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+        execution_records_dir: Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
         storage_root: Path::new("output")
             .join("node-distfs")
             .join(options.node_id.as_str())
@@ -401,6 +422,22 @@ fn reward_runtime_loop(
                 StorageChallengeProbeCursorState::default()
             }
         };
+    let mut execution_bridge_state =
+        match load_execution_bridge_state(config.execution_bridge_state_path.as_path()) {
+            Ok(state) => state,
+            Err(err) => {
+                eprintln!("reward runtime load execution bridge state failed: {err}");
+                execution_bridge::ExecutionBridgeState::default()
+            }
+        };
+    let mut execution_world = match load_execution_world(config.execution_world_dir.as_path()) {
+        Ok(world) => world,
+        Err(err) => {
+            eprintln!("reward runtime load execution world failed: {err}");
+            RuntimeWorld::new()
+        }
+    };
+    let execution_store = LocalCasStore::new(config.storage_root.as_path());
     let mut reward_world = RuntimeWorld::new();
     reward_world.set_reward_asset_config(config.reward_asset_config.clone());
     reward_world.set_reward_signature_governance_policy(RewardSignatureGovernancePolicy {
@@ -435,6 +472,37 @@ fn reward_runtime_loop(
         let observed_at_unix_ms = now_unix_ms();
         let effective_storage_bytes =
             measure_directory_storage_bytes(config.storage_root.as_path());
+        let execution_bridge_records = match bridge_committed_heights(
+            &snapshot,
+            observed_at_unix_ms,
+            &mut execution_world,
+            &execution_store,
+            config.execution_records_dir.as_path(),
+            &mut execution_bridge_state,
+        ) {
+            Ok(records) => {
+                if !records.is_empty() {
+                    if let Err(err) = persist_execution_bridge_state(
+                        config.execution_bridge_state_path.as_path(),
+                        &execution_bridge_state,
+                    ) {
+                        eprintln!(
+                            "reward runtime persist execution bridge state failed: {err}"
+                        );
+                    }
+                    if let Err(err) =
+                        persist_execution_world(config.execution_world_dir.as_path(), &execution_world)
+                    {
+                        eprintln!("reward runtime persist execution world failed: {err}");
+                    }
+                }
+                records
+            }
+            Err(err) => {
+                eprintln!("reward runtime execution bridge failed: {err}");
+                Vec::new()
+            }
+        };
 
         let mut observation = NodePointsRuntimeObservation::from_snapshot(
             &snapshot,
@@ -549,6 +617,8 @@ fn reward_runtime_loop(
             "distfs_challenge_report": distfs_challenge_report,
             "distfs_probe_config": serde_json::to_value(config.distfs_probe_config).unwrap_or(serde_json::Value::Null),
             "distfs_probe_cursor_state": serde_json::to_value(distfs_probe_state.clone()).unwrap_or(serde_json::Value::Null),
+            "execution_bridge_state": execution_bridge_state.clone(),
+            "execution_bridge_records": execution_bridge_records,
             "settlement_report": report,
             "minted_records": minted_records,
             "node_balances": reward_world.state().node_asset_balances,
