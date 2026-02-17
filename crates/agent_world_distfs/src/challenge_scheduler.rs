@@ -19,6 +19,29 @@ pub struct StorageChallengeProbeCursorState {
     pub cumulative_passed_checks: u64,
     pub cumulative_failed_checks: u64,
     pub cumulative_failure_reasons: BTreeMap<String, u64>,
+    #[serde(default)]
+    pub consecutive_failure_rounds: u64,
+    #[serde(default)]
+    pub backoff_until_unix_ms: i64,
+    #[serde(default)]
+    pub last_probe_unix_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageChallengeAdaptivePolicy {
+    pub max_checks_per_round: u32,
+    pub failure_backoff_base_ms: i64,
+    pub failure_backoff_max_ms: i64,
+}
+
+impl Default for StorageChallengeAdaptivePolicy {
+    fn default() -> Self {
+        Self {
+            max_checks_per_round: u32::MAX,
+            failure_backoff_base_ms: 0,
+            failure_backoff_max_ms: 0,
+        }
+    }
 }
 
 impl LocalCasStore {
@@ -30,9 +53,44 @@ impl LocalCasStore {
         config: &StorageChallengeProbeConfig,
         state: &mut StorageChallengeProbeCursorState,
     ) -> Result<StorageChallengeProbeReport, WorldError> {
+        self.probe_storage_challenges_with_policy(
+            world_id,
+            node_id,
+            observed_at_unix_ms,
+            config,
+            state,
+            &StorageChallengeAdaptivePolicy::default(),
+        )
+    }
+
+    pub fn probe_storage_challenges_with_policy(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        observed_at_unix_ms: i64,
+        config: &StorageChallengeProbeConfig,
+        state: &mut StorageChallengeProbeCursorState,
+        policy: &StorageChallengeAdaptivePolicy,
+    ) -> Result<StorageChallengeProbeReport, WorldError> {
         validate_probe_config(config)?;
+        validate_adaptive_policy(policy)?;
         validate_non_empty(world_id, "world_id")?;
         validate_non_empty(node_id, "node_id")?;
+
+        if observed_at_unix_ms < state.backoff_until_unix_ms {
+            state.rounds_executed = state.rounds_executed.saturating_add(1);
+            state.last_probe_unix_ms = Some(observed_at_unix_ms);
+            return Ok(StorageChallengeProbeReport {
+                node_id: node_id.to_string(),
+                world_id: world_id.to_string(),
+                observed_at_unix_ms,
+                total_checks: 0,
+                passed_checks: 0,
+                failed_checks: 0,
+                failure_reasons: BTreeMap::new(),
+                latest_proof_semantics: None,
+            });
+        }
 
         let hashes = self.list_blob_hashes()?;
         let mut report = StorageChallengeProbeReport {
@@ -47,11 +105,12 @@ impl LocalCasStore {
         };
 
         if hashes.is_empty() {
-            advance_probe_cursor_state(state, &report, 0);
+            advance_probe_cursor_state(state, &report, 0, observed_at_unix_ms, policy);
             return Ok(report);
         }
 
-        let checks = (config.challenges_per_tick as usize).min(hashes.len());
+        let max_checks = config.challenges_per_tick.min(policy.max_checks_per_round);
+        let checks = (max_checks as usize).min(hashes.len());
         let start = state.next_blob_cursor % hashes.len();
         for index in 0..checks {
             let hash = hashes[(start + index) % hashes.len()].clone();
@@ -128,7 +187,7 @@ impl LocalCasStore {
             }
         }
 
-        advance_probe_cursor_state(state, &report, hashes.len());
+        advance_probe_cursor_state(state, &report, hashes.len(), observed_at_unix_ms, policy);
         Ok(report)
     }
 }
@@ -152,6 +211,31 @@ fn validate_probe_config(config: &StorageChallengeProbeConfig) -> Result<(), Wor
     if config.allowed_clock_skew_ms < 0 {
         return Err(WorldError::DistributedValidationFailed {
             reason: "probe allowed_clock_skew_ms must be >= 0".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_adaptive_policy(policy: &StorageChallengeAdaptivePolicy) -> Result<(), WorldError> {
+    if policy.max_checks_per_round == 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "adaptive policy max_checks_per_round must be >= 1".to_string(),
+        });
+    }
+    if policy.failure_backoff_base_ms < 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "adaptive policy failure_backoff_base_ms must be >= 0".to_string(),
+        });
+    }
+    if policy.failure_backoff_max_ms < 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "adaptive policy failure_backoff_max_ms must be >= 0".to_string(),
+        });
+    }
+    if policy.failure_backoff_max_ms < policy.failure_backoff_base_ms {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "adaptive policy failure_backoff_max_ms must be >= failure_backoff_base_ms"
+                .to_string(),
         });
     }
     Ok(())
@@ -198,8 +282,11 @@ fn advance_probe_cursor_state(
     state: &mut StorageChallengeProbeCursorState,
     report: &StorageChallengeProbeReport,
     blob_count: usize,
+    observed_at_unix_ms: i64,
+    policy: &StorageChallengeAdaptivePolicy,
 ) {
     state.rounds_executed = state.rounds_executed.saturating_add(1);
+    state.last_probe_unix_ms = Some(observed_at_unix_ms);
     state.cumulative_total_checks = state
         .cumulative_total_checks
         .saturating_add(report.total_checks);
@@ -217,12 +304,34 @@ fn advance_probe_cursor_state(
         *entry = entry.saturating_add(*count);
     }
 
+    if report.failed_checks > 0 && report.passed_checks == 0 {
+        state.consecutive_failure_rounds = state.consecutive_failure_rounds.saturating_add(1);
+        let backoff_ms = compute_backoff_ms(
+            policy.failure_backoff_base_ms,
+            policy.failure_backoff_max_ms,
+            state.consecutive_failure_rounds,
+        );
+        state.backoff_until_unix_ms = observed_at_unix_ms.saturating_add(backoff_ms);
+    } else {
+        state.consecutive_failure_rounds = 0;
+        state.backoff_until_unix_ms = 0;
+    }
+
     if blob_count == 0 {
         state.next_blob_cursor = 0;
         return;
     }
     let advance = (report.total_checks as usize) % blob_count;
     state.next_blob_cursor = (state.next_blob_cursor + advance) % blob_count;
+}
+
+fn compute_backoff_ms(base_ms: i64, max_ms: i64, failure_rounds: u64) -> i64 {
+    if base_ms <= 0 || max_ms <= 0 || failure_rounds == 0 {
+        return 0;
+    }
+    let exponent = failure_rounds.saturating_sub(1).min(16) as u32;
+    let multiplier = (1_u64 << exponent).min(i64::MAX as u64) as i64;
+    base_ms.saturating_mul(multiplier).min(max_ms)
 }
 
 fn increment_reason(map: &mut BTreeMap<String, u64>, key: &str) {
@@ -415,5 +524,102 @@ mod tests {
         assert_eq!(state.rounds_executed, 1);
         assert_eq!(state.next_blob_cursor, 0);
         assert_eq!(state.cumulative_total_checks, 0);
+    }
+
+    #[test]
+    fn probe_with_policy_limits_checks_per_round() {
+        let dir = temp_dir("policy-limit");
+        let store = LocalCasStore::new(&dir);
+        let _ = store.put_bytes(blob(32).as_slice()).expect("put 1");
+        let _ = store.put_bytes(blob(48).as_slice()).expect("put 2");
+        let _ = store.put_bytes(blob(64).as_slice()).expect("put 3");
+
+        let config = StorageChallengeProbeConfig {
+            max_sample_bytes: 8,
+            challenges_per_tick: 3,
+            challenge_ttl_ms: 100,
+            allowed_clock_skew_ms: 0,
+        };
+        let policy = StorageChallengeAdaptivePolicy {
+            max_checks_per_round: 1,
+            failure_backoff_base_ms: 0,
+            failure_backoff_max_ms: 0,
+        };
+        let mut state = StorageChallengeProbeCursorState::default();
+        let report = store
+            .probe_storage_challenges_with_policy("w1", "node-limit", 5_000, &config, &mut state, &policy)
+            .expect("probe");
+        assert_eq!(report.total_checks, 1);
+        assert_eq!(state.cumulative_total_checks, 1);
+        assert_eq!(state.next_blob_cursor, 1);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn probe_with_policy_applies_backoff_after_failure_round() {
+        let dir = temp_dir("policy-backoff");
+        let store = LocalCasStore::new(&dir);
+        let hash = store.put_bytes(blob(64).as_slice()).expect("put");
+        let blob_path = store.blobs_dir().join(format!("{hash}.blob"));
+        fs::write(blob_path, b"tampered").expect("tamper");
+
+        let config = StorageChallengeProbeConfig {
+            max_sample_bytes: 8,
+            challenges_per_tick: 1,
+            challenge_ttl_ms: 100,
+            allowed_clock_skew_ms: 0,
+        };
+        let policy = StorageChallengeAdaptivePolicy {
+            max_checks_per_round: 1,
+            failure_backoff_base_ms: 100,
+            failure_backoff_max_ms: 500,
+        };
+        let mut state = StorageChallengeProbeCursorState::default();
+
+        let first = store
+            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_000, &config, &mut state, &policy)
+            .expect("first");
+        assert_eq!(first.total_checks, 1);
+        assert_eq!(first.failed_checks, 1);
+        assert_eq!(state.consecutive_failure_rounds, 1);
+        assert_eq!(state.backoff_until_unix_ms, 1_100);
+
+        let second = store
+            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_050, &config, &mut state, &policy)
+            .expect("second");
+        assert_eq!(second.total_checks, 0);
+        assert_eq!(state.consecutive_failure_rounds, 1);
+        assert_eq!(state.backoff_until_unix_ms, 1_100);
+
+        let third = store
+            .probe_storage_challenges_with_policy("w1", "node-backoff", 1_200, &config, &mut state, &policy)
+            .expect("third");
+        assert_eq!(third.total_checks, 1);
+        assert_eq!(third.failed_checks, 1);
+        assert_eq!(state.consecutive_failure_rounds, 2);
+        assert_eq!(state.backoff_until_unix_ms, 1_400);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn probe_cursor_state_deserializes_from_legacy_snapshot() {
+        let legacy = serde_json::json!({
+            "next_blob_cursor": 2,
+            "rounds_executed": 3,
+            "cumulative_total_checks": 9,
+            "cumulative_passed_checks": 8,
+            "cumulative_failed_checks": 1,
+            "cumulative_failure_reasons": { "HASH_MISMATCH": 1 }
+        });
+        let state: StorageChallengeProbeCursorState =
+            serde_json::from_value(legacy).expect("deserialize legacy");
+        assert_eq!(state.next_blob_cursor, 2);
+        assert_eq!(state.rounds_executed, 3);
+        assert_eq!(state.cumulative_total_checks, 9);
+        assert_eq!(state.consecutive_failure_rounds, 0);
+        assert_eq!(state.backoff_until_unix_ms, 0);
+        assert!(state.last_probe_unix_ms.is_none());
     }
 }
