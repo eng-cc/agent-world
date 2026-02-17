@@ -16,15 +16,18 @@ use agent_world::runtime::{
     NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
     RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
+#[cfg(test)]
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
     ViewerLiveDecisionMode, ViewerLiveServer, ViewerLiveServerConfig, ViewerWebBridge,
     ViewerWebBridgeConfig,
 };
 use agent_world_distfs::StorageChallengeProbeCursorState;
+#[cfg(test)]
+use agent_world_node::PosValidator;
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
-    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus, PosValidator,
+    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus,
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;

@@ -1,5 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::{Arc, Mutex};
+#[cfg(test)]
+use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+#[cfg(test)]
+use std::sync::Mutex;
 
 use agent_world::runtime::{blake3_hex, LocalCasStore};
 use agent_world_distfs::{

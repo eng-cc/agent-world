@@ -217,6 +217,7 @@ pub(super) fn persist_reward_runtime_distfs_probe_state(
     super::write_bytes_atomic(path, bytes.as_slice())
 }
 
+#[cfg(test)]
 pub(super) fn collect_distfs_challenge_report(
     storage_root: &Path,
     world_id: &str,
