@@ -51,6 +51,13 @@
 - [x] MMD7.1 使用自定义强化 prompt 复跑 `llm_bootstrap --ticks 120`，验证“所有工厂 + 所有制成品 + 覆盖后持续产出”
 - [x] MMD7.2 提取工厂/recipe 成功计数与失败分布，回填 TODO 与项目状态
 
+### MMD8 TODO-17~20 收口迭代（2026-02-17）
+- [x] MMD8.1 文档增量设计：补充 TODO-17/18/19/20 目标、接口与风险
+- [ ] MMD8.2 协议收敛：单轮多 tool call 硬拒绝 + `schedule_recipe.batches<=0` 自动归一
+- [ ] MMD8.3 资源预检：`schedule_recipe` 与 `move_agent` 电力前置预算 guardrail
+- [ ] MMD8.4 策略收敛：覆盖后 wait 自动回切持续产出 + 采矿耗尽冷却窗口
+- [ ] MMD8.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样 + 文档收口
+
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
   - 产物：
@@ -151,9 +158,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD7 已完成（用户目标“所有工厂 + 所有制成品”在线闭环达成）。
-- 下一阶段：推进 TODO-17~TODO-20，优先收口“多段输出 + 非法 batches + 资源预检”链路。
-- 最近更新：2026-02-17（完成 MMD7 在线复跑与 TODO 回填）。
+- 当前阶段：MMD8 进行中（已完成 MMD8.1 设计拆解）。
+- 下一阶段：执行 MMD8.2~MMD8.5 代码与回归收口。
+- 最近更新：2026-02-17（启动 TODO-17~TODO-20 收口迭代）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。

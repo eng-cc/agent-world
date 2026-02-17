@@ -173,3 +173,49 @@
 - 归一化风险：错误映射 factory_id 可能把动作导向非目标工厂，需要优先使用“明确已知映射”。
 - 回退风险：探索式中继可能出现局部往返，需要保持“已超距目标”触发条件而非全局强制。
 - 采矿记忆风险：可采量提示是时点信息，若 chunk 补给后未清理缓存，可能误判耗尽。
+
+## MMD8 增量优化（TODO-17 ~ TODO-20）
+
+### 目标
+- 将“覆盖后持续产出”从 prompt 临时约束下沉为默认 guardrail 行为，降低对用户自定义 prompt 的依赖。
+- 收敛 tool-only 协议下的多段/多调用异常，避免 `parse_error` 直接转空转。
+- 在 `schedule_recipe` 与 `move_agent` 前置电力预算检查，减少 `insufficient_resource.electricity` 执行期拒绝。
+- 为采矿耗尽点增加短期冷却窗口，避免在同一耗尽点反复触发失败后再恢复的抖动路径。
+
+### 范围
+
+#### In Scope
+- TODO-17：`wait/wait_ticks` 在 recipe 全覆盖后自动改写为“持续产出”动作（优先 `schedule_recipe`，不可执行时自动回切恢复链路）。
+- TODO-18：单轮多 tool call 硬拒绝 + `schedule_recipe.batches<=0` 输入归一化，减少协议噪声与非法参数 parse 错误。
+- TODO-19：`schedule_recipe`/`move_agent` 电力前置预算 guardrail（预算不足时回切 `harvest_radiation`）。
+- TODO-20：采矿耗尽点冷却窗口（location 级短期跳过）与替代矿点优先策略。
+- 补齐 `test_tier_required` 单测与 `llm_bootstrap` 在线抽样。
+
+#### Out of Scope
+- 不改 kernel 经济参数与拒绝语义（仅在 LLM guardrail 层优化）。
+- 不新增地图级全局寻路器。
+- 不改 OpenAI SDK 或第三方依赖实现。
+
+### 接口 / 数据
+- `LlmAgentBehavior` 运行态扩展：
+  - 采矿耗尽冷却表（`location_id -> cooldown_until_time`）。
+- guardrail 扩展：
+  - `apply_decision_guardrails` 增加“覆盖后 wait 改写持续产出”分支。
+  - `apply_action_guardrails(schedule_recipe)` 增加电力预算约束与 `batches` 下界保护。
+  - `apply_action_guardrails(move_agent)` 增加移动电力预算预检。
+  - 采矿 guardrail 读取冷却表，冷却期内优先替代矿点或回切恢复动作。
+- 协议解析扩展：
+  - 单轮多个 completion turn 时输出硬拒绝错误；
+  - `schedule_recipe.batches<=0` 解析归一到合法下界，避免直接 parse 失败。
+
+### 里程碑
+- MMD8.1：文档增量设计与任务拆解。
+- MMD8.2：协议收敛（TODO-18）+ 单测。
+- MMD8.3：电力前置预算 guardrail（TODO-19）+ 单测。
+- MMD8.4：持续产出默认化 + 采矿冷却（TODO-17/TODO-20）+ 单测。
+- MMD8.5：required-tier + 在线闭环抽样复核与文档收口。
+
+### 风险
+- 强改写风险：覆盖后 wait 自动改写可能压制模型策略探索，需要保留可回退恢复链路。
+- 预检偏差风险：guardrail 预算与 kernel 实际开销若存在偏差，仍可能出现少量执行拒绝。
+- 冷却窗口风险：冷却窗口过长可能降低矿点重试效率，需要设置温和值并允许新事件清理。
