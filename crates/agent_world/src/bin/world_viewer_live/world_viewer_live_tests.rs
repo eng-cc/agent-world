@@ -598,6 +598,11 @@ fn reward_runtime_distfs_probe_state_roundtrip() {
         consecutive_failure_rounds: 4,
         backoff_until_unix_ms: 9_999,
         last_probe_unix_ms: Some(8_888),
+        cumulative_backoff_skipped_rounds: 5,
+        cumulative_backoff_applied_ms: 3_600,
+        last_backoff_duration_ms: 400,
+        last_backoff_reason: Some("HASH_MISMATCH".to_string()),
+        last_backoff_multiplier: 4,
     };
 
     persist_reward_runtime_distfs_probe_state(path.as_path(), &expected)
@@ -703,6 +708,11 @@ fn distfs_probe_cursor_state_is_report_serializable() {
         consecutive_failure_rounds: 3,
         backoff_until_unix_ms: 20_000,
         last_probe_unix_ms: Some(19_500),
+        cumulative_backoff_skipped_rounds: 6,
+        cumulative_backoff_applied_ms: 9_000,
+        last_backoff_duration_ms: 1_600,
+        last_backoff_reason: Some("TIMEOUT".to_string()),
+        last_backoff_multiplier: 3,
     };
     let value = serde_json::to_value(state).expect("serialize cursor state");
     assert_eq!(
@@ -725,4 +735,69 @@ fn distfs_probe_cursor_state_is_report_serializable() {
             .and_then(serde_json::Value::as_u64),
         Some(5)
     );
+    assert_eq!(
+        value
+            .get("cumulative_backoff_skipped_rounds")
+            .and_then(serde_json::Value::as_u64),
+        Some(6)
+    );
+    assert_eq!(
+        value
+            .get("cumulative_backoff_applied_ms")
+            .and_then(serde_json::Value::as_i64),
+        Some(9_000)
+    );
+    assert_eq!(
+        value
+            .get("last_backoff_duration_ms")
+            .and_then(serde_json::Value::as_i64),
+        Some(1_600)
+    );
+    assert_eq!(
+        value
+            .get("last_backoff_reason")
+            .and_then(serde_json::Value::as_str),
+        Some("TIMEOUT")
+    );
+    assert_eq!(
+        value
+            .get("last_backoff_multiplier")
+            .and_then(serde_json::Value::as_u64),
+        Some(3)
+    );
+}
+
+#[test]
+fn reward_runtime_distfs_probe_state_loads_legacy_snapshot_with_defaults() {
+    let root = temp_dir("distfs-probe-state-legacy");
+    fs::create_dir_all(root.as_path()).expect("create root");
+    let path = root.join("probe-state-legacy.json");
+    let legacy = serde_json::json!({
+        "next_blob_cursor": 1,
+        "rounds_executed": 2,
+        "cumulative_total_checks": 3,
+        "cumulative_passed_checks": 2,
+        "cumulative_failed_checks": 1,
+        "cumulative_failure_reasons": { "HASH_MISMATCH": 1 },
+        "consecutive_failure_rounds": 1,
+        "backoff_until_unix_ms": 4000,
+        "last_probe_unix_ms": 3990
+    });
+    fs::write(
+        path.as_path(),
+        serde_json::to_vec_pretty(&legacy).expect("serialize legacy"),
+    )
+    .expect("write legacy");
+
+    let loaded = load_reward_runtime_distfs_probe_state(path.as_path()).expect("load legacy");
+    assert_eq!(loaded.next_blob_cursor, 1);
+    assert_eq!(loaded.rounds_executed, 2);
+    assert_eq!(loaded.cumulative_total_checks, 3);
+    assert_eq!(loaded.cumulative_backoff_skipped_rounds, 0);
+    assert_eq!(loaded.cumulative_backoff_applied_ms, 0);
+    assert_eq!(loaded.last_backoff_duration_ms, 0);
+    assert!(loaded.last_backoff_reason.is_none());
+    assert_eq!(loaded.last_backoff_multiplier, 0);
+
+    let _ = fs::remove_dir_all(root);
 }
