@@ -2,9 +2,11 @@ use std::sync::Arc;
 
 use agent_world_net::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 use agent_world_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
+use ed25519_dalek::SigningKey;
 
 use crate::membership::{
-    MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipSyncClient,
+    MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,
+    MembershipSyncClient,
 };
 use crate::quorum::{
     ConsensusConfig, ConsensusMembershipChange, ConsensusMembershipChangeRequest,
@@ -54,6 +56,26 @@ fn sample_snapshot() -> MembershipDirectorySnapshot {
     }
 }
 
+fn sample_revocation() -> MembershipKeyRevocationAnnounce {
+    MembershipKeyRevocationAnnounce {
+        world_id: "w1".to_string(),
+        requester_id: "seq-1".to_string(),
+        requested_at_ms: 401,
+        key_id: "k1".to_string(),
+        reason: Some("rotate".to_string()),
+        signature_key_id: Some("k1".to_string()),
+        signature: None,
+    }
+}
+
+fn ed25519_signer(seed: u8) -> MembershipDirectorySigner {
+    let private_key_hex = hex::encode([seed; 32]);
+    let signing_key = SigningKey::from_bytes(&[seed; 32]);
+    let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+    MembershipDirectorySigner::ed25519(private_key_hex.as_str(), public_key_hex.as_str())
+        .expect("ed25519 signer")
+}
+
 #[test]
 fn membership_snapshot_signer_round_trip() {
     let signer = MembershipDirectorySigner::hmac_sha256("membership-secret");
@@ -61,6 +83,26 @@ fn membership_snapshot_signer_round_trip() {
     let signature = signer.sign_snapshot(&snapshot).expect("sign snapshot");
     snapshot.signature = Some(signature);
     signer.verify_snapshot(&snapshot).expect("verify snapshot");
+}
+
+#[test]
+fn membership_snapshot_ed25519_signer_round_trip() {
+    let signer = ed25519_signer(7);
+    let mut snapshot = sample_snapshot();
+    let signature = signer.sign_snapshot(&snapshot).expect("sign snapshot");
+    snapshot.signature = Some(signature);
+    signer.verify_snapshot(&snapshot).expect("verify snapshot");
+}
+
+#[test]
+fn membership_revocation_ed25519_signer_round_trip() {
+    let signer = ed25519_signer(9);
+    let mut announce = sample_revocation();
+    let signature = signer.sign_revocation(&announce).expect("sign revocation");
+    announce.signature = Some(signature);
+    signer
+        .verify_revocation(&announce)
+        .expect("verify revocation");
 }
 
 #[test]

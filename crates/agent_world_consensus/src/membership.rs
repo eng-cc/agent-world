@@ -10,7 +10,9 @@ use super::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
 use super::membership_logic;
+use super::signature::ED25519_SIGNATURE_V1_PREFIX;
 pub(super) use super::util::to_canonical_cbor;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -96,12 +98,43 @@ pub struct MembershipKeyRevocationAnnounce {
 
 #[derive(Debug, Clone)]
 pub struct MembershipDirectorySigner {
-    key: Vec<u8>,
+    kind: MembershipDirectorySignerKind,
+}
+
+#[derive(Debug, Clone)]
+enum MembershipDirectorySignerKind {
+    HmacSha256 {
+        key: Vec<u8>,
+    },
+    Ed25519 {
+        signing_key: SigningKey,
+        public_key_hex: String,
+    },
 }
 
 impl MembershipDirectorySigner {
     pub fn hmac_sha256(key: impl Into<Vec<u8>>) -> Self {
-        Self { key: key.into() }
+        Self {
+            kind: MembershipDirectorySignerKind::HmacSha256 { key: key.into() },
+        }
+    }
+
+    pub fn ed25519(private_key_hex: &str, public_key_hex: &str) -> Result<Self, WorldError> {
+        let private_key =
+            decode_hex_array::<32>(private_key_hex, "membership ed25519 private key")?;
+        let signing_key = SigningKey::from_bytes(&private_key);
+        let expected_public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+        if expected_public_key_hex != public_key_hex {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "membership ed25519 public key does not match private key".to_string(),
+            });
+        }
+        Ok(Self {
+            kind: MembershipDirectorySignerKind::Ed25519 {
+                signing_key,
+                public_key_hex: public_key_hex.to_string(),
+            },
+        })
     }
 
     pub fn sign_snapshot(
@@ -109,10 +142,25 @@ impl MembershipDirectorySigner {
         snapshot: &MembershipDirectorySnapshot,
     ) -> Result<String, WorldError> {
         let payload = membership_logic::snapshot_signing_bytes(snapshot)?;
-        let mut mac =
-            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
-        mac.update(&payload);
-        Ok(hex::encode(mac.finalize().into_bytes()))
+        match &self.kind {
+            MembershipDirectorySignerKind::HmacSha256 { key } => {
+                let mut mac =
+                    HmacSha256::new_from_slice(key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+                mac.update(&payload);
+                Ok(hex::encode(mac.finalize().into_bytes()))
+            }
+            MembershipDirectorySignerKind::Ed25519 {
+                signing_key,
+                public_key_hex,
+            } => {
+                let signature: Signature = signing_key.sign(payload.as_slice());
+                Ok(format!(
+                    "{ED25519_SIGNATURE_V1_PREFIX}{}:{}",
+                    public_key_hex,
+                    hex::encode(signature.to_bytes())
+                ))
+            }
+        }
     }
 
     pub fn verify_snapshot(
@@ -127,24 +175,69 @@ impl MembershipDirectorySigner {
                 ),
             });
         };
-        let signature =
-            hex::decode(signature_hex).map_err(|_| WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership snapshot signature is not valid hex for requester {}",
-                    snapshot.requester_id
-                ),
-            })?;
         let payload = membership_logic::snapshot_signing_bytes(snapshot)?;
-        let mut mac =
-            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
-        mac.update(&payload);
-        mac.verify_slice(&signature)
-            .map_err(|_| WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership snapshot signature mismatch for requester {}",
-                    snapshot.requester_id
-                ),
-            })
+        match &self.kind {
+            MembershipDirectorySignerKind::HmacSha256 { key } => {
+                let signature = hex::decode(signature_hex).map_err(|_| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership snapshot signature is not valid hex for requester {}",
+                            snapshot.requester_id
+                        ),
+                    }
+                })?;
+                let mut mac =
+                    HmacSha256::new_from_slice(key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+                mac.update(&payload);
+                mac.verify_slice(&signature)
+                    .map_err(|_| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership snapshot signature mismatch for requester {}",
+                            snapshot.requester_id
+                        ),
+                    })
+            }
+            MembershipDirectorySignerKind::Ed25519 {
+                signing_key,
+                public_key_hex,
+            } => {
+                let (signature_public_key_hex, signature_hex) = parse_ed25519_signature(
+                    signature_hex,
+                )
+                .map_err(|_| WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "membership snapshot signature is not valid ed25519:v1 for requester {}",
+                        snapshot.requester_id
+                    ),
+                })?;
+                if signature_public_key_hex != public_key_hex {
+                    return Err(WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership snapshot signature signer public key mismatch for requester {}",
+                            snapshot.requester_id
+                        ),
+                    });
+                }
+                let signature_bytes =
+                    decode_hex_array::<64>(signature_hex, "membership snapshot signature")
+                        .map_err(|_| WorldError::DistributedValidationFailed {
+                            reason: format!(
+                                "membership snapshot signature is not valid hex for requester {}",
+                                snapshot.requester_id
+                            ),
+                        })?;
+                let verifying_key = signing_key.verifying_key();
+                let signature = Signature::from_bytes(&signature_bytes);
+                verifying_key
+                    .verify(payload.as_slice(), &signature)
+                    .map_err(|_| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership snapshot signature mismatch for requester {}",
+                            snapshot.requester_id
+                        ),
+                    })
+            }
+        }
     }
 
     pub fn sign_revocation(
@@ -152,10 +245,25 @@ impl MembershipDirectorySigner {
         announce: &MembershipKeyRevocationAnnounce,
     ) -> Result<String, WorldError> {
         let payload = membership_logic::revocation_signing_bytes(announce)?;
-        let mut mac =
-            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
-        mac.update(&payload);
-        Ok(hex::encode(mac.finalize().into_bytes()))
+        match &self.kind {
+            MembershipDirectorySignerKind::HmacSha256 { key } => {
+                let mut mac =
+                    HmacSha256::new_from_slice(key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+                mac.update(&payload);
+                Ok(hex::encode(mac.finalize().into_bytes()))
+            }
+            MembershipDirectorySignerKind::Ed25519 {
+                signing_key,
+                public_key_hex,
+            } => {
+                let signature: Signature = signing_key.sign(payload.as_slice());
+                Ok(format!(
+                    "{ED25519_SIGNATURE_V1_PREFIX}{}:{}",
+                    public_key_hex,
+                    hex::encode(signature.to_bytes())
+                ))
+            }
+        }
     }
 
     pub fn verify_revocation(
@@ -170,25 +278,111 @@ impl MembershipDirectorySigner {
                 ),
             });
         };
-        let signature =
-            hex::decode(signature_hex).map_err(|_| WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership revocation signature is not valid hex for requester {}",
-                    announce.requester_id
-                ),
-            })?;
         let payload = membership_logic::revocation_signing_bytes(announce)?;
-        let mut mac =
-            HmacSha256::new_from_slice(&self.key).map_err(|_| WorldError::SignatureKeyInvalid)?;
-        mac.update(&payload);
-        mac.verify_slice(&signature)
-            .map_err(|_| WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "membership revocation signature mismatch for requester {}",
-                    announce.requester_id
-                ),
-            })
+        match &self.kind {
+            MembershipDirectorySignerKind::HmacSha256 { key } => {
+                let signature = hex::decode(signature_hex).map_err(|_| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation signature is not valid hex for requester {}",
+                            announce.requester_id
+                        ),
+                    }
+                })?;
+                let mut mac =
+                    HmacSha256::new_from_slice(key).map_err(|_| WorldError::SignatureKeyInvalid)?;
+                mac.update(&payload);
+                mac.verify_slice(&signature)
+                    .map_err(|_| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation signature mismatch for requester {}",
+                            announce.requester_id
+                        ),
+                    })
+            }
+            MembershipDirectorySignerKind::Ed25519 {
+                signing_key,
+                public_key_hex,
+            } => {
+                let (signature_public_key_hex, signature_hex) = parse_ed25519_signature(
+                    signature_hex,
+                )
+                .map_err(|_| WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "membership revocation signature is not valid ed25519:v1 for requester {}",
+                        announce.requester_id
+                    ),
+                })?;
+                if signature_public_key_hex != public_key_hex {
+                    return Err(WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation signature signer public key mismatch for requester {}",
+                            announce.requester_id
+                        ),
+                    });
+                }
+                let signature_bytes =
+                    decode_hex_array::<64>(signature_hex, "membership revocation signature")
+                        .map_err(|_| WorldError::DistributedValidationFailed {
+                            reason: format!(
+                                "membership revocation signature is not valid hex for requester {}",
+                                announce.requester_id
+                            ),
+                        })?;
+                let verifying_key = signing_key.verifying_key();
+                let signature = Signature::from_bytes(&signature_bytes);
+                verifying_key
+                    .verify(payload.as_slice(), &signature)
+                    .map_err(|_| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation signature mismatch for requester {}",
+                            announce.requester_id
+                        ),
+                    })
+            }
+        }
     }
+}
+
+fn parse_ed25519_signature(signature: &str) -> Result<(&str, &str), WorldError> {
+    if !signature.starts_with(ED25519_SIGNATURE_V1_PREFIX) {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership signature must use ed25519:v1 format".to_string(),
+        });
+    }
+    let encoded = &signature[ED25519_SIGNATURE_V1_PREFIX.len()..];
+    let (public_key_hex, signature_hex) =
+        encoded
+            .split_once(':')
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: "membership signature must include signer public key and signature hex"
+                    .to_string(),
+            })?;
+    if public_key_hex.is_empty() || signature_hex.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "membership signature must include signer public key and signature hex"
+                .to_string(),
+        });
+    }
+    let _ = VerifyingKey::from_bytes(&decode_hex_array::<32>(
+        public_key_hex,
+        "membership signature public key",
+    )?)
+    .map_err(|_| WorldError::DistributedValidationFailed {
+        reason: "membership signature public key is invalid".to_string(),
+    })?;
+    Ok((public_key_hex, signature_hex))
+}
+
+fn decode_hex_array<const N: usize>(input: &str, field: &str) -> Result<[u8; N], WorldError> {
+    let bytes = hex::decode(input).map_err(|_| WorldError::DistributedValidationFailed {
+        reason: format!("{field} must be valid hex"),
+    })?;
+    bytes
+        .try_into()
+        .map_err(|_| WorldError::DistributedValidationFailed {
+            reason: format!("{field} must be {N}-byte hex"),
+        })
 }
 
 #[derive(Debug, Clone, Default)]
@@ -216,6 +410,23 @@ impl MembershipDirectorySignerKeyring {
         }
         self.signers
             .insert(key_id, MembershipDirectorySigner::hmac_sha256(key));
+        Ok(())
+    }
+
+    pub fn add_ed25519_key(
+        &mut self,
+        key_id: impl Into<String>,
+        private_key_hex: &str,
+        public_key_hex: &str,
+    ) -> Result<(), WorldError> {
+        let key_id = membership_logic::normalized_key_id(key_id.into())?;
+        if self.signers.contains_key(&key_id) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!("membership signing key already exists: {key_id}"),
+            });
+        }
+        let signer = MembershipDirectorySigner::ed25519(private_key_hex, public_key_hex)?;
+        self.signers.insert(key_id, signer);
         Ok(())
     }
 
