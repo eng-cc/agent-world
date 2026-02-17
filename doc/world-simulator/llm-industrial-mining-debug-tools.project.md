@@ -47,6 +47,10 @@
 - [x] MMD6.4 守卫优化 C：采矿耗尽感知（可采量记忆 + 质量裁剪 + 迁移回退）
 - [x] MMD6.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核 + 文档收口
 
+### MMD7 用户指令闭环复跑（2026-02-17）
+- [x] MMD7.1 使用自定义强化 prompt 复跑 `llm_bootstrap --ticks 120`，验证“所有工厂 + 所有制成品 + 覆盖后持续产出”
+- [x] MMD7.2 提取工厂/recipe 成功计数与失败分布，回填 TODO 与项目状态
+
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
   - 产物：
@@ -111,6 +115,27 @@
   - TODO-14/15/16 优化后，`facility_not_found` 和 `move_distance_exceeded` 在本轮样本中已清零。
   - 三配方覆盖在 58 active ticks 内达成；但策略在达成短期目标后出现 `wait/wait_ticks` 提前收敛，导致未跑满 120 tick。
 
+### MMD7 验证摘要（2026-02-17，用户指令“所有工厂和制成品”）
+- 运行 #1（120 tick，full-coverage + no-wait prompt）：
+  - 产物：
+    - `output/llm_bootstrap/user_all_factory_all_finished_codex_2026-02-17_170005/run.log`
+    - `output/llm_bootstrap/user_all_factory_all_finished_codex_2026-02-17_170005/report.json`
+  - 指标：
+    - `ticks_requested=120`、`active_ticks=120`
+    - `action_success=106`、`action_failure=13`
+    - `parse_errors=1`、`llm_errors=0`
+    - `action_reject_reason_counts={insufficient_resource:12, facility_not_found:1}`
+  - 工厂建造成功计数（`run.log`）：
+    - `factory.power.radiation.mk1=1`
+    - `factory.assembler.mk1=1`
+  - recipe 成功计数（`run.log`）：
+    - `recipe.assembler.control_chip=1`
+    - `recipe.assembler.motor_mk1=2`
+    - `recipe.assembler.logistics_drone=1`
+- 结论：
+  - 已达成“所有工厂 + 所有制成品”目标，且 `active_ticks=120`，无提前收敛。
+  - 仍出现 1 次协议解析问题（`tick=119` 多段输出 `---` 且 `schedule_recipe.batches=0` 导致 `parse_error`），以及 12 次资源不足拒绝。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -126,11 +151,14 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD6 已完成（TODO-14/TODO-15/TODO-16 收口）。
-- 下一阶段：评估“达成覆盖后提前 wait 收敛”问题，优化长窗口持续产出策略。
-- 最近更新：2026-02-17（已完成 MMD6.5：required-tier + 在线抽样 + 文档收口）。
+- 当前阶段：MMD7 已完成（用户目标“所有工厂 + 所有制成品”在线闭环达成）。
+- 下一阶段：推进 TODO-17~TODO-20，优先收口“多段输出 + 非法 batches + 资源预检”链路。
+- 最近更新：2026-02-17（完成 MMD7 在线复跑与 TODO 回填）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
 - TODO-14~TODO-16：已完成（MMD6），并在在线抽样中验证关键失败项下降（`facility_not_found=0`、`move_distance_exceeded=0`）。
-- TODO-17：达成 recipe 覆盖后策略会提前输出 `wait/wait_ticks` 导致 `active_ticks << ticks_requested`，需补充“覆盖后继续产出”约束以提升长窗口吞吐。
+- TODO-17：将“覆盖后持续产出”从 prompt 约束下沉为默认策略（本轮通过强化 prompt 实现 `active_ticks=120`，但默认策略仍未固化）。
+- TODO-18：tool-only 协议仍会出现多段输出（`---`）+ 非法 `schedule_recipe.batches=0` 组合，需增加“多段输出硬拒绝 + 非法 batches 自动改写（mine/refine）”。
+- TODO-19：`schedule_recipe` 与 `move_agent` 的电力前置检查仍有缺口（本轮 `insufficient_resource=12`），需在 guardrail 增加“动作前电力预算校验 + 自动回切 harvest”。
+- TODO-20：矿点耗尽后仍可能出现重复高质量采矿尝试、失败后再恢复的抖动路径，需补“耗尽点冷却/跳过窗口”降低无效失败。
