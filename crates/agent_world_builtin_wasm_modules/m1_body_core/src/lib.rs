@@ -1,8 +1,198 @@
 #![allow(improper_ctypes_definitions)]
 
 use agent_world_wasm_sdk::{export_wasm_module, LifecycleStage, WasmModuleLifecycle};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
-const MODULE_ID: &str = agent_world_builtin_wasm_runtime::M1_BODY_MODULE_ID;
+const MODULE_ID: &str = "m1.body.core";
+const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
+
+#[derive(Debug, Clone, Deserialize)]
+struct ModuleCallInput {
+    ctx: ModuleContext,
+    #[serde(default)]
+    event: Option<Vec<u8>>,
+    #[serde(default)]
+    action: Option<Vec<u8>>,
+    #[serde(default)]
+    state: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ModuleContext {
+    module_id: String,
+    time: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct ModuleEffectIntent {
+    kind: String,
+    params: Value,
+    cap_ref: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct ModuleEmit {
+    kind: String,
+    payload: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct ModuleOutput {
+    new_state: Option<Vec<u8>>,
+    #[serde(default)]
+    effects: Vec<ModuleEffectIntent>,
+    #[serde(default)]
+    emits: Vec<ModuleEmit>,
+    output_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct BodyKernelView {
+    mass_kg: u64,
+    radius_cm: u64,
+    thrust_limit: u64,
+    cross_section_cm2: u64,
+}
+
+fn empty_output() -> ModuleOutput {
+    ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: Vec::new(),
+        output_bytes: 0,
+    }
+}
+
+fn encode_output(output: ModuleOutput) -> Vec<u8> {
+    serde_cbor::to_vec(&output).unwrap_or_default()
+}
+
+fn decode_input(input_bytes: &[u8]) -> Option<ModuleCallInput> {
+    serde_cbor::from_slice(input_bytes).ok()
+}
+
+fn action_envelope(input: &ModuleCallInput) -> Option<(u64, Value)> {
+    let action_bytes = input.action.as_deref()?;
+    if action_bytes.is_empty() {
+        return None;
+    }
+    let action: Value = serde_cbor::from_slice(action_bytes).ok()?;
+    let action_id = action.get("id")?.as_u64()?;
+    let action_payload = action.get("action")?.clone();
+    Some((action_id, action_payload))
+}
+
+fn rule_emit_output(decision_payload: Value) -> Vec<u8> {
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: RULE_DECISION_EMIT_KIND.to_string(),
+            payload: decision_payload,
+        }],
+        output_bytes: 0,
+    };
+    encode_output(output)
+}
+
+fn build_body_module_action_output(input: &ModuleCallInput) -> Vec<u8> {
+    let Some((action_id, action)) = action_envelope(input) else {
+        return encode_output(empty_output());
+    };
+    if action.get("type").and_then(Value::as_str) != Some("BodyAction") {
+        return encode_output(empty_output());
+    }
+    let Some(data) = action.get("data") else {
+        return encode_output(empty_output());
+    };
+    let Some(agent_id) = data.get("agent_id").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(kind) = data.get("kind").and_then(Value::as_str) else {
+        return encode_output(empty_output());
+    };
+    let Some(payload) = data.get("payload") else {
+        return encode_output(empty_output());
+    };
+
+    let mut decision = json!({
+        "action_id": action_id,
+        "verdict": "allow",
+        "cost": { "entries": {} },
+        "notes": [],
+    });
+
+    let view: BodyKernelView = match serde_json::from_value(payload.clone()) {
+        Ok(view) => view,
+        Err(err) => {
+            decision["verdict"] = json!("deny");
+            decision["notes"] = json!([format!("body action payload decode failed: {err}")]);
+            return rule_emit_output(decision);
+        }
+    };
+
+    decision["verdict"] = json!("modify");
+    decision["override_action"] = json!({
+        "type": "EmitBodyAttributes",
+        "data": {
+            "agent_id": agent_id,
+            "view": view,
+            "reason": format!("body.{kind}"),
+        }
+    });
+    if 10 > 0 {
+        decision["cost"] = json!({
+            "entries": {
+                "electricity": -10
+            }
+        });
+    }
+    rule_emit_output(decision)
+}
+
+fn build_body_module_output(input: &ModuleCallInput) -> Vec<u8> {
+    if input.action.is_some() {
+        return build_body_module_action_output(input);
+    }
+    encode_output(empty_output())
+}
+
+fn read_input_bytes(input_ptr: i32, input_len: i32) -> Vec<u8> {
+    if input_ptr > 0 && input_len > 0 {
+        let ptr = input_ptr as *const u8;
+        let len = input_len as usize;
+        // SAFETY: host guarantees valid wasm linear memory pointer/len for the call.
+        return unsafe { std::slice::from_raw_parts(ptr, len).to_vec() };
+    }
+    Vec::new()
+}
+
+fn write_bytes_to_memory(bytes: &[u8]) -> (i32, i32) {
+    let len = i32::try_from(bytes.len()).unwrap_or(0);
+    if len <= 0 {
+        return (0, 0);
+    }
+    let ptr = agent_world_wasm_sdk::default_alloc(len);
+    if ptr <= 0 {
+        return (0, 0);
+    }
+    // SAFETY: alloc returns a writable wasm linear memory region with at least len bytes.
+    unsafe {
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr as *mut u8, len as usize);
+    }
+    (ptr, len)
+}
+
+fn reduce_impl(input_ptr: i32, input_len: i32) -> (i32, i32) {
+    let input = read_input_bytes(input_ptr, input_len);
+    let Some(mut decoded) = decode_input(&input) else {
+        return write_bytes_to_memory(&encode_output(empty_output()));
+    };
+    decoded.ctx.module_id = MODULE_ID.to_string();
+    let output = build_body_module_output(&decoded);
+    write_bytes_to_memory(&output)
+}
 
 #[derive(Default)]
 struct BuiltinWasmModule;
@@ -13,7 +203,7 @@ impl WasmModuleLifecycle for BuiltinWasmModule {
     }
 
     fn alloc(&mut self, len: i32) -> i32 {
-        agent_world_builtin_wasm_runtime::builtin_alloc(len)
+        agent_world_wasm_sdk::default_alloc(len)
     }
 
     fn on_init(&mut self, _stage: LifecycleStage) {}
@@ -21,11 +211,11 @@ impl WasmModuleLifecycle for BuiltinWasmModule {
     fn on_teardown(&mut self, _stage: LifecycleStage) {}
 
     fn on_reduce(&mut self, input_ptr: i32, input_len: i32) -> (i32, i32) {
-        agent_world_builtin_wasm_runtime::reduce_for_module(self.module_id(), input_ptr, input_len)
+        reduce_impl(input_ptr, input_len)
     }
 
     fn on_call(&mut self, input_ptr: i32, input_len: i32) -> (i32, i32) {
-        agent_world_builtin_wasm_runtime::call_for_module(self.module_id(), input_ptr, input_len)
+        reduce_impl(input_ptr, input_len)
     }
 }
 

@@ -4,12 +4,13 @@
 - 将 builtin wasm 的业务逻辑从 `crates/agent_world_builtin_wasm_runtime` 迁移到 `crates/agent_world_builtin_wasm_modules/*` 各模块 crate。
 - 保持 wasm ABI（`alloc/reduce/call`）与模块 ID/版本常量不变，确保 runtime 集成层无感升级。
 - 让每个模块 crate 成为独立闭环工程：入口、生命周期、业务逻辑在同一 crate 内。
+- 模块 crate 依赖面收敛到 `agent_world_wasm_sdk`（外加序列化库），不再依赖 runtime 业务分发 crate。
 
 ## 范围
 
 ### In Scope
 - 改造 23 个模块 crate：移除对 `agent_world_builtin_wasm_runtime::{reduce_for_module, call_for_module}` 的依赖方式，改为本地实现业务逻辑。
-- `agent_world_builtin_wasm_runtime` 仅保留 runtime 侧需要的常量与通用基础能力（非业务决策逻辑）。
+- 将 runtime 侧常量统一收敛到 `crates/agent_world_wasm_store`，并删除 `agent_world_builtin_wasm_runtime` crate。
 - 更新模块构建与回归校验链路，确保 m1/m4 构建产物与 hash/DistFS 同步闭环。
 
 ### Out of Scope
@@ -19,7 +20,7 @@
 
 ## 接口 / 数据
 - 模块入口仍为 `alloc/reduce/call`（由 `agent_world_wasm_sdk` 生命周期 trait + 宏导出）。
-- runtime 常量来源仍为 `agent_world_builtin_wasm_runtime`（供 world/bootstrap 与测试复用）。
+- runtime 常量来源为 `agent_world_wasm_store`（供 world/bootstrap 与测试复用）。
 - 业务输出协议（module input/output CBOR + emits/effects/new_state）保持兼容。
 
 ## 里程碑
@@ -31,5 +32,5 @@
   - 缓解：复用原逻辑实现，执行 m1/m4 同步 check 与 required-tier 编译回归。
 - 风险：模块依赖扩展导致 wasm 构建不稳定。
   - 缓解：统一依赖版本并跑 `build-builtin-wasm-modules` + sync 校验。
-- 风险：runtime 侧遗留旧分发函数被误引用。
-  - 缓解：迁移完成后全仓 `rg` 清理 `reduce_for_module/call_for_module` 引用。
+- 风险：runtime 侧或脚本侧遗留旧 crate 误引用，导致迁移不彻底。
+  - 缓解：迁移完成后全仓 `rg` 清理 `agent_world_builtin_wasm_runtime`、`reduce_for_module/call_for_module` 引用。

@@ -139,7 +139,6 @@ dependencies = [
 name = "agent_world"
 version = "0.1.0"
 dependencies = [
- "agent_world_builtin_wasm_runtime",
  "agent_world_distfs",
  "agent_world_node",
  "agent_world_proto",
@@ -161,15 +160,6 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "tungstenite",
-]
-
-[[package]]
-name = "agent_world_builtin_wasm_runtime"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_cbor",
- "serde_json",
 ]
 
 [[package]]

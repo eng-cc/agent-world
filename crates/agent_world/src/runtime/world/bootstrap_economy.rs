@@ -14,7 +14,7 @@ use super::World;
 const M4_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M4_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
 const M4_BOOTSTRAP_BUILD_MANIFEST: &str =
-    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm_runtime";
+    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm_modules";
 
 impl World {
     pub fn install_m4_economy_bootstrap_modules(
