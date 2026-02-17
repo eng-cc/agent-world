@@ -17,6 +17,7 @@
 - [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p agent_world_viewer --target wasm32-unknown-unknown`，2026-02-15）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` + 补齐 `selection_linking` 新事件分支，2026-02-16）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` 修复 `node_points` / `node_points_runtime` 格式漂移，2026-02-16）
+- [x] 修复 CI `cargo fmt --check` 漂移并恢复门禁通过（`world_viewer_live*` / `agent_world_node*`，2026-02-17）
 
 ## 依赖
 - `rustfmt`（staged `.rs`）/ `cargo fmt -- --check`
@@ -25,4 +26,4 @@
 
 ## 状态
 - 当前阶段：已提交
-- 最近更新：修复 `node_points*` 的 `cargo fmt --check` 漂移，`./scripts/pre-commit.sh` 全链路通过（2026-02-16）
+- 最近更新：修复 `world_viewer_live*` 与 `agent_world_node*` 的 `cargo fmt --check` 漂移，`env -u RUSTC_WRAPPER cargo fmt --all -- --check` 通过（2026-02-17）

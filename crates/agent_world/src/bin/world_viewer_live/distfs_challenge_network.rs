@@ -5,8 +5,7 @@ use agent_world::runtime::{blake3_hex, LocalCasStore};
 use agent_world_distfs::{
     storage_challenge_receipt_to_proof_semantics, verify_storage_challenge_receipt,
     StorageChallenge, StorageChallengeProbeReport, StorageChallengeReceipt,
-    StorageChallengeRequest, STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1,
-    STORAGE_CHALLENGE_VERSION,
+    StorageChallengeRequest, STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1, STORAGE_CHALLENGE_VERSION,
 };
 use agent_world_node::NodeRole;
 use agent_world_proto::distributed::{
@@ -488,13 +487,18 @@ impl DistfsChallengeNetworkDriver {
             }
             self.processed_proof_ids.insert(proof_id.clone());
 
-            let Some(pending) = self.pending_challenges.remove(proof.challenge.challenge_id.as_str())
+            let Some(pending) = self
+                .pending_challenges
+                .remove(proof.challenge.challenge_id.as_str())
             else {
                 continue;
             };
             if pending.target_node_id != proof.responder_node_id {
                 failed_checks = failed_checks.saturating_add(1);
-                increment_failure_reason(&mut failure_reasons, StorageChallengeFailureReason::Unknown);
+                increment_failure_reason(
+                    &mut failure_reasons,
+                    StorageChallengeFailureReason::Unknown,
+                );
                 accepted_proof_ids.push(proof_id);
                 continue;
             }
@@ -634,7 +638,7 @@ impl DistfsChallengeNetworkDriver {
                         for idx in 0..max_round {
                             let target = known_storage_targets
                                 [(self.issue_cursor as usize + idx) % known_storage_targets.len()]
-                                .clone();
+                            .clone();
                             let content_hash =
                                 hashes[(self.issue_cursor as usize + idx) % hashes.len()].clone();
                             let challenge_id = build_network_challenge_id(
@@ -654,7 +658,10 @@ impl DistfsChallengeNetworkDriver {
                                 challenge_ttl_ms: self.probe_config.challenge_ttl_ms,
                                 vrf_seed: format!(
                                     "{}:{}:{}:{}",
-                                    self.world_id, self.local_node_id, observed_at_unix_ms, self.issue_cursor
+                                    self.world_id,
+                                    self.local_node_id,
+                                    observed_at_unix_ms,
+                                    self.issue_cursor
                                 ),
                             };
                             let challenge = match self.store.issue_storage_challenge(&request) {
@@ -731,7 +738,10 @@ impl DistfsChallengeNetworkDriver {
                 }
                 Err(err) => {
                     failed_checks = failed_checks.saturating_add(1);
-                    increment_failure_reason(&mut failure_reasons, classify_world_error_reason(&err));
+                    increment_failure_reason(
+                        &mut failure_reasons,
+                        classify_world_error_reason(&err),
+                    );
                 }
             }
         }
@@ -998,7 +1008,10 @@ mod tests {
             distfs_challenge_request_topic("w1"),
             "aw.w1.distfs.challenge.request"
         );
-        assert_eq!(distfs_challenge_proof_topic("w1"), "aw.w1.distfs.challenge.proof");
+        assert_eq!(
+            distfs_challenge_proof_topic("w1"),
+            "aw.w1.distfs.challenge.proof"
+        );
     }
 
     #[test]

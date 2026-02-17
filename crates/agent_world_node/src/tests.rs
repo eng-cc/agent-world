@@ -147,7 +147,15 @@ fn pos_engine_commits_single_validator_head() {
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
     let snapshot = engine
-        .tick(&config.node_id, &config.world_id, 1_000, None, None, None, None)
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+        )
         .expect("tick");
     assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
     assert_eq!(snapshot.latest_height, 1);
@@ -162,10 +170,26 @@ fn pos_engine_generates_chain_hashed_block_ids() {
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
     let first = engine
-        .tick(&config.node_id, &config.world_id, 1_000, None, None, None, None)
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+        )
         .expect("first tick");
     let second = engine
-        .tick(&config.node_id, &config.world_id, 2_000, None, None, None, None)
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            2_000,
+            None,
+            None,
+            None,
+            None,
+        )
         .expect("second tick");
 
     let first_hash = first
@@ -272,7 +296,15 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
         .expect("ingest attestation");
 
     let snapshot = engine
-        .tick(&config.node_id, &config.world_id, 1_002, None, None, None, None)
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_002,
+            None,
+            None,
+            None,
+            None,
+        )
         .expect("tick");
     assert_eq!(snapshot.committed_height, 1);
     assert_eq!(snapshot.last_status, Some(PosConsensusStatus::Committed));
@@ -512,8 +544,9 @@ fn runtime_pos_state_persists_across_restart() {
             .expect("replication")
     };
 
-    let mut runtime = NodeRuntime::new(build_config())
-        .with_execution_hook(RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))));
+    let mut runtime = NodeRuntime::new(build_config()).with_execution_hook(
+        RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))),
+    );
     runtime.start().expect("start first");
     thread::sleep(Duration::from_millis(180));
     runtime.stop().expect("stop first");
@@ -533,8 +566,9 @@ fn runtime_pos_state_persists_across_restart() {
     assert!(persisted.last_execution_block_hash.is_some());
     assert!(persisted.last_execution_state_root.is_some());
 
-    let mut runtime = NodeRuntime::new(build_config())
-        .with_execution_hook(RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))));
+    let mut runtime = NodeRuntime::new(build_config()).with_execution_hook(
+        RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))),
+    );
     runtime.start().expect("start second");
     thread::sleep(Duration::from_millis(40));
     runtime.stop().expect("stop second");

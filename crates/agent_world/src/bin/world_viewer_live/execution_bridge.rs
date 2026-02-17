@@ -78,16 +78,20 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             ));
         }
         if context.height == self.state.last_applied_committed_height {
-            let execution_block_hash = self
-                .state
-                .last_execution_block_hash
-                .clone()
-                .ok_or_else(|| "execution driver missing block hash for current height".to_string())?;
-            let execution_state_root = self
-                .state
-                .last_execution_state_root
-                .clone()
-                .ok_or_else(|| "execution driver missing state root for current height".to_string())?;
+            let execution_block_hash =
+                self.state
+                    .last_execution_block_hash
+                    .clone()
+                    .ok_or_else(|| {
+                        "execution driver missing block hash for current height".to_string()
+                    })?;
+            let execution_state_root =
+                self.state
+                    .last_execution_state_root
+                    .clone()
+                    .ok_or_else(|| {
+                        "execution driver missing state root for current height".to_string()
+                    })?;
             return Ok(NodeExecutionCommitResult {
                 execution_height: context.height,
                 execution_block_hash,

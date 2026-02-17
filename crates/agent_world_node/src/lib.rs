@@ -28,6 +28,10 @@ use consensus_signature::{
     verify_attestation_message_signature, verify_commit_message_signature,
     verify_proposal_message_signature, ConsensusMessageSigner,
 };
+pub use error::NodeError;
+pub use execution_hook::{
+    NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
+};
 use gossip_udp::{
     GossipAttestationMessage, GossipCommitMessage, GossipEndpoint, GossipMessage,
     GossipProposalMessage,
@@ -37,10 +41,6 @@ pub use libp2p_replication_network::{Libp2pReplicationNetwork, Libp2pReplication
 #[cfg(target_arch = "wasm32")]
 pub use libp2p_replication_network_wasm::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig,
-};
-pub use error::NodeError;
-pub use execution_hook::{
-    NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
 };
 pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
@@ -469,13 +469,7 @@ impl PosNodeEngine {
         }
 
         self.apply_decision(&decision);
-        self.apply_committed_execution(
-            node_id,
-            world_id,
-            now_ms,
-            &decision,
-            execution_hook,
-        )?;
+        self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
         if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
         }

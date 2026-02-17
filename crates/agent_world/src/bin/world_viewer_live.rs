@@ -66,8 +66,8 @@ use reward_runtime_network::{
     decode_reward_observation_trace, decode_reward_settlement_envelope,
     encode_reward_observation_trace, encode_reward_settlement_envelope, reward_observation_topic,
     reward_settlement_envelope_id, reward_settlement_topic, sign_reward_observation_trace,
-    sign_reward_settlement_envelope, verify_reward_settlement_envelope,
-    RewardObservationPayload, RewardSettlementEnvelope,
+    sign_reward_settlement_envelope, verify_reward_settlement_envelope, RewardObservationPayload,
+    RewardSettlementEnvelope,
 };
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
@@ -563,7 +563,9 @@ fn reward_runtime_loop(
                             config.execution_bridge_state_path.as_path(),
                             &execution_bridge_state,
                         ) {
-                            eprintln!("reward runtime persist execution bridge state failed: {err}");
+                            eprintln!(
+                                "reward runtime persist execution bridge state failed: {err}"
+                            );
                         }
                         if let Err(err) = persist_execution_world(
                             config.execution_world_dir.as_path(),
