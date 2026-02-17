@@ -50,7 +50,7 @@ use distfs_probe_runtime::{
 };
 use execution_bridge::{
     bridge_committed_heights, load_execution_bridge_state, load_execution_world,
-    persist_execution_bridge_state, persist_execution_world,
+    persist_execution_bridge_state, persist_execution_world, NodeRuntimeExecutionDriver,
 };
 use node_keypair_config::ensure_node_keypair_in_config;
 use reward_runtime_network::{
@@ -221,6 +221,7 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
     let replication_root = Path::new("output")
         .join("node-distfs")
         .join(options.node_id.as_str());
+    let storage_root = replication_root.join("store");
     let replication = NodeReplicationConfig::new(replication_root)
         .and_then(|cfg| {
             cfg.with_signing_keypair(
@@ -232,6 +233,17 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
     config = config.with_replication(replication);
 
     let mut runtime = NodeRuntime::new(config);
+    let execution_driver = NodeRuntimeExecutionDriver::new(
+        Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+        Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+        Path::new(options.reward_runtime_report_dir.as_str())
+            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+        storage_root,
+    )
+    .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
+    runtime = runtime.with_execution_hook(execution_driver);
     let mut reward_network: Option<
         Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
     > = None;
@@ -493,34 +505,51 @@ fn reward_runtime_loop(
         let observed_at_unix_ms = now_unix_ms();
         let effective_storage_bytes =
             measure_directory_storage_bytes(config.storage_root.as_path());
-        let execution_bridge_records = match bridge_committed_heights(
-            &snapshot,
-            observed_at_unix_ms,
-            &mut execution_world,
-            &execution_store,
-            config.execution_records_dir.as_path(),
-            &mut execution_bridge_state,
-        ) {
-            Ok(records) => {
-                if !records.is_empty() {
-                    if let Err(err) = persist_execution_bridge_state(
-                        config.execution_bridge_state_path.as_path(),
-                        &execution_bridge_state,
-                    ) {
-                        eprintln!("reward runtime persist execution bridge state failed: {err}");
-                    }
-                    if let Err(err) = persist_execution_world(
-                        config.execution_world_dir.as_path(),
-                        &execution_world,
-                    ) {
-                        eprintln!("reward runtime persist execution world failed: {err}");
-                    }
+        let node_execution_available = snapshot.consensus.last_execution_height
+            >= snapshot.consensus.committed_height
+            && snapshot.consensus.committed_height > 0
+            && snapshot.consensus.last_execution_block_hash.is_some()
+            && snapshot.consensus.last_execution_state_root.is_some();
+        let execution_bridge_records = if node_execution_available {
+            match load_execution_bridge_state(config.execution_bridge_state_path.as_path()) {
+                Ok(state) => {
+                    execution_bridge_state = state;
                 }
-                records
+                Err(err) => {
+                    eprintln!("reward runtime reload execution bridge state failed: {err}");
+                }
             }
-            Err(err) => {
-                eprintln!("reward runtime execution bridge failed: {err}");
-                Vec::new()
+            Vec::new()
+        } else {
+            match bridge_committed_heights(
+                &snapshot,
+                observed_at_unix_ms,
+                &mut execution_world,
+                &execution_store,
+                config.execution_records_dir.as_path(),
+                &mut execution_bridge_state,
+            ) {
+                Ok(records) => {
+                    if !records.is_empty() {
+                        if let Err(err) = persist_execution_bridge_state(
+                            config.execution_bridge_state_path.as_path(),
+                            &execution_bridge_state,
+                        ) {
+                            eprintln!("reward runtime persist execution bridge state failed: {err}");
+                        }
+                        if let Err(err) = persist_execution_world(
+                            config.execution_world_dir.as_path(),
+                            &execution_world,
+                        ) {
+                            eprintln!("reward runtime persist execution world failed: {err}");
+                        }
+                    }
+                    records
+                }
+                Err(err) => {
+                    eprintln!("reward runtime execution bridge failed: {err}");
+                    Vec::new()
+                }
             }
         };
 
@@ -866,6 +895,9 @@ fn reward_runtime_loop(
                     "known_peer_heads": snapshot.consensus.known_peer_heads,
                     "last_status": snapshot.consensus.last_status.map(|status| format!("{status:?}")),
                     "last_block_hash": snapshot.consensus.last_block_hash,
+                    "last_execution_height": snapshot.consensus.last_execution_height,
+                    "last_execution_block_hash": snapshot.consensus.last_execution_block_hash,
+                    "last_execution_state_root": snapshot.consensus.last_execution_state_root,
                 }
             },
             "distfs_challenge_report": distfs_challenge_report,

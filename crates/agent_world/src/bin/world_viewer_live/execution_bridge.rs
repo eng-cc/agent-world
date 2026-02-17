@@ -2,7 +2,9 @@ use std::fs;
 use std::path::Path;
 
 use agent_world::runtime::{blake3_hex, BlobStore, LocalCasStore, World as RuntimeWorld};
-use agent_world_node::NodeSnapshot;
+use agent_world_node::{
+    NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeSnapshot,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,6 +35,152 @@ struct ExecutionHashPayload<'a> {
     prev_execution_block_hash: &'a str,
     execution_state_root: &'a str,
     journal_len: usize,
+}
+
+pub(super) struct NodeRuntimeExecutionDriver {
+    state_path: std::path::PathBuf,
+    world_dir: std::path::PathBuf,
+    records_dir: std::path::PathBuf,
+    execution_store: LocalCasStore,
+    state: ExecutionBridgeState,
+    execution_world: RuntimeWorld,
+}
+
+impl NodeRuntimeExecutionDriver {
+    pub(super) fn new(
+        state_path: std::path::PathBuf,
+        world_dir: std::path::PathBuf,
+        records_dir: std::path::PathBuf,
+        storage_root: std::path::PathBuf,
+    ) -> Result<Self, String> {
+        let state = load_execution_bridge_state(state_path.as_path())?;
+        let execution_world = load_execution_world(world_dir.as_path())?;
+        Ok(Self {
+            state_path,
+            world_dir,
+            records_dir,
+            execution_store: LocalCasStore::new(storage_root),
+            state,
+            execution_world,
+        })
+    }
+}
+
+impl NodeExecutionHook for NodeRuntimeExecutionDriver {
+    fn on_commit(
+        &mut self,
+        context: NodeExecutionCommitContext,
+    ) -> Result<NodeExecutionCommitResult, String> {
+        if context.height < self.state.last_applied_committed_height {
+            return Err(format!(
+                "execution driver received stale height: context={} state={}",
+                context.height, self.state.last_applied_committed_height
+            ));
+        }
+        if context.height == self.state.last_applied_committed_height {
+            let execution_block_hash = self
+                .state
+                .last_execution_block_hash
+                .clone()
+                .ok_or_else(|| "execution driver missing block hash for current height".to_string())?;
+            let execution_state_root = self
+                .state
+                .last_execution_state_root
+                .clone()
+                .ok_or_else(|| "execution driver missing state root for current height".to_string())?;
+            return Ok(NodeExecutionCommitResult {
+                execution_height: context.height,
+                execution_block_hash,
+                execution_state_root,
+            });
+        }
+
+        fs::create_dir_all(self.records_dir.as_path()).map_err(|err| {
+            format!(
+                "create execution records dir {} failed: {}",
+                self.records_dir.display(),
+                err
+            )
+        })?;
+
+        for height in (self.state.last_applied_committed_height + 1)..=context.height {
+            self.execution_world.step().map_err(|err| {
+                format!(
+                    "execution driver world.step failed at height {}: {:?}",
+                    height, err
+                )
+            })?;
+
+            let snapshot_value = self.execution_world.snapshot();
+            let journal_value = self.execution_world.journal().clone();
+            let snapshot_bytes = to_cbor(snapshot_value)?;
+            let journal_bytes = to_cbor(journal_value)?;
+
+            let snapshot_ref = self
+                .execution_store
+                .put_bytes(snapshot_bytes.as_slice())
+                .map_err(|err| format!("execution driver CAS snapshot put failed: {:?}", err))?;
+            let journal_ref = self
+                .execution_store
+                .put_bytes(journal_bytes.as_slice())
+                .map_err(|err| format!("execution driver CAS journal put failed: {:?}", err))?;
+
+            let execution_state_root = blake3_hex(snapshot_bytes.as_slice());
+            let prev_execution_block_hash = self
+                .state
+                .last_execution_block_hash
+                .clone()
+                .unwrap_or_else(|| "genesis".to_string());
+            let hash_payload = ExecutionHashPayload {
+                world_id: context.world_id.as_str(),
+                height,
+                prev_execution_block_hash: prev_execution_block_hash.as_str(),
+                execution_state_root: execution_state_root.as_str(),
+                journal_len: self.execution_world.journal().len(),
+            };
+            let execution_block_hash = blake3_hex(to_cbor(hash_payload)?.as_slice());
+            let node_block_hash = if height == context.height {
+                Some(context.node_block_hash.clone())
+            } else {
+                None
+            };
+
+            let record = ExecutionBridgeRecord {
+                world_id: context.world_id.clone(),
+                height,
+                node_block_hash: node_block_hash.clone(),
+                execution_block_hash: execution_block_hash.clone(),
+                execution_state_root: execution_state_root.clone(),
+                journal_len: self.execution_world.journal().len(),
+                snapshot_ref,
+                journal_ref,
+                timestamp_ms: context.committed_at_unix_ms,
+            };
+            persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
+
+            self.state.last_applied_committed_height = height;
+            self.state.last_execution_block_hash = Some(execution_block_hash);
+            self.state.last_execution_state_root = Some(execution_state_root);
+            self.state.last_node_block_hash = node_block_hash;
+        }
+
+        persist_execution_bridge_state(self.state_path.as_path(), &self.state)?;
+        persist_execution_world(self.world_dir.as_path(), &self.execution_world)?;
+
+        Ok(NodeExecutionCommitResult {
+            execution_height: context.height,
+            execution_block_hash: self
+                .state
+                .last_execution_block_hash
+                .clone()
+                .ok_or_else(|| "execution driver missing execution_block_hash".to_string())?,
+            execution_state_root: self
+                .state
+                .last_execution_state_root
+                .clone()
+                .ok_or_else(|| "execution driver missing execution_state_root".to_string())?,
+        })
+    }
 }
 
 pub(super) fn load_execution_bridge_state(path: &Path) -> Result<ExecutionBridgeState, String> {
@@ -309,6 +457,57 @@ mod tests {
         persist_execution_world(world_dir.as_path(), &world).expect("persist world");
         let loaded = load_execution_world(world_dir.as_path()).expect("load world");
         assert_eq!(loaded.journal().len(), world.journal().len());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_persists_chain_records() {
+        let dir = temp_dir("execution-driver");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let mut driver = NodeRuntimeExecutionDriver::new(
+            state_path.clone(),
+            world_dir.clone(),
+            records_dir.clone(),
+            storage_root,
+        )
+        .expect("driver");
+
+        let first = driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 1,
+                slot: 0,
+                epoch: 0,
+                node_block_hash: "node-h1".to_string(),
+                committed_at_unix_ms: 1_000,
+            })
+            .expect("first commit");
+        let second = driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 2,
+                slot: 1,
+                epoch: 0,
+                node_block_hash: "node-h2".to_string(),
+                committed_at_unix_ms: 2_000,
+            })
+            .expect("second commit");
+
+        assert_eq!(first.execution_height, 1);
+        assert_eq!(second.execution_height, 2);
+        assert_ne!(first.execution_block_hash, second.execution_block_hash);
+        assert!(records_dir.join("00000000000000000001.json").exists());
+        assert!(records_dir.join("00000000000000000002.json").exists());
+
+        let state = load_execution_bridge_state(state_path.as_path()).expect("load state");
+        assert_eq!(state.last_applied_committed_height, 2);
+        assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h2"));
 
         let _ = fs::remove_dir_all(dir);
     }
