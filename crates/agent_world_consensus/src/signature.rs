@@ -4,6 +4,7 @@ use serde::Serialize;
 use sha2::Sha256;
 
 use super::distributed::{ActionEnvelope, WorldHeadAnnounce};
+use super::ed25519_signer_policy::parse_ed25519_public_key_bytes;
 use super::error::WorldError;
 
 pub const ED25519_SIGNATURE_V1_PREFIX: &str = "ed25519:v1:";
@@ -182,7 +183,7 @@ impl Ed25519SignatureSigner {
 fn verify_signature_value<T: Serialize>(value: &T, signature: &str) -> Result<String, WorldError> {
     let payload = to_canonical_cbor(value)?;
     let (public_key_hex, signature_hex) = parse_signature(signature)?;
-    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "ed25519 public key")?;
+    let public_key_bytes = parse_ed25519_public_key_bytes(public_key_hex, "ed25519 public key")?;
     let signature_bytes = decode_hex_array::<64>(signature_hex, "ed25519 signature")?;
     let verifying_key = VerifyingKey::from_bytes(&public_key_bytes).map_err(|_| {
         WorldError::DistributedValidationFailed {
@@ -195,7 +196,7 @@ fn verify_signature_value<T: Serialize>(value: &T, signature: &str) -> Result<St
         .map_err(|_| WorldError::DistributedValidationFailed {
             reason: "signature verification failed".to_string(),
         })?;
-    Ok(public_key_hex.to_string())
+    Ok(hex::encode(public_key_bytes))
 }
 
 fn parse_signature(signature: &str) -> Result<(&str, &str), WorldError> {

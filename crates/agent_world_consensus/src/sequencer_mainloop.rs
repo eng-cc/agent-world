@@ -5,6 +5,9 @@ use serde::Serialize;
 use super::distributed::ActionEnvelope;
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::DistributedDht;
+use super::ed25519_signer_policy::{
+    normalize_ed25519_public_key_allowlist, normalize_ed25519_public_key_hex,
+};
 use super::error::WorldError;
 use super::lease::{LeaseDecision, LeaseManager};
 use super::mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
@@ -76,8 +79,10 @@ impl SequencerMainloopConfig {
                 reason: "sequencer batch_rules.max_payload_bytes must be positive".to_string(),
             });
         }
-        let accepted_action_signer_public_keys = normalized_action_signer_public_key_allowlist(
+        let accepted_action_signer_public_keys = normalize_ed25519_public_key_allowlist(
             &self.accepted_action_signer_public_keys,
+            "accepted_action_signer_public_keys",
+            "accepted_action_signer_public_keys",
         )?;
         if self.require_action_signature
             && self.hmac_signer.is_none()
@@ -95,47 +100,6 @@ impl SequencerMainloopConfig {
         }
         Ok(())
     }
-}
-
-fn normalized_ed25519_public_key_hex(public_key_hex: &str, field: &str) -> Result<String, WorldError> {
-    let normalized = public_key_hex.trim();
-    if normalized.is_empty() {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!("{field} cannot be empty"),
-        });
-    }
-    let public_key_bytes = hex::decode(normalized).map_err(|_| {
-        WorldError::DistributedValidationFailed {
-            reason: format!("{field} must be valid hex"),
-        }
-    })?;
-    if public_key_bytes.len() != 32 {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!("{field} must be 32-byte hex"),
-        });
-    }
-    Ok(hex::encode(public_key_bytes))
-}
-
-fn normalized_action_signer_public_key_allowlist(
-    keys: &[String],
-) -> Result<Option<HashSet<String>>, WorldError> {
-    if keys.is_empty() {
-        return Ok(None);
-    }
-    let mut normalized = HashSet::with_capacity(keys.len());
-    for (index, key) in keys.iter().enumerate() {
-        let field = format!("accepted_action_signer_public_keys[{index}]");
-        let key = normalized_ed25519_public_key_hex(key, field.as_str())?;
-        if !normalized.insert(key.clone()) {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!(
-                    "accepted_action_signer_public_keys contains duplicate signer public key: {key}"
-                ),
-            });
-        }
-    }
-    Ok(Some(normalized))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,8 +141,10 @@ impl SequencerMainloop {
         pos_config: PosConsensusConfig,
     ) -> Result<Self, WorldError> {
         let accepted_action_signer_public_keys =
-            normalized_action_signer_public_key_allowlist(
+            normalize_ed25519_public_key_allowlist(
                 &config.accepted_action_signer_public_keys,
+                "accepted_action_signer_public_keys",
+                "accepted_action_signer_public_keys",
             )?;
         config.validate()?;
         let consensus = PosConsensus::new(pos_config)?;
@@ -321,7 +287,7 @@ impl SequencerMainloop {
             let Ok(signer_public_key) = Ed25519SignatureSigner::verify_action(action) else {
                 return false;
             };
-            let Ok(signer_public_key) = normalized_ed25519_public_key_hex(
+            let Ok(signer_public_key) = normalize_ed25519_public_key_hex(
                 signer_public_key.as_str(),
                 "action signature signer public key",
             ) else {

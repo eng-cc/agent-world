@@ -1,5 +1,6 @@
 //! Consensus-focused facade for distributed runtime capabilities.
 
+mod ed25519_signer_policy;
 mod lease;
 mod membership;
 mod membership_logic;
