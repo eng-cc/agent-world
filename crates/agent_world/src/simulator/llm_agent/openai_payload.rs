@@ -269,6 +269,7 @@ pub(super) fn build_responses_request_payload(
         .input(InputParam::Text(request.user_prompt.clone()))
         .tools(responses_tools_with_debug_mode(request.debug_mode))
         .tool_choice(ToolChoiceParam::Mode(ToolChoiceOptions::Required))
+        .parallel_tool_calls(false)
         .build()
         .map_err(|err| LlmClientError::DecodeResponse {
             message: err.to_string(),

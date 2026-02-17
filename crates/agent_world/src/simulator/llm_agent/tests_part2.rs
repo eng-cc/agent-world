@@ -2037,6 +2037,31 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
 }
 
 #[test]
+fn llm_agent_rejects_multiple_tool_calls_in_single_turn() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"wait"}
+
+---
+
+{"decision":"wait"}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut config = base_config();
+    config.max_repair_rounds = 0;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    let parse_error = trace.parse_error.expect("parse error");
+    assert!(parse_error.contains("multiple tool calls in one dialogue turn"));
+}
+
+#[test]
 fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
     let turns = completion_turns_from_output(
         r#"{"type":"module_call","module":"agent.modules.list","args":{}}
@@ -2067,6 +2092,34 @@ fn llm_parse_turn_responses_extracts_multiple_json_blocks() {
             ..
         }
     ));
+}
+
+#[test]
+fn llm_parse_schedule_recipe_non_positive_batches_normalizes_to_one() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.control_chip","batches":0}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Decision { decision, .. } => {
+            assert_eq!(
+                decision,
+                AgentDecision::Act(Action::ScheduleRecipe {
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    factory_id: "factory.alpha".to_string(),
+                    recipe_id: "recipe.assembler.control_chip".to_string(),
+                    batches: 1,
+                })
+            );
+        }
+        other => panic!("expected decision, got {other:?}"),
+    }
 }
 
 #[test]

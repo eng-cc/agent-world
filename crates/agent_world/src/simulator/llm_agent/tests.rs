@@ -848,6 +848,12 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
         .as_str()
         .expect("tool choice string");
     assert_eq!(tool_choice, "required");
+    assert_eq!(
+        payload_json
+            .get("parallel_tool_calls")
+            .and_then(|v| v.as_bool()),
+        Some(false)
+    );
 
     let tools = payload_json
         .get("tools")
@@ -1259,7 +1265,7 @@ fn llm_agent_supports_module_call_then_decision() {
 }
 
 #[test]
-fn llm_agent_consumes_multi_json_output_in_single_turn() {
+fn llm_agent_rejects_multi_json_output_and_repairs_with_second_turn() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
         vec![
@@ -1275,20 +1281,21 @@ fn llm_agent_consumes_multi_json_output_in_single_turn() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
 
     let decision = behavior.decide(&make_observation());
-    assert!(matches!(
-        decision,
-        AgentDecision::Act(Action::MoveAgent { .. })
-    ));
-    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(decision, AgentDecision::Wait);
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
 
     let trace = behavior.take_decision_trace().expect("trace exists");
     assert!(trace.parse_error.is_none());
-    assert_eq!(trace.llm_effect_intents.len(), 1);
-    assert_eq!(trace.llm_effect_receipts.len(), 1);
+    assert_eq!(trace.llm_effect_intents.len(), 0);
+    assert_eq!(trace.llm_effect_receipts.len(), 0);
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.step_type == "repair"));
 }
 
 #[test]
-fn llm_agent_skips_extra_module_calls_and_consumes_later_terminal_decision() {
+fn llm_agent_rejects_mixed_multi_turn_output_in_single_dialogue_turn() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
         vec![
@@ -1316,12 +1323,16 @@ fn llm_agent_skips_extra_module_calls_and_consumes_later_terminal_decision() {
 
     let decision = behavior.decide(&make_observation());
     assert_eq!(decision, AgentDecision::Wait);
-    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
 
     let trace = behavior.take_decision_trace().expect("trace exists");
     assert!(trace.parse_error.is_none());
-    assert_eq!(trace.llm_effect_intents.len(), 2);
-    assert_eq!(trace.llm_effect_receipts.len(), 2);
+    assert_eq!(trace.llm_effect_intents.len(), 0);
+    assert_eq!(trace.llm_effect_receipts.len(), 0);
+    assert!(trace
+        .llm_step_trace
+        .iter()
+        .any(|step| step.step_type == "repair"));
 }
 
 #[test]

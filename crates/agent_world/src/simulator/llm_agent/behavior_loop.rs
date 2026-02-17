@@ -260,366 +260,396 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         self.config.llm_debug_mode,
                     );
 
-                    for parsed_turn in parsed_turns {
-                        match parsed_turn {
-                            ParsedLlmTurn::Decision {
-                                decision: parsed_decision,
-                                parse_error: decision_parse_error,
-                                message_to_user,
-                            } => {
-                                if let Some(message_to_user) = message_to_user.as_deref() {
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Agent,
-                                        message_to_user,
-                                    );
-                                }
-                                let repeats_last_action = matches!(
-                                    &parsed_decision,
-                                    AgentDecision::Act(action)
-                                        if self.replan_guard_state.is_same_action_as_last(action)
-                                );
-                                if should_force_replan
-                                    && module_history.is_empty()
-                                    && repeats_last_action
-                                {
-                                    let err = "replan guard requires module_call or execute_until before repeating same terminal action"
-                                        .to_string();
-                                    turn_status = "error".to_string();
-                                    turn_output_summary = err.clone();
-                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                        repair_context = Some(err);
-                                        retry_next_turn = true;
-                                    } else {
-                                        parse_error = Some(err);
-                                        turn_status = "degraded".to_string();
-                                        resolved = true;
-                                    }
-                                } else {
-                                    let original_decision = parsed_decision.clone();
-                                    let (guarded_decision, guardrail_note) = self
-                                        .apply_decision_guardrails(parsed_decision, observation);
-                                    let guardrail_reason = guardrail_note.clone();
-                                    decision = guarded_decision;
-                                    parse_error = decision_parse_error;
-                                    repair_context = None;
-                                    resolved = true;
-                                    resolved_via_execute_until = false;
-
-                                    if let Some(note) = guardrail_note {
-                                        self.memory.record_note(observation.time, note.clone());
-                                        let _ = self.append_conversation_message(
-                                            observation.time,
-                                            LlmChatRole::System,
-                                            note.as_str(),
-                                        );
-                                        turn_output_summary = format!(
-                                            "{}; {}",
-                                            turn_output_summary,
-                                            summarize_trace_text(note.as_str(), 160)
-                                        );
-                                    }
-
-                                    if let Some(rewrite_receipt) = Self::decision_rewrite_receipt(
-                                        &original_decision,
-                                        &decision,
-                                        guardrail_reason.as_deref(),
-                                    ) {
-                                        self.record_decision_rewrite_receipt(
-                                            observation.time,
-                                            &rewrite_receipt,
-                                            &mut turn_output_summary,
-                                        );
-                                        decision_rewrite_receipt = Some(rewrite_receipt);
-                                    }
-                                }
-                            }
-                            ParsedLlmTurn::ExecuteUntil {
-                                directive,
-                                message_to_user,
-                                rewrite_receipt,
-                            } => {
-                                if let Some(message_to_user) = message_to_user.as_deref() {
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Agent,
-                                        message_to_user,
-                                    );
-                                }
-                                let original_action = directive.action.clone();
-                                let (guarded_directive, guardrail_note) =
-                                    self.apply_execute_until_guardrails(directive, observation);
-                                let guardrail_reason = guardrail_note.clone();
-                                decision = AgentDecision::Act(guarded_directive.action.clone());
-                                self.active_execute_until =
-                                    Some(ActiveExecuteUntil::from_directive(
-                                        guarded_directive.clone(),
-                                        observation,
-                                    ));
-                                repair_context = None;
-                                resolved = true;
-                                resolved_via_execute_until = true;
-
-                                turn_output_summary = format!(
-                                    "execute_until events={} max_ticks={}",
-                                    guarded_directive
-                                        .until_conditions
-                                        .iter()
-                                        .map(|condition| condition.summary())
-                                        .collect::<Vec<_>>()
-                                        .join("|"),
-                                    guarded_directive.max_ticks
-                                );
-
-                                if let Some(note) = guardrail_note {
-                                    self.memory.record_note(observation.time, note.clone());
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::System,
-                                        note.as_str(),
-                                    );
-                                    turn_output_summary = format!(
-                                        "{}; {}",
-                                        turn_output_summary,
-                                        summarize_trace_text(note.as_str(), 160)
-                                    );
-                                }
-
-                                if let Some(rewrite_receipt) = rewrite_receipt {
-                                    self.record_decision_rewrite_receipt(
-                                        observation.time,
-                                        &rewrite_receipt,
-                                        &mut turn_output_summary,
-                                    );
-                                    decision_rewrite_receipt = Some(rewrite_receipt);
-                                }
-
-                                if let Some(rewrite_receipt) = Self::action_rewrite_receipt(
-                                    &original_action,
-                                    &guarded_directive.action,
-                                    guardrail_reason.as_deref(),
-                                ) {
-                                    self.record_decision_rewrite_receipt(
-                                        observation.time,
-                                        &rewrite_receipt,
-                                        &mut turn_output_summary,
-                                    );
-                                    decision_rewrite_receipt = Some(rewrite_receipt);
-                                }
-                            }
-                            ParsedLlmTurn::ModuleCall {
-                                request: module_request,
-                                message_to_user,
-                            } => {
-                                if let Some(message_to_user) = message_to_user.as_deref() {
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Agent,
-                                        message_to_user,
-                                    );
-                                }
-                                if module_history.len() >= self.config.max_module_calls {
-                                    deferred_parse_error = Some(format!(
-                                        "module call limit exceeded: max_module_calls={}",
-                                        self.config.max_module_calls
-                                    ));
-                                    turn_status = "error".to_string();
-                                    turn_output_summary =
-                                        "module_call skipped: limit exceeded".to_string();
-                                } else {
-                                    let module_name = module_request.module.clone();
-                                    let module_args = module_request.args.clone();
-                                    let intent_id = self.next_prompt_intent_id();
-                                    let intent = LlmEffectIntentTrace {
-                                        intent_id: intent_id.clone(),
-                                        kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
-                                        params: serde_json::json!({
-                                            "module": module_name.clone(),
-                                            "args": module_args,
-                                        }),
-                                        cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
-                                        origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
-                                    };
-                                    let module_result =
-                                        self.run_prompt_module(&module_request, observation);
-                                    let status_label = if module_result
-                                        .get("ok")
-                                        .and_then(|value| value.as_bool())
-                                        .unwrap_or(false)
-                                    {
-                                        "ok"
-                                    } else {
-                                        "error"
-                                    };
-                                    let receipt = LlmEffectReceiptTrace {
-                                        intent_id: intent.intent_id.clone(),
-                                        status: status_label.to_string(),
-                                        payload: module_result.clone(),
-                                        cost_cents: None,
-                                    };
-
-                                    llm_effect_intents.push(intent);
-                                    llm_effect_receipts.push(receipt);
-                                    trace_inputs.push(format!(
-                                        "[module_result:{}]\n{}",
-                                        module_name,
-                                        serde_json::to_string(&module_result)
-                                            .unwrap_or_else(|_| "{}".to_string())
-                                    ));
-                                    module_history.push(ModuleCallExchange {
-                                        module: module_name.clone(),
-                                        args: module_request.args.clone(),
-                                        result: module_result.clone(),
-                                    });
-
-                                    let tool_feedback = serde_json::json!({
-                                        "type": "module_call_result",
-                                        "module": module_name.clone(),
-                                        "status": status_label,
-                                        "args": module_request.args,
-                                        "result": module_result,
-                                    })
-                                    .to_string();
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Tool,
-                                        tool_feedback.as_str(),
-                                    );
-
-                                    turn_output_summary =
-                                        format!("module_call {module_name} status={status_label}");
-                                    tool_called_this_turn = true;
-                                }
-                            }
-                            ParsedLlmTurn::DecisionDraft {
-                                draft,
-                                message_to_user,
-                            } => {
-                                if let Some(message_to_user) = message_to_user.as_deref() {
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Agent,
-                                        message_to_user,
-                                    );
-                                }
-                                let repeats_last_action = matches!(
-                                    &draft.decision,
-                                    AgentDecision::Act(action)
-                                        if self.replan_guard_state.is_same_action_as_last(action)
-                                );
-                                if should_force_replan
-                                    && module_history.is_empty()
-                                    && repeats_last_action
-                                {
-                                    let err =
-                                        "replan guard requires module_call or execute_until before repeating same decision_draft"
-                                            .to_string();
-                                    turn_status = "error".to_string();
-                                    turn_output_summary = err.clone();
-                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                        repair_context = Some(err);
-                                        retry_next_turn = true;
-                                    } else {
-                                        parse_error = Some(err);
-                                        turn_status = "degraded".to_string();
-                                        resolved = true;
-                                    }
-                                } else {
-                                    let original_decision = draft.decision.clone();
-                                    let (guarded_decision, guardrail_note) =
-                                        self.apply_decision_guardrails(draft.decision, observation);
-                                    let guardrail_reason = guardrail_note.clone();
-                                    decision = guarded_decision;
-                                    repair_context = None;
-                                    resolved = true;
-                                    resolved_via_execute_until = false;
-                                    turn_output_summary = format!(
-                                        "decision_draft accepted: confidence={:?}; need_verify={}",
-                                        draft.confidence, draft.need_verify
-                                    );
-
-                                    if let Some(note) = guardrail_note {
-                                        self.memory.record_note(observation.time, note.clone());
-                                        let _ = self.append_conversation_message(
-                                            observation.time,
-                                            LlmChatRole::System,
-                                            note.as_str(),
-                                        );
-                                        turn_output_summary = format!(
-                                            "{}; {}",
-                                            turn_output_summary,
-                                            summarize_trace_text(note.as_str(), 160)
-                                        );
-                                    }
-
-                                    if let Some(rewrite_receipt) = Self::decision_rewrite_receipt(
-                                        &original_decision,
-                                        &decision,
-                                        guardrail_reason.as_deref(),
-                                    ) {
-                                        self.record_decision_rewrite_receipt(
-                                            observation.time,
-                                            &rewrite_receipt,
-                                            &mut turn_output_summary,
-                                        );
-                                        decision_rewrite_receipt = Some(rewrite_receipt);
-                                    }
-                                }
-                            }
-                            ParsedLlmTurn::Plan {
-                                payload: plan,
-                                message_to_user,
-                            } => {
-                                if let Some(message_to_user) = message_to_user.as_deref() {
-                                    let _ = self.append_conversation_message(
-                                        observation.time,
-                                        LlmChatRole::Agent,
-                                        message_to_user,
-                                    );
-                                }
-                                let missing = if plan.missing.is_empty() {
-                                    "-".to_string()
-                                } else {
-                                    plan.missing.join(",")
-                                };
-                                let next = plan.next.unwrap_or_else(|| "-".to_string());
-                                let err = format!(
-                                    "plan output is deprecated in dialogue mode (missing={missing}, next={next}); return module_call or final decision"
-                                );
-                                turn_status = "error".to_string();
-                                turn_output_summary = summarize_trace_text(err.as_str(), 180);
-                                if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                    repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                    repair_context = Some(err);
-                                    retry_next_turn = true;
-                                } else {
-                                    parse_error = Some(err);
-                                    turn_status = "degraded".to_string();
-                                    resolved = true;
-                                }
-                            }
-                            ParsedLlmTurn::Invalid(err) => {
-                                turn_status = "error".to_string();
-                                turn_output_summary = format!(
-                                    "parse_error: {}",
-                                    summarize_trace_text(err.as_str(), 180)
-                                );
-                                if repair_rounds_used < self.config.max_repair_rounds as u32 {
-                                    repair_rounds_used = repair_rounds_used.saturating_add(1);
-                                    repair_context = Some(err);
-                                    retry_next_turn = true;
-                                } else {
-                                    parse_error = Some(err);
-                                    turn_status = "degraded".to_string();
-                                    resolved = true;
-                                }
-                            }
+                    if parsed_turns.len() > 1 {
+                        let err = format!(
+                            "multiple tool calls in one dialogue turn are not allowed: observed={}, expected=1",
+                            parsed_turns.len()
+                        );
+                        turn_status = "error".to_string();
+                        turn_output_summary = summarize_trace_text(err.as_str(), 180);
+                        if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                            repair_rounds_used = repair_rounds_used.saturating_add(1);
+                            repair_context = Some(err);
+                            retry_next_turn = true;
+                        } else {
+                            parse_error = Some(err);
+                            turn_status = "degraded".to_string();
+                            resolved = true;
                         }
+                    } else {
+                        for parsed_turn in parsed_turns {
+                            match parsed_turn {
+                                ParsedLlmTurn::Decision {
+                                    decision: parsed_decision,
+                                    parse_error: decision_parse_error,
+                                    message_to_user,
+                                } => {
+                                    if let Some(message_to_user) = message_to_user.as_deref() {
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Agent,
+                                            message_to_user,
+                                        );
+                                    }
+                                    let repeats_last_action = matches!(
+                                        &parsed_decision,
+                                        AgentDecision::Act(action)
+                                            if self.replan_guard_state.is_same_action_as_last(action)
+                                    );
+                                    if should_force_replan
+                                        && module_history.is_empty()
+                                        && repeats_last_action
+                                    {
+                                        let err = "replan guard requires module_call or execute_until before repeating same terminal action"
+                                            .to_string();
+                                        turn_status = "error".to_string();
+                                        turn_output_summary = err.clone();
+                                        if repair_rounds_used < self.config.max_repair_rounds as u32
+                                        {
+                                            repair_rounds_used =
+                                                repair_rounds_used.saturating_add(1);
+                                            repair_context = Some(err);
+                                            retry_next_turn = true;
+                                        } else {
+                                            parse_error = Some(err);
+                                            turn_status = "degraded".to_string();
+                                            resolved = true;
+                                        }
+                                    } else {
+                                        let original_decision = parsed_decision.clone();
+                                        let (guarded_decision, guardrail_note) = self
+                                            .apply_decision_guardrails(
+                                                parsed_decision,
+                                                observation,
+                                            );
+                                        let guardrail_reason = guardrail_note.clone();
+                                        decision = guarded_decision;
+                                        parse_error = decision_parse_error;
+                                        repair_context = None;
+                                        resolved = true;
+                                        resolved_via_execute_until = false;
 
-                        if resolved || retry_next_turn {
-                            break;
+                                        if let Some(note) = guardrail_note {
+                                            self.memory.record_note(observation.time, note.clone());
+                                            let _ = self.append_conversation_message(
+                                                observation.time,
+                                                LlmChatRole::System,
+                                                note.as_str(),
+                                            );
+                                            turn_output_summary = format!(
+                                                "{}; {}",
+                                                turn_output_summary,
+                                                summarize_trace_text(note.as_str(), 160)
+                                            );
+                                        }
+
+                                        if let Some(rewrite_receipt) =
+                                            Self::decision_rewrite_receipt(
+                                                &original_decision,
+                                                &decision,
+                                                guardrail_reason.as_deref(),
+                                            )
+                                        {
+                                            self.record_decision_rewrite_receipt(
+                                                observation.time,
+                                                &rewrite_receipt,
+                                                &mut turn_output_summary,
+                                            );
+                                            decision_rewrite_receipt = Some(rewrite_receipt);
+                                        }
+                                    }
+                                }
+                                ParsedLlmTurn::ExecuteUntil {
+                                    directive,
+                                    message_to_user,
+                                    rewrite_receipt,
+                                } => {
+                                    if let Some(message_to_user) = message_to_user.as_deref() {
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Agent,
+                                            message_to_user,
+                                        );
+                                    }
+                                    let original_action = directive.action.clone();
+                                    let (guarded_directive, guardrail_note) =
+                                        self.apply_execute_until_guardrails(directive, observation);
+                                    let guardrail_reason = guardrail_note.clone();
+                                    decision = AgentDecision::Act(guarded_directive.action.clone());
+                                    self.active_execute_until =
+                                        Some(ActiveExecuteUntil::from_directive(
+                                            guarded_directive.clone(),
+                                            observation,
+                                        ));
+                                    repair_context = None;
+                                    resolved = true;
+                                    resolved_via_execute_until = true;
+
+                                    turn_output_summary = format!(
+                                        "execute_until events={} max_ticks={}",
+                                        guarded_directive
+                                            .until_conditions
+                                            .iter()
+                                            .map(|condition| condition.summary())
+                                            .collect::<Vec<_>>()
+                                            .join("|"),
+                                        guarded_directive.max_ticks
+                                    );
+
+                                    if let Some(note) = guardrail_note {
+                                        self.memory.record_note(observation.time, note.clone());
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::System,
+                                            note.as_str(),
+                                        );
+                                        turn_output_summary = format!(
+                                            "{}; {}",
+                                            turn_output_summary,
+                                            summarize_trace_text(note.as_str(), 160)
+                                        );
+                                    }
+
+                                    if let Some(rewrite_receipt) = rewrite_receipt {
+                                        self.record_decision_rewrite_receipt(
+                                            observation.time,
+                                            &rewrite_receipt,
+                                            &mut turn_output_summary,
+                                        );
+                                        decision_rewrite_receipt = Some(rewrite_receipt);
+                                    }
+
+                                    if let Some(rewrite_receipt) = Self::action_rewrite_receipt(
+                                        &original_action,
+                                        &guarded_directive.action,
+                                        guardrail_reason.as_deref(),
+                                    ) {
+                                        self.record_decision_rewrite_receipt(
+                                            observation.time,
+                                            &rewrite_receipt,
+                                            &mut turn_output_summary,
+                                        );
+                                        decision_rewrite_receipt = Some(rewrite_receipt);
+                                    }
+                                }
+                                ParsedLlmTurn::ModuleCall {
+                                    request: module_request,
+                                    message_to_user,
+                                } => {
+                                    if let Some(message_to_user) = message_to_user.as_deref() {
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Agent,
+                                            message_to_user,
+                                        );
+                                    }
+                                    if module_history.len() >= self.config.max_module_calls {
+                                        deferred_parse_error = Some(format!(
+                                            "module call limit exceeded: max_module_calls={}",
+                                            self.config.max_module_calls
+                                        ));
+                                        turn_status = "error".to_string();
+                                        turn_output_summary =
+                                            "module_call skipped: limit exceeded".to_string();
+                                    } else {
+                                        let module_name = module_request.module.clone();
+                                        let module_args = module_request.args.clone();
+                                        let intent_id = self.next_prompt_intent_id();
+                                        let intent = LlmEffectIntentTrace {
+                                            intent_id: intent_id.clone(),
+                                            kind: LLM_PROMPT_MODULE_CALL_KIND.to_string(),
+                                            params: serde_json::json!({
+                                                "module": module_name.clone(),
+                                                "args": module_args,
+                                            }),
+                                            cap_ref: LLM_PROMPT_MODULE_CALL_CAP_REF.to_string(),
+                                            origin: LLM_PROMPT_MODULE_CALL_ORIGIN.to_string(),
+                                        };
+                                        let module_result =
+                                            self.run_prompt_module(&module_request, observation);
+                                        let status_label = if module_result
+                                            .get("ok")
+                                            .and_then(|value| value.as_bool())
+                                            .unwrap_or(false)
+                                        {
+                                            "ok"
+                                        } else {
+                                            "error"
+                                        };
+                                        let receipt = LlmEffectReceiptTrace {
+                                            intent_id: intent.intent_id.clone(),
+                                            status: status_label.to_string(),
+                                            payload: module_result.clone(),
+                                            cost_cents: None,
+                                        };
+
+                                        llm_effect_intents.push(intent);
+                                        llm_effect_receipts.push(receipt);
+                                        trace_inputs.push(format!(
+                                            "[module_result:{}]\n{}",
+                                            module_name,
+                                            serde_json::to_string(&module_result)
+                                                .unwrap_or_else(|_| "{}".to_string())
+                                        ));
+                                        module_history.push(ModuleCallExchange {
+                                            module: module_name.clone(),
+                                            args: module_request.args.clone(),
+                                            result: module_result.clone(),
+                                        });
+
+                                        let tool_feedback = serde_json::json!({
+                                            "type": "module_call_result",
+                                            "module": module_name.clone(),
+                                            "status": status_label,
+                                            "args": module_request.args,
+                                            "result": module_result,
+                                        })
+                                        .to_string();
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Tool,
+                                            tool_feedback.as_str(),
+                                        );
+
+                                        turn_output_summary = format!(
+                                            "module_call {module_name} status={status_label}"
+                                        );
+                                        tool_called_this_turn = true;
+                                    }
+                                }
+                                ParsedLlmTurn::DecisionDraft {
+                                    draft,
+                                    message_to_user,
+                                } => {
+                                    if let Some(message_to_user) = message_to_user.as_deref() {
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Agent,
+                                            message_to_user,
+                                        );
+                                    }
+                                    let repeats_last_action = matches!(
+                                        &draft.decision,
+                                        AgentDecision::Act(action)
+                                            if self.replan_guard_state.is_same_action_as_last(action)
+                                    );
+                                    if should_force_replan
+                                        && module_history.is_empty()
+                                        && repeats_last_action
+                                    {
+                                        let err =
+                                            "replan guard requires module_call or execute_until before repeating same decision_draft"
+                                                .to_string();
+                                        turn_status = "error".to_string();
+                                        turn_output_summary = err.clone();
+                                        if repair_rounds_used < self.config.max_repair_rounds as u32
+                                        {
+                                            repair_rounds_used =
+                                                repair_rounds_used.saturating_add(1);
+                                            repair_context = Some(err);
+                                            retry_next_turn = true;
+                                        } else {
+                                            parse_error = Some(err);
+                                            turn_status = "degraded".to_string();
+                                            resolved = true;
+                                        }
+                                    } else {
+                                        let original_decision = draft.decision.clone();
+                                        let (guarded_decision, guardrail_note) = self
+                                            .apply_decision_guardrails(draft.decision, observation);
+                                        let guardrail_reason = guardrail_note.clone();
+                                        decision = guarded_decision;
+                                        repair_context = None;
+                                        resolved = true;
+                                        resolved_via_execute_until = false;
+                                        turn_output_summary = format!(
+                                            "decision_draft accepted: confidence={:?}; need_verify={}",
+                                            draft.confidence, draft.need_verify
+                                        );
+
+                                        if let Some(note) = guardrail_note {
+                                            self.memory.record_note(observation.time, note.clone());
+                                            let _ = self.append_conversation_message(
+                                                observation.time,
+                                                LlmChatRole::System,
+                                                note.as_str(),
+                                            );
+                                            turn_output_summary = format!(
+                                                "{}; {}",
+                                                turn_output_summary,
+                                                summarize_trace_text(note.as_str(), 160)
+                                            );
+                                        }
+
+                                        if let Some(rewrite_receipt) =
+                                            Self::decision_rewrite_receipt(
+                                                &original_decision,
+                                                &decision,
+                                                guardrail_reason.as_deref(),
+                                            )
+                                        {
+                                            self.record_decision_rewrite_receipt(
+                                                observation.time,
+                                                &rewrite_receipt,
+                                                &mut turn_output_summary,
+                                            );
+                                            decision_rewrite_receipt = Some(rewrite_receipt);
+                                        }
+                                    }
+                                }
+                                ParsedLlmTurn::Plan {
+                                    payload: plan,
+                                    message_to_user,
+                                } => {
+                                    if let Some(message_to_user) = message_to_user.as_deref() {
+                                        let _ = self.append_conversation_message(
+                                            observation.time,
+                                            LlmChatRole::Agent,
+                                            message_to_user,
+                                        );
+                                    }
+                                    let missing = if plan.missing.is_empty() {
+                                        "-".to_string()
+                                    } else {
+                                        plan.missing.join(",")
+                                    };
+                                    let next = plan.next.unwrap_or_else(|| "-".to_string());
+                                    let err = format!(
+                                        "plan output is deprecated in dialogue mode (missing={missing}, next={next}); return module_call or final decision"
+                                    );
+                                    turn_status = "error".to_string();
+                                    turn_output_summary = summarize_trace_text(err.as_str(), 180);
+                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                        repair_context = Some(err);
+                                        retry_next_turn = true;
+                                    } else {
+                                        parse_error = Some(err);
+                                        turn_status = "degraded".to_string();
+                                        resolved = true;
+                                    }
+                                }
+                                ParsedLlmTurn::Invalid(err) => {
+                                    turn_status = "error".to_string();
+                                    turn_output_summary = format!(
+                                        "parse_error: {}",
+                                        summarize_trace_text(err.as_str(), 180)
+                                    );
+                                    if repair_rounds_used < self.config.max_repair_rounds as u32 {
+                                        repair_rounds_used = repair_rounds_used.saturating_add(1);
+                                        repair_context = Some(err);
+                                        retry_next_turn = true;
+                                    } else {
+                                        parse_error = Some(err);
+                                        turn_status = "degraded".to_string();
+                                        resolved = true;
+                                    }
+                                }
+                            }
+
+                            if resolved || retry_next_turn {
+                                break;
+                            }
                         }
                     }
 

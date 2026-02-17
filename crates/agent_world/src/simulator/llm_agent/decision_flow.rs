@@ -782,13 +782,7 @@ fn parse_llm_decision_value_with_error(
                     Some("schedule_recipe missing `recipe_id`".to_string()),
                 );
             }
-            let batches = parsed.batches.unwrap_or(1);
-            if batches <= 0 {
-                return (
-                    AgentDecision::Wait,
-                    Some("schedule_recipe requires positive batches".to_string()),
-                );
-            }
+            let batches = parsed.batches.unwrap_or(1).max(1);
             AgentDecision::Act(Action::ScheduleRecipe {
                 owner,
                 factory_id,
