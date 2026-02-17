@@ -32,6 +32,12 @@ pub struct StorageChallengeAdaptivePolicy {
     pub max_checks_per_round: u32,
     pub failure_backoff_base_ms: i64,
     pub failure_backoff_max_ms: i64,
+    pub backoff_multiplier_hash_mismatch: u32,
+    pub backoff_multiplier_missing_sample: u32,
+    pub backoff_multiplier_timeout: u32,
+    pub backoff_multiplier_read_io_error: u32,
+    pub backoff_multiplier_signature_invalid: u32,
+    pub backoff_multiplier_unknown: u32,
 }
 
 impl Default for StorageChallengeAdaptivePolicy {
@@ -40,6 +46,12 @@ impl Default for StorageChallengeAdaptivePolicy {
             max_checks_per_round: u32::MAX,
             failure_backoff_base_ms: 0,
             failure_backoff_max_ms: 0,
+            backoff_multiplier_hash_mismatch: 1,
+            backoff_multiplier_missing_sample: 1,
+            backoff_multiplier_timeout: 1,
+            backoff_multiplier_read_io_error: 1,
+            backoff_multiplier_signature_invalid: 1,
+            backoff_multiplier_unknown: 1,
         }
     }
 }
@@ -238,6 +250,33 @@ fn validate_adaptive_policy(policy: &StorageChallengeAdaptivePolicy) -> Result<(
                 .to_string(),
         });
     }
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_hash_mismatch,
+        "backoff_multiplier_hash_mismatch",
+    )?;
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_missing_sample,
+        "backoff_multiplier_missing_sample",
+    )?;
+    validate_backoff_multiplier(policy.backoff_multiplier_timeout, "backoff_multiplier_timeout")?;
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_read_io_error,
+        "backoff_multiplier_read_io_error",
+    )?;
+    validate_backoff_multiplier(
+        policy.backoff_multiplier_signature_invalid,
+        "backoff_multiplier_signature_invalid",
+    )?;
+    validate_backoff_multiplier(policy.backoff_multiplier_unknown, "backoff_multiplier_unknown")?;
+    Ok(())
+}
+
+fn validate_backoff_multiplier(value: u32, field: &str) -> Result<(), WorldError> {
+    if value == 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("adaptive policy {field} must be >= 1"),
+        });
+    }
     Ok(())
 }
 
@@ -306,10 +345,13 @@ fn advance_probe_cursor_state(
 
     if report.failed_checks > 0 && report.passed_checks == 0 {
         state.consecutive_failure_rounds = state.consecutive_failure_rounds.saturating_add(1);
+        let dominant_reason = dominant_failure_reason(&report.failure_reasons);
+        let reason_multiplier = backoff_multiplier_for_reason(policy, dominant_reason);
         let backoff_ms = compute_backoff_ms(
             policy.failure_backoff_base_ms,
             policy.failure_backoff_max_ms,
             state.consecutive_failure_rounds,
+            reason_multiplier,
         );
         state.backoff_until_unix_ms = observed_at_unix_ms.saturating_add(backoff_ms);
     } else {
@@ -325,13 +367,55 @@ fn advance_probe_cursor_state(
     state.next_blob_cursor = (state.next_blob_cursor + advance) % blob_count;
 }
 
-fn compute_backoff_ms(base_ms: i64, max_ms: i64, failure_rounds: u64) -> i64 {
+fn compute_backoff_ms(base_ms: i64, max_ms: i64, failure_rounds: u64, reason_multiplier: u32) -> i64 {
     if base_ms <= 0 || max_ms <= 0 || failure_rounds == 0 {
         return 0;
     }
     let exponent = failure_rounds.saturating_sub(1).min(16) as u32;
     let multiplier = (1_u64 << exponent).min(i64::MAX as u64) as i64;
-    base_ms.saturating_mul(multiplier).min(max_ms)
+    base_ms
+        .saturating_mul(multiplier)
+        .saturating_mul(reason_multiplier as i64)
+        .min(max_ms)
+}
+
+fn dominant_failure_reason(failure_reasons: &BTreeMap<String, u64>) -> StorageChallengeFailureReason {
+    let mut dominant = StorageChallengeFailureReason::Unknown;
+    let mut dominant_count = 0_u64;
+    for (reason, count) in failure_reasons {
+        if *count > dominant_count {
+            dominant = parse_failure_reason_key(reason.as_str());
+            dominant_count = *count;
+        }
+    }
+    dominant
+}
+
+fn parse_failure_reason_key(reason: &str) -> StorageChallengeFailureReason {
+    match reason {
+        "MISSING_SAMPLE" => StorageChallengeFailureReason::MissingSample,
+        "HASH_MISMATCH" => StorageChallengeFailureReason::HashMismatch,
+        "TIMEOUT" => StorageChallengeFailureReason::Timeout,
+        "READ_IO_ERROR" => StorageChallengeFailureReason::ReadIoError,
+        "SIGNATURE_INVALID" => StorageChallengeFailureReason::SignatureInvalid,
+        _ => StorageChallengeFailureReason::Unknown,
+    }
+}
+
+fn backoff_multiplier_for_reason(
+    policy: &StorageChallengeAdaptivePolicy,
+    reason: StorageChallengeFailureReason,
+) -> u32 {
+    match reason {
+        StorageChallengeFailureReason::HashMismatch => policy.backoff_multiplier_hash_mismatch,
+        StorageChallengeFailureReason::MissingSample => policy.backoff_multiplier_missing_sample,
+        StorageChallengeFailureReason::Timeout => policy.backoff_multiplier_timeout,
+        StorageChallengeFailureReason::ReadIoError => policy.backoff_multiplier_read_io_error,
+        StorageChallengeFailureReason::SignatureInvalid => {
+            policy.backoff_multiplier_signature_invalid
+        }
+        StorageChallengeFailureReason::Unknown => policy.backoff_multiplier_unknown,
+    }
 }
 
 fn increment_reason(map: &mut BTreeMap<String, u64>, key: &str) {
@@ -542,8 +626,7 @@ mod tests {
         };
         let policy = StorageChallengeAdaptivePolicy {
             max_checks_per_round: 1,
-            failure_backoff_base_ms: 0,
-            failure_backoff_max_ms: 0,
+            ..StorageChallengeAdaptivePolicy::default()
         };
         let mut state = StorageChallengeProbeCursorState::default();
         let report = store
@@ -574,6 +657,7 @@ mod tests {
             max_checks_per_round: 1,
             failure_backoff_base_ms: 100,
             failure_backoff_max_ms: 500,
+            ..StorageChallengeAdaptivePolicy::default()
         };
         let mut state = StorageChallengeProbeCursorState::default();
 
@@ -621,5 +705,72 @@ mod tests {
         assert_eq!(state.consecutive_failure_rounds, 0);
         assert_eq!(state.backoff_until_unix_ms, 0);
         assert!(state.last_probe_unix_ms.is_none());
+    }
+
+    #[test]
+    fn probe_with_policy_rejects_zero_reason_multiplier() {
+        let dir = temp_dir("policy-invalid-multiplier");
+        let store = LocalCasStore::new(&dir);
+        let _ = store.put_bytes(blob(32).as_slice()).expect("put");
+
+        let config = StorageChallengeProbeConfig::default();
+        let mut state = StorageChallengeProbeCursorState::default();
+        let policy = StorageChallengeAdaptivePolicy {
+            backoff_multiplier_unknown: 0,
+            ..StorageChallengeAdaptivePolicy::default()
+        };
+        let err = store
+            .probe_storage_challenges_with_policy("w1", "node-invalid", 2_000, &config, &mut state, &policy)
+            .expect_err("zero multiplier should be rejected");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(reason.contains("backoff_multiplier_unknown"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn advance_probe_cursor_state_applies_reason_multiplier_from_dominant_reason() {
+        let policy = StorageChallengeAdaptivePolicy {
+            failure_backoff_base_ms: 100,
+            failure_backoff_max_ms: 10_000,
+            backoff_multiplier_hash_mismatch: 4,
+            backoff_multiplier_timeout: 2,
+            ..StorageChallengeAdaptivePolicy::default()
+        };
+        let mut state = StorageChallengeProbeCursorState::default();
+
+        let mut hash_report = StorageChallengeProbeReport {
+            node_id: "node-a".to_string(),
+            world_id: "w1".to_string(),
+            observed_at_unix_ms: 1_000,
+            total_checks: 3,
+            passed_checks: 0,
+            failed_checks: 3,
+            failure_reasons: BTreeMap::new(),
+            latest_proof_semantics: None,
+        };
+        hash_report
+            .failure_reasons
+            .insert("HASH_MISMATCH".to_string(), 2);
+        hash_report.failure_reasons.insert("TIMEOUT".to_string(), 1);
+        advance_probe_cursor_state(&mut state, &hash_report, 0, 1_000, &policy);
+        assert_eq!(state.consecutive_failure_rounds, 1);
+        assert_eq!(state.backoff_until_unix_ms, 1_400);
+
+        state.consecutive_failure_rounds = 0;
+        state.backoff_until_unix_ms = 0;
+        let mut timeout_report = hash_report.clone();
+        timeout_report.observed_at_unix_ms = 2_000;
+        timeout_report
+            .failure_reasons
+            .insert("HASH_MISMATCH".to_string(), 1);
+        timeout_report.failure_reasons.insert("TIMEOUT".to_string(), 2);
+        advance_probe_cursor_state(&mut state, &timeout_report, 0, 2_000, &policy);
+        assert_eq!(state.consecutive_failure_rounds, 1);
+        assert_eq!(state.backoff_until_unix_ms, 2_200);
     }
 }
