@@ -45,7 +45,7 @@
 - [x] MMD6.2 守卫优化 A：`factory_id` 归一化 + `build_factory` 去重改写
 - [x] MMD6.3 守卫优化 B：`move_distance_exceeded` 目标记忆与不可见目标分段回退
 - [x] MMD6.4 守卫优化 C：采矿耗尽感知（可采量记忆 + 质量裁剪 + 迁移回退）
-- [ ] MMD6.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核 + 文档收口
+- [x] MMD6.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核 + 文档收口
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -92,6 +92,25 @@
   - 在 120 tick 长窗口下，已达成三配方全覆盖（TODO-10/11/12/13 优化有效）。
   - 当前仍存在少量路径/资源抖动失败（`move_distance_exceeded`、`facility_not_found`、`insufficient_resource`），需在收口阶段整理为新 TODO。
 
+### MMD6 验证摘要（2026-02-17）
+- 运行 #1（120 tick 目标，守卫增强后在线抽样）：
+  - 产物：
+    - `output/llm_bootstrap/mmd6_opt_all_recipes_2026-02-17_162515/run.log`
+    - `output/llm_bootstrap/mmd6_opt_all_recipes_2026-02-17_162515/report.json`
+  - 指标：
+    - `ticks_requested=120`、`active_ticks=58`
+    - `action_success=46`、`action_failure=9`
+    - `parse_errors=0`、`llm_errors=0`
+    - `action_reject_reason_counts`：仅剩 `agent_already_at_location=2`、`insufficient_resource=7`
+    - `facility_not_found=0`、`move_distance_exceeded=0`
+  - recipe 成功计数（来自 `run.log`）：
+    - `recipe.assembler.control_chip=2`
+    - `recipe.assembler.motor_mk1=1`
+    - `recipe.assembler.logistics_drone=1`
+- 结论：
+  - TODO-14/15/16 优化后，`facility_not_found` 和 `move_distance_exceeded` 在本轮样本中已清零。
+  - 三配方覆盖在 58 active ticks 内达成；但策略在达成短期目标后出现 `wait/wait_ticks` 提前收敛，导致未跑满 120 tick。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -107,12 +126,11 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD6 进行中（TODO-14/TODO-15/TODO-16 优化迭代）。
-- 下一阶段：完成 guardrail 改造后执行 120 tick 在线抽样复核失败结构变化。
-- 最近更新：2026-02-17（已完成 MMD6.4：采矿耗尽记忆 + 质量裁剪 + 迁移回退守卫）。
+- 当前阶段：MMD6 已完成（TODO-14/TODO-15/TODO-16 收口）。
+- 下一阶段：评估“达成覆盖后提前 wait 收敛”问题，优化长窗口持续产出策略。
+- 最近更新：2026-02-17（已完成 MMD6.5：required-tier + 在线抽样 + 文档收口）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
-- TODO-14：`factory_id` 标识仍有歧义（如把 `factory_kind` 当 `factory_id`），会触发 `facility_not_found` 与重复建厂抖动，需要归一化与去重策略。
-- TODO-15：`move_agent` 对不可见目标或缺少可见中继时，仍可能出现 `move_distance_exceeded`，需要补充失败后分段回退策略。
-- TODO-16：采矿阶段缺少“矿点耗尽记忆”，在 location `compound=0` 后仍会重复 `mine_compound` 失败，需增加耗尽感知与迁移回退。
+- TODO-14~TODO-16：已完成（MMD6），并在在线抽样中验证关键失败项下降（`facility_not_found=0`、`move_distance_exceeded=0`）。
+- TODO-17：达成 recipe 覆盖后策略会提前输出 `wait/wait_ticks` 导致 `active_ticks << ticks_requested`，需补充“覆盖后继续产出”约束以提升长窗口吞吐。
