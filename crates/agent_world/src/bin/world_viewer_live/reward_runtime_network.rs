@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub(super) const REWARD_SETTLEMENT_TOPIC_SUFFIX: &str = "reward.settlement";
 pub(super) const REWARD_OBSERVATION_TOPIC_SUFFIX: &str = "reward.observation";
+const REWARD_SETTLEMENT_SIGNATURE_PREFIX: &str = "rewardsett:v1:";
 const REWARD_OBSERVATION_SIGNATURE_PREFIX: &str = "rewardobs:v1:";
 
 pub(super) fn reward_settlement_topic(world_id: &str) -> String {
@@ -23,9 +24,23 @@ pub(super) struct RewardSettlementEnvelope {
     pub world_id: String,
     pub epoch_index: u64,
     pub signer_node_id: String,
+    pub signer_public_key_hex: String,
     pub report: EpochSettlementReport,
     pub mint_records: Vec<NodeRewardMintRecord>,
     pub emitted_at_unix_ms: i64,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SettlementSigningPayload<'a> {
+    version: u8,
+    world_id: &'a str,
+    epoch_index: u64,
+    signer_node_id: &'a str,
+    signer_public_key_hex: &'a str,
+    report: &'a EpochSettlementReport,
+    mint_records: &'a [NodeRewardMintRecord],
+    emitted_at_unix_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -33,8 +48,10 @@ struct SettlementEnvelopeIdentityPayload<'a> {
     world_id: &'a str,
     epoch_index: u64,
     signer_node_id: &'a str,
+    signer_public_key_hex: &'a str,
     report: &'a EpochSettlementReport,
     mint_records: &'a [NodeRewardMintRecord],
+    signature: &'a str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -158,12 +175,95 @@ pub(super) fn reward_settlement_envelope_id(
         world_id: envelope.world_id.as_str(),
         epoch_index: envelope.epoch_index,
         signer_node_id: envelope.signer_node_id.as_str(),
+        signer_public_key_hex: envelope.signer_public_key_hex.as_str(),
         report: &envelope.report,
         mint_records: envelope.mint_records.as_slice(),
+        signature: envelope.signature.as_str(),
     };
     let bytes = serde_cbor::to_vec(&identity)
         .map_err(|err| format!("encode settlement envelope identity failed: {}", err))?;
     Ok(blake3_hex(bytes.as_slice()))
+}
+
+pub(super) fn sign_reward_settlement_envelope(
+    world_id: &str,
+    signer_node_id: &str,
+    signer_private_key_hex: &str,
+    signer_public_key_hex: &str,
+    report: EpochSettlementReport,
+    mint_records: Vec<NodeRewardMintRecord>,
+    emitted_at_unix_ms: i64,
+) -> Result<RewardSettlementEnvelope, String> {
+    let signing_key = signing_key_from_hex(signer_private_key_hex)?;
+    let expected_public = hex::encode(signing_key.verifying_key().to_bytes());
+    if expected_public != signer_public_key_hex {
+        return Err("settlement signer public key does not match signer private key".to_string());
+    }
+    let signing_bytes = settlement_signing_bytes(
+        1,
+        world_id,
+        report.epoch_index,
+        signer_node_id,
+        signer_public_key_hex,
+        &report,
+        mint_records.as_slice(),
+        emitted_at_unix_ms,
+    )?;
+    let signature: Signature = signing_key.sign(signing_bytes.as_slice());
+    let signature_hex = format!(
+        "{}{}",
+        REWARD_SETTLEMENT_SIGNATURE_PREFIX,
+        hex::encode(signature.to_bytes())
+    );
+    Ok(RewardSettlementEnvelope {
+        version: 1,
+        world_id: world_id.to_string(),
+        epoch_index: report.epoch_index,
+        signer_node_id: signer_node_id.to_string(),
+        signer_public_key_hex: signer_public_key_hex.to_string(),
+        report,
+        mint_records,
+        emitted_at_unix_ms,
+        signature: signature_hex,
+    })
+}
+
+pub(super) fn verify_reward_settlement_envelope(
+    envelope: &RewardSettlementEnvelope,
+) -> Result<(), String> {
+    if envelope.version != 1 {
+        return Err(format!(
+            "unsupported settlement envelope version: {}",
+            envelope.version
+        ));
+    }
+    let signature_hex = envelope
+        .signature
+        .strip_prefix(REWARD_SETTLEMENT_SIGNATURE_PREFIX)
+        .ok_or_else(|| "settlement signature is not rewardsett:v1".to_string())?;
+    let signature_bytes = decode_hex_array::<64>(signature_hex, "settlement signature")?;
+    let public_bytes = decode_hex_array::<32>(
+        envelope.signer_public_key_hex.as_str(),
+        "settlement signer public key",
+    )?;
+    let verifying_key = VerifyingKey::from_bytes(&public_bytes)
+        .map_err(|err| format!("invalid settlement signer public key bytes: {}", err))?;
+    let signing_bytes = settlement_signing_bytes(
+        envelope.version,
+        envelope.world_id.as_str(),
+        envelope.epoch_index,
+        envelope.signer_node_id.as_str(),
+        envelope.signer_public_key_hex.as_str(),
+        &envelope.report,
+        envelope.mint_records.as_slice(),
+        envelope.emitted_at_unix_ms,
+    )?;
+    verifying_key
+        .verify(
+            signing_bytes.as_slice(),
+            &Signature::from_bytes(&signature_bytes),
+        )
+        .map_err(|err| format!("verify settlement signature failed: {}", err))
 }
 
 pub(super) fn encode_reward_observation_trace(
@@ -285,6 +385,30 @@ fn reward_observation_payload_hash(payload: &RewardObservationPayload) -> Result
     Ok(blake3_hex(payload_bytes.as_slice()))
 }
 
+fn settlement_signing_bytes(
+    version: u8,
+    world_id: &str,
+    epoch_index: u64,
+    signer_node_id: &str,
+    signer_public_key_hex: &str,
+    report: &EpochSettlementReport,
+    mint_records: &[NodeRewardMintRecord],
+    emitted_at_unix_ms: i64,
+) -> Result<Vec<u8>, String> {
+    let payload = SettlementSigningPayload {
+        version,
+        world_id,
+        epoch_index,
+        signer_node_id,
+        signer_public_key_hex,
+        report,
+        mint_records,
+        emitted_at_unix_ms,
+    };
+    serde_cbor::to_vec(&payload)
+        .map_err(|err| format!("encode settlement signing payload failed: {}", err))
+}
+
 fn signing_key_from_hex(private_key_hex: &str) -> Result<SigningKey, String> {
     let private_bytes = decode_hex_array::<32>(private_key_hex, "observation private key")?;
     Ok(SigningKey::from_bytes(&private_bytes))
@@ -302,12 +426,16 @@ mod tests {
     use agent_world::runtime::{NodePointsConfig, NodeSettlement};
 
     fn sample_envelope() -> RewardSettlementEnvelope {
-        RewardSettlementEnvelope {
-            version: 1,
-            world_id: "w1".to_string(),
-            epoch_index: 7,
-            signer_node_id: "node-seq".to_string(),
-            report: EpochSettlementReport {
+        let private_bytes = [9_u8; 32];
+        let signing_key = SigningKey::from_bytes(&private_bytes);
+        let private_key_hex = hex::encode(signing_key.to_bytes());
+        let public_key_hex = hex::encode(signing_key.verifying_key().to_bytes());
+        sign_reward_settlement_envelope(
+            "w1",
+            "node-seq",
+            private_key_hex.as_str(),
+            public_key_hex.as_str(),
+            EpochSettlementReport {
                 epoch_index: 7,
                 pool_points: 100,
                 storage_pool_points: 0,
@@ -331,9 +459,10 @@ mod tests {
                     cumulative_points: 100,
                 }],
             },
-            mint_records: Vec::new(),
-            emitted_at_unix_ms: 100,
-        }
+            Vec::new(),
+            100,
+        )
+        .expect("sign settlement envelope")
     }
 
     fn sample_observation_payload() -> RewardObservationPayload {
@@ -403,6 +532,20 @@ mod tests {
         envelope.epoch_index = 8;
         let changed = reward_settlement_envelope_id(&envelope).expect("id changed");
         assert_ne!(original, changed);
+    }
+
+    #[test]
+    fn settlement_envelope_signature_verifies() {
+        let envelope = sample_envelope();
+        verify_reward_settlement_envelope(&envelope).expect("verify");
+    }
+
+    #[test]
+    fn settlement_envelope_signature_rejects_tampered_payload() {
+        let mut envelope = sample_envelope();
+        envelope.report.pool_points = envelope.report.pool_points.saturating_add(1);
+        let err = verify_reward_settlement_envelope(&envelope).expect_err("tamper should fail");
+        assert!(err.contains("verify settlement signature failed"));
     }
 
     #[test]

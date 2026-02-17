@@ -57,7 +57,8 @@ use reward_runtime_network::{
     decode_reward_observation_trace, decode_reward_settlement_envelope,
     encode_reward_observation_trace, encode_reward_settlement_envelope, reward_observation_topic,
     reward_observation_trace_id, reward_settlement_envelope_id, reward_settlement_topic,
-    sign_reward_observation_trace, verify_reward_observation_trace, RewardObservationPayload,
+    sign_reward_observation_trace, sign_reward_settlement_envelope,
+    verify_reward_observation_trace, verify_reward_settlement_envelope, RewardObservationPayload,
     RewardObservationTrace, RewardSettlementEnvelope,
 };
 use reward_runtime_settlement::{
@@ -739,14 +740,20 @@ fn reward_runtime_loop(
 
         if observer_trace_threshold_met && settlement_network_enabled {
             if should_publish_settlement {
-                let envelope = RewardSettlementEnvelope {
-                    version: 1,
-                    world_id: config.world_id.clone(),
-                    epoch_index: report.epoch_index,
-                    signer_node_id: config.signer_node_id.clone(),
-                    report: report.clone(),
-                    mint_records: minted_records.clone(),
-                    emitted_at_unix_ms: observed_at_unix_ms,
+                let envelope = match sign_reward_settlement_envelope(
+                    config.world_id.as_str(),
+                    config.signer_node_id.as_str(),
+                    config.signer_private_key_hex.as_str(),
+                    config.signer_public_key_hex.as_str(),
+                    report.clone(),
+                    minted_records.clone(),
+                    observed_at_unix_ms,
+                ) {
+                    Ok(envelope) => envelope,
+                    Err(err) => {
+                        eprintln!("reward runtime sign settlement envelope failed: {err}");
+                        continue;
+                    }
                 };
                 let envelope_id = match reward_settlement_envelope_id(&envelope) {
                     Ok(id) => id,
@@ -786,14 +793,20 @@ fn reward_runtime_loop(
                 }
             }
         } else if observer_trace_threshold_met && !minted_records.is_empty() {
-            let envelope = RewardSettlementEnvelope {
-                version: 1,
-                world_id: config.world_id.clone(),
-                epoch_index: report.epoch_index,
-                signer_node_id: config.signer_node_id.clone(),
-                report: report.clone(),
-                mint_records: minted_records.clone(),
-                emitted_at_unix_ms: observed_at_unix_ms,
+            let envelope = match sign_reward_settlement_envelope(
+                config.world_id.as_str(),
+                config.signer_node_id.as_str(),
+                config.signer_private_key_hex.as_str(),
+                config.signer_public_key_hex.as_str(),
+                report.clone(),
+                minted_records.clone(),
+                observed_at_unix_ms,
+            ) {
+                Ok(envelope) => envelope,
+                Err(err) => {
+                    eprintln!("reward runtime sign local settlement envelope failed: {err}");
+                    continue;
+                }
             };
             let envelope_id = match reward_settlement_envelope_id(&envelope) {
                 Ok(id) => id,
@@ -974,12 +987,35 @@ fn apply_reward_settlement_envelope(
     reward_world: &mut RuntimeWorld,
     envelope: &RewardSettlementEnvelope,
 ) -> Result<(), String> {
+    verify_reward_settlement_envelope(envelope)?;
+    verify_settlement_envelope_signer_binding(reward_world, envelope)?;
     reward_world.submit_action(RuntimeAction::ApplyNodePointsSettlementSigned {
         report: envelope.report.clone(),
         signer_node_id: envelope.signer_node_id.clone(),
         mint_records: envelope.mint_records.clone(),
     });
     reward_world.step().map_err(|err| format!("{:?}", err))
+}
+
+fn verify_settlement_envelope_signer_binding(
+    reward_world: &RuntimeWorld,
+    envelope: &RewardSettlementEnvelope,
+) -> Result<(), String> {
+    let bound_public_key = reward_world
+        .node_identity_public_key(envelope.signer_node_id.as_str())
+        .ok_or_else(|| {
+            format!(
+                "settlement signer identity is not bound: {}",
+                envelope.signer_node_id
+            )
+        })?;
+    if bound_public_key != envelope.signer_public_key_hex {
+        return Err(format!(
+            "settlement signer public key mismatch: signer_node_id={} bound={} envelope={}",
+            envelope.signer_node_id, bound_public_key, envelope.signer_public_key_hex
+        ));
+    }
+    Ok(())
 }
 
 fn reward_invariant_status_payload(report: &RewardAssetInvariantReport) -> serde_json::Value {
