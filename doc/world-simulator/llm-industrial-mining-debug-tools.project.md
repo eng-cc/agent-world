@@ -38,7 +38,7 @@
 - [x] MMD5.3 守卫优化 B：恢复链路与 `mine_compound` 单次上限对齐
 - [x] MMD5.4 覆盖优化：recipe 覆盖记忆与硬切换策略
 - [x] MMD5.5 回归验证：`test_tier_required` + `llm_bootstrap` 在线抽样复核
-- [ ] MMD5.6 文档收口：状态更新、TODO 回填、devlog 记录
+- [x] MMD5.6 文档收口：状态更新、TODO 回填、devlog 记录
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -100,12 +100,12 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD5 进行中（TODO-10/TODO-11/TODO-12/TODO-13 优化迭代）。
-- 下一阶段：完成守卫与覆盖策略改造后进行在线闭环复核。
-- 最近更新：2026-02-17（已完成 MMD5.5：120 tick 在线抽样达成三配方全覆盖）。
+- 当前阶段：MMD5 已完成（TODO-10/TODO-11/TODO-12/TODO-13 已收口）。
+- 下一阶段：进入新一轮 guardrail 优化（TODO-14~TODO-16），降低剩余 `facility_not_found` / `move_distance_exceeded` / 采矿耗尽抖动。
+- 最近更新：2026-02-17（已完成 MMD5.6：状态与 TODO 回填，准备 MMD6）。
 
 ## 遗留 TODO（产品优化）
-- TODO-10：配方覆盖进度记忆与硬切换仍不足，模型会在单一配方上长时间循环。
-- TODO-11：`schedule_recipe` 缺少“工厂位置可达性”前置约束，导致大量 `agent_not_at_location` 拒绝后再回退。
-- TODO-12：缺少分段路径规划，长距离回厂出现高频 `move_distance_exceeded`（单步 > 1000000cm）。
-- TODO-13：`schedule_recipe -> refine_compound(8000)` 的恢复链路与 `mine_compound` 单次上限存在错配，易诱发无效恢复或参数抖动。
+- TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
+- TODO-14：`factory_id` 标识仍有歧义（如把 `factory_kind` 当 `factory_id`），会触发 `facility_not_found` 与重复建厂抖动，需要归一化与去重策略。
+- TODO-15：`move_agent` 对不可见目标或缺少可见中继时，仍可能出现 `move_distance_exceeded`，需要补充失败后分段回退策略。
+- TODO-16：采矿阶段缺少“矿点耗尽记忆”，在 location `compound=0` 后仍会重复 `mine_compound` 失败，需增加耗尽感知与迁移回退。
