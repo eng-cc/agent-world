@@ -34,15 +34,23 @@ mod cli;
 mod distfs_probe_runtime;
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
+#[path = "world_viewer_live/distfs_challenge_network.rs"]
+mod distfs_challenge_network;
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
 #[path = "world_viewer_live/node_keypair_config.rs"]
 mod node_keypair_config;
+#[path = "world_viewer_live/observation_trace_runtime.rs"]
+mod observation_trace_runtime;
 #[path = "world_viewer_live/reward_runtime_network.rs"]
 mod reward_runtime_network;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
 use cli::{parse_options, print_help, CliOptions};
+use distfs_challenge_network::{
+    storage_proof_hint_value_from_semantics, DistfsChallengeNetworkDriver,
+    DistfsChallengeNetworkTickReport,
+};
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
@@ -53,13 +61,13 @@ use execution_bridge::{
     persist_execution_bridge_state, persist_execution_world, NodeRuntimeExecutionDriver,
 };
 use node_keypair_config::ensure_node_keypair_in_config;
+use observation_trace_runtime::observe_reward_observation_trace;
 use reward_runtime_network::{
     decode_reward_observation_trace, decode_reward_settlement_envelope,
     encode_reward_observation_trace, encode_reward_settlement_envelope, reward_observation_topic,
-    reward_observation_trace_id, reward_settlement_envelope_id, reward_settlement_topic,
-    sign_reward_observation_trace, sign_reward_settlement_envelope,
-    verify_reward_observation_trace, verify_reward_settlement_envelope, RewardObservationPayload,
-    RewardObservationTrace, RewardSettlementEnvelope,
+    reward_settlement_envelope_id, reward_settlement_topic, sign_reward_observation_trace,
+    sign_reward_settlement_envelope, verify_reward_settlement_envelope,
+    RewardObservationPayload, RewardSettlementEnvelope,
 };
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
@@ -99,6 +107,7 @@ impl fmt::Debug for LiveNodeHandle {
 
 struct RewardRuntimeLoopConfig {
     world_id: String,
+    local_node_id: String,
     reward_network: Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
     poll_interval: Duration,
     signer_node_id: String,
@@ -332,6 +341,7 @@ fn start_reward_runtime_worker(
 
     let config = RewardRuntimeLoopConfig {
         world_id: handle.world_id,
+        local_node_id: options.node_id.clone(),
         reward_network: handle.reward_network,
         poll_interval: Duration::from_millis(options.tick_ms),
         signer_node_id,
@@ -485,6 +495,24 @@ fn reward_runtime_loop(
     };
     let observation_network_enabled =
         config.reward_network.is_some() && observation_subscription.is_some();
+    let mut distfs_challenge_network = match config.reward_network.as_ref() {
+        Some(network) => match DistfsChallengeNetworkDriver::new(
+            config.world_id.as_str(),
+            config.local_node_id.as_str(),
+            config.signer_private_key_hex.as_str(),
+            config.signer_public_key_hex.as_str(),
+            config.storage_root.clone(),
+            config.distfs_probe_config,
+            Arc::clone(network),
+        ) {
+            Ok(driver) => Some(driver),
+            Err(err) => {
+                eprintln!("reward runtime init distfs challenge network driver failed: {err}");
+                None
+            }
+        },
+        None => None,
+    };
     let mut applied_settlement_envelope_ids = BTreeSet::new();
     let mut applied_observation_trace_ids = BTreeSet::new();
     let mut epoch_observer_nodes = BTreeSet::new();
@@ -558,26 +586,85 @@ fn reward_runtime_loop(
             effective_storage_bytes,
             observed_at_unix_ms,
         );
+        let mut distfs_network_tick_report: Option<DistfsChallengeNetworkTickReport> = None;
         let distfs_challenge_report = if snapshot.role == NodeRole::Storage {
-            match collect_distfs_challenge_report_with_config(
-                config.storage_root.as_path(),
-                snapshot.world_id.as_str(),
-                snapshot.node_id.as_str(),
-                observed_at_unix_ms,
-                &mut distfs_probe_state,
-                &config.distfs_probe_config,
-            ) {
-                Ok(report) => {
-                    observation.storage_checks_passed = report.passed_checks;
-                    observation.storage_checks_total = report.total_checks;
-                    if report.failed_checks > 0 {
-                        observation.has_error = true;
+            if let Some(driver) = distfs_challenge_network.as_mut() {
+                driver.register_observation_role(snapshot.node_id.as_str(), snapshot.role);
+                let tick_report = driver.tick(observed_at_unix_ms);
+                let fallback_local = tick_report.should_fallback_local();
+                let probe_report = tick_report.probe_report.clone();
+                distfs_network_tick_report = Some(tick_report);
+                if !fallback_local {
+                    if let Some(report) = probe_report.as_ref() {
+                        observation.storage_checks_passed = report.passed_checks;
+                        observation.storage_checks_total = report.total_checks;
+                        if report.failed_checks > 0 {
+                            observation.has_error = true;
+                        }
+                        if let Some(semantics) = report.latest_proof_semantics.as_ref() {
+                            observation.storage_challenge_proof_hint = serde_json::from_value(
+                                storage_proof_hint_value_from_semantics(semantics),
+                            )
+                            .ok();
+                        }
                     }
-                    Some(report)
+                    probe_report
+                } else {
+                    match collect_distfs_challenge_report_with_config(
+                        config.storage_root.as_path(),
+                        snapshot.world_id.as_str(),
+                        snapshot.node_id.as_str(),
+                        observed_at_unix_ms,
+                        &mut distfs_probe_state,
+                        &config.distfs_probe_config,
+                    ) {
+                        Ok(report) => {
+                            observation.storage_checks_passed = report.passed_checks;
+                            observation.storage_checks_total = report.total_checks;
+                            if report.failed_checks > 0 {
+                                observation.has_error = true;
+                            }
+                            if let Some(semantics) = report.latest_proof_semantics.as_ref() {
+                                observation.storage_challenge_proof_hint = serde_json::from_value(
+                                    storage_proof_hint_value_from_semantics(semantics),
+                                )
+                                .ok();
+                            }
+                            Some(report)
+                        }
+                        Err(err) => {
+                            eprintln!("reward runtime distfs probe failed: {err}");
+                            None
+                        }
+                    }
                 }
-                Err(err) => {
-                    eprintln!("reward runtime distfs probe failed: {err}");
-                    None
+            } else {
+                match collect_distfs_challenge_report_with_config(
+                    config.storage_root.as_path(),
+                    snapshot.world_id.as_str(),
+                    snapshot.node_id.as_str(),
+                    observed_at_unix_ms,
+                    &mut distfs_probe_state,
+                    &config.distfs_probe_config,
+                ) {
+                    Ok(report) => {
+                        observation.storage_checks_passed = report.passed_checks;
+                        observation.storage_checks_total = report.total_checks;
+                        if report.failed_checks > 0 {
+                            observation.has_error = true;
+                        }
+                        if let Some(semantics) = report.latest_proof_semantics.as_ref() {
+                            observation.storage_challenge_proof_hint = serde_json::from_value(
+                                storage_proof_hint_value_from_semantics(semantics),
+                            )
+                            .ok();
+                        }
+                        Some(report)
+                    }
+                    Err(err) => {
+                        eprintln!("reward runtime distfs probe failed: {err}");
+                        None
+                    }
                 }
             }
         } else {
@@ -630,11 +717,18 @@ fn reward_runtime_loop(
             if let Some(report) = applied.report {
                 maybe_report = Some(report);
             }
+            if let Some(driver) = distfs_challenge_network.as_mut() {
+                driver.register_observation_role(
+                    applied.observer_node_id.as_str(),
+                    applied.observer_role,
+                );
+            }
             applied_observation_trace_ids_this_tick.push(applied.trace_id.clone());
             applied_observer_nodes_this_tick.insert(applied.observer_node_id.clone());
             applied_observation_traces_this_tick.push(serde_json::json!({
                 "trace_id": applied.trace_id,
                 "observer_node_id": applied.observer_node_id,
+                "observer_role": applied.observer_role.as_str(),
                 "payload_hash": applied.payload_hash,
                 "source": "local",
             }));
@@ -663,11 +757,18 @@ fn reward_runtime_loop(
                         if let Some(report) = applied.report {
                             maybe_report = Some(report);
                         }
+                        if let Some(driver) = distfs_challenge_network.as_mut() {
+                            driver.register_observation_role(
+                                applied.observer_node_id.as_str(),
+                                applied.observer_role,
+                            );
+                        }
                         applied_observation_trace_ids_this_tick.push(applied.trace_id.clone());
                         applied_observer_nodes_this_tick.insert(applied.observer_node_id.clone());
                         applied_observation_traces_this_tick.push(serde_json::json!({
                             "trace_id": applied.trace_id,
                             "observer_node_id": applied.observer_node_id,
+                            "observer_role": applied.observer_role.as_str(),
                             "payload_hash": applied.payload_hash,
                             "source": "network",
                         }));
@@ -903,6 +1004,7 @@ fn reward_runtime_loop(
             "distfs_challenge_report": distfs_challenge_report,
             "distfs_probe_config": serde_json::to_value(config.distfs_probe_config).unwrap_or(serde_json::Value::Null),
             "distfs_probe_cursor_state": serde_json::to_value(distfs_probe_state.clone()).unwrap_or(serde_json::Value::Null),
+            "distfs_network_challenge": serde_json::to_value(distfs_network_tick_report).unwrap_or(serde_json::Value::Null),
             "execution_bridge_state": execution_bridge_state.clone(),
             "execution_bridge_records": execution_bridge_records,
             "settlement_report": report,
@@ -948,59 +1050,6 @@ fn reward_runtime_loop(
             }
         }
     }
-}
-
-struct ObservationTraceApplyResult {
-    report: Option<agent_world::runtime::EpochSettlementReport>,
-    trace_id: String,
-    observer_node_id: String,
-    payload_hash: String,
-}
-
-fn observe_reward_observation_trace(
-    collector: &mut NodePointsRuntimeCollector,
-    trace: RewardObservationTrace,
-    world_id: &str,
-    source: &str,
-    applied_trace_ids: &mut BTreeSet<String>,
-    epoch_observer_nodes: &mut BTreeSet<String>,
-) -> Option<ObservationTraceApplyResult> {
-    if trace.version != 1 || trace.world_id != world_id {
-        return None;
-    }
-    if let Err(err) = verify_reward_observation_trace(&trace) {
-        eprintln!("reward runtime verify observation trace failed: {err}");
-        return None;
-    }
-    let trace_id = match reward_observation_trace_id(&trace) {
-        Ok(id) => id,
-        Err(err) => {
-            eprintln!("reward runtime hash observation trace failed: {err}");
-            return None;
-        }
-    };
-    if applied_trace_ids.contains(trace_id.as_str()) {
-        return None;
-    }
-
-    let observer_node_id = trace.observer_node_id.clone();
-    let payload_hash = trace.payload_hash.clone();
-    let observation = match trace.payload.into_observation() {
-        Ok(observation) => observation,
-        Err(err) => {
-            eprintln!("reward runtime decode observation payload failed ({source}): {err}");
-            return None;
-        }
-    };
-    let report = collector.observe(observation);
-    applied_trace_ids.insert(trace_id.clone());
-    epoch_observer_nodes.insert(observer_node_id.clone());
-    Some(ObservationTraceApplyResult {
-        report,
-        trace_id,
-        observer_node_id,
-        payload_hash,
-    })
 }
 
 fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u64) {
