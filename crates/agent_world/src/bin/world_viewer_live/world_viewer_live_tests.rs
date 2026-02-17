@@ -133,6 +133,18 @@ fn parse_options_reads_custom_values() {
             "250",
             "--reward-distfs-adaptive-backoff-max-ms",
             "2500",
+            "--reward-distfs-adaptive-multiplier-hash-mismatch",
+            "5",
+            "--reward-distfs-adaptive-multiplier-missing-sample",
+            "2",
+            "--reward-distfs-adaptive-multiplier-timeout",
+            "3",
+            "--reward-distfs-adaptive-multiplier-read-io-error",
+            "4",
+            "--reward-distfs-adaptive-multiplier-signature-invalid",
+            "6",
+            "--reward-distfs-adaptive-multiplier-unknown",
+            "7",
             "--reward-points-per-credit",
             "7",
             "--reward-credits-per-power-unit",
@@ -223,6 +235,48 @@ fn parse_options_reads_custom_values() {
         2500
     );
     assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_hash_mismatch,
+        5
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_missing_sample,
+        2
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_timeout,
+        3
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_read_io_error,
+        4
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_signature_invalid,
+        6
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .backoff_multiplier_unknown,
+        7
+    );
+    assert_eq!(
         options.node_validators,
         vec![
             PosValidator {
@@ -277,6 +331,20 @@ fn parse_options_rejects_reward_distfs_adaptive_backoff_max_less_than_base() {
     )
     .expect_err("reject max < base");
     assert!(err.contains("--reward-distfs-adaptive-backoff-max-ms"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_distfs_adaptive_multiplier_hash_mismatch() {
+    let err = parse_options(["--reward-distfs-adaptive-multiplier-hash-mismatch", "0"].into_iter())
+        .expect_err("reject zero hash mismatch multiplier");
+    assert!(err.contains("--reward-distfs-adaptive-multiplier-hash-mismatch"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_distfs_adaptive_multiplier_unknown() {
+    let err = parse_options(["--reward-distfs-adaptive-multiplier-unknown", "0"].into_iter())
+        .expect_err("reject zero unknown multiplier");
+    assert!(err.contains("--reward-distfs-adaptive-multiplier-unknown"));
 }
 
 #[test]
@@ -551,6 +619,8 @@ fn distfs_probe_runtime_config_is_report_serializable() {
             max_checks_per_round: 8,
             failure_backoff_base_ms: 100,
             failure_backoff_max_ms: 1_600,
+            backoff_multiplier_hash_mismatch: 5,
+            backoff_multiplier_timeout: 3,
             ..agent_world_distfs::StorageChallengeAdaptivePolicy::default()
         },
     };
@@ -602,6 +672,22 @@ fn distfs_probe_runtime_config_is_report_serializable() {
             .and_then(|policy| policy.get("failure_backoff_max_ms"))
             .and_then(serde_json::Value::as_i64),
         Some(1_600)
+    );
+    assert_eq!(
+        value
+            .get("adaptive_policy")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|policy| policy.get("backoff_multiplier_hash_mismatch"))
+            .and_then(serde_json::Value::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        value
+            .get("adaptive_policy")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|policy| policy.get("backoff_multiplier_timeout"))
+            .and_then(serde_json::Value::as_u64),
+        Some(3)
     );
 }
 
