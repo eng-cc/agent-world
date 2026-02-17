@@ -487,3 +487,71 @@ fn reward_runtime_distfs_probe_state_roundtrip() {
 
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn distfs_probe_runtime_config_is_report_serializable() {
+    let config = DistfsProbeRuntimeConfig {
+        max_sample_bytes: 4096,
+        challenges_per_tick: 4,
+        challenge_ttl_ms: 60_000,
+        allowed_clock_skew_ms: 1234,
+    };
+    let value = serde_json::to_value(config).expect("serialize config");
+    assert_eq!(
+        value
+            .get("max_sample_bytes")
+            .and_then(serde_json::Value::as_u64),
+        Some(4096)
+    );
+    assert_eq!(
+        value
+            .get("challenges_per_tick")
+            .and_then(serde_json::Value::as_u64),
+        Some(4)
+    );
+    assert_eq!(
+        value
+            .get("challenge_ttl_ms")
+            .and_then(serde_json::Value::as_i64),
+        Some(60_000)
+    );
+    assert_eq!(
+        value
+            .get("allowed_clock_skew_ms")
+            .and_then(serde_json::Value::as_i64),
+        Some(1234)
+    );
+}
+
+#[test]
+fn distfs_probe_cursor_state_is_report_serializable() {
+    let state = StorageChallengeProbeCursorState {
+        next_blob_cursor: 9,
+        rounds_executed: 12,
+        cumulative_total_checks: 30,
+        cumulative_passed_checks: 25,
+        cumulative_failed_checks: 5,
+        cumulative_failure_reasons: [("HASH_MISMATCH".to_string(), 5)].into_iter().collect(),
+    };
+    let value = serde_json::to_value(state).expect("serialize cursor state");
+    assert_eq!(
+        value
+            .get("next_blob_cursor")
+            .and_then(serde_json::Value::as_u64),
+        Some(9)
+    );
+    assert_eq!(
+        value
+            .get("cumulative_failed_checks")
+            .and_then(serde_json::Value::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        value
+            .get("cumulative_failure_reasons")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|reasons| reasons.get("HASH_MISMATCH"))
+            .and_then(serde_json::Value::as_u64),
+        Some(5)
+    );
+}

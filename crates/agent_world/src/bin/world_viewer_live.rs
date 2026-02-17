@@ -530,6 +530,8 @@ fn reward_runtime_loop(
                 }
             },
             "distfs_challenge_report": distfs_challenge_report,
+            "distfs_probe_config": serde_json::to_value(config.distfs_probe_config).unwrap_or(serde_json::Value::Null),
+            "distfs_probe_cursor_state": serde_json::to_value(distfs_probe_state.clone()).unwrap_or(serde_json::Value::Null),
             "settlement_report": report,
             "minted_records": minted_records,
             "node_balances": reward_world.state().node_asset_balances,
@@ -1013,13 +1015,9 @@ fn print_help() {
     );
     println!("  --node-repl-topic <topic> Override replication pubsub topic when libp2p replication is enabled");
     println!("  --reward-runtime-enable Enable reward runtime settlement loop (default: off)");
-    println!(
-        "  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent"
-    );
+    println!("  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent");
     println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
-    println!(
-        "  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)"
-    );
+    println!("  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)");
     println!(
         "  --reward-distfs-probe-max-sample-bytes <n> DistFS probe sample size upper bound bytes (default: 65536)"
     );
