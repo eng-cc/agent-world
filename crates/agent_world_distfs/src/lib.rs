@@ -16,9 +16,11 @@ const FILE_INDEX_VERSION: u64 = 1;
 
 mod replication;
 mod manifest;
+mod challenge;
 
 pub use replication::*;
 pub use manifest::*;
+pub use challenge::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
