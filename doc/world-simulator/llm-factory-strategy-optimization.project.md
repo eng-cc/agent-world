@@ -55,6 +55,11 @@
 - [x] LFO9.3 类型化重构：移除字符串中间 JSON 映射与解析链路（#3/#4）
 - [x] LFO9.4 迁移/补齐 required-tier 测试并回填文档与日志
 
+### LFO10 用户指令闭环复跑（2026-02-17）
+- [x] LFO10.1 使用强化目标 prompt 复跑 `llm_bootstrap --ticks 30 --print-llm-io --report-json`
+- [x] LFO10.2 验证“建工厂 + 制成品”达成并提取动作/错误指标
+- [x] LFO10.3 记录新 TODO 并更新项目文档/devlog
+
 ### LFO9 实施结果摘要（2026-02-17）
 - #1 删除（compat fallback）：
   - `OpenAiChatCompletionClient::complete` 在 `ParseBody(raw)` 分支不再走 raw-body JSON fallback，统一返回 `DecodeResponse` 错误（主请求与重试请求均一致）。
@@ -96,6 +101,22 @@
     - 方案 A：允许 `execute_until.action=wait_ticks(1)`（或等价动作）并在 guardrail 中限长；
     - 方案 B：检测到 `execute_until + wait` 时自动改写为最小可执行动作并保留 `until` 条件；
     - 方案 C：在 prompt 示例中移除 wait 型 `execute_until` 模板并增加“排产后用可执行动作推进时间”的硬约束。
+
+### LFO10 在线复跑结果摘要（2026-02-17，用户指令复跑）
+- 运行产物：
+  - `output/llm_bootstrap/user_factory_closedloop_codex_2026-02-17_115631/run.log`
+  - `output/llm_bootstrap/user_factory_closedloop_codex_2026-02-17_115631/report.json`
+- 关键指标（30 tick）：
+  - `action_success=28`、`action_failure=2`、`llm_errors=0`、`parse_errors=0`、`repair_rounds_total=0`
+  - `action_kind_counts={build_factory:1, harvest_radiation:18, refine_compound:5, schedule_recipe:6}`
+  - `action_kind_success_counts.schedule_recipe=4`
+  - `first_action_tick={build_factory:6, schedule_recipe:8}`
+  - `world_time=30`，`decision_counts={wait:0, wait_ticks:0, act:30}`
+- 链路确认：
+  - 已完成“建工厂 + 制成品（data）”闭环：`build_factory` 成功 1 次，`schedule_recipe` 成功 4 次。
+  - `data` 从 `12` 增长至 `28`（来自 `run.log` 中 observation 采样）。
+- 新观察 TODO（后续优化）：
+  - TODO-6：在硬件不足但仍可恢复时，`schedule_recipe` 决策会被 guardrail 自动改写为 `refine_compound`（例如 `tick=7/9/16/24`），当前 trace 仅呈现“模型输出排产 + 执行精炼”的结果，缺少统一的“决策改写原因回执”。建议为改写链路补充结构化回执（如 `decision_rewrite: schedule_recipe -> refine_compound, reason=insufficient_resource.hardware`）并回灌到下一轮 observation，以减少策略抖动和提示词误判。
 
 ### LFO6 实施结果摘要（2026-02-16）
 - `reject_reason` 透传：`FacilityAlreadyExists` 已稳定映射为 `facility_already_exists`。
@@ -165,6 +186,6 @@
 - `crates/agent_world/src/simulator/tests/kernel.rs`
 
 ## 状态
-- 当前阶段：LFO0-LFO9 全部完成（含 #1 删除与 #3/#4 类型化收敛）。
-- 下一步：继续推进 TODO-5（`execute_until + wait` 语义收敛），降低在线长窗口 repair/parse_error。
-- 最近更新：2026-02-17（完成 LFO9.2-LFO9.4 代码与测试回填）。
+- 当前阶段：LFO0-LFO10 全部完成（含用户指令复跑闭环验证）。
+- 下一步：继续推进 TODO-5（`execute_until + wait` 语义收敛）与 TODO-6（决策改写回执可观测性）。
+- 最近更新：2026-02-17（完成 LFO10 在线复跑、指标回填与 TODO 补充）。
