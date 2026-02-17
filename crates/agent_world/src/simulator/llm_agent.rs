@@ -747,6 +747,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     last_action_summary: Option<PromptLastActionSummary>,
     pending_decision_rewrite: Option<DecisionRewriteReceipt>,
     known_factory_locations: BTreeMap<String, String>,
+    known_factory_kind_aliases: BTreeMap<String, String>,
     recipe_coverage: RecipeCoverageProgress,
 }
 
@@ -795,6 +796,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             last_action_summary: None,
             pending_decision_rewrite: None,
             known_factory_locations: BTreeMap::new(),
+            known_factory_kind_aliases: BTreeMap::new(),
             recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
@@ -1227,6 +1229,73 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     )),
                 )
             }
+            Action::BuildFactory {
+                owner,
+                location_id,
+                factory_id,
+                factory_kind,
+            } => {
+                let Some(observation) = observation else {
+                    return (
+                        Action::BuildFactory {
+                            owner,
+                            location_id,
+                            factory_id,
+                            factory_kind,
+                        },
+                        None,
+                    );
+                };
+                let owner_is_self = matches!(
+                    &owner,
+                    ResourceOwner::Agent { agent_id } if agent_id == self.agent_id.as_str()
+                );
+                if !owner_is_self {
+                    return (
+                        Action::BuildFactory {
+                            owner,
+                            location_id,
+                            factory_id,
+                            factory_kind,
+                        },
+                        None,
+                    );
+                }
+
+                if let Some(existing_factory_id) = self.resolve_existing_factory_id_for_build(
+                    factory_id.as_str(),
+                    factory_kind.as_str(),
+                ) {
+                    let recipe_id = self.next_recovery_recipe_id_for_existing_factory();
+                    let (guarded_schedule_action, schedule_note) = self.apply_action_guardrails(
+                        Action::ScheduleRecipe {
+                            owner: owner.clone(),
+                            factory_id: existing_factory_id.clone(),
+                            recipe_id: recipe_id.clone(),
+                            batches: 1,
+                        },
+                        Some(observation),
+                    );
+                    let mut notes = vec![format!(
+                        "build_factory dedup guardrail rerouted to schedule_recipe: requested_factory_id={} factory_kind={} existing_factory_id={} recipe_id={}",
+                        factory_id, factory_kind, existing_factory_id, recipe_id
+                    )];
+                    if let Some(schedule_note) = schedule_note {
+                        notes.push(schedule_note);
+                    }
+                    return (guarded_schedule_action, Some(notes.join("; ")));
+                }
+
+                (
+                    Action::BuildFactory {
+                        owner,
+                        location_id,
+                        factory_id,
+                        factory_kind,
+                    },
+                    None,
+                )
+            }
             Action::ScheduleRecipe {
                 owner,
                 factory_id,
@@ -1285,6 +1354,19 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     );
                 }
 
+                let mut factory_id = factory_id;
+                let mut recipe_id = recipe_id;
+                let mut schedule_notes = Vec::new();
+                if let Some(canonical_factory_id) =
+                    self.normalize_schedule_factory_id(factory_id.as_str())
+                {
+                    schedule_notes.push(format!(
+                        "schedule_recipe factory_id normalized by guardrail: requested_factory_id={} -> canonical_factory_id={}",
+                        factory_id, canonical_factory_id
+                    ));
+                    factory_id = canonical_factory_id;
+                }
+
                 if let Some(factory_location_id) =
                     self.known_factory_locations.get(factory_id.as_str())
                 {
@@ -1296,10 +1378,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                                 factory_location_id.as_str(),
                                 observation,
                             );
-                            let mut notes = vec![format!(
+                            let mut notes = schedule_notes.clone();
+                            notes.push(format!(
                                 "schedule_recipe factory location precheck rerouted to move_agent: current_location={} factory_location={}",
                                 current_location_id, factory_location_id
-                            )];
+                            ));
                             if let Some(move_note) = move_note {
                                 notes.push(move_note);
                             }
@@ -1307,9 +1390,6 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         }
                     }
                 }
-
-                let mut recipe_id = recipe_id;
-                let mut schedule_notes = Vec::new();
                 if self.recipe_coverage.is_completed(recipe_id.as_str()) {
                     if let Some(next_recipe_id) = self
                         .recipe_coverage
@@ -1540,6 +1620,54 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             .map(|location| location.location_id.as_str())
     }
 
+    fn normalize_schedule_factory_id(&self, factory_id: &str) -> Option<String> {
+        let requested_factory_id = factory_id.trim();
+        if requested_factory_id.is_empty()
+            || self
+                .known_factory_locations
+                .contains_key(requested_factory_id)
+        {
+            return None;
+        }
+        self.known_factory_kind_aliases
+            .get(requested_factory_id)
+            .filter(|canonical_factory_id| {
+                self.known_factory_locations
+                    .contains_key(canonical_factory_id.as_str())
+            })
+            .cloned()
+    }
+
+    fn resolve_existing_factory_id_for_build(
+        &self,
+        factory_id: &str,
+        factory_kind: &str,
+    ) -> Option<String> {
+        let requested_factory_id = factory_id.trim();
+        if !requested_factory_id.is_empty()
+            && self
+                .known_factory_locations
+                .contains_key(requested_factory_id)
+        {
+            return Some(requested_factory_id.to_string());
+        }
+        let requested_factory_kind = factory_kind.trim();
+        if requested_factory_kind.is_empty() {
+            return None;
+        }
+        self.known_factory_kind_aliases
+            .get(requested_factory_kind)
+            .cloned()
+    }
+
+    fn next_recovery_recipe_id_for_existing_factory(&self) -> String {
+        self.recipe_coverage
+            .missing_recipe_ids()
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| TRACKED_RECIPE_IDS[0].to_string())
+    }
+
     fn find_reachable_move_relay(
         &self,
         to: &str,
@@ -1641,12 +1769,26 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         )
     }
 
-    fn remember_factory_location_hint(&mut self, factory_id: &str, location_id: &str) {
-        if factory_id.trim().is_empty() || location_id.trim().is_empty() {
+    fn remember_factory_location_hint(
+        &mut self,
+        factory_id: &str,
+        location_id: &str,
+        factory_kind: Option<&str>,
+    ) {
+        let factory_id = factory_id.trim();
+        let location_id = location_id.trim();
+        if factory_id.is_empty() || location_id.is_empty() {
             return;
         }
         self.known_factory_locations
             .insert(factory_id.to_string(), location_id.to_string());
+        if let Some(factory_kind) = factory_kind
+            .map(str::trim)
+            .filter(|factory_kind| !factory_kind.is_empty())
+        {
+            self.known_factory_kind_aliases
+                .insert(factory_kind.to_string(), factory_id.to_string());
+        }
     }
 
     fn observe_memory_summary(observation: &Observation) -> String {

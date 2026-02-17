@@ -1142,6 +1142,152 @@ fn llm_agent_prechecks_schedule_recipe_location_and_reroutes_to_move_agent() {
 }
 
 #[test]
+fn llm_agent_normalizes_schedule_factory_id_from_kind_alias() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.assembler.mk1","recipe_id":"recipe.assembler.control_chip","batches":1}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    behavior.on_action_result(&ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        action_id: 531,
+        success: true,
+        event: WorldEvent {
+            id: 631,
+            time: 140,
+            kind: WorldEventKind::FactoryBuilt {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: "loc-home".to_string(),
+                factory_id: "factory.alpha".to_string(),
+                factory_kind: "factory.assembler.mk1".to_string(),
+                electricity_cost: 10,
+                hardware_cost: 5,
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 10)
+        .expect("add test hardware");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("factory_id normalized by guardrail")));
+}
+
+#[test]
+fn llm_agent_reroutes_duplicate_build_factory_to_schedule_on_known_factory() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"build_factory","owner":"self","location_id":"loc-home","factory_id":"factory.assembler.mk1","factory_kind":"factory.assembler.mk1"}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    behavior.on_action_result(&ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            factory_id: "factory.alpha".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        action_id: 532,
+        success: true,
+        event: WorldEvent {
+            id: 632,
+            time: 141,
+            kind: WorldEventKind::FactoryBuilt {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: "loc-home".to_string(),
+                factory_id: "factory.alpha".to_string(),
+                factory_kind: "factory.assembler.mk1".to_string(),
+                electricity_cost: 10,
+                hardware_cost: 5,
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+    observation
+        .self_resources
+        .add(ResourceKind::Hardware, 16)
+        .expect("add test hardware");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("build_factory dedup guardrail rerouted to schedule_recipe")));
+}
+
+#[test]
 fn llm_agent_segments_move_agent_when_target_distance_exceeds_limit() {
     let client = MockClient {
         output: Some(r#"{"decision":"move_agent","to":"loc-factory"}"#.to_string()),

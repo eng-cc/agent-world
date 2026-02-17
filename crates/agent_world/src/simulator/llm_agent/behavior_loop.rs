@@ -773,9 +773,14 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             Action::BuildFactory {
                 factory_id,
                 location_id,
+                factory_kind,
                 ..
             } if result.success => {
-                self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+                self.remember_factory_location_hint(
+                    factory_id.as_str(),
+                    location_id.as_str(),
+                    Some(factory_kind.as_str()),
+                );
             }
             Action::ScheduleRecipe {
                 factory_id,
@@ -788,7 +793,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 if let Some(RejectReason::AgentNotAtLocation { location_id, .. }) =
                     result.reject_reason()
                 {
-                    self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+                    self.remember_factory_location_hint(
+                        factory_id.as_str(),
+                        location_id.as_str(),
+                        None,
+                    );
                 }
             }
             _ => {}
@@ -828,10 +837,15 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
         if let WorldEventKind::FactoryBuilt {
             factory_id,
             location_id,
+            factory_kind,
             ..
         } = &event.kind
         {
-            self.remember_factory_location_hint(factory_id.as_str(), location_id.as_str());
+            self.remember_factory_location_hint(
+                factory_id.as_str(),
+                location_id.as_str(),
+                Some(factory_kind.as_str()),
+            );
         }
         if let WorldEventKind::RecipeScheduled { recipe_id, .. } = &event.kind {
             self.recipe_coverage.mark_completed(recipe_id.as_str());
