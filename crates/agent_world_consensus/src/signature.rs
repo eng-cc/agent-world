@@ -349,4 +349,25 @@ mod tests {
             Err(WorldError::DistributedValidationFailed { .. })
         ));
     }
+
+    #[test]
+    fn ed25519_verify_action_normalizes_uppercase_signer_public_key() {
+        let signer = ed25519_signer();
+        let mut action = demo_action();
+        action.signature = signer.sign_action(&action).expect("sign");
+        let encoded = action
+            .signature
+            .strip_prefix(ED25519_SIGNATURE_V1_PREFIX)
+            .expect("ed25519 signature prefix");
+        let (public_key_hex, signature_hex) = encoded
+            .split_once(':')
+            .expect("ed25519 signer and signature hex");
+        action.signature = format!(
+            "{ED25519_SIGNATURE_V1_PREFIX}{}:{signature_hex}",
+            public_key_hex.to_uppercase()
+        );
+
+        let signer_public_key = Ed25519SignatureSigner::verify_action(&action).expect("verify");
+        assert_eq!(signer_public_key, signer.public_key_hex());
+    }
 }

@@ -50,3 +50,43 @@ pub(super) fn normalize_ed25519_public_key_allowlist(
     }
     Ok(Some(normalized))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_ed25519_public_key_hex_lowercases_valid_input() {
+        let key = "AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899";
+        let normalized =
+            normalize_ed25519_public_key_hex(key, "test_ed25519_public_key").expect("normalize");
+        assert_eq!(normalized, key.to_lowercase());
+    }
+
+    #[test]
+    fn parse_ed25519_public_key_bytes_rejects_invalid_hex() {
+        let err = parse_ed25519_public_key_bytes("not-hex", "test_ed25519_public_key")
+            .expect_err("invalid key should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("must be valid hex")
+        ));
+    }
+
+    #[test]
+    fn normalize_ed25519_public_key_allowlist_rejects_duplicate_after_normalization() {
+        let key = "AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899";
+        let err = normalize_ed25519_public_key_allowlist(
+            &[key.to_string(), key.to_lowercase()],
+            "accepted_keys",
+            "accepted_keys",
+        )
+        .expect_err("duplicate keys should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("duplicate signer public key")
+        ));
+    }
+}
