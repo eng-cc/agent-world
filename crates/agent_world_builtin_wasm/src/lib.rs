@@ -153,39 +153,49 @@ fn space_distance_cm(a: GeoPos, b: GeoPos) -> i64 {
         .max(0.0) as i64
 }
 
-fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
-    let Some(input) = decode_input(input_bytes) else {
-        return encode_output(empty_output());
-    };
-    if let Some(output) = build_economy_module_output(&input) {
+fn build_module_output_for_decoded_input(module_id: &str, input: &ModuleCallInput) -> Vec<u8> {
+    if let Some(output) = build_economy_module_output(input) {
         return output;
     }
-    match input.ctx.module_id.as_str() {
-        M1_MOVE_RULE_MODULE_ID => build_move_rule_output(&input),
-        M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(&input),
-        M1_TRANSFER_RULE_MODULE_ID => build_transfer_rule_output(&input),
-        M1_BODY_MODULE_ID => build_body_module_output(&input),
-        M1_SENSOR_MODULE_ID => build_visibility_rule_output(&input),
-        M1_MOBILITY_MODULE_ID => build_move_rule_output(&input),
-        M1_MEMORY_MODULE_ID => build_memory_module_output(&input),
-        M1_STORAGE_CARGO_MODULE_ID => build_storage_cargo_module_output(&input),
-        M1_RADIATION_POWER_MODULE_ID => build_radiation_power_module_output(&input),
-        M1_STORAGE_POWER_MODULE_ID => build_storage_power_module_output(&input),
+    match module_id {
+        M1_MOVE_RULE_MODULE_ID => build_move_rule_output(input),
+        M1_VISIBILITY_RULE_MODULE_ID => build_visibility_rule_output(input),
+        M1_TRANSFER_RULE_MODULE_ID => build_transfer_rule_output(input),
+        M1_BODY_MODULE_ID => build_body_module_output(input),
+        M1_SENSOR_MODULE_ID => build_visibility_rule_output(input),
+        M1_MOBILITY_MODULE_ID => build_move_rule_output(input),
+        M1_MEMORY_MODULE_ID => build_memory_module_output(input),
+        M1_STORAGE_CARGO_MODULE_ID => build_storage_cargo_module_output(input),
+        M1_RADIATION_POWER_MODULE_ID => build_radiation_power_module_output(input),
+        M1_STORAGE_POWER_MODULE_ID => build_storage_power_module_output(input),
         _ => encode_output(empty_output()),
     }
 }
 
-fn call_impl(input_ptr: i32, input_len: i32) -> (i32, i32) {
-    let input = if input_ptr > 0 && input_len > 0 {
+#[cfg(test)]
+fn build_module_output(input_bytes: &[u8]) -> Vec<u8> {
+    let Some(input) = decode_input(input_bytes) else {
+        return encode_output(empty_output());
+    };
+    build_module_output_for_decoded_input(input.ctx.module_id.as_str(), &input)
+}
+
+fn build_module_output_for_module(module_id: &str, input_bytes: &[u8]) -> Vec<u8> {
+    let Some(mut input) = decode_input(input_bytes) else {
+        return encode_output(empty_output());
+    };
+    input.ctx.module_id = module_id.to_string();
+    build_module_output_for_decoded_input(module_id, &input)
+}
+
+fn read_input_bytes(input_ptr: i32, input_len: i32) -> Vec<u8> {
+    if input_ptr > 0 && input_len > 0 {
         let ptr = input_ptr as *const u8;
         let len = input_len as usize;
         // SAFETY: host guarantees valid wasm linear memory pointer/len for the call.
-        unsafe { std::slice::from_raw_parts(ptr, len).to_vec() }
-    } else {
-        Vec::new()
-    };
-    let output = build_module_output(&input);
-    write_bytes_to_memory(&output)
+        return unsafe { std::slice::from_raw_parts(ptr, len).to_vec() };
+    }
+    Vec::new()
 }
 
 fn write_bytes_to_memory(bytes: &[u8]) -> (i32, i32) {
@@ -193,19 +203,18 @@ fn write_bytes_to_memory(bytes: &[u8]) -> (i32, i32) {
     if len <= 0 {
         return (0, 0);
     }
-    let ptr = alloc(len);
+    let ptr = builtin_alloc(len);
     if ptr <= 0 {
         return (0, 0);
     }
-    // SAFETY: alloc returns a writable wasm linear memory region with at least len bytes.
+    // SAFETY: builtin_alloc returns a writable wasm linear memory region with at least len bytes.
     unsafe {
         std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr as *mut u8, len as usize);
     }
     (ptr, len)
 }
 
-#[no_mangle]
-pub extern "C" fn alloc(len: i32) -> i32 {
+pub fn builtin_alloc(len: i32) -> i32 {
     if len <= 0 {
         return 0;
     }
@@ -216,16 +225,14 @@ pub extern "C" fn alloc(len: i32) -> i32 {
     ptr as i32
 }
 
-#[no_mangle]
-#[allow(improper_ctypes_definitions)]
-pub extern "C" fn reduce(input_ptr: i32, input_len: i32) -> (i32, i32) {
-    call_impl(input_ptr, input_len)
+pub fn reduce_for_module(module_id: &str, input_ptr: i32, input_len: i32) -> (i32, i32) {
+    let input = read_input_bytes(input_ptr, input_len);
+    let output = build_module_output_for_module(module_id, &input);
+    write_bytes_to_memory(&output)
 }
 
-#[no_mangle]
-#[allow(improper_ctypes_definitions)]
-pub extern "C" fn call(input_ptr: i32, input_len: i32) -> (i32, i32) {
-    call_impl(input_ptr, input_len)
+pub fn call_for_module(module_id: &str, input_ptr: i32, input_len: i32) -> (i32, i32) {
+    reduce_for_module(module_id, input_ptr, input_len)
 }
 
 #[cfg(test)]

@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "agent_world_builtin_wasm_m4_product_component_motor_mk1"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+agent_world_builtin_wasm = { path = "../../agent_world_builtin_wasm" }
