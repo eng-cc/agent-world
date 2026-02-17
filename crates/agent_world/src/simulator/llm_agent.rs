@@ -147,6 +147,8 @@ pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
 const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
 const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
+const DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G: i64 = 5_000;
+const DEFAULT_MINE_ELECTRICITY_COST_PER_KG: i64 = 1;
 const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 
 const DEFAULT_SHORT_TERM_MEMORY_CAPACITY: usize = 128;
@@ -1247,21 +1249,97 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
                 let available_electricity =
                     observation.self_resources.get(ResourceKind::Electricity);
+                let available_compound = observation.self_resources.get(ResourceKind::Compound);
                 if available_hardware < cost_per_batch {
-                    let recovery_mass_g = cost_per_batch
+                    let hardware_shortfall = cost_per_batch.saturating_sub(available_hardware);
+                    let target_recovery_mass_g = hardware_shortfall
                         .saturating_mul(DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE)
                         .max(DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE);
-                    let required_electricity = ((recovery_mass_g + 999) / 1000)
+                    let recovery_mass_g = target_recovery_mass_g
+                        .min(DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G)
+                        .max(DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE);
+                    let capped_from = (target_recovery_mass_g > recovery_mass_g)
+                        .then_some(target_recovery_mass_g);
+                    let missing_compound_g = recovery_mass_g.saturating_sub(available_compound);
+                    if missing_compound_g > 0 {
+                        let mine_mass_g = missing_compound_g
+                            .min(DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G)
+                            .max(1);
+                        let mine_required_electricity = ((mine_mass_g + 999) / 1000)
+                            .saturating_mul(DEFAULT_MINE_ELECTRICITY_COST_PER_KG);
+                        if available_electricity >= mine_required_electricity {
+                            if let Some(current_location_id) =
+                                Self::current_location_id_from_observation(observation)
+                            {
+                                return (
+                                    Action::MineCompound {
+                                        owner,
+                                        location_id: current_location_id.to_string(),
+                                        compound_mass_g: mine_mass_g,
+                                    },
+                                    Some(format!(
+                                        "schedule_recipe guardrail rerouted to mine_compound before refine: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}; available_compound={}; mine_mass_g={}",
+                                        available_hardware,
+                                        cost_per_batch,
+                                        hardware_shortfall,
+                                        recovery_mass_g,
+                                        capped_from
+                                            .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
+                                            .unwrap_or_default(),
+                                        available_compound,
+                                        mine_mass_g
+                                    )),
+                                );
+                            }
+                            return (
+                                Action::HarvestRadiation {
+                                    agent_id: self.agent_id.clone(),
+                                    max_amount: self.config.harvest_max_amount_cap,
+                                },
+                                Some(format!(
+                                    "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} but current_location_id is unknown for mine_compound",
+                                    available_hardware,
+                                    cost_per_batch,
+                                    available_compound,
+                                    recovery_mass_g
+                                )),
+                            );
+                        } else {
+                            return (
+                                Action::HarvestRadiation {
+                                    agent_id: self.agent_id.clone(),
+                                    max_amount: self.config.harvest_max_amount_cap,
+                                },
+                                Some(format!(
+                                    "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_compound={} < recovery_mass_g={} with available_electricity={} < mine_required_electricity={}",
+                                    available_hardware,
+                                    cost_per_batch,
+                                    available_compound,
+                                    recovery_mass_g,
+                                    available_electricity,
+                                    mine_required_electricity
+                                )),
+                            );
+                        }
+                    }
+
+                    let required_refine_electricity = ((recovery_mass_g + 999) / 1000)
                         .saturating_mul(DEFAULT_REFINE_ELECTRICITY_COST_PER_KG);
-                    if available_electricity >= required_electricity {
+                    if available_electricity >= required_refine_electricity {
                         return (
                             Action::RefineCompound {
                                 owner,
                                 compound_mass_g: recovery_mass_g,
                             },
                             Some(format!(
-                                "schedule_recipe guardrail rerouted to refine_compound: available_hardware={} < recipe_hardware_cost_per_batch={}; recovery_mass_g={}",
-                                available_hardware, cost_per_batch, recovery_mass_g
+                                "schedule_recipe guardrail rerouted to refine_compound: available_hardware={} < recipe_hardware_cost_per_batch={}; hardware_shortfall={}; recovery_mass_g={}{}",
+                                available_hardware,
+                                cost_per_batch,
+                                hardware_shortfall,
+                                recovery_mass_g,
+                                capped_from
+                                    .map(|from| format!(" (capped_from={} by mine_max_per_action_g={})", from, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G))
+                                    .unwrap_or_default()
                             )),
                         );
                     }
@@ -1271,8 +1349,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             max_amount: self.config.harvest_max_amount_cap,
                         },
                         Some(format!(
-                            "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_electricity={} < refine_required_electricity={}",
-                            available_hardware, cost_per_batch, available_electricity, required_electricity
+                            "schedule_recipe guardrail rerouted to harvest_radiation: available_hardware={} < recipe_hardware_cost_per_batch={} and available_electricity={} < refine_required_electricity={} (recovery_mass_g={})",
+                            available_hardware, cost_per_batch, available_electricity, required_refine_electricity, recovery_mass_g
                         )),
                     );
                 }

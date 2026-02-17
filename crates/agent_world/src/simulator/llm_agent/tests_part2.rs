@@ -1215,6 +1215,10 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
         .self_resources
         .add(ResourceKind::Hardware, 7)
         .expect("add test hardware");
+    observation
+        .self_resources
+        .add(ResourceKind::Compound, 1_000)
+        .expect("add test compound");
 
     let decision = behavior.decide(&observation);
     assert_eq!(
@@ -1223,7 +1227,7 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            compound_mass_g: 8_000,
+            compound_mass_g: 1_000,
         })
     );
 
@@ -1242,7 +1246,7 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            compound_mass_g: 8_000,
+            compound_mass_g: 1_000,
         },
         action_id: 300,
         success: true,
@@ -1253,9 +1257,9 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
                 owner: ResourceOwner::Agent {
                     agent_id: "agent-1".to_string(),
                 },
-                compound_mass_g: 8_000,
-                electricity_cost: 16,
-                hardware_output: 8,
+                compound_mass_g: 1_000,
+                electricity_cost: 2,
+                hardware_output: 1,
             },
         },
     });
@@ -1264,6 +1268,46 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
     assert!(prompt.contains("\"decision_rewrite\":"));
     assert!(prompt.contains("\"from\":\"schedule_recipe\""));
     assert!(prompt.contains("\"to\":\"refine_compound\""));
+}
+
+#[test]
+fn llm_agent_reroutes_schedule_recipe_to_mine_when_compound_missing_and_caps_mass() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.logistics_drone","batches":1}"#.to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            compound_mass_g: 5_000,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("rerouted to mine_compound before refine")));
 }
 
 #[test]
