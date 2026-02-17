@@ -103,6 +103,60 @@ pub(super) fn parse_distfs_probe_runtime_option<'a, I: Iterator<Item = &'a str>>
             )?;
             Ok(true)
         }
+        "--reward-distfs-adaptive-multiplier-hash-mismatch" => {
+            config.adaptive_policy.backoff_multiplier_hash_mismatch = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-hash-mismatch",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-multiplier-missing-sample" => {
+            config.adaptive_policy.backoff_multiplier_missing_sample = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-missing-sample",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-multiplier-timeout" => {
+            config.adaptive_policy.backoff_multiplier_timeout = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-timeout",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-multiplier-read-io-error" => {
+            config.adaptive_policy.backoff_multiplier_read_io_error = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-read-io-error",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-multiplier-signature-invalid" => {
+            config.adaptive_policy.backoff_multiplier_signature_invalid = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-signature-invalid",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-multiplier-unknown" => {
+            config.adaptive_policy.backoff_multiplier_unknown = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-multiplier-unknown",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
         _ => Ok(false),
     }
 }

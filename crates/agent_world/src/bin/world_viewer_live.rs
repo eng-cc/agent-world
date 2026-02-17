@@ -1009,6 +1009,24 @@ fn print_help() {
     println!(
         "  --reward-distfs-adaptive-backoff-max-ms <n> DistFS adaptive backoff max milliseconds (default: 0)"
     );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-hash-mismatch <n> DistFS adaptive backoff multiplier for HASH_MISMATCH (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-missing-sample <n> DistFS adaptive backoff multiplier for MISSING_SAMPLE (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-timeout <n> DistFS adaptive backoff multiplier for TIMEOUT (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-read-io-error <n> DistFS adaptive backoff multiplier for READ_IO_ERROR (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-signature-invalid <n> DistFS adaptive backoff multiplier for SIGNATURE_INVALID (default: 1)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-multiplier-unknown <n> DistFS adaptive backoff multiplier for UNKNOWN (default: 1)"
+    );
     println!("  --reward-points-per-credit <n> points -> credit conversion ratio");
     println!("  --reward-credits-per-power-unit <n> credit -> power conversion ratio");
     println!("  --reward-max-redeem-power-per-epoch <n> per-epoch redeem power cap");
