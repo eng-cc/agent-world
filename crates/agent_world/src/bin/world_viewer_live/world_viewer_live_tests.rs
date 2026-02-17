@@ -541,6 +541,60 @@ fn ensure_node_keypair_in_config_fills_missing_public_key() {
 }
 
 #[test]
+fn build_reward_settlement_mint_records_uses_preview_world_without_mutation() {
+    let mut world = RuntimeWorld::new();
+    world
+        .bind_node_identity("node-a", "public-key-node-a")
+        .expect("bind node-a identity");
+    let signer_private = [21_u8; 32];
+    let signer_key = ed25519_dalek::SigningKey::from_bytes(&signer_private);
+    let signer_private_key_hex = hex::encode(signer_key.to_bytes());
+    let signer_public_key_hex = hex::encode(signer_key.verifying_key().to_bytes());
+    world
+        .bind_node_identity("node-signer", signer_public_key_hex.as_str())
+        .expect("bind signer identity");
+
+    let report = agent_world::runtime::EpochSettlementReport {
+        epoch_index: 1,
+        pool_points: 20,
+        storage_pool_points: 0,
+        distributed_points: 20,
+        storage_distributed_points: 0,
+        total_distributed_points: 20,
+        settlements: vec![agent_world::runtime::NodeSettlement {
+            node_id: "node-a".to_string(),
+            obligation_met: true,
+            compute_score: 0.0,
+            storage_score: 0.0,
+            uptime_score: 0.0,
+            reliability_score: 0.0,
+            storage_reward_score: 0.0,
+            rewardable_storage_bytes: 0,
+            penalty_score: 0.0,
+            total_score: 0.0,
+            main_awarded_points: 20,
+            storage_awarded_points: 0,
+            awarded_points: 20,
+            cumulative_points: 20,
+        }],
+    };
+
+    let minted = build_reward_settlement_mint_records(
+        &world,
+        &report,
+        "node-signer",
+        signer_private_key_hex.as_str(),
+    )
+    .expect("build mint records");
+    assert_eq!(minted.len(), 1);
+    assert_eq!(minted[0].node_id, "node-a");
+    assert_eq!(minted[0].minted_power_credits, 2);
+
+    assert!(world.reward_mint_records().is_empty());
+    assert_eq!(world.node_power_credit_balance("node-a"), 0);
+}
+
+#[test]
 fn collect_distfs_challenge_report_returns_zero_for_empty_store() {
     let dir = temp_dir("distfs-probe-empty");
     let mut state = StorageChallengeProbeCursorState::default();

@@ -8,13 +8,11 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::StorageChallengeProbeCursorState;
-use agent_world::geometry::GeoPos;
 use agent_world::runtime::{
-    measure_directory_storage_bytes, reward_redeem_signature_v1, Action as RuntimeAction,
-    NodePointsConfig, NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot,
-    NodePointsRuntimeHeuristics, NodePointsRuntimeObservation, ProtocolPowerReserve,
-    RewardAssetConfig, RewardAssetInvariantReport, RewardSignatureGovernancePolicy,
-    World as RuntimeWorld,
+    measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
+    NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
+    NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
+    RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -29,10 +27,15 @@ use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
+#[path = "world_viewer_live/reward_runtime_settlement.rs"]
+mod reward_runtime_settlement;
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
     DistfsProbeRuntimeConfig,
+};
+use reward_runtime_settlement::{
+    auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
 };
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
@@ -480,7 +483,8 @@ fn reward_runtime_loop(
         };
 
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
-        let minted_records = match reward_world.apply_node_points_settlement_mint_v2(
+        let minted_records = match build_reward_settlement_mint_records(
+            &reward_world,
             &report,
             config.signer_node_id.as_str(),
             config.signer_private_key_hex.as_str(),
@@ -491,6 +495,17 @@ fn reward_runtime_loop(
                 continue;
             }
         };
+        if !minted_records.is_empty() {
+            reward_world.submit_action(RuntimeAction::ApplyNodePointsSettlementSigned {
+                report: report.clone(),
+                signer_node_id: config.signer_node_id.clone(),
+                mint_records: minted_records.clone(),
+            });
+            if let Err(err) = reward_world.step() {
+                eprintln!("reward runtime settlement action step failed: {err:?}");
+                continue;
+            }
+        }
 
         if config.auto_redeem {
             auto_redeem_runtime_rewards(
@@ -555,76 +570,6 @@ fn reward_runtime_loop(
             Err(err) => {
                 eprintln!("reward runtime serialize report failed: {err}");
             }
-        }
-    }
-}
-
-fn auto_redeem_runtime_rewards(
-    reward_world: &mut RuntimeWorld,
-    minted_records: &[agent_world::runtime::NodeRewardMintRecord],
-    signer_node_id: &str,
-    signer_private_key_hex: &str,
-) {
-    let signer_public_key = match reward_world.node_identity_public_key(signer_node_id) {
-        Some(key) => key.to_string(),
-        None => {
-            eprintln!(
-                "reward runtime auto-redeem skipped: signer identity not bound: {}",
-                signer_node_id
-            );
-            return;
-        }
-    };
-
-    for record in minted_records {
-        let node_id = record.node_id.as_str();
-        if !reward_world.state().agents.contains_key(node_id) {
-            reward_world.submit_action(RuntimeAction::RegisterAgent {
-                agent_id: node_id.to_string(),
-                pos: GeoPos::new(0.0, 0.0, 0.0),
-            });
-            if let Err(err) = reward_world.step() {
-                eprintln!("reward runtime register auto-redeem agent failed: {err:?}");
-                continue;
-            }
-        }
-
-        let redeem_credits = reward_world.node_power_credit_balance(node_id);
-        if redeem_credits == 0 {
-            continue;
-        }
-        let nonce = reward_world
-            .node_last_redeem_nonce(node_id)
-            .unwrap_or(0)
-            .saturating_add(1);
-        let signature = match reward_redeem_signature_v1(
-            node_id,
-            node_id,
-            redeem_credits,
-            nonce,
-            signer_node_id,
-            signer_public_key.as_str(),
-            signer_private_key_hex,
-        ) {
-            Ok(signature) => signature,
-            Err(err) => {
-                eprintln!(
-                    "reward runtime auto-redeem skipped for {}: sign failed: {}",
-                    node_id, err
-                );
-                continue;
-            }
-        };
-        reward_world.submit_action(RuntimeAction::RedeemPowerSigned {
-            node_id: node_id.to_string(),
-            target_agent_id: node_id.to_string(),
-            redeem_credits,
-            nonce,
-            signer_node_id: signer_node_id.to_string(),
-            signature,
-        });
-        if let Err(err) = reward_world.step() {
-            eprintln!("reward runtime auto-redeem failed: {err:?}");
         }
     }
 }
