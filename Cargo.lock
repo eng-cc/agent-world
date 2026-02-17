@@ -279,6 +279,11 @@ dependencies = [
 [[package]]
 name = "agent_world_wasm_sdk"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_cbor",
+ "serde_json",
+]
 
 [[package]]
 name = "agent_world_wasm_store"

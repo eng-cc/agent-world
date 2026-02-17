@@ -1,6 +1,13 @@
 #![allow(improper_ctypes_definitions)]
 
-use agent_world_wasm_sdk::{export_wasm_module, LifecycleStage, WasmModuleLifecycle};
+use agent_world_wasm_sdk::{
+    export_wasm_module,
+    wire::{
+        decode_action, decode_input, empty_output, encode_output, ModuleCallInput,
+        ModuleEffectIntent, ModuleEmit, ModuleOutput,
+    },
+    LifecycleStage, WasmModuleLifecycle,
+};
 use serde::{Deserialize, Serialize};
 
 const MODULE_ID: &str = "m4.recipe.assembler.motor_mk1";
@@ -12,46 +19,6 @@ const PRODUCE_PER_BATCH: &[(&str, i64)] = &[("motor_mk1", 1)];
 const BYPRODUCTS_PER_BATCH: &[(&str, i64)] = &[];
 const POWER_PER_BATCH: i64 = 7;
 const DURATION_TICKS: u32 = 1;
-
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleCallInput {
-    ctx: ModuleContext,
-    #[serde(default)]
-    event: Option<Vec<u8>>,
-    #[serde(default)]
-    action: Option<Vec<u8>>,
-    #[serde(default)]
-    state: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleContext {
-    module_id: String,
-    time: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEffectIntent {
-    kind: String,
-    params: serde_json::Value,
-    cap_ref: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEmit {
-    kind: String,
-    payload: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleOutput {
-    new_state: Option<Vec<u8>>,
-    #[serde(default)]
-    effects: Vec<ModuleEffectIntent>,
-    #[serde(default)]
-    emits: Vec<ModuleEmit>,
-    output_bytes: u64,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct MaterialStackData {
@@ -126,28 +93,6 @@ impl RecipeExecutionPlanData {
             reject_reason: Some(reason.into()),
         }
     }
-}
-
-fn empty_output() -> ModuleOutput {
-    ModuleOutput {
-        new_state: None,
-        effects: Vec::new(),
-        emits: Vec::new(),
-        output_bytes: 0,
-    }
-}
-
-fn encode_output(output: ModuleOutput) -> Vec<u8> {
-    serde_cbor::to_vec(&output).unwrap_or_default()
-}
-
-fn decode_input(input_bytes: &[u8]) -> Option<ModuleCallInput> {
-    serde_cbor::from_slice(input_bytes).ok()
-}
-
-fn decode_action<T: for<'de> Deserialize<'de>>(input: &ModuleCallInput) -> Option<T> {
-    let bytes = input.action.as_deref()?;
-    serde_cbor::from_slice(bytes).ok()
 }
 
 fn as_inventory(stacks: &[MaterialStackData]) -> std::collections::BTreeMap<&str, i64> {

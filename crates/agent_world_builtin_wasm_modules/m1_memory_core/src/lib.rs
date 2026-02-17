@@ -1,50 +1,17 @@
 #![allow(improper_ctypes_definitions)]
 
-use agent_world_wasm_sdk::{export_wasm_module, LifecycleStage, WasmModuleLifecycle};
+use agent_world_wasm_sdk::{
+    export_wasm_module,
+    wire::{
+        decode_action, decode_input, empty_output, encode_output, ModuleCallInput,
+        ModuleEffectIntent, ModuleEmit, ModuleOutput,
+    },
+    LifecycleStage, WasmModuleLifecycle,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const MODULE_ID: &str = "m1.memory.core";
-
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleCallInput {
-    ctx: ModuleContext,
-    #[serde(default)]
-    event: Option<Vec<u8>>,
-    #[serde(default)]
-    action: Option<Vec<u8>>,
-    #[serde(default)]
-    state: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleContext {
-    module_id: String,
-    time: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEffectIntent {
-    kind: String,
-    params: Value,
-    cap_ref: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEmit {
-    kind: String,
-    payload: Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleOutput {
-    new_state: Option<Vec<u8>>,
-    #[serde(default)]
-    effects: Vec<ModuleEffectIntent>,
-    #[serde(default)]
-    emits: Vec<ModuleEmit>,
-    output_bytes: u64,
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 struct MemoryModuleState {
@@ -58,23 +25,6 @@ struct MemoryModuleEntry {
     kind: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     agent_id: Option<String>,
-}
-
-fn empty_output() -> ModuleOutput {
-    ModuleOutput {
-        new_state: None,
-        effects: Vec::new(),
-        emits: Vec::new(),
-        output_bytes: 0,
-    }
-}
-
-fn encode_output(output: ModuleOutput) -> Vec<u8> {
-    serde_cbor::to_vec(&output).unwrap_or_default()
-}
-
-fn decode_input(input_bytes: &[u8]) -> Option<ModuleCallInput> {
-    serde_cbor::from_slice(input_bytes).ok()
 }
 
 fn decode_memory_state(state_bytes: Option<&[u8]>) -> MemoryModuleState {

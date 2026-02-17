@@ -1,6 +1,13 @@
 #![allow(improper_ctypes_definitions)]
 
-use agent_world_wasm_sdk::{export_wasm_module, LifecycleStage, WasmModuleLifecycle};
+use agent_world_wasm_sdk::{
+    export_wasm_module,
+    wire::{
+        decode_action, decode_input, empty_output, encode_output, ModuleCallInput,
+        ModuleEffectIntent, ModuleEmit, ModuleOutput,
+    },
+    LifecycleStage, WasmModuleLifecycle,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -10,23 +17,6 @@ const DEFAULT_MOVE_COST_PER_KM_ELECTRICITY: i64 = 1;
 const CM_PER_KM: i64 = 100_000;
 const RULE_DECISION_EMIT_KIND: &str = "rule.decision";
 
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleCallInput {
-    ctx: ModuleContext,
-    #[serde(default)]
-    event: Option<Vec<u8>>,
-    #[serde(default)]
-    action: Option<Vec<u8>>,
-    #[serde(default)]
-    state: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ModuleContext {
-    module_id: String,
-    time: u64,
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 struct GeoPos {
     x_cm: f64,
@@ -34,50 +24,10 @@ struct GeoPos {
     z_cm: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEffectIntent {
-    kind: String,
-    params: Value,
-    cap_ref: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleEmit {
-    kind: String,
-    payload: Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ModuleOutput {
-    new_state: Option<Vec<u8>>,
-    #[serde(default)]
-    effects: Vec<ModuleEffectIntent>,
-    #[serde(default)]
-    emits: Vec<ModuleEmit>,
-    output_bytes: u64,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 struct PositionState {
     #[serde(default)]
     agents: BTreeMap<String, GeoPos>,
-}
-
-fn empty_output() -> ModuleOutput {
-    ModuleOutput {
-        new_state: None,
-        effects: Vec::new(),
-        emits: Vec::new(),
-        output_bytes: 0,
-    }
-}
-
-fn encode_output(output: ModuleOutput) -> Vec<u8> {
-    serde_cbor::to_vec(&output).unwrap_or_default()
-}
-
-fn decode_input(input_bytes: &[u8]) -> Option<ModuleCallInput> {
-    serde_cbor::from_slice(input_bytes).ok()
 }
 
 fn decode_state(state_bytes: Option<&[u8]>) -> PositionState {

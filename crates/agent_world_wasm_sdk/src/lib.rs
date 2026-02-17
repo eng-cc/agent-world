@@ -56,6 +56,75 @@ pub fn dispatch_call<M: WasmModuleLifecycle>(input_ptr: i32, input_len: i32) -> 
     output
 }
 
+#[cfg(feature = "wire")]
+pub mod wire {
+    use alloc::string::String;
+    use alloc::vec::Vec;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct ModuleCallInput {
+        pub ctx: ModuleContext,
+        #[serde(default)]
+        pub event: Option<Vec<u8>>,
+        #[serde(default)]
+        pub action: Option<Vec<u8>>,
+        #[serde(default)]
+        pub state: Option<Vec<u8>>,
+    }
+
+    #[derive(Debug, Clone, Deserialize)]
+    pub struct ModuleContext {
+        pub module_id: String,
+        pub time: u64,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    pub struct ModuleEffectIntent {
+        pub kind: String,
+        pub params: serde_json::Value,
+        pub cap_ref: String,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    pub struct ModuleEmit {
+        pub kind: String,
+        pub payload: serde_json::Value,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    pub struct ModuleOutput {
+        pub new_state: Option<Vec<u8>>,
+        #[serde(default)]
+        pub effects: Vec<ModuleEffectIntent>,
+        #[serde(default)]
+        pub emits: Vec<ModuleEmit>,
+        pub output_bytes: u64,
+    }
+
+    pub fn empty_output() -> ModuleOutput {
+        ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            output_bytes: 0,
+        }
+    }
+
+    pub fn encode_output(output: ModuleOutput) -> Vec<u8> {
+        serde_cbor::to_vec(&output).unwrap_or_default()
+    }
+
+    pub fn decode_input(input_bytes: &[u8]) -> Option<ModuleCallInput> {
+        serde_cbor::from_slice(input_bytes).ok()
+    }
+
+    pub fn decode_action<T: for<'de> Deserialize<'de>>(input: &ModuleCallInput) -> Option<T> {
+        let bytes = input.action.as_deref()?;
+        serde_cbor::from_slice(bytes).ok()
+    }
+}
+
 #[macro_export]
 macro_rules! export_wasm_module {
     ($module_ty:ty) => {
