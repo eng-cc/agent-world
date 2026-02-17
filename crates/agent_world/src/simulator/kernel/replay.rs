@@ -142,6 +142,22 @@ impl WorldKernel {
                 self.remove_from_owner_for_replay(from, *kind, *amount)?;
                 self.add_to_owner_for_replay(to, *kind, *amount)?;
             }
+            WorldEventKind::DebugResourceGranted {
+                owner,
+                kind,
+                amount,
+            } => {
+                if *amount <= 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: "debug grant amount must be positive".to_string(),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid debug grant owner: {reason:?}"),
+                    })?;
+                self.add_to_owner_for_replay(owner, *kind, *amount)?;
+            }
             WorldEventKind::RadiationHarvested {
                 agent_id, amount, ..
             } => {

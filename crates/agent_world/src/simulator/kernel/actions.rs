@@ -522,6 +522,28 @@ impl WorldKernel {
                     Err(reason) => WorldEventKind::ActionRejected { reason },
                 }
             }
+            Action::DebugGrantResource {
+                owner,
+                kind,
+                amount,
+            } => {
+                if amount <= 0 {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::InvalidAmount { amount },
+                    };
+                }
+                if let Err(reason) = self.ensure_owner_exists(&owner) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                if let Err(reason) = self.add_to_owner(&owner, kind, amount) {
+                    return WorldEventKind::ActionRejected { reason };
+                }
+                WorldEventKind::DebugResourceGranted {
+                    owner,
+                    kind,
+                    amount,
+                }
+            }
             Action::MineCompound {
                 owner,
                 location_id,

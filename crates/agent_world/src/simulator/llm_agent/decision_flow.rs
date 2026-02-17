@@ -230,15 +230,24 @@ pub(super) enum ParsedLlmTurn {
     Invalid(String),
 }
 
+#[cfg(test)]
 pub(super) fn parse_llm_turn_payloads(
     turns: &[LlmCompletionTurn],
     agent_id: &str,
+) -> Vec<ParsedLlmTurn> {
+    parse_llm_turn_payloads_with_debug_mode(turns, agent_id, false)
+}
+
+pub(super) fn parse_llm_turn_payloads_with_debug_mode(
+    turns: &[LlmCompletionTurn],
+    agent_id: &str,
+    llm_debug_mode: bool,
 ) -> Vec<ParsedLlmTurn> {
     turns
         .iter()
         .map(|turn| match turn {
             LlmCompletionTurn::Decision { payload } => {
-                parse_llm_turn_value(payload.clone(), agent_id)
+                parse_llm_turn_value(payload.clone(), agent_id, llm_debug_mode)
             }
             LlmCompletionTurn::ModuleCall { module, args } => {
                 let normalized_module = normalize_prompt_module_name(module.as_str());
@@ -258,7 +267,11 @@ pub(super) fn parse_llm_turn_payloads(
         .collect()
 }
 
-fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTurn {
+fn parse_llm_turn_value(
+    value: serde_json::Value,
+    agent_id: &str,
+    llm_debug_mode: bool,
+) -> ParsedLlmTurn {
     let message_to_user = parse_message_to_user(&value);
 
     if let Some(turn_type) = value
@@ -288,7 +301,7 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
                 },
                 Err(err) => ParsedLlmTurn::Invalid(format!("plan parse failed: {err}")),
             },
-            "decision_draft" => match parse_llm_decision_draft(value, agent_id) {
+            "decision_draft" => match parse_llm_decision_draft(value, agent_id, llm_debug_mode) {
                 Ok(draft) => ParsedLlmTurn::DecisionDraft {
                     draft,
                     message_to_user,
@@ -304,7 +317,7 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
         .and_then(|value| value.as_str())
         .is_some_and(|value| value.trim().eq_ignore_ascii_case("execute_until"))
     {
-        return match parse_execute_until_decision(value, agent_id) {
+        return match parse_execute_until_decision(value, agent_id, llm_debug_mode) {
             Ok((directive, rewrite_receipt)) => ParsedLlmTurn::ExecuteUntil {
                 directive,
                 message_to_user,
@@ -314,7 +327,8 @@ fn parse_llm_turn_value(value: serde_json::Value, agent_id: &str) -> ParsedLlmTu
         };
     }
 
-    let (decision, parse_error) = parse_llm_decision_value_with_error(value, agent_id);
+    let (decision, parse_error) =
+        parse_llm_decision_value_with_error(value, agent_id, llm_debug_mode);
     if let Some(err) = parse_error {
         ParsedLlmTurn::Invalid(err)
     } else {
@@ -342,6 +356,7 @@ fn parse_message_to_user(value: &serde_json::Value) -> Option<String> {
 fn parse_llm_decision_draft(
     value: serde_json::Value,
     agent_id: &str,
+    llm_debug_mode: bool,
 ) -> Result<LlmDecisionDraft, String> {
     let raw_value = value.clone();
     let payload = serde_json::from_value::<RawLlmDecisionDraftPayload>(value)
@@ -353,7 +368,8 @@ fn parse_llm_decision_draft(
         decision_draft_shorthand_value(&raw_value).unwrap_or(payload.decision)
     };
 
-    let (decision, parse_error) = parse_llm_decision_value_with_error(decision_value, agent_id);
+    let (decision, parse_error) =
+        parse_llm_decision_value_with_error(decision_value, agent_id, llm_debug_mode);
     if let Some(err) = parse_error {
         return Err(format!("decision_draft invalid decision: {err}"));
     }
@@ -383,6 +399,7 @@ fn decision_draft_shorthand_value(value: &serde_json::Value) -> Option<serde_jso
 fn parse_execute_until_decision(
     value: serde_json::Value,
     agent_id: &str,
+    llm_debug_mode: bool,
 ) -> Result<(ExecuteUntilDirective, Option<DecisionRewriteReceipt>), String> {
     const DEFAULT_MAX_TICKS: u64 = 6;
     const MAX_TICKS_CAP: u64 = 256;
@@ -399,7 +416,7 @@ fn parse_execute_until_decision(
     }
 
     let (action_decision, action_parse_error) =
-        parse_llm_decision_value_with_error(payload.action, agent_id);
+        parse_llm_decision_value_with_error(payload.action, agent_id, llm_debug_mode);
     if let Some(err) = action_parse_error {
         return Err(format!("execute_until invalid action: {err}"));
     }
@@ -503,6 +520,7 @@ fn parse_execute_until_conditions(
 fn parse_llm_decision_value_with_error(
     value: serde_json::Value,
     agent_id: &str,
+    llm_debug_mode: bool,
 ) -> (AgentDecision, Option<String>) {
     let parsed = match serde_json::from_value::<LlmDecisionPayload>(value) {
         Ok(value) => value,
@@ -595,6 +613,55 @@ fn parse_llm_decision_value_with_error(
             AgentDecision::Act(Action::TransferResource {
                 from: from_owner,
                 to: to_owner,
+                kind,
+                amount,
+            })
+        }
+        "debug_grant_resource" => {
+            if !llm_debug_mode {
+                return (
+                    AgentDecision::Wait,
+                    Some(
+                        "debug_grant_resource is disabled; enable AGENT_WORLD_LLM_DEBUG_MODE=true"
+                            .to_string(),
+                    ),
+                );
+            }
+            let owner = match parsed.owner.as_deref() {
+                Some(owner) => match parse_owner_spec(owner, agent_id) {
+                    Ok(owner) => owner,
+                    Err(err) => return (AgentDecision::Wait, Some(err)),
+                },
+                None => ResourceOwner::Agent {
+                    agent_id: agent_id.to_string(),
+                },
+            };
+            let kind = match parsed.kind.as_deref() {
+                Some(raw_kind) => match parse_resource_kind(raw_kind) {
+                    Some(kind) => kind,
+                    None => {
+                        return (
+                            AgentDecision::Wait,
+                            Some(format!("debug_grant_resource invalid kind: {raw_kind}")),
+                        );
+                    }
+                },
+                None => {
+                    return (
+                        AgentDecision::Wait,
+                        Some("debug_grant_resource missing `kind`".to_string()),
+                    );
+                }
+            };
+            let amount = parsed.amount.unwrap_or(1);
+            if amount <= 0 {
+                return (
+                    AgentDecision::Wait,
+                    Some("debug_grant_resource requires positive amount".to_string()),
+                );
+            }
+            AgentDecision::Act(Action::DebugGrantResource {
+                owner,
                 kind,
                 amount,
             })

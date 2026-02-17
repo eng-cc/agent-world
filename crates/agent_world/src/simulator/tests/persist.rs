@@ -453,6 +453,41 @@ fn replay_from_snapshot_applies_compound_mined_event() {
 }
 
 #[test]
+fn replay_from_snapshot_applies_debug_resource_granted_event() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-debug".to_string(),
+        name: "debug".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-debug".to_string(),
+        location_id: "loc-debug".to_string(),
+    });
+    kernel.step_until_empty();
+
+    let snapshot = kernel.snapshot();
+    kernel.submit_action(Action::DebugGrantResource {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-debug".to_string(),
+        },
+        kind: ResourceKind::Hardware,
+        amount: 99,
+    });
+    kernel.step().expect("debug grant");
+
+    let journal = kernel.journal_snapshot();
+    let replayed = WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay");
+    let agent = replayed
+        .model()
+        .agents
+        .get("agent-debug")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 99);
+}
+
+#[test]
 fn replay_with_budget_caps_keeps_chunk_generated_consistent() {
     let mut config = WorldConfig::default();
     config.move_cost_per_km_electricity = 0;

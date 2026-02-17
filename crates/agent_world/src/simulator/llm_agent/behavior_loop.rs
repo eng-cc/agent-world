@@ -208,6 +208,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 model: self.config.model.clone(),
                 system_prompt: prompt_output.system_prompt.clone(),
                 user_prompt,
+                debug_mode: self.config.llm_debug_mode,
             };
             let input_summary = format!(
                 "turn={turn}; module_calls={}/{}; repair_rounds={}/{}; force_replan={}; prompt_profile={}",
@@ -253,9 +254,10 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     let mut retry_next_turn = false;
                     let mut tool_called_this_turn = false;
 
-                    let parsed_turns = parse_llm_turn_payloads(
+                    let parsed_turns = parse_llm_turn_payloads_with_debug_mode(
                         completion.turns.as_slice(),
                         self.agent_id.as_str(),
+                        self.config.llm_debug_mode,
                     );
 
                     for parsed_turn in parsed_turns {

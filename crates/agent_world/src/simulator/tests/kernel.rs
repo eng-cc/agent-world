@@ -1219,6 +1219,55 @@ fn mine_compound_enforces_location_cap() {
 }
 
 #[test]
+fn debug_grant_resource_adds_requested_amount_to_owner_stock() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-debug".to_string(),
+        name: "debug".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-debug".to_string(),
+        location_id: "loc-debug".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::DebugGrantResource {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-debug".to_string(),
+        },
+        kind: ResourceKind::Hardware,
+        amount: 123,
+    });
+    let event = kernel.step().expect("debug grant");
+    match event.kind {
+        WorldEventKind::DebugResourceGranted {
+            owner,
+            kind,
+            amount,
+        } => {
+            assert_eq!(
+                owner,
+                ResourceOwner::Agent {
+                    agent_id: "agent-debug".to_string(),
+                }
+            );
+            assert_eq!(kind, ResourceKind::Hardware);
+            assert_eq!(amount, 123);
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let agent = kernel
+        .model()
+        .agents
+        .get("agent-debug")
+        .expect("agent exists");
+    assert_eq!(agent.resources.get(ResourceKind::Hardware), 123);
+}
+
+#[test]
 fn refine_compound_consumes_electricity_and_outputs_hardware() {
     let mut config = WorldConfig::default();
     config.economy.refine_electricity_cost_per_kg = 3;

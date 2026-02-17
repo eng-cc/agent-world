@@ -88,6 +88,11 @@ pub enum WorldEventKind {
         kind: ResourceKind,
         amount: i64,
     },
+    DebugResourceGranted {
+        owner: ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    },
     RadiationHarvested {
         agent_id: AgentId,
         location_id: LocationId,

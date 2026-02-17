@@ -1,7 +1,12 @@
 use super::*;
 
+#[cfg(test)]
 pub(super) fn responses_tools() -> Vec<Tool> {
-    vec![
+    responses_tools_with_debug_mode(false)
+}
+
+pub(super) fn responses_tools_with_debug_mode(debug_mode: bool) -> Vec<Tool> {
+    let mut tools = vec![
         Tool::Function(FunctionTool {
             name: OPENAI_TOOL_AGENT_MODULES_LIST.to_string(),
             description: Some("列出 Agent 可调用的模块能力与参数。".to_string()),
@@ -63,62 +68,84 @@ pub(super) fn responses_tools() -> Vec<Tool> {
                 "提交最终决策；所有世界动作必须通过该 tool call，而不是输出文本 JSON。".to_string(),
             ),
             parameters: Some(serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "decision": {
-                        "type": "string",
-                        "enum": [
-                            "wait",
-                            "wait_ticks",
-                            "move_agent",
-                            "harvest_radiation",
-                            "transfer_resource",
-                            "mine_compound",
-                            "refine_compound",
-                            "build_factory",
-                            "schedule_recipe",
-                            "execute_until"
-                        ]
-                    },
-                    "ticks": { "type": "integer", "minimum": 1 },
-                    "to": { "type": "string" },
-                    "max_amount": { "type": "integer", "minimum": 1 },
-                    "from_owner": { "type": "string" },
-                    "to_owner": { "type": "string" },
-                    "kind": { "type": "string" },
-                    "amount": { "type": "integer", "minimum": 1 },
-                    "owner": { "type": "string" },
-                    "compound_mass_g": { "type": "integer", "minimum": 1 },
-                    "location_id": { "type": "string" },
-                    "factory_id": { "type": "string" },
-                    "factory_kind": { "type": "string" },
-                    "recipe_id": { "type": "string" },
-                    "batches": { "type": "integer", "minimum": 1 },
-                    "action": {
-                        "type": "object",
-                        "additionalProperties": true
-                    },
-                    "until": {
-                        "type": "object",
-                        "properties": {
-                            "event": { "type": "string" },
-                            "event_any_of": {
-                                "type": "array",
-                                "items": { "type": "string" }
-                            },
-                            "value_lte": { "type": "integer", "minimum": 0 }
-                        },
-                        "additionalProperties": false
-                    },
-                    "max_ticks": { "type": "integer", "minimum": 1 },
-                    "message_to_user": { "type": "string" }
+            "type": "object",
+            "properties": {
+                "decision": {
+                    "type": "string",
+                    "enum": [
+                        "wait",
+                        "wait_ticks",
+                        "move_agent",
+                        "harvest_radiation",
+                        "transfer_resource",
+                        "mine_compound",
+                        "refine_compound",
+                        "build_factory",
+                        "schedule_recipe",
+                        "execute_until"
+                    ]
                 },
-                "required": ["decision"],
-                "additionalProperties": false
+                "ticks": { "type": "integer", "minimum": 1 },
+                "to": { "type": "string" },
+                "max_amount": { "type": "integer", "minimum": 1 },
+                "from_owner": { "type": "string" },
+                "to_owner": { "type": "string" },
+                "kind": { "type": "string" },
+                "amount": { "type": "integer", "minimum": 1 },
+                "owner": { "type": "string" },
+                "compound_mass_g": { "type": "integer", "minimum": 1 },
+                "location_id": { "type": "string" },
+                "factory_id": { "type": "string" },
+                "factory_kind": { "type": "string" },
+                "recipe_id": { "type": "string" },
+                "batches": { "type": "integer", "minimum": 1 },
+                "action": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "until": {
+                    "type": "object",
+                    "properties": {
+                        "event": { "type": "string" },
+                        "event_any_of": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        },
+                        "value_lte": { "type": "integer", "minimum": 0 }
+                    },
+                    "additionalProperties": false
+                },
+                "max_ticks": { "type": "integer", "minimum": 1 },
+                "message_to_user": { "type": "string" }
+            },
+            "required": ["decision"],
+            "additionalProperties": false
             })),
             strict: None,
         }),
-    ]
+    ];
+
+    if debug_mode {
+        tools.push(Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string(),
+            description: Some(
+                "仅 debug 模式可用：向 owner 追加任意资源数量用于调试闭环。".to_string(),
+            ),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "owner": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "amount": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["kind", "amount"],
+                "additionalProperties": false
+            })),
+            strict: None,
+        }));
+    }
+
+    tools
 }
 
 pub(super) fn module_name_from_tool_name(name: &str) -> &str {
@@ -149,6 +176,21 @@ pub(super) fn function_call_to_completion_turn(name: &str, arguments: &str) -> L
         return LlmCompletionTurn::Decision {
             payload: decode_tool_arguments(arguments),
         };
+    }
+    if name == OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE {
+        let mut payload = decode_tool_arguments(arguments);
+        if let Some(map) = payload.as_object_mut() {
+            map.insert(
+                "decision".to_string(),
+                serde_json::Value::String("debug_grant_resource".to_string()),
+            );
+        } else {
+            payload = serde_json::json!({
+                "decision": "debug_grant_resource",
+                "raw_args": payload,
+            });
+        }
+        return LlmCompletionTurn::Decision { payload };
     }
     LlmCompletionTurn::ModuleCall {
         module: module_name_from_tool_name(name).to_string(),
@@ -225,7 +267,7 @@ pub(super) fn build_responses_request_payload(
         .model(request.model.clone())
         .instructions(request.system_prompt.clone())
         .input(InputParam::Text(request.user_prompt.clone()))
-        .tools(responses_tools())
+        .tools(responses_tools_with_debug_mode(request.debug_mode))
         .tool_choice(ToolChoiceParam::Mode(ToolChoiceOptions::Required))
         .build()
         .map_err(|err| LlmClientError::DecodeResponse {

@@ -35,7 +35,7 @@ pub use prompt_assembly::{
 };
 
 use decision_flow::{
-    parse_limit_arg, parse_llm_turn_payloads, prompt_section_kind_name,
+    parse_limit_arg, parse_llm_turn_payloads_with_debug_mode, prompt_section_kind_name,
     prompt_section_priority_name, summarize_trace_text, DecisionRewriteReceipt,
     ExecuteUntilDirective, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
 };
@@ -50,7 +50,9 @@ use openai_payload::{
     normalize_openai_api_base_url,
 };
 #[cfg(test)]
-use openai_payload::{output_item_to_completion_turn, responses_tools};
+use openai_payload::{
+    output_item_to_completion_turn, responses_tools, responses_tools_with_debug_mode,
+};
 
 pub const ENV_LLM_MODEL: &str = "AGENT_WORLD_LLM_MODEL";
 pub const ENV_LLM_BASE_URL: &str = "AGENT_WORLD_LLM_BASE_URL";
@@ -69,6 +71,7 @@ pub const ENV_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: &str =
 pub const ENV_LLM_HARVEST_MAX_AMOUNT_CAP: &str = "AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP";
 pub const ENV_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: &str =
     "AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS";
+pub const ENV_LLM_DEBUG_MODE: &str = "AGENT_WORLD_LLM_DEBUG_MODE";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LlmPromptProfile {
@@ -138,6 +141,7 @@ pub const DEFAULT_LLM_PROMPT_PROFILE: LlmPromptProfile = LlmPromptProfile::Balan
 pub const DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION: usize = 4;
 pub const DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP: i64 = 100;
 pub const DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS: usize = 4;
+pub const DEFAULT_LLM_DEBUG_MODE: bool = false;
 pub const DEFAULT_LLM_HARVEST_EXECUTE_UNTIL_MAX_TICKS: u64 = 3;
 const DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH: i64 = 2;
 const DEFAULT_REFINE_RECOVERY_MASS_G_PER_HARDWARE: i64 = 1_000;
@@ -189,6 +193,15 @@ pub struct LlmAgentConfig {
     pub force_replan_after_same_action: usize,
     pub harvest_max_amount_cap: i64,
     pub execute_until_auto_reenter_ticks: usize,
+    pub llm_debug_mode: bool,
+}
+
+fn parse_debug_mode_flag(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
+    }
 }
 
 impl LlmAgentConfig {
@@ -311,6 +324,11 @@ impl LlmAgentConfig {
             DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS,
             |value| LlmConfigError::InvalidExecuteUntilAutoReenterTicks { value },
         )?;
+        let llm_debug_mode = match getter(ENV_LLM_DEBUG_MODE) {
+            Some(value) => parse_debug_mode_flag(value.as_str())
+                .ok_or(LlmConfigError::InvalidDebugMode { value })?,
+            None => DEFAULT_LLM_DEBUG_MODE,
+        };
 
         Ok(Self {
             model,
@@ -328,6 +346,7 @@ impl LlmAgentConfig {
             force_replan_after_same_action,
             harvest_max_amount_cap,
             execute_until_auto_reenter_ticks,
+            llm_debug_mode,
         })
     }
 
@@ -353,6 +372,7 @@ pub enum LlmConfigError {
     InvalidForceReplanAfterSameAction { value: String },
     InvalidHarvestMaxAmountCap { value: String },
     InvalidExecuteUntilAutoReenterTicks { value: String },
+    InvalidDebugMode { value: String },
     ReadConfigFile { path: String, message: String },
     ParseConfigFile { path: String, message: String },
 }
@@ -389,6 +409,9 @@ impl fmt::Display for LlmConfigError {
             LlmConfigError::InvalidExecuteUntilAutoReenterTicks { value } => {
                 write!(f, "invalid execute_until auto reenter ticks value: {value}")
             }
+            LlmConfigError::InvalidDebugMode { value } => {
+                write!(f, "invalid debug mode value: {value}")
+            }
             LlmConfigError::ReadConfigFile { path, message } => {
                 write!(f, "read config file failed ({path}): {message}")
             }
@@ -406,6 +429,7 @@ pub struct LlmCompletionRequest {
     pub model: String,
     pub system_prompt: String,
     pub user_prompt: String,
+    pub debug_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -570,6 +594,7 @@ const OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION: &str = "environment_current_o
 const OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT: &str = "memory_short_term_recent";
 const OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH: &str = "memory_long_term_search";
 const OPENAI_TOOL_AGENT_SUBMIT_DECISION: &str = "agent_submit_decision";
+const OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE: &str = "agent_debug_grant_resource";
 
 fn sanitize_prompt_override(value: Option<String>) -> Option<String> {
     let Some(value) = value else {
@@ -897,6 +922,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::BuyPower { .. } => "buy_power",
             Action::SellPower { .. } => "sell_power",
             Action::TransferResource { .. } => "transfer_resource",
+            Action::DebugGrantResource { .. } => "debug_grant_resource",
             Action::MineCompound { .. } => "mine_compound",
             Action::RefineCompound { .. } => "refine_compound",
             Action::BuildFactory { .. } => "build_factory",

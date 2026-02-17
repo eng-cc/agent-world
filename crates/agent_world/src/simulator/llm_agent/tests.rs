@@ -347,6 +347,7 @@ fn base_config() -> LlmAgentConfig {
         force_replan_after_same_action: DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
         harvest_max_amount_cap: DEFAULT_LLM_HARVEST_MAX_AMOUNT_CAP,
         execute_until_auto_reenter_ticks: DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS,
+        llm_debug_mode: DEFAULT_LLM_DEBUG_MODE,
     }
 }
 
@@ -400,6 +401,7 @@ fn llm_config_uses_default_system_prompt() {
         config.execute_until_auto_reenter_ticks,
         DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
     );
+    assert_eq!(config.llm_debug_mode, DEFAULT_LLM_DEBUG_MODE);
 }
 
 #[test]
@@ -481,6 +483,36 @@ fn llm_config_reads_multistep_and_prompt_fields_from_env() {
     assert_eq!(config.force_replan_after_same_action, 9);
     assert_eq!(config.harvest_max_amount_cap, 88);
     assert_eq!(config.execute_until_auto_reenter_ticks, 5);
+}
+
+#[test]
+fn llm_config_reads_debug_mode_from_env() {
+    let mut vars = BTreeMap::new();
+    vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
+    vars.insert(
+        ENV_LLM_BASE_URL.to_string(),
+        "https://api.example.com/v1".to_string(),
+    );
+    vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
+    vars.insert(ENV_LLM_DEBUG_MODE.to_string(), "true".to_string());
+
+    let config = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap();
+    assert!(config.llm_debug_mode);
+}
+
+#[test]
+fn llm_config_rejects_invalid_debug_mode() {
+    let mut vars = BTreeMap::new();
+    vars.insert(ENV_LLM_MODEL.to_string(), "gpt-4o-mini".to_string());
+    vars.insert(
+        ENV_LLM_BASE_URL.to_string(),
+        "https://api.example.com/v1".to_string(),
+    );
+    vars.insert(ENV_LLM_API_KEY.to_string(), "secret".to_string());
+    vars.insert(ENV_LLM_DEBUG_MODE.to_string(), "maybe".to_string());
+
+    let err = LlmAgentConfig::from_env_with(|key| vars.get(key).cloned(), "").unwrap_err();
+    assert!(matches!(err, LlmConfigError::InvalidDebugMode { .. }));
 }
 
 #[test]
@@ -607,6 +639,7 @@ AGENT_WORLD_LLM_TIMEOUT_MS = 4567
         config.execute_until_auto_reenter_ticks,
         DEFAULT_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
     );
+    assert_eq!(config.llm_debug_mode, DEFAULT_LLM_DEBUG_MODE);
 }
 
 #[test]
@@ -663,6 +696,31 @@ fn responses_tools_register_expected_function_names() {
             OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
         ]
     );
+}
+
+#[test]
+fn responses_tools_register_debug_grant_tool_in_debug_mode_only() {
+    let normal = responses_tools_with_debug_mode(false);
+    assert_eq!(normal.len(), 5);
+    let normal_names = normal
+        .into_iter()
+        .filter_map(|tool| match tool {
+            Tool::Function(function_tool) => Some(function_tool.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(!normal_names.contains(&OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string()));
+
+    let debug = responses_tools_with_debug_mode(true);
+    assert_eq!(debug.len(), 6);
+    let debug_names = debug
+        .into_iter()
+        .filter_map(|tool| match tool {
+            Tool::Function(function_tool) => Some(function_tool.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(debug_names.contains(&OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string()));
 }
 
 #[test]
@@ -734,11 +792,42 @@ fn response_function_call_maps_decision_tool_to_typed_decision_turn() {
 }
 
 #[test]
+fn response_function_call_maps_debug_grant_tool_to_typed_decision_turn() {
+    let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
+        arguments: "{\"owner\":\"self\",\"kind\":\"hardware\",\"amount\":3}".to_string(),
+        call_id: "call_debug".to_string(),
+        name: OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string(),
+        id: None,
+        status: None,
+    });
+
+    let turn = output_item_to_completion_turn(&output_item).expect("decision turn");
+    match turn {
+        LlmCompletionTurn::Decision { payload } => {
+            assert_eq!(
+                payload.get("decision").and_then(|value| value.as_str()),
+                Some("debug_grant_resource")
+            );
+            assert_eq!(
+                payload.get("kind").and_then(|value| value.as_str()),
+                Some("hardware")
+            );
+            assert_eq!(
+                payload.get("amount").and_then(|value| value.as_i64()),
+                Some(3)
+            );
+        }
+        other => panic!("expected decision turn, got {other:?}"),
+    }
+}
+
+#[test]
 fn build_responses_request_payload_includes_tools_and_required_choice() {
     let request = LlmCompletionRequest {
         model: "gpt-test".to_string(),
         system_prompt: "system".to_string(),
         user_prompt: "user".to_string(),
+        debug_mode: false,
     };
 
     let payload = build_responses_request_payload(&request).expect("payload");
@@ -780,6 +869,30 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
             OPENAI_TOOL_AGENT_SUBMIT_DECISION,
         ]
     );
+}
+
+#[test]
+fn build_responses_request_payload_includes_debug_tool_when_enabled() {
+    let request = LlmCompletionRequest {
+        model: "gpt-test".to_string(),
+        system_prompt: "system".to_string(),
+        user_prompt: "user".to_string(),
+        debug_mode: true,
+    };
+
+    let payload = build_responses_request_payload(&request).expect("payload");
+    let payload_json = serde_json::to_value(payload).expect("payload json");
+    let tools = payload_json
+        .get("tools")
+        .and_then(|v| v.as_array())
+        .expect("tools array");
+
+    assert_eq!(tools.len(), 6);
+    let function_names = tools
+        .iter()
+        .filter_map(|tool| tool.get("name").and_then(|v| v.as_str()))
+        .collect::<Vec<_>>();
+    assert!(function_names.contains(&OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE));
 }
 
 #[test]
@@ -868,6 +981,53 @@ fn llm_agent_parse_refine_compound_action_defaults_to_self_owner() {
             compound_mass_g: 80,
         })
     );
+}
+
+#[test]
+fn llm_agent_parse_debug_grant_resource_action_when_debug_mode_enabled() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"debug_grant_resource\",\"kind\":\"hardware\",\"amount\":9}"
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut config = base_config();
+    config.llm_debug_mode = true;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::DebugGrantResource {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            kind: ResourceKind::Hardware,
+            amount: 9,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_debug_grant_resource_action_when_debug_mode_disabled() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"debug_grant_resource\",\"kind\":\"hardware\",\"amount\":9}"
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("debug_grant_resource is disabled"));
 }
 
 #[test]

@@ -16,11 +16,11 @@
 - [x] MMD1.7 调整 `llm_bootstrap` 初始资源口径，验证“不能开局直建厂”
 
 ### MMD2 Debug 模式 LLM 补给工具
-- [ ] MMD2.1 新增配置开关 `AGENT_WORLD_LLM_DEBUG_MODE`（默认关闭）
-- [ ] MMD2.2 新增 `debug_grant_resource` 决策与 `Action::DebugGrantResource`
-- [ ] MMD2.3 OpenAI tools 仅在 debug 模式暴露 `agent_debug_grant_resource`
-- [ ] MMD2.4 非 debug 模式补给决策硬拒绝（解析/守卫）
-- [ ] MMD2.5 补齐 tool/schema/parser/behavior 单测
+- [x] MMD2.1 新增配置开关 `AGENT_WORLD_LLM_DEBUG_MODE`（默认关闭）
+- [x] MMD2.2 新增 `debug_grant_resource` 决策与 `Action::DebugGrantResource`
+- [x] MMD2.3 OpenAI tools 仅在 debug 模式暴露 `agent_debug_grant_resource`
+- [x] MMD2.4 非 debug 模式补给决策硬拒绝（解析/守卫）
+- [x] MMD2.5 补齐 tool/schema/parser/behavior 单测
 
 ### MMD3 闭环验证与收口
 - [ ] MMD3.1 跑 `test_tier_required` 相关测试集
@@ -42,6 +42,6 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD1 完成，进入 MMD2。
-- 下一阶段：落地 debug 模式 LLM 补给工具与守卫回归。
-- 最近更新：2026-02-17（完成采矿-精炼机制闭环与回归）。
+- 当前阶段：MMD2 完成，进入 MMD3。
+- 下一阶段：执行 `llm_bootstrap` 在线闭环复跑并收口文档状态。
+- 最近更新：2026-02-17（完成 debug 模式 LLM 补给工具与回归）。

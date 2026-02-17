@@ -436,6 +436,11 @@ pub enum Action {
         kind: ResourceKind,
         amount: i64,
     },
+    DebugGrantResource {
+        owner: ResourceOwner,
+        kind: ResourceKind,
+        amount: i64,
+    },
     MineCompound {
         owner: ResourceOwner,
         location_id: LocationId,

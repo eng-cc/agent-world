@@ -819,7 +819,8 @@ pub(super) fn event_primary_target(
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_to_target(from, snapshot).or_else(|| owner_to_target(to, snapshot))
         }
-        WorldEventKind::CompoundMined { owner, .. }
+        WorldEventKind::DebugResourceGranted { owner, .. }
+        | WorldEventKind::CompoundMined { owner, .. }
         | WorldEventKind::CompoundRefined { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::FactoryBuilt { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_to_target(owner, snapshot),
@@ -1008,7 +1009,8 @@ fn event_matches_agent(event: &WorldEvent, agent_id: &str) -> bool {
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_is_agent(from, agent_id) || owner_is_agent(to, agent_id)
         }
-        WorldEventKind::CompoundMined { owner, .. }
+        WorldEventKind::DebugResourceGranted { owner, .. }
+        | WorldEventKind::CompoundMined { owner, .. }
         | WorldEventKind::CompoundRefined { owner, .. }
         | WorldEventKind::FactoryBuilt { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_is_agent(owner, agent_id),
@@ -1044,7 +1046,8 @@ fn event_matches_location(event: &WorldEvent, location_id: &str) -> bool {
             location_id: event_location_id,
             ..
         } => event_location_id == location_id || owner_is_location(owner, location_id),
-        WorldEventKind::CompoundRefined { owner, .. }
+        WorldEventKind::DebugResourceGranted { owner, .. }
+        | WorldEventKind::CompoundRefined { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_is_location(owner, location_id),
         WorldEventKind::FactoryBuilt {
             owner,
@@ -1128,6 +1131,9 @@ fn event_matches_owner(event: &WorldEvent, owner: &ResourceOwner) -> bool {
             from == owner || to == owner
         }
         WorldEventKind::CompoundMined {
+            owner: event_owner, ..
+        }
+        | WorldEventKind::DebugResourceGranted {
             owner: event_owner, ..
         }
         | WorldEventKind::CompoundRefined {
