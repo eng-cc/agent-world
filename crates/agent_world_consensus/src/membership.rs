@@ -1121,6 +1121,8 @@ impl MembershipSyncClient {
         signer: Option<&MembershipDirectorySigner>,
         policy: &MembershipRevocationSyncPolicy,
     ) -> Result<MembershipRevocationSyncReport, WorldError> {
+        let accepted_signature_signer_public_keys =
+            membership_logic::validate_membership_revocation_sync_policy(policy)?;
         let revocations = self.drain_key_revocations(subscription)?;
         let mut report = MembershipRevocationSyncReport {
             drained: revocations.len(),
@@ -1141,6 +1143,7 @@ impl MembershipSyncClient {
                 signer,
                 keyring_ref,
                 policy,
+                accepted_signature_signer_public_keys.as_ref(),
             ) {
                 report.rejected = report.rejected.saturating_add(1);
                 continue;
@@ -1242,6 +1245,8 @@ impl MembershipSyncClient {
         keyring: Option<&MembershipDirectorySignerKeyring>,
         policy: &MembershipSnapshotRestorePolicy,
     ) -> Result<MembershipRestoreAuditReport, WorldError> {
+        let accepted_signature_signer_public_keys =
+            membership_logic::validate_membership_snapshot_restore_policy(policy)?;
         let snapshot = dht.get_membership_directory(world_id)?;
         let Some(snapshot) = snapshot else {
             return Ok(MembershipRestoreAuditReport {
@@ -1258,7 +1263,12 @@ impl MembershipSyncClient {
         };
 
         if let Err(err) = membership_logic::validate_membership_snapshot(
-            world_id, &snapshot, signer, keyring, policy,
+            world_id,
+            &snapshot,
+            signer,
+            keyring,
+            policy,
+            accepted_signature_signer_public_keys.as_ref(),
         ) {
             return Ok(MembershipRestoreAuditReport {
                 restored: None,

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::Serialize;
 
 use super::error::WorldError;
@@ -10,7 +12,49 @@ use super::{
     MembershipRevocationSyncPolicy, MembershipSnapshotRestorePolicy,
 };
 
-fn extract_ed25519_signer_public_key(signature: &str) -> Result<Option<&str>, WorldError> {
+fn normalized_ed25519_public_key_hex(
+    public_key_hex: &str,
+    context: &str,
+) -> Result<String, WorldError> {
+    let normalized = public_key_hex.trim();
+    if normalized.is_empty() {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("{context} cannot be empty"),
+        });
+    }
+    let public_key_bytes = hex::decode(normalized).map_err(|_| WorldError::DistributedValidationFailed {
+        reason: format!("{context} must be valid hex"),
+    })?;
+    if public_key_bytes.len() != 32 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!("{context} must be 32-byte hex"),
+        });
+    }
+    Ok(hex::encode(public_key_bytes))
+}
+
+fn normalized_signature_signer_public_key_allowlist(
+    keys: &[String],
+    context: &str,
+) -> Result<Option<HashSet<String>>, WorldError> {
+    if keys.is_empty() {
+        return Ok(None);
+    }
+    let mut normalized = HashSet::with_capacity(keys.len());
+    for (index, key) in keys.iter().enumerate() {
+        let key = normalized_ed25519_public_key_hex(key, context)?;
+        if !normalized.insert(key.clone()) {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "{context} contains duplicate signer public key at index {index}: {key}"
+                ),
+            });
+        }
+    }
+    Ok(Some(normalized))
+}
+
+fn extract_ed25519_signer_public_key(signature: &str) -> Result<Option<String>, WorldError> {
     if !signature.starts_with(ED25519_SIGNATURE_V1_PREFIX) {
         return Ok(None);
     }
@@ -28,16 +72,11 @@ fn extract_ed25519_signer_public_key(signature: &str) -> Result<Option<&str>, Wo
                 .to_string(),
         });
     }
-    let public_key_bytes =
-        hex::decode(public_key_hex).map_err(|_| WorldError::DistributedValidationFailed {
-            reason: "membership signature signer public key must be valid hex".to_string(),
-        })?;
-    if public_key_bytes.len() != 32 {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: "membership signature signer public key must be 32-byte hex".to_string(),
-        });
-    }
-    Ok(Some(public_key_hex))
+    let normalized_public_key = normalized_ed25519_public_key_hex(
+        public_key_hex,
+        "membership signature signer public key",
+    )?;
+    Ok(Some(normalized_public_key))
 }
 
 #[derive(Serialize)]
@@ -121,6 +160,7 @@ pub(super) fn validate_key_revocation(
     signer: Option<&MembershipDirectorySigner>,
     keyring: Option<&MembershipDirectorySignerKeyring>,
     policy: &MembershipRevocationSyncPolicy,
+    accepted_signature_signer_public_keys: Option<&HashSet<String>>,
 ) -> Result<(), WorldError> {
     if announce.world_id != world_id {
         return Err(WorldError::DistributedValidationFailed {
@@ -229,7 +269,7 @@ pub(super) fn validate_key_revocation(
         }
     }
 
-    if !policy.accepted_signature_signer_public_keys.is_empty() {
+    if let Some(accepted_signature_signer_public_keys) = accepted_signature_signer_public_keys {
         let Some(signature) = announce.signature.as_deref() else {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
@@ -247,11 +287,7 @@ pub(super) fn validate_key_revocation(
                 ),
             });
         };
-        if !policy
-            .accepted_signature_signer_public_keys
-            .iter()
-            .any(|key| key == signature_signer_public_key)
-        {
+        if !accepted_signature_signer_public_keys.contains(&signature_signer_public_key) {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
                     "membership revocation signature signer public key {} is not accepted",
@@ -285,6 +321,7 @@ pub(super) fn validate_membership_snapshot(
     signer: Option<&MembershipDirectorySigner>,
     keyring: Option<&MembershipDirectorySignerKeyring>,
     policy: &MembershipSnapshotRestorePolicy,
+    accepted_signature_signer_public_keys: Option<&HashSet<String>>,
 ) -> Result<(), WorldError> {
     if snapshot.world_id != world_id {
         return Err(WorldError::DistributedValidationFailed {
@@ -390,7 +427,7 @@ pub(super) fn validate_membership_snapshot(
         }
     }
 
-    if !policy.accepted_signature_signer_public_keys.is_empty() {
+    if let Some(accepted_signature_signer_public_keys) = accepted_signature_signer_public_keys {
         let Some(signature) = snapshot.signature.as_deref() else {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
@@ -408,11 +445,7 @@ pub(super) fn validate_membership_snapshot(
                 ),
             });
         };
-        if !policy
-            .accepted_signature_signer_public_keys
-            .iter()
-            .any(|key| key == signature_signer_public_key)
-        {
+        if !accepted_signature_signer_public_keys.contains(&signature_signer_public_key) {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
                     "membership snapshot signature signer public key {} is not accepted",
@@ -438,4 +471,22 @@ pub(super) fn validate_membership_snapshot(
     }
 
     Ok(())
+}
+
+pub(super) fn validate_membership_snapshot_restore_policy(
+    policy: &MembershipSnapshotRestorePolicy,
+) -> Result<Option<HashSet<String>>, WorldError> {
+    normalized_signature_signer_public_key_allowlist(
+        &policy.accepted_signature_signer_public_keys,
+        "membership snapshot policy accepted_signature_signer_public_keys",
+    )
+}
+
+pub(super) fn validate_membership_revocation_sync_policy(
+    policy: &MembershipRevocationSyncPolicy,
+) -> Result<Option<HashSet<String>>, WorldError> {
+    normalized_signature_signer_public_key_allowlist(
+        &policy.accepted_signature_signer_public_keys,
+        "membership revocation policy accepted_signature_signer_public_keys",
+    )
 }
