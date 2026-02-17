@@ -31,7 +31,8 @@ use rand_core::OsRng;
 mod distfs_probe_runtime;
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
-    persist_reward_runtime_distfs_probe_state, DistfsProbeRuntimeConfig,
+    parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
+    DistfsProbeRuntimeConfig,
 };
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
@@ -838,58 +839,6 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 }
                 options.reward_runtime_report_dir = dir.to_string();
             }
-            "--reward-distfs-probe-max-sample-bytes" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-distfs-probe-max-sample-bytes requires a positive integer"
-                        .to_string()
-                })?;
-                options.reward_distfs_probe_config.max_sample_bytes = raw
-                    .parse::<u32>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-distfs-probe-max-sample-bytes requires a positive integer"
-                            .to_string()
-                    })?;
-            }
-            "--reward-distfs-probe-per-tick" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-distfs-probe-per-tick requires a positive integer".to_string()
-                })?;
-                options.reward_distfs_probe_config.challenges_per_tick = raw
-                    .parse::<u32>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-distfs-probe-per-tick requires a positive integer".to_string()
-                    })?;
-            }
-            "--reward-distfs-probe-ttl-ms" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-distfs-probe-ttl-ms requires a positive integer".to_string()
-                })?;
-                options.reward_distfs_probe_config.challenge_ttl_ms = raw
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|value| *value > 0)
-                    .ok_or_else(|| {
-                        "--reward-distfs-probe-ttl-ms requires a positive integer".to_string()
-                    })?;
-            }
-            "--reward-distfs-probe-allowed-clock-skew-ms" => {
-                let raw = iter.next().ok_or_else(|| {
-                    "--reward-distfs-probe-allowed-clock-skew-ms requires a non-negative integer"
-                        .to_string()
-                })?;
-                options.reward_distfs_probe_config.allowed_clock_skew_ms = raw
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|value| *value >= 0)
-                    .ok_or_else(|| {
-                        "--reward-distfs-probe-allowed-clock-skew-ms requires a non-negative integer"
-                            .to_string()
-                    })?;
-            }
             "--reward-points-per-credit" => {
                 let raw = iter.next().ok_or_else(|| {
                     "--reward-points-per-credit requires a positive integer".to_string()
@@ -954,6 +903,13 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                     })?;
             }
             _ => {
+                if parse_distfs_probe_runtime_option(
+                    arg,
+                    &mut iter,
+                    &mut options.reward_distfs_probe_config,
+                )? {
+                    continue;
+                }
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
                 } else {
@@ -977,6 +933,20 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     {
         return Err(
             "--node-repl-topic requires --node-repl-libp2p-listen or --node-repl-libp2p-peer"
+                .to_string(),
+        );
+    }
+    if options
+        .reward_distfs_probe_config
+        .adaptive_policy
+        .failure_backoff_max_ms
+        < options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .failure_backoff_base_ms
+    {
+        return Err(
+            "--reward-distfs-adaptive-backoff-max-ms must be >= --reward-distfs-adaptive-backoff-base-ms"
                 .to_string(),
         );
     }
@@ -1029,6 +999,15 @@ fn print_help() {
     );
     println!(
         "  --reward-distfs-probe-allowed-clock-skew-ms <n> DistFS challenge allowed clock skew milliseconds (default: 5000)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-max-checks-per-round <n> DistFS adaptive per-round check cap (default: u32::MAX)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-backoff-base-ms <n> DistFS adaptive backoff base milliseconds (default: 0)"
+    );
+    println!(
+        "  --reward-distfs-adaptive-backoff-max-ms <n> DistFS adaptive backoff max milliseconds (default: 0)"
     );
     println!("  --reward-points-per-credit <n> points -> credit conversion ratio");
     println!("  --reward-credits-per-power-unit <n> credit -> power conversion ratio");

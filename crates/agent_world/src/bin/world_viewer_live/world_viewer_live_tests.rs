@@ -127,6 +127,12 @@ fn parse_options_reads_custom_values() {
             "45000",
             "--reward-distfs-probe-allowed-clock-skew-ms",
             "2000",
+            "--reward-distfs-adaptive-max-checks-per-round",
+            "9",
+            "--reward-distfs-adaptive-backoff-base-ms",
+            "250",
+            "--reward-distfs-adaptive-backoff-max-ms",
+            "2500",
             "--reward-points-per-credit",
             "7",
             "--reward-credits-per-power-unit",
@@ -196,6 +202,27 @@ fn parse_options_reads_custom_values() {
         2000
     );
     assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .max_checks_per_round,
+        9
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .failure_backoff_base_ms,
+        250
+    );
+    assert_eq!(
+        options
+            .reward_distfs_probe_config
+            .adaptive_policy
+            .failure_backoff_max_ms,
+        2500
+    );
+    assert_eq!(
         options.node_validators,
         vec![
             PosValidator {
@@ -228,6 +255,28 @@ fn parse_options_rejects_negative_reward_distfs_probe_allowed_clock_skew_ms() {
     let err = parse_options(["--reward-distfs-probe-allowed-clock-skew-ms", "-1"].into_iter())
         .expect_err("reject negative probe clock skew");
     assert!(err.contains("--reward-distfs-probe-allowed-clock-skew-ms"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_distfs_adaptive_max_checks_per_round() {
+    let err = parse_options(["--reward-distfs-adaptive-max-checks-per-round", "0"].into_iter())
+        .expect_err("reject zero adaptive max checks");
+    assert!(err.contains("--reward-distfs-adaptive-max-checks-per-round"));
+}
+
+#[test]
+fn parse_options_rejects_reward_distfs_adaptive_backoff_max_less_than_base() {
+    let err = parse_options(
+        [
+            "--reward-distfs-adaptive-backoff-base-ms",
+            "200",
+            "--reward-distfs-adaptive-backoff-max-ms",
+            "100",
+        ]
+        .into_iter(),
+    )
+    .expect_err("reject max < base");
+    assert!(err.contains("--reward-distfs-adaptive-backoff-max-ms"));
 }
 
 #[test]
@@ -498,6 +547,12 @@ fn distfs_probe_runtime_config_is_report_serializable() {
         challenges_per_tick: 4,
         challenge_ttl_ms: 60_000,
         allowed_clock_skew_ms: 1234,
+        adaptive_policy: agent_world_distfs::StorageChallengeAdaptivePolicy {
+            max_checks_per_round: 8,
+            failure_backoff_base_ms: 100,
+            failure_backoff_max_ms: 1_600,
+            ..agent_world_distfs::StorageChallengeAdaptivePolicy::default()
+        },
     };
     let value = serde_json::to_value(config).expect("serialize config");
     assert_eq!(
@@ -523,6 +578,30 @@ fn distfs_probe_runtime_config_is_report_serializable() {
             .get("allowed_clock_skew_ms")
             .and_then(serde_json::Value::as_i64),
         Some(1234)
+    );
+    assert_eq!(
+        value
+            .get("adaptive_policy")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|policy| policy.get("max_checks_per_round"))
+            .and_then(serde_json::Value::as_u64),
+        Some(8)
+    );
+    assert_eq!(
+        value
+            .get("adaptive_policy")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|policy| policy.get("failure_backoff_base_ms"))
+            .and_then(serde_json::Value::as_i64),
+        Some(100)
+    );
+    assert_eq!(
+        value
+            .get("adaptive_policy")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|policy| policy.get("failure_backoff_max_ms"))
+            .and_then(serde_json::Value::as_i64),
+        Some(1_600)
     );
 }
 

@@ -1,8 +1,10 @@
+use std::iter::Peekable;
 use std::path::Path;
 
 use agent_world::runtime::LocalCasStore;
 use agent_world_distfs::{
-    StorageChallengeProbeConfig, StorageChallengeProbeCursorState, StorageChallengeProbeReport,
+    StorageChallengeAdaptivePolicy, StorageChallengeProbeConfig, StorageChallengeProbeCursorState,
+    StorageChallengeProbeReport,
 };
 use serde::Serialize;
 
@@ -17,6 +19,7 @@ pub(super) struct DistfsProbeRuntimeConfig {
     pub challenges_per_tick: u32,
     pub challenge_ttl_ms: i64,
     pub allowed_clock_skew_ms: i64,
+    pub adaptive_policy: StorageChallengeAdaptivePolicy,
 }
 
 impl Default for DistfsProbeRuntimeConfig {
@@ -26,8 +29,112 @@ impl Default for DistfsProbeRuntimeConfig {
             challenges_per_tick: DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_PER_TICK,
             challenge_ttl_ms: DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_TTL_MS,
             allowed_clock_skew_ms: DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_ALLOWED_CLOCK_SKEW_MS,
+            adaptive_policy: StorageChallengeAdaptivePolicy::default(),
         }
     }
+}
+
+pub(super) fn parse_distfs_probe_runtime_option<'a, I: Iterator<Item = &'a str>>(
+    arg: &str,
+    iter: &mut Peekable<I>,
+    config: &mut DistfsProbeRuntimeConfig,
+) -> Result<bool, String> {
+    match arg {
+        "--reward-distfs-probe-max-sample-bytes" => {
+            config.max_sample_bytes = parse_u32_flag(
+                iter,
+                "--reward-distfs-probe-max-sample-bytes",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-probe-per-tick" => {
+            config.challenges_per_tick = parse_u32_flag(
+                iter,
+                "--reward-distfs-probe-per-tick",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-probe-ttl-ms" => {
+            config.challenge_ttl_ms = parse_i64_flag(
+                iter,
+                "--reward-distfs-probe-ttl-ms",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-probe-allowed-clock-skew-ms" => {
+            config.allowed_clock_skew_ms = parse_i64_flag(
+                iter,
+                "--reward-distfs-probe-allowed-clock-skew-ms",
+                "a non-negative integer",
+                |value| value >= 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-max-checks-per-round" => {
+            config.adaptive_policy.max_checks_per_round = parse_u32_flag(
+                iter,
+                "--reward-distfs-adaptive-max-checks-per-round",
+                "a positive integer",
+                |value| value > 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-backoff-base-ms" => {
+            config.adaptive_policy.failure_backoff_base_ms = parse_i64_flag(
+                iter,
+                "--reward-distfs-adaptive-backoff-base-ms",
+                "a non-negative integer",
+                |value| value >= 0,
+            )?;
+            Ok(true)
+        }
+        "--reward-distfs-adaptive-backoff-max-ms" => {
+            config.adaptive_policy.failure_backoff_max_ms = parse_i64_flag(
+                iter,
+                "--reward-distfs-adaptive-backoff-max-ms",
+                "a non-negative integer",
+                |value| value >= 0,
+            )?;
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn parse_u32_flag<'a, I: Iterator<Item = &'a str>, F: Fn(u32) -> bool>(
+    iter: &mut Peekable<I>,
+    flag: &str,
+    requirement: &str,
+    predicate: F,
+) -> Result<u32, String> {
+    let raw = iter
+        .next()
+        .ok_or_else(|| format!("{flag} requires {requirement}"))?;
+    raw.parse::<u32>()
+        .ok()
+        .filter(|value| predicate(*value))
+        .ok_or_else(|| format!("{flag} requires {requirement}"))
+}
+
+fn parse_i64_flag<'a, I: Iterator<Item = &'a str>, F: Fn(i64) -> bool>(
+    iter: &mut Peekable<I>,
+    flag: &str,
+    requirement: &str,
+    predicate: F,
+) -> Result<i64, String> {
+    let raw = iter
+        .next()
+        .ok_or_else(|| format!("{flag} requires {requirement}"))?;
+    raw.parse::<i64>()
+        .ok()
+        .filter(|value| predicate(*value))
+        .ok_or_else(|| format!("{flag} requires {requirement}"))
 }
 
 pub(super) fn load_reward_runtime_distfs_probe_state(
@@ -78,7 +185,7 @@ pub(super) fn collect_distfs_challenge_report_with_config(
 ) -> Result<StorageChallengeProbeReport, String> {
     let store = LocalCasStore::new(storage_root);
     store
-        .probe_storage_challenges_with_cursor(
+        .probe_storage_challenges_with_policy(
             world_id,
             node_id,
             observed_at_unix_ms,
@@ -89,6 +196,7 @@ pub(super) fn collect_distfs_challenge_report_with_config(
                 allowed_clock_skew_ms: config.allowed_clock_skew_ms,
             },
             state,
+            &config.adaptive_policy,
         )
         .map_err(|err| format!("{err:?}"))
 }
