@@ -438,7 +438,7 @@ fn start_live_node_applies_pos_options() {
     let runtime = start_live_node(&options)
         .expect("start")
         .expect("runtime exists");
-    let mut locked = runtime.lock().expect("lock runtime");
+    let mut locked = runtime.runtime.lock().expect("lock runtime");
     let config = locked.config();
     assert_eq!(config.pos_config.validators.len(), 2);
     assert_eq!(config.pos_config.validators[0].validator_id, "node-main");
@@ -491,7 +491,12 @@ fn start_live_node_supports_libp2p_replication_injection() {
     let runtime = start_live_node(&options)
         .expect("start")
         .expect("runtime exists");
-    runtime.lock().expect("lock runtime").stop().expect("stop");
+    runtime
+        .runtime
+        .lock()
+        .expect("lock runtime")
+        .stop()
+        .expect("stop");
 }
 
 #[test]

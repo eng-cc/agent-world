@@ -39,10 +39,20 @@ pub(super) fn load_execution_bridge_state(path: &Path) -> Result<ExecutionBridge
     if !path.exists() {
         return Ok(ExecutionBridgeState::default());
     }
-    let bytes = fs::read(path)
-        .map_err(|err| format!("read execution bridge state {} failed: {}", path.display(), err))?;
-    serde_json::from_slice::<ExecutionBridgeState>(bytes.as_slice())
-        .map_err(|err| format!("parse execution bridge state {} failed: {}", path.display(), err))
+    let bytes = fs::read(path).map_err(|err| {
+        format!(
+            "read execution bridge state {} failed: {}",
+            path.display(),
+            err
+        )
+    })?;
+    serde_json::from_slice::<ExecutionBridgeState>(bytes.as_slice()).map_err(|err| {
+        format!(
+            "parse execution bridge state {} failed: {}",
+            path.display(),
+            err
+        )
+    })
 }
 
 pub(super) fn persist_execution_bridge_state(
@@ -73,9 +83,13 @@ pub(super) fn persist_execution_world(
     world_dir: &Path,
     execution_world: &RuntimeWorld,
 ) -> Result<(), String> {
-    execution_world
-        .save_to_dir(world_dir)
-        .map_err(|err| format!("save execution world to {} failed: {:?}", world_dir.display(), err))
+    execution_world.save_to_dir(world_dir).map_err(|err| {
+        format!(
+            "save execution world to {} failed: {:?}",
+            world_dir.display(),
+            err
+        )
+    })
 }
 
 pub(super) fn bridge_committed_heights(
@@ -101,9 +115,12 @@ pub(super) fn bridge_committed_heights(
 
     let mut records = Vec::new();
     for height in (state.last_applied_committed_height + 1)..=target_height {
-        execution_world
-            .step()
-            .map_err(|err| format!("execution bridge world.step failed at height {}: {:?}", height, err))?;
+        execution_world.step().map_err(|err| {
+            format!(
+                "execution bridge world.step failed at height {}: {:?}",
+                height, err
+            )
+        })?;
 
         let snapshot_value = execution_world.snapshot();
         let journal_value = execution_world.journal().clone();

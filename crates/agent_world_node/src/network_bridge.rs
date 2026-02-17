@@ -46,6 +46,10 @@ impl NodeReplicationNetworkHandle {
         Ok(self)
     }
 
+    pub fn clone_network(&self) -> Arc<dyn DistributedNetwork<WorldError> + Send + Sync> {
+        Arc::clone(&self.network)
+    }
+
     fn resolved_topic(&self, world_id: &str) -> String {
         self.topic
             .clone()

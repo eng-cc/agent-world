@@ -1,4 +1,6 @@
+use std::collections::BTreeSet;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -8,11 +10,10 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_world::runtime::{
-    measure_directory_storage_bytes, Action as RuntimeAction, NodePointsConfig,
+    measure_directory_storage_bytes, Action as RuntimeAction, LocalCasStore, NodePointsConfig,
     NodePointsRuntimeCollector, NodePointsRuntimeCollectorSnapshot, NodePointsRuntimeHeuristics,
     NodePointsRuntimeObservation, ProtocolPowerReserve, RewardAssetConfig,
     RewardAssetInvariantReport, RewardSignatureGovernancePolicy, World as RuntimeWorld,
-    LocalCasStore,
 };
 use agent_world::simulator::WorldScenario;
 use agent_world::viewer::{
@@ -22,18 +23,22 @@ use agent_world::viewer::{
 use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
-    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosValidator,
+    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus, PosValidator,
 };
+use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
+use agent_world_proto::world_error::WorldError as ProtoWorldError;
 use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
-#[path = "world_viewer_live/reward_runtime_settlement.rs"]
-mod reward_runtime_settlement;
 #[cfg(test)]
 use distfs_probe_runtime::collect_distfs_challenge_report;
 #[path = "world_viewer_live/execution_bridge.rs"]
 mod execution_bridge;
+#[path = "world_viewer_live/reward_runtime_network.rs"]
+mod reward_runtime_network;
+#[path = "world_viewer_live/reward_runtime_settlement.rs"]
+mod reward_runtime_settlement;
 use distfs_probe_runtime::{
     collect_distfs_challenge_report_with_config, load_reward_runtime_distfs_probe_state,
     parse_distfs_probe_runtime_option, persist_reward_runtime_distfs_probe_state,
@@ -42,6 +47,10 @@ use distfs_probe_runtime::{
 use execution_bridge::{
     bridge_committed_heights, load_execution_bridge_state, load_execution_world,
     persist_execution_bridge_state, persist_execution_world,
+};
+use reward_runtime_network::{
+    decode_reward_settlement_envelope, encode_reward_settlement_envelope,
+    reward_settlement_envelope_id, reward_settlement_topic, RewardSettlementEnvelope,
 };
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
@@ -55,7 +64,6 @@ const DEFAULT_REWARD_RUNTIME_REPORT_DIR: &str = "output/node-reward-runtime";
 const DEFAULT_REWARD_RUNTIME_STATE_FILE: &str = "reward-runtime-state.json";
 const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str =
     "reward-runtime-distfs-probe-state.json";
-const DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE: &str = "reward-runtime-distfs-probe-state.json";
 const DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE: &str =
     "reward-runtime-execution-bridge-state.json";
 const DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR: &str = "reward-runtime-execution-world";
@@ -126,8 +134,25 @@ impl Default for CliOptions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+struct LiveNodeHandle {
+    runtime: Arc<Mutex<NodeRuntime>>,
+    world_id: String,
+    reward_network: Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
+}
+
+impl fmt::Debug for LiveNodeHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LiveNodeHandle")
+            .field("world_id", &self.world_id)
+            .field("has_reward_network", &self.reward_network.is_some())
+            .finish()
+    }
+}
+
 struct RewardRuntimeLoopConfig {
+    world_id: String,
+    reward_network: Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
     poll_interval: Duration,
     signer_node_id: String,
     signer_private_key_hex: String,
@@ -162,22 +187,22 @@ fn main() {
         }
     };
 
-    let node_runtime = match start_live_node(&options) {
-        Ok(runtime) => runtime,
+    let node_handle = match start_live_node(&options) {
+        Ok(handle) => handle,
         Err(err) => {
             eprintln!("{err}");
             process::exit(1);
         }
     };
-    let mut reward_runtime_worker =
-        match start_reward_runtime_worker(&options, node_runtime.clone()) {
-            Ok(worker) => worker,
-            Err(err) => {
-                eprintln!("{err}");
-                stop_live_node(node_runtime.as_ref());
-                process::exit(1);
-            }
-        };
+    let mut reward_runtime_worker = match start_reward_runtime_worker(&options, node_handle.clone())
+    {
+        Ok(worker) => worker,
+        Err(err) => {
+            eprintln!("{err}");
+            stop_live_node(node_handle.as_ref());
+            process::exit(1);
+        }
+    };
 
     if let Some(web_bind_addr) = options.web_bind_addr.clone() {
         let upstream_addr = options.bind_addr.clone();
@@ -206,14 +231,14 @@ fn main() {
         Err(err) => {
             eprintln!("failed to start live viewer server: {err:?}");
             stop_reward_runtime_worker(reward_runtime_worker.take());
-            stop_live_node(node_runtime.as_ref());
+            stop_live_node(node_handle.as_ref());
             process::exit(1);
         }
     };
 
     let run_result = server.run();
     stop_reward_runtime_worker(reward_runtime_worker.take());
-    stop_live_node(node_runtime.as_ref());
+    stop_live_node(node_handle.as_ref());
 
     if let Err(err) = run_result {
         eprintln!("live viewer server failed: {err:?}");
@@ -221,7 +246,7 @@ fn main() {
     }
 }
 
-fn start_live_node(options: &CliOptions) -> Result<Option<Arc<Mutex<NodeRuntime>>>, String> {
+fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, String> {
     if !options.node_enabled {
         return Ok(None);
     }
@@ -230,7 +255,7 @@ fn start_live_node(options: &CliOptions) -> Result<Option<Arc<Mutex<NodeRuntime>
         .map_err(|err| format!("failed to ensure node keypair in config.toml: {err}"))?;
 
     let world_id = format!("live-{}", options.scenario.as_str());
-    let mut config = NodeConfig::new(options.node_id.clone(), world_id, options.node_role)
+    let mut config = NodeConfig::new(options.node_id.clone(), world_id.clone(), options.node_role)
         .and_then(|config| config.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
         .map_err(|err| format!("failed to build node config: {err:?}"))?;
     if !options.node_validators.is_empty() {
@@ -259,6 +284,9 @@ fn start_live_node(options: &CliOptions) -> Result<Option<Arc<Mutex<NodeRuntime>
     config = config.with_replication(replication);
 
     let mut runtime = NodeRuntime::new(config);
+    let mut reward_network: Option<
+        Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
+    > = None;
     if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty() {
         let mut net_config = Libp2pReplicationNetworkConfig::default();
         for raw in &options.node_repl_libp2p_listen {
@@ -274,26 +302,32 @@ fn start_live_node(options: &CliOptions) -> Result<Option<Arc<Mutex<NodeRuntime>
             net_config.bootstrap_peers.push(addr);
         }
 
-        let network = Arc::new(Libp2pReplicationNetwork::new(net_config));
+        let network: Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync> =
+            Arc::new(Libp2pReplicationNetwork::new(net_config));
         let mut handle = NodeReplicationNetworkHandle::new(network);
         if let Some(topic) = options.node_repl_topic.as_deref() {
             handle = handle
                 .with_topic(topic)
                 .map_err(|err| format!("failed to configure replication topic: {err}"))?;
         }
+        reward_network = Some(handle.clone_network());
         runtime = runtime.with_replication_network(handle);
     }
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
-    Ok(Some(Arc::new(Mutex::new(runtime))))
+    Ok(Some(LiveNodeHandle {
+        runtime: Arc::new(Mutex::new(runtime)),
+        world_id,
+        reward_network,
+    }))
 }
 
-fn stop_live_node(node_runtime: Option<&Arc<Mutex<NodeRuntime>>>) {
-    let Some(runtime) = node_runtime else {
+fn stop_live_node(node_handle: Option<&LiveNodeHandle>) {
+    let Some(node_handle) = node_handle else {
         return;
     };
-    let mut locked = match runtime.lock() {
+    let mut locked = match node_handle.runtime.lock() {
         Ok(locked) => locked,
         Err(_) => {
             eprintln!("failed to stop node runtime: lock poisoned");
@@ -307,15 +341,16 @@ fn stop_live_node(node_runtime: Option<&Arc<Mutex<NodeRuntime>>>) {
 
 fn start_reward_runtime_worker(
     options: &CliOptions,
-    node_runtime: Option<Arc<Mutex<NodeRuntime>>>,
+    node_handle: Option<LiveNodeHandle>,
 ) -> Result<Option<RewardRuntimeWorker>, String> {
     if !options.reward_runtime_enabled {
         return Ok(None);
     }
-    let runtime = node_runtime.ok_or_else(|| {
+    let handle = node_handle.ok_or_else(|| {
         "reward runtime requires embedded node runtime; disable --no-node or reward runtime"
             .to_string()
     })?;
+    let runtime = Arc::clone(&handle.runtime);
 
     let signer_node_id = options
         .reward_runtime_signer_node_id
@@ -336,6 +371,8 @@ fn start_reward_runtime_worker(
         .map_err(|err| format!("failed to load reward runtime signer keypair: {err}"))?;
 
     let config = RewardRuntimeLoopConfig {
+        world_id: handle.world_id,
+        reward_network: handle.reward_network,
         poll_interval: Duration::from_millis(options.tick_ms),
         signer_node_id,
         signer_private_key_hex: signer_keypair.private_key_hex,
@@ -455,6 +492,21 @@ fn reward_runtime_loop(
         config.signer_node_id.as_str(),
         config.signer_public_key_hex.as_str(),
     );
+    let settlement_topic = reward_settlement_topic(config.world_id.as_str());
+    let settlement_subscription = match config.reward_network.as_ref() {
+        Some(network) => match network.subscribe(settlement_topic.as_str()) {
+            Ok(subscription) => Some(subscription),
+            Err(err) => {
+                eprintln!(
+                    "reward runtime subscribe settlement topic failed {}: {:?}",
+                    settlement_topic, err
+                );
+                None
+            }
+        },
+        None => None,
+    };
+    let mut applied_settlement_envelope_ids = BTreeSet::new();
 
     loop {
         match stop_rx.recv_timeout(config.poll_interval) {
@@ -486,13 +538,12 @@ fn reward_runtime_loop(
                         config.execution_bridge_state_path.as_path(),
                         &execution_bridge_state,
                     ) {
-                        eprintln!(
-                            "reward runtime persist execution bridge state failed: {err}"
-                        );
+                        eprintln!("reward runtime persist execution bridge state failed: {err}");
                     }
-                    if let Err(err) =
-                        persist_execution_world(config.execution_world_dir.as_path(), &execution_world)
-                    {
+                    if let Err(err) = persist_execution_world(
+                        config.execution_world_dir.as_path(),
+                        &execution_world,
+                    ) {
                         eprintln!("reward runtime persist execution world failed: {err}");
                     }
                 }
@@ -535,6 +586,41 @@ fn reward_runtime_loop(
             None
         };
 
+        let mut applied_settlement_ids_this_tick = Vec::new();
+        if let Some(subscription) = settlement_subscription.as_ref() {
+            for payload in subscription.drain() {
+                let envelope = match decode_reward_settlement_envelope(payload.as_slice()) {
+                    Ok(envelope) => envelope,
+                    Err(err) => {
+                        eprintln!("reward runtime decode settlement envelope failed: {err}");
+                        continue;
+                    }
+                };
+                if envelope.version != 1 || envelope.world_id != config.world_id {
+                    continue;
+                }
+                let envelope_id = match reward_settlement_envelope_id(&envelope) {
+                    Ok(id) => id,
+                    Err(err) => {
+                        eprintln!("reward runtime hash settlement envelope failed: {err}");
+                        continue;
+                    }
+                };
+                if applied_settlement_envelope_ids.contains(envelope_id.as_str()) {
+                    continue;
+                }
+                match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
+                    Ok(()) => {
+                        applied_settlement_envelope_ids.insert(envelope_id.clone());
+                        applied_settlement_ids_this_tick.push(envelope_id);
+                    }
+                    Err(err) => {
+                        eprintln!("reward runtime apply settlement envelope failed: {err}");
+                    }
+                }
+            }
+        }
+
         let maybe_report = collector.observe(observation);
         if let Err(err) =
             persist_reward_runtime_collector_state(config.state_path.as_path(), &collector)
@@ -552,27 +638,107 @@ fn reward_runtime_loop(
         };
 
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
-        let minted_records = match build_reward_settlement_mint_records(
-            &reward_world,
-            &report,
-            config.signer_node_id.as_str(),
-            config.signer_private_key_hex.as_str(),
-        ) {
-            Ok(records) => records,
-            Err(err) => {
-                eprintln!("reward runtime settlement mint failed: {err:?}");
-                continue;
+        let settlement_network_enabled =
+            config.reward_network.is_some() && settlement_subscription.is_some();
+        let should_publish_settlement = settlement_network_enabled
+            && snapshot.role == NodeRole::Sequencer
+            && matches!(
+                snapshot.consensus.last_status,
+                Some(PosConsensusStatus::Committed)
+            );
+        let requires_local_settlement = should_publish_settlement || !settlement_network_enabled;
+        let minted_records = if requires_local_settlement {
+            match build_reward_settlement_mint_records(
+                &reward_world,
+                &report,
+                config.signer_node_id.as_str(),
+                config.signer_private_key_hex.as_str(),
+            ) {
+                Ok(records) => records,
+                Err(err) => {
+                    eprintln!("reward runtime settlement mint failed: {err:?}");
+                    continue;
+                }
             }
+        } else {
+            Vec::new()
         };
-        if !minted_records.is_empty() {
-            reward_world.submit_action(RuntimeAction::ApplyNodePointsSettlementSigned {
-                report: report.clone(),
+        let mut published_settlement_envelope_id: Option<String> = None;
+        if settlement_network_enabled {
+            if should_publish_settlement {
+                let envelope = RewardSettlementEnvelope {
+                    version: 1,
+                    world_id: config.world_id.clone(),
+                    epoch_index: report.epoch_index,
+                    signer_node_id: config.signer_node_id.clone(),
+                    report: report.clone(),
+                    mint_records: minted_records.clone(),
+                    emitted_at_unix_ms: observed_at_unix_ms,
+                };
+                let envelope_id = match reward_settlement_envelope_id(&envelope) {
+                    Ok(id) => id,
+                    Err(err) => {
+                        eprintln!("reward runtime settlement envelope id failed: {err}");
+                        continue;
+                    }
+                };
+                if let Some(network) = config.reward_network.as_ref() {
+                    match encode_reward_settlement_envelope(&envelope) {
+                        Ok(payload) => {
+                            if let Err(err) =
+                                network.publish(settlement_topic.as_str(), payload.as_slice())
+                            {
+                                eprintln!(
+                                    "reward runtime publish settlement envelope failed: {:?}",
+                                    err
+                                );
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("reward runtime encode settlement envelope failed: {err}");
+                            continue;
+                        }
+                    }
+                }
+                match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
+                    Ok(()) => {
+                        applied_settlement_envelope_ids.insert(envelope_id.clone());
+                        applied_settlement_ids_this_tick.push(envelope_id.clone());
+                        published_settlement_envelope_id = Some(envelope_id);
+                    }
+                    Err(err) => {
+                        eprintln!("reward runtime local settlement envelope apply failed: {err}");
+                        continue;
+                    }
+                }
+            }
+        } else if !minted_records.is_empty() {
+            let envelope = RewardSettlementEnvelope {
+                version: 1,
+                world_id: config.world_id.clone(),
+                epoch_index: report.epoch_index,
                 signer_node_id: config.signer_node_id.clone(),
+                report: report.clone(),
                 mint_records: minted_records.clone(),
-            });
-            if let Err(err) = reward_world.step() {
-                eprintln!("reward runtime settlement action step failed: {err:?}");
-                continue;
+                emitted_at_unix_ms: observed_at_unix_ms,
+            };
+            let envelope_id = match reward_settlement_envelope_id(&envelope) {
+                Ok(id) => id,
+                Err(err) => {
+                    eprintln!("reward runtime local settlement envelope id failed: {err}");
+                    continue;
+                }
+            };
+            match apply_reward_settlement_envelope(&mut reward_world, &envelope) {
+                Ok(()) => {
+                    applied_settlement_envelope_ids.insert(envelope_id.clone());
+                    applied_settlement_ids_this_tick.push(envelope_id.clone());
+                    published_settlement_envelope_id = Some(envelope_id);
+                }
+                Err(err) => {
+                    eprintln!("reward runtime local settlement apply failed: {err}");
+                    continue;
+                }
             }
         }
 
@@ -621,6 +787,12 @@ fn reward_runtime_loop(
             "execution_bridge_records": execution_bridge_records,
             "settlement_report": report,
             "minted_records": minted_records,
+            "reward_settlement_transport": {
+                "network_enabled": settlement_network_enabled,
+                "settlement_topic": settlement_topic,
+                "published_settlement_envelope_id": published_settlement_envelope_id,
+                "applied_settlement_envelope_ids": applied_settlement_ids_this_tick,
+            },
             "node_balances": reward_world.state().node_asset_balances,
             "reserve": reward_world.protocol_power_reserve(),
             "reward_asset_invariant_status": reward_invariant_status_payload(&invariant_report),
@@ -655,6 +827,18 @@ fn rollover_reward_reserve_epoch(reward_world: &mut RuntimeWorld, epoch_index: u
         available_power_units: current.available_power_units,
         redeemed_power_units: 0,
     });
+}
+
+fn apply_reward_settlement_envelope(
+    reward_world: &mut RuntimeWorld,
+    envelope: &RewardSettlementEnvelope,
+) -> Result<(), String> {
+    reward_world.submit_action(RuntimeAction::ApplyNodePointsSettlementSigned {
+        report: envelope.report.clone(),
+        signer_node_id: envelope.signer_node_id.clone(),
+        mint_records: envelope.mint_records.clone(),
+    });
+    reward_world.step().map_err(|err| format!("{:?}", err))
 }
 
 fn reward_invariant_status_payload(report: &RewardAssetInvariantReport) -> serde_json::Value {
