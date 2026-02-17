@@ -1,6 +1,9 @@
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![allow(improper_ctypes_definitions)]
 
-use std::vec::Vec;
+extern crate alloc;
+
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LifecycleStage {
@@ -33,7 +36,7 @@ pub fn default_alloc(len: i32) -> i32 {
     let capacity = len as usize;
     let mut buf = Vec::<u8>::with_capacity(capacity);
     let ptr = buf.as_mut_ptr();
-    std::mem::forget(buf);
+    core::mem::forget(buf);
     ptr as i32
 }
 
@@ -79,7 +82,7 @@ mod tests {
     use super::{
         default_alloc, dispatch_call, dispatch_reduce, LifecycleStage, WasmModuleLifecycle,
     };
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use core::sync::atomic::{AtomicUsize, Ordering};
 
     static INIT_REDUCE: AtomicUsize = AtomicUsize::new(0);
     static TEARDOWN_REDUCE: AtomicUsize = AtomicUsize::new(0);
