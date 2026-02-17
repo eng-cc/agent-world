@@ -11,9 +11,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::net::UdpSocket;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 fn multi_validators() -> Vec<PosValidator> {
     vec![
@@ -55,6 +56,34 @@ fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConf
         .expect("replication config")
         .with_signing_keypair(private_hex, public_hex)
         .expect("signing keypair")
+}
+
+#[derive(Clone)]
+struct RecordingExecutionHook {
+    calls: Arc<Mutex<Vec<NodeExecutionCommitContext>>>,
+}
+
+impl RecordingExecutionHook {
+    fn new(calls: Arc<Mutex<Vec<NodeExecutionCommitContext>>>) -> Self {
+        Self { calls }
+    }
+}
+
+impl NodeExecutionHook for RecordingExecutionHook {
+    fn on_commit(
+        &mut self,
+        context: NodeExecutionCommitContext,
+    ) -> Result<NodeExecutionCommitResult, String> {
+        self.calls
+            .lock()
+            .expect("lock execution calls")
+            .push(context.clone());
+        Ok(NodeExecutionCommitResult {
+            execution_height: context.height,
+            execution_block_hash: format!("exec-block-{:020}", context.height),
+            execution_state_root: format!("exec-state-{:020}", context.height),
+        })
+    }
 }
 
 #[derive(Clone, Default)]
@@ -118,7 +147,7 @@ fn pos_engine_commits_single_validator_head() {
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
     let snapshot = engine
-        .tick(&config.node_id, &config.world_id, 1_000, None, None, None)
+        .tick(&config.node_id, &config.world_id, 1_000, None, None, None, None)
         .expect("tick");
     assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
     assert_eq!(snapshot.latest_height, 1);
@@ -133,10 +162,10 @@ fn pos_engine_generates_chain_hashed_block_ids() {
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
     let first = engine
-        .tick(&config.node_id, &config.world_id, 1_000, None, None, None)
+        .tick(&config.node_id, &config.world_id, 1_000, None, None, None, None)
         .expect("first tick");
     let second = engine
-        .tick(&config.node_id, &config.world_id, 2_000, None, None, None)
+        .tick(&config.node_id, &config.world_id, 2_000, None, None, None, None)
         .expect("second tick");
 
     let first_hash = first
@@ -171,6 +200,7 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
                 &config.node_id,
                 &config.world_id,
                 2_000 + offset,
+                None,
                 None,
                 None,
                 None,
@@ -242,7 +272,7 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
         .expect("ingest attestation");
 
     let snapshot = engine
-        .tick(&config.node_id, &config.world_id, 1_002, None, None, None)
+        .tick(&config.node_id, &config.world_id, 1_002, None, None, None, None)
         .expect("tick");
     assert_eq!(snapshot.committed_height, 1);
     assert_eq!(snapshot.last_status, Some(PosConsensusStatus::Committed));
@@ -274,6 +304,32 @@ fn runtime_start_and_stop_updates_snapshot() {
     let stopped = runtime.snapshot();
     assert!(!stopped.running);
     assert!(stopped.tick_count >= running.tick_count);
+}
+
+#[test]
+fn runtime_execution_hook_updates_consensus_snapshot() {
+    let config = NodeConfig::new("node-exec", "world-exec", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick interval");
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let hook = RecordingExecutionHook::new(Arc::clone(&calls));
+    let mut runtime = NodeRuntime::new(config).with_execution_hook(hook);
+    runtime.start().expect("start");
+    thread::sleep(Duration::from_millis(120));
+    runtime.stop().expect("stop");
+
+    let snapshot = runtime.snapshot();
+    assert!(snapshot.consensus.committed_height >= 1);
+    assert!(snapshot.consensus.last_execution_height >= 1);
+    assert!(snapshot.consensus.last_execution_block_hash.is_some());
+    assert!(snapshot.consensus.last_execution_state_root.is_some());
+
+    let execution_calls = calls.lock().expect("lock calls");
+    assert!(!execution_calls.is_empty());
+    assert!(execution_calls
+        .iter()
+        .all(|call| call.world_id == "world-exec" && call.node_id == "node-exec"));
 }
 
 #[test]
@@ -456,13 +512,15 @@ fn runtime_pos_state_persists_across_restart() {
             .expect("replication")
     };
 
-    let mut runtime = NodeRuntime::new(build_config());
+    let mut runtime = NodeRuntime::new(build_config())
+        .with_execution_hook(RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))));
     runtime.start().expect("start first");
     thread::sleep(Duration::from_millis(180));
     runtime.stop().expect("stop first");
     let first = runtime.snapshot();
     assert!(first.last_error.is_none());
     assert!(first.consensus.committed_height >= 8);
+    assert!(first.consensus.last_execution_height >= 8);
 
     let state_path = dir.join("node_pos_state.json");
     assert!(state_path.exists());
@@ -471,14 +529,19 @@ fn runtime_pos_state_persists_across_restart() {
     )
     .expect("parse pos state");
     assert!(persisted.committed_height >= first.consensus.committed_height);
+    assert!(persisted.last_execution_height >= first.consensus.last_execution_height);
+    assert!(persisted.last_execution_block_hash.is_some());
+    assert!(persisted.last_execution_state_root.is_some());
 
-    let mut runtime = NodeRuntime::new(build_config());
+    let mut runtime = NodeRuntime::new(build_config())
+        .with_execution_hook(RecordingExecutionHook::new(Arc::new(Mutex::new(Vec::new()))));
     runtime.start().expect("start second");
     thread::sleep(Duration::from_millis(40));
     runtime.stop().expect("stop second");
     let second = runtime.snapshot();
     assert!(second.last_error.is_none());
     assert!(second.consensus.committed_height > first.consensus.committed_height);
+    assert!(second.consensus.last_execution_height > first.consensus.last_execution_height);
 
     let _ = fs::remove_dir_all(&dir);
 }

@@ -1,17 +1,15 @@
 use std::collections::BTreeMap;
 use std::fmt;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
 
 use agent_world_distfs::blake3_hex;
 
 mod consensus_signature;
+mod error;
+mod execution_hook;
 mod gossip_udp;
 #[cfg(not(target_arch = "wasm32"))]
 mod libp2p_replication_network;
@@ -23,6 +21,7 @@ mod pos_state_store;
 mod pos_validation;
 mod replication;
 mod runtime_util;
+mod types;
 
 use consensus_signature::{
     sign_attestation_message, sign_commit_message, sign_proposal_message,
@@ -39,267 +38,45 @@ pub use libp2p_replication_network::{Libp2pReplicationNetwork, Libp2pReplication
 pub use libp2p_replication_network_wasm::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig,
 };
+pub use error::NodeError;
+pub use execution_hook::{
+    NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
+};
 pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
+pub use types::{
+    NodeConfig, NodeConsensusMode, NodeConsensusSnapshot, NodeGossipConfig, NodePosConfig,
+    NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
+};
 
 use network_bridge::ReplicationNetworkEndpoint;
 use pos_state_store::PosNodeStateStore;
-use pos_validation::{decide_status, validate_pos_config, validated_pos_state};
+use pos_validation::{decide_status, validated_pos_state};
 use replication::ReplicationRuntime;
 use runtime_util::{lock_state, now_unix_ms};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NodeRole {
-    Sequencer,
-    Storage,
-    Observer,
-}
-
-impl NodeRole {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            NodeRole::Sequencer => "sequencer",
-            NodeRole::Storage => "storage",
-            NodeRole::Observer => "observer",
-        }
-    }
-}
-
-impl fmt::Display for NodeRole {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl FromStr for NodeRole {
-    type Err = NodeError;
-
-    fn from_str(raw: &str) -> Result<Self, Self::Err> {
-        match raw.trim().to_ascii_lowercase().as_str() {
-            "sequencer" => Ok(NodeRole::Sequencer),
-            "storage" => Ok(NodeRole::Storage),
-            "observer" => Ok(NodeRole::Observer),
-            _ => Err(NodeError::InvalidRole {
-                role: raw.to_string(),
-            }),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NodeConsensusMode {
-    Pos,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(clippy::enum_variant_names)]
-pub enum PosConsensusStatus {
-    Pending,
-    Committed,
-    Rejected,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PosValidator {
-    pub validator_id: String,
-    pub stake: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodePosConfig {
-    pub validators: Vec<PosValidator>,
-    pub supermajority_numerator: u64,
-    pub supermajority_denominator: u64,
-    pub epoch_length_slots: u64,
-}
-
-impl NodePosConfig {
-    pub fn ethereum_like(validators: Vec<PosValidator>) -> Self {
-        Self {
-            validators,
-            supermajority_numerator: 2,
-            supermajority_denominator: 3,
-            epoch_length_slots: 32,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodeConfig {
-    pub node_id: String,
-    pub world_id: String,
-    pub tick_interval: Duration,
-    pub role: NodeRole,
-    pub pos_config: NodePosConfig,
-    pub auto_attest_all_validators: bool,
-    pub gossip: Option<NodeGossipConfig>,
-    pub replication: Option<NodeReplicationConfig>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodeGossipConfig {
-    pub bind_addr: SocketAddr,
-    pub peers: Vec<SocketAddr>,
-}
-
-impl NodeConfig {
-    pub fn new(
-        node_id: impl Into<String>,
-        world_id: impl Into<String>,
-        role: NodeRole,
-    ) -> Result<Self, NodeError> {
-        let node_id = node_id.into();
-        let world_id = world_id.into();
-        if node_id.trim().is_empty() {
-            return Err(NodeError::InvalidConfig {
-                reason: "node_id cannot be empty".to_string(),
-            });
-        }
-        if world_id.trim().is_empty() {
-            return Err(NodeError::InvalidConfig {
-                reason: "world_id cannot be empty".to_string(),
-            });
-        }
-
-        let pos_config = NodePosConfig::ethereum_like(vec![PosValidator {
-            validator_id: node_id.clone(),
-            stake: 100,
-        }]);
-        validate_pos_config(&pos_config)?;
-
-        Ok(Self {
-            node_id,
-            world_id,
-            tick_interval: Duration::from_millis(200),
-            role,
-            pos_config,
-            auto_attest_all_validators: true,
-            gossip: None,
-            replication: None,
-        })
-    }
-
-    pub fn with_tick_interval(mut self, interval: Duration) -> Result<Self, NodeError> {
-        if interval.is_zero() {
-            return Err(NodeError::InvalidConfig {
-                reason: "tick_interval must be positive".to_string(),
-            });
-        }
-        self.tick_interval = interval;
-        Ok(self)
-    }
-
-    pub fn with_pos_config(mut self, pos_config: NodePosConfig) -> Result<Self, NodeError> {
-        validate_pos_config(&pos_config)?;
-        self.pos_config = pos_config;
-        Ok(self)
-    }
-
-    pub fn with_pos_validators(self, validators: Vec<PosValidator>) -> Result<Self, NodeError> {
-        self.with_pos_config(NodePosConfig::ethereum_like(validators))
-    }
-
-    pub fn with_auto_attest_all_validators(mut self, enabled: bool) -> Self {
-        self.auto_attest_all_validators = enabled;
-        self
-    }
-
-    pub fn with_gossip(
-        mut self,
-        bind_addr: SocketAddr,
-        peers: Vec<SocketAddr>,
-    ) -> Result<Self, NodeError> {
-        if peers.is_empty() {
-            return Err(NodeError::InvalidConfig {
-                reason: "gossip peers cannot be empty".to_string(),
-            });
-        }
-        let mut dedup = BTreeMap::new();
-        for peer in peers {
-            dedup.insert(peer, ());
-        }
-        self.gossip = Some(NodeGossipConfig {
-            bind_addr,
-            peers: dedup.keys().copied().collect(),
-        });
-        Ok(self)
-    }
-
-    pub fn with_gossip_optional(mut self, bind_addr: SocketAddr, peers: Vec<SocketAddr>) -> Self {
-        let mut dedup = BTreeMap::new();
-        for peer in peers {
-            dedup.insert(peer, ());
-        }
-        self.gossip = Some(NodeGossipConfig {
-            bind_addr,
-            peers: dedup.keys().copied().collect(),
-        });
-        self
-    }
-
-    pub fn with_replication_root(
-        mut self,
-        root_dir: impl Into<PathBuf>,
-    ) -> Result<Self, NodeError> {
-        self.replication = Some(NodeReplicationConfig::new(root_dir)?);
-        Ok(self)
-    }
-
-    pub fn with_replication(mut self, replication: NodeReplicationConfig) -> Self {
-        self.replication = Some(replication);
-        self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodeConsensusSnapshot {
-    pub mode: NodeConsensusMode,
-    pub slot: u64,
-    pub epoch: u64,
-    pub latest_height: u64,
-    pub committed_height: u64,
-    pub network_committed_height: u64,
-    pub known_peer_heads: usize,
-    pub last_status: Option<PosConsensusStatus>,
-    pub last_block_hash: Option<String>,
-}
-
-impl Default for NodeConsensusSnapshot {
-    fn default() -> Self {
-        Self {
-            mode: NodeConsensusMode::Pos,
-            slot: 0,
-            epoch: 0,
-            latest_height: 0,
-            committed_height: 0,
-            network_committed_height: 0,
-            known_peer_heads: 0,
-            last_status: None,
-            last_block_hash: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodeSnapshot {
-    pub node_id: String,
-    pub world_id: String,
-    pub role: NodeRole,
-    pub running: bool,
-    pub tick_count: u64,
-    pub last_tick_unix_ms: Option<i64>,
-    pub consensus: NodeConsensusSnapshot,
-    pub last_error: Option<String>,
-}
-
-#[derive(Debug)]
 pub struct NodeRuntime {
     config: NodeConfig,
     replication_network: Option<NodeReplicationNetworkHandle>,
+    execution_hook: Option<std::sync::Arc<std::sync::Mutex<Box<dyn NodeExecutionHook>>>>,
     running: Arc<AtomicBool>,
     state: Arc<Mutex<RuntimeState>>,
     stop_tx: Option<mpsc::Sender<()>>,
     worker: Option<JoinHandle<()>>,
+}
+
+impl fmt::Debug for NodeRuntime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NodeRuntime")
+            .field("config", &self.config)
+            .field(
+                "has_replication_network",
+                &self.replication_network.is_some(),
+            )
+            .field("has_execution_hook", &self.execution_hook.is_some())
+            .field("running", &self.running.load(Ordering::SeqCst))
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -326,6 +103,7 @@ impl NodeRuntime {
         Self {
             config,
             replication_network: None,
+            execution_hook: None,
             running: Arc::new(AtomicBool::new(false)),
             state: Arc::new(Mutex::new(RuntimeState::default())),
             stop_tx: None,
@@ -335,6 +113,14 @@ impl NodeRuntime {
 
     pub fn with_replication_network(mut self, network: NodeReplicationNetworkHandle) -> Self {
         self.replication_network = Some(network);
+        self
+    }
+
+    pub fn with_execution_hook<T>(mut self, hook: T) -> Self
+    where
+        T: NodeExecutionHook + 'static,
+    {
+        self.execution_hook = Some(Arc::new(Mutex::new(Box::new(hook))));
         self
     }
 
@@ -409,6 +195,7 @@ impl NodeRuntime {
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
         let state = Arc::clone(&self.state);
+        let execution_hook = self.execution_hook.clone();
         let node_id = self.config.node_id.clone();
         let world_id = self.config.world_id.clone();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -427,14 +214,33 @@ impl NodeRuntime {
                                 current.last_tick_unix_ms = Some(now_ms);
                             }
 
-                            let tick_result = engine.tick(
-                                &node_id,
-                                &world_id,
-                                now_ms,
-                                gossip.as_mut(),
-                                replication.as_mut(),
-                                replication_network.as_mut(),
-                            );
+                            let tick_result = if let Some(execution_hook) = execution_hook.as_ref()
+                            {
+                                match execution_hook.lock() {
+                                    Ok(mut hook) => engine.tick(
+                                        &node_id,
+                                        &world_id,
+                                        now_ms,
+                                        gossip.as_mut(),
+                                        replication.as_mut(),
+                                        replication_network.as_mut(),
+                                        Some(hook.as_mut()),
+                                    ),
+                                    Err(_) => Err(NodeError::Execution {
+                                        reason: "execution hook lock poisoned".to_string(),
+                                    }),
+                                }
+                            } else {
+                                engine.tick(
+                                    &node_id,
+                                    &world_id,
+                                    now_ms,
+                                    gossip.as_mut(),
+                                    replication.as_mut(),
+                                    replication_network.as_mut(),
+                                    None,
+                                )
+                            };
                             let mut current = lock_state(&state);
                             match tick_result {
                                 Ok(consensus_snapshot) => {
@@ -536,6 +342,9 @@ struct PosNodeEngine {
     enforce_consensus_signature: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
     last_committed_block_hash: Option<String>,
+    last_execution_height: u64,
+    last_execution_block_hash: Option<String>,
+    last_execution_state_root: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -616,6 +425,9 @@ impl PosNodeEngine {
             enforce_consensus_signature,
             peer_heads: BTreeMap::new(),
             last_committed_block_hash: None,
+            last_execution_height: 0,
+            last_execution_block_hash: None,
+            last_execution_state_root: None,
         })
     }
 
@@ -627,6 +439,7 @@ impl PosNodeEngine {
         gossip: Option<&mut GossipEndpoint>,
         mut replication: Option<&mut ReplicationRuntime>,
         replication_network: Option<&mut ReplicationNetworkEndpoint>,
+        execution_hook: Option<&mut dyn NodeExecutionHook>,
     ) -> Result<NodeConsensusSnapshot, NodeError> {
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
@@ -656,6 +469,13 @@ impl PosNodeEngine {
         }
 
         self.apply_decision(&decision);
+        self.apply_committed_execution(
+            node_id,
+            world_id,
+            now_ms,
+            &decision,
+            execution_hook,
+        )?;
         if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
         }
@@ -848,6 +668,61 @@ impl PosNodeEngine {
         }
     }
 
+    fn apply_committed_execution(
+        &mut self,
+        node_id: &str,
+        world_id: &str,
+        now_ms: i64,
+        decision: &PosDecision,
+        execution_hook: Option<&mut dyn NodeExecutionHook>,
+    ) -> Result<(), NodeError> {
+        if !matches!(decision.status, PosConsensusStatus::Committed) {
+            return Ok(());
+        }
+        if decision.height <= self.last_execution_height {
+            return Ok(());
+        }
+        let Some(execution_hook) = execution_hook else {
+            return Ok(());
+        };
+
+        let result = execution_hook
+            .on_commit(NodeExecutionCommitContext {
+                world_id: world_id.to_string(),
+                node_id: node_id.to_string(),
+                height: decision.height,
+                slot: decision.slot,
+                epoch: decision.epoch,
+                node_block_hash: decision.block_hash.clone(),
+                committed_at_unix_ms: now_ms,
+            })
+            .map_err(|reason| NodeError::Execution { reason })?;
+
+        if result.execution_height != decision.height {
+            return Err(NodeError::Execution {
+                reason: format!(
+                    "execution hook returned mismatched height: expected {}, got {}",
+                    decision.height, result.execution_height
+                ),
+            });
+        }
+        if result.execution_block_hash.trim().is_empty() {
+            return Err(NodeError::Execution {
+                reason: "execution hook returned empty execution_block_hash".to_string(),
+            });
+        }
+        if result.execution_state_root.trim().is_empty() {
+            return Err(NodeError::Execution {
+                reason: "execution hook returned empty execution_state_root".to_string(),
+            });
+        }
+
+        self.last_execution_height = result.execution_height;
+        self.last_execution_block_hash = Some(result.execution_block_hash);
+        self.last_execution_state_root = Some(result.execution_state_root);
+        Ok(())
+    }
+
     fn snapshot_from_decision(&self, decision: &PosDecision) -> NodeConsensusSnapshot {
         NodeConsensusSnapshot {
             mode: NodeConsensusMode::Pos,
@@ -859,6 +734,9 @@ impl PosNodeEngine {
             known_peer_heads: self.peer_heads.len(),
             last_status: Some(decision.status),
             last_block_hash: Some(decision.block_hash.clone()),
+            last_execution_height: self.last_execution_height,
+            last_execution_block_hash: self.last_execution_block_hash.clone(),
+            last_execution_state_root: self.last_execution_state_root.clone(),
         }
     }
 
@@ -1196,45 +1074,6 @@ impl PosNodeEngine {
         Ok(blake3_hex(bytes.as_slice()))
     }
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NodeError {
-    InvalidRole { role: String },
-    InvalidConfig { reason: String },
-    Consensus { reason: String },
-    Gossip { reason: String },
-    Replication { reason: String },
-    AlreadyRunning { node_id: String },
-    NotRunning { node_id: String },
-    ThreadSpawnFailed { reason: String },
-    ThreadJoinFailed { node_id: String },
-}
-
-impl fmt::Display for NodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NodeError::InvalidRole { role } => {
-                write!(f, "invalid node role: {}", role)
-            }
-            NodeError::InvalidConfig { reason } => write!(f, "invalid node config: {}", reason),
-            NodeError::Consensus { reason } => write!(f, "node consensus error: {}", reason),
-            NodeError::Gossip { reason } => write!(f, "node gossip error: {}", reason),
-            NodeError::Replication { reason } => write!(f, "node replication error: {}", reason),
-            NodeError::AlreadyRunning { node_id } => {
-                write!(f, "node runtime already running: {}", node_id)
-            }
-            NodeError::NotRunning { node_id } => write!(f, "node runtime not running: {}", node_id),
-            NodeError::ThreadSpawnFailed { reason } => {
-                write!(f, "failed to spawn node thread: {}", reason)
-            }
-            NodeError::ThreadJoinFailed { node_id } => {
-                write!(f, "failed to join node thread: {}", node_id)
-            }
-        }
-    }
-}
-
-impl std::error::Error for NodeError {}
 
 #[cfg(test)]
 mod tests;

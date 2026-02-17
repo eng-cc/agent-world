@@ -19,6 +19,12 @@ pub(crate) struct PosNodeStateSnapshot {
     pub last_broadcast_committed_height: u64,
     #[serde(default)]
     pub last_committed_block_hash: Option<String>,
+    #[serde(default)]
+    pub last_execution_height: u64,
+    #[serde(default)]
+    pub last_execution_block_hash: Option<String>,
+    #[serde(default)]
+    pub last_execution_state_root: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +113,9 @@ impl PosNodeEngine {
             last_broadcast_local_attestation_height: self.last_broadcast_local_attestation_height,
             last_broadcast_committed_height: self.last_broadcast_committed_height,
             last_committed_block_hash: self.last_committed_block_hash.clone(),
+            last_execution_height: self.last_execution_height,
+            last_execution_block_hash: self.last_execution_block_hash.clone(),
+            last_execution_state_root: self.last_execution_state_root.clone(),
         }
     }
 
@@ -132,5 +141,8 @@ impl PosNodeEngine {
                 None
             }
         });
+        self.last_execution_height = snapshot.last_execution_height;
+        self.last_execution_block_hash = snapshot.last_execution_block_hash;
+        self.last_execution_state_root = snapshot.last_execution_state_root;
     }
 }
