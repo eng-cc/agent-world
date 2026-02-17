@@ -13,6 +13,11 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_TOOLCHAIN: 1.92.0
+  AGENT_WORLD_WASM_TOOLCHAIN: nightly-2025-12-11
+  AGENT_WORLD_WASM_TARGET: wasm32-unknown-unknown
+  AGENT_WORLD_WASM_BUILD_STD: "1"
+  AGENT_WORLD_WASM_BUILD_STD_COMPONENTS: std,panic_abort
+  AGENT_WORLD_WASM_BUILD_STD_FEATURES: panic_immediate_abort
 
 jobs:
   required-gate:
@@ -20,11 +25,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: Install pinned Rust toolchain
+      - name: Install pinned Rust toolchains
         run: |
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default --component rustfmt
           rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${AGENT_WORLD_WASM_TOOLCHAIN}" --profile minimal --component rust-src
+          rustup target add "${AGENT_WORLD_WASM_TARGET}" --toolchain "${AGENT_WORLD_WASM_TOOLCHAIN}"
       - name: Install system deps
         run: |
           sudo apt-get update
@@ -48,11 +55,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - name: Install pinned Rust toolchain
+      - name: Install pinned Rust toolchains
         run: |
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default --component rustfmt
           rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${AGENT_WORLD_WASM_TOOLCHAIN}" --profile minimal --component rust-src
+          rustup target add "${AGENT_WORLD_WASM_TARGET}" --toolchain "${AGENT_WORLD_WASM_TOOLCHAIN}"
       - name: Install system deps
         run: |
           sudo apt-get update
