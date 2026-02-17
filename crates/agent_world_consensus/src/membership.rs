@@ -201,15 +201,15 @@ impl MembershipDirectorySigner {
                 signing_key,
                 public_key_hex,
             } => {
-                let (signature_public_key_hex, signature_hex) = parse_ed25519_signature(
-                    signature_hex,
-                )
-                .map_err(|_| WorldError::DistributedValidationFailed {
-                    reason: format!(
+                let (signature_public_key_hex, signature_hex) =
+                    parse_ed25519_signature(signature_hex).map_err(|_| {
+                        WorldError::DistributedValidationFailed {
+                            reason: format!(
                         "membership snapshot signature is not valid ed25519:v1 for requester {}",
                         snapshot.requester_id
                     ),
-                })?;
+                        }
+                    })?;
                 if signature_public_key_hex != public_key_hex {
                     return Err(WorldError::DistributedValidationFailed {
                         reason: format!(
@@ -304,15 +304,15 @@ impl MembershipDirectorySigner {
                 signing_key,
                 public_key_hex,
             } => {
-                let (signature_public_key_hex, signature_hex) = parse_ed25519_signature(
-                    signature_hex,
-                )
-                .map_err(|_| WorldError::DistributedValidationFailed {
-                    reason: format!(
+                let (signature_public_key_hex, signature_hex) =
+                    parse_ed25519_signature(signature_hex).map_err(|_| {
+                        WorldError::DistributedValidationFailed {
+                            reason: format!(
                         "membership revocation signature is not valid ed25519:v1 for requester {}",
                         announce.requester_id
                     ),
-                })?;
+                        }
+                    })?;
                 if signature_public_key_hex != public_key_hex {
                     return Err(WorldError::DistributedValidationFailed {
                         reason: format!(
