@@ -6,7 +6,7 @@
 
 ## 依赖
 - `third_party/agent-os/crates/aos-wasm-sdk`（参考）
-- `crates/agent_world_builtin_wasm`
+- `crates/agent_world_builtin_wasm_runtime`
 - `crates/agent_world_builtin_wasm_modules/*`
 - `scripts/build-builtin-wasm-modules.sh`
 

@@ -16,7 +16,6 @@ const BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
 const BUILTIN_WASM_BUILD_PROFILE: &str = "release";
-const BUILTIN_WASM_BUILD_TARGET: &str = "wasm32-unknown-unknown";
 
 pub(crate) fn load_builtin_wasm_with_fetch_fallback(
     module_id: &str,
@@ -182,25 +181,19 @@ fn compile_via_command(
 
 fn compile_via_default_script(module_id: &str, expected_hash: &str) -> Result<Vec<u8>, WorldError> {
     let repo_root = repo_root();
-    let build_script = repo_root.join("scripts").join("build-wasm-module.sh");
-    let manifest_path = repo_root
-        .join("crates")
-        .join("agent_world_builtin_wasm")
-        .join("Cargo.toml");
+    let build_script = repo_root
+        .join("scripts")
+        .join("build-builtin-wasm-modules.sh");
     let out_dir = temp_build_dir(module_id);
     fs::create_dir_all(&out_dir)?;
 
     let status = Command::new(&build_script)
         .arg("--module-id")
         .arg(module_id)
-        .arg("--manifest-path")
-        .arg(&manifest_path)
         .arg("--out-dir")
         .arg(&out_dir)
         .arg("--profile")
         .arg(BUILTIN_WASM_BUILD_PROFILE)
-        .arg("--target")
-        .arg(BUILTIN_WASM_BUILD_TARGET)
         .status()
         .map_err(|error| WorldError::ModuleChangeInvalid {
             reason: format!(

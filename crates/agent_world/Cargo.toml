@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-agent_world_builtin_wasm = { path = "../agent_world_builtin_wasm" }
+agent_world_builtin_wasm_runtime = { path = "../agent_world_builtin_wasm_runtime" }
 agent_world_distfs = { path = "../agent_world_distfs" }
 agent_world_proto = { path = "../agent_world_proto" }
 agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }

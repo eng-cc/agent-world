@@ -1,5 +1,5 @@
 [package]
-name = "agent_world_builtin_wasm"
+name = "agent_world_builtin_wasm_runtime"
 version = "0.1.0"
 edition = "2021"
 

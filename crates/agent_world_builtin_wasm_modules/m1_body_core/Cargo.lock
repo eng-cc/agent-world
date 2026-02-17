@@ -3,20 +3,20 @@
 version = 4
 
 [[package]]
-name = "agent_world_builtin_wasm"
+name = "agent_world_builtin_wasm_m1_body_core"
+version = "0.1.0"
+dependencies = [
+ "agent_world_builtin_wasm_runtime",
+ "agent_world_wasm_sdk",
+]
+
+[[package]]
+name = "agent_world_builtin_wasm_runtime"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
-]
-
-[[package]]
-name = "agent_world_builtin_wasm_m1_body_core"
-version = "0.1.0"
-dependencies = [
- "agent_world_builtin_wasm",
- "agent_world_wasm_sdk",
 ]
 
 [[package]]

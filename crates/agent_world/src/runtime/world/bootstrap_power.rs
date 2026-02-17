@@ -11,7 +11,7 @@ use super::World;
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
 const M1_BOOTSTRAP_BUILD_MANIFEST: &str =
-    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm";
+    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm_runtime";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {

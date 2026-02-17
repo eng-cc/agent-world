@@ -114,7 +114,7 @@ pub(crate) use m4_builtin_wasm_artifact::m4_builtin_module_ids_manifest;
 pub(crate) use m4_builtin_wasm_artifact::m4_builtin_wasm_module_artifact_bytes;
 
 // Built-in module constants
-pub use agent_world_builtin_wasm::{
+pub use agent_world_builtin_wasm_runtime::{
     M1_AGENT_DEFAULT_MODULE_VERSION, M1_BODY_ACTION_COST_ELECTRICITY, M1_BODY_MODULE_ID,
     M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_MOVE_RULE_MODULE_ID,
     M1_POWER_HARVEST_BASE_PER_TICK, M1_POWER_HARVEST_DISTANCE_BONUS_CAP,
