@@ -52,6 +52,23 @@ pub struct FileMetadata {
     pub updated_at_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct FileIndexAuditReport {
+    pub total_indexed_files: usize,
+    pub total_pins: usize,
+    pub missing_file_blob_hashes: Vec<String>,
+    pub dangling_pin_hashes: Vec<String>,
+    pub orphan_blob_hashes: Vec<String>,
+}
+
+impl FileIndexAuditReport {
+    pub fn is_clean(&self) -> bool {
+        self.missing_file_blob_hashes.is_empty()
+            && self.dangling_pin_hashes.is_empty()
+            && self.orphan_blob_hashes.is_empty()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LocalCasStore {
     root: PathBuf,
@@ -297,6 +314,88 @@ impl LocalCasStore {
             self.save_file_index(&file_index)?;
         }
         Ok(removed)
+    }
+
+    pub fn audit_file_index(&self) -> Result<FileIndexAuditReport, WorldError> {
+        self.ensure_dirs()?;
+        let file_index = self.load_file_index()?;
+        let pins = self.load_pins()?.pins;
+        let blob_hashes = self.scan_blob_hashes()?;
+
+        let mut indexed_hashes = BTreeSet::new();
+        for metadata in file_index.files.values() {
+            validate_hash(metadata.content_hash.as_str())?;
+            indexed_hashes.insert(metadata.content_hash.clone());
+        }
+        for pin in &pins {
+            validate_hash(pin.as_str())?;
+        }
+
+        let missing_file_blob_hashes = indexed_hashes
+            .iter()
+            .filter(|hash| !blob_hashes.contains(*hash))
+            .cloned()
+            .collect::<Vec<_>>();
+        let dangling_pin_hashes = pins
+            .iter()
+            .filter(|hash| !blob_hashes.contains(*hash))
+            .cloned()
+            .collect::<Vec<_>>();
+        let orphan_blob_hashes = blob_hashes
+            .iter()
+            .filter(|hash| !indexed_hashes.contains(*hash) && !pins.contains(*hash))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        Ok(FileIndexAuditReport {
+            total_indexed_files: file_index.files.len(),
+            total_pins: pins.len(),
+            missing_file_blob_hashes,
+            dangling_pin_hashes,
+            orphan_blob_hashes,
+        })
+    }
+
+    pub fn prune_orphan_blobs(&self) -> Result<u64, WorldError> {
+        let report = self.audit_file_index()?;
+        let mut freed = 0_u64;
+        for orphan_hash in report.orphan_blob_hashes {
+            let path = self.blob_path(orphan_hash.as_str())?;
+            if !path.exists() {
+                continue;
+            }
+            let size = fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
+            fs::remove_file(&path)?;
+            freed = freed.saturating_add(size);
+        }
+        Ok(freed)
+    }
+
+    fn scan_blob_hashes(&self) -> Result<BTreeSet<String>, WorldError> {
+        self.ensure_dirs()?;
+        let mut hashes = BTreeSet::new();
+        if !self.blobs_dir.exists() {
+            return Ok(hashes);
+        }
+        for entry in fs::read_dir(&self.blobs_dir)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("blob") {
+                continue;
+            }
+            let hash = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .ok_or_else(|| WorldError::DistributedValidationFailed {
+                    reason: format!("invalid blob file name: {}", path.display()),
+                })?;
+            validate_hash(hash)?;
+            hashes.insert(hash.to_string());
+        }
+        Ok(hashes)
     }
 }
 
@@ -1020,6 +1119,65 @@ mod tests {
             delete_result,
             Err(WorldError::BlobHashInvalid { .. })
         ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_index_audit_reports_missing_dangling_and_orphan_blobs() {
+        let dir = temp_dir("file-audit");
+        let store = LocalCasStore::new(&dir);
+
+        let live = store.write_file("live.txt", b"live").expect("write live");
+        let orphan = store
+            .write_file("orphan.txt", b"orphan")
+            .expect("write orphan");
+        store.delete_file("orphan.txt").expect("delete orphan mapping");
+
+        let missing = store
+            .write_file("missing.txt", b"missing")
+            .expect("write missing");
+        let missing_path = store.blob_path(missing.content_hash.as_str()).expect("missing path");
+        fs::remove_file(missing_path).expect("remove missing blob");
+
+        let dangling_pin_hash = store.put_bytes(b"dangling-pin").expect("put dangling");
+        store.pin(dangling_pin_hash.as_str()).expect("pin");
+        let dangling_path = store
+            .blob_path(dangling_pin_hash.as_str())
+            .expect("dangling path");
+        fs::remove_file(dangling_path).expect("remove dangling blob");
+
+        let report = store.audit_file_index().expect("audit");
+        assert_eq!(report.total_indexed_files, 2);
+        assert_eq!(report.total_pins, 1);
+        assert!(report.missing_file_blob_hashes.contains(&missing.content_hash));
+        assert!(!report.missing_file_blob_hashes.contains(&live.content_hash));
+        assert!(report.dangling_pin_hashes.contains(&dangling_pin_hash));
+        assert!(report.orphan_blob_hashes.contains(&orphan.content_hash));
+        assert!(!report.is_clean());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn prune_orphan_blobs_removes_only_unreferenced_data() {
+        let dir = temp_dir("prune-orphan");
+        let store = LocalCasStore::new(&dir);
+
+        let live = store.write_file("live.txt", b"live-data").expect("write live");
+        let orphan = store
+            .write_file("old.txt", b"old-data")
+            .expect("write orphan");
+        store.delete_file("old.txt").expect("delete orphan mapping");
+
+        let pinned_hash = store.put_bytes(b"pinned-data").expect("put pinned");
+        store.pin(pinned_hash.as_str()).expect("pin");
+
+        let freed = store.prune_orphan_blobs().expect("prune orphan");
+        assert!(freed > 0);
+        assert!(store.has(live.content_hash.as_str()).expect("live exists"));
+        assert!(store.has(pinned_hash.as_str()).expect("pinned exists"));
+        assert!(!store.has(orphan.content_hash.as_str()).expect("orphan removed"));
 
         let _ = fs::remove_dir_all(&dir);
     }
