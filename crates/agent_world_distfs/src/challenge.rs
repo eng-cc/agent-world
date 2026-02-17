@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::collections::BTreeMap;
 
 use agent_world_proto::distributed::{
     StorageChallengeFailureReason, StorageChallengeProofSemantics, StorageChallengeSampleSource,
@@ -51,6 +52,15 @@ pub struct StorageChallengeReceipt {
     pub sample_source: StorageChallengeSampleSource,
     pub failure_reason: Option<StorageChallengeFailureReason>,
     pub proof_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeStorageChallengeStats {
+    pub node_id: String,
+    pub total_checks: u64,
+    pub passed_checks: u64,
+    pub failed_checks: u64,
+    pub failures_by_reason: BTreeMap<String, u64>,
 }
 
 impl LocalCasStore {
@@ -244,6 +254,53 @@ pub fn storage_challenge_receipt_to_proof_semantics(
     }
 }
 
+pub fn summarize_node_storage_challenge_stats(
+    entries: &[(StorageChallenge, StorageChallengeReceipt)],
+    allowed_clock_skew_ms: i64,
+) -> Result<Vec<NodeStorageChallengeStats>, WorldError> {
+    if allowed_clock_skew_ms < 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: format!(
+                "allowed_clock_skew_ms must be >= 0, got {}",
+                allowed_clock_skew_ms
+            ),
+        });
+    }
+    let mut per_node: BTreeMap<String, NodeStorageChallengeStats> = BTreeMap::new();
+
+    for (challenge, receipt) in entries {
+        let stats = per_node.entry(challenge.node_id.clone()).or_insert_with(|| {
+            NodeStorageChallengeStats {
+                node_id: challenge.node_id.clone(),
+                total_checks: 0,
+                passed_checks: 0,
+                failed_checks: 0,
+                failures_by_reason: BTreeMap::new(),
+            }
+        });
+        stats.total_checks = stats.total_checks.saturating_add(1);
+
+        match verify_storage_challenge_receipt(challenge, receipt, allowed_clock_skew_ms) {
+            Ok(()) => {
+                stats.passed_checks = stats.passed_checks.saturating_add(1);
+            }
+            Err(_) => {
+                stats.failed_checks = stats.failed_checks.saturating_add(1);
+                let reason = classify_receipt_failure_reason(
+                    challenge,
+                    receipt,
+                    allowed_clock_skew_ms,
+                );
+                let key = failure_reason_key(reason).to_string();
+                let count = stats.failures_by_reason.entry(key).or_insert(0);
+                *count = count.saturating_add(1);
+            }
+        }
+    }
+
+    Ok(per_node.into_values().collect())
+}
+
 fn validate_storage_challenge_request(request: &StorageChallengeRequest) -> Result<(), WorldError> {
     validate_non_empty_field(request.challenge_id.as_str(), "challenge_id")?;
     validate_non_empty_field(request.world_id.as_str(), "world_id")?;
@@ -315,6 +372,50 @@ fn challenge_sample_reference(challenge: &StorageChallenge) -> String {
         challenge.sample_offset,
         challenge.sample_size_bytes
     )
+}
+
+fn classify_receipt_failure_reason(
+    challenge: &StorageChallenge,
+    receipt: &StorageChallengeReceipt,
+    allowed_clock_skew_ms: i64,
+) -> StorageChallengeFailureReason {
+    if let Some(reason) = receipt.failure_reason {
+        return reason;
+    }
+    if receipt.proof_kind != STORAGE_CHALLENGE_PROOF_KIND_CHUNK_HASH_V1 {
+        return StorageChallengeFailureReason::SignatureInvalid;
+    }
+    if challenge.sample_offset != receipt.sample_offset
+        || challenge.sample_size_bytes != receipt.sample_size_bytes
+    {
+        return StorageChallengeFailureReason::MissingSample;
+    }
+    if challenge.content_hash != receipt.content_hash
+        || challenge.expected_sample_hash != receipt.sample_hash
+    {
+        return StorageChallengeFailureReason::HashMismatch;
+    }
+    let min_time = challenge
+        .issued_at_unix_ms
+        .saturating_sub(allowed_clock_skew_ms);
+    let max_time = challenge
+        .expires_at_unix_ms
+        .saturating_add(allowed_clock_skew_ms);
+    if receipt.responded_at_unix_ms < min_time || receipt.responded_at_unix_ms > max_time {
+        return StorageChallengeFailureReason::Timeout;
+    }
+    StorageChallengeFailureReason::Unknown
+}
+
+fn failure_reason_key(reason: StorageChallengeFailureReason) -> &'static str {
+    match reason {
+        StorageChallengeFailureReason::MissingSample => "MISSING_SAMPLE",
+        StorageChallengeFailureReason::HashMismatch => "HASH_MISMATCH",
+        StorageChallengeFailureReason::Timeout => "TIMEOUT",
+        StorageChallengeFailureReason::ReadIoError => "READ_IO_ERROR",
+        StorageChallengeFailureReason::SignatureInvalid => "SIGNATURE_INVALID",
+        StorageChallengeFailureReason::Unknown => "UNKNOWN",
+    }
 }
 
 fn validate_non_empty_field(value: &str, field_name: &str) -> Result<(), WorldError> {
@@ -618,6 +719,106 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn summarize_node_storage_challenge_stats_counts_pass_and_failure_reasons() {
+        let dir = temp_dir("summarize-stats");
+        let store = LocalCasStore::new(&dir);
+        let hash_a = store.put_bytes(make_blob(120).as_slice()).expect("put a");
+        let hash_b = store.put_bytes(make_blob(96).as_slice()).expect("put b");
+
+        let request_a_pass = StorageChallengeRequest {
+            challenge_id: "challenge-a-pass".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-a".to_string(),
+            content_hash: hash_a.clone(),
+            max_sample_bytes: 24,
+            issued_at_unix_ms: 10,
+            challenge_ttl_ms: 100,
+            vrf_seed: "seed-a1".to_string(),
+        };
+        let challenge_a_pass = store
+            .issue_storage_challenge(&request_a_pass)
+            .expect("issue a pass");
+        let receipt_a_pass = store
+            .answer_storage_challenge(&challenge_a_pass, 50)
+            .expect("answer a pass");
+
+        let request_a_fail = StorageChallengeRequest {
+            challenge_id: "challenge-a-fail".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-a".to_string(),
+            content_hash: hash_a,
+            max_sample_bytes: 24,
+            issued_at_unix_ms: 20,
+            challenge_ttl_ms: 100,
+            vrf_seed: "seed-a2".to_string(),
+        };
+        let challenge_a_fail = store
+            .issue_storage_challenge(&request_a_fail)
+            .expect("issue a fail");
+        let mut receipt_a_fail = store
+            .answer_storage_challenge(&challenge_a_fail, 60)
+            .expect("answer a fail");
+        receipt_a_fail.sample_hash = blake3_hex(b"mismatch");
+
+        let request_b_timeout = StorageChallengeRequest {
+            challenge_id: "challenge-b-timeout".to_string(),
+            world_id: "world-1".to_string(),
+            node_id: "node-b".to_string(),
+            content_hash: hash_b,
+            max_sample_bytes: 16,
+            issued_at_unix_ms: 100,
+            challenge_ttl_ms: 10,
+            vrf_seed: "seed-b1".to_string(),
+        };
+        let challenge_b_timeout = store
+            .issue_storage_challenge(&request_b_timeout)
+            .expect("issue b timeout");
+        let receipt_b_timeout = store
+            .answer_storage_challenge(&challenge_b_timeout, 200)
+            .expect("answer b timeout");
+
+        let report = summarize_node_storage_challenge_stats(
+            &[
+                (challenge_a_pass, receipt_a_pass),
+                (challenge_a_fail, receipt_a_fail),
+                (challenge_b_timeout, receipt_b_timeout),
+            ],
+            0,
+        )
+        .expect("summarize");
+        assert_eq!(report.len(), 2);
+
+        let node_a = report
+            .iter()
+            .find(|entry| entry.node_id == "node-a")
+            .expect("node-a stats");
+        assert_eq!(node_a.total_checks, 2);
+        assert_eq!(node_a.passed_checks, 1);
+        assert_eq!(node_a.failed_checks, 1);
+        assert_eq!(
+            node_a.failures_by_reason.get("HASH_MISMATCH").copied(),
+            Some(1)
+        );
+
+        let node_b = report
+            .iter()
+            .find(|entry| entry.node_id == "node-b")
+            .expect("node-b stats");
+        assert_eq!(node_b.total_checks, 1);
+        assert_eq!(node_b.passed_checks, 0);
+        assert_eq!(node_b.failed_checks, 1);
+        assert_eq!(node_b.failures_by_reason.get("TIMEOUT").copied(), Some(1));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn summarize_node_storage_challenge_stats_accepts_empty_entries() {
+        let report = summarize_node_storage_challenge_stats(&[], 0).expect("summarize");
+        assert!(report.is_empty());
     }
 
     #[test]
