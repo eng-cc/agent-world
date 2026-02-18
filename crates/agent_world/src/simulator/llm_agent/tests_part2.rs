@@ -138,6 +138,34 @@ fn llm_agent_runtime_prompt_overrides_take_effect() {
 }
 
 #[test]
+fn llm_agent_long_term_memory_can_export_and_restore() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    behavior
+        .memory
+        .long_term
+        .store_with_tags("mined node alpha", 10, vec!["mining".to_string()]);
+    behavior.memory.long_term.store_with_tags(
+        "factory beta stalled",
+        12,
+        vec!["factory".to_string()],
+    );
+
+    let exported = behavior.export_long_term_memory_entries();
+    assert_eq!(exported.len(), 2);
+
+    let mut restored = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    restored.restore_long_term_memory_entries(&exported);
+    let restored_exported = restored.export_long_term_memory_entries();
+    assert_eq!(restored_exported.len(), 2);
+    assert!(restored_exported
+        .iter()
+        .any(|entry| entry.content.contains("mined node alpha")));
+    assert!(restored_exported
+        .iter()
+        .any(|entry| entry.content.contains("factory beta stalled")));
+}
+
+#[test]
 fn llm_agent_user_prompt_omits_step_context_metadata() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let prompt = behavior.user_prompt(&make_observation(), &[], 2, 5);

@@ -306,26 +306,7 @@ impl LongTermMemory {
 
         let entry = LongTermMemoryEntry::new(&id, time, content);
         self.entries.insert(id.clone(), entry);
-
-        // Evict if over capacity (remove least important)
-        if let Some(max) = self.max_entries {
-            while self.entries.len() > max {
-                if let Some(to_remove) = self
-                    .entries
-                    .iter()
-                    .min_by(|a, b| {
-                        a.1.importance
-                            .partial_cmp(&b.1.importance)
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .map(|(k, _)| k.clone())
-                {
-                    self.entries.remove(&to_remove);
-                } else {
-                    break;
-                }
-            }
-        }
+        self.evict_over_capacity();
 
         id
     }
@@ -342,6 +323,25 @@ impl LongTermMemory {
             entry.tags = tags;
         }
         id
+    }
+
+    /// Export all entries for external persistence.
+    pub fn export_entries(&self) -> Vec<LongTermMemoryEntry> {
+        self.entries.values().cloned().collect()
+    }
+
+    /// Restore all entries from an external persisted snapshot.
+    pub fn restore_entries(&mut self, entries: Vec<LongTermMemoryEntry>) {
+        self.entries.clear();
+        for mut entry in entries {
+            entry.importance = entry.importance.clamp(0.0, 1.0);
+            if entry.last_accessed < entry.created_at {
+                entry.last_accessed = entry.created_at;
+            }
+            self.entries.insert(entry.id.clone(), entry);
+        }
+        self.evict_over_capacity();
+        self.next_id = self.next_id_from_entries();
     }
 
     /// Retrieve an entry by ID.
@@ -410,6 +410,40 @@ impl LongTermMemory {
     /// Clear all entries.
     pub fn clear(&mut self) {
         self.entries.clear();
+    }
+
+    fn evict_over_capacity(&mut self) {
+        if let Some(max) = self.max_entries {
+            while self.entries.len() > max {
+                if let Some(to_remove) = self
+                    .entries
+                    .iter()
+                    .min_by(|a, b| {
+                        a.1.importance
+                            .partial_cmp(&b.1.importance)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .map(|(key, _)| key.clone())
+                {
+                    self.entries.remove(&to_remove);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    fn next_id_from_entries(&self) -> u64 {
+        let mut next = self.entries.len() as u64;
+        for entry_id in self.entries.keys() {
+            let Some(raw) = entry_id.strip_prefix("mem-") else {
+                continue;
+            };
+            if let Ok(parsed) = raw.parse::<u64>() {
+                next = next.max(parsed.saturating_add(1));
+            }
+        }
+        next
     }
 }
 
@@ -508,5 +542,15 @@ impl AgentMemory {
     /// Get a summary of recent context for decision-making.
     pub fn context_summary(&self, max_recent: usize) -> String {
         self.short_term.summarize(max_recent)
+    }
+
+    /// Export long-term memory entries for persistence.
+    pub fn export_long_term_entries(&self) -> Vec<LongTermMemoryEntry> {
+        self.long_term.export_entries()
+    }
+
+    /// Restore long-term memory entries from persisted state.
+    pub fn restore_long_term_entries(&mut self, entries: Vec<LongTermMemoryEntry>) {
+        self.long_term.restore_entries(entries);
     }
 }

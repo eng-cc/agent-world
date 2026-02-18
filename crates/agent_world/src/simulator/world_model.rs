@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::fragment_physics::FragmentPhysicalProfile;
+use super::memory::LongTermMemoryEntry;
 use super::module_visual::ModuleVisualEntity;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
@@ -180,6 +181,8 @@ pub struct WorldModel {
     pub agent_prompt_profiles: BTreeMap<AgentId, AgentPromptProfile>,
     #[serde(default)]
     pub agent_player_bindings: BTreeMap<AgentId, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub agent_long_term_memories: BTreeMap<AgentId, Vec<LongTermMemoryEntry>>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,
     #[serde(default)]

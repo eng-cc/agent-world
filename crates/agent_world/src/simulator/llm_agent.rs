@@ -844,6 +844,14 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         self.prompt_overrides.clone()
     }
 
+    pub fn export_long_term_memory_entries(&self) -> Vec<LongTermMemoryEntry> {
+        self.memory.export_long_term_entries()
+    }
+
+    pub fn restore_long_term_memory_entries(&mut self, entries: &[LongTermMemoryEntry]) {
+        self.memory.restore_long_term_entries(entries.to_vec());
+    }
+
     pub fn push_player_message(&mut self, time: u64, message: impl AsRef<str>) -> bool {
         self.append_conversation_message(time, LlmChatRole::Player, message.as_ref())
             .is_some()

@@ -345,6 +345,7 @@ impl LiveWorld {
             }
             LiveDriver::Llm(runner) => {
                 let tick_result = runner.tick(&mut self.kernel);
+                sync_llm_runner_long_term_memory(&mut self.kernel, runner);
                 let event = tick_result
                     .as_ref()
                     .and_then(|result| result.action_result.as_ref())
@@ -935,9 +936,40 @@ fn build_driver(
                         profile.long_term_goal_override.clone(),
                     );
                 }
+                restore_behavior_long_term_memory_from_model(&mut behavior, kernel, &agent_id);
                 runner.register(behavior);
             }
             Ok(LiveDriver::Llm(runner))
+        }
+    }
+}
+
+fn restore_behavior_long_term_memory_from_model(
+    behavior: &mut LlmAgentBehavior<OpenAiChatCompletionClient>,
+    kernel: &WorldKernel,
+    agent_id: &str,
+) {
+    if let Some(entries) = kernel.long_term_memory_for_agent(agent_id) {
+        behavior.restore_long_term_memory_entries(entries);
+    } else {
+        behavior.restore_long_term_memory_entries(&[]);
+    }
+}
+
+fn sync_llm_runner_long_term_memory(
+    kernel: &mut WorldKernel,
+    runner: &AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>,
+) {
+    for agent_id in runner.agent_ids() {
+        let Some(agent) = runner.get(agent_id.as_str()) else {
+            continue;
+        };
+        let entries = agent.behavior.export_long_term_memory_entries();
+        if let Err(message) = kernel.set_agent_long_term_memory(agent_id.as_str(), entries) {
+            eprintln!(
+                "viewer live: skip long-term memory sync for {}: {}",
+                agent_id, message
+            );
         }
     }
 }

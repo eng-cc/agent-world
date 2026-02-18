@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
+use super::memory::LongTermMemoryEntry;
 use super::types::{
     Action, ActionEnvelope, ActionId, FragmentElementKind, WorldEventId, WorldTime,
 };
@@ -353,6 +354,31 @@ impl WorldKernel {
             agent_id: agent_id.to_string(),
             player_id: player_id.to_string(),
         })))
+    }
+
+    pub fn long_term_memory_for_agent(&self, agent_id: &str) -> Option<&[LongTermMemoryEntry]> {
+        self.model
+            .agent_long_term_memories
+            .get(agent_id)
+            .map(Vec::as_slice)
+    }
+
+    pub fn set_agent_long_term_memory(
+        &mut self,
+        agent_id: &str,
+        entries: Vec<LongTermMemoryEntry>,
+    ) -> Result<(), String> {
+        if !self.model.agents.contains_key(agent_id) {
+            return Err(format!("agent not found: {agent_id}"));
+        }
+        if entries.is_empty() {
+            self.model.agent_long_term_memories.remove(agent_id);
+        } else {
+            self.model
+                .agent_long_term_memories
+                .insert(agent_id.to_string(), entries);
+        }
+        Ok(())
     }
 
     pub(super) fn record_event(&mut self, kind: WorldEventKind) -> WorldEvent {

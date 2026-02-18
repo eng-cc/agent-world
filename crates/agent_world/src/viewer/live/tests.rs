@@ -2,6 +2,15 @@ use super::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+fn set_test_llm_env() {
+    std::env::set_var(crate::simulator::ENV_LLM_MODEL, "gpt-4o-mini");
+    std::env::set_var(
+        crate::simulator::ENV_LLM_BASE_URL,
+        "https://api.openai.com/v1",
+    );
+    std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+}
+
 #[test]
 fn live_script_moves_between_locations() {
     let mut config = WorldConfig::default();
@@ -280,4 +289,51 @@ fn agent_chat_requires_player_id() {
         .expect_err("missing player_id should be rejected");
 
     assert_eq!(err.code, "player_id_required");
+}
+
+#[test]
+fn restore_behavior_long_term_memory_from_model_applies_persisted_entries() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
+
+    let persisted = crate::simulator::LongTermMemoryEntry::new("mem-3", 7, "persisted insight")
+        .with_tag("persisted");
+    kernel
+        .set_agent_long_term_memory("agent-0", vec![persisted.clone()])
+        .expect("set persisted memory");
+
+    let mut behavior = LlmAgentBehavior::from_env("agent-0").expect("build llm behavior");
+    assert!(behavior.export_long_term_memory_entries().is_empty());
+
+    restore_behavior_long_term_memory_from_model(&mut behavior, &kernel, "agent-0");
+    let restored = behavior.export_long_term_memory_entries();
+    assert_eq!(restored.len(), 1);
+    assert_eq!(restored[0].id, persisted.id);
+    assert_eq!(restored[0].content, persisted.content);
+}
+
+#[test]
+fn sync_llm_runner_long_term_memory_writes_back_to_world_model() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
+
+    let mut behavior = LlmAgentBehavior::from_env("agent-0").expect("build llm behavior");
+    let runtime_entry = crate::simulator::LongTermMemoryEntry::new("mem-9", 15, "runtime memory")
+        .with_tag("runtime");
+    behavior.restore_long_term_memory_entries(&[runtime_entry.clone()]);
+
+    let mut runner = AgentRunner::new();
+    runner.register(behavior);
+
+    sync_llm_runner_long_term_memory(&mut kernel, &runner);
+    let restored = kernel
+        .long_term_memory_for_agent("agent-0")
+        .expect("agent memory exists");
+    assert_eq!(restored.len(), 1);
+    assert_eq!(restored[0].id, runtime_entry.id);
+    assert_eq!(restored[0].content, runtime_entry.content);
 }

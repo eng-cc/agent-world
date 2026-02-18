@@ -23,6 +23,28 @@ fn kernel_snapshot_roundtrip() {
 }
 
 #[test]
+fn kernel_snapshot_roundtrip_preserves_agent_long_term_memories() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
+
+    let entry = LongTermMemoryEntry::new("mem-4", 12, "factory alpha stalled").with_tag("factory");
+    kernel
+        .set_agent_long_term_memory("agent-0", vec![entry.clone()])
+        .expect("set memory");
+
+    let snapshot = kernel.snapshot();
+    let journal = kernel.journal_snapshot();
+    let restored = WorldKernel::from_snapshot(snapshot, journal).expect("restore ok");
+
+    let restored_entries = restored
+        .long_term_memory_for_agent("agent-0")
+        .expect("memory restored");
+    assert_eq!(restored_entries.len(), 1);
+    assert_eq!(restored_entries[0], entry);
+}
+
+#[test]
 fn kernel_snapshot_roundtrip_keeps_fragment_profile() {
     let mut config = WorldConfig::default();
     config.space = SpaceConfig {
