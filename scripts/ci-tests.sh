@@ -52,11 +52,7 @@ run_agent_world_full_tier_tests() {
 }
 
 run_required_builtin_wasm_checks() {
-  if [[ "${CI:-}" == "true" || "${AGENT_WORLD_FORCE_M1_WASM_CHECK:-}" == "1" ]]; then
-    run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
-  else
-    echo "+ skip m1 wasm hash check (set CI=true or AGENT_WORLD_FORCE_M1_WASM_CHECK=1 to enable)"
-  fi
+  run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
 }
 
 run_required_gate_checks() {

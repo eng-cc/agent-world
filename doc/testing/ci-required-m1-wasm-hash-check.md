@@ -9,8 +9,7 @@
 
 ### In Scope
 - 修改 `scripts/ci-tests.sh`，在 `required` 路径执行：
-  - CI 环境：执行 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
-  - 非 CI 环境：默认跳过，支持 `AGENT_WORLD_FORCE_M1_WASM_CHECK=1` 手动开启
+  - 本地与 CI 均执行 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
 - 保持 `full` 路径复用 required 前置检查（即同样覆盖 m1 校验）。
 - 补充任务日志与项目管理文档回写。
 
@@ -22,18 +21,18 @@
 ## 接口 / 数据
 - 统一入口：`scripts/ci-tests.sh [required|full]`
 - 新增 required 前置检查命令：
-  - `CI=true` 时：`./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
-  - 手动强制：`AGENT_WORLD_FORCE_M1_WASM_CHECK=1 ./scripts/ci-tests.sh required`
+  - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
 - 依赖文件：
   - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt`
   - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`
 
 ## 里程碑
 - M1：设计文档与项目管理文档创建。
-- M2：`scripts/ci-tests.sh` 接入 m1 校验。
-- M3：本地执行 required 回归通过，更新 devlog 与项目状态。
+- M2：`scripts/ci-tests.sh` 接入 m1 校验（本地与 CI 强制执行）。
+- M3：同步 m1 hash 清单并完成 required 回归，更新 devlog 与项目状态。
 
 ## 风险
 - required 门禁耗时上升（新增 wasm 构建与 hash 校验）。
 - 若开发机缺少 nightly/build-std 依赖，首次执行 required 会失败；需要按脚本提示补齐 rustup 组件。
+- 若本地构建结果与已提交清单不一致，本地提交会被阻断；需要先执行 `scripts/sync-m1-builtin-wasm-artifacts.sh` 更新清单。
 - 仅覆盖 m1，不覆盖 m4，仍存在 m4 清单漂移晚发现风险。
