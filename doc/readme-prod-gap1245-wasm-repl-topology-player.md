@@ -1,0 +1,77 @@
+# README 生产级缺口收口（二次）：默认 WASM 执行 + Replication RR + 分布式 Triad + 玩家节点身份（设计文档）
+
+## 目标
+- 收口缺口 1：默认构建启用真实 WASM 执行路径（`wasmtime`），避免默认环境下模块执行退化为 `SandboxUnavailable`。
+- 收口缺口 2：补齐 `agent_world_node` libp2p replication 的 request/handler 通道，实现双向请求-响应能力。
+- 收口缺口 4：提供跨主机部署的 triad 拓扑模式，避免仅支持本机嵌入式三节点预设。
+- 收口缺口 5：将玩家-节点身份模型下沉到 node/consensus 层，实现配置、动作、消息、快照的一致身份语义。
+
+## 范围
+- In scope
+  - `crates/agent_world/Cargo.toml`
+    - 默认 feature 启用 `wasmtime`。
+  - `crates/agent_world_node/src/libp2p_replication_network.rs`
+    - gossipsub + request_response 双通道行为。
+    - `request` 与 `register_handler` 的真实实现与错误映射。
+  - `crates/agent_world/src/bin/world_viewer_live/cli.rs`
+  - `crates/agent_world/src/bin/world_viewer_live.rs`
+    - 新增跨主机 triad 拓扑模式（单进程单节点角色，三角色静态组网）。
+    - 保持现有 `triad`（本机嵌入式）与 `single`（手工）兼容。
+  - `crates/agent_world_node/src/types.rs`
+  - `crates/agent_world_node/src/consensus_action.rs`
+  - `crates/agent_world_node/src/gossip_udp.rs`
+  - `crates/agent_world_node/src/lib.rs`
+  - `crates/agent_world/src/viewer/live/consensus_bridge.rs`
+    - 新增玩家身份字段与校验链路。
+  - 覆盖以上变更的 required-tier 测试。
+- Out of scope
+  - Web 节点去中心化（wasm32 节点网络实现不在本轮范围）。
+  - 共识算法升级（PoS 阈值与投票规则不重写）。
+  - 自动服务发现与自动运维编排（仅静态地址配置）。
+
+## 接口 / 数据
+### 1) 默认 WASM 执行开启
+- `agent_world` crate default features 改为包含 `wasmtime`。
+- 保留 `--no-default-features` 的显式降级路径用于最小构建。
+
+### 2) Replication request/handler 通道
+- 为 `Libp2pReplicationNetwork` 引入 request-response 协议行为。
+- 新增内部请求/响应载荷：
+  - 请求：`protocol + payload`
+  - 响应：`ok + payload + error`
+- `request(protocol, payload)`：
+  - 有可达 peer 时走远端请求；
+  - 无 peer 时回退本地 handler（便于单机链路与测试）。
+- `register_handler(protocol, handler)`：
+  - 写入 handler 表，支持远端调用。
+
+### 3) 分布式 triad 拓扑
+- `--topology` 新增 `triad_distributed`。
+- `triad_distributed` 语义：
+  - 每个进程启动一个节点角色（`--node-role`）。
+  - 三个角色节点 ID 固定派生：`<node-id>-sequencer|storage|observer`。
+  - 通过显式 gossip 地址参数声明三角色地址，按角色自动计算 bind/peers。
+  - validator 集合固定为 triad 三角色（34/33/33）。
+  - 允许结合 `--node-repl-*` 挂接 libp2p replication。
+
+### 4) 玩家节点身份模型
+- `NodeConfig` 新增 `player_id`。
+- `NodeSnapshot` 新增 `player_id`，用于观测与审计。
+- `NodeConsensusAction` 新增 `submitter_player_id`，并纳入校验与 action root 计算。
+- `NodeRuntime` 增加按玩家提交接口，提交时强校验与本节点 `player_id` 一致。
+- gossip proposal/attestation/commit 消息新增 `player_id`，并在 ingest 过程中进行一致性校验。
+- `NodePosConfig` 新增 validator 到 player 的绑定映射，要求 validator 与玩家一一绑定，禁止同玩家重复占位。
+
+## 里程碑
+- M1：T0 文档冻结（设计文档 + 项目管理文档）。
+- M2：T1 默认 WASM 执行开启并通过 required-tier 相关测试。
+- M3：T2 replication request/handler 实现与测试通过。
+- M4：T3 分布式 triad 拓扑实现与 CLI/启动测试通过。
+- M5：T4 玩家节点身份链路贯通（配置/动作/消息/快照）与测试通过。
+- M6：T5 回归（`cargo check` + required tests）与文档/devlog 收口。
+
+## 风险
+- 编译负担风险：默认启用 `wasmtime` 增加构建时长，需要保持 CI 绿并评估本地门槛。
+- 网络复杂度风险：request-response 引入连接状态与超时路径，需限制错误传播避免 runtime 噪音。
+- 拓扑误配风险：`triad_distributed` 参数较多，必须在 CLI 阶段做完整互斥与必填校验。
+- 身份兼容风险：动作与消息结构扩展涉及序列化兼容，需要 `serde(default)` 与回放容错保证平滑升级。
