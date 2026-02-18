@@ -25,6 +25,7 @@ mod persist;
 mod power;
 mod runner;
 mod scenario;
+mod social;
 mod types;
 mod world_model;
 
@@ -76,6 +77,10 @@ pub use runner::{
     RegisteredAgent, RunnerLogEntry, RunnerLogKind, RunnerMetrics, SkippedReason,
 };
 pub use scenario::{ScenarioSpecError, WorldScenario, WorldScenarioSpec};
+pub use social::{
+    SocialAdjudicationDecision, SocialChallengeState, SocialEdgeLifecycleState, SocialEdgeState,
+    SocialFactLifecycleState, SocialFactState, SocialStake,
+};
 pub use types::{
     Action, ActionEnvelope, ActionId, ActionSubmitter, AgentId, AssetId, ChunkResourceBudget,
     ElementBudgetError, ElementComposition, FacilityId, FragmentElementKind,

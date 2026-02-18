@@ -361,6 +361,7 @@ pub enum PowerOrderSide {
 // ============================================================================
 
 use super::module_visual::ModuleVisualEntity;
+use super::social::{SocialAdjudicationDecision, SocialStake};
 use crate::geometry::GeoPos;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -494,5 +495,43 @@ pub enum Action {
         factory_id: FacilityId,
         recipe_id: String,
         batches: i64,
+    },
+    PublishSocialFact {
+        actor: ResourceOwner,
+        schema_id: String,
+        subject: ResourceOwner,
+        object: Option<ResourceOwner>,
+        claim: String,
+        confidence_ppm: i64,
+        evidence_event_ids: Vec<WorldEventId>,
+        ttl_ticks: Option<u64>,
+        stake: Option<SocialStake>,
+    },
+    ChallengeSocialFact {
+        challenger: ResourceOwner,
+        fact_id: u64,
+        reason: String,
+        stake: Option<SocialStake>,
+    },
+    AdjudicateSocialFact {
+        adjudicator: ResourceOwner,
+        fact_id: u64,
+        decision: SocialAdjudicationDecision,
+        notes: String,
+    },
+    RevokeSocialFact {
+        actor: ResourceOwner,
+        fact_id: u64,
+        reason: String,
+    },
+    DeclareSocialEdge {
+        declarer: ResourceOwner,
+        schema_id: String,
+        relation_kind: String,
+        from: ResourceOwner,
+        to: ResourceOwner,
+        weight_bps: i64,
+        backing_fact_ids: Vec<u64>,
+        ttl_ticks: Option<u64>,
     },
 }

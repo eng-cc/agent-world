@@ -6,6 +6,9 @@ use super::super::agent::{LlmEffectIntentTrace, LlmEffectReceiptTrace};
 use super::super::chunking::ChunkCoord;
 use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
+use super::super::social::{
+    SocialAdjudicationDecision, SocialEdgeState, SocialFactState, SocialStake,
+};
 use super::super::types::{
     Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, FragmentElementKind, LocationId,
     LocationProfile, PowerOrderSide, ResourceKind, ResourceOwner, ResourceStock, WorldEventId,
@@ -173,6 +176,42 @@ pub enum WorldEventKind {
     AgentPlayerBound {
         agent_id: AgentId,
         player_id: String,
+    },
+    SocialFactPublished {
+        fact: SocialFactState,
+    },
+    SocialFactChallenged {
+        fact_id: u64,
+        challenger: ResourceOwner,
+        reason: String,
+        challenged_at_tick: WorldTime,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        stake: Option<SocialStake>,
+    },
+    SocialFactAdjudicated {
+        fact_id: u64,
+        adjudicator: ResourceOwner,
+        decision: SocialAdjudicationDecision,
+        notes: String,
+        adjudicated_at_tick: WorldTime,
+    },
+    SocialFactRevoked {
+        fact_id: u64,
+        actor: ResourceOwner,
+        reason: String,
+        revoked_at_tick: WorldTime,
+    },
+    SocialFactExpired {
+        fact_id: u64,
+        expired_at_tick: WorldTime,
+    },
+    SocialEdgeDeclared {
+        edge: SocialEdgeState,
+    },
+    SocialEdgeExpired {
+        edge_id: u64,
+        reason: String,
+        expired_at_tick: WorldTime,
     },
     PowerOrderPlaced {
         order_id: u64,

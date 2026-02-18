@@ -179,6 +179,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::RefineCompound { .. } => "refine_compound",
             Action::BuildFactory { .. } => "build_factory",
             Action::ScheduleRecipe { .. } => "schedule_recipe",
+            Action::PublishSocialFact { .. } => "publish_social_fact",
+            Action::ChallengeSocialFact { .. } => "challenge_social_fact",
+            Action::AdjudicateSocialFact { .. } => "adjudicate_social_fact",
+            Action::RevokeSocialFact { .. } => "revoke_social_fact",
+            Action::DeclareSocialEdge { .. } => "declare_social_edge",
         }
     }
 
