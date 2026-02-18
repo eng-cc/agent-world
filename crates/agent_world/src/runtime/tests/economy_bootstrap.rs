@@ -1,4 +1,4 @@
-#![cfg(feature = "wasmtime")]
+#![cfg(all(feature = "wasmtime", feature = "test_tier_full"))]
 
 use super::super::*;
 use super::pos;

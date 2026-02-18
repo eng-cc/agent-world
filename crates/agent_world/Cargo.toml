@@ -30,7 +30,7 @@ ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 
 [features]
-default = []
+default = ["wasmtime"]
 wasmtime = ["agent_world_wasm_executor/wasmtime"]
 viewer_live_integration = []
 self_tests = []

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-agent_world = { path = "../agent_world" }
+agent_world = { path = "../agent_world", default-features = false }
 bevy = "0.18.0"
 bevy_egui = "0.39.1"
 serde = { version = "1", features = ["derive"] }
