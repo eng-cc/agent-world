@@ -1,7 +1,8 @@
 use super::consensus_signature::{
-    sign_attestation_message, sign_proposal_message, ConsensusMessageSigner,
+    sign_attestation_message, sign_commit_message, sign_proposal_message,
+    verify_commit_message_signature, ConsensusMessageSigner,
 };
-use super::gossip_udp::GossipEndpoint;
+use super::gossip_udp::{GossipCommitMessage, GossipEndpoint};
 use super::*;
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use agent_world_proto::distributed_net::NetworkSubscription;
@@ -520,6 +521,140 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
     assert_eq!(pending.height, 1);
     assert!(pending.attestations.contains_key("node-a"));
     assert!(pending.attestations.contains_key("node-b"));
+}
+
+#[test]
+fn commit_signature_covers_execution_hashes() {
+    let (private_hex, public_hex) = deterministic_keypair_hex(204);
+    let signing_key = SigningKey::from_bytes(
+        &hex::decode(private_hex)
+            .expect("private decode")
+            .try_into()
+            .expect("private len"),
+    );
+    let signer = ConsensusMessageSigner::new(signing_key, public_hex).expect("signer");
+
+    let mut commit = GossipCommitMessage {
+        version: 1,
+        world_id: "world-signature-exec".to_string(),
+        node_id: "node-a".to_string(),
+        height: 7,
+        slot: 3,
+        epoch: 0,
+        block_hash: "block-7".to_string(),
+        committed_at_ms: 3_000,
+        execution_block_hash: Some("exec-block-7".to_string()),
+        execution_state_root: Some("exec-state-7".to_string()),
+        public_key_hex: None,
+        signature_hex: None,
+    };
+    sign_commit_message(&mut commit, &signer).expect("sign commit");
+    verify_commit_message_signature(&commit, true).expect("verify signed commit");
+
+    let mut tampered = commit.clone();
+    tampered.execution_state_root = Some("exec-state-tampered".to_string());
+    let err = verify_commit_message_signature(&tampered, true).expect_err("tamper must fail");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+}
+
+#[test]
+fn pos_engine_ingests_commit_execution_hashes() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let config = NodeConfig::new("node-b", "world-commit-exec-head", NodeRole::Observer)
+        .expect("config")
+        .with_gossip_optional(addr_b, vec![addr_a]);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: vec![addr_b],
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: config.world_id.clone(),
+            node_id: "node-a".to_string(),
+            height: 4,
+            slot: 4,
+            epoch: 0,
+            block_hash: "block-4".to_string(),
+            committed_at_ms: 4_000,
+            execution_block_hash: Some("exec-block-4".to_string()),
+            execution_state_root: Some("exec-state-4".to_string()),
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast commit");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .expect("ingest");
+    let head = engine
+        .peer_heads
+        .get("node-a")
+        .expect("peer head should exist");
+    assert_eq!(head.height, 4);
+    assert_eq!(head.execution_block_hash.as_deref(), Some("exec-block-4"));
+    assert_eq!(head.execution_state_root.as_deref(), Some("exec-state-4"));
+}
+
+#[test]
+fn replication_commit_payload_includes_execution_hashes() {
+    let dir = temp_dir("replication-payload-exec");
+    let config = NodeReplicationConfig::new(dir.clone()).expect("replication config");
+    let mut replication =
+        super::replication::ReplicationRuntime::new(&config, "node-a").expect("runtime");
+    let decision = PosDecision {
+        height: 1,
+        slot: 0,
+        epoch: 0,
+        status: PosConsensusStatus::Committed,
+        block_hash: "block-1".to_string(),
+        approved_stake: 100,
+        rejected_stake: 0,
+        required_stake: 67,
+        total_stake: 100,
+    };
+    let message = replication
+        .build_local_commit_message(
+            "node-a",
+            "world-repl-exec",
+            5_000,
+            &decision,
+            Some("exec-block-1"),
+            Some("exec-state-1"),
+        )
+        .expect("build")
+        .expect("message");
+    let payload: serde_json::Value =
+        serde_json::from_slice(&message.payload).expect("parse payload");
+    assert_eq!(
+        payload
+            .get("execution_block_hash")
+            .and_then(serde_json::Value::as_str),
+        Some("exec-block-1")
+    );
+    assert_eq!(
+        payload
+            .get("execution_state_root")
+            .and_then(serde_json::Value::as_str),
+        Some("exec-state-1")
+    );
+
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]

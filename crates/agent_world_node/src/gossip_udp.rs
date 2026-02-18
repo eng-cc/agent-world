@@ -16,6 +16,10 @@ pub(crate) struct GossipCommitMessage {
     pub block_hash: String,
     pub committed_at_ms: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_block_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_state_root: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_key_hex: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature_hex: Option<String>,

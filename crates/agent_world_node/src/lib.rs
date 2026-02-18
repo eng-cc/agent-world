@@ -388,6 +388,8 @@ struct PeerCommittedHead {
     height: u64,
     block_hash: String,
     committed_at_ms: i64,
+    execution_block_hash: Option<String>,
+    execution_state_root: Option<String>,
 }
 
 impl PosNodeEngine {
@@ -734,6 +736,25 @@ impl PosNodeEngine {
         }
     }
 
+    fn commit_execution_binding_for_height(
+        &self,
+        committed_height: u64,
+    ) -> Result<(Option<&str>, Option<&str>), NodeError> {
+        if self.last_execution_height != committed_height {
+            return Ok((None, None));
+        }
+        let execution_block_hash = self.last_execution_block_hash.as_deref();
+        let execution_state_root = self.last_execution_state_root.as_deref();
+        if execution_block_hash.is_some() != execution_state_root.is_some() {
+            return Err(NodeError::Consensus {
+                reason:
+                    "execution commit binding requires both execution_block_hash and execution_state_root"
+                        .to_string(),
+            });
+        }
+        Ok((execution_block_hash, execution_state_root))
+    }
+
     fn broadcast_local_proposal(
         &mut self,
         endpoint: &GossipEndpoint,
@@ -827,6 +848,8 @@ impl PosNodeEngine {
         if decision.height <= self.last_broadcast_committed_height {
             return Ok(());
         }
+        let (execution_block_hash, execution_state_root) =
+            self.commit_execution_binding_for_height(decision.height)?;
         let mut message = GossipCommitMessage {
             version: 1,
             world_id: world_id.to_string(),
@@ -836,6 +859,8 @@ impl PosNodeEngine {
             epoch: decision.epoch,
             block_hash: decision.block_hash.clone(),
             committed_at_ms: now_ms,
+            execution_block_hash: execution_block_hash.map(str::to_string),
+            execution_state_root: execution_state_root.map(str::to_string),
             public_key_hex: None,
             signature_hex: None,
         };
@@ -863,9 +888,16 @@ impl PosNodeEngine {
         let Some(replication) = replication else {
             return Ok(());
         };
-        if let Some(message) =
-            replication.build_local_commit_message(node_id, world_id, now_ms, decision)?
-        {
+        let (execution_block_hash, execution_state_root) =
+            self.commit_execution_binding_for_height(decision.height)?;
+        if let Some(message) = replication.build_local_commit_message(
+            node_id,
+            world_id,
+            now_ms,
+            decision,
+            execution_block_hash,
+            execution_state_root,
+        )? {
             if let Some(endpoint) = network_endpoint {
                 endpoint.publish_replication(&message)?;
             } else if let Some(endpoint) = gossip_endpoint {
@@ -988,6 +1020,11 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
+                    if commit.execution_block_hash.is_some()
+                        != commit.execution_state_root.is_some()
+                    {
+                        continue;
+                    }
                     let previous_height = self
                         .peer_heads
                         .get(commit.node_id.as_str())
@@ -1002,6 +1039,8 @@ impl PosNodeEngine {
                             height: commit.height,
                             block_hash: commit.block_hash.clone(),
                             committed_at_ms: commit.committed_at_ms,
+                            execution_block_hash: commit.execution_block_hash.clone(),
+                            execution_state_root: commit.execution_state_root.clone(),
                         },
                     );
                     if commit.height > self.network_committed_height {

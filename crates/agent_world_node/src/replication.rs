@@ -149,6 +149,8 @@ struct ReplicatedCommitPayload {
     epoch: u64,
     block_hash: String,
     committed_at_ms: i64,
+    execution_block_hash: Option<String>,
+    execution_state_root: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -194,12 +196,19 @@ impl ReplicationRuntime {
         world_id: &str,
         now_ms: i64,
         decision: &PosDecision,
+        execution_block_hash: Option<&str>,
+        execution_state_root: Option<&str>,
     ) -> Result<Option<GossipReplicationMessage>, NodeError> {
         if !matches!(decision.status, PosConsensusStatus::Committed) {
             return Ok(None);
         }
         if decision.height <= self.writer_state.last_replicated_height {
             return Ok(None);
+        }
+        if execution_block_hash.is_some() != execution_state_root.is_some() {
+            return Err(NodeError::Replication {
+                reason: "replication execution hash binding requires both block/state".to_string(),
+            });
         }
 
         let payload = ReplicatedCommitPayload {
@@ -210,6 +219,8 @@ impl ReplicationRuntime {
             epoch: decision.epoch,
             block_hash: decision.block_hash.clone(),
             committed_at_ms: now_ms,
+            execution_block_hash: execution_block_hash.map(str::to_string),
+            execution_state_root: execution_state_root.map(str::to_string),
         };
         let payload_bytes = serde_json::to_vec(&payload).map_err(|err| NodeError::Replication {
             reason: format!("serialize local replication payload failed: {}", err),

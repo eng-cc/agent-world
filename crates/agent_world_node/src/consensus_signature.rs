@@ -107,6 +107,8 @@ struct CommitSigningPayload<'a> {
     epoch: u64,
     block_hash: &'a str,
     committed_at_ms: i64,
+    execution_block_hash: Option<&'a str>,
+    execution_state_root: Option<&'a str>,
     public_key_hex: Option<&'a str>,
 }
 
@@ -152,6 +154,8 @@ fn commit_signing_bytes(message: &GossipCommitMessage) -> Result<Vec<u8>, NodeEr
         epoch: message.epoch,
         block_hash: &message.block_hash,
         committed_at_ms: message.committed_at_ms,
+        execution_block_hash: message.execution_block_hash.as_deref(),
+        execution_state_root: message.execution_state_root.as_deref(),
         public_key_hex: message.public_key_hex.as_deref(),
     })
 }
