@@ -5,11 +5,17 @@ use serde::{Deserialize, Serialize};
 use crate::replication::GossipReplicationMessage;
 use crate::{NodeConsensusAction, NodeError, NodeGossipConfig};
 
+fn default_legacy_player_id() -> String {
+    "legacy".to_string()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct GossipCommitMessage {
     pub version: u8,
     pub world_id: String,
     pub node_id: String,
+    #[serde(default = "default_legacy_player_id")]
+    pub player_id: String,
     pub height: u64,
     pub slot: u64,
     pub epoch: u64,
@@ -34,6 +40,8 @@ pub(crate) struct GossipProposalMessage {
     pub version: u8,
     pub world_id: String,
     pub node_id: String,
+    #[serde(default = "default_legacy_player_id")]
+    pub player_id: String,
     pub proposer_id: String,
     pub height: u64,
     pub slot: u64,
@@ -55,6 +63,8 @@ pub(crate) struct GossipAttestationMessage {
     pub version: u8,
     pub world_id: String,
     pub node_id: String,
+    #[serde(default = "default_legacy_player_id")]
+    pub player_id: String,
     pub validator_id: String,
     pub height: u64,
     pub slot: u64,

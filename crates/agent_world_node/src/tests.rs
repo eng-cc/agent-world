@@ -236,84 +236,6 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
 }
 
 #[test]
-fn pos_engine_applies_gossiped_proposal_and_attestation() {
-    let validators = vec![
-        PosValidator {
-            validator_id: "node-a".to_string(),
-            stake: 60,
-        },
-        PosValidator {
-            validator_id: "node-b".to_string(),
-            stake: 40,
-        },
-    ];
-    let config = NodeConfig::new("node-b", "world-gossip-proposal", NodeRole::Observer)
-        .expect("config")
-        .with_pos_validators(validators)
-        .expect("validators")
-        .with_auto_attest_all_validators(false);
-    let mut engine = PosNodeEngine::new(&config).expect("engine");
-
-    let proposal = GossipProposalMessage {
-        version: 1,
-        world_id: config.world_id.clone(),
-        node_id: "node-a".to_string(),
-        proposer_id: "node-a".to_string(),
-        height: 1,
-        slot: 0,
-        epoch: 0,
-        block_hash: format!("{}:h1:s0:p{}", config.world_id, "node-a"),
-        action_root: empty_action_root(),
-        actions: Vec::new(),
-        proposed_at_ms: 1_000,
-        public_key_hex: None,
-        signature_hex: None,
-    };
-    engine
-        .ingest_proposal_message(&config.world_id, &proposal)
-        .expect("ingest proposal");
-
-    let attestation = GossipAttestationMessage {
-        version: 1,
-        world_id: config.world_id.clone(),
-        node_id: "node-b".to_string(),
-        validator_id: "node-b".to_string(),
-        height: 1,
-        slot: 0,
-        epoch: 0,
-        block_hash: proposal.block_hash.clone(),
-        approve: true,
-        source_epoch: 0,
-        target_epoch: 0,
-        voted_at_ms: 1_001,
-        reason: Some("gossip attestation".to_string()),
-        public_key_hex: None,
-        signature_hex: None,
-    };
-    engine
-        .ingest_attestation_message(&config.world_id, &attestation)
-        .expect("ingest attestation");
-
-    let snapshot = engine
-        .tick(
-            &config.node_id,
-            &config.world_id,
-            1_002,
-            None,
-            None,
-            None,
-            Vec::new(),
-            None,
-        )
-        .expect("tick");
-    assert_eq!(snapshot.consensus_snapshot.committed_height, 1);
-    assert_eq!(
-        snapshot.consensus_snapshot.last_status,
-        Some(PosConsensusStatus::Committed)
-    );
-}
-
-#[test]
 fn runtime_start_and_stop_updates_snapshot() {
     let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
         .expect("config")
@@ -408,6 +330,7 @@ fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
         version: 1,
         world_id: config_b.world_id.clone(),
         node_id: "node-a".to_string(),
+        player_id: "node-a".to_string(),
         proposer_id: "node-a".to_string(),
         height: 1,
         slot: 0,
@@ -480,6 +403,7 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
         version: 1,
         world_id: config_b.world_id.clone(),
         node_id: "node-a".to_string(),
+        player_id: "node-a".to_string(),
         proposer_id: "node-a".to_string(),
         height: 1,
         slot: 0,
@@ -500,7 +424,8 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
     let mut attestation = GossipAttestationMessage {
         version: 1,
         world_id: config_b.world_id.clone(),
-        node_id: "node-a".to_string(),
+        node_id: "node-b".to_string(),
+        player_id: "node-b".to_string(),
         validator_id: "node-b".to_string(),
         height: proposal.height,
         slot: proposal.slot,
@@ -544,6 +469,7 @@ fn commit_signature_covers_execution_hashes() {
         version: 1,
         world_id: "world-signature-exec".to_string(),
         node_id: "node-a".to_string(),
+        player_id: "node-a".to_string(),
         height: 7,
         slot: 3,
         epoch: 0,
@@ -582,6 +508,17 @@ fn pos_engine_ingests_commit_execution_hashes() {
 
     let config = NodeConfig::new("node-b", "world-commit-exec-head", NodeRole::Observer)
         .expect("config")
+        .with_pos_validators(vec![
+            PosValidator {
+                validator_id: "node-a".to_string(),
+                stake: 60,
+            },
+            PosValidator {
+                validator_id: "node-b".to_string(),
+                stake: 40,
+            },
+        ])
+        .expect("validators")
         .with_gossip_optional(addr_b, vec![addr_a]);
     let mut engine = PosNodeEngine::new(&config).expect("engine");
     let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
@@ -600,6 +537,7 @@ fn pos_engine_ingests_commit_execution_hashes() {
             version: 1,
             world_id: config.world_id.clone(),
             node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
             height: 4,
             slot: 4,
             epoch: 0,

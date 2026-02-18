@@ -77,7 +77,39 @@ impl NodeRuntime {
         action_id: u64,
         payload_cbor: Vec<u8>,
     ) -> Result<(), NodeError> {
-        let action = NodeConsensusAction::from_payload(action_id, payload_cbor)?;
+        self.submit_consensus_action_payload_as_player(
+            self.config.player_id.clone(),
+            action_id,
+            payload_cbor,
+        )
+    }
+
+    pub fn submit_consensus_action_payload_as_player(
+        &self,
+        player_id: impl Into<String>,
+        action_id: u64,
+        payload_cbor: Vec<u8>,
+    ) -> Result<(), NodeError> {
+        let player_id = player_id.into();
+        let player_id = player_id.trim();
+        if player_id.is_empty() {
+            return Err(NodeError::Consensus {
+                reason: "submitter player_id cannot be empty".to_string(),
+            });
+        }
+        if player_id != self.config.player_id {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "submitter player_id mismatch expected={} actual={}",
+                    self.config.player_id, player_id
+                ),
+            });
+        }
+        let action = NodeConsensusAction::from_payload(
+            action_id,
+            self.config.player_id.clone(),
+            payload_cbor,
+        )?;
         let mut pending = self
             .pending_consensus_actions
             .lock()

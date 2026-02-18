@@ -399,6 +399,7 @@ mod tests {
     fn sample_snapshot(committed_height: u64, block_hash: Option<&str>) -> NodeSnapshot {
         NodeSnapshot {
             node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
             world_id: "w1".to_string(),
             role: NodeRole::Sequencer,
             running: true,
@@ -583,8 +584,9 @@ mod tests {
             ),
         )
         .expect("encode simulator payload");
-        let committed_action = agent_world_node::NodeConsensusAction::from_payload(1, payload)
-            .expect("consensus action");
+        let committed_action =
+            agent_world_node::NodeConsensusAction::from_payload(1, "node-a", payload)
+                .expect("consensus action");
         let action_root =
             compute_consensus_action_root(std::slice::from_ref(&committed_action)).expect("root");
 

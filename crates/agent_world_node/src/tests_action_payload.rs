@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -84,6 +85,17 @@ fn submit_consensus_action_payload_rejects_zero_action_id() {
 }
 
 #[test]
+fn submit_consensus_action_payload_as_player_rejects_player_mismatch() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-action-id", "world-action-id", NodeRole::Observer).expect("config"),
+    );
+    let err = runtime
+        .submit_consensus_action_payload_as_player("other-player", 1, vec![1_u8, 2, 3])
+        .expect_err("mismatched player must fail");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+}
+
+#[test]
 fn role_parse_roundtrip() {
     for role in [NodeRole::Sequencer, NodeRole::Storage, NodeRole::Observer] {
         let parsed = NodeRole::from_str(role.as_str()).expect("parse role");
@@ -96,6 +108,25 @@ fn config_rejects_invalid_pos_config() {
     let result = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
         .expect("base config")
         .with_pos_config(NodePosConfig::ethereum_like(vec![]));
+    assert!(matches!(result, Err(NodeError::InvalidConfig { .. })));
+}
+
+#[test]
+fn config_rejects_duplicate_validator_player_bindings() {
+    let mut validator_player_ids = BTreeMap::new();
+    validator_player_ids.insert("node-a".to_string(), "player-1".to_string());
+    validator_player_ids.insert("node-b".to_string(), "player-1".to_string());
+    let result = NodePosConfig::ethereum_like(vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ])
+    .with_validator_player_ids(validator_player_ids);
     assert!(matches!(result, Err(NodeError::InvalidConfig { .. })));
 }
 

@@ -68,6 +68,7 @@ pub struct PosValidator {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodePosConfig {
     pub validators: Vec<PosValidator>,
+    pub validator_player_ids: BTreeMap<String, String>,
     pub supermajority_numerator: u64,
     pub supermajority_denominator: u64,
     pub epoch_length_slots: u64,
@@ -75,18 +76,36 @@ pub struct NodePosConfig {
 
 impl NodePosConfig {
     pub fn ethereum_like(validators: Vec<PosValidator>) -> Self {
+        let mut validator_player_ids = BTreeMap::new();
+        for validator in &validators {
+            validator_player_ids.insert(
+                validator.validator_id.clone(),
+                validator.validator_id.clone(),
+            );
+        }
         Self {
             validators,
+            validator_player_ids,
             supermajority_numerator: 2,
             supermajority_denominator: 3,
             epoch_length_slots: 32,
         }
+    }
+
+    pub fn with_validator_player_ids(
+        mut self,
+        validator_player_ids: BTreeMap<String, String>,
+    ) -> Result<Self, NodeError> {
+        self.validator_player_ids = validator_player_ids;
+        validate_pos_config(&self)?;
+        Ok(self)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeConfig {
     pub node_id: String,
+    pub player_id: String,
     pub world_id: String,
     pub tick_interval: Duration,
     pub role: NodeRole,
@@ -128,6 +147,7 @@ impl NodeConfig {
         validate_pos_config(&pos_config)?;
 
         Ok(Self {
+            player_id: node_id.clone(),
             node_id,
             world_id,
             tick_interval: Duration::from_millis(200),
@@ -137,6 +157,17 @@ impl NodeConfig {
             gossip: None,
             replication: None,
         })
+    }
+
+    pub fn with_player_id(mut self, player_id: impl Into<String>) -> Result<Self, NodeError> {
+        let player_id = player_id.into();
+        if player_id.trim().is_empty() {
+            return Err(NodeError::InvalidConfig {
+                reason: "player_id cannot be empty".to_string(),
+            });
+        }
+        self.player_id = player_id.trim().to_string();
+        Ok(self)
     }
 
     pub fn with_tick_interval(mut self, interval: Duration) -> Result<Self, NodeError> {
@@ -260,6 +291,7 @@ impl Default for NodeConsensusSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeSnapshot {
     pub node_id: String,
+    pub player_id: String,
     pub world_id: String,
     pub role: NodeRole,
     pub running: bool,

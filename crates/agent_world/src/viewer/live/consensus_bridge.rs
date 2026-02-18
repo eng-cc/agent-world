@@ -89,23 +89,28 @@ impl LiveConsensusBridge {
         self.next_action_id = action_id.saturating_add(1).max(1);
 
         let payload = encode_consensus_action_payload(
-            &ConsensusActionPayloadEnvelope::from_simulator_action(action, submitter),
+            &ConsensusActionPayloadEnvelope::from_simulator_action(action, submitter.clone()),
         )
         .map_err(ViewerLiveServerError::Serde)?;
 
-        self.runtime
-            .lock()
-            .map_err(|_| {
-                ViewerLiveServerError::Node(
-                    "viewer live consensus bridge: node runtime lock poisoned".to_string(),
-                )
-            })?
-            .submit_consensus_action_payload(action_id, payload)
-            .map_err(|err| {
-                ViewerLiveServerError::Node(format!(
-                    "viewer live consensus bridge submit failed action_id={action_id}: {err:?}"
-                ))
-            })?;
+        let runtime = self.runtime.lock().map_err(|_| {
+            ViewerLiveServerError::Node(
+                "viewer live consensus bridge: node runtime lock poisoned".to_string(),
+            )
+        })?;
+        let submit_result = match submitter {
+            ActionSubmitter::Player { player_id } => {
+                runtime.submit_consensus_action_payload_as_player(player_id, action_id, payload)
+            }
+            ActionSubmitter::System | ActionSubmitter::Agent { .. } => {
+                runtime.submit_consensus_action_payload(action_id, payload)
+            }
+        };
+        submit_result.map_err(|err| {
+            ViewerLiveServerError::Node(format!(
+                "viewer live consensus bridge submit failed action_id={action_id}: {err:?}"
+            ))
+        })?;
         self.inflight_action_ids.insert(action_id);
         Ok(())
     }

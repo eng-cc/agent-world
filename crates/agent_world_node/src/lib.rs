@@ -17,6 +17,7 @@ mod libp2p_replication_network;
 mod libp2p_replication_network_wasm;
 mod network_bridge;
 mod node_runtime_core;
+mod pos_engine_gossip;
 mod pos_schedule;
 mod pos_state_store;
 mod pos_validation;
@@ -272,6 +273,7 @@ impl NodeRuntime {
         let state = lock_state(&self.state);
         NodeSnapshot {
             node_id: self.config.node_id.clone(),
+            player_id: self.config.player_id.clone(),
             world_id: self.config.world_id.clone(),
             role: self.config.role,
             running: self.running.load(Ordering::SeqCst),
@@ -301,9 +303,11 @@ impl Drop for NodeRuntime {
 #[derive(Debug, Clone)]
 struct PosNodeEngine {
     validators: BTreeMap<String, u64>,
+    validator_players: BTreeMap<String, String>,
     total_stake: u64,
     required_stake: u64,
     epoch_length_slots: u64,
+    node_player_id: String,
     next_height: u64,
     next_slot: u64,
     committed_height: u64,
@@ -381,7 +385,8 @@ struct NodeEngineTickResult {
 
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
-        let (validators, total_stake, required_stake) = validated_pos_state(&config.pos_config)?;
+        let (validators, validator_players, total_stake, required_stake) =
+            validated_pos_state(&config.pos_config)?;
         let (consensus_signer, enforce_consensus_signature) =
             if let Some(replication) = &config.replication {
                 let signer = replication
@@ -394,11 +399,23 @@ impl PosNodeEngine {
             } else {
                 (None, false)
             };
+        if let Some(bound_player_id) = validator_players.get(config.node_id.as_str()) {
+            if bound_player_id != &config.player_id {
+                return Err(NodeError::InvalidConfig {
+                    reason: format!(
+                        "node_id {} is bound to validator player {}, but config player_id is {}",
+                        config.node_id, bound_player_id, config.player_id
+                    ),
+                });
+            }
+        }
         Ok(Self {
             validators,
+            validator_players,
             total_stake,
             required_stake,
             epoch_length_slots: config.pos_config.epoch_length_slots,
+            node_player_id: config.player_id.clone(),
             next_height: 1,
             next_slot: 0,
             committed_height: 0,
@@ -781,127 +798,6 @@ impl PosNodeEngine {
         Ok((execution_block_hash, execution_state_root))
     }
 
-    fn broadcast_local_proposal(
-        &mut self,
-        endpoint: &GossipEndpoint,
-        node_id: &str,
-        world_id: &str,
-        now_ms: i64,
-    ) -> Result<(), NodeError> {
-        let Some(proposal) = self.pending.as_ref() else {
-            return Ok(());
-        };
-        if proposal.proposer_id != node_id {
-            return Ok(());
-        }
-        if proposal.height <= self.last_broadcast_proposal_height {
-            return Ok(());
-        }
-        let mut message = GossipProposalMessage {
-            version: 1,
-            world_id: world_id.to_string(),
-            node_id: node_id.to_string(),
-            proposer_id: proposal.proposer_id.clone(),
-            height: proposal.height,
-            slot: proposal.slot,
-            epoch: proposal.epoch,
-            block_hash: proposal.block_hash.clone(),
-            action_root: proposal.action_root.clone(),
-            actions: proposal.committed_actions.clone(),
-            proposed_at_ms: now_ms,
-            public_key_hex: None,
-            signature_hex: None,
-        };
-        if let Some(signer) = self.consensus_signer.as_ref() {
-            sign_proposal_message(&mut message, signer)?;
-        }
-        endpoint.broadcast_proposal(&message)?;
-        self.last_broadcast_proposal_height = proposal.height;
-        Ok(())
-    }
-
-    fn broadcast_local_attestation(
-        &mut self,
-        endpoint: &GossipEndpoint,
-        node_id: &str,
-        world_id: &str,
-        now_ms: i64,
-    ) -> Result<(), NodeError> {
-        let Some(proposal) = self.pending.as_ref() else {
-            return Ok(());
-        };
-        let Some(attestation) = proposal.attestations.get(node_id) else {
-            return Ok(());
-        };
-        if proposal.height <= self.last_broadcast_local_attestation_height {
-            return Ok(());
-        }
-
-        let mut message = GossipAttestationMessage {
-            version: 1,
-            world_id: world_id.to_string(),
-            node_id: node_id.to_string(),
-            validator_id: attestation.validator_id.clone(),
-            height: proposal.height,
-            slot: proposal.slot,
-            epoch: proposal.epoch,
-            block_hash: proposal.block_hash.clone(),
-            approve: attestation.approve,
-            source_epoch: attestation.source_epoch,
-            target_epoch: attestation.target_epoch,
-            voted_at_ms: now_ms,
-            reason: attestation.reason.clone(),
-            public_key_hex: None,
-            signature_hex: None,
-        };
-        if let Some(signer) = self.consensus_signer.as_ref() {
-            sign_attestation_message(&mut message, signer)?;
-        }
-        endpoint.broadcast_attestation(&message)?;
-        self.last_broadcast_local_attestation_height = proposal.height;
-        Ok(())
-    }
-
-    fn broadcast_local_commit(
-        &mut self,
-        endpoint: &GossipEndpoint,
-        node_id: &str,
-        world_id: &str,
-        now_ms: i64,
-        decision: &PosDecision,
-    ) -> Result<(), NodeError> {
-        if !matches!(decision.status, PosConsensusStatus::Committed) {
-            return Ok(());
-        }
-        if decision.height <= self.last_broadcast_committed_height {
-            return Ok(());
-        }
-        let (execution_block_hash, execution_state_root) =
-            self.commit_execution_binding_for_height(decision.height)?;
-        let mut message = GossipCommitMessage {
-            version: 1,
-            world_id: world_id.to_string(),
-            node_id: node_id.to_string(),
-            height: decision.height,
-            slot: decision.slot,
-            epoch: decision.epoch,
-            block_hash: decision.block_hash.clone(),
-            action_root: decision.action_root.clone(),
-            actions: decision.committed_actions.clone(),
-            committed_at_ms: now_ms,
-            execution_block_hash: execution_block_hash.map(str::to_string),
-            execution_state_root: execution_state_root.map(str::to_string),
-            public_key_hex: None,
-            signature_hex: None,
-        };
-        if let Some(signer) = self.consensus_signer.as_ref() {
-            sign_commit_message(&mut message, signer)?;
-        }
-        endpoint.broadcast_commit(&message)?;
-        self.last_broadcast_committed_height = decision.height;
-        Ok(())
-    }
-
     fn broadcast_local_replication(
         &mut self,
         gossip_endpoint: Option<&GossipEndpoint>,
@@ -961,6 +857,19 @@ impl PosNodeEngine {
         if message.version != 1 || message.world_id != world_id {
             return Ok(());
         }
+        if message.node_id != message.proposer_id {
+            return Ok(());
+        }
+        if self
+            .validate_message_player_binding(
+                message.proposer_id.as_str(),
+                message.player_id.as_str(),
+                "proposal",
+            )
+            .is_err()
+        {
+            return Ok(());
+        }
         if message.height < self.next_height {
             return Ok(());
         }
@@ -1018,6 +927,19 @@ impl PosNodeEngine {
         if message.version != 1 || message.world_id != world_id {
             return Ok(());
         }
+        if message.node_id != message.validator_id {
+            return Ok(());
+        }
+        if self
+            .validate_message_player_binding(
+                message.validator_id.as_str(),
+                message.player_id.as_str(),
+                "attestation",
+            )
+            .is_err()
+        {
+            return Ok(());
+        }
         let Some(mut proposal) = self.pending.clone() else {
             return Ok(());
         };
@@ -1067,6 +989,16 @@ impl PosNodeEngine {
                         commit.actions.as_slice(),
                     )
                     .is_err()
+                    {
+                        continue;
+                    }
+                    if self
+                        .validate_message_player_binding(
+                            commit.node_id.as_str(),
+                            commit.player_id.as_str(),
+                            "commit",
+                        )
+                        .is_err()
                     {
                         continue;
                     }
@@ -1159,3 +1091,5 @@ impl PosNodeEngine {
 mod tests;
 #[cfg(test)]
 mod tests_action_payload;
+#[cfg(test)]
+mod tests_gossip_player;

@@ -825,6 +825,7 @@ mod tests {
     fn observation_from_snapshot_sets_distfs_proof_semantics() {
         let snapshot = NodeSnapshot {
             node_id: "node-storage".to_string(),
+            player_id: "node-storage".to_string(),
             world_id: "world-1".to_string(),
             role: NodeRole::Storage,
             running: true,
@@ -856,6 +857,7 @@ mod tests {
     fn observation_from_snapshot_non_storage_has_no_distfs_proof_hint() {
         let snapshot = NodeSnapshot {
             node_id: "node-observer".to_string(),
+            player_id: "node-observer".to_string(),
             world_id: "world-1".to_string(),
             role: NodeRole::Observer,
             running: true,
