@@ -2847,9 +2847,16 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
     assert!(system_prompt.contains("execute_until"));
     assert!(user_prompt.contains("execute_until"));
     assert!(user_prompt.contains("transfer_resource"));
+    assert!(user_prompt.contains("buy_power"));
+    assert!(user_prompt.contains("sell_power"));
+    assert!(user_prompt.contains("place_power_order"));
+    assert!(user_prompt.contains("cancel_power_order"));
     assert!(user_prompt.contains("refine_compound"));
     assert!(user_prompt.contains("build_factory"));
     assert!(user_prompt.contains("schedule_recipe"));
+    assert!(user_prompt.contains("publish_social_fact"));
+    assert!(user_prompt.contains("adjudicate_social_fact"));
+    assert!(user_prompt.contains("declare_social_edge"));
     assert!(user_prompt.contains("observation.recipe_coverage.missing"));
     assert!(user_prompt.contains("move_agent.to 不能是当前所在位置"));
 }
@@ -2937,6 +2944,84 @@ fn llm_parse_schedule_recipe_non_positive_batches_normalizes_to_one() {
             );
         }
         other => panic!("expected decision, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_cancel_power_order_defaults_owner_to_self() {
+    let turns = completion_turns_from_output(r#"{"decision":"cancel_power_order","order_id":12}"#);
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Decision { decision, .. } => {
+            assert_eq!(
+                decision,
+                AgentDecision::Act(Action::CancelPowerOrder {
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    order_id: 12,
+                })
+            );
+        }
+        other => panic!("expected decision, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_declare_social_edge_action() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"declare_social_edge","declarer":"self","schema_id":"social.relation.v1","relation_kind":"trusted_peer","from":"self","to":"agent:agent-2","weight_bps":4200,"backing_fact_ids":[3,4],"ttl_ticks":8}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Decision { decision, .. } => {
+            assert_eq!(
+                decision,
+                AgentDecision::Act(Action::DeclareSocialEdge {
+                    declarer: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    schema_id: "social.relation.v1".to_string(),
+                    relation_kind: "trusted_peer".to_string(),
+                    from: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    to: ResourceOwner::Agent {
+                        agent_id: "agent-2".to_string(),
+                    },
+                    weight_bps: 4_200,
+                    backing_fact_ids: vec![3, 4],
+                    ttl_ticks: Some(8),
+                })
+            );
+        }
+        other => panic!("expected decision, got {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_publish_social_fact_rejects_invalid_confidence_ppm() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"publish_social_fact","actor":"self","schema_id":"social.reputation.v1","subject":"agent:agent-2","claim":"claim","confidence_ppm":1000001,"evidence_event_ids":[1]}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1")
+        .into_iter()
+        .next()
+        .expect("single parsed turn");
+
+    match parsed {
+        super::decision_flow::ParsedLlmTurn::Invalid(err) => {
+            assert!(err.contains("confidence_ppm out of range"));
+        }
+        other => panic!("expected invalid, got {other:?}"),
     }
 }
 

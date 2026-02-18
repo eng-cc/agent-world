@@ -239,26 +239,45 @@ impl PromptAssembler {
 {{"decision":"wait_ticks","ticks":<u64>}}
 {{"decision":"move_agent","to":"<location_id>"}}
 {{"decision":"harvest_radiation","max_amount":<i64 1..={}>}}
+{{"decision":"buy_power","buyer":"<self|agent:<id>|location:<id>>","seller":"<self|agent:<id>|location:<id>>","amount":<i64 >=1>,"price_per_pu":<i64 >=0>}}
+{{"decision":"sell_power","seller":"<self|agent:<id>|location:<id>>","buyer":"<self|agent:<id>|location:<id>>","amount":<i64 >=1>,"price_per_pu":<i64 >=0>}}
+{{"decision":"place_power_order","owner":"<self|agent:<id>|location:<id>>","side":"<buy|sell>","amount":<i64 >=1>,"limit_price_per_pu":<i64 >=0>}}
+{{"decision":"cancel_power_order","owner":"<self|agent:<id>|location:<id>>","order_id":<u64 >=1>}}
 {{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}
 {{"decision":"mine_compound","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","compound_mass_g":<i64 >=1>}}
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
 {{"decision":"schedule_recipe","owner":"<self|agent:<id>|location:<id>>","factory_id":"<factory_id>","recipe_id":"<recipe_id>","batches":<i64 >=1>}}
+{{"decision":"publish_social_fact","actor":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","subject":"<self|agent:<id>|location:<id>>","object":"<self|agent:<id>|location:<id>>","claim":"<text>","confidence_ppm":<i64 1..=1000000>,"evidence_event_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>,"stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
+{{"decision":"challenge_social_fact","challenger":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>","stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
+{{"decision":"adjudicate_social_fact","adjudicator":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"adjudication":"<confirm|retract>","notes":"<text>"}}
+{{"decision":"revoke_social_fact","actor":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>"}}
+{{"decision":"declare_social_edge","declarer":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","relation_kind":"<relation_kind>","from":"<self|agent:<id>|location:<id>>","to":"<self|agent:<id>|location:<id>>","weight_bps":<i64 -10000..=10000>,"backing_fact_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
 - 任意决策 args 可选附带：`"message_to_user":"<string>"`
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
 - 推荐 harvest 模板: {{"decision":"execute_until","action":{{"decision":"harvest_radiation","max_amount":<i64 1..={}>}},"until":{{"event_any_of":["action_rejected","insufficient_electricity","thermal_overload","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=3>}}
+- 推荐 buy_power 模板: {{"decision":"buy_power","buyer":"self","seller":"agent:<id>","amount":<i64 >=1>,"price_per_pu":0}}
+- 推荐 place_power_order 模板: {{"decision":"place_power_order","owner":"self","side":"buy","amount":<i64 >=1>,"limit_price_per_pu":0}}
 - 推荐 transfer 模板: {{"decision":"transfer_resource","from_owner":"location:<id>","to_owner":"self","kind":"electricity","amount":<i64 >=1>}}
 - 推荐 mine 模板: {{"decision":"mine_compound","owner":"self","location_id":"<location_id>","compound_mass_g":<i64 >=1000>}}
 - 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
 - 推荐 build_factory 模板: {{"decision":"build_factory","owner":"self","location_id":"<location_id>","factory_id":"factory.<name>","factory_kind":"factory.assembler.mk1"}}
 - 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
+- 推荐 publish_social_fact 模板: {{"decision":"publish_social_fact","actor":"self","schema_id":"social.reputation.v1","subject":"agent:<id>","claim":"<text>","confidence_ppm":800000,"evidence_event_ids":[<u64 >=1>]}}
+- 推荐 declare_social_edge 模板: {{"decision":"declare_social_edge","declarer":"self","schema_id":"social.relation.v1","relation_kind":"trusted_peer","from":"self","to":"agent:<id>","weight_bps":5000,"backing_fact_ids":[<u64 >=1>]}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
-- execute_until.action 必须是可执行动作（move/harvest/transfer/mine/refine/build/schedule），不要使用 wait/wait_ticks
+- execute_until.action 必须是可执行动作，且不能使用 wait/wait_ticks
 - harvest_radiation.max_amount 必须是正整数，且不超过 {}
+- buy_power/sell_power.amount 必须是正整数；price_per_pu 必须 >= 0（0 表示按市场报价）
+- place_power_order.side 仅允许 buy/sell；amount 必须是正整数；limit_price_per_pu 必须 >= 0
+- cancel_power_order.order_id 必须是正整数
 - transfer_resource.kind 仅允许 electricity/compound/hardware/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
+- publish_social_fact.confidence_ppm 必须在 1..=1000000；evidence_event_ids/backing_fact_ids 不能为空
+- adjudicate_social_fact.adjudication 仅允许 confirm/retract
+- declare_social_edge.weight_bps 必须在 -10000..=10000
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
 - factory_kind 当前支持：factory.assembler.mk1、factory.power.radiation.mk1（留空将被拒绝）
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
@@ -724,7 +743,7 @@ mod tests {
             },
             harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
-                context_window_tokens: 2_560,
+                context_window_tokens: 3_584,
                 reserved_output_tokens: 256,
                 safety_margin_tokens: 128,
             },
@@ -945,9 +964,18 @@ mod tests {
             .user_prompt
             .contains("move_agent.to 不能是当前所在位置"));
         assert!(output.user_prompt.contains("transfer_resource"));
+        assert!(output.user_prompt.contains("buy_power"));
+        assert!(output.user_prompt.contains("sell_power"));
+        assert!(output.user_prompt.contains("place_power_order"));
+        assert!(output.user_prompt.contains("cancel_power_order"));
         assert!(output.user_prompt.contains("refine_compound"));
         assert!(output.user_prompt.contains("build_factory"));
         assert!(output.user_prompt.contains("schedule_recipe"));
+        assert!(output.user_prompt.contains("publish_social_fact"));
+        assert!(output.user_prompt.contains("challenge_social_fact"));
+        assert!(output.user_prompt.contains("adjudicate_social_fact"));
+        assert!(output.user_prompt.contains("revoke_social_fact"));
+        assert!(output.user_prompt.contains("declare_social_edge"));
         assert!(output.user_prompt.contains("factory_kind 当前支持"));
         assert!(output.user_prompt.contains("recipe_id 当前支持"));
         assert!(output
@@ -960,6 +988,12 @@ mod tests {
         assert!(output
             .user_prompt
             .contains("owner 字段仅允许 self/agent:<id>/location:<id>"));
+        assert!(output
+            .user_prompt
+            .contains("publish_social_fact.confidence_ppm 必须在 1..=1000000"));
+        assert!(output
+            .user_prompt
+            .contains("adjudicate_social_fact.adjudication 仅允许 confirm/retract"));
         assert!(output.user_prompt.contains("[Failure Recovery Policy]"));
         assert!(output
             .user_prompt

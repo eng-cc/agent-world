@@ -1,8 +1,9 @@
 use super::*;
 use crate::geometry::GeoPos;
 use crate::simulator::{
-    Action, LlmChatRole, Observation, ObservedAgent, ObservedLocation, RejectReason, ResourceKind,
-    ResourceOwner, ResourceStock, WorldEvent, WorldEventKind,
+    Action, LlmChatRole, Observation, ObservedAgent, ObservedLocation, PowerOrderSide,
+    RejectReason, ResourceKind, ResourceOwner, ResourceStock, SocialAdjudicationDecision,
+    SocialStake, WorldEvent, WorldEventKind,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -878,6 +879,53 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
 }
 
 #[test]
+fn decision_tool_schema_includes_market_and_social_actions() {
+    let decision_tool = responses_tools()
+        .into_iter()
+        .find_map(|tool| match tool {
+            Tool::Function(function_tool)
+                if function_tool.name == OPENAI_TOOL_AGENT_SUBMIT_DECISION =>
+            {
+                Some(function_tool)
+            }
+            _ => None,
+        })
+        .expect("decision tool exists");
+
+    let parameters = decision_tool.parameters.expect("decision tool parameters");
+    let decision_enum = parameters
+        .get("properties")
+        .and_then(|value| value.get("decision"))
+        .and_then(|value| value.get("enum"))
+        .and_then(|value| value.as_array())
+        .expect("decision enum");
+    let decision_enum = decision_enum
+        .iter()
+        .filter_map(|value| value.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(decision_enum.contains(&"buy_power"));
+    assert!(decision_enum.contains(&"sell_power"));
+    assert!(decision_enum.contains(&"place_power_order"));
+    assert!(decision_enum.contains(&"cancel_power_order"));
+    assert!(decision_enum.contains(&"publish_social_fact"));
+    assert!(decision_enum.contains(&"challenge_social_fact"));
+    assert!(decision_enum.contains(&"adjudicate_social_fact"));
+    assert!(decision_enum.contains(&"revoke_social_fact"));
+    assert!(decision_enum.contains(&"declare_social_edge"));
+
+    let properties = parameters
+        .get("properties")
+        .and_then(|value| value.as_object())
+        .expect("properties");
+    assert!(properties.contains_key("price_per_pu"));
+    assert!(properties.contains_key("side"));
+    assert!(properties.contains_key("confidence_ppm"));
+    assert!(properties.contains_key("adjudication"));
+    assert!(properties.contains_key("backing_fact_ids"));
+}
+
+#[test]
 fn build_responses_request_payload_includes_debug_tool_when_enabled() {
     let request = LlmCompletionRequest {
         model: "gpt-test".to_string(),
@@ -1107,6 +1155,134 @@ fn llm_agent_parse_schedule_recipe_action_with_default_batches() {
             batches: 1,
         })
     );
+}
+
+#[test]
+fn llm_agent_parse_buy_power_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"buy_power\",\"buyer\":\"self\",\"seller\":\"agent:agent-2\",\"amount\":7,\"price_per_pu\":0}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::BuyPower {
+            buyer: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            seller: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            amount: 7,
+            price_per_pu: 0,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_place_power_order_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"place_power_order\",\"owner\":\"self\",\"side\":\"sell\",\"amount\":9,\"limit_price_per_pu\":3}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::PlacePowerOrder {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            side: PowerOrderSide::Sell,
+            amount: 9,
+            limit_price_per_pu: 3,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_publish_social_fact_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"publish_social_fact\",\"actor\":\"self\",\"schema_id\":\"social.reputation.v1\",\"subject\":\"agent:agent-2\",\"claim\":\"agent-2 completed delivery\",\"confidence_ppm\":800000,\"evidence_event_ids\":[7,8],\"ttl_ticks\":12,\"stake\":{\"kind\":\"hardware\",\"amount\":2}}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::PublishSocialFact {
+            actor: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            schema_id: "social.reputation.v1".to_string(),
+            subject: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            object: None,
+            claim: "agent-2 completed delivery".to_string(),
+            confidence_ppm: 800_000,
+            evidence_event_ids: vec![7, 8],
+            ttl_ticks: Some(12),
+            stake: Some(SocialStake {
+                kind: ResourceKind::Hardware,
+                amount: 2,
+            }),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_adjudicate_social_fact_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"adjudicate_social_fact\",\"adjudicator\":\"self\",\"fact_id\":42,\"adjudication\":\"confirm\",\"notes\":\"证据充分\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::AdjudicateSocialFact {
+            adjudicator: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            fact_id: 42,
+            decision: SocialAdjudicationDecision::Confirm,
+            notes: "证据充分".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_place_power_order_with_invalid_side() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"place_power_order\",\"owner\":\"self\",\"side\":\"hold\",\"amount\":9,\"limit_price_per_pu\":3}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("invalid side"));
 }
 
 #[test]

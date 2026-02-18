@@ -1,5 +1,113 @@
 use super::*;
 
+const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
+  "type": "object",
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": [
+        "wait",
+        "wait_ticks",
+        "move_agent",
+        "harvest_radiation",
+        "buy_power",
+        "sell_power",
+        "place_power_order",
+        "cancel_power_order",
+        "transfer_resource",
+        "mine_compound",
+        "refine_compound",
+        "build_factory",
+        "schedule_recipe",
+        "publish_social_fact",
+        "challenge_social_fact",
+        "adjudicate_social_fact",
+        "revoke_social_fact",
+        "declare_social_edge",
+        "execute_until"
+      ]
+    },
+    "ticks": { "type": "integer", "minimum": 1 },
+    "to": { "type": "string" },
+    "from": { "type": "string" },
+    "max_amount": { "type": "integer", "minimum": 1 },
+    "from_owner": { "type": "string" },
+    "to_owner": { "type": "string" },
+    "kind": { "type": "string" },
+    "amount": { "type": "integer", "minimum": 1 },
+    "buyer": { "type": "string" },
+    "seller": { "type": "string" },
+    "price_per_pu": { "type": "integer", "minimum": 0 },
+    "side": { "type": "string", "enum": ["buy", "sell"] },
+    "limit_price_per_pu": { "type": "integer", "minimum": 0 },
+    "order_id": { "type": "integer", "minimum": 1 },
+    "owner": { "type": "string" },
+    "compound_mass_g": { "type": "integer", "minimum": 1 },
+    "location_id": { "type": "string" },
+    "factory_id": { "type": "string" },
+    "factory_kind": { "type": "string" },
+    "recipe_id": { "type": "string" },
+    "batches": { "type": "integer", "minimum": 1 },
+    "actor": { "type": "string" },
+    "declarer": { "type": "string" },
+    "subject": { "type": "string" },
+    "object": { "type": "string" },
+    "schema_id": { "type": "string" },
+    "claim": { "type": "string" },
+    "confidence_ppm": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+    "evidence_event_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "ttl_ticks": { "type": "integer", "minimum": 1 },
+    "stake": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string" },
+        "amount": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "challenger": { "type": "string" },
+    "fact_id": { "type": "integer", "minimum": 1 },
+    "reason": { "type": "string" },
+    "adjudicator": { "type": "string" },
+    "adjudication": { "type": "string", "enum": ["confirm", "retract"] },
+    "notes": { "type": "string" },
+    "relation_kind": { "type": "string" },
+    "weight_bps": { "type": "integer", "minimum": -10000, "maximum": 10000 },
+    "backing_fact_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "until": {
+      "type": "object",
+      "properties": {
+        "event": { "type": "string" },
+        "event_any_of": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "value_lte": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "max_ticks": { "type": "integer", "minimum": 1 },
+    "message_to_user": { "type": "string" }
+  },
+  "required": ["decision"],
+  "additionalProperties": false
+}"#;
+
+fn decision_tool_parameters() -> serde_json::Value {
+    serde_json::from_str(AGENT_SUBMIT_DECISION_SCHEMA_JSON)
+        .expect("agent_submit_decision schema JSON should be valid")
+}
+
 #[cfg(test)]
 pub(super) fn responses_tools() -> Vec<Tool> {
     responses_tools_with_debug_mode(false)
@@ -67,60 +175,7 @@ pub(super) fn responses_tools_with_debug_mode(debug_mode: bool) -> Vec<Tool> {
             description: Some(
                 "提交最终决策；所有世界动作必须通过该 tool call，而不是输出文本 JSON。".to_string(),
             ),
-            parameters: Some(serde_json::json!({
-            "type": "object",
-            "properties": {
-                "decision": {
-                    "type": "string",
-                    "enum": [
-                        "wait",
-                        "wait_ticks",
-                        "move_agent",
-                        "harvest_radiation",
-                        "transfer_resource",
-                        "mine_compound",
-                        "refine_compound",
-                        "build_factory",
-                        "schedule_recipe",
-                        "execute_until"
-                    ]
-                },
-                "ticks": { "type": "integer", "minimum": 1 },
-                "to": { "type": "string" },
-                "max_amount": { "type": "integer", "minimum": 1 },
-                "from_owner": { "type": "string" },
-                "to_owner": { "type": "string" },
-                "kind": { "type": "string" },
-                "amount": { "type": "integer", "minimum": 1 },
-                "owner": { "type": "string" },
-                "compound_mass_g": { "type": "integer", "minimum": 1 },
-                "location_id": { "type": "string" },
-                "factory_id": { "type": "string" },
-                "factory_kind": { "type": "string" },
-                "recipe_id": { "type": "string" },
-                "batches": { "type": "integer", "minimum": 1 },
-                "action": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "until": {
-                    "type": "object",
-                    "properties": {
-                        "event": { "type": "string" },
-                        "event_any_of": {
-                            "type": "array",
-                            "items": { "type": "string" }
-                        },
-                        "value_lte": { "type": "integer", "minimum": 0 }
-                    },
-                    "additionalProperties": false
-                },
-                "max_ticks": { "type": "integer", "minimum": 1 },
-                "message_to_user": { "type": "string" }
-            },
-            "required": ["decision"],
-            "additionalProperties": false
-            })),
+            parameters: Some(decision_tool_parameters()),
             strict: None,
         }),
     ];

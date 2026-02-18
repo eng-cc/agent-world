@@ -4,6 +4,10 @@ use super::prompt_assembly::{PromptSectionKind, PromptSectionPriority};
 use super::LlmCompletionTurn;
 use serde::{Deserialize, Serialize};
 
+mod action_parsers;
+
+use action_parsers::parse_market_or_social_action;
+
 pub(super) fn parse_limit_arg(
     value: Option<&serde_json::Value>,
     default: usize,
@@ -64,11 +68,18 @@ struct LlmDecisionPayload {
     decision: String,
     ticks: Option<u64>,
     to: Option<String>,
+    from: Option<String>,
     max_amount: Option<i64>,
     from_owner: Option<String>,
     to_owner: Option<String>,
     kind: Option<String>,
     amount: Option<i64>,
+    buyer: Option<String>,
+    seller: Option<String>,
+    price_per_pu: Option<i64>,
+    side: Option<String>,
+    limit_price_per_pu: Option<i64>,
+    order_id: Option<u64>,
     owner: Option<String>,
     compound_mass_g: Option<i64>,
     location_id: Option<String>,
@@ -76,6 +87,32 @@ struct LlmDecisionPayload {
     factory_kind: Option<String>,
     recipe_id: Option<String>,
     batches: Option<i64>,
+    actor: Option<String>,
+    declarer: Option<String>,
+    subject: Option<String>,
+    object: Option<String>,
+    schema_id: Option<String>,
+    claim: Option<String>,
+    confidence_ppm: Option<i64>,
+    evidence_event_ids: Option<Vec<u64>>,
+    ttl_ticks: Option<u64>,
+    stake: Option<LlmSocialStakePayload>,
+    challenger: Option<String>,
+    fact_id: Option<u64>,
+    reason: Option<String>,
+    adjudicator: Option<String>,
+    #[serde(alias = "adjudication_decision", alias = "verdict")]
+    adjudication: Option<String>,
+    notes: Option<String>,
+    relation_kind: Option<String>,
+    weight_bps: Option<i64>,
+    backing_fact_ids: Option<Vec<u64>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlmSocialStakePayload {
+    kind: Option<String>,
+    amount: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -791,6 +828,12 @@ fn parse_llm_decision_value_with_error(
             })
         }
         other => {
+            if let Some(parsed_action) = parse_market_or_social_action(other, &parsed, agent_id) {
+                return match parsed_action {
+                    Ok(action) => (AgentDecision::Act(action), None),
+                    Err(err) => (AgentDecision::Wait, Some(err)),
+                };
+            }
             return (
                 AgentDecision::Wait,
                 Some(format!("unsupported decision: {other}")),

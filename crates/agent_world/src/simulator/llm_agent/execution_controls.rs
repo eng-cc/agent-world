@@ -343,6 +343,21 @@ fn action_signature(action: &Action) -> String {
         Action::HarvestRadiation { max_amount, .. } => {
             format!("harvest_radiation:{max_amount}")
         }
+        Action::BuyPower { buyer, seller, .. } => {
+            format!("buy_power:{buyer:?}:{seller:?}")
+        }
+        Action::SellPower { seller, buyer, .. } => {
+            format!("sell_power:{seller:?}:{buyer:?}")
+        }
+        Action::PlacePowerOrder { owner, side, .. } => {
+            format!("place_power_order:{owner:?}:{side:?}")
+        }
+        Action::CancelPowerOrder { owner, order_id } => {
+            format!("cancel_power_order:{owner:?}:{order_id}")
+        }
+        Action::TransferResource { from, to, kind, .. } => {
+            format!("transfer_resource:{from:?}:{to:?}:{kind:?}")
+        }
         Action::BuildFactory {
             location_id,
             factory_id,
@@ -355,6 +370,48 @@ fn action_signature(action: &Action) -> String {
             batches,
             ..
         } => format!("schedule_recipe:{factory_id}:{recipe_id}:{batches}"),
+        Action::PublishSocialFact {
+            actor,
+            schema_id,
+            subject,
+            object,
+            claim,
+            confidence_ppm,
+            evidence_event_ids,
+            ttl_ticks,
+            stake,
+        } => format!(
+            "publish_social_fact:{actor:?}:{schema_id}:{subject:?}:{object:?}:{claim}:{confidence_ppm}:{evidence_event_ids:?}:{ttl_ticks:?}:{stake:?}"
+        ),
+        Action::ChallengeSocialFact {
+            challenger,
+            fact_id,
+            reason,
+            stake,
+        } => format!("challenge_social_fact:{challenger:?}:{fact_id}:{reason}:{stake:?}"),
+        Action::AdjudicateSocialFact {
+            adjudicator,
+            fact_id,
+            decision,
+            notes,
+        } => format!("adjudicate_social_fact:{adjudicator:?}:{fact_id}:{decision:?}:{notes}"),
+        Action::RevokeSocialFact {
+            actor,
+            fact_id,
+            reason,
+        } => format!("revoke_social_fact:{actor:?}:{fact_id}:{reason}"),
+        Action::DeclareSocialEdge {
+            declarer,
+            schema_id,
+            relation_kind,
+            from,
+            to,
+            weight_bps,
+            backing_fact_ids,
+            ttl_ticks,
+        } => format!(
+            "declare_social_edge:{declarer:?}:{schema_id}:{relation_kind}:{from:?}:{to:?}:{weight_bps}:{backing_fact_ids:?}:{ttl_ticks:?}"
+        ),
         other => format!("other:{other:?}"),
     }
 }
@@ -365,6 +422,66 @@ fn actions_same(left: &Action, right: &Action) -> bool {
             left_to == right_to
         }
         (Action::HarvestRadiation { .. }, Action::HarvestRadiation { .. }) => true,
+        (
+            Action::BuyPower {
+                buyer: left_buyer,
+                seller: left_seller,
+                ..
+            },
+            Action::BuyPower {
+                buyer: right_buyer,
+                seller: right_seller,
+                ..
+            },
+        ) => left_buyer == right_buyer && left_seller == right_seller,
+        (
+            Action::SellPower {
+                seller: left_seller,
+                buyer: left_buyer,
+                ..
+            },
+            Action::SellPower {
+                seller: right_seller,
+                buyer: right_buyer,
+                ..
+            },
+        ) => left_seller == right_seller && left_buyer == right_buyer,
+        (
+            Action::PlacePowerOrder {
+                owner: left_owner,
+                side: left_side,
+                ..
+            },
+            Action::PlacePowerOrder {
+                owner: right_owner,
+                side: right_side,
+                ..
+            },
+        ) => left_owner == right_owner && left_side == right_side,
+        (
+            Action::CancelPowerOrder {
+                owner: left_owner,
+                order_id: left_order_id,
+            },
+            Action::CancelPowerOrder {
+                owner: right_owner,
+                order_id: right_order_id,
+            },
+        ) => left_owner == right_owner && left_order_id == right_order_id,
+        (
+            Action::TransferResource {
+                from: left_from,
+                to: left_to,
+                kind: left_kind,
+                ..
+            },
+            Action::TransferResource {
+                from: right_from,
+                to: right_to,
+                kind: right_kind,
+                ..
+            },
+        ) => left_from == right_from && left_to == right_to && left_kind == right_kind,
         (
             Action::BuildFactory {
                 location_id: left_location_id,
@@ -415,6 +532,96 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 owner: right_owner, ..
             },
         ) => left_owner == right_owner,
+        (
+            Action::PublishSocialFact {
+                actor: left_actor,
+                schema_id: left_schema_id,
+                subject: left_subject,
+                object: left_object,
+                claim: left_claim,
+                ..
+            },
+            Action::PublishSocialFact {
+                actor: right_actor,
+                schema_id: right_schema_id,
+                subject: right_subject,
+                object: right_object,
+                claim: right_claim,
+                ..
+            },
+        ) => {
+            left_actor == right_actor
+                && left_schema_id == right_schema_id
+                && left_subject == right_subject
+                && left_object == right_object
+                && left_claim == right_claim
+        }
+        (
+            Action::ChallengeSocialFact {
+                challenger: left_challenger,
+                fact_id: left_fact_id,
+                ..
+            },
+            Action::ChallengeSocialFact {
+                challenger: right_challenger,
+                fact_id: right_fact_id,
+                ..
+            },
+        ) => left_challenger == right_challenger && left_fact_id == right_fact_id,
+        (
+            Action::AdjudicateSocialFact {
+                adjudicator: left_adjudicator,
+                fact_id: left_fact_id,
+                decision: left_decision,
+                ..
+            },
+            Action::AdjudicateSocialFact {
+                adjudicator: right_adjudicator,
+                fact_id: right_fact_id,
+                decision: right_decision,
+                ..
+            },
+        ) => {
+            left_adjudicator == right_adjudicator
+                && left_fact_id == right_fact_id
+                && left_decision == right_decision
+        }
+        (
+            Action::RevokeSocialFact {
+                actor: left_actor,
+                fact_id: left_fact_id,
+                ..
+            },
+            Action::RevokeSocialFact {
+                actor: right_actor,
+                fact_id: right_fact_id,
+                ..
+            },
+        ) => left_actor == right_actor && left_fact_id == right_fact_id,
+        (
+            Action::DeclareSocialEdge {
+                declarer: left_declarer,
+                schema_id: left_schema_id,
+                relation_kind: left_relation_kind,
+                from: left_from,
+                to: left_to,
+                ..
+            },
+            Action::DeclareSocialEdge {
+                declarer: right_declarer,
+                schema_id: right_schema_id,
+                relation_kind: right_relation_kind,
+                from: right_from,
+                to: right_to,
+                ..
+            },
+        ) => {
+            left_declarer == right_declarer
+                && left_schema_id == right_schema_id
+                && left_relation_kind == right_relation_kind
+                && left_from == right_from
+                && left_to == right_to
+        }
         _ => false,
     }
 }
