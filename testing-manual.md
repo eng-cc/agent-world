@@ -194,6 +194,21 @@ bash "$PWCLI" close
 - `console error = 0`
 - 至少 1 张截图在 `output/playwright/viewer/`
 
+#### S6 补充约定（迁移自 `AGENTS.md`）
+- 默认链路：
+  - Web 闭环为默认，不以 native 抓图链路替代。
+- Fallback（仅 native 链路问题）：
+  - 当问题只在 native 图形链路出现，或 Web 端无法复现时，再使用：
+    - `./scripts/capture-viewer-frame.sh`
+  - 该链路定位为历史兼容/应急，不作为默认闭环流程。
+- 推荐约定：
+  - Web 闭环产物统一放在 `output/playwright/`。
+  - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
+  - 若页面首帧空白，优先排查：
+    - `trunk` 是否完成首轮编译。
+    - 访问地址是否与脚本端口一致。
+    - 浏览器控制台是否有 wasm 初始化错误。
+
 ### S7：场景矩阵回归套件（L1 + L4）
 ```bash
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture

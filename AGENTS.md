@@ -8,6 +8,7 @@
 3. 根据拆解好的任务写代码、跑测试，每次完成一个任务
   3.1 所有代码和功能(包括UI)应该都是可以被测试的，单元测试或者模拟闭环测试都可以
   3.2 所有测试都分test_tier_required或者test_tier_full
+  3.3 系统性测试流程与套件矩阵统一参考 `testing-manual.md`
 4. 每次改完代码必须回顾设计文档和项目管理文档，并更新项目管理文档
 5. 检查单个rust代码文件不能超过1200行，单个md文档不能超过500行，需要择机拆分模块和文件夹
 6. 每个任务(指项目文档里拆解的任务)完成后都需要写任务日志，跑测试
@@ -24,42 +25,7 @@
 - 使用手册都放在site/doc(cn/en)，可作为静态站内容
 
 ## Agent 专用：UI Web 闭环调试（给 Codex 用，Playwright 优先）
-- 目标：在无法直接“看实时窗口”时，完成 `启动 Web Viewer -> 自动化交互/取证 -> 继续调试` 的闭环。
-- 适用场景：`agent_world_viewer` 可视化问题定位（黑屏、布局、相机交互、文本状态等）。
-- 说明：此流程主要给 agent 使用，人类开发者可忽略。
-
-### 标准流程（Web 默认）
-1) 启动 live server（含 WebSocket bridge）：
-   `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300`
-2) 启动 Web Viewer：
-   `env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173`
-3) 使用 Playwright CLI 执行闭环采样（推荐 skill wrapper）：
-   ```bash
-   source "$HOME/.nvm/nvm.sh"
-   nvm use 24
-   export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-   export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
-   mkdir -p output/playwright/viewer
-   bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
-   bash "$PWCLI" snapshot
-   bash "$PWCLI" console
-   bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
-   bash "$PWCLI" close
-   ```
-4) 最小验收口径：
-   - 页面可加载（snapshot 可见 `canvas`）。
-   - `console error = 0`。
-   - `output/playwright/` 至少有 1 张截图产物。
-
-### Fallback（仅 native 链路问题）
-- 当问题只在 native 图形链路出现，或 Web 端无法复现时，再使用：
-  - `./scripts/capture-viewer-frame.sh`
-- 该链路定位为历史兼容/应急，不作为默认闭环流程。
-
-### 推荐约定
-- Web 闭环产物统一放在 `output/playwright/`。
-- 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
-- 若页面首帧空白，优先排查：
-  - `trunk` 是否完成首轮编译。
-  - 访问地址是否与脚本端口一致。
-  - 浏览器控制台是否有 wasm 初始化错误。
+- 目标与完整流程已迁移至 `testing-manual.md`（S6 及其补充约定）。
+- 约束保持不变：
+  - Web 闭环为默认链路（Playwright 优先）。
+  - `capture-viewer-frame.sh` 仅在 native 图形链路问题或 Web 无法复现时使用。
