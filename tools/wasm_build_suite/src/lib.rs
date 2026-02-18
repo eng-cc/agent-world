@@ -136,12 +136,18 @@ impl std::error::Error for BuildError {}
 
 #[derive(Debug, Deserialize)]
 struct CargoMetadata {
+    #[serde(default)]
+    workspace_root: String,
     packages: Vec<CargoPackage>,
     target_directory: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct CargoPackage {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    source: Option<String>,
     manifest_path: String,
     targets: Vec<CargoTarget>,
 }
@@ -201,6 +207,7 @@ pub fn run_build(request: &BuildRequest) -> Result<BuildOutput, BuildError> {
     }
 
     let metadata = read_cargo_metadata(&manifest_path)?;
+    validate_workspace_compile_time_determinism(&metadata, &manifest_path)?;
     let package = find_package_for_manifest(&metadata, &manifest_path)?;
     let target_name = find_wasm_target_name(package)?;
     let artifact_path = resolve_artifact_path(
@@ -320,6 +327,7 @@ fn read_cargo_metadata(manifest_path: &Path) -> Result<CargoMetadata, BuildError
         "metadata".to_string(),
         "--manifest-path".to_string(),
         manifest_path.to_string_lossy().to_string(),
+        "--locked".to_string(),
         "--format-version".to_string(),
         "1".to_string(),
         "--no-deps".to_string(),
@@ -393,6 +401,7 @@ fn run_cargo_build(manifest_path: &Path, target: &str, profile: &str) -> Result<
         "build".to_string(),
         "--manifest-path".to_string(),
         manifest_path.to_string_lossy().to_string(),
+        "--locked".to_string(),
         "--target".to_string(),
         target.to_string(),
         "--profile".to_string(),
@@ -402,6 +411,73 @@ fn run_cargo_build(manifest_path: &Path, target: &str, profile: &str) -> Result<
     args.extend(build_std.cargo_unstable_args());
     run_command_capture("cargo", args.as_slice())?;
     Ok(())
+}
+
+fn validate_workspace_compile_time_determinism(
+    metadata: &CargoMetadata,
+    manifest_path: &Path,
+) -> Result<(), BuildError> {
+    let enabled = env::var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME")
+        .ok()
+        .map(|raw| parse_truthy(raw.as_str()))
+        .unwrap_or(true);
+    if !enabled {
+        return Ok(());
+    }
+
+    let workspace_root = if metadata.workspace_root.trim().is_empty() {
+        manifest_path
+            .parent()
+            .map(canonical_or_original)
+            .unwrap_or_else(|| canonical_or_original(manifest_path))
+    } else {
+        canonical_or_original(Path::new(metadata.workspace_root.as_str()))
+    };
+
+    let mut offenders = Vec::new();
+    for package in &metadata.packages {
+        if package.source.is_some() {
+            continue;
+        }
+        let package_manifest = canonical_or_original(Path::new(package.manifest_path.as_str()));
+        if !package_manifest.starts_with(&workspace_root) {
+            continue;
+        }
+        let has_build_script = package
+            .targets
+            .iter()
+            .any(|target| target.kind.iter().any(|kind| kind == "custom-build"));
+        let has_proc_macro = package
+            .targets
+            .iter()
+            .any(|target| target.kind.iter().any(|kind| kind == "proc-macro"));
+        if !has_build_script && !has_proc_macro {
+            continue;
+        }
+
+        let mut reasons = Vec::new();
+        if has_build_script {
+            reasons.push("build.rs");
+        }
+        if has_proc_macro {
+            reasons.push("proc-macro");
+        }
+        offenders.push(format!(
+            "{} ({}) uses disallowed {}",
+            package.name,
+            package_manifest.display(),
+            reasons.join("+")
+        ));
+    }
+
+    if offenders.is_empty() {
+        return Ok(());
+    }
+
+    Err(BuildError::MetadataInvalid(format!(
+        "workspace compile-time nondeterminism guard blocked packages: {}",
+        offenders.join("; ")
+    )))
 }
 
 fn parse_truthy(value: &str) -> bool {
@@ -489,6 +565,30 @@ mod tests {
     use wasm_encoder::CustomSection;
     use wasmparser::Payload;
 
+    struct EnvVarGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvVarGuard {
+        fn capture(key: &'static str) -> Self {
+            Self {
+                key,
+                previous: env::var(key).ok(),
+            }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            if let Some(value) = self.previous.take() {
+                env::set_var(self.key, value);
+            } else {
+                env::remove_var(self.key);
+            }
+        }
+    }
+
     fn sample_request() -> BuildRequest {
         BuildRequest {
             module_id: "test.module".to_string(),
@@ -527,6 +627,7 @@ mod tests {
     #[test]
     fn resolve_artifact_path_maps_profile_directory() {
         let metadata = CargoMetadata {
+            workspace_root: "/tmp".to_string(),
             packages: Vec::new(),
             target_directory: "/tmp/target".to_string(),
         };
@@ -552,6 +653,8 @@ mod tests {
     #[test]
     fn find_wasm_target_prefers_cdylib_and_normalizes_name() {
         let package = CargoPackage {
+            name: "demo".to_string(),
+            source: None,
             manifest_path: "/tmp/module/Cargo.toml".to_string(),
             targets: vec![
                 CargoTarget {
@@ -568,6 +671,61 @@ mod tests {
         let target_name =
             find_wasm_target_name(&package).expect("expected cdylib target to be selected");
         assert_eq!(target_name, "demo_cdylib");
+    }
+
+    #[test]
+    fn compile_time_guard_rejects_workspace_build_script_target() {
+        let _guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        env::set_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME", "1");
+
+        let metadata = CargoMetadata {
+            workspace_root: "/workspace".to_string(),
+            target_directory: "/workspace/target".to_string(),
+            packages: vec![CargoPackage {
+                name: "m1_rule_move".to_string(),
+                source: None,
+                manifest_path: "/workspace/crates/m1_rule_move/Cargo.toml".to_string(),
+                targets: vec![
+                    CargoTarget {
+                        name: "m1_rule_move".to_string(),
+                        kind: vec!["cdylib".to_string()],
+                    },
+                    CargoTarget {
+                        name: "build_script_build".to_string(),
+                        kind: vec!["custom-build".to_string()],
+                    },
+                ],
+            }],
+        };
+        let manifest_path = Path::new("/workspace/crates/m1_rule_move/Cargo.toml");
+
+        let error = validate_workspace_compile_time_determinism(&metadata, manifest_path)
+            .expect_err("expected workspace build.rs target to be rejected");
+        assert!(matches!(error, BuildError::MetadataInvalid(_)));
+    }
+
+    #[test]
+    fn compile_time_guard_allows_external_proc_macro_package() {
+        let _guard = EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        env::set_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME", "1");
+
+        let metadata = CargoMetadata {
+            workspace_root: "/workspace".to_string(),
+            target_directory: "/workspace/target".to_string(),
+            packages: vec![CargoPackage {
+                name: "serde_derive".to_string(),
+                source: Some("registry+https://github.com/rust-lang/crates.io-index".to_string()),
+                manifest_path: "/cargo/registry/src/serde_derive/Cargo.toml".to_string(),
+                targets: vec![CargoTarget {
+                    name: "serde_derive".to_string(),
+                    kind: vec!["proc-macro".to_string()],
+                }],
+            }],
+        };
+        let manifest_path = Path::new("/workspace/crates/m1_rule_move/Cargo.toml");
+
+        validate_workspace_compile_time_determinism(&metadata, manifest_path)
+            .expect("external dependency proc-macro should be ignored by workspace guard");
     }
 
     #[test]

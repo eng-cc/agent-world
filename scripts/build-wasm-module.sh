@@ -2,13 +2,19 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WASM_TOOLCHAIN="${AGENT_WORLD_WASM_TOOLCHAIN:-nightly-2025-12-11}"
-WASM_TARGET="${AGENT_WORLD_WASM_TARGET:-wasm32-unknown-unknown}"
-WASM_BUILD_STD_ENABLED="${AGENT_WORLD_WASM_BUILD_STD:-1}"
-WASM_BUILD_STD_COMPONENTS="${AGENT_WORLD_WASM_BUILD_STD_COMPONENTS:-std,panic_abort}"
-WASM_BUILD_STD_FEATURES="${AGENT_WORLD_WASM_BUILD_STD_FEATURES:-}"
+CANONICAL_WASM_TOOLCHAIN="nightly-2025-12-11"
+CANONICAL_WASM_TARGET="wasm32-unknown-unknown"
+CANONICAL_WASM_BUILD_STD_COMPONENTS="std,panic_abort"
+CANONICAL_WASM_BUILD_STD_FEATURES=""
 
-RUSTFLAGS_EFFECTIVE="${RUSTFLAGS:-}"
+WASM_TOOLCHAIN="${AGENT_WORLD_WASM_TOOLCHAIN:-$CANONICAL_WASM_TOOLCHAIN}"
+WASM_TARGET="${AGENT_WORLD_WASM_TARGET:-$CANONICAL_WASM_TARGET}"
+WASM_BUILD_STD_ENABLED="${AGENT_WORLD_WASM_BUILD_STD:-1}"
+WASM_BUILD_STD_COMPONENTS="${AGENT_WORLD_WASM_BUILD_STD_COMPONENTS:-$CANONICAL_WASM_BUILD_STD_COMPONENTS}"
+WASM_BUILD_STD_FEATURES="${AGENT_WORLD_WASM_BUILD_STD_FEATURES:-$CANONICAL_WASM_BUILD_STD_FEATURES}"
+WASM_DETERMINISTIC_GUARD="${AGENT_WORLD_WASM_DETERMINISTIC_GUARD:-1}"
+
+RUSTFLAGS_EFFECTIVE=""
 
 is_truthy() {
   local value="$1"
@@ -16,6 +22,58 @@ is_truthy() {
     1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn]) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+require_unset_env() {
+  local key="$1"
+  if [[ -n "${!key:-}" ]]; then
+    echo "error: deterministic wasm build forbids inherited $key" >&2
+    echo "hint: unset $key or set AGENT_WORLD_WASM_DETERMINISTIC_GUARD=0 for local experiments" >&2
+    exit 1
+  fi
+}
+
+require_env_value_or_unset() {
+  local key="$1"
+  local expected="$2"
+  local actual="${!key:-}"
+  if [[ -z "$actual" ]]; then
+    return 0
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    echo "error: deterministic wasm build requires $key=$expected when set (got $actual)" >&2
+    exit 1
+  fi
+}
+
+enforce_deterministic_build_inputs() {
+  if [[ "$WASM_TOOLCHAIN" != "$CANONICAL_WASM_TOOLCHAIN" ]]; then
+    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_TOOLCHAIN=$CANONICAL_WASM_TOOLCHAIN (got $WASM_TOOLCHAIN)" >&2
+    exit 1
+  fi
+  if [[ "$WASM_TARGET" != "$CANONICAL_WASM_TARGET" ]]; then
+    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_TARGET=$CANONICAL_WASM_TARGET (got $WASM_TARGET)" >&2
+    exit 1
+  fi
+  if ! is_truthy "$WASM_BUILD_STD_ENABLED"; then
+    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD=1" >&2
+    exit 1
+  fi
+  if [[ "$WASM_BUILD_STD_COMPONENTS" != "$CANONICAL_WASM_BUILD_STD_COMPONENTS" ]]; then
+    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD_COMPONENTS=$CANONICAL_WASM_BUILD_STD_COMPONENTS (got $WASM_BUILD_STD_COMPONENTS)" >&2
+    exit 1
+  fi
+  if [[ "$WASM_BUILD_STD_FEATURES" != "$CANONICAL_WASM_BUILD_STD_FEATURES" ]]; then
+    echo "error: deterministic wasm build requires AGENT_WORLD_WASM_BUILD_STD_FEATURES to be empty (got $WASM_BUILD_STD_FEATURES)" >&2
+    exit 1
+  fi
+
+  require_unset_env "RUSTFLAGS"
+  require_unset_env "CARGO_ENCODED_RUSTFLAGS"
+  require_unset_env "CARGO_BUILD_RUSTFLAGS"
+  require_unset_env "CARGO_TARGET_DIR"
+  require_unset_env "RUSTC_BOOTSTRAP"
+  require_env_value_or_unset "RUSTUP_TOOLCHAIN" "$CANONICAL_WASM_TOOLCHAIN"
 }
 
 prepare_nightly_build_std() {
@@ -45,10 +103,18 @@ append_rustflag_once() {
   fi
 }
 
+if is_truthy "$WASM_DETERMINISTIC_GUARD"; then
+  enforce_deterministic_build_inputs
+fi
+
 if is_truthy "$WASM_BUILD_STD_ENABLED"; then
   prepare_nightly_build_std
 else
   export AGENT_WORLD_WASM_BUILD_STD=0
+fi
+
+if ! is_truthy "$WASM_DETERMINISTIC_GUARD"; then
+  RUSTFLAGS_EFFECTIVE="${RUSTFLAGS:-}"
 fi
 
 # Normalize host-specific absolute paths so wasm bytes stay stable across machines.
@@ -79,6 +145,13 @@ if [[ -n "$RUSTC_SYSROOT" ]]; then
   append_rustflag_once "--remap-path-prefix=$RUSTC_SYSROOT=/rustup/toolchain"
 fi
 export RUSTFLAGS="$RUSTFLAGS_EFFECTIVE"
+
+# Keep reproducible-build friendly defaults for any tool consuming these env vars.
+export CARGO_INCREMENTAL=0
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
+export TZ=UTC
+export LANG=C
+export LC_ALL=C
 
 env -u RUSTC_WRAPPER cargo run \
   --quiet \
