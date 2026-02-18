@@ -70,4 +70,6 @@ mod persist;
 mod physics_parameters;
 mod power;
 mod runner;
+mod social;
+mod social_persist;
 mod submitter_access;
