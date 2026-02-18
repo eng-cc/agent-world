@@ -9,6 +9,9 @@ use agent_world_wasm_abi::{
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 #[cfg(feature = "wasmtime")]
+use std::fs;
+use std::path::PathBuf;
+#[cfg(feature = "wasmtime")]
 use std::sync::{Arc, Mutex};
 
 /// A sandbox stub that always returns a fixed result.
@@ -44,6 +47,7 @@ pub struct WasmExecutorConfig {
     pub max_output_bytes: u64,
     pub max_call_ms: u64,
     pub max_cache_entries: usize,
+    pub compiled_cache_dir: Option<PathBuf>,
 }
 
 /// Selected WASM engine backend.
@@ -61,6 +65,7 @@ impl Default for WasmExecutorConfig {
             max_output_bytes: 4 * 1024 * 1024,
             max_call_ms: 2_000,
             max_cache_entries: 32,
+            compiled_cache_dir: None,
         }
     }
 }
@@ -73,6 +78,8 @@ pub struct WasmExecutor {
     engine: wasmtime::Engine,
     #[cfg(feature = "wasmtime")]
     compiled_cache: Arc<Mutex<CompiledModuleCache>>,
+    #[cfg(feature = "wasmtime")]
+    compiled_disk_cache: Option<Arc<DiskCompiledModuleCache>>,
 }
 
 impl fmt::Debug for WasmExecutor {
@@ -100,10 +107,20 @@ impl WasmExecutor {
             let compiled_cache = Arc::new(Mutex::new(CompiledModuleCache::new(
                 config.max_cache_entries,
             )));
+            let compiled_disk_cache = config
+                .compiled_cache_dir
+                .clone()
+                .map(|root| {
+                    let fingerprint = compiled_engine_fingerprint(&config);
+                    DiskCompiledModuleCache::new(root, fingerprint)
+                })
+                .transpose()
+                .expect("failed to initialize wasmtime compiled disk cache");
             Self {
                 config,
                 engine,
                 compiled_cache,
+                compiled_disk_cache: compiled_disk_cache.map(Arc::new),
             }
         }
 
@@ -142,6 +159,12 @@ impl WasmExecutor {
         }
         drop(cache);
 
+        if let Some(module) = self.load_compiled_module_from_disk(wasm_hash) {
+            let mut cache = self.compiled_cache.lock().expect("compiled cache poisoned");
+            cache.insert(wasm_hash.to_string(), module.clone());
+            return Ok(module);
+        }
+
         let module = wasmtime::Module::new(&self.engine, wasm_bytes).map_err(|err| {
             self.failure(
                 &ModuleCallRequest {
@@ -158,9 +181,59 @@ impl WasmExecutor {
             )
         })?;
         let module = Arc::new(module);
+        self.store_compiled_module_to_disk(wasm_hash, &module);
         let mut cache = self.compiled_cache.lock().expect("compiled cache poisoned");
         cache.insert(wasm_hash.to_string(), module.clone());
         Ok(module)
+    }
+
+    #[cfg(feature = "wasmtime")]
+    fn load_compiled_module_from_disk(&self, wasm_hash: &str) -> Option<Arc<wasmtime::Module>> {
+        let disk_cache = self.compiled_disk_cache.as_ref()?;
+        let path = disk_cache.module_path(wasm_hash);
+        if !path.exists() {
+            return None;
+        }
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                let _ = fs::remove_file(&path);
+                return None;
+            }
+        };
+        match unsafe { wasmtime::Module::deserialize(&self.engine, &bytes) } {
+            Ok(module) => Some(Arc::new(module)),
+            Err(_) => {
+                let _ = fs::remove_file(&path);
+                None
+            }
+        }
+    }
+
+    #[cfg(feature = "wasmtime")]
+    fn store_compiled_module_to_disk(&self, wasm_hash: &str, module: &Arc<wasmtime::Module>) {
+        let Some(disk_cache) = self.compiled_disk_cache.as_ref() else {
+            return;
+        };
+        let path = disk_cache.module_path(wasm_hash);
+        let Some(parent) = path.parent() else {
+            return;
+        };
+        if fs::create_dir_all(parent).is_err() {
+            return;
+        }
+        let serialized = match module.serialize() {
+            Ok(bytes) => bytes,
+            Err(_) => return,
+        };
+        let _ = fs::write(path, serialized);
+    }
+
+    #[cfg(all(feature = "wasmtime", test))]
+    pub(crate) fn compiled_disk_cache_path_for_test(&self, wasm_hash: &str) -> Option<PathBuf> {
+        self.compiled_disk_cache
+            .as_ref()
+            .map(|cache| cache.module_path(wasm_hash))
     }
 
     fn failure(
@@ -508,6 +581,58 @@ impl ModuleSandbox for WasmExecutor {
 }
 
 #[cfg(feature = "wasmtime")]
+fn compiled_engine_fingerprint(config: &WasmExecutorConfig) -> String {
+    format!(
+        "wasmtime-cf-v1-fuel{}-mem{}-out{}-call{}",
+        config.max_fuel, config.max_mem_bytes, config.max_output_bytes, config.max_call_ms
+    )
+}
+
+#[cfg(feature = "wasmtime")]
+fn sanitize_cache_key(raw: &str) -> String {
+    let mut key = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            key.push(ch);
+        } else {
+            key.push('_');
+        }
+    }
+    if key.is_empty() {
+        key.push_str("module");
+    }
+    key
+}
+
+#[cfg(feature = "wasmtime")]
+#[derive(Debug, Clone)]
+struct DiskCompiledModuleCache {
+    root: PathBuf,
+    engine_fingerprint: String,
+}
+
+#[cfg(feature = "wasmtime")]
+impl DiskCompiledModuleCache {
+    fn new(root: PathBuf, engine_fingerprint: String) -> std::io::Result<Self> {
+        let cache = Self {
+            root,
+            engine_fingerprint,
+        };
+        fs::create_dir_all(cache.cache_dir())?;
+        Ok(cache)
+    }
+
+    fn cache_dir(&self) -> PathBuf {
+        self.root.join(&self.engine_fingerprint)
+    }
+
+    fn module_path(&self, wasm_hash: &str) -> PathBuf {
+        let key = sanitize_cache_key(wasm_hash);
+        self.cache_dir().join(format!("{key}.cwasm"))
+    }
+}
+
+#[cfg(feature = "wasmtime")]
 #[derive(Debug)]
 struct CompiledModuleCache {
     max_entries: usize,
@@ -567,6 +692,12 @@ impl CompiledModuleCache {
 mod tests {
     use super::*;
     use agent_world_wasm_abi::ModuleLimits;
+    #[cfg(feature = "wasmtime")]
+    use std::fs;
+    #[cfg(feature = "wasmtime")]
+    use std::path::PathBuf;
+    #[cfg(feature = "wasmtime")]
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn make_request(limits: ModuleLimits) -> ModuleCallRequest {
         ModuleCallRequest {
@@ -728,5 +859,66 @@ mod tests {
 
         executor.compile_module_cached("hash-b", &wasm).unwrap();
         assert_eq!(executor.compiled_cache_len(), 0);
+    }
+
+    #[cfg(feature = "wasmtime")]
+    fn unique_temp_cache_dir(suffix: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock drift")
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("agent-world-wasm-cache-{suffix}-{nonce}"));
+        fs::create_dir_all(&dir).expect("create temp cache dir");
+        dir
+    }
+
+    #[cfg(feature = "wasmtime")]
+    #[test]
+    fn wasm_executor_disk_cache_hits_when_memory_cache_disabled() {
+        let cache_dir = unique_temp_cache_dir("hit");
+        let executor = WasmExecutor::new(WasmExecutorConfig {
+            max_cache_entries: 0,
+            compiled_cache_dir: Some(cache_dir.clone()),
+            ..WasmExecutorConfig::default()
+        });
+        let wasm = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+        let invalid_wasm = [0x01, 0x02, 0x03];
+
+        executor
+            .compile_module_cached("hash-disk-hit", &wasm)
+            .unwrap();
+        executor
+            .compile_module_cached("hash-disk-hit", &invalid_wasm)
+            .expect("load compiled module from disk cache");
+
+        let _ = fs::remove_dir_all(cache_dir);
+    }
+
+    #[cfg(feature = "wasmtime")]
+    #[test]
+    fn wasm_executor_disk_cache_recovers_from_corruption() {
+        let cache_dir = unique_temp_cache_dir("corrupt");
+        let executor = WasmExecutor::new(WasmExecutorConfig {
+            max_cache_entries: 0,
+            compiled_cache_dir: Some(cache_dir.clone()),
+            ..WasmExecutorConfig::default()
+        });
+        let wasm = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+        let wasm_hash = "hash-disk-corrupt";
+
+        executor.compile_module_cached(wasm_hash, &wasm).unwrap();
+        let cache_file = executor
+            .compiled_disk_cache_path_for_test(wasm_hash)
+            .expect("cache path");
+        fs::write(&cache_file, b"corrupt-bytes").expect("write corrupt cache");
+
+        executor
+            .compile_module_cached(wasm_hash, &wasm)
+            .expect("recompile after corrupt cache");
+
+        let repaired = fs::read(&cache_file).expect("read repaired cache");
+        assert_ne!(repaired, b"corrupt-bytes");
+
+        let _ = fs::remove_dir_all(cache_dir);
     }
 }
