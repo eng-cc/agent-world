@@ -51,8 +51,17 @@ run_agent_world_full_tier_tests() {
   run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration"
 }
 
+run_required_builtin_wasm_checks() {
+  if [[ "${CI:-}" == "true" || "${AGENT_WORLD_FORCE_M1_WASM_CHECK:-}" == "1" ]]; then
+    run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
+  else
+    echo "+ skip m1 wasm hash check (set CI=true or AGENT_WORLD_FORCE_M1_WASM_CHECK=1 to enable)"
+  fi
+}
+
 run_required_gate_checks() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
+  run_required_builtin_wasm_checks
 }
 
 echo "+ ci test tier: $tier"
