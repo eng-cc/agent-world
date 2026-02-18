@@ -1,9 +1,9 @@
 #![cfg(any(feature = "test_tier_required", feature = "test_tier_full"))]
 
 use agent_world::runtime::{
-    Action, CapabilityGrant, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits,
-    ModuleManifest, ModuleRole, ModuleSubscription, PolicySet, ProposalDecision, World,
-    WorldEventBody,
+    Action, CapabilityGrant, Manifest, ModuleAbiContract, ModuleActivation, ModuleChangeSet,
+    ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription, PolicySet,
+    ProposalDecision, World, WorldEventBody,
 };
 use agent_world::GeoPos;
 use agent_world_wasm_abi::{ModuleEmit, ModuleOutput};
@@ -67,6 +67,7 @@ fn module_subscription_event_filters_by_agent_id() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -151,6 +152,7 @@ fn module_subscription_action_filters_by_agent_id() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
@@ -235,6 +237,7 @@ fn module_subscription_invalid_filter_is_rejected() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -303,6 +306,7 @@ fn module_subscription_rejects_mixed_kinds_without_stage() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -367,6 +371,7 @@ fn module_subscription_rejects_action_kinds_in_post_event_stage() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
@@ -431,6 +436,7 @@ fn module_subscription_any_matches() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -517,6 +523,7 @@ fn module_subscription_numeric_range_matches() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -604,6 +611,7 @@ fn module_subscription_regex_matches() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),

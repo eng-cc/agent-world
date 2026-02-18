@@ -256,10 +256,24 @@ pub struct ModuleManifest {
     pub subscriptions: Vec<ModuleSubscription>,
     #[serde(default)]
     pub required_caps: Vec<String>,
+    #[serde(default)]
+    pub abi_contract: ModuleAbiContract,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artifact_identity: Option<ModuleArtifactIdentity>,
     #[serde(default)]
     pub limits: ModuleLimits,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct ModuleAbiContract {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub abi_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_schema: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_schema: Option<String>,
+    #[serde(default)]
+    pub cap_slots: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

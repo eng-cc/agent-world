@@ -1,7 +1,8 @@
 use super::pos;
 use crate::runtime::{
-    util, Action, CapabilityGrant, MaterialLedgerId, ModuleActivation, ModuleChangeSet, ModuleKind,
-    ModuleLimits, ModuleManifest, ModuleRole, PolicySet, ProposalDecision, World,
+    util, Action, CapabilityGrant, MaterialLedgerId, ModuleAbiContract, ModuleActivation,
+    ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest, ModuleRole, PolicySet,
+    ProposalDecision, World,
 };
 use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{
@@ -46,6 +47,7 @@ fn activate_pure_module(world: &mut World, module_id: &str, wasm_seed: &[u8]) {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),

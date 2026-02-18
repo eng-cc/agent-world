@@ -1,5 +1,5 @@
 use super::super::{
-    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation,
+    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleAbiContract, ModuleActivation,
     ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ProposalDecision,
     WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
@@ -209,6 +209,7 @@ fn m1_radiation_power_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Domain,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -252,6 +253,7 @@ fn m1_storage_power_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Body,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -295,6 +297,7 @@ fn m1_sensor_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Body,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -338,6 +341,7 @@ fn m1_mobility_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Body,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -381,6 +385,7 @@ fn m1_memory_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::AgentInternal,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.*".to_string()],
@@ -414,6 +419,7 @@ fn m1_storage_cargo_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Body,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec![

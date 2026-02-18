@@ -50,6 +50,7 @@ fn governance_module_happy_path_updates_registry() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
@@ -108,6 +109,7 @@ fn shadow_failure_blocks_apply() {
         role: ModuleRole::Domain,
         wasm_hash: "missing-hash".to_string(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
@@ -153,6 +155,7 @@ fn module_routing_emits_event() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -239,6 +242,7 @@ fn replay_preserves_module_events() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],

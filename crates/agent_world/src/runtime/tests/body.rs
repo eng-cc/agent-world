@@ -20,6 +20,7 @@ fn install_m1_body_module(world: &mut World) {
         role: ModuleRole::Body,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),

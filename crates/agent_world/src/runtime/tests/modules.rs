@@ -26,6 +26,7 @@ fn apply_module_changes_registers_and_activates() {
         role: ModuleRole::Domain,
         wasm_hash: wasm_hash.clone(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["WeatherTick".to_string()],
@@ -120,6 +121,7 @@ fn shadow_rejects_missing_module_artifact() {
         role: ModuleRole::Domain,
         wasm_hash: "missing-hash".to_string(),
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
@@ -165,6 +167,7 @@ fn shadow_rejects_incomplete_module_artifact_identity() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
@@ -217,6 +220,7 @@ fn shadow_rejects_module_artifact_identity_signature_mismatch() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
@@ -249,6 +253,114 @@ fn shadow_rejects_module_artifact_identity_signature_mismatch() {
         panic!("expected ModuleChangeInvalid");
     };
     assert!(reason.contains("artifact_identity signature mismatch"));
+}
+
+#[test]
+fn shadow_rejects_unsupported_module_abi_version() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-abi-version";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract {
+            abi_version: Some(2),
+            input_schema: Some("schema.input@1".to_string()),
+            output_schema: Some("schema.output@1".to_string()),
+            cap_slots: Default::default(),
+        },
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
+        limits: ModuleLimits::default(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("abi_version unsupported"));
+}
+
+#[test]
+fn shadow_rejects_partial_module_schema_contract() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-schema-contract";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract {
+            abi_version: Some(1),
+            input_schema: Some("schema.input@1".to_string()),
+            output_schema: None,
+            cap_slots: Default::default(),
+        },
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
+        limits: ModuleLimits::default(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("input_schema/output_schema pair"));
 }
 
 #[test]
@@ -324,6 +436,7 @@ fn module_call_queues_effects_and_emits() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
@@ -424,6 +537,7 @@ fn module_call_policy_denied_records_failure() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: Vec::new(),
         required_caps: vec!["cap.weather".to_string()],
@@ -534,6 +648,7 @@ fn step_with_modules_routes_domain_events() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -623,6 +738,7 @@ fn step_with_modules_routes_actions() {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
@@ -748,6 +864,7 @@ fn module_calls_use_entrypoint_for_kind() {
         role: ModuleRole::Domain,
         wasm_hash: reducer_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],
@@ -775,6 +892,7 @@ fn module_calls_use_entrypoint_for_kind() {
         role: ModuleRole::Domain,
         wasm_hash: pure_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],

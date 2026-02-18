@@ -1,9 +1,9 @@
 #![cfg(all(feature = "wasmtime", feature = "test_tier_full"))]
 
 use agent_world::runtime::{
-    Action, Manifest, ModuleActivation, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, PolicySet, ProposalDecision, World,
-    WorldEventBody,
+    Action, Manifest, ModuleAbiContract, ModuleActivation, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
+    PolicySet, ProposalDecision, World, WorldEventBody,
 };
 use agent_world::GeoPos;
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
@@ -45,6 +45,7 @@ fn wasm_executor_module_manifest(wasm_hash: String) -> ModuleManifest {
         role: ModuleRole::Domain,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: vec!["domain.agent_registered".to_string()],

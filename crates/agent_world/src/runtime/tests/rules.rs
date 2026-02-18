@@ -29,6 +29,7 @@ fn install_m1_move_rule(world: &mut World) {
         role: ModuleRole::Rule,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -98,6 +99,7 @@ fn install_m1_visibility_rule(world: &mut World) {
         role: ModuleRole::Rule,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -167,6 +169,7 @@ fn install_m1_transfer_rule(world: &mut World) {
         role: ModuleRole::Rule,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions: vec![
             ModuleSubscription {
@@ -266,6 +269,7 @@ fn install_rule_modules(world: &mut World, action_kind: &str, module_ids: &[&str
             role: ModuleRole::Rule,
             wasm_hash,
             interface_version: "wasm-1".to_string(),
+            abi_contract: ModuleAbiContract::default(),
             exports: vec!["call".to_string()],
             subscriptions: vec![ModuleSubscription {
                 event_kinds: Vec::new(),
@@ -363,6 +367,7 @@ fn rule_decision_override_and_cost_apply() {
         role: ModuleRole::Rule,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),
@@ -468,6 +473,7 @@ fn rule_decision_rejects_on_insufficient_resources() {
         role: ModuleRole::Rule,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: vec![ModuleSubscription {
             event_kinds: Vec::new(),

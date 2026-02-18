@@ -54,6 +54,7 @@ fn install_builtin_module(
         role,
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["reduce".to_string()],
         subscriptions,
         required_caps: Vec::new(),

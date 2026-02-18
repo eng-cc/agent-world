@@ -228,6 +228,7 @@ mod tests {
             role: ModuleRole::Domain,
             wasm_hash: hash.to_string(),
             interface_version: "wasm-1".to_string(),
+            abi_contract: agent_world_wasm_abi::ModuleAbiContract::default(),
             exports: vec!["reduce".to_string()],
             subscriptions: Vec::<ModuleSubscription>::new(),
             required_caps: Vec::new(),

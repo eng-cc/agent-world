@@ -1,5 +1,5 @@
 use super::super::{
-    m4_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleActivation,
+    m4_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleAbiContract, ModuleActivation,
     ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
     ModuleRegistry, ModuleRole, ProposalDecision, WorldError, M4_ECONOMY_MODULE_VERSION,
     M4_FACTORY_ASSEMBLER_MODULE_ID, M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID,
@@ -209,6 +209,7 @@ fn m4_manifest(
         artifact_identity: Some(m4_bootstrap_artifact_identity(module_id, &wasm_hash)),
         wasm_hash,
         interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
         exports: vec!["call".to_string()],
         subscriptions: Vec::new(),
         required_caps: Vec::new(),
