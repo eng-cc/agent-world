@@ -12,7 +12,7 @@
   - action/event/model/kernel/replay
   - llm parser/prompt/schema
   - required tests
-- [ ] T3：回归与收口
+- [x] T3：回归与收口
   - `env -u RUSTC_WRAPPER cargo check`
   - 定向 required tests
   - 项目文档状态 + devlog 回写
@@ -30,6 +30,6 @@
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态
-- 当前阶段：T0/T1/T2 完成，T3 进行中。
+- 当前阶段：T0/T1/T2/T3 全部完成。
 - 阻塞项：无。
-- 下一步：执行 T3（回归与收口）。
+- 下一步：无（README 缺口 1/2 收口完成）。
