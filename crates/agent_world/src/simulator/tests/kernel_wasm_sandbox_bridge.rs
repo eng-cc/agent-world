@@ -19,6 +19,7 @@ fn empty_output() -> ModuleOutput {
         new_state: None,
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     }
 }
@@ -31,6 +32,7 @@ fn decision_output(decision: KernelRuleDecision) -> ModuleOutput {
             kind: "rule.decision".to_string(),
             payload: serde_json::to_value(decision).expect("serialize decision"),
         }],
+        tick_lifecycle: None,
         output_bytes: 128,
     }
 }

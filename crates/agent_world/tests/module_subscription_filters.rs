@@ -117,6 +117,7 @@ fn module_subscription_event_filters_by_agent_id() {
             kind: "Hit".to_string(),
             payload: json!({"agent": "agent-keep"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -202,6 +203,7 @@ fn module_subscription_action_filters_by_agent_id() {
             kind: "ActionSeen".to_string(),
             payload: json!({"agent": "agent-keep"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -488,6 +490,7 @@ fn module_subscription_any_matches() {
             kind: "Hit".to_string(),
             payload: json!({"agent": "agent-keep"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -576,6 +579,7 @@ fn module_subscription_numeric_range_matches() {
             kind: "Hit".to_string(),
             payload: json!({"agent": "agent-in"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -663,6 +667,7 @@ fn module_subscription_regex_matches() {
             kind: "ActionSeen".to_string(),
             payload: json!({"agent": "agent-123"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);

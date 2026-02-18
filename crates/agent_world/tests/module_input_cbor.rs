@@ -45,6 +45,7 @@ impl ModuleSandbox for InspectSandbox {
             new_state: None,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         })
     }

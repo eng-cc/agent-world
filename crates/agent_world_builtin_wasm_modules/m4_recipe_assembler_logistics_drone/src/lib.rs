@@ -155,6 +155,7 @@ fn emit_recipe_plan(plan: RecipeExecutionPlanData) -> Vec<u8> {
             kind: RECIPE_EXECUTION_PLAN_EMIT_KIND.to_string(),
             payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 512,
     })
 }

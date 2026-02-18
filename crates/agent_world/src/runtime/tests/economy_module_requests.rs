@@ -134,6 +134,7 @@ impl ModuleSandbox for CaptureEconomyRequestSandbox {
             new_state: None,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         }))
     }
@@ -183,6 +184,7 @@ fn build_factory_with_module_request_exposes_available_inputs_by_ledger() {
             ))
             .expect("serialize factory build decision"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = CaptureEconomyRequestSandbox::with_outputs(vec![output]);
@@ -265,6 +267,7 @@ fn schedule_recipe_with_module_request_exposes_available_inputs_by_ledger() {
             ))
             .expect("serialize recipe execution plan"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = CaptureEconomyRequestSandbox::with_outputs(vec![output]);

@@ -128,6 +128,7 @@ fn emit_factory_decision(decision: FactoryBuildDecisionData) -> Vec<u8> {
             kind: FACTORY_BUILD_DECISION_EMIT_KIND.to_string(),
             payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 512,
     })
 }

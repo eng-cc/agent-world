@@ -64,6 +64,23 @@ pub fn validate_subscription_stage(
                 ));
             }
         }
+        Some(ModuleSubscriptionStage::Tick) => {
+            if has_events || has_actions {
+                return Err(format!(
+                    "module {module_id} subscription tick stage cannot include event_kinds or action_kinds"
+                ));
+            }
+            if subscription.filters.is_some()
+                && !subscription
+                    .filters
+                    .as_ref()
+                    .is_some_and(|value| value.is_null())
+            {
+                return Err(format!(
+                    "module {module_id} subscription tick stage cannot include filters"
+                ));
+            }
+        }
         None => {
             if has_events && has_actions {
                 return Err(format!(
@@ -485,6 +502,15 @@ mod tests {
                 },
                 "action stage cannot include event_kinds",
             ),
+            (
+                ModuleSubscription {
+                    event_kinds: vec!["world.tick".to_string()],
+                    action_kinds: Vec::new(),
+                    stage: Some(ModuleSubscriptionStage::Tick),
+                    filters: None,
+                },
+                "tick stage cannot include event_kinds or action_kinds",
+            ),
         ];
 
         for (subscription, expected) in cases {
@@ -510,6 +536,14 @@ mod tests {
             filters: None,
         };
         validate_subscription_stage(&action_only, "m.test").unwrap();
+
+        let tick = ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: Vec::new(),
+            stage: Some(ModuleSubscriptionStage::Tick),
+            filters: None,
+        };
+        validate_subscription_stage(&tick, "m.test").unwrap();
     }
 
     #[test]

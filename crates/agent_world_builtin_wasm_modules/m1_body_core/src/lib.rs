@@ -41,6 +41,7 @@ fn rule_emit_output(decision_payload: Value) -> Vec<u8> {
             kind: RULE_DECISION_EMIT_KIND.to_string(),
             payload: decision_payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 0,
     };
     encode_output(output)

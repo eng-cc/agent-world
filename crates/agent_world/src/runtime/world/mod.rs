@@ -13,6 +13,7 @@ mod logistics;
 mod module_actions;
 mod module_runtime;
 mod module_runtime_labels;
+mod module_tick_runtime;
 mod persistence;
 mod policy;
 mod resources;
@@ -58,6 +59,8 @@ pub struct World {
     pending_actions: VecDeque<ActionEnvelope>,
     pending_effects: VecDeque<EffectIntent>,
     inflight_effects: BTreeMap<String, EffectIntent>,
+    #[serde(default)]
+    module_tick_schedule: BTreeMap<String, u64>,
     capabilities: BTreeMap<String, CapabilityGrant>,
     policies: PolicySet,
     proposals: BTreeMap<ProposalId, Proposal>,
@@ -90,6 +93,7 @@ impl World {
             pending_actions: VecDeque::new(),
             pending_effects: VecDeque::new(),
             inflight_effects: BTreeMap::new(),
+            module_tick_schedule: BTreeMap::new(),
             capabilities: BTreeMap::new(),
             policies: PolicySet::default(),
             proposals: BTreeMap::new(),

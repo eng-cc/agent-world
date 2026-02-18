@@ -343,6 +343,7 @@ fn rule_decision_output(decision: RuleDecision) -> ModuleOutput {
             kind: "rule.decision".to_string(),
             payload: serde_json::to_value(decision).unwrap(),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     }
 }
@@ -433,6 +434,7 @@ fn rule_decision_override_and_cost_apply() {
             kind: "rule.decision".to_string(),
             payload: serde_json::to_value(&decision).unwrap(),
         }],
+        tick_lifecycle: None,
         output_bytes: 128,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -535,6 +537,7 @@ fn rule_decision_rejects_on_insufficient_resources() {
             kind: "rule.decision".to_string(),
             payload: serde_json::to_value(&decision).unwrap(),
         }],
+        tick_lifecycle: None,
         output_bytes: 128,
     };
     let mut sandbox = FixedSandbox::succeed(output);

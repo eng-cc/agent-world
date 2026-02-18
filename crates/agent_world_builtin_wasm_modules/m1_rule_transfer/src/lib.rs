@@ -128,6 +128,7 @@ fn rule_emit_output(decision_payload: Value) -> Vec<u8> {
             kind: RULE_DECISION_EMIT_KIND.to_string(),
             payload: decision_payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 0,
     };
     encode_output(output)
@@ -146,6 +147,7 @@ fn build_state_tracking_event_output(
         new_state,
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }

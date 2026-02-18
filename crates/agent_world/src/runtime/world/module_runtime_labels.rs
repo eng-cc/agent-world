@@ -95,6 +95,7 @@ pub(super) fn subscription_stage_label(stage: ModuleSubscriptionStage) -> &'stat
         ModuleSubscriptionStage::PreAction => "pre_action",
         ModuleSubscriptionStage::PostAction => "post_action",
         ModuleSubscriptionStage::PostEvent => "post_event",
+        ModuleSubscriptionStage::Tick => "tick",
     }
 }
 

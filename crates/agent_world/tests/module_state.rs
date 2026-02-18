@@ -54,6 +54,7 @@ impl ModuleSandbox for StateCaptureSandbox {
             new_state: Some(self.next_state.clone()),
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         })
     }
@@ -207,6 +208,7 @@ fn pure_module_new_state_is_rejected() {
         new_state: Some(b"bad".to_vec()),
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     };
     let mut sandbox = FixedSandbox::succeed(output);

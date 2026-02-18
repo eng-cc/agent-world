@@ -73,6 +73,8 @@ pub struct Snapshot {
     pub pending_actions: Vec<ActionEnvelope>,
     pub pending_effects: Vec<EffectIntent>,
     pub inflight_effects: BTreeMap<String, EffectIntent>,
+    #[serde(default)]
+    pub module_tick_schedule: BTreeMap<String, WorldTime>,
     pub capabilities: BTreeMap<String, CapabilityGrant>,
     pub policies: PolicySet,
     pub proposals: BTreeMap<ProposalId, Proposal>,

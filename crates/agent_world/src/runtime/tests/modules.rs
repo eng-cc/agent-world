@@ -1,13 +1,14 @@
 use super::super::*;
 use super::pos;
 use agent_world_wasm_abi::{
-    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEffectIntent, ModuleEmit,
-    ModuleOutput, ModuleSandbox,
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEffectIntent,
+    ModuleEmit, ModuleOutput, ModuleSandbox, ModuleTickLifecycleDirective,
 };
 use agent_world_wasm_executor::FixedSandbox;
 #[cfg(not(feature = "wasmtime"))]
 use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde_json::json;
+use std::collections::VecDeque;
 
 #[test]
 fn apply_module_changes_registers_and_activates() {
@@ -549,6 +550,7 @@ fn module_call_queues_effects_and_emits() {
             kind: "WeatherTick".to_string(),
             payload: json!({"ok": true}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 
@@ -646,6 +648,7 @@ fn module_call_resolves_effect_cap_from_cap_slot() {
             cap_slot: Some("weather_api".to_string()),
         }],
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 
@@ -734,6 +737,7 @@ fn module_call_rejects_effect_with_unbound_cap_slot() {
             cap_slot: Some("missing_slot".to_string()),
         }],
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 
@@ -838,6 +842,7 @@ fn module_call_policy_denied_records_failure() {
             cap_slot: None,
         }],
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 
@@ -875,6 +880,7 @@ impl ModuleSandbox for PurePolicyHookSandbox {
                     cap_slot: None,
                 }],
                 emits: Vec::new(),
+                tick_lifecycle: None,
                 output_bytes: 64,
             }),
             "m.policy.allow" => Ok(ModuleOutput {
@@ -884,6 +890,7 @@ impl ModuleSandbox for PurePolicyHookSandbox {
                     kind: "policy.allow".to_string(),
                     payload: json!({}),
                 }],
+                tick_lifecycle: None,
                 output_bytes: 32,
             }),
             "m.policy.deny" => Ok(ModuleOutput {
@@ -893,6 +900,7 @@ impl ModuleSandbox for PurePolicyHookSandbox {
                     kind: "policy.deny".to_string(),
                     payload: json!({"reason": "blocked_by_pure_policy"}),
                 }],
+                tick_lifecycle: None,
                 output_bytes: 32,
             }),
             other => Err(ModuleCallFailure {
@@ -1210,6 +1218,7 @@ fn step_with_modules_routes_domain_events() {
             kind: "AgentRegistered".to_string(),
             payload: json!({"ok": true}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -1300,6 +1309,7 @@ fn step_with_modules_routes_actions() {
             kind: "ActionSeen".to_string(),
             payload: json!({"agent": "agent-1"}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -1327,6 +1337,134 @@ fn step_with_modules_routes_actions() {
 }
 
 #[derive(Default)]
+struct TickLifecycleSandbox {
+    calls: Vec<ModuleCallRequest>,
+    outputs: VecDeque<ModuleOutput>,
+}
+
+impl TickLifecycleSandbox {
+    fn with_outputs(outputs: Vec<ModuleOutput>) -> Self {
+        Self {
+            calls: Vec::new(),
+            outputs: outputs.into(),
+        }
+    }
+}
+
+impl ModuleSandbox for TickLifecycleSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        self.calls.push(request.clone());
+        Ok(self.outputs.pop_front().unwrap_or(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::Suspend),
+            output_bytes: 0,
+        }))
+    }
+}
+
+#[test]
+fn step_with_modules_routes_tick_lifecycle_with_wake_and_suspend() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-tick-router";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.tick-router".to_string(),
+        name: "TickRouter".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: Vec::new(),
+            stage: Some(ModuleSubscriptionStage::Tick),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let mut sandbox = TickLifecycleSandbox::with_outputs(vec![
+        ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::WakeAfterTicks { ticks: 2 }),
+            output_bytes: 0,
+        },
+        ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::Suspend),
+            output_bytes: 0,
+        },
+    ]);
+
+    world.step_with_modules(&mut sandbox).expect("tick 1");
+    world.step_with_modules(&mut sandbox).expect("tick 2");
+    world.step_with_modules(&mut sandbox).expect("tick 3");
+    world.step_with_modules(&mut sandbox).expect("tick 4");
+
+    assert_eq!(
+        sandbox.calls.len(),
+        2,
+        "tick module should run at t=1 and t=3"
+    );
+    let first_input: ModuleCallInput =
+        serde_cbor::from_slice(&sandbox.calls[0].input).expect("decode first tick input");
+    let second_input: ModuleCallInput =
+        serde_cbor::from_slice(&sandbox.calls[1].input).expect("decode second tick input");
+    assert_eq!(first_input.ctx.stage.as_deref(), Some("tick"));
+    assert_eq!(first_input.ctx.origin.kind, "tick");
+    assert_eq!(second_input.ctx.stage.as_deref(), Some("tick"));
+    assert_eq!(second_input.ctx.origin.kind, "tick");
+}
+
+#[derive(Default)]
 struct CaptureEntrypointSandbox {
     entrypoints: Vec<String>,
 }
@@ -1338,6 +1476,7 @@ impl ModuleSandbox for CaptureEntrypointSandbox {
             new_state: None,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         })
     }

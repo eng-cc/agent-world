@@ -776,9 +776,11 @@ impl World {
                 self.module_registry
                     .active
                     .insert(module_id.clone(), version.clone());
+                self.sync_tick_schedule_for_activation(module_id, version, time)?;
             }
             ModuleEventKind::DeactivateModule { module_id, .. } => {
                 self.module_registry.active.remove(module_id);
+                self.remove_tick_schedule(module_id);
             }
         }
         Ok(())

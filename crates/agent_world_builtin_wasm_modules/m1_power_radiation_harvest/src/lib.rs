@@ -168,6 +168,7 @@ fn build_radiation_action_output(input: &ModuleCallInput, mut state: PowerState)
             kind: POWER_RADIATION_EMIT_KIND.to_string(),
             payload: emit_payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }
@@ -190,6 +191,7 @@ fn build_radiation_event_output(input: &ModuleCallInput, mut state: PowerState) 
         new_state,
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }

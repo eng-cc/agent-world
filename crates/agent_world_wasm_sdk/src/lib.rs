@@ -117,7 +117,16 @@ pub mod wire {
         pub effects: Vec<ModuleEffectIntent>,
         #[serde(default)]
         pub emits: Vec<ModuleEmit>,
+        #[serde(default)]
+        pub tick_lifecycle: Option<ModuleTickLifecycleDirective>,
         pub output_bytes: u64,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+    #[serde(tag = "mode", rename_all = "snake_case")]
+    pub enum ModuleTickLifecycleDirective {
+        WakeAfterTicks { ticks: u64 },
+        Suspend,
     }
 
     pub fn empty_output() -> ModuleOutput {
@@ -125,6 +134,7 @@ pub mod wire {
             new_state: None,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         }
     }

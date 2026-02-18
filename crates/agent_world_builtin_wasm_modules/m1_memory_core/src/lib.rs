@@ -145,6 +145,7 @@ fn build_memory_module_output(input: &ModuleCallInput) -> Vec<u8> {
         new_state: encode_memory_state(&state),
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }

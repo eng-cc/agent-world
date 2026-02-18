@@ -80,6 +80,7 @@ fn build_product_output(input: &ModuleCallInput) -> Vec<u8> {
             kind: PRODUCT_VALIDATION_EMIT_KIND.to_string(),
             payload,
         }],
+        tick_lifecycle: None,
         output_bytes: 512,
     })
 }

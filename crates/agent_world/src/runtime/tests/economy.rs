@@ -689,6 +689,7 @@ fn build_factory_with_module_uses_module_decision() {
             ))
             .expect("serialize factory build decision"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -772,6 +773,7 @@ fn schedule_recipe_with_module_uses_module_plan() {
             ))
             .expect("serialize recipe execution plan"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -838,6 +840,7 @@ fn schedule_recipe_with_module_rejects_when_module_denies() {
                 "reject_reason": "insufficient pressure"
             }),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -936,6 +939,7 @@ fn schedule_recipe_with_module_auto_validates_outputs_before_commit() {
                 .expect("serialize product validation decision"),
             },
         ],
+        tick_lifecycle: None,
         output_bytes: 512,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -1042,6 +1046,7 @@ fn schedule_recipe_with_module_blocks_commit_when_product_validation_fails() {
                 .expect("serialize rejected product validation"),
             },
         ],
+        tick_lifecycle: None,
         output_bytes: 512,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -1099,6 +1104,7 @@ fn validate_product_with_module_uses_module_decision() {
             ))
             .expect("serialize product validation decision"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = FixedSandbox::succeed(output);
@@ -1164,6 +1170,7 @@ fn validate_product_with_module_rejects_when_module_denies() {
             ))
             .expect("serialize rejected product validation"),
         }],
+        tick_lifecycle: None,
         output_bytes: 256,
     };
     let mut sandbox = FixedSandbox::succeed(output);

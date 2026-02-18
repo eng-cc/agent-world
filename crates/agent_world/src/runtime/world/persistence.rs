@@ -28,6 +28,7 @@ impl World {
             pending_actions: self.pending_actions.iter().cloned().collect(),
             pending_effects: self.pending_effects.iter().cloned().collect(),
             inflight_effects: self.inflight_effects.clone(),
+            module_tick_schedule: self.module_tick_schedule.clone(),
             capabilities: self.capabilities.clone(),
             policies: self.policies.clone(),
             proposals: self.proposals.clone(),
@@ -156,6 +157,7 @@ impl World {
         world.pending_actions = VecDeque::from(snapshot.pending_actions);
         world.pending_effects = VecDeque::from(snapshot.pending_effects);
         world.inflight_effects = snapshot.inflight_effects;
+        world.module_tick_schedule = snapshot.module_tick_schedule;
         world.capabilities = snapshot.capabilities;
         world.policies = snapshot.policies;
         world.proposals = snapshot.proposals;

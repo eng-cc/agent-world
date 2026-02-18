@@ -212,6 +212,7 @@ fn build_storage_action_output(input: &ModuleCallInput, mut state: PowerState) -
             new_state,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 0,
         });
     }
@@ -253,6 +254,7 @@ fn build_storage_action_output(input: &ModuleCallInput, mut state: PowerState) -
                 kind: RULE_DECISION_EMIT_KIND.to_string(),
                 payload: decision,
             }],
+            tick_lifecycle: None,
             output_bytes: 0,
         });
     };
@@ -283,6 +285,7 @@ fn build_storage_action_output(input: &ModuleCallInput, mut state: PowerState) -
             kind: RULE_DECISION_EMIT_KIND.to_string(),
             payload: decision,
         }],
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }
@@ -305,6 +308,7 @@ fn build_storage_event_output(input: &ModuleCallInput, mut state: PowerState) ->
         new_state,
         effects: Vec::new(),
         emits: Vec::new(),
+        tick_lifecycle: None,
         output_bytes: 0,
     })
 }

@@ -208,6 +208,7 @@ fn module_routing_emits_event() {
             kind: "AgentRegistered".to_string(),
             payload: json!({"ok": true}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 
@@ -297,6 +298,7 @@ fn replay_preserves_module_events() {
             kind: "AgentRegistered".to_string(),
             payload: json!({"ok": true}),
         }],
+        tick_lifecycle: None,
         output_bytes: 64,
     };
 

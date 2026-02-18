@@ -717,6 +717,7 @@ mod tests {
             new_state: Some(vec![1, 2, 3]),
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 3,
         };
         let mut sandbox = FixedSandbox::succeed(output.clone());
@@ -762,6 +763,7 @@ mod tests {
             new_state: None,
             effects: Vec::new(),
             emits: Vec::new(),
+            tick_lifecycle: None,
             output_bytes: 8,
         };
 
