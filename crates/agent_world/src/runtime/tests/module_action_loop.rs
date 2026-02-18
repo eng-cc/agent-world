@@ -8,6 +8,12 @@ fn register_agent(world: &mut World, agent_id: &str) {
         pos: pos(0.0, 0.0),
     });
     world.step().expect("register agent");
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Electricity, 128)
+        .expect("seed electricity");
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Data, 64)
+        .expect("seed data");
 }
 
 fn set_agent_resource(world: &mut World, agent_id: &str, kind: ResourceKind, amount: i64) {
@@ -72,6 +78,8 @@ fn deploy_module_artifact_action_registers_artifact_bytes() {
         publisher_agent_id,
         wasm_hash: event_hash,
         bytes_len,
+        fee_kind,
+        fee_amount,
     }) = &event.body
     else {
         panic!("expected module artifact deployed event: {:?}", event.body);
@@ -79,6 +87,8 @@ fn deploy_module_artifact_action_registers_artifact_bytes() {
     assert_eq!(publisher_agent_id, "publisher-1");
     assert_eq!(event_hash, &wasm_hash);
     assert_eq!(*bytes_len, wasm_bytes.len() as u64);
+    assert_eq!(*fee_kind, ResourceKind::Electricity);
+    assert!(*fee_amount > 0);
 
     let loaded = world.load_module(&wasm_hash).expect("load deployed module");
     assert_eq!(loaded.wasm_hash, wasm_hash);
@@ -130,6 +140,8 @@ fn install_module_from_artifact_action_runs_governance_closure() {
         active,
         proposal_id,
         manifest_hash,
+        fee_kind,
+        fee_amount,
     }) = &event.body
     else {
         panic!("expected module installed event: {:?}", event.body);
@@ -139,6 +151,8 @@ fn install_module_from_artifact_action_runs_governance_closure() {
     assert_eq!(module_version, "0.1.0");
     assert!(*active);
     assert!(!manifest_hash.is_empty());
+    assert_eq!(*fee_kind, ResourceKind::Electricity);
+    assert!(*fee_amount > 0);
 
     let key = ModuleRegistry::record_key(&manifest.module_id, &manifest.version);
     assert!(world.module_registry().records.contains_key(&key));
@@ -243,6 +257,7 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
             wasm_hash: listed_hash,
             price_kind: ResourceKind::Hardware,
             price_amount: 7,
+            ..
         })) if seller_agent_id == "seller-1" && listed_hash == &wasm_hash
     ));
 
@@ -388,4 +403,149 @@ fn install_module_from_artifact_rejects_non_owner_when_owner_is_registered() {
 
     assert_last_rejection_note(&world, action_id, "does not own");
     assert!(world.module_registry().records.is_empty());
+}
+
+#[test]
+fn delist_module_artifact_removes_listing_and_charges_data_fee() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+
+    let wasm_bytes = b"module-action-loop-delist-success".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+    world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 5,
+    });
+    world.step().expect("list artifact");
+
+    let before_data = world
+        .agent_resource_balance("seller-1", ResourceKind::Data)
+        .expect("seller data before delist");
+
+    world.submit_action(Action::DelistModuleArtifact {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+    });
+    world.step().expect("delist artifact");
+
+    let event = world.journal().events.last().expect("last event");
+    let WorldEventBody::Domain(DomainEvent::ModuleArtifactDelisted {
+        seller_agent_id,
+        wasm_hash: delisted_hash,
+        fee_kind,
+        fee_amount,
+    }) = &event.body
+    else {
+        panic!("expected module artifact delisted event: {:?}", event.body);
+    };
+    assert_eq!(seller_agent_id, "seller-1");
+    assert_eq!(delisted_hash, &wasm_hash);
+    assert_eq!(*fee_kind, ResourceKind::Data);
+    assert!(*fee_amount > 0);
+    assert!(!world
+        .state()
+        .module_artifact_listings
+        .contains_key(&wasm_hash));
+    let after_data = world
+        .agent_resource_balance("seller-1", ResourceKind::Data)
+        .expect("seller data after delist");
+    assert_eq!(after_data, before_data - *fee_amount);
+}
+
+#[test]
+fn destroy_module_artifact_removes_owner_and_artifact_bytes() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_bytes = b"module-action-loop-destroy-success".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    let before_electricity = world
+        .agent_resource_balance("owner-1", ResourceKind::Electricity)
+        .expect("owner electricity before destroy");
+
+    world.submit_action(Action::DestroyModuleArtifact {
+        owner_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        reason: "retire obsolete module".to_string(),
+    });
+    world.step().expect("destroy artifact");
+
+    let (destroyed_hash, fee_kind, fee_amount) = {
+        let event = world.journal().events.last().expect("last event");
+        let WorldEventBody::Domain(DomainEvent::ModuleArtifactDestroyed {
+            owner_agent_id,
+            wasm_hash: destroyed_hash,
+            reason,
+            fee_kind,
+            fee_amount,
+        }) = &event.body
+        else {
+            panic!("expected module artifact destroyed event: {:?}", event.body);
+        };
+        assert_eq!(owner_agent_id, "owner-1");
+        assert_eq!(reason, "retire obsolete module");
+        (destroyed_hash.clone(), *fee_kind, *fee_amount)
+    };
+    assert_eq!(destroyed_hash, wasm_hash);
+    assert_eq!(fee_kind, ResourceKind::Electricity);
+    assert!(fee_amount > 0);
+    assert!(!world
+        .state()
+        .module_artifact_owners
+        .contains_key(&wasm_hash));
+    assert!(!world
+        .state()
+        .module_artifact_listings
+        .contains_key(&wasm_hash));
+    assert!(world.load_module(&wasm_hash).is_err());
+    let after_electricity = world
+        .agent_resource_balance("owner-1", ResourceKind::Electricity)
+        .expect("owner electricity after destroy");
+    assert_eq!(after_electricity, before_electricity - fee_amount);
+}
+
+#[test]
+fn destroy_module_artifact_rejects_when_artifact_is_used_by_active_module() {
+    let mut world = World::new();
+    register_agent(&mut world, "owner-1");
+
+    let wasm_bytes = b"module-action-loop-destroy-active-guard".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "owner-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "owner-1".to_string(),
+        manifest: base_manifest("m.loop.destroy-guard", "0.1.0", &wasm_hash),
+        activate: true,
+    });
+    world.step().expect("install module");
+
+    let action_id = world.submit_action(Action::DestroyModuleArtifact {
+        owner_agent_id: "owner-1".to_string(),
+        wasm_hash,
+        reason: "cleanup".to_string(),
+    });
+    world.step().expect("destroy guarded artifact");
+
+    assert_last_rejection_note(&world, action_id, "used by active module");
 }

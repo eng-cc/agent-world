@@ -186,6 +186,42 @@ impl WorldState {
         sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
     }
 
+    fn settle_module_action_fee(
+        &mut self,
+        agent_id: &str,
+        fee_kind: ResourceKind,
+        fee_amount: i64,
+        now: WorldTime,
+    ) -> Result<(), WorldError> {
+        if fee_amount < 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!("module action fee must be >= 0, got {}", fee_amount),
+            });
+        }
+
+        let cell = self
+            .agents
+            .get_mut(agent_id)
+            .ok_or_else(|| WorldError::AgentNotFound {
+                agent_id: agent_id.to_string(),
+            })?;
+        if fee_amount > 0 {
+            cell.state
+                .resources
+                .remove(fee_kind, fee_amount)
+                .map_err(|err| WorldError::ResourceBalanceInvalid {
+                    reason: format!(
+                        "module action fee debit failed: agent={} kind={:?} amount={} err={:?}",
+                        agent_id, fee_kind, fee_amount, err
+                    ),
+                })?;
+            let treasury = self.resources.entry(fee_kind).or_insert(0);
+            *treasury = treasury.saturating_add(fee_amount);
+        }
+        cell.last_active = now;
+        Ok(())
+    }
+
     pub fn apply_domain_event(
         &mut self,
         event: &DomainEvent,
@@ -281,35 +317,40 @@ impl WorldState {
             DomainEvent::ModuleArtifactDeployed {
                 publisher_agent_id,
                 wasm_hash,
+                fee_kind,
+                fee_amount,
                 ..
             } => {
-                if let Some(cell) = self.agents.get_mut(publisher_agent_id) {
-                    cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: publisher_agent_id.clone(),
-                    });
-                }
+                self.settle_module_action_fee(
+                    publisher_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
                 self.module_artifact_owners
                     .insert(wasm_hash.clone(), publisher_agent_id.clone());
                 self.module_artifact_listings.remove(wasm_hash);
             }
             DomainEvent::ModuleInstalled {
-                installer_agent_id, ..
+                installer_agent_id,
+                fee_kind,
+                fee_amount,
+                ..
             } => {
-                if let Some(cell) = self.agents.get_mut(installer_agent_id) {
-                    cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: installer_agent_id.clone(),
-                    });
-                }
+                self.settle_module_action_fee(
+                    installer_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
             }
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id,
                 wasm_hash,
                 price_kind,
                 price_amount,
+                fee_kind,
+                fee_amount,
             } => {
                 if *price_amount <= 0 {
                     return Err(WorldError::ResourceBalanceInvalid {
@@ -335,12 +376,12 @@ impl WorldState {
                         ),
                     });
                 }
-                let seller = self.agents.get_mut(seller_agent_id).ok_or_else(|| {
-                    WorldError::AgentNotFound {
-                        agent_id: seller_agent_id.clone(),
-                    }
-                })?;
-                seller.last_active = now;
+                self.settle_module_action_fee(
+                    seller_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
                 self.module_artifact_listings.insert(
                     wasm_hash.clone(),
                     ModuleArtifactListingState {
@@ -350,6 +391,90 @@ impl WorldState {
                         listed_at: now,
                     },
                 );
+            }
+            DomainEvent::ModuleArtifactDelisted {
+                seller_agent_id,
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+            } => {
+                let listing = self
+                    .module_artifact_listings
+                    .get(wasm_hash)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact listing missing for hash {}", wasm_hash),
+                    })?;
+                if listing.seller_agent_id != *seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller mismatch: hash={} listing_seller={} event_seller={}",
+                            wasm_hash, listing.seller_agent_id, seller_agent_id
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for delist hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller is not owner: hash={} owner={} seller={}",
+                            wasm_hash, owner, seller_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    seller_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_listings.remove(wasm_hash);
+            }
+            DomainEvent::ModuleArtifactDestroyed {
+                owner_agent_id,
+                wasm_hash,
+                reason,
+                fee_kind,
+                fee_amount,
+            } => {
+                if reason.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy reason cannot be empty for hash {}",
+                            wasm_hash
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for destroy hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != owner_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy owner mismatch: hash={} owner={} event_owner={}",
+                            wasm_hash, owner, owner_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    owner_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_owners.remove(wasm_hash);
+                self.module_artifact_listings.remove(wasm_hash);
             }
             DomainEvent::ModuleArtifactSaleCompleted {
                 buyer_agent_id,

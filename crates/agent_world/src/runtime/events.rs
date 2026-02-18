@@ -19,6 +19,10 @@ fn default_world_material_ledger() -> MaterialLedgerId {
     MaterialLedgerId::world()
 }
 
+fn default_module_action_fee_kind() -> ResourceKind {
+    ResourceKind::Electricity
+}
+
 /// An envelope wrapping an action with its ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionEnvelope {
@@ -93,6 +97,15 @@ pub enum Action {
     BuyModuleArtifact {
         buyer_agent_id: String,
         wasm_hash: String,
+    },
+    DelistModuleArtifact {
+        seller_agent_id: String,
+        wasm_hash: String,
+    },
+    DestroyModuleArtifact {
+        owner_agent_id: String,
+        wasm_hash: String,
+        reason: String,
     },
     TransferResource {
         from_agent_id: String,
@@ -218,6 +231,10 @@ pub enum DomainEvent {
         publisher_agent_id: String,
         wasm_hash: String,
         bytes_len: u64,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
     },
     ModuleInstalled {
         installer_agent_id: String,
@@ -226,12 +243,37 @@ pub enum DomainEvent {
         active: bool,
         proposal_id: ProposalId,
         manifest_hash: String,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
     },
     ModuleArtifactListed {
         seller_agent_id: String,
         wasm_hash: String,
         price_kind: ResourceKind,
         price_amount: i64,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
+    },
+    ModuleArtifactDelisted {
+        seller_agent_id: String,
+        wasm_hash: String,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
+    },
+    ModuleArtifactDestroyed {
+        owner_agent_id: String,
+        wasm_hash: String,
+        reason: String,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
     },
     ModuleArtifactSaleCompleted {
         buyer_agent_id: String,
@@ -370,6 +412,12 @@ impl DomainEvent {
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id, ..
             } => Some(seller_agent_id.as_str()),
+            DomainEvent::ModuleArtifactDelisted {
+                seller_agent_id, ..
+            } => Some(seller_agent_id.as_str()),
+            DomainEvent::ModuleArtifactDestroyed { owner_agent_id, .. } => {
+                Some(owner_agent_id.as_str())
+            }
             DomainEvent::ModuleArtifactSaleCompleted { buyer_agent_id, .. } => {
                 Some(buyer_agent_id.as_str())
             }

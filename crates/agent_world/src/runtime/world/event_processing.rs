@@ -173,6 +173,26 @@ impl World {
                     },
                 }))
             }
+            Action::DelistModuleArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "delist_module_artifact requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::DestroyModuleArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "destroy_module_artifact requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,
