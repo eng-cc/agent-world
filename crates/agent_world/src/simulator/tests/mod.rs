@@ -64,6 +64,7 @@ mod kernel_rule_invariants;
 mod kernel_wasm_rule_bridge;
 mod kernel_wasm_sandbox_bridge;
 mod memory;
+mod module_lifecycle;
 mod module_visual;
 mod monotonicity;
 mod persist;

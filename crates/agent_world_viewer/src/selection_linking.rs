@@ -874,6 +874,20 @@ pub(super) fn event_primary_target(
                 name: None,
             })
         }
+        WorldEventKind::ModuleArtifactDeployed {
+            publisher_agent_id, ..
+        } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: publisher_agent_id.clone(),
+            name: None,
+        }),
+        WorldEventKind::ModuleInstalled {
+            installer_agent_id, ..
+        } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: installer_agent_id.clone(),
+            name: None,
+        }),
         WorldEventKind::ModuleVisualEntityUpserted { entity } => Some(SelectionTarget {
             kind: SelectionKind::Asset,
             id: entity.entity_id.clone(),

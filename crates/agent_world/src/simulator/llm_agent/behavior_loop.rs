@@ -894,6 +894,44 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             }
             _ => {}
         }
+        match &result.event.kind {
+            WorldEventKind::ModuleArtifactDeployed {
+                publisher_agent_id,
+                wasm_hash,
+                bytes_len,
+                module_id_hint,
+                ..
+            } => {
+                self.known_module_artifacts.insert(
+                    wasm_hash.clone(),
+                    KnownModuleArtifactRecord {
+                        wasm_hash: wasm_hash.clone(),
+                        publisher_agent_id: publisher_agent_id.clone(),
+                        bytes_len: *bytes_len,
+                        module_id_hint: module_id_hint.clone(),
+                    },
+                );
+            }
+            WorldEventKind::ModuleInstalled {
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                active,
+            } => {
+                self.known_installed_modules.insert(
+                    module_id.clone(),
+                    KnownInstalledModuleRecord {
+                        module_id: module_id.clone(),
+                        module_version: module_version.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        installer_agent_id: installer_agent_id.clone(),
+                        active: *active,
+                    },
+                );
+            }
+            _ => {}
+        }
         if !result.success {
             self.memory.long_term.store_with_tags(
                 format!(

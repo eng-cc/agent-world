@@ -178,7 +178,7 @@ impl PromptAssembler {
                 priority: PromptSectionPriority::High,
                 content: r#"[Tool Protocol]
 - 本代理采用 tool-only 协议：每轮必须调用 tool，禁止输出 JSON 文本或自然语言正文
-- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search
+- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search / module.lifecycle.status
 - 最终决策工具：agent_submit_decision
 - 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search
 - 每轮只允许调用一个 tool；不要在同一回复混用查询工具与最终决策工具
@@ -248,6 +248,9 @@ impl PromptAssembler {
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
 {{"decision":"schedule_recipe","owner":"<self|agent:<id>|location:<id>>","factory_id":"<factory_id>","recipe_id":"<recipe_id>","batches":<i64 >=1>}}
+{{"decision":"compile_module_artifact_from_source","publisher":"<self|agent:<id>>","module_id":"<module_id>","manifest_path":"<relative_manifest_path>","source_files":{{"Cargo.toml":"<text>","src/lib.rs":"<text>"}}}}
+{{"decision":"deploy_module_artifact","publisher":"<self|agent:<id>>","module_id":"<module_id optional>","wasm_hash":"<sha256_hex>","wasm_bytes_hex":"<hex_bytes>"}}
+{{"decision":"install_module_from_artifact","installer":"<self|agent:<id>>","module_id":"<module_id>","module_version":"<semver>","wasm_hash":"<sha256_hex>","activate":<bool>}}
 {{"decision":"publish_social_fact","actor":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","subject":"<self|agent:<id>|location:<id>>","object":"<self|agent:<id>|location:<id>>","claim":"<text>","confidence_ppm":<i64 1..=1000000>,"evidence_event_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>,"stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
 {{"decision":"challenge_social_fact","challenger":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>","stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
 {{"decision":"adjudicate_social_fact","adjudicator":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"adjudication":"<confirm|retract>","notes":"<text>"}}
@@ -264,6 +267,8 @@ impl PromptAssembler {
 - 推荐 refine 模板: {{"decision":"refine_compound","owner":"self","compound_mass_g":<i64 >=1>}}
 - 推荐 build_factory 模板: {{"decision":"build_factory","owner":"self","location_id":"<location_id>","factory_id":"factory.<name>","factory_kind":"factory.assembler.mk1"}}
 - 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
+- 推荐 compile 模板: {{"decision":"compile_module_artifact_from_source","publisher":"self","module_id":"m.llm.example","manifest_path":"Cargo.toml","source_files":{{"Cargo.toml":"<text>","src/lib.rs":"<text>"}}}}
+- 推荐 install 模板: {{"decision":"install_module_from_artifact","installer":"self","module_id":"m.llm.example","module_version":"0.1.0","wasm_hash":"<sha256_hex>","activate":true}}
 - 推荐 publish_social_fact 模板: {{"decision":"publish_social_fact","actor":"self","schema_id":"social.reputation.v1","subject":"agent:<id>","claim":"<text>","confidence_ppm":800000,"evidence_event_ids":[<u64 >=1>]}}
 - 推荐 declare_social_edge 模板: {{"decision":"declare_social_edge","declarer":"self","schema_id":"social.relation.v1","relation_kind":"trusted_peer","from":"self","to":"agent:<id>","weight_bps":5000,"backing_fact_ids":[<u64 >=1>]}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
@@ -282,6 +287,10 @@ impl PromptAssembler {
 - factory_kind 当前支持：factory.assembler.mk1、factory.power.radiation.mk1（留空将被拒绝）
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
 - schedule_recipe.batches 必须是正整数
+- compile_module_artifact_from_source: module_id/manifest_path/source_files 必填；source_files value 必须是 utf8 文本
+- deploy_module_artifact: wasm_hash 必须为 sha256 hex；wasm_bytes_hex 必须是非空 hex 字节串
+- install_module_from_artifact: installer 必须是 self 或 agent:<id>；module_version 为空时默认 0.1.0
+- 若准备 install 但缺少 wasm_hash，先调用 `module.lifecycle.status` 读取最近 artifact 列表再执行
 - 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8
 - 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.hardware / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe
 - 当 observation.recipe_coverage.missing 非空且你准备重复 observation.recipe_coverage.completed 中的 recipe 时，必须先切换到 missing 列表中的配方（优先 missing[0]）

@@ -526,6 +526,11 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                             "query": "string, optional",
                             "limit": "u64, optional, default=3, max=8"
                         }
+                    },
+                    {
+                        "name": "module.lifecycle.status",
+                        "description": "读取最近已知的 wasm artifact 与 installed module 状态。",
+                        "args": {}
                     }
                 ]
             })),
@@ -575,6 +580,22 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
                 serde_json::to_value(entries)
                     .map_err(|err| format!("serialize long-term memory failed: {err}"))
+            }
+            "module.lifecycle.status" => {
+                let artifacts = self
+                    .known_module_artifacts
+                    .values()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let installed_modules = self
+                    .known_installed_modules
+                    .values()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                Ok(serde_json::json!({
+                    "artifacts": artifacts,
+                    "installed_modules": installed_modules,
+                }))
             }
             other => Err(format!("unsupported module: {other}")),
         };

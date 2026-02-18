@@ -142,6 +142,30 @@ pub struct Factory {
     pub kind: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleArtifactState {
+    pub wasm_hash: String,
+    pub publisher_agent_id: AgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_id_hint: Option<String>,
+    #[serde(default)]
+    pub wasm_bytes: Vec<u8>,
+    #[serde(default)]
+    pub deployed_at_tick: WorldTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InstalledModuleState {
+    pub module_id: String,
+    pub module_version: String,
+    pub wasm_hash: String,
+    pub installer_agent_id: AgentId,
+    #[serde(default)]
+    pub active: bool,
+    #[serde(default)]
+    pub installed_at_tick: WorldTime,
+}
+
 fn default_next_power_order_id() -> u64 {
     1
 }
@@ -190,6 +214,10 @@ pub struct WorldModel {
     pub assets: BTreeMap<AssetId, Asset>,
     #[serde(default)]
     pub module_visual_entities: BTreeMap<String, ModuleVisualEntity>,
+    #[serde(default)]
+    pub module_artifacts: BTreeMap<String, ModuleArtifactState>,
+    #[serde(default)]
+    pub installed_modules: BTreeMap<String, InstalledModuleState>,
     #[serde(default)]
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]

@@ -404,6 +404,38 @@ impl WorldKernel {
                     self.add_to_owner_for_replay(owner, ResourceKind::Data, *data_output)?;
                 }
             }
+            WorldEventKind::ModuleArtifactDeployed {
+                publisher_agent_id,
+                wasm_hash,
+                wasm_bytes,
+                bytes_len,
+                module_id_hint,
+            } => {
+                self.replay_module_artifact_deployed(
+                    publisher_agent_id,
+                    wasm_hash,
+                    wasm_bytes,
+                    *bytes_len,
+                    module_id_hint.as_deref(),
+                )
+                .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::ModuleInstalled {
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                active,
+            } => {
+                self.replay_module_installed(
+                    installer_agent_id,
+                    module_id,
+                    module_version,
+                    wasm_hash,
+                    *active,
+                )
+                .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
             WorldEventKind::ChunkGenerated {
                 coord,
                 seed,

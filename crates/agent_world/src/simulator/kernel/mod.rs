@@ -2,10 +2,12 @@
 
 mod actions;
 mod fragment_replenish;
+mod module_lifecycle;
 mod observation;
 mod persistence;
 mod power;
 mod replay;
+mod replay_module_lifecycle;
 mod social;
 mod step;
 mod types;

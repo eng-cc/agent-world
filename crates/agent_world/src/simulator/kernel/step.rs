@@ -270,6 +270,27 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("seller must be the submitter agent")
             }
         }
+        Action::CompileModuleArtifactFromSource {
+            publisher_agent_id, ..
+        }
+        | Action::DeployModuleArtifact {
+            publisher_agent_id, ..
+        } => {
+            if publisher_agent_id == agent_id {
+                None
+            } else {
+                denied("publisher_agent_id must be the submitter agent")
+            }
+        }
+        Action::InstallModuleFromArtifact {
+            installer_agent_id, ..
+        } => {
+            if installer_agent_id == agent_id {
+                None
+            } else {
+                denied("installer_agent_id must be the submitter agent")
+            }
+        }
         Action::DrawPower { .. } | Action::StorePower { .. } => None,
     }
 }

@@ -135,6 +135,7 @@ pub use agent_world_wasm_store::{
 };
 
 // Module store
+pub(crate) use module_source_compiler::compile_module_artifact_from_source;
 pub use module_store::ModuleStore;
 
 // Segmenter

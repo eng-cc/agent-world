@@ -1019,6 +1019,41 @@ impl WorldKernel {
                     finished_product_units,
                 }
             }
+            Action::CompileModuleArtifactFromSource {
+                publisher_agent_id,
+                module_id,
+                manifest_path,
+                source_files,
+            } => self.apply_compile_module_artifact_from_source(
+                publisher_agent_id,
+                module_id,
+                manifest_path,
+                source_files,
+            ),
+            Action::DeployModuleArtifact {
+                publisher_agent_id,
+                wasm_hash,
+                wasm_bytes,
+                module_id_hint,
+            } => self.apply_deploy_module_artifact(
+                publisher_agent_id,
+                wasm_hash,
+                wasm_bytes,
+                module_id_hint,
+            ),
+            Action::InstallModuleFromArtifact {
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                activate,
+            } => self.apply_install_module_from_artifact(
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                activate,
+            ),
             Action::PublishSocialFact {
                 actor,
                 schema_id,

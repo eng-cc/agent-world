@@ -1,6 +1,7 @@
 use super::super::super::social::{SocialAdjudicationDecision, SocialStake};
 use super::super::super::types::{Action, PowerOrderSide, ResourceOwner, PPM_BASE};
 use super::{parse_owner_spec, parse_resource_kind, LlmDecisionPayload, LlmSocialStakePayload};
+use std::collections::BTreeMap;
 
 pub(super) fn parse_market_or_social_action(
     decision: &str,
@@ -12,6 +13,13 @@ pub(super) fn parse_market_or_social_action(
         "sell_power" => Some(parse_sell_power(parsed, agent_id)),
         "place_power_order" => Some(parse_place_power_order(parsed, agent_id)),
         "cancel_power_order" => Some(parse_cancel_power_order(parsed, agent_id)),
+        "compile_module_artifact_from_source" => {
+            Some(parse_compile_module_artifact_from_source(parsed, agent_id))
+        }
+        "deploy_module_artifact" => Some(parse_deploy_module_artifact(parsed, agent_id)),
+        "install_module_from_artifact" => {
+            Some(parse_install_module_from_artifact(parsed, agent_id))
+        }
         "publish_social_fact" => Some(parse_publish_social_fact(parsed, agent_id)),
         "challenge_social_fact" => Some(parse_challenge_social_fact(parsed, agent_id)),
         "adjudicate_social_fact" => Some(parse_adjudicate_social_fact(parsed, agent_id)),
@@ -73,6 +81,110 @@ fn parse_cancel_power_order(parsed: &LlmDecisionPayload, agent_id: &str) -> Resu
     let owner = parse_owner_or_self(parsed.owner.as_deref(), agent_id)?;
     let order_id = parse_positive_u64(parsed.order_id, "cancel_power_order", "order_id")?;
     Ok(Action::CancelPowerOrder { owner, order_id })
+}
+
+fn parse_compile_module_artifact_from_source(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let publisher_agent_id = parse_agent_identity_or_self(
+        parsed.publisher.as_deref(),
+        "compile_module_artifact_from_source",
+        "publisher",
+        agent_id,
+    )?;
+    let module_id = parse_required_text(
+        parsed.module_id.as_deref(),
+        "compile_module_artifact_from_source",
+        "module_id",
+    )?;
+    let manifest_path = parse_required_text(
+        parsed.manifest_path.as_deref(),
+        "compile_module_artifact_from_source",
+        "manifest_path",
+    )?;
+    let source_files = parse_source_files(
+        parsed.source_files.as_ref(),
+        "compile_module_artifact_from_source",
+        "source_files",
+    )?;
+    Ok(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id,
+        module_id,
+        manifest_path,
+        source_files,
+    })
+}
+
+fn parse_deploy_module_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let publisher_agent_id = parse_agent_identity_or_self(
+        parsed.publisher.as_deref(),
+        "deploy_module_artifact",
+        "publisher",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "deploy_module_artifact",
+        "wasm_hash",
+    )?;
+    let wasm_bytes = parse_hex_bytes(
+        parsed.wasm_bytes_hex.as_deref(),
+        "deploy_module_artifact",
+        "wasm_bytes_hex",
+    )?;
+    let module_id_hint = parsed
+        .module_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    Ok(Action::DeployModuleArtifact {
+        publisher_agent_id,
+        wasm_hash,
+        wasm_bytes,
+        module_id_hint,
+    })
+}
+
+fn parse_install_module_from_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let installer_agent_id = parse_agent_identity_or_self(
+        parsed.installer.as_deref(),
+        "install_module_from_artifact",
+        "installer",
+        agent_id,
+    )?;
+    let module_id = parse_required_text(
+        parsed.module_id.as_deref(),
+        "install_module_from_artifact",
+        "module_id",
+    )?;
+    let module_version = parsed
+        .module_version
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("0.1.0")
+        .to_string();
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "install_module_from_artifact",
+        "wasm_hash",
+    )?;
+    let activate = parsed.activate.unwrap_or(true);
+    Ok(Action::InstallModuleFromArtifact {
+        installer_agent_id,
+        module_id,
+        module_version,
+        wasm_hash,
+        activate,
+    })
 }
 
 fn parse_publish_social_fact(
@@ -240,6 +352,26 @@ fn parse_owner_or_self(raw: Option<&str>, agent_id: &str) -> Result<ResourceOwne
     }
 }
 
+fn parse_agent_identity_or_self(
+    raw: Option<&str>,
+    decision: &str,
+    field_name: &str,
+    agent_id: &str,
+) -> Result<String, String> {
+    let owner = match raw {
+        Some(value) => parse_owner_spec(value, agent_id)?,
+        None => ResourceOwner::Agent {
+            agent_id: agent_id.to_string(),
+        },
+    };
+    match owner {
+        ResourceOwner::Agent { agent_id } => Ok(agent_id),
+        ResourceOwner::Location { .. } => Err(format!(
+            "{decision} `{field_name}` must be self or agent:<id>"
+        )),
+    }
+}
+
 fn parse_required_text(
     raw: Option<&str>,
     decision: &str,
@@ -272,6 +404,47 @@ fn parse_non_negative_i64_with_default(
         return Err(format!("{decision} requires non-negative {field_name}"));
     }
     Ok(value)
+}
+
+fn parse_hex_bytes(raw: Option<&str>, decision: &str, field_name: &str) -> Result<Vec<u8>, String> {
+    let raw = parse_required_text(raw, decision, field_name)?;
+    let normalized = raw.strip_prefix("0x").unwrap_or(raw.as_str());
+    let bytes = hex::decode(normalized)
+        .map_err(|_| format!("{decision} `{field_name}` must be valid hex"))?;
+    if bytes.is_empty() {
+        return Err(format!(
+            "{decision} `{field_name}` cannot decode to empty bytes"
+        ));
+    }
+    Ok(bytes)
+}
+
+fn parse_source_files(
+    raw: Option<&BTreeMap<String, String>>,
+    decision: &str,
+    field_name: &str,
+) -> Result<BTreeMap<String, Vec<u8>>, String> {
+    let Some(raw) = raw else {
+        return Err(format!("{decision} missing `{field_name}`"));
+    };
+    if raw.is_empty() {
+        return Err(format!("{decision} `{field_name}` cannot be empty"));
+    }
+    let mut files = BTreeMap::new();
+    for (path, content) in raw {
+        let normalized_path = path.trim();
+        if normalized_path.is_empty() {
+            return Err(format!("{decision} `{field_name}` contains empty path"));
+        }
+        if content.is_empty() {
+            return Err(format!(
+                "{decision} `{field_name}` contains empty content for path {}",
+                normalized_path
+            ));
+        }
+        files.insert(normalized_path.to_string(), content.as_bytes().to_vec());
+    }
+    Ok(files)
 }
 
 fn parse_positive_u64(value: Option<u64>, decision: &str, field_name: &str) -> Result<u64, String> {

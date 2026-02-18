@@ -148,6 +148,21 @@ pub enum WorldEventKind {
         finished_product_id: String,
         finished_product_units: i64,
     },
+    ModuleArtifactDeployed {
+        publisher_agent_id: AgentId,
+        wasm_hash: String,
+        wasm_bytes: Vec<u8>,
+        bytes_len: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        module_id_hint: Option<String>,
+    },
+    ModuleInstalled {
+        installer_agent_id: AgentId,
+        module_id: String,
+        module_version: String,
+        wasm_hash: String,
+        active: bool,
+    },
     ModuleVisualEntityUpserted {
         entity: ModuleVisualEntity,
     },

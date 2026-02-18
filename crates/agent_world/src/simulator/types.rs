@@ -496,6 +496,26 @@ pub enum Action {
         recipe_id: String,
         batches: i64,
     },
+    CompileModuleArtifactFromSource {
+        publisher_agent_id: AgentId,
+        module_id: String,
+        manifest_path: String,
+        source_files: BTreeMap<String, Vec<u8>>,
+    },
+    DeployModuleArtifact {
+        publisher_agent_id: AgentId,
+        wasm_hash: String,
+        wasm_bytes: Vec<u8>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        module_id_hint: Option<String>,
+    },
+    InstallModuleFromArtifact {
+        installer_agent_id: AgentId,
+        module_id: String,
+        module_version: String,
+        wasm_hash: String,
+        activate: bool,
+    },
     PublishSocialFact {
         actor: ResourceOwner,
         schema_id: String,

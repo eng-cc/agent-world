@@ -7,6 +7,7 @@ use async_openai::types::responses::{
     ToolChoiceOptions, ToolChoiceParam,
 };
 use async_openai::Client as AsyncOpenAiClient;
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
@@ -252,6 +253,24 @@ impl RecipeCoverageProgress {
 struct MineFailureStreak {
     count: u32,
     last_time: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(super) struct KnownModuleArtifactRecord {
+    pub wasm_hash: String,
+    pub publisher_agent_id: String,
+    pub bytes_len: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_id_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(super) struct KnownInstalledModuleRecord {
+    pub module_id: String,
+    pub module_version: String,
+    pub wasm_hash: String,
+    pub installer_agent_id: String,
+    pub active: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -771,6 +790,8 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     pending_decision_rewrite: Option<DecisionRewriteReceipt>,
     known_factory_locations: BTreeMap<String, String>,
     known_factory_kind_aliases: BTreeMap<String, String>,
+    known_module_artifacts: BTreeMap<String, KnownModuleArtifactRecord>,
+    known_installed_modules: BTreeMap<String, KnownInstalledModuleRecord>,
     move_distance_exceeded_targets: BTreeSet<String>,
     known_compound_availability_by_location: BTreeMap<String, i64>,
     depleted_mine_location_cooldowns: BTreeMap<String, u64>,
@@ -824,6 +845,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             pending_decision_rewrite: None,
             known_factory_locations: BTreeMap::new(),
             known_factory_kind_aliases: BTreeMap::new(),
+            known_module_artifacts: BTreeMap::new(),
+            known_installed_modules: BTreeMap::new(),
             move_distance_exceeded_targets: BTreeSet::new(),
             known_compound_availability_by_location: BTreeMap::new(),
             depleted_mine_location_cooldowns: BTreeMap::new(),

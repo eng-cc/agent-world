@@ -3,6 +3,7 @@ use super::super::types::{Action, ResourceKind, ResourceOwner};
 use super::prompt_assembly::{PromptSectionKind, PromptSectionPriority};
 use super::LlmCompletionTurn;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 mod action_parsers;
 
@@ -87,6 +88,15 @@ struct LlmDecisionPayload {
     factory_kind: Option<String>,
     recipe_id: Option<String>,
     batches: Option<i64>,
+    publisher: Option<String>,
+    installer: Option<String>,
+    module_id: Option<String>,
+    module_version: Option<String>,
+    manifest_path: Option<String>,
+    source_files: Option<BTreeMap<String, String>>,
+    wasm_hash: Option<String>,
+    wasm_bytes_hex: Option<String>,
+    activate: Option<bool>,
     actor: Option<String>,
     declarer: Option<String>,
     subject: Option<String>,
@@ -906,6 +916,10 @@ pub(super) fn normalize_prompt_module_name(value: &str) -> String {
         | "memory_long_term_search"
         | "memory-long-term-search"
         | "memory.long.term.search" => Some("memory.long_term.search"),
+        "module.lifecycle.status"
+        | "module_lifecycle_status"
+        | "module-lifecycle-status"
+        | "module.lifecycle_status" => Some("module.lifecycle.status"),
         _ => None,
     };
 

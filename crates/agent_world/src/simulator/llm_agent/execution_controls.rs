@@ -370,6 +370,32 @@ fn action_signature(action: &Action) -> String {
             batches,
             ..
         } => format!("schedule_recipe:{factory_id}:{recipe_id}:{batches}"),
+        Action::CompileModuleArtifactFromSource {
+            publisher_agent_id,
+            module_id,
+            manifest_path,
+            source_files,
+        } => format!(
+            "compile_module_artifact_from_source:{publisher_agent_id}:{module_id}:{manifest_path}:files={}",
+            source_files.len()
+        ),
+        Action::DeployModuleArtifact {
+            publisher_agent_id,
+            wasm_hash,
+            module_id_hint,
+            ..
+        } => format!(
+            "deploy_module_artifact:{publisher_agent_id}:{wasm_hash}:{module_id_hint:?}"
+        ),
+        Action::InstallModuleFromArtifact {
+            installer_agent_id,
+            module_id,
+            module_version,
+            wasm_hash,
+            activate,
+        } => format!(
+            "install_module_from_artifact:{installer_agent_id}:{module_id}:{module_version}:{wasm_hash}:{activate}"
+        ),
         Action::PublishSocialFact {
             actor,
             schema_id,
@@ -512,6 +538,57 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 ..
             },
         ) => left_factory_id == right_factory_id && left_recipe_id == right_recipe_id,
+        (
+            Action::CompileModuleArtifactFromSource {
+                publisher_agent_id: left_publisher,
+                module_id: left_module_id,
+                manifest_path: left_manifest_path,
+                ..
+            },
+            Action::CompileModuleArtifactFromSource {
+                publisher_agent_id: right_publisher,
+                module_id: right_module_id,
+                manifest_path: right_manifest_path,
+                ..
+            },
+        ) => {
+            left_publisher == right_publisher
+                && left_module_id == right_module_id
+                && left_manifest_path == right_manifest_path
+        }
+        (
+            Action::DeployModuleArtifact {
+                publisher_agent_id: left_publisher,
+                wasm_hash: left_wasm_hash,
+                ..
+            },
+            Action::DeployModuleArtifact {
+                publisher_agent_id: right_publisher,
+                wasm_hash: right_wasm_hash,
+                ..
+            },
+        ) => left_publisher == right_publisher && left_wasm_hash == right_wasm_hash,
+        (
+            Action::InstallModuleFromArtifact {
+                installer_agent_id: left_installer,
+                module_id: left_module_id,
+                module_version: left_module_version,
+                wasm_hash: left_wasm_hash,
+                ..
+            },
+            Action::InstallModuleFromArtifact {
+                installer_agent_id: right_installer,
+                module_id: right_module_id,
+                module_version: right_module_version,
+                wasm_hash: right_wasm_hash,
+                ..
+            },
+        ) => {
+            left_installer == right_installer
+                && left_module_id == right_module_id
+                && left_module_version == right_module_version
+                && left_wasm_hash == right_wasm_hash
+        }
         (
             Action::MineCompound {
                 owner: left_owner,
