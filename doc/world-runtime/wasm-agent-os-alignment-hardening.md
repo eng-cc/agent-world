@@ -24,6 +24,7 @@
   - `input_schema: Option<String>`
   - `output_schema: Option<String>`
   - `cap_slots: BTreeMap<String, String>`（slot 到 cap_ref 映射）
+  - `policy_hooks: Vec<String>`（pure 策略模块链，按顺序执行）
 - `ModuleEffectIntent` 新增可选 `cap_slot`，与 `cap_ref` 并行支持。
 - `ModuleContext` 新增元信息字段（默认可缺省）：
   - `stage`, `manifest_hash`, `journal_height`, `module_version`, `module_kind`, `module_role`。

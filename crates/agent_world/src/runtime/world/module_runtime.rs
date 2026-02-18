@@ -101,33 +101,15 @@ impl World {
     ) -> Result<ModuleOutput, WorldError> {
         let trace_id = trace_id.into();
         let manifest = self.active_module_manifest(module_id)?.clone();
-        let wasm_hash = manifest.wasm_hash.clone();
-        let artifact = self.load_module(&wasm_hash)?;
-
-        let request = ModuleCallRequest {
-            module_id: module_id.to_string(),
-            wasm_hash,
-            trace_id: trace_id.clone(),
-            entrypoint: manifest.kind.entrypoint().to_string(),
-            input,
-            limits: manifest.limits.clone(),
-            wasm_bytes: artifact.bytes,
-        };
-
-        let output = match sandbox.call(&request) {
+        let output = match self.call_module_raw(module_id, &trace_id, input, &manifest, sandbox) {
             Ok(output) => output,
             Err(failure) => {
-                self.append_event(WorldEventBody::ModuleCallFailed(failure.clone()), None)?;
-                return Err(WorldError::ModuleCallFailed {
-                    module_id: failure.module_id,
-                    trace_id: failure.trace_id,
-                    code: failure.code,
-                    detail: failure.detail,
-                });
+                self.module_call_failed(failure)?;
+                unreachable!("module_call_failed always returns Err")
             }
         };
 
-        self.process_module_output(module_id, &trace_id, &manifest, &output)?;
+        self.process_module_output(module_id, &trace_id, &manifest, &output, sandbox)?;
         Ok(output)
     }
 
@@ -575,6 +557,24 @@ impl World {
                 });
             }
         }
+        for policy_hook in &contract.policy_hooks {
+            if policy_hook.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract policy hook is empty for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if policy_hook == &module.module_id {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract policy hook self-reference {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
 
         Ok(())
     }
@@ -774,6 +774,7 @@ impl World {
         trace_id: &str,
         manifest: &ModuleManifest,
         output: &ModuleOutput,
+        sandbox: &mut dyn ModuleSandbox,
     ) -> Result<(), WorldError> {
         if manifest.kind == ModuleKind::Pure && output.new_state.is_some() {
             return self.module_call_failed(ModuleCallFailure {
@@ -855,6 +856,17 @@ impl World {
                     detail: format!("cap_ref not allowed {}", resolved_cap_ref),
                 });
             }
+
+            if let Err(failure) = self.enforce_pure_policy_hooks(
+                module_id,
+                trace_id,
+                manifest,
+                effect,
+                &resolved_cap_ref,
+                sandbox,
+            ) {
+                return self.module_call_failed(failure);
+            }
             resolved_caps.push(resolved_cap_ref);
         }
 
@@ -922,6 +934,197 @@ impl World {
             self.append_event(WorldEventBody::ModuleEmitted(event), None)?;
         }
 
+        Ok(())
+    }
+
+    fn call_module_raw(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        input: Vec<u8>,
+        manifest: &ModuleManifest,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        let wasm_hash = manifest.wasm_hash.clone();
+        let artifact = self
+            .load_module(&wasm_hash)
+            .map_err(|err| ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::SandboxUnavailable,
+                detail: format!("load module failed: {err:?}"),
+            })?;
+
+        let request = ModuleCallRequest {
+            module_id: module_id.to_string(),
+            wasm_hash,
+            trace_id: trace_id.to_string(),
+            entrypoint: manifest.kind.entrypoint().to_string(),
+            input,
+            limits: manifest.limits.clone(),
+            wasm_bytes: artifact.bytes,
+        };
+        sandbox.call(&request)
+    }
+
+    fn enforce_pure_policy_hooks(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        manifest: &ModuleManifest,
+        effect: &agent_world_wasm_abi::ModuleEffectIntent,
+        resolved_cap_ref: &str,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<(), ModuleCallFailure> {
+        for policy_module_id in &manifest.abi_contract.policy_hooks {
+            let policy_manifest = self
+                .active_module_manifest(policy_module_id)
+                .map_err(|err| ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::PolicyDenied,
+                    detail: format!(
+                        "pure policy hook {} not available: {err:?}",
+                        policy_module_id
+                    ),
+                })?
+                .clone();
+            if policy_manifest.kind != ModuleKind::Pure {
+                return Err(ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::PolicyDenied,
+                    detail: format!("pure policy hook {} is not pure", policy_module_id),
+                });
+            }
+            let hook_trace_id = format!("policy-{trace_id}-{policy_module_id}");
+            let world_config_hash =
+                self.current_manifest_hash()
+                    .map_err(|err| ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code: ModuleCallErrorCode::PolicyDenied,
+                        detail: format!(
+                            "pure policy hook {} cannot read world config hash: {err:?}",
+                            policy_module_id
+                        ),
+                    })?;
+            let ctx = ModuleContext {
+                v: "wasm-1".to_string(),
+                module_id: policy_module_id.clone(),
+                trace_id: hook_trace_id.clone(),
+                time: self.state.time,
+                origin: ModuleCallOrigin {
+                    kind: "module_policy".to_string(),
+                    id: trace_id.to_string(),
+                },
+                limits: policy_manifest.limits.clone(),
+                world_config_hash: Some(world_config_hash),
+            };
+            let policy_payload = serde_json::json!({
+                "source_module_id": module_id,
+                "trace_id": trace_id,
+                "effect_kind": effect.kind,
+                "effect_params": effect.params,
+                "cap_ref": resolved_cap_ref,
+            });
+            let input = ModuleCallInput {
+                ctx,
+                event: None,
+                action: Some(to_canonical_cbor(&policy_payload).map_err(|err| {
+                    ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code: ModuleCallErrorCode::PolicyDenied,
+                        detail: format!(
+                            "pure policy hook {} input encode failed: {err:?}",
+                            policy_module_id
+                        ),
+                    }
+                })?),
+                state: None,
+            };
+            let input_bytes = to_canonical_cbor(&input).map_err(|err| ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::PolicyDenied,
+                detail: format!(
+                    "pure policy hook {} input envelope encode failed: {err:?}",
+                    policy_module_id
+                ),
+            })?;
+            let hook_output = self
+                .call_module_raw(
+                    policy_module_id,
+                    &hook_trace_id,
+                    input_bytes,
+                    &policy_manifest,
+                    sandbox,
+                )
+                .map_err(|failure| ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::PolicyDenied,
+                    detail: format!(
+                        "pure policy hook {} call failed: {}",
+                        policy_module_id, failure.detail
+                    ),
+                })?;
+            if hook_output.new_state.is_some() || !hook_output.effects.is_empty() {
+                return Err(ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::PolicyDenied,
+                    detail: format!(
+                        "pure policy hook {} returned state/effects",
+                        policy_module_id
+                    ),
+                });
+            }
+            if hook_output.emits.len() > 1 {
+                return Err(ModuleCallFailure {
+                    module_id: module_id.to_string(),
+                    trace_id: trace_id.to_string(),
+                    code: ModuleCallErrorCode::PolicyDenied,
+                    detail: format!(
+                        "pure policy hook {} returned multiple emits",
+                        policy_module_id
+                    ),
+                });
+            }
+            if let Some(emit) = hook_output.emits.first() {
+                match emit.kind.as_str() {
+                    "policy.allow" => {}
+                    "policy.deny" => {
+                        let reason = emit
+                            .payload
+                            .get("reason")
+                            .and_then(|value| value.as_str())
+                            .unwrap_or("pure_policy_denied");
+                        return Err(ModuleCallFailure {
+                            module_id: module_id.to_string(),
+                            trace_id: trace_id.to_string(),
+                            code: ModuleCallErrorCode::PolicyDenied,
+                            detail: format!(
+                                "pure policy hook {} denied effect: {}",
+                                policy_module_id, reason
+                            ),
+                        });
+                    }
+                    other => {
+                        return Err(ModuleCallFailure {
+                            module_id: module_id.to_string(),
+                            trace_id: trace_id.to_string(),
+                            code: ModuleCallErrorCode::PolicyDenied,
+                            detail: format!(
+                                "pure policy hook {} returned unknown emit {}",
+                                policy_module_id, other
+                            ),
+                        });
+                    }
+                }
+            }
+        }
         Ok(())
     }
 }

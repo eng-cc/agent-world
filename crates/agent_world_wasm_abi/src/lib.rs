@@ -274,6 +274,8 @@ pub struct ModuleAbiContract {
     pub output_schema: Option<String>,
     #[serde(default)]
     pub cap_slots: BTreeMap<String, String>,
+    #[serde(default)]
+    pub policy_hooks: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
