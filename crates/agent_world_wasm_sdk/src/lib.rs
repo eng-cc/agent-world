@@ -77,6 +77,22 @@ pub mod wire {
     pub struct ModuleContext {
         pub module_id: String,
         pub time: u64,
+        #[serde(default)]
+        pub trace_id: Option<String>,
+        #[serde(default)]
+        pub stage: Option<String>,
+        #[serde(default)]
+        pub world_config_hash: Option<String>,
+        #[serde(default)]
+        pub manifest_hash: Option<String>,
+        #[serde(default)]
+        pub journal_height: Option<u64>,
+        #[serde(default)]
+        pub module_version: Option<String>,
+        #[serde(default)]
+        pub module_kind: Option<String>,
+        #[serde(default)]
+        pub module_role: Option<String>,
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

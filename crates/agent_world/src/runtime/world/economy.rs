@@ -537,7 +537,21 @@ impl World {
                 id: trace_id.to_string(),
             },
             limits: manifest.limits.clone(),
-            world_config_hash: Some(world_config_hash),
+            stage: Some("economy_action".to_string()),
+            world_config_hash: Some(world_config_hash.clone()),
+            manifest_hash: Some(world_config_hash),
+            journal_height: Some(self.journal.events.len() as u64),
+            module_version: Some(manifest.version.clone()),
+            module_kind: Some(match manifest.kind {
+                ModuleKind::Reducer => "reducer".to_string(),
+                ModuleKind::Pure => "pure".to_string(),
+            }),
+            module_role: Some(match manifest.role {
+                super::super::ModuleRole::Rule => "rule".to_string(),
+                super::super::ModuleRole::Domain => "domain".to_string(),
+                super::super::ModuleRole::Body => "body".to_string(),
+                super::super::ModuleRole::AgentInternal => "agent_internal".to_string(),
+            }),
         };
         let state = match manifest.kind {
             ModuleKind::Reducer => Some(

@@ -426,7 +426,19 @@ pub struct ModuleContext {
     pub origin: ModuleCallOrigin,
     pub limits: ModuleLimits,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub world_config_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manifest_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub journal_height: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_role: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

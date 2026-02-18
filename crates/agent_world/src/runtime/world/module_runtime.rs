@@ -12,7 +12,7 @@ use agent_world_wasm_router::{
 use super::super::util::to_canonical_cbor;
 use super::super::{
     Action, ActionEnvelope, DomainEvent, EffectOrigin, ModuleArtifact, ModuleEvent,
-    ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry,
+    ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole,
     ModuleSubscriptionStage, WorldError, WorldEvent, WorldEventBody,
 };
 use super::World;
@@ -158,7 +158,13 @@ impl World {
                     id: event.id.to_string(),
                 },
                 limits: manifest.limits.clone(),
+                stage: Some("post_event".to_string()),
                 world_config_hash: Some(world_config_hash.clone()),
+                manifest_hash: Some(world_config_hash.clone()),
+                journal_height: Some(event.id),
+                module_version: Some(manifest.version.clone()),
+                module_kind: Some(module_kind_label(&manifest.kind).to_string()),
+                module_role: Some(module_role_label(&manifest.role).to_string()),
             };
             let state = match manifest.kind {
                 ModuleKind::Reducer => Some(
@@ -246,7 +252,13 @@ impl World {
                     id: envelope.id.to_string(),
                 },
                 limits: manifest.limits.clone(),
+                stage: Some(subscription_stage_label(stage).to_string()),
                 world_config_hash: Some(world_config_hash.clone()),
+                manifest_hash: Some(world_config_hash.clone()),
+                journal_height: Some(self.journal.events.len() as u64),
+                module_version: Some(manifest.version.clone()),
+                module_kind: Some(module_kind_label(&manifest.kind).to_string()),
+                module_role: Some(module_role_label(&manifest.role).to_string()),
             };
             let state = match manifest.kind {
                 ModuleKind::Reducer => Some(
@@ -1019,7 +1031,13 @@ impl World {
                     id: trace_id.to_string(),
                 },
                 limits: policy_manifest.limits.clone(),
-                world_config_hash: Some(world_config_hash),
+                stage: Some("module_policy".to_string()),
+                world_config_hash: Some(world_config_hash.clone()),
+                manifest_hash: Some(world_config_hash),
+                journal_height: Some(self.journal.events.len() as u64),
+                module_version: Some(policy_manifest.version.clone()),
+                module_kind: Some(module_kind_label(&policy_manifest.kind).to_string()),
+                module_role: Some(module_role_label(&policy_manifest.role).to_string()),
             };
             let policy_payload = serde_json::json!({
                 "source_module_id": module_id,
@@ -1196,5 +1214,29 @@ fn action_kind_label(action: &Action) -> &'static str {
         Action::ScheduleRecipeWithModule { .. } => "action.economy.schedule_recipe_with_module",
         Action::ValidateProduct { .. } => "action.economy.validate_product",
         Action::ValidateProductWithModule { .. } => "action.economy.validate_product_with_module",
+    }
+}
+
+fn subscription_stage_label(stage: ModuleSubscriptionStage) -> &'static str {
+    match stage {
+        ModuleSubscriptionStage::PreAction => "pre_action",
+        ModuleSubscriptionStage::PostAction => "post_action",
+        ModuleSubscriptionStage::PostEvent => "post_event",
+    }
+}
+
+fn module_kind_label(kind: &ModuleKind) -> &'static str {
+    match kind {
+        ModuleKind::Reducer => "reducer",
+        ModuleKind::Pure => "pure",
+    }
+}
+
+fn module_role_label(role: &ModuleRole) -> &'static str {
+    match role {
+        ModuleRole::Rule => "rule",
+        ModuleRole::Domain => "domain",
+        ModuleRole::Body => "body",
+        ModuleRole::AgentInternal => "agent_internal",
     }
 }

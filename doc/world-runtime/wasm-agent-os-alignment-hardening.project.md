@@ -4,7 +4,7 @@
 - [x] AOSA-1 ABI/Schema 合约约束增强（manifest 字段与 shadow 校验）。
 - [x] AOSA-2 cap slot 绑定（manifest `cap_slots` + output `cap_slot` 解析）。
 - [x] AOSA-3 pure 模块策略插件链路（effect 前置判定）。
-- [ ] AOSA-5 `ModuleContext` 元信息增强与贯通。
+- [x] AOSA-5 `ModuleContext` 元信息增强与贯通。
 - [ ] AOSA-6 `WasmExecutor` 磁盘编译缓存（wasmtime serialized module）。
 
 ## 依赖
@@ -14,5 +14,5 @@
 - 参考实现（只读）：`third_party/agent-os`
 
 ## 状态
-- 当前阶段：AOSA-5 进行中。
-- 最近更新：AOSA-3 已完成（pure policy hook 链路 + allow/deny 测试）。
+- 当前阶段：AOSA-6 进行中。
+- 最近更新：AOSA-5 已完成（ModuleContext 元信息字段贯通 + 输入 CBOR 断言补齐）。

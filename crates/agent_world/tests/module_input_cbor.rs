@@ -136,7 +136,13 @@ fn module_route_encodes_event_input_as_cbor() {
     assert_eq!(decoded.ctx.module_id, "m.cbor");
     assert_eq!(decoded.ctx.origin.kind, "event");
     assert_eq!(decoded.ctx.origin.id, event.id.to_string());
+    assert_eq!(decoded.ctx.stage.as_deref(), Some("post_event"));
     assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
+    assert_eq!(decoded.ctx.manifest_hash, decoded.ctx.world_config_hash);
+    assert_eq!(decoded.ctx.journal_height, Some(event.id));
+    assert_eq!(decoded.ctx.module_version.as_deref(), Some("0.1.0"));
+    assert_eq!(decoded.ctx.module_kind.as_deref(), Some("reducer"));
+    assert_eq!(decoded.ctx.module_role.as_deref(), Some("domain"));
     assert_eq!(decoded.state, Some(Vec::new()));
     let event_bytes = decoded.event.expect("event bytes");
     let decoded_event: WorldEvent = serde_cbor::from_slice(&event_bytes).unwrap();
@@ -193,6 +199,7 @@ fn module_route_encodes_action_input_as_cbor() {
         },
     };
     let config_hash = world.current_manifest_hash().unwrap();
+    let expected_journal_height = world.journal().events.len() as u64;
 
     let mut sandbox = InspectSandbox::new();
     world
@@ -204,7 +211,13 @@ fn module_route_encodes_action_input_as_cbor() {
     assert_eq!(decoded.ctx.module_id, "m.cbor.action");
     assert_eq!(decoded.ctx.origin.kind, "action");
     assert_eq!(decoded.ctx.origin.id, envelope.id.to_string());
+    assert_eq!(decoded.ctx.stage.as_deref(), Some("pre_action"));
     assert_eq!(decoded.ctx.world_config_hash, Some(config_hash));
+    assert_eq!(decoded.ctx.manifest_hash, decoded.ctx.world_config_hash);
+    assert_eq!(decoded.ctx.journal_height, Some(expected_journal_height));
+    assert_eq!(decoded.ctx.module_version.as_deref(), Some("0.1.0"));
+    assert_eq!(decoded.ctx.module_kind.as_deref(), Some("reducer"));
+    assert_eq!(decoded.ctx.module_role.as_deref(), Some("domain"));
     assert_eq!(decoded.state, Some(Vec::new()));
     let action_bytes = decoded.action.expect("action bytes");
     let decoded_action: ActionEnvelope = serde_cbor::from_slice(&action_bytes).unwrap();
@@ -265,5 +278,8 @@ fn module_route_pure_input_omits_state() {
 
     let request = sandbox.last_request.unwrap();
     let decoded: ModuleCallInput = serde_cbor::from_slice(&request.input).unwrap();
+    assert_eq!(decoded.ctx.stage.as_deref(), Some("post_event"));
+    assert_eq!(decoded.ctx.module_kind.as_deref(), Some("pure"));
+    assert_eq!(decoded.ctx.module_role.as_deref(), Some("domain"));
     assert!(decoded.state.is_none());
 }
