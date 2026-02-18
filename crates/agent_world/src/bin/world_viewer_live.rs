@@ -2,8 +2,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
 use std::fs;
-#[cfg(test)]
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 use std::process;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -24,11 +23,9 @@ use agent_world::viewer::{
     ViewerWebBridgeConfig,
 };
 use agent_world_distfs::StorageChallengeProbeCursorState;
-#[cfg(test)]
-use agent_world_node::PosValidator;
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
-    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus,
+    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus, PosValidator,
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
@@ -50,7 +47,7 @@ mod observation_trace_runtime;
 mod reward_runtime_network;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
-use cli::{parse_options, print_help, CliOptions};
+use cli::{parse_options, print_help, CliOptions, NodeTopologyMode};
 use distfs_challenge_network::{
     storage_proof_hint_value_from_semantics, DistfsChallengeNetworkDriver,
     DistfsChallengeNetworkTickReport,
@@ -95,8 +92,10 @@ const DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES: u32 = 1;
 
 #[derive(Clone)]
 struct LiveNodeHandle {
-    runtime: Arc<Mutex<NodeRuntime>>,
+    primary_runtime: Arc<Mutex<NodeRuntime>>,
+    auxiliary_runtimes: Vec<Arc<Mutex<NodeRuntime>>>,
     world_id: String,
+    primary_node_id: String,
     reward_network: Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
 }
 
@@ -104,6 +103,8 @@ impl fmt::Debug for LiveNodeHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LiveNodeHandle")
             .field("world_id", &self.world_id)
+            .field("primary_node_id", &self.primary_node_id)
+            .field("auxiliary_runtime_count", &self.auxiliary_runtimes.len())
             .field("has_reward_network", &self.reward_network.is_some())
             .finish()
     }
@@ -236,11 +237,67 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
 
     let keypair = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
         .map_err(|err| format!("failed to ensure node keypair in config.toml: {err}"))?;
-
     let world_id = format!("live-{}", options.scenario.as_str());
-    let mut config = NodeConfig::new(options.node_id.clone(), world_id.clone(), options.node_role)
-        .and_then(|config| config.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
-        .map_err(|err| format!("failed to build node config: {err:?}"))?;
+    match options.node_topology {
+        NodeTopologyMode::Single => {
+            start_single_live_node(options, world_id.as_str(), &keypair).map(Some)
+        }
+        NodeTopologyMode::Triad => {
+            start_triad_live_nodes(options, world_id.as_str(), &keypair).map(Some)
+        }
+    }
+}
+
+fn stop_live_node(node_handle: Option<&LiveNodeHandle>) {
+    let Some(node_handle) = node_handle else {
+        return;
+    };
+    for runtime in &node_handle.auxiliary_runtimes {
+        stop_node_runtime("auxiliary node runtime", runtime);
+    }
+    stop_node_runtime("primary node runtime", &node_handle.primary_runtime);
+}
+
+fn stop_node_runtime(label: &str, runtime: &Arc<Mutex<NodeRuntime>>) {
+    let mut locked = match runtime.lock() {
+        Ok(locked) => locked,
+        Err(_) => {
+            eprintln!("failed to stop {label}: lock poisoned");
+            return;
+        }
+    };
+    if let Err(stop_err) = locked.stop() {
+        eprintln!("failed to stop {label}: {stop_err:?}");
+    }
+}
+
+fn build_node_replication_config(
+    node_id: &str,
+    keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<NodeReplicationConfig, String> {
+    let replication_root = Path::new("output").join("node-distfs").join(node_id);
+    NodeReplicationConfig::new(replication_root)
+        .and_then(|cfg| {
+            cfg.with_signing_keypair(
+                keypair.private_key_hex.clone(),
+                keypair.public_key_hex.clone(),
+            )
+        })
+        .map_err(|err| format!("failed to build node replication config: {err:?}"))
+}
+
+fn start_single_live_node(
+    options: &CliOptions,
+    world_id: &str,
+    keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<LiveNodeHandle, String> {
+    let mut config = NodeConfig::new(
+        options.node_id.clone(),
+        world_id.to_string(),
+        options.node_role,
+    )
+    .and_then(|config| config.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
+    .map_err(|err| format!("failed to build node config: {err:?}"))?;
     if !options.node_validators.is_empty() {
         config = config
             .with_pos_validators(options.node_validators.clone())
@@ -253,20 +310,15 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
     if let Some(bind_addr) = options.node_gossip_bind {
         config = config.with_gossip_optional(bind_addr, options.node_gossip_peers.clone());
     }
-    let replication_root = Path::new("output")
-        .join("node-distfs")
-        .join(options.node_id.as_str());
-    let storage_root = replication_root.join("store");
-    let replication = NodeReplicationConfig::new(replication_root)
-        .and_then(|cfg| {
-            cfg.with_signing_keypair(
-                keypair.private_key_hex.clone(),
-                keypair.public_key_hex.clone(),
-            )
-        })
-        .map_err(|err| format!("failed to build node replication config: {err:?}"))?;
-    config = config.with_replication(replication);
+    config = config.with_replication(build_node_replication_config(
+        options.node_id.as_str(),
+        keypair,
+    )?);
 
+    let storage_root = Path::new("output")
+        .join("node-distfs")
+        .join(options.node_id.as_str())
+        .join("store");
     let mut runtime = NodeRuntime::new(config);
     let execution_driver = NodeRuntimeExecutionDriver::new(
         Path::new(options.reward_runtime_report_dir.as_str())
@@ -279,6 +331,7 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
     )
     .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
     runtime = runtime.with_execution_hook(execution_driver);
+
     let mut reward_network: Option<
         Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
     > = None;
@@ -311,27 +364,135 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
-    Ok(Some(LiveNodeHandle {
-        runtime: Arc::new(Mutex::new(runtime)),
-        world_id,
+    Ok(LiveNodeHandle {
+        primary_runtime: Arc::new(Mutex::new(runtime)),
+        auxiliary_runtimes: Vec::new(),
+        world_id: world_id.to_string(),
+        primary_node_id: options.node_id.clone(),
         reward_network,
-    }))
+    })
 }
 
-fn stop_live_node(node_handle: Option<&LiveNodeHandle>) {
-    let Some(node_handle) = node_handle else {
-        return;
-    };
-    let mut locked = match node_handle.runtime.lock() {
-        Ok(locked) => locked,
-        Err(_) => {
-            eprintln!("failed to stop node runtime: lock poisoned");
-            return;
-        }
-    };
-    if let Err(stop_err) = locked.stop() {
-        eprintln!("failed to stop node runtime: {stop_err:?}");
+fn start_triad_live_nodes(
+    options: &CliOptions,
+    world_id: &str,
+    keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<LiveNodeHandle, String> {
+    let base_id = options.node_id.trim();
+    if base_id.is_empty() {
+        return Err("--node-id cannot be empty".to_string());
     }
+
+    let primary_node_id = format!("{base_id}-sequencer");
+    let storage_node_id = format!("{base_id}-storage");
+    let observer_node_id = format!("{base_id}-observer");
+    let validators = vec![
+        PosValidator {
+            validator_id: primary_node_id.clone(),
+            stake: 34,
+        },
+        PosValidator {
+            validator_id: storage_node_id.clone(),
+            stake: 33,
+        },
+        PosValidator {
+            validator_id: observer_node_id.clone(),
+            stake: 33,
+        },
+    ];
+    let ip = infer_triad_gossip_ip(options.bind_addr.as_str());
+    let p0 = options.triad_gossip_base_port;
+    let p1 = p0.saturating_add(1);
+    let p2 = p0.saturating_add(2);
+    let sequencer_bind = SocketAddr::new(ip, p0);
+    let storage_bind = SocketAddr::new(ip, p1);
+    let observer_bind = SocketAddr::new(ip, p2);
+
+    let node_specs = vec![
+        (
+            primary_node_id.clone(),
+            NodeRole::Sequencer,
+            sequencer_bind,
+            vec![storage_bind, observer_bind],
+            true,
+        ),
+        (
+            storage_node_id,
+            NodeRole::Storage,
+            storage_bind,
+            vec![sequencer_bind, observer_bind],
+            false,
+        ),
+        (
+            observer_node_id,
+            NodeRole::Observer,
+            observer_bind,
+            vec![sequencer_bind, storage_bind],
+            false,
+        ),
+    ];
+
+    let mut runtimes: Vec<Arc<Mutex<NodeRuntime>>> = Vec::new();
+    for (node_id, role, bind_addr, peers, attach_execution_hook) in node_specs {
+        let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), role)
+            .and_then(|cfg| cfg.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
+            .map_err(|err| format!("failed to build triad node config {node_id}: {err:?}"))?;
+        config = config
+            .with_pos_validators(validators.clone())
+            .map_err(|err| format!("failed to apply triad validators for {node_id}: {err:?}"))?;
+        config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+        config = config.with_gossip_optional(bind_addr, peers);
+        config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
+
+        let mut runtime = NodeRuntime::new(config);
+        if attach_execution_hook {
+            let storage_root = Path::new("output")
+                .join("node-distfs")
+                .join(node_id.as_str())
+                .join("store");
+            let execution_driver = NodeRuntimeExecutionDriver::new(
+                Path::new(options.reward_runtime_report_dir.as_str())
+                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+                Path::new(options.reward_runtime_report_dir.as_str())
+                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+                Path::new(options.reward_runtime_report_dir.as_str())
+                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+                storage_root,
+            )
+            .map_err(|err| format!("failed to initialize triad execution driver: {err}"))?;
+            runtime = runtime.with_execution_hook(execution_driver);
+        }
+
+        if let Err(err) = runtime.start() {
+            for started in &runtimes {
+                stop_node_runtime("triad node runtime", started);
+            }
+            return Err(format!(
+                "failed to start triad node runtime {node_id}: {err:?}"
+            ));
+        }
+        runtimes.push(Arc::new(Mutex::new(runtime)));
+    }
+
+    let primary_runtime = match runtimes.first() {
+        Some(runtime) => Arc::clone(runtime),
+        None => return Err("triad startup produced no runtimes".to_string()),
+    };
+    let auxiliary_runtimes = runtimes.into_iter().skip(1).collect::<Vec<_>>();
+    Ok(LiveNodeHandle {
+        primary_runtime,
+        auxiliary_runtimes,
+        world_id: world_id.to_string(),
+        primary_node_id,
+        reward_network: None,
+    })
+}
+
+fn infer_triad_gossip_ip(bind_addr: &str) -> IpAddr {
+    bind_addr
+        .parse::<SocketAddr>()
+        .map(|addr| addr.ip())
+        .unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST))
 }
 
 fn start_consensus_gate_worker(
@@ -345,7 +506,7 @@ fn start_consensus_gate_worker(
         "viewer consensus gate requires embedded node runtime; remove --no-node or pass --viewer-no-consensus-gate"
             .to_string()
     })?;
-    let runtime = Arc::clone(&handle.runtime);
+    let runtime = Arc::clone(&handle.primary_runtime);
     let max_tick = Arc::new(AtomicU64::new(0));
     let worker_max_tick = Arc::clone(&max_tick);
     let poll_interval = Duration::from_millis(options.node_tick_ms.max(20));
@@ -401,7 +562,7 @@ fn start_reward_runtime_worker(
         "reward runtime requires embedded node runtime; disable --no-node or reward runtime"
             .to_string()
     })?;
-    let runtime = Arc::clone(&handle.runtime);
+    let runtime = Arc::clone(&handle.primary_runtime);
 
     let signer_node_id = options
         .reward_runtime_signer_node_id
@@ -409,7 +570,7 @@ fn start_reward_runtime_worker(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| options.node_id.clone());
+        .unwrap_or_else(|| handle.primary_node_id.clone());
     if signer_node_id.trim().is_empty() {
         return Err("reward runtime signer node id cannot be empty".to_string());
     }
@@ -420,11 +581,14 @@ fn start_reward_runtime_worker(
     }
     let signer_keypair = ensure_node_keypair_in_config(Path::new(DEFAULT_CONFIG_FILE_NAME))
         .map_err(|err| format!("failed to load reward runtime signer keypair: {err}"))?;
+    let world_id = handle.world_id.clone();
+    let primary_node_id = handle.primary_node_id.clone();
+    let reward_network = handle.reward_network.clone();
 
     let config = RewardRuntimeLoopConfig {
-        world_id: handle.world_id,
-        local_node_id: options.node_id.clone(),
-        reward_network: handle.reward_network,
+        world_id,
+        local_node_id: primary_node_id.clone(),
+        reward_network,
         poll_interval: Duration::from_millis(options.tick_ms),
         signer_node_id,
         signer_private_key_hex: signer_keypair.private_key_hex,
@@ -442,7 +606,7 @@ fn start_reward_runtime_worker(
             .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
         storage_root: Path::new("output")
             .join("node-distfs")
-            .join(options.node_id.as_str())
+            .join(primary_node_id.as_str())
             .join("store"),
         distfs_probe_config: options.reward_distfs_probe_config,
         auto_redeem: options.reward_runtime_auto_redeem,

@@ -29,6 +29,8 @@ fn parse_options_defaults() {
     assert!(options.web_bind_addr.is_none());
     assert_eq!(options.tick_ms, 200);
     assert!(!options.llm_mode);
+    assert_eq!(options.node_topology, NodeTopologyMode::Triad);
+    assert_eq!(options.triad_gossip_base_port, 5500);
     assert!(options.viewer_consensus_gate);
     assert!(options.node_enabled);
     assert_eq!(options.node_id, "viewer-live-node");
@@ -89,6 +91,8 @@ fn parse_options_reads_custom_values() {
     let options = parse_options(
         [
             "llm_bootstrap",
+            "--topology",
+            "single",
             "--bind",
             "127.0.0.1:9001",
             "--web-bind",
@@ -171,6 +175,7 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.bind_addr, "127.0.0.1:9001");
     assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:9002"));
     assert_eq!(options.tick_ms, 50);
+    assert_eq!(options.node_topology, NodeTopologyMode::Single);
     assert!(!options.viewer_consensus_gate);
     assert_eq!(options.node_id, "viewer-live-1");
     assert_eq!(options.node_role, NodeRole::Storage);
@@ -359,22 +364,44 @@ fn parse_options_rejects_zero_reward_distfs_adaptive_multiplier_unknown() {
 
 #[test]
 fn parse_options_disables_node() {
-    let options = parse_options(["--no-node"].into_iter()).expect("parse");
+    let options = parse_options(["--topology", "single", "--no-node"].into_iter()).expect("parse");
     assert!(!options.node_enabled);
     assert!(!options.viewer_consensus_gate);
 }
 
 #[test]
 fn parse_options_disables_consensus_gate_when_requested() {
-    let options = parse_options(["--viewer-no-consensus-gate"].into_iter()).expect("parse no gate");
+    let options = parse_options(["--topology", "single", "--viewer-no-consensus-gate"].into_iter())
+        .expect("parse no gate");
     assert!(!options.viewer_consensus_gate);
     assert!(options.node_enabled);
 }
 
 #[test]
+fn parse_options_rejects_no_node_in_triad_topology() {
+    let err = parse_options(["--no-node"].into_iter()).expect_err("triad requires node");
+    assert!(err.contains("--topology triad"));
+}
+
+#[test]
+fn parse_options_rejects_no_consensus_gate_in_triad_topology() {
+    let err = parse_options(["--viewer-no-consensus-gate"].into_iter())
+        .expect_err("triad requires consensus gate");
+    assert!(err.contains("--topology triad"));
+}
+
+#[test]
 fn parse_options_rejects_reward_runtime_with_no_node() {
-    let err = parse_options(["--no-node", "--reward-runtime-enable"].into_iter())
-        .expect_err("reward runtime requires node");
+    let err = parse_options(
+        [
+            "--topology",
+            "single",
+            "--no-node",
+            "--reward-runtime-enable",
+        ]
+        .into_iter(),
+    )
+    .expect_err("reward runtime requires node");
     assert!(err.contains("--reward-runtime-enable"));
 }
 
@@ -442,6 +469,8 @@ fn parse_options_rejects_invalid_node_gossip_addr() {
 fn start_live_node_applies_pos_options() {
     let options = parse_options(
         [
+            "--topology",
+            "single",
             "--node-id",
             "node-main",
             "--node-tick-ms",
@@ -463,7 +492,7 @@ fn start_live_node_applies_pos_options() {
     let runtime = start_live_node(&options)
         .expect("start")
         .expect("runtime exists");
-    let mut locked = runtime.runtime.lock().expect("lock runtime");
+    let mut locked = runtime.primary_runtime.lock().expect("lock runtime");
     let config = locked.config();
     assert_eq!(config.pos_config.validators.len(), 2);
     assert_eq!(config.pos_config.validators[0].validator_id, "node-main");
@@ -487,10 +516,45 @@ fn start_live_node_applies_pos_options() {
 
 #[test]
 fn start_live_node_rejects_gossip_peers_without_bind() {
-    let options =
-        parse_options(["--node-gossip-peer", "127.0.0.1:6202"].into_iter()).expect("options");
+    let options = parse_options(
+        [
+            "--topology",
+            "single",
+            "--node-gossip-peer",
+            "127.0.0.1:6202",
+        ]
+        .into_iter(),
+    )
+    .expect("options");
     let err = start_live_node(&options).expect_err("must fail");
     assert!(err.contains("--node-gossip-bind"));
+}
+
+#[test]
+fn start_live_node_starts_triad_topology_by_default() {
+    let options = parse_options([].into_iter()).expect("default options");
+    let runtime = start_live_node(&options)
+        .expect("start triad")
+        .expect("runtime exists");
+
+    let primary_snapshot = runtime
+        .primary_runtime
+        .lock()
+        .expect("lock primary")
+        .snapshot();
+    assert_eq!(primary_snapshot.role, NodeRole::Sequencer);
+    assert_eq!(primary_snapshot.node_id, "viewer-live-node-sequencer");
+    assert_eq!(runtime.auxiliary_runtimes.len(), 2);
+
+    let mut aux_roles = runtime
+        .auxiliary_runtimes
+        .iter()
+        .map(|runtime| runtime.lock().expect("lock aux").snapshot().role)
+        .collect::<Vec<_>>();
+    aux_roles.sort_by_key(|role| role.as_str());
+    assert_eq!(aux_roles, vec![NodeRole::Observer, NodeRole::Storage]);
+
+    stop_live_node(Some(&runtime));
 }
 
 #[test]
@@ -504,6 +568,8 @@ fn parse_options_rejects_repl_topic_without_repl_network() {
 fn start_live_node_supports_libp2p_replication_injection() {
     let options = parse_options(
         [
+            "--topology",
+            "single",
             "--node-repl-libp2p-listen",
             "/ip4/127.0.0.1/tcp/0",
             "--node-repl-topic",
@@ -517,7 +583,7 @@ fn start_live_node_supports_libp2p_replication_injection() {
         .expect("start")
         .expect("runtime exists");
     runtime
-        .runtime
+        .primary_runtime
         .lock()
         .expect("lock runtime")
         .stop()

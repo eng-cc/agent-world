@@ -5,7 +5,7 @@
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：扩展 LLM 决策主链路（市场/制度动作）+ `test_tier_required` 用例
 - [x] T2：DistFS 默认持久化主路径（写入+优先恢复+JSON 兜底）+ persistence 用例
-- [ ] T3：live 生产默认拓扑（triad）+ CLI/拓扑测试
+- [x] T3：live 生产默认拓扑（triad）+ CLI/拓扑测试
 - [ ] T4：回归验证（`env -u RUSTC_WRAPPER cargo check` + 定向 tests）+ 文档/devlog 收口
 
 ## 依赖
@@ -14,6 +14,6 @@
 - T4 依赖 T1/T2/T3 全部完成后统一执行。
 
 ## 状态
-- 当前阶段：T3（进行中）
+- 当前阶段：T4（进行中）
 - 阻塞项：无
-- 下一步：实现 live triad 默认拓扑（CLI 模式、三节点启动与门控约束）并补齐测试。
+- 下一步：执行全量回归（`cargo check` + 定向 tests）并完成文档/devlog 收口。

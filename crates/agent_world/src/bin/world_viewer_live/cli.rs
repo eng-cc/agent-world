@@ -11,6 +11,22 @@ use super::{
     DEFAULT_REWARD_RUNTIME_RESERVE_UNITS,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum NodeTopologyMode {
+    Single,
+    Triad,
+}
+
+impl NodeTopologyMode {
+    fn parse(raw: &str) -> Result<Self, String> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "single" => Ok(Self::Single),
+            "triad" => Ok(Self::Triad),
+            _ => Err("--topology must be one of: single, triad".to_string()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct CliOptions {
     pub scenario: WorldScenario,
@@ -18,6 +34,8 @@ pub(super) struct CliOptions {
     pub web_bind_addr: Option<String>,
     pub tick_ms: u64,
     pub llm_mode: bool,
+    pub node_topology: NodeTopologyMode,
+    pub triad_gossip_base_port: u16,
     pub viewer_consensus_gate: bool,
     pub node_enabled: bool,
     pub node_id: String,
@@ -51,6 +69,8 @@ impl Default for CliOptions {
             web_bind_addr: None,
             tick_ms: 200,
             llm_mode: false,
+            node_topology: NodeTopologyMode::Triad,
+            triad_gossip_base_port: 5500,
             viewer_consensus_gate: true,
             node_enabled: true,
             node_id: "viewer-live-node".to_string(),
@@ -121,6 +141,24 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             }
             "--llm" => {
                 options.llm_mode = true;
+            }
+            "--topology" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--topology requires a value".to_string())?;
+                options.node_topology = NodeTopologyMode::parse(raw)?;
+            }
+            "--triad-gossip-base-port" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--triad-gossip-base-port requires an integer in [1, 65533]".to_string()
+                })?;
+                options.triad_gossip_base_port = raw
+                    .parse::<u16>()
+                    .ok()
+                    .filter(|value| (1..=65533).contains(value))
+                    .ok_or_else(|| {
+                        "--triad-gossip-base-port requires an integer in [1, 65533]".to_string()
+                    })?;
             }
             "--viewer-no-consensus-gate" => {
                 options.viewer_consensus_gate = false;
@@ -333,6 +371,35 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                 .to_string(),
         );
     }
+    if options.node_topology == NodeTopologyMode::Triad {
+        if !options.node_enabled {
+            return Err(
+                "--topology triad requires embedded node runtime; remove --no-node or use --topology single"
+                    .to_string(),
+            );
+        }
+        if !options.viewer_consensus_gate {
+            return Err(
+                "--topology triad requires viewer consensus gate; remove --viewer-no-consensus-gate or use --topology single"
+                    .to_string(),
+            );
+        }
+        if options.node_role != NodeRole::Observer {
+            return Err("--node-role is only supported in --topology single".to_string());
+        }
+        if !options.node_validators.is_empty() {
+            return Err("--node-validator is only supported in --topology single".to_string());
+        }
+        if options.node_gossip_bind.is_some() || !options.node_gossip_peers.is_empty() {
+            return Err("--node-gossip-* is only supported in --topology single".to_string());
+        }
+        if !options.node_repl_libp2p_listen.is_empty()
+            || !options.node_repl_libp2p_peers.is_empty()
+            || options.node_repl_topic.is_some()
+        {
+            return Err("--node-repl-* is only supported in --topology single".to_string());
+        }
+    }
     if options
         .reward_distfs_probe_config
         .adaptive_policy
@@ -369,6 +436,8 @@ pub(super) fn print_help() {
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Use LLM decisions instead of built-in script");
+    println!("  --topology <mode> Node topology mode: single|triad (default: triad)");
+    println!("  --triad-gossip-base-port <port> Triad gossip base UDP port (default: 5500)");
     println!(
         "  --viewer-no-consensus-gate Disable viewer tick gating by node consensus/execution height"
     );
