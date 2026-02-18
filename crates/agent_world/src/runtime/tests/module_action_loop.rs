@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use crate::simulator::ResourceKind;
 
 fn register_agent(world: &mut World, agent_id: &str) {
     world.submit_action(Action::RegisterAgent {
@@ -7,6 +8,12 @@ fn register_agent(world: &mut World, agent_id: &str) {
         pos: pos(0.0, 0.0),
     });
     world.step().expect("register agent");
+}
+
+fn set_agent_resource(world: &mut World, agent_id: &str, kind: ResourceKind, amount: i64) {
+    world
+        .set_agent_resource_balance(agent_id, kind, amount)
+        .expect("set agent resource balance");
 }
 
 fn base_manifest(module_id: &str, version: &str, wasm_hash: &str) -> ModuleManifest {
@@ -203,4 +210,182 @@ fn install_module_from_artifact_action_rejects_missing_artifact() {
     assert_last_rejection_note(&world, action_id, "module artifact missing");
     assert!(world.module_registry().records.is_empty());
     assert!(world.module_registry().active.is_empty());
+}
+
+#[test]
+fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "buyer-1");
+    set_agent_resource(&mut world, "seller-1", ResourceKind::Hardware, 3);
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 20);
+
+    let wasm_bytes = b"module-action-loop-market-list-and-buy".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 7,
+    });
+    world.step().expect("list artifact");
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::ModuleArtifactListed {
+            seller_agent_id,
+            wasm_hash: listed_hash,
+            price_kind: ResourceKind::Hardware,
+            price_amount: 7,
+        })) if seller_agent_id == "seller-1" && listed_hash == &wasm_hash
+    ));
+
+    world.submit_action(Action::BuyModuleArtifact {
+        buyer_agent_id: "buyer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+    });
+    world.step().expect("buy artifact");
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(
+            DomainEvent::ModuleArtifactSaleCompleted {
+                buyer_agent_id,
+                seller_agent_id,
+                wasm_hash: sold_hash,
+                price_kind: ResourceKind::Hardware,
+                price_amount: 7,
+            }
+        )) if buyer_agent_id == "buyer-1" && seller_agent_id == "seller-1" && sold_hash == &wasm_hash
+    ));
+
+    assert_eq!(
+        world.state().module_artifact_owners.get(&wasm_hash),
+        Some(&"buyer-1".to_string())
+    );
+    assert!(!world
+        .state()
+        .module_artifact_listings
+        .contains_key(&wasm_hash));
+    assert_eq!(
+        world
+            .agent_resource_balance("buyer-1", ResourceKind::Hardware)
+            .expect("buyer resource"),
+        13
+    );
+    assert_eq!(
+        world
+            .agent_resource_balance("seller-1", ResourceKind::Hardware)
+            .expect("seller resource"),
+        10
+    );
+}
+
+#[test]
+fn list_module_artifact_for_sale_rejects_non_owner() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "intruder-1");
+
+    let wasm_bytes = b"module-action-loop-list-non-owner".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    let action_id = world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "intruder-1".to_string(),
+        wasm_hash,
+        price_kind: ResourceKind::Hardware,
+        price_amount: 5,
+    });
+    world.step().expect("list non-owner");
+
+    assert_last_rejection_note(&world, action_id, "does not own");
+}
+
+#[test]
+fn buy_module_artifact_rejects_when_buyer_has_insufficient_price_resource() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "buyer-1");
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 2);
+
+    let wasm_bytes = b"module-action-loop-buy-insufficient".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+    world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 5,
+    });
+    world.step().expect("list artifact");
+
+    let action_id = world.submit_action(Action::BuyModuleArtifact {
+        buyer_agent_id: "buyer-1".to_string(),
+        wasm_hash,
+    });
+    world.step().expect("buy insufficient");
+
+    let event = world.journal().events.last().expect("last event");
+    let WorldEventBody::Domain(DomainEvent::ActionRejected {
+        action_id: rejected_action_id,
+        reason:
+            RejectReason::InsufficientResource {
+                agent_id,
+                kind: ResourceKind::Hardware,
+                requested,
+                available,
+            },
+    }) = &event.body
+    else {
+        panic!(
+            "expected insufficient resource rejection for buy action: {:?}",
+            event.body
+        );
+    };
+    assert_eq!(*rejected_action_id, action_id);
+    assert_eq!(agent_id, "buyer-1");
+    assert_eq!(*requested, 5);
+    assert_eq!(*available, 2);
+}
+
+#[test]
+fn install_module_from_artifact_rejects_non_owner_when_owner_is_registered() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "installer-1");
+
+    let wasm_bytes = b"module-action-loop-install-owner-check".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    let action_id = world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: base_manifest("m.loop.owner-guard", "0.1.0", &wasm_hash),
+        activate: true,
+    });
+    world.step().expect("install owner-guard");
+
+    assert_last_rejection_note(&world, action_id, "does not own");
+    assert!(world.module_registry().records.is_empty());
 }

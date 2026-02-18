@@ -74,6 +74,25 @@ impl World {
                     )?;
                     return Ok(true);
                 }
+                if let Some(owner_agent_id) =
+                    self.state.module_artifact_owners.get(&manifest.wasm_hash)
+                {
+                    if owner_agent_id != installer_agent_id {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "install module artifact rejected: installer {} does not own {} (owner {})",
+                                        installer_agent_id, manifest.wasm_hash, owner_agent_id
+                                    )],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                        return Ok(true);
+                    }
+                }
 
                 let mut changes = ModuleChangeSet {
                     register: vec![manifest.clone()],
@@ -192,6 +211,188 @@ impl World {
                         active: *activate,
                         proposal_id,
                         manifest_hash,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::ListModuleArtifactForSale {
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            } => {
+                if !self.state.agents.contains_key(seller_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: seller_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if *price_amount <= 0 {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InvalidAmount {
+                                amount: *price_amount,
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !self.module_artifacts.contains(wasm_hash) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "list module artifact rejected: missing artifact {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(owner_agent_id) = self.state.module_artifact_owners.get(wasm_hash) else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "list module artifact rejected: owner missing for {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if owner_agent_id != seller_agent_id {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "list module artifact rejected: seller {} does not own {} (owner {})",
+                                    seller_agent_id, wasm_hash, owner_agent_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleArtifactListed {
+                        seller_agent_id: seller_agent_id.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        price_kind: *price_kind,
+                        price_amount: *price_amount,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::BuyModuleArtifact {
+                buyer_agent_id,
+                wasm_hash,
+            } => {
+                if !self.state.agents.contains_key(buyer_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: buyer_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                let Some(listing) = self.state.module_artifact_listings.get(wasm_hash).cloned()
+                else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "buy module artifact rejected: listing missing for {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if listing.seller_agent_id == *buyer_agent_id {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "buy module artifact rejected: buyer {} already owns listing {}",
+                                    buyer_agent_id, wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !self.state.agents.contains_key(&listing.seller_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: listing.seller_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                let available = self
+                    .state
+                    .agents
+                    .get(buyer_agent_id)
+                    .map(|cell| cell.state.resources.get(listing.price_kind))
+                    .unwrap_or(0);
+                if available < listing.price_amount {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InsufficientResource {
+                                agent_id: buyer_agent_id.clone(),
+                                kind: listing.price_kind,
+                                requested: listing.price_amount,
+                                available,
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleArtifactSaleCompleted {
+                        buyer_agent_id: buyer_agent_id.clone(),
+                        seller_agent_id: listing.seller_agent_id,
+                        wasm_hash: wasm_hash.clone(),
+                        price_kind: listing.price_kind,
+                        price_amount: listing.price_amount,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;

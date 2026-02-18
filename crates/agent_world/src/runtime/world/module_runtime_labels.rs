@@ -17,6 +17,8 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             }
             DomainEvent::ModuleArtifactDeployed { .. } => "domain.module_artifact_deployed",
             DomainEvent::ModuleInstalled { .. } => "domain.module_installed",
+            DomainEvent::ModuleArtifactListed { .. } => "domain.module_artifact_listed",
+            DomainEvent::ModuleArtifactSaleCompleted { .. } => "domain.module_artifact_sold",
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
             DomainEvent::PowerRedeemed { .. } => "domain.power_redeemed",
             DomainEvent::PowerRedeemRejected { .. } => "domain.power_redeem_rejected",
@@ -59,6 +61,8 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::DeployModuleArtifact { .. } => "action.module.deploy_artifact",
         Action::InstallModuleFromArtifact { .. } => "action.module.install_from_artifact",
+        Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
+        Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::RedeemPower { .. } => "action.redeem_power",
         Action::RedeemPowerSigned { .. } => "action.redeem_power_signed",

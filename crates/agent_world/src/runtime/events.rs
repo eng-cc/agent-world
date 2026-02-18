@@ -84,6 +84,16 @@ pub enum Action {
         manifest: ModuleManifest,
         activate: bool,
     },
+    ListModuleArtifactForSale {
+        seller_agent_id: String,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    BuyModuleArtifact {
+        buyer_agent_id: String,
+        wasm_hash: String,
+    },
     TransferResource {
         from_agent_id: String,
         to_agent_id: String,
@@ -217,6 +227,19 @@ pub enum DomainEvent {
         proposal_id: ProposalId,
         manifest_hash: String,
     },
+    ModuleArtifactListed {
+        seller_agent_id: String,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    ModuleArtifactSaleCompleted {
+        buyer_agent_id: String,
+        seller_agent_id: String,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
     ResourceTransferred {
         from_agent_id: String,
         to_agent_id: String,
@@ -344,6 +367,12 @@ impl DomainEvent {
             DomainEvent::ModuleInstalled {
                 installer_agent_id, ..
             } => Some(installer_agent_id.as_str()),
+            DomainEvent::ModuleArtifactListed {
+                seller_agent_id, ..
+            } => Some(seller_agent_id.as_str()),
+            DomainEvent::ModuleArtifactSaleCompleted { buyer_agent_id, .. } => {
+                Some(buyer_agent_id.as_str())
+            }
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
             DomainEvent::PowerRedeemed {

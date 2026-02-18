@@ -156,6 +156,23 @@ impl World {
                     },
                 }))
             }
+            Action::ListModuleArtifactForSale { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["list_module_artifact_for_sale requires runtime action loop"
+                            .to_string()],
+                    },
+                }))
+            }
+            Action::BuyModuleArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["buy_module_artifact requires runtime action loop".to_string()],
+                    },
+                }))
+            }
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,
