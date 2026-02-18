@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::pos_validation::validate_pos_config;
-use crate::{NodeError, NodeReplicationConfig};
+use crate::{NodeConsensusAction, NodeError, NodeReplicationConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -209,6 +209,17 @@ impl NodeConfig {
         self.replication = Some(replication);
         self
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodeCommittedActionBatch {
+    pub height: u64,
+    pub slot: u64,
+    pub epoch: u64,
+    pub block_hash: String,
+    pub action_root: String,
+    pub committed_at_unix_ms: i64,
+    pub actions: Vec<NodeConsensusAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

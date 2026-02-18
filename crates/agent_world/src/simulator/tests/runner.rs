@@ -292,6 +292,63 @@ fn agent_runner_register_and_tick() {
 }
 
 #[test]
+fn agent_runner_tick_decide_only_defers_world_mutation_until_notified() {
+    let mut kernel = setup_kernel_with_patrol_agent("patrol-1");
+    let initial_location = kernel
+        .model()
+        .agents
+        .get("patrol-1")
+        .expect("agent exists")
+        .location_id
+        .clone();
+
+    let mut runner: AgentRunner<PatrolAgent> = AgentRunner::new();
+    runner.register(PatrolAgent::new(
+        "patrol-1",
+        vec!["loc-1".to_string(), "loc-2".to_string()],
+    ));
+
+    let tick = runner.tick_decide_only(&mut kernel).expect("tick result");
+    assert!(matches!(tick.decision, AgentDecision::Act(_)));
+    assert!(tick.action_result.is_none());
+
+    let location_after_decide = kernel
+        .model()
+        .agents
+        .get("patrol-1")
+        .expect("agent exists")
+        .location_id
+        .clone();
+    assert_eq!(location_after_decide, initial_location);
+    assert!(runner
+        .get("patrol-1")
+        .expect("registered")
+        .behavior
+        .action_results
+        .is_empty());
+
+    let action = tick.decision.action().expect("decision action").clone();
+    let action_id = kernel.submit_action_from_agent("patrol-1", action.clone());
+    let event = kernel.step().expect("event");
+    let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
+    let action_result = ActionResult {
+        action,
+        action_id,
+        success,
+        event,
+    };
+    assert!(runner.notify_action_result("patrol-1", &action_result));
+    assert_eq!(
+        runner
+            .get("patrol-1")
+            .expect("registered")
+            .behavior
+            .action_results,
+        vec![true]
+    );
+}
+
+#[test]
 fn agent_runner_round_robin() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM,

@@ -3,17 +3,24 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use agent_world_node::NodeRuntime;
+
 use crate::geometry::space_distance_cm;
 use crate::simulator::{
-    initialize_kernel, Action, AgentDecisionTrace, AgentPromptProfile, AgentRunner,
-    LlmAgentBehavior, LlmAgentBuildError, OpenAiChatCompletionClient, PromptUpdateOperation,
-    ResourceKind, ResourceOwner, RunnerMetrics, WorldConfig, WorldEvent, WorldInitConfig,
-    WorldInitError, WorldKernel, WorldScenario, WorldSnapshot,
+    initialize_kernel, Action, ActionResult, ActionSubmitter, AgentDecision, AgentDecisionTrace,
+    AgentPromptProfile, AgentRunner, LlmAgentBehavior, LlmAgentBuildError,
+    OpenAiChatCompletionClient, PromptUpdateOperation, ResourceKind, ResourceOwner, RunnerMetrics,
+    WorldConfig, WorldEvent, WorldEventKind, WorldInitConfig, WorldInitError, WorldKernel,
+    WorldScenario, WorldSnapshot,
 };
+
+mod consensus_bridge;
+use consensus_bridge::*;
+mod seek;
 
 use super::protocol::{
     viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck,
@@ -38,6 +45,7 @@ pub struct ViewerLiveServerConfig {
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
     pub consensus_gate_max_tick: Option<Arc<AtomicU64>>,
+    pub consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
 }
 
 impl ViewerLiveServerConfig {
@@ -49,6 +57,7 @@ impl ViewerLiveServerConfig {
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
             consensus_gate_max_tick: None,
+            consensus_runtime: None,
         }
     }
 
@@ -85,6 +94,11 @@ impl ViewerLiveServerConfig {
         self.consensus_gate_max_tick = Some(max_tick);
         self
     }
+
+    pub fn with_consensus_runtime(mut self, runtime: Arc<Mutex<NodeRuntime>>) -> Self {
+        self.consensus_runtime = Some(runtime);
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -93,6 +107,7 @@ pub enum ViewerLiveServerError {
     Serde(String),
     Init(WorldInitError),
     LlmBuild(LlmAgentBuildError),
+    Node(String),
 }
 
 impl From<io::Error> for ViewerLiveServerError {
@@ -136,9 +151,16 @@ impl ViewerLiveServer {
                 init,
                 config.decision_mode,
                 Some(max_tick),
+                config.consensus_runtime.clone(),
             )?
         } else {
-            LiveWorld::new(WorldConfig::default(), init, config.decision_mode)?
+            LiveWorld::new_with_consensus_gate(
+                WorldConfig::default(),
+                init,
+                config.decision_mode,
+                None,
+                config.consensus_runtime.clone(),
+            )?
         };
         Ok(Self { config, world })
     }
@@ -264,6 +286,7 @@ struct LiveWorld {
     decision_mode: ViewerLiveDecisionMode,
     driver: LiveDriver,
     consensus_gate_max_tick: Option<Arc<AtomicU64>>,
+    consensus_bridge: Option<LiveConsensusBridge>,
 }
 
 enum LiveDriver {
@@ -271,26 +294,19 @@ enum LiveDriver {
     Llm(AgentRunner<LlmAgentBehavior<OpenAiChatCompletionClient>>),
 }
 
-const SEEK_STALL_LIMIT: u64 = 128;
-
 struct LiveStepResult {
     event: Option<WorldEvent>,
     decision_trace: Option<AgentDecisionTrace>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct LiveSeekResult {
-    reached: bool,
-    current_tick: u64,
-}
-
 impl LiveWorld {
+    #[cfg(test)]
     fn new(
         config: WorldConfig,
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
     ) -> Result<Self, ViewerLiveServerError> {
-        Self::new_with_consensus_gate(config, init, decision_mode, None)
+        Self::new_with_consensus_gate(config, init, decision_mode, None, None)
     }
 
     fn new_with_consensus_gate(
@@ -298,6 +314,7 @@ impl LiveWorld {
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
         consensus_gate_max_tick: Option<Arc<AtomicU64>>,
+        consensus_runtime: Option<Arc<Mutex<NodeRuntime>>>,
     ) -> Result<Self, ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
         let driver = build_driver(&kernel, decision_mode)?;
@@ -308,6 +325,7 @@ impl LiveWorld {
             decision_mode,
             driver,
             consensus_gate_max_tick,
+            consensus_bridge: consensus_runtime.map(LiveConsensusBridge::new),
         })
     }
 
@@ -320,6 +338,9 @@ impl LiveWorld {
     }
 
     fn can_step_for_consensus(&self) -> bool {
+        if self.consensus_bridge.is_some() {
+            return true;
+        }
         let Some(max_tick) = self.consensus_gate_max_tick.as_ref() else {
             return true;
         };
@@ -330,10 +351,16 @@ impl LiveWorld {
         let (kernel, _) = initialize_kernel(self.config.clone(), self.init.clone())?;
         self.kernel = kernel;
         self.driver = build_driver(&self.kernel, self.decision_mode)?;
+        if let Some(bridge) = self.consensus_bridge.as_mut() {
+            bridge.reset_pending();
+        }
         Ok(())
     }
 
     fn step(&mut self) -> Result<LiveStepResult, ViewerLiveServerError> {
+        if self.consensus_bridge.is_some() {
+            return self.step_via_consensus();
+        }
         match &mut self.driver {
             LiveDriver::Script(script) => {
                 if let Some(action) = script.next_action(&self.kernel) {
@@ -358,44 +385,6 @@ impl LiveWorld {
                 })
             }
         }
-    }
-
-    fn seek_to_tick(&mut self, target_tick: u64) -> Result<LiveSeekResult, ViewerLiveServerError> {
-        let current_tick = self.kernel.time();
-        if target_tick == current_tick {
-            return Ok(LiveSeekResult {
-                reached: true,
-                current_tick,
-            });
-        }
-
-        if target_tick < current_tick {
-            self.reset()?;
-        }
-
-        let mut stalled_steps = 0_u64;
-        while self.kernel.time() < target_tick {
-            let tick_before = self.kernel.time();
-            let _ = self.step()?;
-            let tick_after = self.kernel.time();
-
-            if tick_after == tick_before {
-                stalled_steps = stalled_steps.saturating_add(1);
-                if stalled_steps >= SEEK_STALL_LIMIT {
-                    return Ok(LiveSeekResult {
-                        reached: false,
-                        current_tick: tick_after,
-                    });
-                }
-            } else {
-                stalled_steps = 0;
-            }
-        }
-
-        Ok(LiveSeekResult {
-            reached: true,
-            current_tick: self.kernel.time(),
-        })
     }
 
     fn prompt_control_preview(

@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme-gap12-consensus-market-lifecycle-closure.md`）
 - [x] T0：输出项目管理文档（本文件）
-- [ ] T1：Live 共识提交主路径
+- [x] T1：Live 共识提交主路径
   - node 已提交动作批次 drain
   - viewer live 提交/回放闭环
   - payload envelope + execution bridge 兼容
@@ -30,6 +30,6 @@
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态
-- 当前阶段：T0 完成，T1 进行中。
+- 当前阶段：T0/T1 完成，T2 进行中。
 - 阻塞项：无。
-- 下一步：实现 T1（live 共识提交主路径）。
+- 下一步：实现 T2（Simulator/LLM 模块市场生命周期入口）。

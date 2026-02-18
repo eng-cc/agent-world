@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -17,6 +16,7 @@ mod libp2p_replication_network;
 #[cfg(target_arch = "wasm32")]
 mod libp2p_replication_network_wasm;
 mod network_bridge;
+mod node_runtime_core;
 mod pos_schedule;
 mod pos_state_store;
 mod pos_validation;
@@ -51,11 +51,12 @@ pub use libp2p_replication_network_wasm::{
 pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 pub use types::{
-    NodeConfig, NodeConsensusMode, NodeConsensusSnapshot, NodeGossipConfig, NodePosConfig,
-    NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
+    NodeCommittedActionBatch, NodeConfig, NodeConsensusMode, NodeConsensusSnapshot,
+    NodeGossipConfig, NodePosConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 
 use network_bridge::ReplicationNetworkEndpoint;
+use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
 use pos_validation::{decide_status, validated_pos_state};
 use replication::ReplicationRuntime;
@@ -66,90 +67,14 @@ pub struct NodeRuntime {
     replication_network: Option<NodeReplicationNetworkHandle>,
     execution_hook: Option<std::sync::Arc<std::sync::Mutex<Box<dyn NodeExecutionHook>>>>,
     pending_consensus_actions: Arc<Mutex<Vec<NodeConsensusAction>>>,
+    committed_action_batches: Arc<Mutex<Vec<NodeCommittedActionBatch>>>,
     running: Arc<AtomicBool>,
     state: Arc<Mutex<RuntimeState>>,
     stop_tx: Option<mpsc::Sender<()>>,
     worker: Option<JoinHandle<()>>,
 }
 
-impl fmt::Debug for NodeRuntime {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("NodeRuntime")
-            .field("config", &self.config)
-            .field(
-                "has_replication_network",
-                &self.replication_network.is_some(),
-            )
-            .field("has_execution_hook", &self.execution_hook.is_some())
-            .field("running", &self.running.load(Ordering::SeqCst))
-            .finish()
-    }
-}
-
-#[derive(Debug, Clone)]
-struct RuntimeState {
-    tick_count: u64,
-    last_tick_unix_ms: Option<i64>,
-    consensus: NodeConsensusSnapshot,
-    last_error: Option<String>,
-}
-
-impl Default for RuntimeState {
-    fn default() -> Self {
-        Self {
-            tick_count: 0,
-            last_tick_unix_ms: None,
-            consensus: NodeConsensusSnapshot::default(),
-            last_error: None,
-        }
-    }
-}
-
 impl NodeRuntime {
-    pub fn new(config: NodeConfig) -> Self {
-        Self {
-            config,
-            replication_network: None,
-            execution_hook: None,
-            pending_consensus_actions: Arc::new(Mutex::new(Vec::new())),
-            running: Arc::new(AtomicBool::new(false)),
-            state: Arc::new(Mutex::new(RuntimeState::default())),
-            stop_tx: None,
-            worker: None,
-        }
-    }
-
-    pub fn with_replication_network(mut self, network: NodeReplicationNetworkHandle) -> Self {
-        self.replication_network = Some(network);
-        self
-    }
-
-    pub fn with_execution_hook<T>(mut self, hook: T) -> Self
-    where
-        T: NodeExecutionHook + 'static,
-    {
-        self.execution_hook = Some(Arc::new(Mutex::new(Box::new(hook))));
-        self
-    }
-
-    pub fn config(&self) -> &NodeConfig {
-        &self.config
-    }
-
-    pub fn submit_consensus_action_payload(
-        &self,
-        action_id: u64,
-        payload_cbor: Vec<u8>,
-    ) -> Result<(), NodeError> {
-        let action = NodeConsensusAction::from_payload(action_id, payload_cbor)?;
-        let mut pending = self
-            .pending_consensus_actions
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        pending.push(action);
-        Ok(())
-    }
-
     pub fn start(&mut self) -> Result<(), NodeError> {
         if self.running.swap(true, Ordering::SeqCst) {
             return Err(NodeError::AlreadyRunning {
@@ -160,6 +85,13 @@ impl NodeRuntime {
         {
             let mut state = lock_state(&self.state);
             *state = RuntimeState::default();
+        }
+        {
+            let mut committed = self
+                .committed_action_batches
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            committed.clear();
         }
 
         let mut engine = match PosNodeEngine::new(&self.config) {
@@ -219,6 +151,7 @@ impl NodeRuntime {
         let state = Arc::clone(&self.state);
         let execution_hook = self.execution_hook.clone();
         let pending_consensus_actions = Arc::clone(&self.pending_consensus_actions);
+        let committed_action_batches = Arc::clone(&self.committed_action_batches);
         let node_id = self.config.node_id.clone();
         let world_id = self.config.world_id.clone();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -280,9 +213,15 @@ impl NodeRuntime {
                             };
                             let mut current = lock_state(&state);
                             match tick_result {
-                                Ok(consensus_snapshot) => {
-                                    current.consensus = consensus_snapshot;
+                                Ok(tick) => {
+                                    current.consensus = tick.consensus_snapshot;
                                     current.last_error = None;
+                                    if let Some(batch) = tick.committed_action_batch {
+                                        let mut committed = committed_action_batches
+                                            .lock()
+                                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                        committed.push(batch);
+                                    }
                                     if let Some(store) = pos_state_store.as_ref() {
                                         if let Err(err) = store.save_engine_state(&engine) {
                                             current.last_error = Some(err.to_string());
@@ -434,6 +373,12 @@ struct PeerCommittedHead {
     execution_state_root: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NodeEngineTickResult {
+    consensus_snapshot: NodeConsensusSnapshot,
+    committed_action_batch: Option<NodeCommittedActionBatch>,
+}
+
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, total_stake, required_stake) = validated_pos_state(&config.pos_config)?;
@@ -486,7 +431,7 @@ impl PosNodeEngine {
         replication_network: Option<&mut ReplicationNetworkEndpoint>,
         queued_actions: Vec<NodeConsensusAction>,
         execution_hook: Option<&mut dyn NodeExecutionHook>,
-    ) -> Result<NodeConsensusSnapshot, NodeError> {
+    ) -> Result<NodeEngineTickResult, NodeError> {
         merge_pending_consensus_actions(&mut self.pending_consensus_actions, queued_actions)?;
 
         if let Some(endpoint) = gossip.as_ref() {
@@ -516,6 +461,7 @@ impl PosNodeEngine {
             self.broadcast_local_attestation(endpoint, node_id, world_id, now_ms)?;
         }
 
+        let prev_committed_height = self.committed_height;
         self.apply_decision(&decision);
         self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
         if let Some(endpoint) = gossip.as_ref() {
@@ -541,7 +487,27 @@ impl PosNodeEngine {
                 replication.as_deref_mut(),
             )?;
         }
-        Ok(self.snapshot_from_decision(&decision))
+        let committed_action_batch = if matches!(decision.status, PosConsensusStatus::Committed)
+            && !decision.committed_actions.is_empty()
+            && decision.height > prev_committed_height
+        {
+            Some(NodeCommittedActionBatch {
+                height: decision.height,
+                slot: decision.slot,
+                epoch: decision.epoch,
+                block_hash: decision.block_hash.clone(),
+                action_root: decision.action_root.clone(),
+                committed_at_unix_ms: now_ms,
+                actions: decision.committed_actions.clone(),
+            })
+        } else {
+            None
+        };
+
+        Ok(NodeEngineTickResult {
+            consensus_snapshot: self.snapshot_from_decision(&decision),
+            committed_action_batch,
+        })
     }
 
     fn propose_next_head(

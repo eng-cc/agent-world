@@ -146,11 +146,14 @@ fn pos_engine_commits_single_validator_head() {
             None,
         )
         .expect("tick");
-    assert_eq!(snapshot.mode, NodeConsensusMode::Pos);
-    assert_eq!(snapshot.latest_height, 1);
-    assert_eq!(snapshot.committed_height, 1);
-    assert_eq!(snapshot.last_status, Some(PosConsensusStatus::Committed));
-    assert_eq!(snapshot.slot, 1);
+    assert_eq!(snapshot.consensus_snapshot.mode, NodeConsensusMode::Pos);
+    assert_eq!(snapshot.consensus_snapshot.latest_height, 1);
+    assert_eq!(snapshot.consensus_snapshot.committed_height, 1);
+    assert_eq!(
+        snapshot.consensus_snapshot.last_status,
+        Some(PosConsensusStatus::Committed)
+    );
+    assert_eq!(snapshot.consensus_snapshot.slot, 1);
 }
 
 #[test]
@@ -184,10 +187,12 @@ fn pos_engine_generates_chain_hashed_block_ids() {
         .expect("second tick");
 
     let first_hash = first
+        .consensus_snapshot
         .last_block_hash
         .as_deref()
         .expect("first hash should exist");
     let second_hash = second
+        .consensus_snapshot
         .last_block_hash
         .as_deref()
         .expect("second hash should exist");
@@ -222,7 +227,7 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
                 None,
             )
             .expect("tick");
-        committed_height = snapshot.committed_height;
+        committed_height = snapshot.consensus_snapshot.committed_height;
         if committed_height > 0 {
             break;
         }
@@ -301,8 +306,11 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
             None,
         )
         .expect("tick");
-    assert_eq!(snapshot.committed_height, 1);
-    assert_eq!(snapshot.last_status, Some(PosConsensusStatus::Committed));
+    assert_eq!(snapshot.consensus_snapshot.committed_height, 1);
+    assert_eq!(
+        snapshot.consensus_snapshot.last_status,
+        Some(PosConsensusStatus::Committed)
+    );
 }
 
 #[test]

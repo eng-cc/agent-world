@@ -1,5 +1,6 @@
 extern crate self as agent_world;
 
+pub mod consensus_action_payload;
 pub mod geometry;
 pub mod models;
 pub mod runtime;

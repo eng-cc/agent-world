@@ -98,3 +98,38 @@ fn config_rejects_invalid_pos_config() {
         .with_pos_config(NodePosConfig::ethereum_like(vec![]));
     assert!(matches!(result, Err(NodeError::InvalidConfig { .. })));
 }
+
+#[test]
+fn runtime_drains_committed_action_batches_for_viewer_consumers() {
+    let config = NodeConfig::new("node-drain", "world-drain", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick interval");
+    let mut runtime = NodeRuntime::new(config);
+
+    let payload_b = serde_cbor::to_vec(&serde_json::json!({"kind": "b"})).expect("payload b");
+    let payload_a = serde_cbor::to_vec(&serde_json::json!({"kind": "a"})).expect("payload a");
+    runtime
+        .submit_consensus_action_payload(2, payload_b)
+        .expect("submit action b");
+    runtime
+        .submit_consensus_action_payload(1, payload_a)
+        .expect("submit action a");
+
+    runtime.start().expect("start");
+    thread::sleep(Duration::from_millis(120));
+    runtime.stop().expect("stop");
+
+    let batches = runtime.drain_committed_action_batches();
+    assert!(!batches.is_empty());
+    let with_actions = batches
+        .iter()
+        .find(|batch| !batch.actions.is_empty())
+        .expect("at least one committed batch should carry actions");
+    let ordered_ids: Vec<u64> = with_actions
+        .actions
+        .iter()
+        .map(|action| action.action_id)
+        .collect();
+    assert_eq!(ordered_ids, vec![1, 2]);
+}

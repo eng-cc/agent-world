@@ -497,6 +497,104 @@ impl<B: AgentBehavior> AgentRunner<B> {
         }
     }
 
+    /// Run one decision tick without executing actions in the kernel.
+    ///
+    /// This keeps agent scheduling/quota/rate-limit semantics, but defers world
+    /// state transition until external consensus commit and replay.
+    pub fn tick_decide_only(&mut self, kernel: &mut WorldKernel) -> Option<AgentTickResult> {
+        self.total_ticks += 1;
+        let now = kernel.time();
+
+        let rate_policy = self.rate_limit_policy.as_ref();
+        let default_quota = self.default_quota.as_ref();
+        let ready_agents: Vec<String> = self
+            .agents
+            .iter()
+            .filter(|(id, agent)| {
+                if !kernel.model().agents.contains_key(*id) {
+                    return false;
+                }
+                if !agent.is_ready(now) {
+                    return false;
+                }
+                let quota = agent.quota.as_ref().or(default_quota);
+                if let Some(q) = quota {
+                    if q.is_exhausted(agent.action_count, agent.decision_count) {
+                        return false;
+                    }
+                }
+                if agent.is_rate_limited(now, rate_policy) {
+                    return false;
+                }
+                true
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        if ready_agents.is_empty() {
+            return None;
+        }
+
+        let agent_id = match &self.scheduler_cursor {
+            None => ready_agents[0].clone(),
+            Some(cursor) => ready_agents
+                .iter()
+                .find(|id| id.as_str() > cursor.as_str())
+                .cloned()
+                .unwrap_or_else(|| ready_agents[0].clone()),
+        };
+        self.scheduler_cursor = Some(agent_id.clone());
+
+        let observation = match kernel.observe(&agent_id) {
+            Ok(obs) => obs,
+            Err(_) => return None,
+        };
+
+        let agent = self.agents.get_mut(&agent_id)?;
+        agent.decision_count += 1;
+        let decision = agent.behavior.decide(&observation);
+        let decision_trace = agent.behavior.take_decision_trace();
+
+        match decision {
+            AgentDecision::Wait => Some(AgentTickResult {
+                agent_id,
+                decision: AgentDecision::Wait,
+                action_result: None,
+                skipped_reason: None,
+                decision_trace,
+            }),
+            AgentDecision::WaitTicks(ticks) => {
+                agent.wait_until = Some(now.saturating_add(ticks));
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::WaitTicks(ticks),
+                    action_result: None,
+                    skipped_reason: None,
+                    decision_trace,
+                })
+            }
+            AgentDecision::Act(action) => {
+                agent.action_count += 1;
+                let rate_policy = self.rate_limit_policy.as_ref();
+                agent.record_action(now, rate_policy);
+                Some(AgentTickResult {
+                    agent_id,
+                    decision: AgentDecision::Act(action),
+                    action_result: None,
+                    skipped_reason: None,
+                    decision_trace,
+                })
+            }
+        }
+    }
+
+    pub fn notify_action_result(&mut self, agent_id: &str, result: &ActionResult) -> bool {
+        let Some(agent) = self.agents.get_mut(agent_id) else {
+            return false;
+        };
+        agent.behavior.on_action_result(result);
+        true
+    }
+
     /// Check if an agent is quota-exhausted.
     pub fn is_quota_exhausted(&self, agent_id: &str) -> bool {
         if let Some(agent) = self.agents.get(agent_id) {

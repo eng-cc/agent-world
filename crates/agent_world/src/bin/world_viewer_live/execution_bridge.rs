@@ -1,9 +1,12 @@
 use std::fs;
 use std::path::Path;
 
-use agent_world::runtime::{
-    blake3_hex, Action as RuntimeAction, BlobStore, LocalCasStore, World as RuntimeWorld,
+#[cfg(test)]
+use agent_world::consensus_action_payload::ConsensusActionPayloadEnvelope;
+use agent_world::consensus_action_payload::{
+    decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
+use agent_world::runtime::{blake3_hex, BlobStore, LocalCasStore, World as RuntimeWorld};
 use agent_world_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
@@ -120,14 +123,18 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
 
         let mut decoded_actions = Vec::with_capacity(context.committed_actions.len());
         for action in &context.committed_actions {
-            let decoded: RuntimeAction = serde_cbor::from_slice(action.payload_cbor.as_slice())
-                .map_err(|err| {
-                    format!(
+            match decode_consensus_action_payload(action.payload_cbor.as_slice()) {
+                Ok(ConsensusActionPayloadBody::RuntimeAction { action: decoded }) => {
+                    decoded_actions.push(decoded);
+                }
+                Ok(ConsensusActionPayloadBody::SimulatorAction { .. }) => {}
+                Err(err) => {
+                    return Err(format!(
                         "execution driver decode committed action failed action_id={} err={}",
                         action.action_id, err
-                    )
-                })?;
-            decoded_actions.push(decoded);
+                    ));
+                }
+            }
         }
 
         fs::create_dir_all(self.records_dir.as_path()).map_err(|err| {
@@ -376,6 +383,8 @@ fn to_cbor<T: Serialize>(value: T) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_world::consensus_action_payload::encode_consensus_action_payload;
+    use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
     use agent_world_node::{NodeConsensusSnapshot, NodeRole};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -546,6 +555,55 @@ mod tests {
         assert_eq!(state.last_applied_committed_height, 2);
         assert_eq!(state.last_node_block_hash.as_deref(), Some("node-h2"));
 
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_ignores_simulator_payload_envelope() {
+        let dir = temp_dir("execution-driver-simulator-payload");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+        let mut driver = NodeRuntimeExecutionDriver::new(
+            state_path.clone(),
+            world_dir,
+            records_dir.clone(),
+            storage_root,
+        )
+        .expect("driver");
+
+        let payload = encode_consensus_action_payload(
+            &ConsensusActionPayloadEnvelope::from_simulator_action(
+                SimulatorAction::HarvestRadiation {
+                    agent_id: "agent-0".to_string(),
+                    max_amount: 1,
+                },
+                ActionSubmitter::System,
+            ),
+        )
+        .expect("encode simulator payload");
+        let committed_action = agent_world_node::NodeConsensusAction::from_payload(1, payload)
+            .expect("consensus action");
+        let action_root =
+            compute_consensus_action_root(std::slice::from_ref(&committed_action)).expect("root");
+
+        let result = driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 1,
+                slot: 0,
+                epoch: 0,
+                node_block_hash: "node-h1".to_string(),
+                action_root,
+                committed_actions: vec![committed_action],
+                committed_at_unix_ms: 1_000,
+            })
+            .expect("commit");
+
+        assert_eq!(result.execution_height, 1);
+        assert!(records_dir.join("00000000000000000001.json").exists());
         let _ = fs::remove_dir_all(dir);
     }
 }

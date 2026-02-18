@@ -207,6 +207,9 @@ fn main() {
     if let Some(worker) = consensus_gate_worker.as_ref() {
         config = config.with_consensus_gate_max_tick(Arc::clone(&worker.max_tick));
     }
+    if let Some(handle) = node_handle.as_ref() {
+        config = config.with_consensus_runtime(Arc::clone(&handle.primary_runtime));
+    }
 
     let mut server = match ViewerLiveServer::new(config) {
         Ok(server) => server,

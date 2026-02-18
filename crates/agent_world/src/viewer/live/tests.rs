@@ -1,6 +1,9 @@
 use super::*;
+use agent_world_node::{NodeConfig, NodeRole, NodeRuntime};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 fn set_test_llm_env() {
     std::env::set_var(crate::simulator::ENV_LLM_MODEL, "gpt-4o-mini");
@@ -67,6 +70,7 @@ fn live_server_config_supports_llm_mode() {
     let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
     assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
     assert!(config.consensus_gate_max_tick.is_none());
+    assert!(config.consensus_runtime.is_none());
 
     let llm_config = config.clone().with_llm_mode(true);
     assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
@@ -85,6 +89,7 @@ fn live_world_consensus_gate_limits_step_budget() {
         init,
         ViewerLiveDecisionMode::Script,
         Some(Arc::clone(&gate)),
+        None,
     )
     .expect("init ok");
 
@@ -336,4 +341,47 @@ fn sync_llm_runner_long_term_memory_writes_back_to_world_model() {
     assert_eq!(restored.len(), 1);
     assert_eq!(restored[0].id, runtime_entry.id);
     assert_eq!(restored[0].content, runtime_entry.content);
+}
+
+#[test]
+fn live_world_consensus_bridge_applies_only_committed_actions() {
+    let node_config = NodeConfig::new("node-live-bridge", "live-minimal", NodeRole::Sequencer)
+        .expect("node config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("node tick interval");
+    let mut node_runtime = NodeRuntime::new(node_config);
+    node_runtime.start().expect("start node runtime");
+    let shared_runtime = Arc::new(Mutex::new(node_runtime));
+
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new_with_consensus_gate(
+        config,
+        init,
+        ViewerLiveDecisionMode::Script,
+        None,
+        Some(Arc::clone(&shared_runtime)),
+    )
+    .expect("init world");
+
+    assert_eq!(world.kernel.time(), 0);
+    let first = world.step().expect("submit step");
+    assert!(first.event.is_none());
+    assert_eq!(world.kernel.time(), 0);
+
+    let mut observed_commit_event = false;
+    for _ in 0..40 {
+        thread::sleep(Duration::from_millis(20));
+        let step = world.step().expect("consensus replay step");
+        if step.event.is_some() {
+            observed_commit_event = true;
+            break;
+        }
+    }
+
+    assert!(observed_commit_event);
+    assert!(world.kernel.time() > 0);
+
+    let mut locked = shared_runtime.lock().expect("lock node runtime");
+    locked.stop().expect("stop node runtime");
 }
