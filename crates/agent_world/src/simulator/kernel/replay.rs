@@ -506,6 +506,69 @@ impl WorldKernel {
                     .agent_player_bindings
                     .insert(agent_id.clone(), player_id.clone());
             }
+            WorldEventKind::SocialFactPublished { fact } => {
+                self.replay_social_fact_published(fact)
+                    .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialFactChallenged {
+                fact_id,
+                challenger,
+                reason,
+                challenged_at_tick,
+                stake,
+            } => {
+                self.replay_social_fact_challenged(
+                    *fact_id,
+                    challenger,
+                    reason,
+                    *challenged_at_tick,
+                    stake.clone(),
+                )
+                .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialFactAdjudicated {
+                fact_id,
+                adjudicator,
+                decision,
+                adjudicated_at_tick,
+                ..
+            } => {
+                self.replay_social_fact_adjudicated(
+                    *fact_id,
+                    adjudicator,
+                    *decision,
+                    *adjudicated_at_tick,
+                )
+                .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialFactRevoked {
+                fact_id,
+                actor,
+                revoked_at_tick,
+                ..
+            } => {
+                self.replay_social_fact_revoked(*fact_id, actor, *revoked_at_tick)
+                    .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialFactExpired {
+                fact_id,
+                expired_at_tick,
+            } => {
+                self.replay_social_fact_expired(*fact_id, *expired_at_tick)
+                    .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialEdgeDeclared { edge } => {
+                self.replay_social_edge_declared(edge)
+                    .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
+            WorldEventKind::SocialEdgeExpired {
+                edge_id,
+                expired_at_tick,
+                ..
+            } => {
+                self.replay_social_edge_expired(*edge_id, *expired_at_tick)
+                    .map_err(|message| PersistError::ReplayConflict { message })?;
+            }
             WorldEventKind::PowerOrderPlaced {
                 order_id,
                 owner,
