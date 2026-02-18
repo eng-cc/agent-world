@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -34,6 +36,7 @@ pub struct ViewerLiveServerConfig {
     pub scenario: WorldScenario,
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
+    pub consensus_gate_max_tick: Option<Arc<AtomicU64>>,
 }
 
 impl ViewerLiveServerConfig {
@@ -44,6 +47,7 @@ impl ViewerLiveServerConfig {
             world_id: format!("live-{}", scenario.as_str()),
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
+            consensus_gate_max_tick: None,
         }
     }
 
@@ -73,6 +77,11 @@ impl ViewerLiveServerConfig {
         } else {
             ViewerLiveDecisionMode::Script
         };
+        self
+    }
+
+    pub fn with_consensus_gate_max_tick(mut self, max_tick: Arc<AtomicU64>) -> Self {
+        self.consensus_gate_max_tick = Some(max_tick);
         self
     }
 }
@@ -120,7 +129,16 @@ pub struct ViewerLiveServer {
 impl ViewerLiveServer {
     pub fn new(config: ViewerLiveServerConfig) -> Result<Self, ViewerLiveServerError> {
         let init = WorldInitConfig::from_scenario(config.scenario, &WorldConfig::default());
-        let world = LiveWorld::new(WorldConfig::default(), init, config.decision_mode)?;
+        let world = if let Some(max_tick) = config.consensus_gate_max_tick.clone() {
+            LiveWorld::new_with_consensus_gate(
+                WorldConfig::default(),
+                init,
+                config.decision_mode,
+                Some(max_tick),
+            )?
+        } else {
+            LiveWorld::new(WorldConfig::default(), init, config.decision_mode)?
+        };
         Ok(Self { config, world })
     }
 
@@ -180,6 +198,9 @@ impl ViewerLiveServer {
             }
 
             if session.should_emit_event() && last_tick.elapsed() >= session.tick_interval {
+                if !self.world.can_step_for_consensus() {
+                    continue;
+                }
                 let step = self.world.step()?;
 
                 if let Some(trace) = step.decision_trace {
@@ -241,6 +262,7 @@ struct LiveWorld {
     kernel: WorldKernel,
     decision_mode: ViewerLiveDecisionMode,
     driver: LiveDriver,
+    consensus_gate_max_tick: Option<Arc<AtomicU64>>,
 }
 
 enum LiveDriver {
@@ -268,6 +290,15 @@ impl LiveWorld {
         init: WorldInitConfig,
         decision_mode: ViewerLiveDecisionMode,
     ) -> Result<Self, ViewerLiveServerError> {
+        Self::new_with_consensus_gate(config, init, decision_mode, None)
+    }
+
+    fn new_with_consensus_gate(
+        config: WorldConfig,
+        init: WorldInitConfig,
+        decision_mode: ViewerLiveDecisionMode,
+        consensus_gate_max_tick: Option<Arc<AtomicU64>>,
+    ) -> Result<Self, ViewerLiveServerError> {
         let (kernel, _) = initialize_kernel(config.clone(), init.clone())?;
         let driver = build_driver(&kernel, decision_mode)?;
         Ok(Self {
@@ -276,6 +307,7 @@ impl LiveWorld {
             kernel,
             decision_mode,
             driver,
+            consensus_gate_max_tick,
         })
     }
 
@@ -285,6 +317,13 @@ impl LiveWorld {
 
     fn snapshot(&self) -> WorldSnapshot {
         self.kernel.snapshot()
+    }
+
+    fn can_step_for_consensus(&self) -> bool {
+        let Some(max_tick) = self.consensus_gate_max_tick.as_ref() else {
+            return true;
+        };
+        self.kernel.time() < max_tick.load(Ordering::SeqCst)
     }
 
     fn reset(&mut self) -> Result<(), ViewerLiveServerError> {

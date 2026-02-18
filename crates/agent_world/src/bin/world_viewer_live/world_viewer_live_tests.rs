@@ -29,6 +29,7 @@ fn parse_options_defaults() {
     assert!(options.web_bind_addr.is_none());
     assert_eq!(options.tick_ms, 200);
     assert!(!options.llm_mode);
+    assert!(options.viewer_consensus_gate);
     assert!(options.node_enabled);
     assert_eq!(options.node_id, "viewer-live-node");
     assert_eq!(options.node_role, NodeRole::Observer);
@@ -94,6 +95,7 @@ fn parse_options_reads_custom_values() {
             "127.0.0.1:9002",
             "--tick-ms",
             "50",
+            "--viewer-no-consensus-gate",
             "--node-id",
             "viewer-live-1",
             "--node-role",
@@ -169,6 +171,7 @@ fn parse_options_reads_custom_values() {
     assert_eq!(options.bind_addr, "127.0.0.1:9001");
     assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:9002"));
     assert_eq!(options.tick_ms, 50);
+    assert!(!options.viewer_consensus_gate);
     assert_eq!(options.node_id, "viewer-live-1");
     assert_eq!(options.node_role, NodeRole::Storage);
     assert_eq!(options.node_tick_ms, 30);
@@ -358,6 +361,14 @@ fn parse_options_rejects_zero_reward_distfs_adaptive_multiplier_unknown() {
 fn parse_options_disables_node() {
     let options = parse_options(["--no-node"].into_iter()).expect("parse");
     assert!(!options.node_enabled);
+    assert!(!options.viewer_consensus_gate);
+}
+
+#[test]
+fn parse_options_disables_consensus_gate_when_requested() {
+    let options = parse_options(["--viewer-no-consensus-gate"].into_iter()).expect("parse no gate");
+    assert!(!options.viewer_consensus_gate);
+    assert!(options.node_enabled);
 }
 
 #[test]

@@ -6,6 +6,7 @@ use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -136,6 +137,13 @@ struct RewardRuntimeWorker {
     join_handle: thread::JoinHandle<()>,
 }
 
+#[derive(Debug)]
+struct ConsensusGateWorker {
+    max_tick: Arc<AtomicU64>,
+    stop_tx: mpsc::Sender<()>,
+    join_handle: thread::JoinHandle<()>,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let options = match parse_options(args.iter().skip(1).map(|arg| arg.as_str())) {
@@ -163,6 +171,16 @@ fn main() {
             process::exit(1);
         }
     };
+    let mut consensus_gate_worker = match start_consensus_gate_worker(&options, node_handle.clone())
+    {
+        Ok(worker) => worker,
+        Err(err) => {
+            eprintln!("{err}");
+            stop_reward_runtime_worker(reward_runtime_worker.take());
+            stop_live_node(node_handle.as_ref());
+            process::exit(1);
+        }
+    };
 
     if let Some(web_bind_addr) = options.web_bind_addr.clone() {
         let upstream_addr = options.bind_addr.clone();
@@ -177,7 +195,7 @@ fn main() {
         });
     }
 
-    let config = ViewerLiveServerConfig::new(options.scenario)
+    let mut config = ViewerLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
         .with_tick_interval(Duration::from_millis(options.tick_ms))
         .with_decision_mode(if options.llm_mode {
@@ -185,11 +203,15 @@ fn main() {
         } else {
             ViewerLiveDecisionMode::Script
         });
+    if let Some(worker) = consensus_gate_worker.as_ref() {
+        config = config.with_consensus_gate_max_tick(Arc::clone(&worker.max_tick));
+    }
 
     let mut server = match ViewerLiveServer::new(config) {
         Ok(server) => server,
         Err(err) => {
             eprintln!("failed to start live viewer server: {err:?}");
+            stop_consensus_gate_worker(consensus_gate_worker.take());
             stop_reward_runtime_worker(reward_runtime_worker.take());
             stop_live_node(node_handle.as_ref());
             process::exit(1);
@@ -197,6 +219,7 @@ fn main() {
     };
 
     let run_result = server.run();
+    stop_consensus_gate_worker(consensus_gate_worker.take());
     stop_reward_runtime_worker(reward_runtime_worker.take());
     stop_live_node(node_handle.as_ref());
 
@@ -308,6 +331,62 @@ fn stop_live_node(node_handle: Option<&LiveNodeHandle>) {
     };
     if let Err(stop_err) = locked.stop() {
         eprintln!("failed to stop node runtime: {stop_err:?}");
+    }
+}
+
+fn start_consensus_gate_worker(
+    options: &CliOptions,
+    node_handle: Option<LiveNodeHandle>,
+) -> Result<Option<ConsensusGateWorker>, String> {
+    if !options.viewer_consensus_gate {
+        return Ok(None);
+    }
+    let handle = node_handle.ok_or_else(|| {
+        "viewer consensus gate requires embedded node runtime; remove --no-node or pass --viewer-no-consensus-gate"
+            .to_string()
+    })?;
+    let runtime = Arc::clone(&handle.runtime);
+    let max_tick = Arc::new(AtomicU64::new(0));
+    let worker_max_tick = Arc::clone(&max_tick);
+    let poll_interval = Duration::from_millis(options.node_tick_ms.max(20));
+    let (stop_tx, stop_rx) = mpsc::channel::<()>();
+    let join_handle = thread::Builder::new()
+        .name("viewer-consensus-gate".to_string())
+        .spawn(move || loop {
+            match stop_rx.recv_timeout(poll_interval) {
+                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+
+            let snapshot = match runtime.lock() {
+                Ok(locked) => locked.snapshot(),
+                Err(_) => break,
+            };
+            let committed_height = snapshot.consensus.committed_height;
+            let execution_height = snapshot.consensus.last_execution_height;
+            let max_allowed_tick = if execution_height > 0 {
+                committed_height.min(execution_height)
+            } else {
+                committed_height
+            };
+            worker_max_tick.store(max_allowed_tick, Ordering::SeqCst);
+        })
+        .map_err(|err| format!("failed to spawn viewer consensus gate worker: {err}"))?;
+
+    Ok(Some(ConsensusGateWorker {
+        max_tick,
+        stop_tx,
+        join_handle,
+    }))
+}
+
+fn stop_consensus_gate_worker(worker: Option<ConsensusGateWorker>) {
+    let Some(worker) = worker else {
+        return;
+    };
+    let _ = worker.stop_tx.send(());
+    if worker.join_handle.join().is_err() {
+        eprintln!("viewer consensus gate worker join failed");
     }
 }
 

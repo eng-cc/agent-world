@@ -18,6 +18,7 @@ pub(super) struct CliOptions {
     pub web_bind_addr: Option<String>,
     pub tick_ms: u64,
     pub llm_mode: bool,
+    pub viewer_consensus_gate: bool,
     pub node_enabled: bool,
     pub node_id: String,
     pub node_role: NodeRole,
@@ -50,6 +51,7 @@ impl Default for CliOptions {
             web_bind_addr: None,
             tick_ms: 200,
             llm_mode: false,
+            viewer_consensus_gate: true,
             node_enabled: true,
             node_id: "viewer-live-node".to_string(),
             node_role: NodeRole::Observer,
@@ -119,6 +121,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             }
             "--llm" => {
                 options.llm_mode = true;
+            }
+            "--viewer-no-consensus-gate" => {
+                options.viewer_consensus_gate = false;
             }
             "--no-node" => {
                 options.node_enabled = false;
@@ -347,6 +352,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             "--reward-runtime-enable requires embedded node runtime (remove --no-node)".to_string(),
         );
     }
+    if !options.node_enabled {
+        options.viewer_consensus_gate = false;
+    }
 
     Ok(options)
 }
@@ -361,6 +369,9 @@ pub(super) fn print_help() {
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Use LLM decisions instead of built-in script");
+    println!(
+        "  --viewer-no-consensus-gate Disable viewer tick gating by node consensus/execution height"
+    );
     println!("  --no-node         Disable embedded node runtime startup");
     println!("  --node-id <id>    Node identifier (default: viewer-live-node)");
     println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");

@@ -1,4 +1,6 @@
 use super::*;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 #[test]
 fn live_script_moves_between_locations() {
@@ -55,12 +57,35 @@ fn live_world_reset_rebuilds_kernel() {
 fn live_server_config_supports_llm_mode() {
     let config = ViewerLiveServerConfig::new(WorldScenario::Minimal);
     assert_eq!(config.decision_mode, ViewerLiveDecisionMode::Script);
+    assert!(config.consensus_gate_max_tick.is_none());
 
     let llm_config = config.clone().with_llm_mode(true);
     assert_eq!(llm_config.decision_mode, ViewerLiveDecisionMode::Llm);
 
     let script_config = llm_config.with_decision_mode(ViewerLiveDecisionMode::Script);
     assert_eq!(script_config.decision_mode, ViewerLiveDecisionMode::Script);
+}
+
+#[test]
+fn live_world_consensus_gate_limits_step_budget() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let gate = Arc::new(AtomicU64::new(0));
+    let mut world = LiveWorld::new_with_consensus_gate(
+        config,
+        init,
+        ViewerLiveDecisionMode::Script,
+        Some(Arc::clone(&gate)),
+    )
+    .expect("init ok");
+
+    assert!(!world.can_step_for_consensus());
+    gate.store(1, Ordering::SeqCst);
+    assert!(world.can_step_for_consensus());
+
+    let _ = world.step().expect("step");
+    assert_eq!(world.kernel.time(), 1);
+    assert!(!world.can_step_for_consensus());
 }
 
 #[test]
