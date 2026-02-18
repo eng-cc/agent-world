@@ -1025,6 +1025,132 @@ fn llm_agent_execute_until_stops_on_action_rejected_for_mine_compound() {
 }
 
 #[test]
+fn llm_agent_rebuilds_execute_until_until_when_mine_is_guardrail_rewritten_to_move() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"mine_compound","owner":"self","location_id":"loc-home","compound_mass_g":3000},"until":{"event":"action_rejected"},"max_ticks":6}"#.to_string(),
+            r#"{"decision":"wait"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            compound_mass_g: 3_000,
+        },
+        action_id: 333,
+        success: false,
+        event: WorldEvent {
+            id: 433,
+            time: 500,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Location {
+                        location_id: "loc-home".to_string(),
+                    },
+                    kind: ResourceKind::Compound,
+                    requested: 3_000,
+                    available: 0,
+                },
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.time = 501;
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-alt".to_string(),
+            name: "alt".to_string(),
+            pos: GeoPos {
+                x_cm: 600_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 600_000,
+        },
+    ];
+
+    let first = behavior.decide(&observation);
+    assert_eq!(
+        first,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-alt".to_string(),
+        })
+    );
+    behavior.take_decision_trace().expect("first trace");
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-alt".to_string(),
+        },
+        action_id: 334,
+        success: true,
+        event: WorldEvent {
+            id: 434,
+            time: 501,
+            kind: WorldEventKind::AgentMoved {
+                agent_id: "agent-1".to_string(),
+                from: "loc-home".to_string(),
+                to: "loc-alt".to_string(),
+                distance_cm: 600_000,
+                electricity_cost: 0,
+            },
+        },
+    });
+
+    observation.time = 502;
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 600_000,
+        },
+        ObservedLocation {
+            location_id: "loc-alt".to_string(),
+            name: "alt".to_string(),
+            pos: GeoPos {
+                x_cm: 600_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+    ];
+
+    let second = behavior.decide(&observation);
+    assert_eq!(second, AgentDecision::Wait);
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
 fn llm_agent_execute_until_stops_on_thermal_overload_reject_reason() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(

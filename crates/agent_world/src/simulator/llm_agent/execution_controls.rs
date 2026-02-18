@@ -312,6 +312,12 @@ fn auto_reentry_until_conditions(action: &Action) -> Vec<ExecuteUntilCondition> 
     }
 }
 
+pub(super) fn default_execute_until_conditions_for_action(
+    action: &Action,
+) -> Vec<ExecuteUntilCondition> {
+    auto_reentry_until_conditions(action)
+}
+
 fn reject_reason_is_insufficient_electricity(reason: &RejectReason) -> bool {
     matches!(
         reason,

@@ -40,9 +40,12 @@ pub use prompt_assembly::{
 use decision_flow::{
     parse_limit_arg, parse_llm_turn_payloads_with_debug_mode, prompt_section_kind_name,
     prompt_section_priority_name, summarize_trace_text, DecisionRewriteReceipt,
-    ExecuteUntilDirective, LlmModuleCallRequest, ModuleCallExchange, ParsedLlmTurn,
+    ExecuteUntilCondition, ExecuteUntilDirective, LlmModuleCallRequest, ModuleCallExchange,
+    ParsedLlmTurn,
 };
-use execution_controls::{ActionReplanGuardState, ActiveExecuteUntil};
+use execution_controls::{
+    default_execute_until_conditions_for_action, ActionReplanGuardState, ActiveExecuteUntil,
+};
 
 use config_helpers::{
     goal_value, parse_non_negative_usize, parse_positive_i64, parse_positive_usize, required_env,
@@ -1864,11 +1867,35 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         observation: &Observation,
     ) -> (ExecuteUntilDirective, Option<String>) {
         let mut notes = Vec::new();
+        let original_action = directive.action.clone();
+        let original_action_label = Self::action_label_for_rewrite(&original_action);
         let (guarded_action, action_note) =
             self.apply_action_guardrails(directive.action, Some(observation));
         directive.action = guarded_action;
         if let Some(action_note) = action_note {
             notes.push(action_note);
+        }
+
+        let rewritten_action_label = Self::action_label_for_rewrite(&directive.action);
+        if original_action_label != rewritten_action_label {
+            let previous_until_summary = directive
+                .until_conditions
+                .iter()
+                .map(ExecuteUntilCondition::summary)
+                .collect::<Vec<_>>()
+                .join("|");
+            directive.until_conditions =
+                default_execute_until_conditions_for_action(&directive.action);
+            let rebuilt_until_summary = directive
+                .until_conditions
+                .iter()
+                .map(ExecuteUntilCondition::summary)
+                .collect::<Vec<_>>()
+                .join("|");
+            notes.push(format!(
+                "execute_until.until rebuilt after action guardrail rewrite: action={} -> {}; until={} -> {}",
+                original_action_label, rewritten_action_label, previous_until_summary, rebuilt_until_summary
+            ));
         }
 
         if matches!(directive.action, Action::HarvestRadiation { .. })

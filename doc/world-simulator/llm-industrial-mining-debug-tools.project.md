@@ -62,7 +62,7 @@
 - [x] MMD9.1 `execute_until` 动作匹配补齐（覆盖 `mine_compound/refine_compound`）+ `test_tier_required` 回归
 - [x] MMD9.2 `schedule_recipe` 工厂-配方兼容校验（assembler recipe 仅允许 assembler factory）+ kernel 回归
 - [x] MMD9.3 采矿失败记忆优先级（候选排序避开连续失败矿点）+ `test_tier_required` 回归
-- [ ] MMD9.4 guardrail 改写后 `execute_until.until` 条件重建（抑制后半程 move/mine 抖动）+ 在线抽样复核
+- [x] MMD9.4 guardrail 改写后 `execute_until.until` 条件重建（抑制后半程 move/mine 抖动）+ 在线抽样复核
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -203,9 +203,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD9 进行中（已完成 MMD9.1~MMD9.3，MMD9.4 待完成）。
-- 下一阶段：完成 MMD9.4 并复跑 `llm_bootstrap` 120 tick 对比失败分布。
-- 最近更新：2026-02-18（完成 MMD9.3：采矿失败记忆优先级与回归测试）。
+- 当前阶段：MMD9 已完成（TODO-22~TODO-25 全部落地并通过回归）。
+- 下一阶段：聚焦 TODO-21 及在线样本中新暴露的工厂选择误差，继续压降后半程无效失败。
+- 最近更新：2026-02-18（完成 MMD9.4：`execute_until` guardrail 改写后 `until` 条件重建 + 120 tick 在线抽样）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
@@ -214,8 +214,10 @@
 - TODO-18：已完成（MMD8.2），单轮多 tool call 硬拒绝，且 `schedule_recipe.batches<=0` 自动归一为合法下界。
 - TODO-19：已完成（MMD8.3），`schedule_recipe` 与 `move_agent` 增加电力前置预算预检并可自动回切 `harvest_radiation`。
 - TODO-20：已完成（MMD8.4），矿点耗尽引入短期冷却/跳过窗口并支持冷却过期后重试。
-- TODO-21：在线样本中 `insufficient_resource` 失败仍占 18/23（主要集中在“矿点反复探测 + 电力短缺下的采矿/精炼链路”）；可考虑追加“低收益矿点全局黑名单 + 基于最近失败的矿点优先队列”以进一步压降无效采矿失败。
+- TODO-21：最新在线样本（`mmd9_opt_all_factory_all_products_2026-02-18_115214`）中 `insufficient_resource` 失败为 20/24（仍集中在“矿点反复探测 + 电力短缺的采矿/精炼链路”）；可继续强化低收益矿点黑名单与电力门槛前置策略。
 - TODO-22：已完成（MMD9.1），`execute_until` 现可正确跟踪 `mine_compound/refine_compound` 的失败/拒绝，避免“失败后继续 auto step”。
 - TODO-23：已完成（MMD9.2），kernel `schedule_recipe` 现会校验 recipe 所需工厂类型，已阻断 power factory 调度 assembler recipe。
 - TODO-24：已完成（MMD9.3），新增矿点失败 streak 记忆并接入候选排序，优先避开连续失败矿点，降低耗尽矿点重复重试。
-- TODO-25：待完成（MMD9.4），`execute_until.action` 经 guardrail 改写后同步重建 `until` 条件，减少后半程抖动。
+- TODO-25：已完成（MMD9.4），`execute_until.action` 经 guardrail 改写后会同步重建默认 `until` 条件，避免动作类型切换后沿用旧条件导致抖动。
+- TODO-26：在线样本出现 `facility_not_found`（2 次），主要为 LLM 生成不存在的 factory_id 别名；可补“已知工厂集合硬约束 + alias 自动归一”的保守策略。
+- TODO-27：在线样本出现 `rule_denied`（1 次），来源为 LLM 将 assembler recipe 投递到 power factory；可在 agent 层增加“recipe->factory_kind”前置校验，减少无效调用。
