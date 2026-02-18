@@ -9,8 +9,12 @@ MODULE_IDS_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_bui
 HASH_MANIFEST_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256"
 DISTFS_ROOT="$ROOT_DIR/.distfs/builtin_wasm"
 DISTFS_BLOBS_DIR="$DISTFS_ROOT/blobs"
+CANONICAL_PLATFORMS_CSV="${AGENT_WORLD_WASM_CANONICAL_PLATFORMS:-darwin-arm64,linux-x86_64}"
+CURRENT_PLATFORM=""
+CURRENT_PLATFORM_IS_CANONICAL=0
 
 declare -a MODULE_IDS=()
+declare -a CANONICAL_PLATFORMS=()
 
 usage() {
   cat <<'USAGE'
@@ -26,6 +30,11 @@ Options:
   --distfs-root <p>       DistFS builtin wasm root (default: .distfs/builtin_wasm)
   --artifact-dir <p>      Deprecated alias of DistFS blobs dir (default: <distfs-root>/blobs)
   -h, --help              Show this help
+
+Env:
+  AGENT_WORLD_WASM_CANONICAL_PLATFORMS
+      Comma-separated canonical platforms in <os>-<arch> format.
+      Default: darwin-arm64,linux-x86_64
 USAGE
 }
 
@@ -47,6 +56,70 @@ sha256_file() {
   return 127
 }
 
+is_sha256_hex() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9a-f]{64}$ ]]
+}
+
+normalize_platform_os() {
+  local raw="$1"
+  case "$raw" in
+    Darwin) echo "darwin" ;;
+    Linux) echo "linux" ;;
+    *)
+      echo "$raw" | tr '[:upper:]' '[:lower:]'
+      ;;
+  esac
+}
+
+normalize_platform_arch() {
+  local raw="$1"
+  case "$raw" in
+    arm64|aarch64) echo "arm64" ;;
+    x86_64|amd64) echo "x86_64" ;;
+    *) echo "$raw" ;;
+  esac
+}
+
+detect_current_platform() {
+  local os arch
+  os="$(normalize_platform_os "$(uname -s)")"
+  arch="$(normalize_platform_arch "$(uname -m)")"
+  echo "${os}-${arch}"
+}
+
+read_canonical_platforms() {
+  local raw_entries=()
+  local entry
+  IFS=',' read -r -a raw_entries <<< "$CANONICAL_PLATFORMS_CSV"
+  for entry in "${raw_entries[@]}"; do
+    entry="$(echo "$entry" | tr -d '[:space:]')"
+    [[ -z "$entry" ]] && continue
+    if ! array_contains "$entry" "${CANONICAL_PLATFORMS[@]-}"; then
+      CANONICAL_PLATFORMS+=("$entry")
+    fi
+  done
+
+  if [[ "${#CANONICAL_PLATFORMS[@]}" -eq 0 ]]; then
+    echo "error: AGENT_WORLD_WASM_CANONICAL_PLATFORMS has no valid entries" >&2
+    exit 2
+  fi
+
+  if array_contains "$CURRENT_PLATFORM" "${CANONICAL_PLATFORMS[@]-}"; then
+    CURRENT_PLATFORM_IS_CANONICAL=1
+  fi
+}
+
+require_current_platform_supported() {
+  if [[ "$CURRENT_PLATFORM_IS_CANONICAL" -ne 1 ]]; then
+    echo "error: current platform is not in canonical platform set" >&2
+    echo "  current_platform=$CURRENT_PLATFORM" >&2
+    echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}" >&2
+    echo "hint: set AGENT_WORLD_WASM_CANONICAL_PLATFORMS to include current platform" >&2
+    exit 1
+  fi
+}
+
 read_module_ids() {
   if [[ ! -f "$MODULE_IDS_PATH" ]]; then
     echo "error: module id manifest missing: $MODULE_IDS_PATH" >&2
@@ -64,7 +137,7 @@ read_module_ids() {
   fi
 }
 
-manifest_hashes_for() {
+manifest_tokens_for() {
   local module_id="$1"
   awk -v m="$module_id" '
     $1 == m {
@@ -90,6 +163,22 @@ array_contains() {
     fi
   done
   return 1
+}
+
+token_platform_key() {
+  local token="$1"
+  if [[ "$token" == *=* ]]; then
+    echo "${token%%=*}"
+  fi
+}
+
+token_hash_value() {
+  local token="$1"
+  if [[ "$token" == *=* ]]; then
+    echo "${token#*=}"
+  else
+    echo "$token"
+  fi
 }
 
 hydrate_distfs_blobs() {
@@ -149,6 +238,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+CURRENT_PLATFORM="$(detect_current_platform)"
+read_canonical_platforms
+
 read_module_ids
 mkdir -p "$OUT_DIR"
 mkdir -p "$DISTFS_BLOBS_DIR"
@@ -183,23 +275,90 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     fi
 
     built_hash="$(sha256_file "$built_path")"
-    manifest_hashes=()
-    while IFS= read -r manifest_hash; do
-      [[ -z "$manifest_hash" ]] && continue
-      manifest_hashes+=("$manifest_hash")
-    done < <(manifest_hashes_for "$module_id")
+    manifest_tokens=()
+    while IFS= read -r manifest_token; do
+      [[ -z "$manifest_token" ]] && continue
+      manifest_tokens+=("$manifest_token")
+    done < <(manifest_tokens_for "$module_id")
 
-    if [[ "${#manifest_hashes[@]}" -eq 0 ]]; then
+    if [[ "${#manifest_tokens[@]}" -eq 0 ]]; then
       echo "error: module hash missing in manifest: $module_id" >&2
       exit 1
     fi
 
-    if ! array_contains "$built_hash" "${manifest_hashes[@]}"; then
-      echo "error: hash manifest is stale vs built wasm for module: $module_id" >&2
-      echo "  built   =$built_hash" >&2
-      echo "  manifest=${manifest_hashes[*]}" >&2
-      echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+    keyed_tokens=0
+    legacy_tokens=0
+    platform_keys=()
+    platform_hashes=()
+    legacy_hashes=()
+
+    for token in "${manifest_tokens[@]}"; do
+      hash_value="$(token_hash_value "$token")"
+      if ! is_sha256_hex "$hash_value"; then
+        echo "error: manifest hash is not valid sha256 module_id=$module_id token=$token" >&2
+        exit 1
+      fi
+
+      platform_key="$(token_platform_key "$token")"
+      if [[ -n "$platform_key" ]]; then
+        keyed_tokens=$((keyed_tokens + 1))
+        if ! array_contains "$platform_key" "${CANONICAL_PLATFORMS[@]-}"; then
+          echo "error: manifest platform is not allowed module_id=$module_id platform=$platform_key" >&2
+          echo "  allowed_platforms=${CANONICAL_PLATFORMS[*]}" >&2
+          exit 1
+        fi
+        if array_contains "$platform_key" "${platform_keys[@]-}"; then
+          echo "error: duplicate manifest platform entry module_id=$module_id platform=$platform_key" >&2
+          exit 1
+        fi
+        platform_keys+=("$platform_key")
+        platform_hashes+=("$hash_value")
+      else
+        legacy_tokens=$((legacy_tokens + 1))
+        legacy_hashes+=("$hash_value")
+      fi
+    done
+
+    if [[ "$keyed_tokens" -gt 0 && "$legacy_tokens" -gt 0 ]]; then
+      echo "error: mixed keyed/legacy hash tokens are not allowed module_id=$module_id" >&2
       exit 1
+    fi
+
+    if [[ "$keyed_tokens" -gt 0 ]]; then
+      require_current_platform_supported
+
+      expected_platform_hash=""
+      for idx in "${!platform_keys[@]}"; do
+        if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
+          expected_platform_hash="${platform_hashes[$idx]}"
+          break
+        fi
+      done
+
+      if [[ -z "$expected_platform_hash" ]]; then
+        echo "error: manifest missing canonical hash for current platform" >&2
+        echo "  module_id=$module_id" >&2
+        echo "  current_platform=$CURRENT_PLATFORM" >&2
+        echo "  manifest_tokens=${manifest_tokens[*]}" >&2
+        exit 1
+      fi
+
+      if [[ "$built_hash" != "$expected_platform_hash" ]]; then
+        echo "error: canonical hash mismatch for current platform module_id=$module_id" >&2
+        echo "  platform=$CURRENT_PLATFORM" >&2
+        echo "  built   =$built_hash" >&2
+        echo "  manifest=$expected_platform_hash" >&2
+        echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+        exit 1
+      fi
+    else
+      if ! array_contains "$built_hash" "${legacy_hashes[@]-}"; then
+        echo "error: hash manifest is stale vs built wasm for module: $module_id" >&2
+        echo "  built   =$built_hash" >&2
+        echo "  manifest=${legacy_hashes[*]}" >&2
+        echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
+        exit 1
+      fi
     fi
   done
 
@@ -207,6 +366,8 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
 
   echo "check ok: hash manifest is in sync with built wasm"
   echo "  module_count=${#MODULE_IDS[@]}"
+  echo "  current_platform=$CURRENT_PLATFORM"
+  echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
   echo "  hash_manifest=$HASH_MANIFEST_PATH"
   echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"
   exit 0
@@ -223,24 +384,84 @@ for module_id in "${MODULE_IDS[@]}"; do
   fi
 
   built_hash="$(sha256_file "$built_path")"
-  merged_hashes=()
+  manifest_tokens=()
   if [[ -f "$HASH_MANIFEST_PATH" ]]; then
-    while IFS= read -r existing_hash; do
-      [[ -z "$existing_hash" ]] && continue
-      if ! array_contains "$existing_hash" "${merged_hashes[@]}"; then
-        merged_hashes+=("$existing_hash")
-      fi
-    done < <(manifest_hashes_for "$module_id")
-  fi
-  if ! array_contains "$built_hash" "${merged_hashes[@]}"; then
-    merged_hashes+=("$built_hash")
+    while IFS= read -r token; do
+      [[ -z "$token" ]] && continue
+      manifest_tokens+=("$token")
+    done < <(manifest_tokens_for "$module_id")
   fi
 
-  printf "%s" "$module_id" >> "$tmp_manifest"
-  for module_hash in "${merged_hashes[@]}"; do
-    printf " %s" "$module_hash" >> "$tmp_manifest"
+  keyed_tokens=0
+  legacy_tokens=0
+  platform_keys=()
+  platform_hashes=()
+  for token in "${manifest_tokens[@]}"; do
+    hash_value="$(token_hash_value "$token")"
+    if ! is_sha256_hex "$hash_value"; then
+      echo "error: manifest hash is not valid sha256 module_id=$module_id token=$token" >&2
+      exit 1
+    fi
+
+    platform_key="$(token_platform_key "$token")"
+    if [[ -n "$platform_key" ]]; then
+      keyed_tokens=$((keyed_tokens + 1))
+      if ! array_contains "$platform_key" "${CANONICAL_PLATFORMS[@]-}"; then
+        echo "error: manifest platform is not allowed module_id=$module_id platform=$platform_key" >&2
+        echo "  allowed_platforms=${CANONICAL_PLATFORMS[*]}" >&2
+        exit 1
+      fi
+      if array_contains "$platform_key" "${platform_keys[@]-}"; then
+        echo "error: duplicate manifest platform entry module_id=$module_id platform=$platform_key" >&2
+        exit 1
+      fi
+      platform_keys+=("$platform_key")
+      platform_hashes+=("$hash_value")
+    else
+      legacy_tokens=$((legacy_tokens + 1))
+    fi
   done
-  printf "\n" >> "$tmp_manifest"
+
+  if [[ "$keyed_tokens" -gt 0 && "$legacy_tokens" -gt 0 ]]; then
+    echo "error: mixed keyed/legacy hash tokens are not allowed module_id=$module_id" >&2
+    exit 1
+  fi
+
+  if [[ "$keyed_tokens" -gt 0 ]]; then
+    require_current_platform_supported
+
+    updated=0
+    for idx in "${!platform_keys[@]}"; do
+      if [[ "${platform_keys[$idx]}" == "$CURRENT_PLATFORM" ]]; then
+        platform_hashes[$idx]="$built_hash"
+        updated=1
+        break
+      fi
+    done
+    if [[ "$updated" -ne 1 ]]; then
+      platform_keys+=("$CURRENT_PLATFORM")
+      platform_hashes+=("$built_hash")
+    fi
+
+    printf "%s" "$module_id" >> "$tmp_manifest"
+    emitted=0
+    for platform in "${CANONICAL_PLATFORMS[@]}"; do
+      for idx in "${!platform_keys[@]}"; do
+        if [[ "${platform_keys[$idx]}" == "$platform" ]]; then
+          printf " %s=%s" "$platform" "${platform_hashes[$idx]}" >> "$tmp_manifest"
+          emitted=1
+          break
+        fi
+      done
+    done
+    if [[ "$emitted" -ne 1 ]]; then
+      echo "error: no canonical platform entries emitted for module_id=$module_id" >&2
+      exit 1
+    fi
+    printf "\n" >> "$tmp_manifest"
+  else
+    printf "%s %s\n" "$module_id" "$built_hash" >> "$tmp_manifest"
+  fi
 done
 
 mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"
@@ -251,5 +472,7 @@ hydrate_distfs_blobs
 
 echo "synced builtin wasm hash manifest + DistFS blobs"
 echo "  module_count=${#MODULE_IDS[@]}"
+echo "  current_platform=$CURRENT_PLATFORM"
+echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
 echo "  hash_manifest=$HASH_MANIFEST_PATH"
 echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"

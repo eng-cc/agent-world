@@ -94,7 +94,20 @@ fn manifest_hashes_for_module(module_id: &str) -> Option<Vec<String>> {
         let mut parts = line.split_whitespace();
         let id = parts.next()?;
         if id == module_id {
-            let hashes: Vec<String> = parts.map(str::to_string).collect();
+            let hashes: Vec<String> = parts
+                .filter_map(|token| {
+                    let value = token
+                        .split_once('=')
+                        .map(|(_, hash)| hash)
+                        .unwrap_or(token)
+                        .trim();
+                    if value.is_empty() {
+                        None
+                    } else {
+                        Some(value.to_string())
+                    }
+                })
+                .collect();
             if hashes.is_empty() {
                 None
             } else {

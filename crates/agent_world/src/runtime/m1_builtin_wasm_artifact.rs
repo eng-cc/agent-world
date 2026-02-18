@@ -30,6 +30,19 @@ fn builtin_wasm_distfs_root() -> PathBuf {
         .join("builtin_wasm")
 }
 
+fn hash_value_from_manifest_token(token: &'static str) -> Option<&'static str> {
+    let value = token
+        .split_once('=')
+        .map(|(_, hash)| hash)
+        .unwrap_or(token)
+        .trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
+}
+
 fn hash_manifest_for_module(module_id: &str) -> Option<Vec<&'static str>> {
     for line in M1_BUILTIN_HASH_MANIFEST.lines() {
         let line = line.trim();
@@ -41,7 +54,8 @@ fn hash_manifest_for_module(module_id: &str) -> Option<Vec<&'static str>> {
             continue;
         };
         if id == module_id {
-            let hashes: Vec<&'static str> = parts.collect();
+            let hashes: Vec<&'static str> =
+                parts.filter_map(hash_value_from_manifest_token).collect();
             if !hashes.is_empty() {
                 return Some(hashes);
             }

@@ -68,6 +68,18 @@ fn parse_args() -> Result<Options, String> {
     })
 }
 
+fn parse_manifest_hash_token(token: &str) -> Result<String, String> {
+    let value = token
+        .split_once('=')
+        .map(|(_, hash)| hash)
+        .unwrap_or(token)
+        .trim();
+    if value.is_empty() {
+        return Err(format!("invalid manifest hash token: {token}"));
+    }
+    Ok(value.to_string())
+}
+
 fn parse_manifest_line(line: &str) -> Result<Option<(String, Vec<String>)>, String> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
@@ -78,7 +90,10 @@ fn parse_manifest_line(line: &str) -> Result<Option<(String, Vec<String>)>, Stri
     let Some(module_id) = parts.next() else {
         return Ok(None);
     };
-    let hashes: Vec<String> = parts.map(str::to_string).collect();
+    let mut hashes = Vec::new();
+    for token in parts {
+        hashes.push(parse_manifest_hash_token(token)?);
+    }
     if hashes.is_empty() {
         return Err(format!("invalid manifest line (missing hash): {line}"));
     }
