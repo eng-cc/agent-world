@@ -1639,6 +1639,64 @@ fn schedule_recipe_consumes_inputs_and_outputs_data() {
     assert_eq!(agent.resources.get(ResourceKind::Data), 24);
 }
 
+#[test]
+fn schedule_recipe_rejects_incompatible_factory_kind() {
+    let mut config = WorldConfig::default();
+    config.economy.factory_build_electricity_cost = 0;
+    config.economy.factory_build_hardware_cost = 0;
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-factory".to_string(),
+        name: "factory-site".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-builder".to_string(),
+        location_id: "loc-factory".to_string(),
+    });
+    kernel.step_until_empty();
+
+    kernel.submit_action(Action::BuildFactory {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        location_id: "loc-factory".to_string(),
+        factory_id: "factory.power.alpha".to_string(),
+        factory_kind: "factory.power.radiation.mk1".to_string(),
+    });
+    kernel.step().expect("build power factory");
+
+    kernel.submit_action(Action::ScheduleRecipe {
+        owner: ResourceOwner::Agent {
+            agent_id: "agent-builder".to_string(),
+        },
+        factory_id: "factory.power.alpha".to_string(),
+        recipe_id: "recipe.assembler.control_chip".to_string(),
+        batches: 1,
+    });
+    let event = kernel.step().expect("schedule incompatible recipe");
+    match event.kind {
+        WorldEventKind::ActionRejected { reason } => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert_eq!(notes.len(), 1);
+                assert!(
+                    notes[0].contains("requires factory kind factory.assembler.mk1"),
+                    "unexpected note: {}",
+                    notes[0]
+                );
+                assert!(
+                    notes[0].contains("factory.power.radiation.mk1"),
+                    "unexpected note: {}",
+                    notes[0]
+                );
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
 fn collect_basic_action_sequence(kernel: &mut WorldKernel) -> Vec<WorldEventKind> {
     let mut kinds = Vec::new();
 

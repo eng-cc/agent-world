@@ -14,6 +14,7 @@ use super::WorldKernel;
 
 #[derive(Debug, Clone, Copy)]
 struct RecipePlan {
+    required_factory_kind: &'static str,
     electricity_per_batch: i64,
     hardware_per_batch: i64,
     data_output_per_batch: i64,
@@ -22,6 +23,7 @@ struct RecipePlan {
 }
 
 const LOCATION_ELECTRICITY_POOL_REMOVED_NOTE: &str = "location electricity pool removed";
+const FACTORY_KIND_ASSEMBLER_MK1: &str = "factory.assembler.mk1";
 const FACTORY_KIND_RADIATION_POWER_MK1: &str = "factory.power.radiation.mk1";
 
 impl WorldKernel {
@@ -923,6 +925,19 @@ impl WorldKernel {
                         },
                     };
                 };
+                if !factory
+                    .kind
+                    .eq_ignore_ascii_case(plan.required_factory_kind)
+                {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "recipe {recipe_id} requires factory kind {}, got {}",
+                                plan.required_factory_kind, factory.kind
+                            )],
+                        },
+                    };
+                }
                 let recipe_scale = batches;
                 let electricity_cost = plan.electricity_per_batch.saturating_mul(recipe_scale);
                 let hardware_cost = plan.hardware_per_batch.saturating_mul(recipe_scale);
@@ -1499,6 +1514,7 @@ impl WorldKernel {
         let normalized = recipe_id.trim().to_ascii_lowercase();
         match normalized.as_str() {
             "recipe.assembler.control_chip" | "recipe.control_chip" => Some(RecipePlan {
+                required_factory_kind: FACTORY_KIND_ASSEMBLER_MK1,
                 electricity_per_batch: economy.recipe_electricity_cost_per_batch,
                 hardware_per_batch: economy.recipe_hardware_cost_per_batch,
                 data_output_per_batch: economy.recipe_data_output_per_batch,
@@ -1506,6 +1522,7 @@ impl WorldKernel {
                 finished_product_units_per_batch: 1,
             }),
             "recipe.assembler.motor_mk1" | "recipe.motor_mk1" => Some(RecipePlan {
+                required_factory_kind: FACTORY_KIND_ASSEMBLER_MK1,
                 electricity_per_batch: economy.recipe_electricity_cost_per_batch.saturating_mul(2),
                 hardware_per_batch: economy.recipe_hardware_cost_per_batch.saturating_mul(2),
                 data_output_per_batch: economy.recipe_data_output_per_batch.saturating_mul(2),
@@ -1513,6 +1530,7 @@ impl WorldKernel {
                 finished_product_units_per_batch: 1,
             }),
             "recipe.assembler.logistics_drone" | "recipe.logistics_drone" => Some(RecipePlan {
+                required_factory_kind: FACTORY_KIND_ASSEMBLER_MK1,
                 electricity_per_batch: economy.recipe_electricity_cost_per_batch.saturating_mul(4),
                 hardware_per_batch: economy.recipe_hardware_cost_per_batch.saturating_mul(4),
                 data_output_per_batch: economy.recipe_data_output_per_batch.saturating_mul(4),
