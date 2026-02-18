@@ -6,7 +6,7 @@
 - [x] T1：间接控制链路（submitter 授权 + viewer player 绑定）与测试
 - [x] T2：WASM tick 生命周期（按需唤醒/挂起）与测试
 - [x] T3：长期记忆持久化（导出/恢复 + live 同步 + persist）与测试
-- [ ] T4：回归验证（`cargo check` + 定向 tests）并回写文档/devlog
+- [x] T4：回归验证（`cargo check` + 定向 tests）并回写文档/devlog
 
 ## 依赖
 - T2 依赖 ABI/router/runtime 多模块接口同步。
@@ -14,6 +14,6 @@
 - T4 依赖 T1/T2/T3 全部完成后统一回归。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3 完成，T4 待完成）
+- 当前阶段：已完成（T0/T1/T2/T3/T4 全部完成）
 - 阻塞项：无
-- 下一步：执行 T4（回归验证与文档收口）
+- 下一步：无
