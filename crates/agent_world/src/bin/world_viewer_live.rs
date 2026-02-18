@@ -248,6 +248,9 @@ fn start_live_node(options: &CliOptions) -> Result<Option<LiveNodeHandle>, Strin
         NodeTopologyMode::Triad => {
             start_triad_live_nodes(options, world_id.as_str(), &keypair).map(Some)
         }
+        NodeTopologyMode::TriadDistributed => {
+            start_triad_distributed_live_node(options, world_id.as_str(), &keypair).map(Some)
+        }
     }
 }
 
@@ -287,6 +290,49 @@ fn build_node_replication_config(
             )
         })
         .map_err(|err| format!("failed to build node replication config: {err:?}"))
+}
+
+fn attach_optional_replication_network(
+    options: &CliOptions,
+    mut runtime: NodeRuntime,
+) -> Result<
+    (
+        NodeRuntime,
+        Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
+    ),
+    String,
+> {
+    let mut reward_network: Option<
+        Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
+    > = None;
+    if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty() {
+        let mut net_config = Libp2pReplicationNetworkConfig::default();
+        for raw in &options.node_repl_libp2p_listen {
+            let addr = raw.parse().map_err(|err| {
+                format!("--node-repl-libp2p-listen invalid multiaddr `{raw}`: {err}")
+            })?;
+            net_config.listen_addrs.push(addr);
+        }
+        for raw in &options.node_repl_libp2p_peers {
+            let addr = raw.parse().map_err(|err| {
+                format!("--node-repl-libp2p-peer invalid multiaddr `{raw}`: {err}")
+            })?;
+            net_config.bootstrap_peers.push(addr);
+        }
+
+        let network: Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync> =
+            Arc::new(Libp2pReplicationNetwork::new(net_config));
+        let mut handle = NodeReplicationNetworkHandle::new(network);
+        if let Some(topic) = options.node_repl_topic.as_deref() {
+            handle = handle
+                .with_topic(topic)
+                .map_err(|err| format!("failed to configure replication topic: {err}"))?;
+        }
+        reward_network = Some(handle.clone_network());
+        runtime = runtime.with_replication_network(handle);
+    }
+
+    Ok((runtime, reward_network))
 }
 
 fn start_single_live_node(
@@ -335,35 +381,7 @@ fn start_single_live_node(
     .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
     runtime = runtime.with_execution_hook(execution_driver);
 
-    let mut reward_network: Option<
-        Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
-    > = None;
-    if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty() {
-        let mut net_config = Libp2pReplicationNetworkConfig::default();
-        for raw in &options.node_repl_libp2p_listen {
-            let addr = raw.parse().map_err(|err| {
-                format!("--node-repl-libp2p-listen invalid multiaddr `{raw}`: {err}")
-            })?;
-            net_config.listen_addrs.push(addr);
-        }
-        for raw in &options.node_repl_libp2p_peers {
-            let addr = raw.parse().map_err(|err| {
-                format!("--node-repl-libp2p-peer invalid multiaddr `{raw}`: {err}")
-            })?;
-            net_config.bootstrap_peers.push(addr);
-        }
-
-        let network: Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync> =
-            Arc::new(Libp2pReplicationNetwork::new(net_config));
-        let mut handle = NodeReplicationNetworkHandle::new(network);
-        if let Some(topic) = options.node_repl_topic.as_deref() {
-            handle = handle
-                .with_topic(topic)
-                .map_err(|err| format!("failed to configure replication topic: {err}"))?;
-        }
-        reward_network = Some(handle.clone_network());
-        runtime = runtime.with_replication_network(handle);
-    }
+    let (mut runtime, reward_network) = attach_optional_replication_network(options, runtime)?;
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
@@ -488,6 +506,106 @@ fn start_triad_live_nodes(
         world_id: world_id.to_string(),
         primary_node_id,
         reward_network: None,
+    })
+}
+
+fn start_triad_distributed_live_node(
+    options: &CliOptions,
+    world_id: &str,
+    keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<LiveNodeHandle, String> {
+    let base_id = options.node_id.trim();
+    if base_id.is_empty() {
+        return Err("--node-id cannot be empty".to_string());
+    }
+    let sequencer_node_id = format!("{base_id}-sequencer");
+    let storage_node_id = format!("{base_id}-storage");
+    let observer_node_id = format!("{base_id}-observer");
+    let sequencer_bind = options
+        .triad_distributed_sequencer_gossip
+        .ok_or_else(|| "--triad-sequencer-gossip is required in triad_distributed".to_string())?;
+    let storage_bind = options
+        .triad_distributed_storage_gossip
+        .ok_or_else(|| "--triad-storage-gossip is required in triad_distributed".to_string())?;
+    let observer_bind = options
+        .triad_distributed_observer_gossip
+        .ok_or_else(|| "--triad-observer-gossip is required in triad_distributed".to_string())?;
+
+    let validators = vec![
+        PosValidator {
+            validator_id: sequencer_node_id.clone(),
+            stake: 34,
+        },
+        PosValidator {
+            validator_id: storage_node_id.clone(),
+            stake: 33,
+        },
+        PosValidator {
+            validator_id: observer_node_id.clone(),
+            stake: 33,
+        },
+    ];
+    let (node_id, bind_addr, peers, attach_execution_hook) = match options.node_role {
+        NodeRole::Sequencer => (
+            sequencer_node_id,
+            sequencer_bind,
+            vec![storage_bind, observer_bind],
+            true,
+        ),
+        NodeRole::Storage => (
+            storage_node_id,
+            storage_bind,
+            vec![sequencer_bind, observer_bind],
+            false,
+        ),
+        NodeRole::Observer => (
+            observer_node_id,
+            observer_bind,
+            vec![sequencer_bind, storage_bind],
+            false,
+        ),
+    };
+
+    let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), options.node_role)
+        .and_then(|cfg| cfg.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
+        .map_err(|err| {
+            format!("failed to build triad_distributed node config {node_id}: {err:?}")
+        })?;
+    config = config.with_pos_validators(validators).map_err(|err| {
+        format!("failed to apply triad_distributed validators for {node_id}: {err:?}")
+    })?;
+    config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    config = config.with_gossip_optional(bind_addr, peers);
+    config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
+
+    let mut runtime = NodeRuntime::new(config);
+    if attach_execution_hook {
+        let storage_root = Path::new("output")
+            .join("node-distfs")
+            .join(node_id.as_str())
+            .join("store");
+        let execution_driver = NodeRuntimeExecutionDriver::new(
+            Path::new(options.reward_runtime_report_dir.as_str())
+                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+            Path::new(options.reward_runtime_report_dir.as_str())
+                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+            Path::new(options.reward_runtime_report_dir.as_str())
+                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+            storage_root,
+        )
+        .map_err(|err| format!("failed to initialize triad_distributed execution driver: {err}"))?;
+        runtime = runtime.with_execution_hook(execution_driver);
+    }
+    let (mut runtime, reward_network) = attach_optional_replication_network(options, runtime)?;
+    runtime
+        .start()
+        .map_err(|err| format!("failed to start triad_distributed runtime {node_id}: {err:?}"))?;
+    Ok(LiveNodeHandle {
+        primary_runtime: Arc::new(Mutex::new(runtime)),
+        auxiliary_runtimes: Vec::new(),
+        world_id: world_id.to_string(),
+        primary_node_id: node_id,
+        reward_network,
     })
 }
 

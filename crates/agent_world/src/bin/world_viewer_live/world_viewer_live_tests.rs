@@ -31,6 +31,9 @@ fn parse_options_defaults() {
     assert!(!options.llm_mode);
     assert_eq!(options.node_topology, NodeTopologyMode::Triad);
     assert_eq!(options.triad_gossip_base_port, 5500);
+    assert!(options.triad_distributed_sequencer_gossip.is_none());
+    assert!(options.triad_distributed_storage_gossip.is_none());
+    assert!(options.triad_distributed_observer_gossip.is_none());
     assert!(options.viewer_consensus_gate);
     assert!(options.node_enabled);
     assert_eq!(options.node_id, "viewer-live-node");
@@ -391,6 +394,57 @@ fn parse_options_rejects_no_consensus_gate_in_triad_topology() {
 }
 
 #[test]
+fn parse_options_reads_triad_distributed_values() {
+    let options = parse_options(
+        [
+            "--topology",
+            "triad_distributed",
+            "--node-role",
+            "storage",
+            "--triad-sequencer-gossip",
+            "127.0.0.1:7301",
+            "--triad-storage-gossip",
+            "127.0.0.1:7302",
+            "--triad-observer-gossip",
+            "127.0.0.1:7303",
+        ]
+        .into_iter(),
+    )
+    .expect("triad distributed options");
+    assert_eq!(options.node_topology, NodeTopologyMode::TriadDistributed);
+    assert_eq!(options.node_role, NodeRole::Storage);
+    assert_eq!(
+        options.triad_distributed_sequencer_gossip,
+        Some("127.0.0.1:7301".parse::<SocketAddr>().expect("addr"))
+    );
+    assert_eq!(
+        options.triad_distributed_storage_gossip,
+        Some("127.0.0.1:7302".parse::<SocketAddr>().expect("addr"))
+    );
+    assert_eq!(
+        options.triad_distributed_observer_gossip,
+        Some("127.0.0.1:7303".parse::<SocketAddr>().expect("addr"))
+    );
+}
+
+#[test]
+fn parse_options_rejects_triad_distributed_when_role_addrs_missing() {
+    let err = parse_options(
+        [
+            "--topology",
+            "triad_distributed",
+            "--triad-sequencer-gossip",
+            "127.0.0.1:7301",
+            "--triad-storage-gossip",
+            "127.0.0.1:7302",
+        ]
+        .into_iter(),
+    )
+    .expect_err("missing observer gossip");
+    assert!(err.contains("--triad-observer-gossip"));
+}
+
+#[test]
 fn parse_options_rejects_reward_runtime_with_no_node() {
     let err = parse_options(
         [
@@ -558,6 +612,52 @@ fn start_live_node_starts_triad_topology_by_default() {
 }
 
 #[test]
+fn start_live_node_starts_triad_distributed_storage_role() {
+    let options = parse_options(
+        [
+            "--topology",
+            "triad_distributed",
+            "--node-id",
+            "triad-dist",
+            "--node-role",
+            "storage",
+            "--triad-sequencer-gossip",
+            "127.0.0.1:7401",
+            "--triad-storage-gossip",
+            "127.0.0.1:7402",
+            "--triad-observer-gossip",
+            "127.0.0.1:7403",
+        ]
+        .into_iter(),
+    )
+    .expect("options");
+    let runtime = start_live_node(&options)
+        .expect("start triad distributed")
+        .expect("runtime exists");
+
+    let mut locked = runtime.primary_runtime.lock().expect("lock runtime");
+    let snapshot = locked.snapshot();
+    assert_eq!(snapshot.role, NodeRole::Storage);
+    assert_eq!(snapshot.node_id, "triad-dist-storage");
+    let config = locked.config();
+    let gossip = config.gossip.as_ref().expect("gossip config");
+    assert_eq!(
+        gossip.bind_addr,
+        "127.0.0.1:7402".parse::<SocketAddr>().expect("addr")
+    );
+    assert_eq!(
+        gossip.peers,
+        vec![
+            "127.0.0.1:7401".parse::<SocketAddr>().expect("addr"),
+            "127.0.0.1:7403".parse::<SocketAddr>().expect("addr"),
+        ]
+    );
+    assert_eq!(config.pos_config.validators.len(), 3);
+    assert_eq!(runtime.auxiliary_runtimes.len(), 0);
+    locked.stop().expect("stop");
+}
+
+#[test]
 fn parse_options_rejects_repl_topic_without_repl_network() {
     let err = parse_options(["--node-repl-topic", "aw.topic"].into_iter())
         .expect_err("repl topic should require network");
@@ -574,6 +674,40 @@ fn start_live_node_supports_libp2p_replication_injection() {
             "/ip4/127.0.0.1/tcp/0",
             "--node-repl-topic",
             "aw.test.replication",
+        ]
+        .into_iter(),
+    )
+    .expect("options");
+
+    let runtime = start_live_node(&options)
+        .expect("start")
+        .expect("runtime exists");
+    runtime
+        .primary_runtime
+        .lock()
+        .expect("lock runtime")
+        .stop()
+        .expect("stop");
+}
+
+#[test]
+fn start_live_node_triad_distributed_supports_libp2p_replication_injection() {
+    let options = parse_options(
+        [
+            "--topology",
+            "triad_distributed",
+            "--node-role",
+            "sequencer",
+            "--triad-sequencer-gossip",
+            "127.0.0.1:7501",
+            "--triad-storage-gossip",
+            "127.0.0.1:7502",
+            "--triad-observer-gossip",
+            "127.0.0.1:7503",
+            "--node-repl-libp2p-listen",
+            "/ip4/127.0.0.1/tcp/0",
+            "--node-repl-topic",
+            "aw.test.triad.distributed.replication",
         ]
         .into_iter(),
     )

@@ -15,6 +15,7 @@ use super::{
 pub(super) enum NodeTopologyMode {
     Single,
     Triad,
+    TriadDistributed,
 }
 
 impl NodeTopologyMode {
@@ -22,7 +23,8 @@ impl NodeTopologyMode {
         match raw.trim().to_ascii_lowercase().as_str() {
             "single" => Ok(Self::Single),
             "triad" => Ok(Self::Triad),
-            _ => Err("--topology must be one of: single, triad".to_string()),
+            "triad_distributed" => Ok(Self::TriadDistributed),
+            _ => Err("--topology must be one of: single, triad, triad_distributed".to_string()),
         }
     }
 }
@@ -36,6 +38,9 @@ pub(super) struct CliOptions {
     pub llm_mode: bool,
     pub node_topology: NodeTopologyMode,
     pub triad_gossip_base_port: u16,
+    pub triad_distributed_sequencer_gossip: Option<SocketAddr>,
+    pub triad_distributed_storage_gossip: Option<SocketAddr>,
+    pub triad_distributed_observer_gossip: Option<SocketAddr>,
     pub viewer_consensus_gate: bool,
     pub node_enabled: bool,
     pub node_id: String,
@@ -71,6 +76,9 @@ impl Default for CliOptions {
             llm_mode: false,
             node_topology: NodeTopologyMode::Triad,
             triad_gossip_base_port: 5500,
+            triad_distributed_sequencer_gossip: None,
+            triad_distributed_storage_gossip: None,
+            triad_distributed_observer_gossip: None,
             viewer_consensus_gate: true,
             node_enabled: true,
             node_id: "viewer-live-node".to_string(),
@@ -159,6 +167,27 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                     .ok_or_else(|| {
                         "--triad-gossip-base-port requires an integer in [1, 65533]".to_string()
                     })?;
+            }
+            "--triad-sequencer-gossip" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--triad-sequencer-gossip requires <addr:port>".to_string())?;
+                options.triad_distributed_sequencer_gossip =
+                    Some(parse_socket_addr(raw, "--triad-sequencer-gossip")?);
+            }
+            "--triad-storage-gossip" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--triad-storage-gossip requires <addr:port>".to_string())?;
+                options.triad_distributed_storage_gossip =
+                    Some(parse_socket_addr(raw, "--triad-storage-gossip")?);
+            }
+            "--triad-observer-gossip" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--triad-observer-gossip requires <addr:port>".to_string())?;
+                options.triad_distributed_observer_gossip =
+                    Some(parse_socket_addr(raw, "--triad-observer-gossip")?);
             }
             "--viewer-no-consensus-gate" => {
                 options.viewer_consensus_gate = false;
@@ -399,6 +428,54 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
         {
             return Err("--node-repl-* is only supported in --topology single".to_string());
         }
+        if options.triad_distributed_sequencer_gossip.is_some()
+            || options.triad_distributed_storage_gossip.is_some()
+            || options.triad_distributed_observer_gossip.is_some()
+        {
+            return Err(
+                "--triad-*-gossip is only supported in --topology triad_distributed".to_string(),
+            );
+        }
+    }
+    if options.node_topology == NodeTopologyMode::TriadDistributed {
+        if !options.node_enabled {
+            return Err(
+                "--topology triad_distributed requires embedded node runtime; remove --no-node or use --topology single"
+                    .to_string(),
+            );
+        }
+        if !options.viewer_consensus_gate {
+            return Err(
+                "--topology triad_distributed requires viewer consensus gate; remove --viewer-no-consensus-gate or use --topology single"
+                    .to_string(),
+            );
+        }
+        if !options.node_validators.is_empty() {
+            return Err("--node-validator is only supported in --topology single".to_string());
+        }
+        if options.node_gossip_bind.is_some() || !options.node_gossip_peers.is_empty() {
+            return Err("--node-gossip-* is only supported in --topology single".to_string());
+        }
+
+        let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
+            "--topology triad_distributed requires --triad-sequencer-gossip <addr:port>".to_string()
+        })?;
+        let storage = options.triad_distributed_storage_gossip.ok_or_else(|| {
+            "--topology triad_distributed requires --triad-storage-gossip <addr:port>".to_string()
+        })?;
+        let observer = options.triad_distributed_observer_gossip.ok_or_else(|| {
+            "--topology triad_distributed requires --triad-observer-gossip <addr:port>".to_string()
+        })?;
+        let mut dedup = std::collections::BTreeSet::new();
+        dedup.insert(sequencer);
+        dedup.insert(storage);
+        dedup.insert(observer);
+        if dedup.len() != 3 {
+            return Err(
+                "--topology triad_distributed requires distinct addresses for sequencer/storage/observer gossip"
+                    .to_string(),
+            );
+        }
     }
     if options
         .reward_distfs_probe_config
@@ -436,8 +513,13 @@ pub(super) fn print_help() {
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");
     println!("  --llm             Use LLM decisions instead of built-in script");
-    println!("  --topology <mode> Node topology mode: single|triad (default: triad)");
+    println!(
+        "  --topology <mode> Node topology mode: single|triad|triad_distributed (default: triad)"
+    );
     println!("  --triad-gossip-base-port <port> Triad gossip base UDP port (default: 5500)");
+    println!("  --triad-sequencer-gossip <addr:port> Triad distributed sequencer gossip bind");
+    println!("  --triad-storage-gossip <addr:port> Triad distributed storage gossip bind");
+    println!("  --triad-observer-gossip <addr:port> Triad distributed observer gossip bind");
     println!(
         "  --viewer-no-consensus-gate Disable viewer tick gating by node consensus/execution height"
     );
