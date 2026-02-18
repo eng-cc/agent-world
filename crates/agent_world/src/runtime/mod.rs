@@ -19,6 +19,7 @@ mod governance;
 mod m1_builtin_wasm_artifact;
 mod m4_builtin_wasm_artifact;
 mod manifest;
+mod module_source_compiler;
 mod module_store;
 mod modules;
 mod node_points;
@@ -61,7 +62,9 @@ pub use effect::{
 pub use error::WorldError;
 
 // Events
-pub use events::{Action, ActionEnvelope, CausedBy, DomainEvent, RejectReason};
+pub use events::{
+    Action, ActionEnvelope, CausedBy, DomainEvent, ModuleSourcePackage, RejectReason,
+};
 
 // Governance
 pub use governance::{AgentSchedule, GovernanceEvent, Proposal, ProposalDecision, ProposalStatus};

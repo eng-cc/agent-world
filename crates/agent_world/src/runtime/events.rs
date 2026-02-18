@@ -46,6 +46,13 @@ pub struct ObservedAgent {
     pub distance_cm: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleSourcePackage {
+    pub manifest_path: String,
+    #[serde(default)]
+    pub files: BTreeMap<String, Vec<u8>>,
+}
+
 /// Actions that can be submitted to the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -82,6 +89,11 @@ pub enum Action {
         publisher_agent_id: String,
         wasm_hash: String,
         wasm_bytes: Vec<u8>,
+    },
+    CompileModuleArtifactFromSource {
+        publisher_agent_id: String,
+        module_id: String,
+        source_package: ModuleSourcePackage,
     },
     InstallModuleFromArtifact {
         installer_agent_id: String,

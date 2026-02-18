@@ -66,6 +66,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::EmitBodyAttributes { .. } => "action.emit_body_attributes",
         Action::ExpandBodyInterface { .. } => "action.expand_body_interface",
         Action::DeployModuleArtifact { .. } => "action.module.deploy_artifact",
+        Action::CompileModuleArtifactFromSource { .. } => {
+            "action.module.compile_artifact_from_source"
+        }
         Action::InstallModuleFromArtifact { .. } => "action.module.install_from_artifact",
         Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",

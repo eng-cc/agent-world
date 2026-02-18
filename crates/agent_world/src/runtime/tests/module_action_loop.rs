@@ -1,6 +1,14 @@
 use super::super::*;
 use super::pos;
 use crate::simulator::ResourceKind;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+const SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
+static SOURCE_COMPILER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn register_agent(world: &mut World, agent_id: &str) {
     world.submit_action(Action::RegisterAgent {
@@ -59,6 +67,77 @@ fn assert_last_rejection_note(world: &World, action_id: ActionId, expected: &str
     );
 }
 
+fn sample_module_source_package() -> ModuleSourcePackage {
+    ModuleSourcePackage {
+        manifest_path: "Cargo.toml".to_string(),
+        files: BTreeMap::from([
+            (
+                "Cargo.toml".to_string(),
+                br#"[package]
+name = "sample_module"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+"#
+                .to_vec(),
+            ),
+            (
+                "src/lib.rs".to_string(),
+                b"#[no_mangle] pub extern \"C\" fn reduce() {}".to_vec(),
+            ),
+        ]),
+    }
+}
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration since epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "agent-world-runtime-tests-{prefix}-{}-{unique}",
+        std::process::id()
+    ))
+}
+
+fn write_fake_source_compiler(script_path: &Path, produced_wasm_bytes: &str) {
+    let script = format!(
+        "#!/usr/bin/env bash\nset -euo pipefail\nout_path=\"$4\"\nprintf '%s' '{produced_wasm_bytes}' > \"$out_path\"\n"
+    );
+    fs::write(script_path, script).expect("write fake source compiler");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(script_path, fs::Permissions::from_mode(0o755))
+            .expect("chmod fake source compiler");
+    }
+}
+
+struct EnvVarGuard {
+    key: &'static str,
+    previous: Option<String>,
+}
+
+impl EnvVarGuard {
+    fn capture(key: &'static str) -> Self {
+        Self {
+            key,
+            previous: std::env::var(key).ok(),
+        }
+    }
+}
+
+impl Drop for EnvVarGuard {
+    fn drop(&mut self) {
+        match self.previous.take() {
+            Some(value) => std::env::set_var(self.key, value),
+            None => std::env::remove_var(self.key),
+        }
+    }
+}
+
 #[test]
 fn deploy_module_artifact_action_registers_artifact_bytes() {
     let mut world = World::new();
@@ -108,6 +187,74 @@ fn deploy_module_artifact_action_rejects_hash_mismatch() {
     world.step().expect("deploy mismatch action");
 
     assert_last_rejection_note(&world, action_id, "artifact hash mismatch");
+}
+
+#[test]
+fn compile_module_artifact_from_source_registers_compiled_artifact() {
+    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
+    let _env_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
+    let temp_root = temp_dir("compile-module-artifact");
+    fs::create_dir_all(&temp_root).expect("create temp dir");
+    let compiler_script = temp_root.join("compiler.sh");
+    let produced_wasm_bytes = "compiled-from-source-runtime";
+    write_fake_source_compiler(compiler_script.as_path(), produced_wasm_bytes);
+    std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
+
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+
+    world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.compile".to_string(),
+        source_package: sample_module_source_package(),
+    });
+    world.step().expect("compile from source action");
+
+    let wasm_bytes = produced_wasm_bytes.as_bytes().to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::ModuleArtifactDeployed {
+            publisher_agent_id,
+            wasm_hash: event_hash,
+            bytes_len,
+            ..
+        })) if publisher_agent_id == "publisher-1" && event_hash == &wasm_hash && *bytes_len == wasm_bytes.len() as u64
+    ));
+    assert_eq!(
+        world.state().module_artifact_owners.get(&wasm_hash),
+        Some(&"publisher-1".to_string())
+    );
+    assert_eq!(
+        world
+            .load_module(&wasm_hash)
+            .expect("load compiled module")
+            .bytes,
+        wasm_bytes
+    );
+
+    let _ = fs::remove_dir_all(temp_root);
+}
+
+#[test]
+fn compile_module_artifact_from_source_rejects_when_manifest_path_missing_in_files() {
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+
+    let action_id = world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.invalid".to_string(),
+        source_package: ModuleSourcePackage {
+            manifest_path: "Cargo.toml".to_string(),
+            files: BTreeMap::from([(
+                "src/lib.rs".to_string(),
+                b"#[no_mangle] pub extern \"C\" fn reduce() {}".to_vec(),
+            )]),
+        },
+    });
+    world.step().expect("compile invalid source action");
+
+    assert_last_rejection_note(&world, action_id, "manifest path missing");
 }
 
 #[test]

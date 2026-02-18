@@ -7,6 +7,7 @@ use super::World;
 use crate::simulator::ResourceKind;
 
 const MODULE_DEPLOY_FEE_BYTES_PER_ELECTRICITY: i64 = 2_048;
+const MODULE_COMPILE_FEE_BYTES_PER_ELECTRICITY: i64 = 1_024;
 const MODULE_LIST_FEE_AMOUNT: i64 = 1;
 const MODULE_DELIST_FEE_AMOUNT: i64 = 1;
 const MODULE_DESTROY_FEE_AMOUNT: i64 = 1;
@@ -17,6 +18,13 @@ impl World {
         (bytes_len.saturating_add(MODULE_DEPLOY_FEE_BYTES_PER_ELECTRICITY - 1)
             / MODULE_DEPLOY_FEE_BYTES_PER_ELECTRICITY)
             .max(1)
+    }
+
+    fn module_compile_fee_amount(source_bytes_len: usize, wasm_bytes_len: usize) -> i64 {
+        let total_bytes = source_bytes_len.saturating_add(wasm_bytes_len) as i64;
+        (total_bytes.saturating_add(MODULE_COMPILE_FEE_BYTES_PER_ELECTRICITY - 1)
+            / MODULE_COMPILE_FEE_BYTES_PER_ELECTRICITY)
+            .max(2)
     }
 
     fn module_install_fee_amount(manifest: &agent_world_wasm_abi::ModuleManifest) -> i64 {
@@ -163,6 +171,102 @@ impl World {
     ) -> Result<bool, WorldError> {
         let action_id = envelope.id;
         match &envelope.action {
+            Action::CompileModuleArtifactFromSource {
+                publisher_agent_id,
+                module_id,
+                source_package,
+            } => {
+                if !self.state.agents.contains_key(publisher_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: publisher_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if module_id.trim().is_empty() {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec!["compile module source rejected: module_id is empty"
+                                    .to_string()],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                let source_bytes_len = source_package.files.values().map(Vec::len).sum::<usize>();
+                let compiled_bytes =
+                    match super::super::module_source_compiler::compile_module_artifact_from_source(
+                        module_id.as_str(),
+                        source_package,
+                    ) {
+                        Ok(bytes) => bytes,
+                        Err(err) => {
+                            self.append_event(
+                                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                    action_id,
+                                    reason: RejectReason::RuleDenied {
+                                        notes: vec![format!(
+                                            "compile module source rejected: {err:?}"
+                                        )],
+                                    },
+                                }),
+                                Some(CausedBy::Action(action_id)),
+                            )?;
+                            return Ok(true);
+                        }
+                    };
+
+                let wasm_hash = super::super::util::sha256_hex(&compiled_bytes);
+                let fee_kind = ResourceKind::Electricity;
+                let fee_amount =
+                    Self::module_compile_fee_amount(source_bytes_len, compiled_bytes.len());
+                if !self.ensure_module_fee_affordable(
+                    action_id,
+                    publisher_agent_id.as_str(),
+                    fee_kind,
+                    fee_amount,
+                )? {
+                    return Ok(true);
+                }
+
+                match self.register_module_artifact(wasm_hash.clone(), compiled_bytes.as_slice()) {
+                    Ok(()) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ModuleArtifactDeployed {
+                                publisher_agent_id: publisher_agent_id.clone(),
+                                wasm_hash,
+                                bytes_len: compiled_bytes.len() as u64,
+                                fee_kind,
+                                fee_amount,
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                    }
+                    Err(err) => {
+                        self.append_event(
+                            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                                action_id,
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "compile module source rejected: register artifact failed: {err:?}"
+                                    )],
+                                },
+                            }),
+                            Some(CausedBy::Action(action_id)),
+                        )?;
+                    }
+                }
+                Ok(true)
+            }
             Action::DeployModuleArtifact {
                 publisher_agent_id,
                 wasm_hash,

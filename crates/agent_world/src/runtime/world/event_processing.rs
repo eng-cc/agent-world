@@ -146,6 +146,17 @@ impl World {
                     },
                 }))
             }
+            Action::CompileModuleArtifactFromSource { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "compile_module_artifact_from_source requires runtime action loop"
+                                .to_string(),
+                        ],
+                    },
+                }))
+            }
             Action::InstallModuleFromArtifact { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
