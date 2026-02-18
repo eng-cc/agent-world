@@ -364,6 +364,63 @@ fn shadow_rejects_partial_module_schema_contract() {
 }
 
 #[test]
+fn shadow_rejects_cap_slot_binding_to_unknown_required_cap() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    let wasm_bytes = b"dummy-wasm-weather-cap-slot";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract {
+            abi_version: Some(1),
+            input_schema: Some("schema.input@1".to_string()),
+            output_schema: Some("schema.output@1".to_string()),
+            cap_slots: std::collections::BTreeMap::from([(
+                "weather_api".to_string(),
+                "cap.not-required".to_string(),
+            )]),
+        },
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
+        limits: ModuleLimits::default(),
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    let err = world.shadow_proposal(proposal_id).unwrap_err();
+    let WorldError::ModuleChangeInvalid { reason } = err else {
+        panic!("expected ModuleChangeInvalid");
+    };
+    assert!(reason.contains("binds unknown cap_ref"));
+}
+
+#[test]
 fn module_cache_loads_and_evicts() {
     let mut world = World::new();
     let wasm_a = b"module-a";
@@ -483,6 +540,7 @@ fn module_call_queues_effects_and_emits() {
             kind: "http.request".to_string(),
             params: json!({"url": "https://example.com"}),
             cap_ref: "cap.weather".to_string(),
+            cap_slot: None,
         }],
         emits: vec![ModuleEmit {
             kind: "WeatherTick".to_string(),
@@ -504,6 +562,194 @@ fn module_call_queues_effects_and_emits() {
         .iter()
         .any(|event| matches!(event.body, WorldEventBody::ModuleEmitted(_)));
     assert!(has_emit);
+}
+
+#[test]
+fn module_call_resolves_effect_cap_from_cap_slot() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-weather-cap-slot";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract {
+            abi_version: Some(1),
+            input_schema: Some("schema.input@1".to_string()),
+            output_schema: Some("schema.output@1".to_string()),
+            cap_slots: std::collections::BTreeMap::from([(
+                "weather_api".to_string(),
+                "cap.weather".to_string(),
+            )]),
+        },
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 2,
+            max_emits: 0,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: vec![ModuleEffectIntent {
+            kind: "http.request".to_string(),
+            params: json!({"url": "https://example.com"}),
+            cap_ref: String::new(),
+            cap_slot: Some("weather_api".to_string()),
+        }],
+        emits: Vec::new(),
+        output_bytes: 64,
+    };
+
+    let mut sandbox = FixedSandbox::succeed(output);
+    world
+        .execute_module_call("m.weather", "trace-slot", vec![], &mut sandbox)
+        .unwrap();
+
+    let queued = world.take_next_effect().expect("queued effect");
+    assert_eq!(queued.cap_ref, "cap.weather");
+}
+
+#[test]
+fn module_call_rejects_effect_with_unbound_cap_slot() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap.weather"));
+    world.set_policy(PolicySet::allow_all());
+
+    let wasm_bytes = b"module-weather-cap-slot-missing";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.weather".to_string(),
+        name: "Weather".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract {
+            abi_version: Some(1),
+            input_schema: Some("schema.input@1".to_string()),
+            output_schema: Some("schema.output@1".to_string()),
+            cap_slots: std::collections::BTreeMap::new(),
+        },
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: vec!["cap.weather".to_string()],
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 2,
+            max_emits: 0,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let output = ModuleOutput {
+        new_state: None,
+        effects: vec![ModuleEffectIntent {
+            kind: "http.request".to_string(),
+            params: json!({"url": "https://example.com"}),
+            cap_ref: String::new(),
+            cap_slot: Some("missing_slot".to_string()),
+        }],
+        emits: Vec::new(),
+        output_bytes: 64,
+    };
+
+    let mut sandbox = FixedSandbox::succeed(output);
+    let err = world
+        .execute_module_call("m.weather", "trace-slot-missing", vec![], &mut sandbox)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::ModuleCallFailed { .. }));
+
+    let failed = world
+        .journal()
+        .events
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::ModuleCallFailed(failure) => Some(failure),
+            _ => None,
+        })
+        .last()
+        .expect("failure event");
+    assert_eq!(failed.code, ModuleCallErrorCode::CapsDenied);
+    assert!(failed.detail.contains("cap_slot not bound"));
 }
 
 #[test]
@@ -584,6 +830,7 @@ fn module_call_policy_denied_records_failure() {
             kind: "http.request".to_string(),
             params: json!({"url": "https://example.com"}),
             cap_ref: "cap.weather".to_string(),
+            cap_slot: None,
         }],
         emits: Vec::new(),
         output_bytes: 64,

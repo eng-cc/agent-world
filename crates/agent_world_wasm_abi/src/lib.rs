@@ -377,6 +377,8 @@ pub struct ModuleEffectIntent {
     pub kind: String,
     pub params: JsonValue,
     pub cap_ref: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cap_slot: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

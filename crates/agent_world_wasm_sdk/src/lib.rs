@@ -84,6 +84,8 @@ pub mod wire {
         pub kind: String,
         pub params: serde_json::Value,
         pub cap_ref: String,
+        #[serde(default)]
+        pub cap_slot: Option<String>,
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

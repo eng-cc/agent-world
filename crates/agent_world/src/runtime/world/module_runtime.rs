@@ -545,6 +545,36 @@ impl World {
                 ),
             });
         }
+        for (slot, cap_ref) in &contract.cap_slots {
+            if slot.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot is empty for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if cap_ref.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot {slot} has empty cap_ref for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if !module
+                .required_caps
+                .iter()
+                .any(|required| required == cap_ref)
+            {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot {slot} binds unknown cap_ref {cap_ref} for {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
 
         Ok(())
     }
@@ -778,27 +808,62 @@ impl World {
             });
         }
 
+        let mut resolved_caps = Vec::with_capacity(output.effects.len());
         for effect in &output.effects {
+            let resolved_cap_ref = if let Some(slot) = effect.cap_slot.as_deref() {
+                let Some(bound_cap_ref) = manifest.abi_contract.cap_slots.get(slot) else {
+                    return self.module_call_failed(ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code: ModuleCallErrorCode::CapsDenied,
+                        detail: format!("cap_slot not bound {}", slot),
+                    });
+                };
+                if !effect.cap_ref.trim().is_empty() && effect.cap_ref != *bound_cap_ref {
+                    return self.module_call_failed(ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code: ModuleCallErrorCode::CapsDenied,
+                        detail: format!(
+                            "cap_slot {} conflicts with cap_ref {}",
+                            slot, effect.cap_ref
+                        ),
+                    });
+                }
+                bound_cap_ref.clone()
+            } else {
+                if effect.cap_ref.trim().is_empty() {
+                    return self.module_call_failed(ModuleCallFailure {
+                        module_id: module_id.to_string(),
+                        trace_id: trace_id.to_string(),
+                        code: ModuleCallErrorCode::CapsDenied,
+                        detail: "cap_ref is empty".to_string(),
+                    });
+                }
+                effect.cap_ref.clone()
+            };
+
             if !manifest
                 .required_caps
                 .iter()
-                .any(|cap| cap == &effect.cap_ref)
+                .any(|cap| cap == &resolved_cap_ref)
             {
                 return self.module_call_failed(ModuleCallFailure {
                     module_id: module_id.to_string(),
                     trace_id: trace_id.to_string(),
                     code: ModuleCallErrorCode::CapsDenied,
-                    detail: format!("cap_ref not allowed {}", effect.cap_ref),
+                    detail: format!("cap_ref not allowed {}", resolved_cap_ref),
                 });
             }
+            resolved_caps.push(resolved_cap_ref);
         }
 
         let mut intents = Vec::new();
-        for effect in &output.effects {
+        for (effect, resolved_cap_ref) in output.effects.iter().zip(resolved_caps.into_iter()) {
             let intent = match self.build_effect_intent(
                 effect.kind.clone(),
                 effect.params.clone(),
-                effect.cap_ref.clone(),
+                resolved_cap_ref,
                 EffectOrigin::Module {
                     module_id: module_id.to_string(),
                 },
