@@ -2272,6 +2272,119 @@ fn llm_agent_allows_retry_depleted_location_after_cooldown_expires() {
 }
 
 #[test]
+fn llm_agent_prioritizes_mine_alternative_with_lower_failure_streak() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"mine_compound","owner":"self","location_id":"loc-home","compound_mass_g":3000}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    for (action_id, event_id, time) in [(2_100, 2_101, 100_u64), (2_102, 2_103, 102_u64)] {
+        behavior.on_action_result(&ActionResult {
+            action: Action::MineCompound {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: "loc-bad".to_string(),
+                compound_mass_g: 3_000,
+            },
+            action_id,
+            success: false,
+            event: WorldEvent {
+                id: event_id,
+                time,
+                kind: WorldEventKind::ActionRejected {
+                    reason: RejectReason::InsufficientResource {
+                        owner: ResourceOwner::Location {
+                            location_id: "loc-bad".to_string(),
+                        },
+                        kind: ResourceKind::Compound,
+                        requested: 3_000,
+                        available: 0,
+                    },
+                },
+            },
+        });
+    }
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            compound_mass_g: 3_000,
+        },
+        action_id: 2_104,
+        success: false,
+        event: WorldEvent {
+            id: 2_105,
+            time: 110,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Location {
+                        location_id: "loc-home".to_string(),
+                    },
+                    kind: ResourceKind::Compound,
+                    requested: 3_000,
+                    available: 0,
+                },
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.time = 112;
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-bad".to_string(),
+            name: "bad".to_string(),
+            pos: GeoPos {
+                x_cm: 200_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 200_000,
+        },
+        ObservedLocation {
+            location_id: "loc-good".to_string(),
+            name: "good".to_string(),
+            pos: GeoPos {
+                x_cm: 500_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 500_000,
+        },
+    ];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-good".to_string(),
+        })
+    );
+}
+
+#[test]
 fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
     let client = MockClient {
         output: Some(

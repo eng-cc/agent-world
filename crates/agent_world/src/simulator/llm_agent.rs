@@ -153,6 +153,7 @@ const DEFAULT_REFINE_ELECTRICITY_COST_PER_KG: i64 = 2;
 const DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G: i64 = 5_000;
 const DEFAULT_MINE_ELECTRICITY_COST_PER_KG: i64 = 1;
 const DEFAULT_MINE_DEPLETED_LOCATION_COOLDOWN_TICKS: u64 = 6;
+const DEFAULT_MINE_FAILURE_STREAK_WINDOW_TICKS: u64 = 24;
 const DEFAULT_MAX_MOVE_DISTANCE_CM_PER_TICK: i64 = 1_000_000;
 const TRACKED_RECIPE_IDS: [&str; 3] = [
     "recipe.assembler.control_chip",
@@ -239,6 +240,12 @@ impl RecipeCoverageProgress {
             .iter()
             .all(|recipe_id| self.completed.contains(*recipe_id))
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MineFailureStreak {
+    count: u32,
+    last_time: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -761,6 +768,7 @@ pub struct LlmAgentBehavior<C: LlmCompletionClient> {
     move_distance_exceeded_targets: BTreeSet<String>,
     known_compound_availability_by_location: BTreeMap<String, i64>,
     depleted_mine_location_cooldowns: BTreeMap<String, u64>,
+    mine_failure_streaks_by_location: BTreeMap<String, MineFailureStreak>,
     recipe_coverage: RecipeCoverageProgress,
 }
 
@@ -813,6 +821,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             move_distance_exceeded_targets: BTreeSet::new(),
             known_compound_availability_by_location: BTreeMap::new(),
             depleted_mine_location_cooldowns: BTreeMap::new(),
+            mine_failure_streaks_by_location: BTreeMap::new(),
             recipe_coverage: RecipeCoverageProgress::default(),
         }
     }
@@ -2068,8 +2077,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         depleted_location_id: &str,
         current_time: u64,
     ) -> Option<String> {
-        let mut best_known_positive: Option<(String, i64, i64)> = None;
-        let mut best_unknown: Option<(String, i64)> = None;
+        let mut best_known_positive: Option<(String, u32, i64, i64)> = None;
+        let mut best_unknown: Option<(String, u32, i64)> = None;
 
         for candidate in &observation.visible_locations {
             if candidate.location_id == depleted_location_id
@@ -2083,6 +2092,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             {
                 continue;
             }
+            let failure_penalty =
+                self.mine_failure_penalty(candidate.location_id.as_str(), current_time);
             match self
                 .known_compound_availability_by_location
                 .get(candidate.location_id.as_str())
@@ -2092,11 +2103,20 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 Some(known_available) => {
                     let should_replace = match &best_known_positive {
                         None => true,
-                        Some((best_location_id, best_available, best_distance_cm)) => {
-                            known_available > *best_available
-                                || (known_available == *best_available
+                        Some((
+                            best_location_id,
+                            best_failure_penalty,
+                            best_available,
+                            best_distance_cm,
+                        )) => {
+                            failure_penalty < *best_failure_penalty
+                                || (failure_penalty == *best_failure_penalty
+                                    && known_available > *best_available)
+                                || (failure_penalty == *best_failure_penalty
+                                    && known_available == *best_available
                                     && candidate.distance_cm < *best_distance_cm)
-                                || (known_available == *best_available
+                                || (failure_penalty == *best_failure_penalty
+                                    && known_available == *best_available
                                     && candidate.distance_cm == *best_distance_cm
                                     && candidate.location_id < *best_location_id)
                         }
@@ -2104,6 +2124,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     if should_replace {
                         best_known_positive = Some((
                             candidate.location_id.clone(),
+                            failure_penalty,
                             known_available,
                             candidate.distance_cm,
                         ));
@@ -2112,22 +2133,29 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                 None => {
                     let should_replace = match &best_unknown {
                         None => true,
-                        Some((best_location_id, best_distance_cm)) => {
-                            candidate.distance_cm < *best_distance_cm
-                                || (candidate.distance_cm == *best_distance_cm
+                        Some((best_location_id, best_failure_penalty, best_distance_cm)) => {
+                            failure_penalty < *best_failure_penalty
+                                || (failure_penalty == *best_failure_penalty
+                                    && candidate.distance_cm < *best_distance_cm)
+                                || (failure_penalty == *best_failure_penalty
+                                    && candidate.distance_cm == *best_distance_cm
                                     && candidate.location_id < *best_location_id)
                         }
                     };
                     if should_replace {
-                        best_unknown = Some((candidate.location_id.clone(), candidate.distance_cm));
+                        best_unknown = Some((
+                            candidate.location_id.clone(),
+                            failure_penalty,
+                            candidate.distance_cm,
+                        ));
                     }
                 }
             }
         }
 
         best_known_positive
-            .map(|(location_id, _, _)| location_id)
-            .or_else(|| best_unknown.map(|(location_id, _)| location_id))
+            .map(|(location_id, _, _, _)| location_id)
+            .or_else(|| best_unknown.map(|(location_id, _, _)| location_id))
     }
 
     fn mine_depletion_cooldown_remaining_ticks(
@@ -2143,6 +2171,49 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             return None;
         }
         Some(cooldown_until_time - current_time + 1)
+    }
+
+    fn mine_failure_penalty(&self, location_id: &str, current_time: u64) -> u32 {
+        let Some(streak) = self.mine_failure_streaks_by_location.get(location_id) else {
+            return 0;
+        };
+        if current_time.saturating_sub(streak.last_time) > DEFAULT_MINE_FAILURE_STREAK_WINDOW_TICKS
+        {
+            return 0;
+        }
+        streak.count
+    }
+
+    fn record_mine_failure_streak(&mut self, location_id: &str, current_time: u64) -> u32 {
+        let streak = self
+            .mine_failure_streaks_by_location
+            .entry(location_id.to_string())
+            .and_modify(|streak| {
+                if current_time.saturating_sub(streak.last_time)
+                    > DEFAULT_MINE_FAILURE_STREAK_WINDOW_TICKS
+                {
+                    streak.count = 1;
+                } else {
+                    streak.count = streak.count.saturating_add(1);
+                }
+                streak.last_time = current_time;
+            })
+            .or_insert(MineFailureStreak {
+                count: 1,
+                last_time: current_time,
+            });
+        streak.count
+    }
+
+    fn clear_mine_failure_streak(&mut self, location_id: &str) {
+        self.mine_failure_streaks_by_location.remove(location_id);
+    }
+
+    fn trim_mine_failure_streaks(&mut self, current_time: u64) {
+        self.mine_failure_streaks_by_location.retain(|_, streak| {
+            current_time.saturating_sub(streak.last_time)
+                <= DEFAULT_MINE_FAILURE_STREAK_WINDOW_TICKS
+        });
     }
 
     fn guarded_move_to_location(
