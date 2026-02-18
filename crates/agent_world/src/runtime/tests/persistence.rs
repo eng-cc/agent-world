@@ -1,7 +1,16 @@
 use super::super::*;
 use super::pos;
 use std::fs;
+use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_nanos();
+    std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+}
 
 #[test]
 fn persist_and_restore_world() {
@@ -12,15 +21,59 @@ fn persist_and_restore_world() {
     });
     world.step().unwrap();
 
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let dir = std::env::temp_dir().join(format!("agent-world-{unique}"));
+    let dir = temp_dir("persist-restore");
 
     world.save_to_dir(&dir).unwrap();
 
     let restored = World::load_from_dir(&dir).unwrap();
+    assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_writes_distfs_sidecar_and_restores_without_json_files() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let dir = temp_dir("persist-distfs-sidecar");
+    world.save_to_dir(&dir).expect("save world with sidecar");
+
+    assert!(dir.join("snapshot.manifest.json").exists());
+    assert!(dir.join("journal.segments.json").exists());
+    assert!(dir.join(".distfs-state").exists());
+
+    fs::remove_file(dir.join("snapshot.json")).expect("remove legacy snapshot");
+    fs::remove_file(dir.join("journal.json")).expect("remove legacy journal");
+
+    let restored = World::load_from_dir(&dir).expect("restore from distfs sidecar");
+    assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn load_from_dir_falls_back_to_json_when_distfs_sidecar_is_invalid() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().unwrap();
+
+    let dir = temp_dir("persist-distfs-fallback");
+    world.save_to_dir(&dir).expect("save world");
+    fs::write(
+        dir.join("snapshot.manifest.json"),
+        b"{\"manifest\":\"broken\"}",
+    )
+    .expect("tamper sidecar");
+
+    let restored = World::load_from_dir(&dir).expect("fallback to legacy json");
     assert_eq!(restored.state(), world.state());
 
     let _ = fs::remove_dir_all(&dir);

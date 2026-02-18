@@ -3,9 +3,22 @@ use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
 
-use super::super::util::hash_json;
-use super::super::{Journal, ModuleCache, ModuleStore, RollbackEvent, Snapshot, WorldError};
+use agent_world_distfs::{assemble_journal, assemble_snapshot};
+use agent_world_proto::distributed::SnapshotManifest;
+
+use super::super::util::{hash_json, read_json_from_path, write_json_to_path};
+use super::super::{
+    segment_journal, segment_snapshot, Journal, JournalSegmentRef, LocalCasStore, ModuleCache,
+    ModuleStore, RollbackEvent, SegmentConfig, Snapshot, WorldError, WorldEvent,
+};
 use super::World;
+
+const JOURNAL_FILE: &str = "journal.json";
+const SNAPSHOT_FILE: &str = "snapshot.json";
+const DISTFS_STATE_DIR: &str = ".distfs-state";
+const DISTFS_SNAPSHOT_MANIFEST_FILE: &str = "snapshot.manifest.json";
+const DISTFS_JOURNAL_SEGMENTS_FILE: &str = "journal.segments.json";
+const DISTFS_WORLD_ID_FALLBACK: &str = "runtime-world";
 
 impl World {
     // ---------------------------------------------------------------------
@@ -39,10 +52,12 @@ impl World {
     pub fn save_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
         let dir = dir.as_ref();
         fs::create_dir_all(dir)?;
-        let journal_path = dir.join("journal.json");
-        let snapshot_path = dir.join("snapshot.json");
+        let snapshot = self.snapshot();
+        let journal_path = dir.join(JOURNAL_FILE);
+        let snapshot_path = dir.join(SNAPSHOT_FILE);
         self.journal.save_json(journal_path)?;
-        self.snapshot().save_json(snapshot_path)?;
+        snapshot.save_json(snapshot_path)?;
+        self.save_distfs_sidecar(dir, &snapshot)?;
         Ok(())
     }
 
@@ -71,8 +86,11 @@ impl World {
 
     pub fn load_from_dir(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
         let dir = dir.as_ref();
-        let journal_path = dir.join("journal.json");
-        let snapshot_path = dir.join("snapshot.json");
+        if let Some((snapshot, journal)) = Self::try_load_from_distfs_sidecar(dir)? {
+            return Self::from_snapshot(snapshot, journal);
+        }
+        let journal_path = dir.join(JOURNAL_FILE);
+        let snapshot_path = dir.join(SNAPSHOT_FILE);
         let journal = Journal::load_json(journal_path)?;
         let snapshot = Snapshot::load_json(snapshot_path)?;
         Self::from_snapshot(snapshot, journal)
@@ -165,4 +183,81 @@ impl World {
         world.replay_from(snapshot.journal_len)?;
         Ok(world)
     }
+
+    fn save_distfs_sidecar(&self, dir: &Path, snapshot: &Snapshot) -> Result<(), WorldError> {
+        let store_root = dir.join(DISTFS_STATE_DIR);
+        fs::create_dir_all(store_root.as_path())?;
+        let store = LocalCasStore::new(store_root.as_path());
+        let config = SegmentConfig::default();
+        let world_id = distfs_world_id(dir);
+        let epoch = snapshot.state.time;
+        let manifest = segment_snapshot(snapshot, world_id.as_str(), epoch, &store, config)?;
+        let journal_segments = segment_journal(&self.journal, &store, config)?;
+
+        let restored_snapshot: Snapshot = assemble_snapshot(&manifest, &store)?;
+        if restored_snapshot != *snapshot {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "distfs snapshot assemble verification mismatch".to_string(),
+            });
+        }
+
+        let restored_events: Vec<WorldEvent> =
+            assemble_journal(&journal_segments, &store, |event: &WorldEvent| event.id)?;
+        if restored_events != self.journal.events {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "distfs journal assemble verification mismatch".to_string(),
+            });
+        }
+
+        let snapshot_manifest_path = dir.join(DISTFS_SNAPSHOT_MANIFEST_FILE);
+        let journal_segments_path = dir.join(DISTFS_JOURNAL_SEGMENTS_FILE);
+        write_json_to_path(&manifest, snapshot_manifest_path.as_path())?;
+        write_json_to_path(&journal_segments, journal_segments_path.as_path())?;
+        Ok(())
+    }
+
+    fn try_load_from_distfs_sidecar(dir: &Path) -> Result<Option<(Snapshot, Journal)>, WorldError> {
+        let snapshot_manifest_path = dir.join(DISTFS_SNAPSHOT_MANIFEST_FILE);
+        let journal_segments_path = dir.join(DISTFS_JOURNAL_SEGMENTS_FILE);
+        let store_root = dir.join(DISTFS_STATE_DIR);
+        if !snapshot_manifest_path.exists()
+            || !journal_segments_path.exists()
+            || !store_root.exists()
+        {
+            return Ok(None);
+        }
+
+        let restored = Self::load_from_distfs_sidecar(
+            snapshot_manifest_path.as_path(),
+            journal_segments_path.as_path(),
+            store_root.as_path(),
+        );
+        match restored {
+            Ok(value) => Ok(Some(value)),
+            Err(_) => Ok(None),
+        }
+    }
+
+    fn load_from_distfs_sidecar(
+        snapshot_manifest_path: &Path,
+        journal_segments_path: &Path,
+        store_root: &Path,
+    ) -> Result<(Snapshot, Journal), WorldError> {
+        let manifest: SnapshotManifest = read_json_from_path(snapshot_manifest_path)?;
+        let journal_segments: Vec<JournalSegmentRef> = read_json_from_path(journal_segments_path)?;
+        let store = LocalCasStore::new(store_root);
+        let snapshot: Snapshot = assemble_snapshot(&manifest, &store)?;
+        let events: Vec<WorldEvent> =
+            assemble_journal(&journal_segments, &store, |event: &WorldEvent| event.id)?;
+        Ok((snapshot, Journal { events }))
+    }
+}
+
+fn distfs_world_id(dir: &Path) -> String {
+    dir.file_name()
+        .and_then(|name| name.to_str())
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .unwrap_or(DISTFS_WORLD_ID_FALLBACK)
+        .to_string()
 }
