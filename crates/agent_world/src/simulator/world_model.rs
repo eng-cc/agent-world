@@ -485,6 +485,24 @@ impl WorldConfig {
         if self.power.transfer_max_distance_km < 0 {
             self.power.transfer_max_distance_km = 0;
         }
+        if self.power.market_base_price_per_pu < 0 {
+            self.power.market_base_price_per_pu = 0;
+        }
+        if self.power.market_price_min_per_pu < 0 {
+            self.power.market_price_min_per_pu = 0;
+        }
+        if self.power.market_price_max_per_pu < self.power.market_price_min_per_pu {
+            self.power.market_price_max_per_pu = self.power.market_price_min_per_pu;
+        }
+        if self.power.market_scarcity_price_max_bps < 0 {
+            self.power.market_scarcity_price_max_bps = 0;
+        }
+        if self.power.market_distance_price_per_km_bps < 0 {
+            self.power.market_distance_price_per_km_bps = 0;
+        }
+        if self.power.market_price_band_bps < 0 {
+            self.power.market_price_band_bps = 0;
+        }
         self.physics = self.physics.sanitized();
         self.economy = self.economy.sanitized();
         self.asteroid_fragment = self.asteroid_fragment.sanitized();

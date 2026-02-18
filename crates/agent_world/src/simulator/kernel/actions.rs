@@ -1012,14 +1012,14 @@ impl WorldKernel {
         from: &ResourceOwner,
         to: &ResourceOwner,
         amount: i64,
-        price_per_pu: i64,
+        requested_price_per_pu: i64,
     ) -> Result<PowerEvent, RejectReason> {
         if amount <= 0 {
             return Err(RejectReason::InvalidAmount { amount });
         }
-        if price_per_pu < 0 {
+        if requested_price_per_pu < 0 {
             return Err(RejectReason::InvalidAmount {
-                amount: price_per_pu,
+                amount: requested_price_per_pu,
             });
         }
         self.ensure_owner_exists(from)?;
@@ -1035,15 +1035,20 @@ impl WorldKernel {
 
         let from_location = self.owner_location_id(from)?;
         let to_location = self.owner_location_id(to)?;
+        let seller_available_before = self
+            .owner_stock(from)
+            .map(|stock| stock.get(ResourceKind::Electricity))
+            .unwrap_or(0);
 
         if matches!(from, ResourceOwner::Agent { .. }) || matches!(to, ResourceOwner::Agent { .. })
         {
             self.ensure_colocated(from, to)?;
         }
 
+        let mut distance_km = 0;
         let mut loss = 0;
         if from_location != to_location {
-            let distance_km = self.power_transfer_distance_km(&from_location, &to_location)?;
+            distance_km = self.power_transfer_distance_km(&from_location, &to_location)?;
             let max_distance_km = self.config.power.transfer_max_distance_km;
             if distance_km > max_distance_km {
                 return Err(RejectReason::PowerTransferDistanceExceeded {
@@ -1057,6 +1062,33 @@ impl WorldKernel {
             }
         }
 
+        let quoted_price_per_pu =
+            self.quote_power_market_price_per_pu(amount, distance_km, seller_available_before);
+        let executed_price_per_pu = if self.config.power.dynamic_price_enabled {
+            if requested_price_per_pu == 0 {
+                quoted_price_per_pu
+            } else {
+                let price_band_bps = self.config.power.market_price_band_bps;
+                let quote = quoted_price_per_pu.max(1) as i128;
+                let deviation_bps = ((requested_price_per_pu as i128
+                    - quoted_price_per_pu as i128)
+                    .abs()
+                    .saturating_mul(10_000))
+                .saturating_div(quote);
+                if deviation_bps > price_band_bps as i128 {
+                    return Err(RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "requested power price {} out of band (quote {}, band_bps {}, deviation_bps {})",
+                            requested_price_per_pu, quoted_price_per_pu, price_band_bps, deviation_bps
+                        )],
+                    });
+                }
+                requested_price_per_pu
+            }
+        } else {
+            requested_price_per_pu
+        };
+
         let delivered = amount - loss;
         self.remove_from_owner(from, ResourceKind::Electricity, amount)?;
         if delivered > 0 {
@@ -1064,13 +1096,16 @@ impl WorldKernel {
         } else {
             return Err(RejectReason::PowerTransferLossExceedsAmount { amount, loss });
         }
+        let settlement_amount = delivered.saturating_mul(executed_price_per_pu);
 
         Ok(PowerEvent::PowerTransferred {
             from: from.clone(),
             to: to.clone(),
             amount,
             loss,
-            price_per_pu,
+            quoted_price_per_pu,
+            price_per_pu: executed_price_per_pu,
+            settlement_amount,
         })
     }
 
@@ -1129,6 +1164,41 @@ impl WorldKernel {
             .saturating_mul(bps as i128)
             / 10_000;
         loss.min(amount as i128) as i64
+    }
+
+    fn quote_power_market_price_per_pu(
+        &self,
+        amount: i64,
+        distance_km: i64,
+        seller_available_before: i64,
+    ) -> i64 {
+        let cfg = &self.config.power;
+        let min_price = cfg.market_price_min_per_pu.max(0);
+        let max_price = cfg.market_price_max_per_pu.max(min_price);
+        let base_price = cfg.market_base_price_per_pu.clamp(min_price, max_price);
+
+        let scarcity_bps = if seller_available_before <= 0 {
+            cfg.market_scarcity_price_max_bps
+        } else {
+            ((amount as i128)
+                .saturating_mul(10_000)
+                .saturating_div(seller_available_before as i128))
+            .clamp(0, cfg.market_scarcity_price_max_bps as i128) as i64
+        };
+        let scarcity_premium = ((base_price as i128)
+            .saturating_mul(scarcity_bps as i128)
+            .saturating_add(9_999)
+            / 10_000) as i64;
+        let distance_premium = ((base_price as i128)
+            .saturating_mul(distance_km.max(0) as i128)
+            .saturating_mul(cfg.market_distance_price_per_km_bps as i128)
+            .saturating_add(9_999)
+            / 10_000) as i64;
+
+        base_price
+            .saturating_add(scarcity_premium)
+            .saturating_add(distance_premium)
+            .clamp(min_price, max_price)
     }
 
     fn validate_transfer(

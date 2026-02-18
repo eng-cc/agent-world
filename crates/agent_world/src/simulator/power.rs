@@ -77,6 +77,20 @@ pub struct PowerConfig {
     pub transfer_loss_per_km_bps: i64,
     /// Maximum cross-location transfer distance in km (default: 10_000).
     pub transfer_max_distance_km: i64,
+    /// Enable dynamic market pricing for `BuyPower` / `SellPower`.
+    pub dynamic_price_enabled: bool,
+    /// Base market price (price unit per power unit).
+    pub market_base_price_per_pu: i64,
+    /// Minimum allowed market price.
+    pub market_price_min_per_pu: i64,
+    /// Maximum allowed market price.
+    pub market_price_max_per_pu: i64,
+    /// Max scarcity premium applied when seller inventory is tight.
+    pub market_scarcity_price_max_bps: i64,
+    /// Distance premium per km, in basis points on top of base price.
+    pub market_distance_price_per_km_bps: i64,
+    /// Allowed explicit price deviation from quote, in bps.
+    pub market_price_band_bps: i64,
 }
 
 impl Default for PowerConfig {
@@ -90,6 +104,13 @@ impl Default for PowerConfig {
             critical_threshold_pct: 5,
             transfer_loss_per_km_bps: 10,
             transfer_max_distance_km: 10_000,
+            dynamic_price_enabled: true,
+            market_base_price_per_pu: 1,
+            market_price_min_per_pu: 1,
+            market_price_max_per_pu: 200,
+            market_scarcity_price_max_bps: 30_000,
+            market_distance_price_per_km_bps: 10,
+            market_price_band_bps: 20_000,
         }
     }
 }
@@ -346,7 +367,9 @@ pub enum PowerEvent {
         to: ResourceOwner,
         amount: i64,
         loss: i64,
+        quoted_price_per_pu: i64,
         price_per_pu: i64,
+        settlement_amount: i64,
     },
     /// Agent was charged (received power).
     PowerCharged {

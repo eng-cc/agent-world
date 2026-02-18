@@ -541,6 +541,128 @@ fn power_buy_allows_between_colocated_agents() {
 }
 
 #[test]
+fn power_buy_zero_price_uses_dynamic_market_quote() {
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 2;
+    config.power.market_price_min_per_pu = 1;
+    config.power.market_price_max_per_pu = 50;
+    config.power.market_scarcity_price_max_bps = 30_000;
+    config.power.market_distance_price_per_km_bps = 0;
+    config.power.market_price_band_bps = 20_000;
+    let mut kernel = WorldKernel::with_config(config);
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "hub".to_string(),
+        name: "hub".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "seller".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "buyer".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.step_until_empty();
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        ResourceKind::Electricity,
+        20,
+    );
+
+    kernel.submit_action(Action::BuyPower {
+        buyer: ResourceOwner::Agent {
+            agent_id: "buyer".to_string(),
+        },
+        seller: ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        amount: 10,
+        price_per_pu: 0,
+    });
+    let event = kernel.step().expect("buy power");
+    let WorldEventKind::Power(PowerEvent::PowerTransferred {
+        amount,
+        loss,
+        quoted_price_per_pu,
+        price_per_pu,
+        settlement_amount,
+        ..
+    }) = event.kind
+    else {
+        panic!("expected power transferred event");
+    };
+    assert_eq!(amount, 10);
+    assert_eq!(loss, 0);
+    assert_eq!(quoted_price_per_pu, 3);
+    assert_eq!(price_per_pu, 3);
+    assert_eq!(settlement_amount, 30);
+}
+
+#[test]
+fn power_buy_rejects_price_outside_market_band() {
+    let mut config = WorldConfig::default();
+    config.power.market_base_price_per_pu = 10;
+    config.power.market_price_min_per_pu = 1;
+    config.power.market_price_max_per_pu = 100;
+    config.power.market_scarcity_price_max_bps = 10_000;
+    config.power.market_distance_price_per_km_bps = 0;
+    config.power.market_price_band_bps = 500;
+    let mut kernel = WorldKernel::with_config(config);
+
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "hub".to_string(),
+        name: "hub".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "seller".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "buyer".to_string(),
+        location_id: "hub".to_string(),
+    });
+    kernel.step_until_empty();
+    seed_owner_resource(
+        &mut kernel,
+        ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        ResourceKind::Electricity,
+        100,
+    );
+
+    kernel.submit_action(Action::BuyPower {
+        buyer: ResourceOwner::Agent {
+            agent_id: "buyer".to_string(),
+        },
+        seller: ResourceOwner::Agent {
+            agent_id: "seller".to_string(),
+        },
+        amount: 10,
+        price_per_pu: 20,
+    });
+    let event = kernel.step().expect("buy power");
+    let WorldEventKind::ActionRejected {
+        reason: RejectReason::RuleDenied { notes },
+    } = event.kind
+    else {
+        panic!("expected action rejected for out-of-band price");
+    };
+    assert!(
+        notes.iter().any(|note| note.contains("out of band")),
+        "expected out-of-band note, got {notes:?}"
+    );
+}
+
+#[test]
 fn power_transfer_rejects_when_location_owner_involved() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {
