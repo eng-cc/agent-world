@@ -831,6 +831,37 @@ pub(super) fn event_primary_target(
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::PowerOrderPlaced { owner, .. }
         | WorldEventKind::PowerOrderCancelled { owner, .. } => owner_to_target(owner, snapshot),
+        WorldEventKind::SocialFactPublished { fact } => owner_to_target(&fact.actor, snapshot)
+            .or_else(|| owner_to_target(&fact.subject, snapshot))
+            .or_else(|| {
+                fact.object
+                    .as_ref()
+                    .and_then(|object| owner_to_target(object, snapshot))
+            }),
+        WorldEventKind::SocialFactChallenged { challenger, .. } => {
+            owner_to_target(challenger, snapshot)
+        }
+        WorldEventKind::SocialFactAdjudicated { adjudicator, .. } => {
+            owner_to_target(adjudicator, snapshot)
+        }
+        WorldEventKind::SocialFactRevoked { actor, .. } => owner_to_target(actor, snapshot),
+        WorldEventKind::SocialFactExpired { fact_id, .. } => snapshot.and_then(|snapshot| {
+            snapshot
+                .model
+                .social_facts
+                .get(fact_id)
+                .and_then(|fact| owner_to_target(&fact.actor, Some(snapshot)))
+        }),
+        WorldEventKind::SocialEdgeDeclared { edge } => owner_to_target(&edge.declarer, snapshot)
+            .or_else(|| owner_to_target(&edge.from, snapshot))
+            .or_else(|| owner_to_target(&edge.to, snapshot)),
+        WorldEventKind::SocialEdgeExpired { edge_id, .. } => snapshot.and_then(|snapshot| {
+            snapshot
+                .model
+                .social_edges
+                .get(edge_id)
+                .and_then(|edge| owner_to_target(&edge.declarer, Some(snapshot)))
+        }),
         WorldEventKind::ChunkGenerated { coord, .. } => Some(SelectionTarget {
             kind: SelectionKind::Chunk,
             id: chunk_id(*coord),

@@ -1,0 +1,711 @@
+use crate::simulator::social::{
+    SocialAdjudicationDecision, SocialChallengeState, SocialEdgeLifecycleState, SocialEdgeState,
+    SocialFactLifecycleState, SocialFactState, SocialStake,
+};
+
+use super::super::types::{ResourceOwner, WorldEventId, WorldTime, PPM_BASE};
+use super::types::{RejectReason, WorldEventKind};
+use super::WorldKernel;
+
+const EDGE_EXPIRE_REASON_TTL: &str = "ttl_expired";
+const EDGE_EXPIRE_REASON_BACKING_FACT_INACTIVE: &str = "backing_fact_inactive";
+
+impl WorldKernel {
+    pub(super) fn apply_publish_social_fact(
+        &mut self,
+        actor: ResourceOwner,
+        schema_id: String,
+        subject: ResourceOwner,
+        object: Option<ResourceOwner>,
+        claim: String,
+        confidence_ppm: i64,
+        evidence_event_ids: Vec<WorldEventId>,
+        ttl_ticks: Option<u64>,
+        stake: Option<SocialStake>,
+    ) -> WorldEventKind {
+        if let Err(reason) = self.ensure_owner_exists(&actor) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Err(reason) = self.ensure_owner_exists(&subject) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Some(owner) = &object {
+            if let Err(reason) = self.ensure_owner_exists(owner) {
+                return WorldEventKind::ActionRejected { reason };
+            }
+        }
+
+        let schema_id = schema_id.trim().to_string();
+        if schema_id.is_empty() {
+            return social_rule_reject("social schema_id cannot be empty");
+        }
+        let claim = claim.trim().to_string();
+        if claim.is_empty() {
+            return social_rule_reject("social claim cannot be empty");
+        }
+        if !(1..=PPM_BASE).contains(&confidence_ppm) {
+            return WorldEventKind::ActionRejected {
+                reason: RejectReason::InvalidAmount {
+                    amount: confidence_ppm,
+                },
+            };
+        }
+        if evidence_event_ids.is_empty() {
+            return social_rule_reject("social evidence_event_ids cannot be empty");
+        }
+        for event_id in &evidence_event_ids {
+            if !self.has_journal_event(*event_id) {
+                return social_rule_reject(format!("social evidence event missing: {event_id}"));
+            }
+        }
+
+        if let Some(ticks) = ttl_ticks {
+            if ticks == 0 {
+                return WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 0 },
+                };
+            }
+        }
+        if let Err(reason) = validate_social_stake(stake.as_ref()) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Some(stake_value) = stake.as_ref() {
+            if let Err(reason) = self.lock_social_stake(&actor, stake_value) {
+                return WorldEventKind::ActionRejected { reason };
+            }
+        }
+
+        let fact_id = self.model.next_social_fact_id.max(1);
+        self.model.next_social_fact_id = fact_id.saturating_add(1);
+        let now = self.time;
+        let expires_at_tick = ttl_ticks.map(|ticks| now.saturating_add(ticks));
+        let fact = SocialFactState {
+            fact_id,
+            actor,
+            schema_id,
+            subject,
+            object,
+            claim,
+            confidence_ppm,
+            evidence_event_ids,
+            ttl_ticks,
+            expires_at_tick,
+            stake,
+            challenge: None,
+            lifecycle: SocialFactLifecycleState::Active,
+            created_at_tick: now,
+            updated_at_tick: now,
+        };
+        self.model.social_facts.insert(fact_id, fact.clone());
+        WorldEventKind::SocialFactPublished { fact }
+    }
+
+    pub(super) fn apply_challenge_social_fact(
+        &mut self,
+        challenger: ResourceOwner,
+        fact_id: u64,
+        reason: String,
+        stake: Option<SocialStake>,
+    ) -> WorldEventKind {
+        if let Err(reason) = self.ensure_owner_exists(&challenger) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        let reason = reason.trim().to_string();
+        if reason.is_empty() {
+            return social_rule_reject("social challenge reason cannot be empty");
+        }
+        if let Err(reason) = validate_social_stake(stake.as_ref()) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Some(stake_value) = stake.as_ref() {
+            if let Err(reason) = self.lock_social_stake(&challenger, stake_value) {
+                return WorldEventKind::ActionRejected { reason };
+            }
+        }
+
+        let now = self.time;
+        let Some(fact) = self.model.social_facts.get_mut(&fact_id) else {
+            return social_rule_reject(format!("social fact not found: {fact_id}"));
+        };
+        if !matches!(
+            fact.lifecycle,
+            SocialFactLifecycleState::Active | SocialFactLifecycleState::Confirmed
+        ) {
+            return social_rule_reject(format!(
+                "social fact {fact_id} cannot be challenged in state {:?}",
+                fact.lifecycle
+            ));
+        }
+        if fact.challenge.is_some() {
+            return social_rule_reject(format!("social fact {fact_id} already challenged"));
+        }
+
+        fact.lifecycle = SocialFactLifecycleState::Challenged;
+        fact.challenge = Some(SocialChallengeState {
+            challenger: challenger.clone(),
+            reason: reason.clone(),
+            stake: stake.clone(),
+            challenged_at_tick: now,
+        });
+        fact.updated_at_tick = now;
+
+        WorldEventKind::SocialFactChallenged {
+            fact_id,
+            challenger,
+            reason,
+            challenged_at_tick: now,
+            stake,
+        }
+    }
+
+    pub(super) fn apply_adjudicate_social_fact(
+        &mut self,
+        adjudicator: ResourceOwner,
+        fact_id: u64,
+        decision: SocialAdjudicationDecision,
+        notes: String,
+    ) -> WorldEventKind {
+        if let Err(reason) = self.ensure_owner_exists(&adjudicator) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        let notes = notes.trim().to_string();
+        if notes.is_empty() {
+            return social_rule_reject("social adjudication notes cannot be empty");
+        }
+
+        let Some(mut fact) = self.model.social_facts.remove(&fact_id) else {
+            return social_rule_reject(format!("social fact not found: {fact_id}"));
+        };
+        if fact.challenge.is_none() {
+            self.model.social_facts.insert(fact_id, fact);
+            return social_rule_reject(format!(
+                "social fact {fact_id} cannot be adjudicated without challenge"
+            ));
+        }
+        if !social_fact_party_matches(&fact, &adjudicator) {
+            self.model.social_facts.insert(fact_id, fact);
+            return social_rule_reject(format!(
+                "social adjudicator is not a fact party for fact {fact_id}"
+            ));
+        }
+
+        if let Err(reason) = self.apply_social_fact_adjudication_settlement(&mut fact, decision) {
+            self.model.social_facts.insert(fact_id, fact);
+            return WorldEventKind::ActionRejected { reason };
+        }
+        fact.updated_at_tick = self.time;
+        self.model.social_facts.insert(fact_id, fact);
+
+        WorldEventKind::SocialFactAdjudicated {
+            fact_id,
+            adjudicator,
+            decision,
+            notes,
+            adjudicated_at_tick: self.time,
+        }
+    }
+
+    pub(super) fn apply_revoke_social_fact(
+        &mut self,
+        actor: ResourceOwner,
+        fact_id: u64,
+        reason: String,
+    ) -> WorldEventKind {
+        if let Err(reason) = self.ensure_owner_exists(&actor) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        let reason = reason.trim().to_string();
+        if reason.is_empty() {
+            return social_rule_reject("social revoke reason cannot be empty");
+        }
+
+        let Some(mut fact) = self.model.social_facts.remove(&fact_id) else {
+            return social_rule_reject(format!("social fact not found: {fact_id}"));
+        };
+        if fact.actor != actor {
+            self.model.social_facts.insert(fact_id, fact);
+            return social_rule_reject(format!(
+                "social fact {fact_id} can only be revoked by publisher"
+            ));
+        }
+        let lifecycle = fact.lifecycle;
+        if matches!(
+            lifecycle,
+            SocialFactLifecycleState::Retracted
+                | SocialFactLifecycleState::Revoked
+                | SocialFactLifecycleState::Expired
+        ) {
+            self.model.social_facts.insert(fact_id, fact);
+            return social_rule_reject(format!(
+                "social fact {fact_id} cannot be revoked in state {:?}",
+                lifecycle
+            ));
+        }
+
+        if let Err(reason) = self.release_social_fact_stakes(&mut fact) {
+            self.model.social_facts.insert(fact_id, fact);
+            return WorldEventKind::ActionRejected { reason };
+        }
+        fact.lifecycle = SocialFactLifecycleState::Revoked;
+        fact.updated_at_tick = self.time;
+        self.model.social_facts.insert(fact_id, fact);
+
+        WorldEventKind::SocialFactRevoked {
+            fact_id,
+            actor,
+            reason,
+            revoked_at_tick: self.time,
+        }
+    }
+
+    pub(super) fn apply_declare_social_edge(
+        &mut self,
+        declarer: ResourceOwner,
+        schema_id: String,
+        relation_kind: String,
+        from: ResourceOwner,
+        to: ResourceOwner,
+        weight_bps: i64,
+        backing_fact_ids: Vec<u64>,
+        ttl_ticks: Option<u64>,
+    ) -> WorldEventKind {
+        if let Err(reason) = self.ensure_owner_exists(&declarer) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Err(reason) = self.ensure_owner_exists(&from) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+        if let Err(reason) = self.ensure_owner_exists(&to) {
+            return WorldEventKind::ActionRejected { reason };
+        }
+
+        let schema_id = schema_id.trim().to_string();
+        let relation_kind = relation_kind.trim().to_string();
+        if schema_id.is_empty() {
+            return social_rule_reject("social edge schema_id cannot be empty");
+        }
+        if relation_kind.is_empty() {
+            return social_rule_reject("social edge relation_kind cannot be empty");
+        }
+        if !(-10_000..=10_000).contains(&weight_bps) {
+            return WorldEventKind::ActionRejected {
+                reason: RejectReason::InvalidAmount { amount: weight_bps },
+            };
+        }
+        if backing_fact_ids.is_empty() {
+            return social_rule_reject("social edge backing_fact_ids cannot be empty");
+        }
+        for fact_id in &backing_fact_ids {
+            let Some(fact) = self.model.social_facts.get(fact_id) else {
+                return social_rule_reject(format!("social backing fact missing: {fact_id}"));
+            };
+            if !fact.supports_backing() {
+                return social_rule_reject(format!(
+                    "social backing fact inactive: {fact_id} state={:?}",
+                    fact.lifecycle
+                ));
+            }
+        }
+        if let Some(ticks) = ttl_ticks {
+            if ticks == 0 {
+                return WorldEventKind::ActionRejected {
+                    reason: RejectReason::InvalidAmount { amount: 0 },
+                };
+            }
+        }
+
+        let edge_id = self.model.next_social_edge_id.max(1);
+        self.model.next_social_edge_id = edge_id.saturating_add(1);
+        let now = self.time;
+        let edge = SocialEdgeState {
+            edge_id,
+            declarer,
+            schema_id,
+            relation_kind,
+            from,
+            to,
+            weight_bps,
+            backing_fact_ids,
+            ttl_ticks,
+            expires_at_tick: ttl_ticks.map(|ticks| now.saturating_add(ticks)),
+            lifecycle: SocialEdgeLifecycleState::Active,
+            created_at_tick: now,
+            updated_at_tick: now,
+        };
+        self.model.social_edges.insert(edge_id, edge.clone());
+        WorldEventKind::SocialEdgeDeclared { edge }
+    }
+
+    pub(super) fn maintain_social_lifecycle(&mut self) {
+        self.expire_social_facts();
+        self.expire_social_edges();
+    }
+
+    fn expire_social_facts(&mut self) {
+        let now = self.time;
+        let mut expired_fact_ids = Vec::new();
+        for (fact_id, fact) in &self.model.social_facts {
+            if matches!(
+                fact.lifecycle,
+                SocialFactLifecycleState::Retracted
+                    | SocialFactLifecycleState::Revoked
+                    | SocialFactLifecycleState::Expired
+            ) {
+                continue;
+            }
+            if fact
+                .expires_at_tick
+                .is_some_and(|expires_at_tick| expires_at_tick <= now)
+            {
+                expired_fact_ids.push(*fact_id);
+            }
+        }
+
+        for fact_id in expired_fact_ids {
+            if self.expire_social_fact_by_id(fact_id, now).is_ok() {
+                self.record_event(WorldEventKind::SocialFactExpired {
+                    fact_id,
+                    expired_at_tick: now,
+                });
+            }
+        }
+    }
+
+    fn expire_social_edges(&mut self) {
+        let now = self.time;
+        let mut expired_edges: Vec<(u64, String)> = Vec::new();
+
+        for (edge_id, edge) in &self.model.social_edges {
+            if !edge.is_active() {
+                continue;
+            }
+            if edge
+                .expires_at_tick
+                .is_some_and(|expires_at_tick| expires_at_tick <= now)
+            {
+                expired_edges.push((*edge_id, EDGE_EXPIRE_REASON_TTL.to_string()));
+                continue;
+            }
+            if edge
+                .backing_fact_ids
+                .iter()
+                .any(|fact_id| !self.social_fact_supports_backing(*fact_id))
+            {
+                expired_edges.push((
+                    *edge_id,
+                    EDGE_EXPIRE_REASON_BACKING_FACT_INACTIVE.to_string(),
+                ));
+            }
+        }
+
+        for (edge_id, reason) in expired_edges {
+            if self.expire_social_edge_by_id(edge_id, now).is_ok() {
+                self.record_event(WorldEventKind::SocialEdgeExpired {
+                    edge_id,
+                    reason,
+                    expired_at_tick: now,
+                });
+            }
+        }
+    }
+
+    pub(super) fn replay_social_fact_published(
+        &mut self,
+        fact: &SocialFactState,
+    ) -> Result<(), String> {
+        if self.model.social_facts.contains_key(&fact.fact_id) {
+            return Err(format!("social fact already exists: {}", fact.fact_id));
+        }
+        self.ensure_owner_exists(&fact.actor)
+            .map_err(|reason| format!("social fact actor invalid: {reason:?}"))?;
+        self.ensure_owner_exists(&fact.subject)
+            .map_err(|reason| format!("social fact subject invalid: {reason:?}"))?;
+        if let Some(owner) = &fact.object {
+            self.ensure_owner_exists(owner)
+                .map_err(|reason| format!("social fact object invalid: {reason:?}"))?;
+        }
+        if let Some(stake) = fact.stake.as_ref() {
+            self.lock_social_stake(&fact.actor, stake)
+                .map_err(|reason| format!("social fact stake lock failed: {reason:?}"))?;
+        }
+
+        self.model.social_facts.insert(fact.fact_id, fact.clone());
+        self.model.next_social_fact_id = self
+            .model
+            .next_social_fact_id
+            .max(fact.fact_id.saturating_add(1));
+        Ok(())
+    }
+
+    pub(super) fn replay_social_fact_challenged(
+        &mut self,
+        fact_id: u64,
+        challenger: &ResourceOwner,
+        reason: &str,
+        challenged_at_tick: WorldTime,
+        stake: Option<SocialStake>,
+    ) -> Result<(), String> {
+        self.ensure_owner_exists(challenger)
+            .map_err(|reason| format!("social challenger invalid: {reason:?}"))?;
+        if let Some(stake_value) = stake.as_ref() {
+            self.lock_social_stake(challenger, stake_value)
+                .map_err(|reason| format!("social challenge stake lock failed: {reason:?}"))?;
+        }
+
+        let Some(fact) = self.model.social_facts.get_mut(&fact_id) else {
+            return Err(format!("social fact not found: {fact_id}"));
+        };
+        if fact.challenge.is_some() {
+            return Err(format!("social fact already challenged: {fact_id}"));
+        }
+        fact.lifecycle = SocialFactLifecycleState::Challenged;
+        fact.challenge = Some(SocialChallengeState {
+            challenger: challenger.clone(),
+            reason: reason.to_string(),
+            stake,
+            challenged_at_tick,
+        });
+        fact.updated_at_tick = challenged_at_tick;
+        Ok(())
+    }
+
+    pub(super) fn replay_social_fact_adjudicated(
+        &mut self,
+        fact_id: u64,
+        adjudicator: &ResourceOwner,
+        decision: SocialAdjudicationDecision,
+        adjudicated_at_tick: WorldTime,
+    ) -> Result<(), String> {
+        let Some(mut fact) = self.model.social_facts.remove(&fact_id) else {
+            return Err(format!("social fact not found: {fact_id}"));
+        };
+        if !social_fact_party_matches(&fact, adjudicator) {
+            self.model.social_facts.insert(fact_id, fact);
+            return Err(format!("social adjudicator is not a fact party: {fact_id}"));
+        }
+        self.apply_social_fact_adjudication_settlement(&mut fact, decision)
+            .map_err(|reason| format!("social adjudication settlement failed: {reason:?}"))?;
+        fact.updated_at_tick = adjudicated_at_tick;
+        self.model.social_facts.insert(fact_id, fact);
+        Ok(())
+    }
+
+    pub(super) fn replay_social_fact_revoked(
+        &mut self,
+        fact_id: u64,
+        actor: &ResourceOwner,
+        revoked_at_tick: WorldTime,
+    ) -> Result<(), String> {
+        let Some(mut fact) = self.model.social_facts.remove(&fact_id) else {
+            return Err(format!("social fact not found: {fact_id}"));
+        };
+        if &fact.actor != actor {
+            self.model.social_facts.insert(fact_id, fact);
+            return Err(format!("social fact revoke actor mismatch: {fact_id}"));
+        }
+        self.release_social_fact_stakes(&mut fact)
+            .map_err(|reason| format!("social revoke release stake failed: {reason:?}"))?;
+        fact.lifecycle = SocialFactLifecycleState::Revoked;
+        fact.updated_at_tick = revoked_at_tick;
+        self.model.social_facts.insert(fact_id, fact);
+        Ok(())
+    }
+
+    pub(super) fn replay_social_fact_expired(
+        &mut self,
+        fact_id: u64,
+        expired_at_tick: WorldTime,
+    ) -> Result<(), String> {
+        self.expire_social_fact_by_id(fact_id, expired_at_tick)
+    }
+
+    pub(super) fn replay_social_edge_declared(
+        &mut self,
+        edge: &SocialEdgeState,
+    ) -> Result<(), String> {
+        if self.model.social_edges.contains_key(&edge.edge_id) {
+            return Err(format!("social edge already exists: {}", edge.edge_id));
+        }
+        self.ensure_owner_exists(&edge.declarer)
+            .map_err(|reason| format!("social edge declarer invalid: {reason:?}"))?;
+        self.ensure_owner_exists(&edge.from)
+            .map_err(|reason| format!("social edge from invalid: {reason:?}"))?;
+        self.ensure_owner_exists(&edge.to)
+            .map_err(|reason| format!("social edge to invalid: {reason:?}"))?;
+        for fact_id in &edge.backing_fact_ids {
+            if !self.model.social_facts.contains_key(fact_id) {
+                return Err(format!("social edge backing fact missing: {fact_id}"));
+            }
+        }
+
+        self.model.social_edges.insert(edge.edge_id, edge.clone());
+        self.model.next_social_edge_id = self
+            .model
+            .next_social_edge_id
+            .max(edge.edge_id.saturating_add(1));
+        Ok(())
+    }
+
+    pub(super) fn replay_social_edge_expired(
+        &mut self,
+        edge_id: u64,
+        expired_at_tick: WorldTime,
+    ) -> Result<(), String> {
+        self.expire_social_edge_by_id(edge_id, expired_at_tick)
+    }
+
+    fn social_fact_supports_backing(&self, fact_id: u64) -> bool {
+        self.model
+            .social_facts
+            .get(&fact_id)
+            .is_some_and(SocialFactState::supports_backing)
+    }
+
+    fn has_journal_event(&self, event_id: WorldEventId) -> bool {
+        self.journal.iter().any(|event| event.id == event_id)
+    }
+
+    fn lock_social_stake(
+        &mut self,
+        owner: &ResourceOwner,
+        stake: &SocialStake,
+    ) -> Result<(), RejectReason> {
+        self.remove_from_owner(owner, stake.kind, stake.amount)
+    }
+
+    fn release_social_stake(
+        &mut self,
+        owner: &ResourceOwner,
+        stake: SocialStake,
+    ) -> Result<(), RejectReason> {
+        self.add_to_owner(owner, stake.kind, stake.amount)
+    }
+
+    fn slash_social_stake_to_pool(&mut self, stake: SocialStake) -> Result<(), RejectReason> {
+        self.model
+            .social_stake_pool
+            .add(stake.kind, stake.amount)
+            .map_err(|err| match err {
+                crate::simulator::types::StockError::NegativeAmount { amount } => {
+                    RejectReason::InvalidAmount { amount }
+                }
+                crate::simulator::types::StockError::Insufficient { requested, .. } => {
+                    RejectReason::InvalidAmount { amount: requested }
+                }
+            })
+    }
+
+    fn release_social_fact_stakes(
+        &mut self,
+        fact: &mut SocialFactState,
+    ) -> Result<(), RejectReason> {
+        if let Some(stake) = fact.stake.take() {
+            self.release_social_stake(&fact.actor, stake)?;
+        }
+        if let Some(challenge) = fact.challenge.as_mut() {
+            if let Some(stake) = challenge.stake.take() {
+                self.release_social_stake(&challenge.challenger, stake)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn apply_social_fact_adjudication_settlement(
+        &mut self,
+        fact: &mut SocialFactState,
+        decision: SocialAdjudicationDecision,
+    ) -> Result<(), RejectReason> {
+        let actor_stake = fact.stake.take();
+        let challenger_stake = fact
+            .challenge
+            .as_mut()
+            .and_then(|challenge| challenge.stake.take());
+
+        match decision {
+            SocialAdjudicationDecision::Confirm => {
+                if let Some(stake) = challenger_stake {
+                    self.slash_social_stake_to_pool(stake)?;
+                }
+                if let Some(stake) = actor_stake {
+                    self.release_social_stake(&fact.actor, stake)?;
+                }
+                fact.lifecycle = SocialFactLifecycleState::Confirmed;
+            }
+            SocialAdjudicationDecision::Retract => {
+                if let Some(stake) = actor_stake {
+                    self.slash_social_stake_to_pool(stake)?;
+                }
+                if let Some(challenge) = fact.challenge.as_ref() {
+                    if let Some(stake) = challenger_stake {
+                        self.release_social_stake(&challenge.challenger, stake)?;
+                    }
+                }
+                fact.lifecycle = SocialFactLifecycleState::Retracted;
+            }
+        }
+        Ok(())
+    }
+
+    fn expire_social_fact_by_id(&mut self, fact_id: u64, at_tick: WorldTime) -> Result<(), String> {
+        let Some(mut fact) = self.model.social_facts.remove(&fact_id) else {
+            return Err(format!("social fact not found: {fact_id}"));
+        };
+        if matches!(
+            fact.lifecycle,
+            SocialFactLifecycleState::Retracted
+                | SocialFactLifecycleState::Revoked
+                | SocialFactLifecycleState::Expired
+        ) {
+            self.model.social_facts.insert(fact_id, fact);
+            return Err(format!("social fact {fact_id} already terminal"));
+        }
+
+        self.release_social_fact_stakes(&mut fact)
+            .map_err(|reason| format!("social fact expire release stake failed: {reason:?}"))?;
+        fact.lifecycle = SocialFactLifecycleState::Expired;
+        fact.updated_at_tick = at_tick;
+        self.model.social_facts.insert(fact_id, fact);
+        Ok(())
+    }
+
+    fn expire_social_edge_by_id(&mut self, edge_id: u64, at_tick: WorldTime) -> Result<(), String> {
+        let Some(edge) = self.model.social_edges.get_mut(&edge_id) else {
+            return Err(format!("social edge not found: {edge_id}"));
+        };
+        if !edge.is_active() {
+            return Err(format!("social edge already terminal: {edge_id}"));
+        }
+        edge.lifecycle = SocialEdgeLifecycleState::Expired;
+        edge.updated_at_tick = at_tick;
+        Ok(())
+    }
+}
+
+fn validate_social_stake(stake: Option<&SocialStake>) -> Result<(), RejectReason> {
+    let Some(stake) = stake else {
+        return Ok(());
+    };
+    if stake.amount <= 0 {
+        return Err(RejectReason::InvalidAmount {
+            amount: stake.amount,
+        });
+    }
+    Ok(())
+}
+
+fn social_fact_party_matches(fact: &SocialFactState, owner: &ResourceOwner) -> bool {
+    fact.actor == *owner
+        || fact.subject == *owner
+        || fact
+            .object
+            .as_ref()
+            .is_some_and(|object_owner| object_owner == owner)
+}
+
+fn social_rule_reject(note: impl Into<String>) -> WorldEventKind {
+    WorldEventKind::ActionRejected {
+        reason: RejectReason::RuleDenied {
+            notes: vec![note.into()],
+        },
+    }
+}

@@ -128,6 +128,7 @@ impl WorldKernel {
         }
 
         self.maybe_replenish_fragments();
+        self.maintain_social_lifecycle();
 
         Some(event)
     }
@@ -224,11 +225,28 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
         | Action::BuildFactory { owner, .. }
         | Action::ScheduleRecipe { owner, .. }
         | Action::PlacePowerOrder { owner, .. }
-        | Action::CancelPowerOrder { owner, .. } => {
+        | Action::CancelPowerOrder { owner, .. }
+        | Action::PublishSocialFact { actor: owner, .. }
+        | Action::RevokeSocialFact { actor: owner, .. } => {
             if resource_owner_is_agent(owner, agent_id) {
                 None
             } else {
                 denied("owner must be the submitter agent")
+            }
+        }
+        Action::ChallengeSocialFact { challenger, .. }
+        | Action::AdjudicateSocialFact {
+            adjudicator: challenger,
+            ..
+        }
+        | Action::DeclareSocialEdge {
+            declarer: challenger,
+            ..
+        } => {
+            if resource_owner_is_agent(challenger, agent_id) {
+                None
+            } else {
+                denied("social actor must be the submitter agent")
             }
         }
         Action::TransferResource { from, .. } => {

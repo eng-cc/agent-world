@@ -6,6 +6,7 @@ mod observation;
 mod persistence;
 mod power;
 mod replay;
+mod social;
 mod step;
 mod types;
 

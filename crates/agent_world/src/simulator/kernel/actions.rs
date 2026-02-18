@@ -1019,6 +1019,63 @@ impl WorldKernel {
                     finished_product_units,
                 }
             }
+            Action::PublishSocialFact {
+                actor,
+                schema_id,
+                subject,
+                object,
+                claim,
+                confidence_ppm,
+                evidence_event_ids,
+                ttl_ticks,
+                stake,
+            } => self.apply_publish_social_fact(
+                actor,
+                schema_id,
+                subject,
+                object,
+                claim,
+                confidence_ppm,
+                evidence_event_ids,
+                ttl_ticks,
+                stake,
+            ),
+            Action::ChallengeSocialFact {
+                challenger,
+                fact_id,
+                reason,
+                stake,
+            } => self.apply_challenge_social_fact(challenger, fact_id, reason, stake),
+            Action::AdjudicateSocialFact {
+                adjudicator,
+                fact_id,
+                decision,
+                notes,
+            } => self.apply_adjudicate_social_fact(adjudicator, fact_id, decision, notes),
+            Action::RevokeSocialFact {
+                actor,
+                fact_id,
+                reason,
+            } => self.apply_revoke_social_fact(actor, fact_id, reason),
+            Action::DeclareSocialEdge {
+                declarer,
+                schema_id,
+                relation_kind,
+                from,
+                to,
+                weight_bps,
+                backing_fact_ids,
+                ttl_ticks,
+            } => self.apply_declare_social_edge(
+                declarer,
+                schema_id,
+                relation_kind,
+                from,
+                to,
+                weight_bps,
+                backing_fact_ids,
+                ttl_ticks,
+            ),
         }
     }
 
