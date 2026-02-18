@@ -18,6 +18,7 @@ mod economy_bootstrap;
 mod economy_module_requests;
 mod effects;
 mod governance;
+mod module_action_loop;
 mod modules;
 mod persistence;
 mod power_bootstrap;

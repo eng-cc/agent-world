@@ -263,6 +263,22 @@ impl WorldState {
                     });
                 }
             }
+            DomainEvent::ModuleArtifactDeployed {
+                publisher_agent_id: agent_id,
+                ..
+            }
+            | DomainEvent::ModuleInstalled {
+                installer_agent_id: agent_id,
+                ..
+            } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    });
+                }
+            }
             DomainEvent::ResourceTransferred {
                 from_agent_id,
                 to_agent_id,

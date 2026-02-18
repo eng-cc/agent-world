@@ -4,7 +4,8 @@ use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
 use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{
-    FactoryModuleSpec, MaterialStack, ProductValidationDecision, RecipeExecutionPlan,
+    FactoryModuleSpec, MaterialStack, ModuleManifest, ProductValidationDecision,
+    RecipeExecutionPlan,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -12,7 +13,7 @@ use std::collections::BTreeMap;
 
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
-use super::types::{ActionId, MaterialLedgerId, WorldTime};
+use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
 
 fn default_world_material_ledger() -> MaterialLedgerId {
     MaterialLedgerId::world()
@@ -72,6 +73,16 @@ pub enum Action {
     ExpandBodyInterface {
         agent_id: String,
         interface_module_item_id: String,
+    },
+    DeployModuleArtifact {
+        publisher_agent_id: String,
+        wasm_hash: String,
+        wasm_bytes: Vec<u8>,
+    },
+    InstallModuleFromArtifact {
+        installer_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
     },
     TransferResource {
         from_agent_id: String,
@@ -192,6 +203,19 @@ pub enum DomainEvent {
         agent_id: String,
         consumed_item_id: String,
         reason: String,
+    },
+    ModuleArtifactDeployed {
+        publisher_agent_id: String,
+        wasm_hash: String,
+        bytes_len: u64,
+    },
+    ModuleInstalled {
+        installer_agent_id: String,
+        module_id: String,
+        module_version: String,
+        active: bool,
+        proposal_id: ProposalId,
+        manifest_hash: String,
     },
     ResourceTransferred {
         from_agent_id: String,
@@ -314,6 +338,12 @@ impl DomainEvent {
             DomainEvent::BodyAttributesRejected { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::BodyInterfaceExpanded { agent_id, .. } => Some(agent_id.as_str()),
             DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => Some(agent_id.as_str()),
+            DomainEvent::ModuleArtifactDeployed {
+                publisher_agent_id, ..
+            } => Some(publisher_agent_id.as_str()),
+            DomainEvent::ModuleInstalled {
+                installer_agent_id, ..
+            } => Some(installer_agent_id.as_str()),
             DomainEvent::ActionRejected { .. } => None,
             DomainEvent::ResourceTransferred { from_agent_id, .. } => Some(from_agent_id.as_str()),
             DomainEvent::PowerRedeemed {

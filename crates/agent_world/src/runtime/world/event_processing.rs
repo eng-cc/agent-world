@@ -136,6 +136,26 @@ impl World {
                 agent_id,
                 interface_module_item_id,
             )),
+            Action::DeployModuleArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "deploy_module_artifact requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::InstallModuleFromArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "install_module_from_artifact requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,
