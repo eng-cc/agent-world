@@ -4,7 +4,7 @@
 - [x] T0：输出设计文档（`doc/oversized-rust-file-splitting.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：拆分 `crates/agent_world/src/simulator/llm_agent.rs`（<=1200 行）并补定向回归
-- [ ] T2：拆分 `crates/agent_world/src/viewer/live.rs`（<=1200 行）并补定向回归
+- [x] T2：拆分 `crates/agent_world/src/viewer/live.rs`（<=1200 行）并补定向回归
 - [ ] T3：统一回归（`cargo check` + 定向 tests）并回写文档/devlog
 
 ## 依赖
@@ -13,6 +13,6 @@
 - T3 依赖 T1/T2 全部完成。
 
 ## 状态
-- 当前阶段：进行中（T0/T1 完成，T2/T3 待执行）
+- 当前阶段：进行中（T0/T1/T2 完成，T3 待执行）
 - 阻塞项：无
-- 下一步：执行 T2（拆分 `viewer/live.rs`）
+- 下一步：执行 T3（统一回归与文档收口）
