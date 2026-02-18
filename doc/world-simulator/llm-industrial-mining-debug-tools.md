@@ -219,3 +219,44 @@
 - 强改写风险：覆盖后 wait 自动改写可能压制模型策略探索，需要保留可回退恢复链路。
 - 预检偏差风险：guardrail 预算与 kernel 实际开销若存在偏差，仍可能出现少量执行拒绝。
 - 冷却窗口风险：冷却窗口过长可能降低矿点重试效率，需要设置温和值并允许新事件清理。
+
+## MMD9 增量优化（TODO-22 ~ TODO-25）
+
+### 目标
+- 修复 `execute_until` 在动作重写和动作匹配上的停止条件缺口，避免“失败后仍继续自动执行”。
+- 在 kernel 中收紧 `schedule_recipe` 的工厂-配方兼容关系，防止“power 工厂排 assembler 配方”的语义穿透。
+- 压降矿点耗尽后的重复采矿失败，降低后半程“采矿/迁移”抖动并提升持续产出稳定性。
+
+### 范围
+
+#### In Scope
+- TODO-22：`execute_until` 动作结果匹配覆盖 `mine_compound/refine_compound`（及被 guardrail 改写后的常见动作），确保 `action_rejected`/`last_action_failed` 能及时终止自动执行。
+- TODO-23：`schedule_recipe` 增加工厂类型兼容校验（assembler 配方仅允许在 assembler factory 上执行）。
+- TODO-24：采矿候选选择增加“失败记忆优先级”，同等条件下避开最近连续失败矿点，减少无效重试。
+- TODO-25：当 `execute_until.action` 被 guardrail 改写为不同动作类型时，同步重建默认 `until` 条件，避免沿用旧条件导致重复动作抖动。
+- 补齐 `test_tier_required` 单测与 `llm_bootstrap` 在线抽样复核。
+
+#### Out of Scope
+- 不改配方数值平衡与经济参数。
+- 不引入全局路径规划器。
+- 不改 viewer 展示逻辑。
+
+### 接口 / 数据
+- `execution_controls`：
+  - 扩展 `actions_same` 的动作匹配范围；
+  - 支持根据动作类型推导 `until` 默认条件（供 guardrail 改写后重建）。
+- `kernel/actions`：
+  - 在 `ScheduleRecipe` 执行路径增加 `recipe_id <-> factory.kind` 兼容检查。
+- `LlmAgentBehavior`：
+  - 增加矿点失败记忆（location 级），并在候选排序中生效。
+
+### 里程碑
+- MMD9.1：修复 `execute_until` 动作匹配缺口（TODO-22）+ 单测。
+- MMD9.2：落地 `schedule_recipe` 工厂兼容校验（TODO-23）+ kernel 单测。
+- MMD9.3：矿点失败记忆与候选排序（TODO-24）+ 单测。
+- MMD9.4：guardrail 改写后 `until` 重建（TODO-25）+ 单测与在线抽样。
+
+### 风险
+- 兼容风险：动作匹配放宽后，可能影响极少数依赖“动作参数差异”继续执行的旧样例。
+- 收敛风险：矿点失败记忆过强可能抑制必要重试，需要设置温和值并在补给事件时清理。
+- 行为风险：`until` 重建过于激进可能提前退出自动执行，需通过回归用例覆盖 move/harvest/mine 三类路径。

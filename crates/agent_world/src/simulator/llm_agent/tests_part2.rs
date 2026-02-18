@@ -946,6 +946,85 @@ fn llm_agent_execute_until_stops_on_insufficient_electricity_reject_reason() {
 }
 
 #[test]
+fn llm_agent_execute_until_stops_on_action_rejected_for_mine_compound() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let client = CountingSequenceMockClient::new(
+        vec![
+            r#"{"decision":"execute_until","action":{"decision":"mine_compound","owner":"self","location_id":"loc-home","compound_mass_g":3000},"until":{"event":"action_rejected"},"max_ticks":4}"#.to_string(),
+            r#"{"decision":"move_agent","to":"loc-alt"}"#.to_string(),
+        ],
+        Arc::clone(&calls),
+    );
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.time = 32;
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-home".to_string(),
+            name: "home".to_string(),
+            pos: GeoPos {
+                x_cm: 0.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 0,
+        },
+        ObservedLocation {
+            location_id: "loc-alt".to_string(),
+            name: "alt".to_string(),
+            pos: GeoPos {
+                x_cm: 600_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 600_000,
+        },
+    ];
+    let first = behavior.decide(&observation);
+    assert!(matches!(
+        first,
+        AgentDecision::Act(Action::MineCompound { .. })
+    ));
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            compound_mass_g: 3_000,
+        },
+        action_id: 132,
+        success: false,
+        event: WorldEvent {
+            id: 232,
+            time: 32,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::InsufficientResource {
+                    owner: ResourceOwner::Location {
+                        location_id: "loc-home".to_string(),
+                    },
+                    kind: ResourceKind::Compound,
+                    requested: 3_000,
+                    available: 0,
+                },
+            },
+        },
+    });
+
+    observation.time = 33;
+    let second = behavior.decide(&observation);
+    assert!(matches!(
+        second,
+        AgentDecision::Act(Action::MoveAgent { .. })
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
 fn llm_agent_execute_until_stops_on_thermal_overload_reject_reason() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(

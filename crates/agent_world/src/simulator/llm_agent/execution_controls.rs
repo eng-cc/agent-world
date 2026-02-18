@@ -358,16 +358,7 @@ fn actions_same(left: &Action, right: &Action) -> bool {
         (Action::MoveAgent { to: left_to, .. }, Action::MoveAgent { to: right_to, .. }) => {
             left_to == right_to
         }
-        (
-            Action::HarvestRadiation {
-                max_amount: left_amount,
-                ..
-            },
-            Action::HarvestRadiation {
-                max_amount: right_amount,
-                ..
-            },
-        ) => left_amount == right_amount,
+        (Action::HarvestRadiation { .. }, Action::HarvestRadiation { .. }) => true,
         (
             Action::BuildFactory {
                 location_id: left_location_id,
@@ -390,20 +381,34 @@ fn actions_same(left: &Action, right: &Action) -> bool {
             Action::ScheduleRecipe {
                 factory_id: left_factory_id,
                 recipe_id: left_recipe_id,
-                batches: left_batches,
                 ..
             },
             Action::ScheduleRecipe {
                 factory_id: right_factory_id,
                 recipe_id: right_recipe_id,
-                batches: right_batches,
                 ..
             },
-        ) => {
-            left_factory_id == right_factory_id
-                && left_recipe_id == right_recipe_id
-                && left_batches == right_batches
-        }
+        ) => left_factory_id == right_factory_id && left_recipe_id == right_recipe_id,
+        (
+            Action::MineCompound {
+                owner: left_owner,
+                location_id: left_location_id,
+                ..
+            },
+            Action::MineCompound {
+                owner: right_owner,
+                location_id: right_location_id,
+                ..
+            },
+        ) => left_owner == right_owner && left_location_id == right_location_id,
+        (
+            Action::RefineCompound {
+                owner: left_owner, ..
+            },
+            Action::RefineCompound {
+                owner: right_owner, ..
+            },
+        ) => left_owner == right_owner,
         _ => false,
     }
 }
