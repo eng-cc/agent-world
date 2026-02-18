@@ -915,14 +915,20 @@ fn decode_hex_array<const N: usize>(hex_value: &str, field_name: &str) -> Result
 mod tests {
     use super::*;
     use agent_world::runtime::BlobStore;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("duration")
             .as_nanos();
-        std::env::temp_dir().join(format!("agent-world-distfs-net-{prefix}-{unique}"))
+        let counter = TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "agent-world-distfs-net-{prefix}-{unique}-{counter}"
+        ))
     }
 
     fn deterministic_keypair_hex(seed: u8) -> (String, String) {
@@ -975,6 +981,7 @@ mod tests {
 
     fn sample_request_envelope() -> DistfsChallengeRequestEnvelope {
         let store_dir = temp_dir("request-envelope");
+        std::fs::create_dir_all(&store_dir).expect("create request envelope temp dir");
         let store = LocalCasStore::new(&store_dir);
         let content_hash = store
             .put_bytes(b"network proof payload")
@@ -1036,6 +1043,8 @@ mod tests {
     fn distfs_network_driver_roundtrip_challenge_and_proof() {
         let storage_a = temp_dir("storage-a");
         let storage_b = temp_dir("storage-b");
+        std::fs::create_dir_all(&storage_a).expect("create storage_a dir");
+        std::fs::create_dir_all(&storage_b).expect("create storage_b dir");
         let store_a = LocalCasStore::new(&storage_a);
         let store_b = LocalCasStore::new(&storage_b);
         let blob = b"network-proof-data";

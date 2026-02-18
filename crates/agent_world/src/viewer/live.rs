@@ -271,7 +271,6 @@ enum LiveDriver {
 }
 
 const SEEK_STALL_LIMIT: u64 = 128;
-const PROMPT_UPDATED_BY_DEFAULT: &str = "viewer_prompt_ops";
 
 struct LiveStepResult {
     event: Option<WorldEvent>,
@@ -401,6 +400,9 @@ impl LiveWorld {
         &self,
         request: PromptControlApplyRequest,
     ) -> Result<PromptControlAck, PromptControlError> {
+        let player_id =
+            normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
+        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
@@ -433,11 +435,19 @@ impl LiveWorld {
         &mut self,
         request: PromptControlApplyRequest,
     ) -> Result<PromptControlAck, PromptControlError> {
+        let player_id =
+            normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
+        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
             current.version,
             request.expected_version,
+        )?;
+        ensure_updated_by_matches_player(
+            request.updated_by.as_deref(),
+            player_id.as_str(),
+            request.agent_id.as_str(),
         )?;
 
         let mut candidate = current.clone();
@@ -460,9 +470,10 @@ impl LiveWorld {
 
         candidate.version = current.version.saturating_add(1);
         candidate.updated_at_tick = self.kernel.time();
-        candidate.updated_by = normalize_updated_by(request.updated_by.as_deref());
+        candidate.updated_by = player_id.clone();
 
         self.apply_prompt_profile_to_driver(&candidate)?;
+        self.bind_agent_player_access(request.agent_id.as_str(), player_id.as_str())?;
         let digest = prompt_profile_digest(&candidate);
         self.kernel.apply_agent_prompt_profile_update(
             candidate.clone(),
@@ -488,11 +499,19 @@ impl LiveWorld {
         &mut self,
         request: PromptControlRollbackRequest,
     ) -> Result<PromptControlAck, PromptControlError> {
+        let player_id =
+            normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
+        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
             current.version,
             request.expected_version,
+        )?;
+        ensure_updated_by_matches_player(
+            request.updated_by.as_deref(),
+            player_id.as_str(),
+            request.agent_id.as_str(),
         )?;
 
         let target = if request.to_version == 0 {
@@ -529,9 +548,10 @@ impl LiveWorld {
 
         candidate.version = current.version.saturating_add(1);
         candidate.updated_at_tick = self.kernel.time();
-        candidate.updated_by = normalize_updated_by(request.updated_by.as_deref());
+        candidate.updated_by = player_id.clone();
 
         self.apply_prompt_profile_to_driver(&candidate)?;
+        self.bind_agent_player_access(request.agent_id.as_str(), player_id.as_str())?;
         let digest = prompt_profile_digest(&candidate);
         self.kernel.apply_agent_prompt_profile_update(
             candidate.clone(),
@@ -560,6 +580,13 @@ impl LiveWorld {
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(ToOwned::to_owned);
+        let Some(player_id) = player_id else {
+            return Err(AgentChatError {
+                code: "player_id_required".to_string(),
+                message: "agent_chat requires non-empty player_id".to_string(),
+                agent_id: Some(request.agent_id),
+            });
+        };
         let message = request.message.trim().to_string();
         if message.is_empty() {
             return Err(AgentChatError {
@@ -569,41 +596,42 @@ impl LiveWorld {
             });
         }
 
-        match &mut self.driver {
-            LiveDriver::Script(_) => Err(AgentChatError {
+        if matches!(self.driver, LiveDriver::Script(_)) {
+            return Err(AgentChatError {
                 code: "llm_mode_required".to_string(),
                 message: "agent chat requires live server running with --llm".to_string(),
                 agent_id: Some(request.agent_id),
-            }),
-            LiveDriver::Llm(runner) => {
-                let Some(agent) = runner.get_mut(request.agent_id.as_str()) else {
-                    return Err(AgentChatError {
-                        code: "agent_not_registered".to_string(),
-                        message: format!(
-                            "agent {} is not registered in llm runner",
-                            request.agent_id
-                        ),
-                        agent_id: Some(request.agent_id),
-                    });
-                };
-                if !agent
-                    .behavior
-                    .push_player_message(self.kernel.time(), message.as_str())
-                {
-                    return Err(AgentChatError {
-                        code: "empty_message".to_string(),
-                        message: "chat message cannot be empty".to_string(),
-                        agent_id: Some(request.agent_id),
-                    });
-                }
-                Ok(AgentChatAck {
-                    agent_id: request.agent_id,
-                    accepted_at_tick: self.kernel.time(),
-                    message_len: message.chars().count(),
-                    player_id,
-                })
-            }
+            });
         }
+
+        self.bind_agent_player_access_for_chat(request.agent_id.as_str(), player_id.as_str())?;
+        let runner = match &mut self.driver {
+            LiveDriver::Llm(runner) => runner,
+            LiveDriver::Script(_) => unreachable!("script mode handled above"),
+        };
+        let Some(agent) = runner.get_mut(request.agent_id.as_str()) else {
+            return Err(AgentChatError {
+                code: "agent_not_registered".to_string(),
+                message: format!("agent {} is not registered in llm runner", request.agent_id),
+                agent_id: Some(request.agent_id),
+            });
+        };
+        if !agent
+            .behavior
+            .push_player_message(self.kernel.time(), message.as_str())
+        {
+            return Err(AgentChatError {
+                code: "empty_message".to_string(),
+                message: "chat message cannot be empty".to_string(),
+                agent_id: Some(request.agent_id),
+            });
+        }
+        Ok(AgentChatAck {
+            agent_id: request.agent_id,
+            accepted_at_tick: self.kernel.time(),
+            message_len: message.chars().count(),
+            player_id: Some(player_id),
+        })
     }
 
     fn current_prompt_profile(
@@ -692,14 +720,131 @@ impl LiveWorld {
             }
         }
     }
+
+    fn bind_agent_player_access(
+        &mut self,
+        agent_id: &str,
+        player_id: &str,
+    ) -> Result<(), PromptControlError> {
+        ensure_agent_player_access(self.kernel(), agent_id, player_id)?;
+        if self.kernel.player_binding_for_agent(agent_id).is_none() {
+            self.kernel
+                .bind_agent_player(agent_id, player_id)
+                .map_err(|message| PromptControlError {
+                    code: "player_bind_failed".to_string(),
+                    message,
+                    agent_id: Some(agent_id.to_string()),
+                    current_version: self
+                        .kernel
+                        .model()
+                        .agent_prompt_profiles
+                        .get(agent_id)
+                        .map(|profile| profile.version),
+                })?;
+        }
+        Ok(())
+    }
+
+    fn bind_agent_player_access_for_chat(
+        &mut self,
+        agent_id: &str,
+        player_id: &str,
+    ) -> Result<(), AgentChatError> {
+        let mapped =
+            ensure_agent_player_access(self.kernel(), agent_id, player_id).map_err(|err| {
+                AgentChatError {
+                    code: "agent_control_forbidden".to_string(),
+                    message: err.message,
+                    agent_id: err.agent_id,
+                }
+            });
+        mapped?;
+        if self.kernel.player_binding_for_agent(agent_id).is_none() {
+            self.kernel
+                .bind_agent_player(agent_id, player_id)
+                .map_err(|message| AgentChatError {
+                    code: "player_bind_failed".to_string(),
+                    message,
+                    agent_id: Some(agent_id.to_string()),
+                })?;
+        }
+        Ok(())
+    }
 }
 
-fn normalize_updated_by(value: Option<&str>) -> String {
-    value
-        .map(|raw| raw.trim())
-        .filter(|raw| !raw.is_empty())
-        .unwrap_or(PROMPT_UPDATED_BY_DEFAULT)
-        .to_string()
+fn normalize_required_player_id(
+    player_id: &str,
+    agent_id: &str,
+) -> Result<String, PromptControlError> {
+    let normalized = player_id.trim();
+    if normalized.is_empty() {
+        return Err(PromptControlError {
+            code: "player_id_required".to_string(),
+            message: format!(
+                "prompt_control for {} requires non-empty player_id",
+                agent_id
+            ),
+            agent_id: Some(agent_id.to_string()),
+            current_version: None,
+        });
+    }
+    Ok(normalized.to_string())
+}
+
+fn ensure_updated_by_matches_player(
+    updated_by: Option<&str>,
+    player_id: &str,
+    agent_id: &str,
+) -> Result<(), PromptControlError> {
+    let Some(updated_by) = updated_by.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(());
+    };
+    if updated_by == player_id {
+        return Ok(());
+    }
+    Err(PromptControlError {
+        code: "updated_by_mismatch".to_string(),
+        message: format!(
+            "updated_by ({}) must match player_id ({}) for {}",
+            updated_by, player_id, agent_id
+        ),
+        agent_id: Some(agent_id.to_string()),
+        current_version: None,
+    })
+}
+
+fn ensure_agent_player_access(
+    kernel: &WorldKernel,
+    agent_id: &str,
+    player_id: &str,
+) -> Result<(), PromptControlError> {
+    if !kernel.model().agents.contains_key(agent_id) {
+        return Err(PromptControlError {
+            code: "agent_not_found".to_string(),
+            message: format!("agent not found: {agent_id}"),
+            agent_id: Some(agent_id.to_string()),
+            current_version: None,
+        });
+    }
+    let Some(bound_player_id) = kernel.player_binding_for_agent(agent_id) else {
+        return Ok(());
+    };
+    if bound_player_id == player_id {
+        return Ok(());
+    }
+    Err(PromptControlError {
+        code: "agent_control_forbidden".to_string(),
+        message: format!(
+            "agent {} is bound to player {}, not {}",
+            agent_id, bound_player_id, player_id
+        ),
+        agent_id: Some(agent_id.to_string()),
+        current_version: kernel
+            .model()
+            .agent_prompt_profiles
+            .get(agent_id)
+            .map(|profile| profile.version),
+    })
 }
 
 fn sanitize_patch_string(value: Option<String>) -> Option<String> {

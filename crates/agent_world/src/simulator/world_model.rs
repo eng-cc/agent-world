@@ -178,6 +178,8 @@ pub struct WorldModel {
     pub agents: BTreeMap<AgentId, Agent>,
     #[serde(default)]
     pub agent_prompt_profiles: BTreeMap<AgentId, AgentPromptProfile>,
+    #[serde(default)]
+    pub agent_player_bindings: BTreeMap<AgentId, String>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,
     #[serde(default)]

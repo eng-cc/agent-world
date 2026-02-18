@@ -324,6 +324,37 @@ impl WorldKernel {
         })
     }
 
+    pub fn player_binding_for_agent(&self, agent_id: &str) -> Option<&str> {
+        self.model
+            .agent_player_bindings
+            .get(agent_id)
+            .map(String::as_str)
+    }
+
+    pub fn bind_agent_player(
+        &mut self,
+        agent_id: &str,
+        player_id: &str,
+    ) -> Result<Option<WorldEvent>, String> {
+        if !self.model.agents.contains_key(agent_id) {
+            return Err(format!("agent not found: {agent_id}"));
+        }
+        let player_id = player_id.trim();
+        if player_id.is_empty() {
+            return Err("player_id cannot be empty".to_string());
+        }
+        if self.player_binding_for_agent(agent_id) == Some(player_id) {
+            return Ok(None);
+        }
+        self.model
+            .agent_player_bindings
+            .insert(agent_id.to_string(), player_id.to_string());
+        Ok(Some(self.record_event(WorldEventKind::AgentPlayerBound {
+            agent_id: agent_id.to_string(),
+            player_id: player_id.to_string(),
+        })))
+    }
+
     pub(super) fn record_event(&mut self, kind: WorldEventKind) -> WorldEvent {
         let event = WorldEvent {
             id: self.next_event_id,

@@ -17,7 +17,8 @@ const TOOL_CALL_PREVIEW_CHARS: usize = 180;
 const TOOL_CALL_CARD_MAX_WIDTH: f32 = 380.0;
 const PROMPT_PRESET_DEFAULT_CONTENT_ROWS: usize = 4;
 const PROMPT_PRESET_SCROLL_MAX_HEIGHT: f32 = 320.0;
-const PROMPT_UPDATED_BY_VIEWER_CHAT: &str = "viewer-chat-panel";
+const VIEWER_PLAYER_ID: &str = "viewer-player";
+const PROMPT_UPDATED_BY_VIEWER_CHAT: &str = VIEWER_PLAYER_ID;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ToolCallView {
@@ -227,7 +228,7 @@ pub(super) fn render_chat_section(
                     request: agent_world::viewer::AgentChatRequest {
                         agent_id: selected_agent_id.clone(),
                         message,
-                        player_id: Some("viewer-player".to_string()),
+                        player_id: Some(VIEWER_PLAYER_ID.to_string()),
                     },
                 };
                 match client.tx.send(request) {
@@ -701,6 +702,7 @@ fn build_prompt_profile_apply_request(
 
     agent_world::viewer::PromptControlApplyRequest {
         agent_id: selected_agent_id.to_string(),
+        player_id: VIEWER_PLAYER_ID.to_string(),
         expected_version: Some(current_profile.version),
         updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
         system_prompt_override: patch_override_with_default(
@@ -1579,6 +1581,7 @@ mod tests {
     fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
         let request = agent_world::viewer::PromptControlApplyRequest {
             agent_id: "agent-a".to_string(),
+            player_id: VIEWER_PLAYER_ID.to_string(),
             expected_version: Some(1),
             updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
             system_prompt_override: None,

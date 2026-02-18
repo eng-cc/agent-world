@@ -367,6 +367,22 @@ use crate::geometry::GeoPos;
 pub struct ActionEnvelope {
     pub id: ActionId,
     pub action: Action,
+    #[serde(default)]
+    pub submitter: ActionSubmitter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ActionSubmitter {
+    System,
+    Agent { agent_id: AgentId },
+    Player { player_id: String },
+}
+
+impl Default for ActionSubmitter {
+    fn default() -> Self {
+        ActionSubmitter::System
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

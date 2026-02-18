@@ -170,6 +170,10 @@ pub enum WorldEventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         rolled_back_to_version: Option<u64>,
     },
+    AgentPlayerBound {
+        agent_id: AgentId,
+        player_id: String,
+    },
     PowerOrderPlaced {
         order_id: u64,
         owner: ResourceOwner,

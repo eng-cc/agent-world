@@ -488,6 +488,24 @@ impl WorldKernel {
                     .agent_prompt_profiles
                     .insert(profile.agent_id.clone(), profile.clone());
             }
+            WorldEventKind::AgentPlayerBound {
+                agent_id,
+                player_id,
+            } => {
+                if !self.model.agents.contains_key(agent_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent not found for player binding: {}", agent_id),
+                    });
+                }
+                if player_id.trim().is_empty() {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("empty player_id for agent binding: {}", agent_id),
+                    });
+                }
+                self.model
+                    .agent_player_bindings
+                    .insert(agent_id.clone(), player_id.clone());
+            }
             WorldEventKind::PowerOrderPlaced {
                 order_id,
                 owner,

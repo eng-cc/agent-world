@@ -141,6 +141,7 @@ fn prompt_control_preview_reports_fields_and_next_version() {
     let ack = world
         .prompt_control_preview(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("系统提示".to_string())),
@@ -168,6 +169,7 @@ fn prompt_control_apply_requires_llm_mode() {
     let err = world
         .prompt_control_apply(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -178,6 +180,7 @@ fn prompt_control_apply_requires_llm_mode() {
 
     assert_eq!(err.code, "llm_mode_required");
     assert!(world.kernel.model().agent_prompt_profiles.is_empty());
+    assert!(world.kernel.model().agent_player_bindings.is_empty());
     assert!(!world.kernel.journal().iter().any(|event| matches!(
         event.kind,
         crate::simulator::WorldEventKind::AgentPromptUpdated { .. }
@@ -208,4 +211,73 @@ fn prompt_profile_version_lookup_reads_from_journal() {
         .expect("profile v1");
     assert_eq!(loaded.system_prompt_override.as_deref(), Some("v1"));
     assert_eq!(loaded.version, 1);
+}
+
+#[test]
+fn prompt_control_preview_requires_non_empty_player_id() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+    let err = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "   ".to_string(),
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect_err("empty player id should be rejected");
+
+    assert_eq!(err.code, "player_id_required");
+}
+
+#[test]
+fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+    let bind_event = world
+        .kernel
+        .bind_agent_player("agent-0", "player-a")
+        .expect("bind ok");
+    assert!(bind_event.is_some());
+
+    let err = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-b".to_string(),
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect_err("mismatched player should be rejected");
+
+    assert_eq!(err.code, "agent_control_forbidden");
+    assert_eq!(
+        world.kernel.player_binding_for_agent("agent-0"),
+        Some("player-a")
+    );
+}
+
+#[test]
+fn agent_chat_requires_player_id() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+    let err = world
+        .agent_chat(AgentChatRequest {
+            agent_id: "agent-0".to_string(),
+            message: "hello".to_string(),
+            player_id: None,
+        })
+        .expect_err("missing player_id should be rejected");
+
+    assert_eq!(err.code, "player_id_required");
 }

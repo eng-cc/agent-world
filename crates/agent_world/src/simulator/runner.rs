@@ -467,7 +467,7 @@ impl<B: AgentBehavior> AgentRunner<B> {
                 let agent = self.agents.get_mut(&agent_id).unwrap();
                 agent.record_action(now, rate_policy);
 
-                let action_id = kernel.submit_action(action.clone());
+                let action_id = kernel.submit_action_from_agent(agent_id.clone(), action.clone());
                 let event = kernel.step();
 
                 let action_result = event.map(|event| {

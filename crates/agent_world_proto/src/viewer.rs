@@ -43,6 +43,7 @@ pub enum PromptControlCommand {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptControlApplyRequest {
     pub agent_id: String,
+    pub player_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -78,6 +79,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptControlRollbackRequest {
     pub agent_id: String,
+    pub player_id: String,
     pub to_version: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
@@ -239,6 +241,7 @@ mod tests {
             command: PromptControlCommand::Apply {
                 request: PromptControlApplyRequest {
                     agent_id: "agent-0".to_string(),
+                    player_id: "player-1".to_string(),
                     expected_version: Some(3),
                     updated_by: Some("tester".to_string()),
                     system_prompt_override: Some(Some("system".to_string())),
