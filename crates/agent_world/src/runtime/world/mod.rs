@@ -13,6 +13,7 @@ mod logistics;
 mod module_actions;
 mod module_runtime;
 mod module_runtime_labels;
+mod module_runtime_metering;
 mod module_tick_runtime;
 mod persistence;
 mod policy;

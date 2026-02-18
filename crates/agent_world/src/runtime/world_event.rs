@@ -1,5 +1,6 @@
 //! World event types that wrap all event kinds.
 
+use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{ModuleCallFailure, ModuleEmitEvent, ModuleStateUpdate};
 use serde::{Deserialize, Serialize};
 
@@ -37,11 +38,27 @@ impl WorldEvent {
             WorldEventBody::ModuleCallFailed(_) => AuditEventKind::ModuleCallFailed,
             WorldEventBody::ModuleEmitted(_) => AuditEventKind::ModuleEmitted,
             WorldEventBody::ModuleStateUpdated(_) => AuditEventKind::ModuleStateUpdated,
+            WorldEventBody::ModuleRuntimeCharged(_) => AuditEventKind::ModuleRuntimeCharged,
             WorldEventBody::SnapshotCreated(_) => AuditEventKind::SnapshotCreated,
             WorldEventBody::ManifestUpdated(_) => AuditEventKind::ManifestUpdated,
             WorldEventBody::RollbackApplied(_) => AuditEventKind::RollbackApplied,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleRuntimeChargeEvent {
+    pub module_id: String,
+    pub trace_id: String,
+    pub payer_agent_id: String,
+    pub compute_fee_kind: ResourceKind,
+    pub compute_fee_amount: i64,
+    pub electricity_fee_kind: ResourceKind,
+    pub electricity_fee_amount: i64,
+    pub input_bytes: u64,
+    pub output_bytes: u64,
+    pub effect_count: u32,
+    pub emit_count: u32,
 }
 
 /// The body/payload of a world event.
@@ -59,6 +76,7 @@ pub enum WorldEventBody {
     ModuleCallFailed(ModuleCallFailure),
     ModuleEmitted(ModuleEmitEvent),
     ModuleStateUpdated(ModuleStateUpdate),
+    ModuleRuntimeCharged(ModuleRuntimeChargeEvent),
     SnapshotCreated(SnapshotMeta),
     ManifestUpdated(ManifestUpdate),
     RollbackApplied(RollbackEvent),

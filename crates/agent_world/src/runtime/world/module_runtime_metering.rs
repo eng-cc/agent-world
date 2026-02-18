@@ -1,0 +1,163 @@
+use agent_world_wasm_abi::{ModuleCallErrorCode, ModuleCallFailure, ModuleOutput};
+
+use super::super::{ModuleManifest, ModuleRuntimeChargeEvent, WorldError, WorldEventBody};
+use super::World;
+use crate::simulator::ResourceKind;
+
+const MODULE_RUNTIME_FEE_BYTES_PER_UNIT: u64 = 1_024;
+
+impl World {
+    pub(super) fn apply_module_runtime_charge_event(
+        &mut self,
+        charge: &ModuleRuntimeChargeEvent,
+        now: super::super::WorldTime,
+    ) -> Result<(), WorldError> {
+        if charge.compute_fee_amount < 0 || charge.electricity_fee_amount < 0 {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "module runtime fee must be >= 0: compute={} electricity={}",
+                    charge.compute_fee_amount, charge.electricity_fee_amount
+                ),
+            });
+        }
+        let cell = self
+            .state
+            .agents
+            .get_mut(&charge.payer_agent_id)
+            .ok_or_else(|| WorldError::AgentNotFound {
+                agent_id: charge.payer_agent_id.clone(),
+            })?;
+        if charge.compute_fee_amount > 0 {
+            cell.state
+                .resources
+                .remove(charge.compute_fee_kind, charge.compute_fee_amount)
+                .map_err(|err| WorldError::ResourceBalanceInvalid {
+                    reason: format!(
+                        "module runtime compute fee debit failed: payer={} kind={:?} amount={} err={:?}",
+                        charge.payer_agent_id,
+                        charge.compute_fee_kind,
+                        charge.compute_fee_amount,
+                        err
+                    ),
+                })?;
+            let treasury = self
+                .state
+                .resources
+                .entry(charge.compute_fee_kind)
+                .or_insert(0);
+            *treasury = treasury.saturating_add(charge.compute_fee_amount);
+        }
+        if charge.electricity_fee_amount > 0 {
+            cell.state
+                .resources
+                .remove(charge.electricity_fee_kind, charge.electricity_fee_amount)
+                .map_err(|err| WorldError::ResourceBalanceInvalid {
+                    reason: format!(
+                        "module runtime electricity fee debit failed: payer={} kind={:?} amount={} err={:?}",
+                        charge.payer_agent_id,
+                        charge.electricity_fee_kind,
+                        charge.electricity_fee_amount,
+                        err
+                    ),
+                })?;
+            let treasury = self
+                .state
+                .resources
+                .entry(charge.electricity_fee_kind)
+                .or_insert(0);
+            *treasury = treasury.saturating_add(charge.electricity_fee_amount);
+        }
+        cell.last_active = now;
+        Ok(())
+    }
+
+    pub(super) fn try_charge_module_runtime(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        manifest: &ModuleManifest,
+        input_bytes: u64,
+        output: &ModuleOutput,
+    ) -> Result<(), ModuleCallFailure> {
+        let Some(payer_agent_id) = self
+            .state
+            .module_artifact_owners
+            .get(manifest.wasm_hash.as_str())
+            .filter(|owner| self.state.agents.contains_key(owner.as_str()))
+            .cloned()
+        else {
+            return Ok(());
+        };
+
+        let effect_count = i64::try_from(output.effects.len()).unwrap_or(i64::MAX);
+        let emit_count = i64::try_from(output.emits.len()).unwrap_or(i64::MAX);
+        let has_new_state = i64::from(output.new_state.is_some());
+        let compute_fee_amount = metering_units(input_bytes)
+            .saturating_add(metering_units(output.output_bytes))
+            .saturating_add(effect_count.saturating_mul(2))
+            .saturating_add(emit_count);
+        let electricity_fee_amount = 1_i64
+            .saturating_add(effect_count)
+            .saturating_add(emit_count)
+            .saturating_add(has_new_state);
+        let available_compute = self
+            .state
+            .agents
+            .get(&payer_agent_id)
+            .map(|cell| cell.state.resources.get(ResourceKind::Data))
+            .unwrap_or(0);
+        let available_electricity = self
+            .state
+            .agents
+            .get(&payer_agent_id)
+            .map(|cell| cell.state.resources.get(ResourceKind::Electricity))
+            .unwrap_or(0);
+        if available_compute < compute_fee_amount || available_electricity < electricity_fee_amount
+        {
+            return Err(ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::PolicyDenied,
+                detail: format!(
+                    "module runtime fee insufficient payer={} data {}/{} electricity {}/{}",
+                    payer_agent_id,
+                    available_compute,
+                    compute_fee_amount,
+                    available_electricity,
+                    electricity_fee_amount
+                ),
+            });
+        }
+
+        let charge = ModuleRuntimeChargeEvent {
+            module_id: module_id.to_string(),
+            trace_id: trace_id.to_string(),
+            payer_agent_id,
+            compute_fee_kind: ResourceKind::Data,
+            compute_fee_amount,
+            electricity_fee_kind: ResourceKind::Electricity,
+            electricity_fee_amount,
+            input_bytes,
+            output_bytes: output.output_bytes,
+            effect_count: u32::try_from(output.effects.len()).unwrap_or(u32::MAX),
+            emit_count: u32::try_from(output.emits.len()).unwrap_or(u32::MAX),
+        };
+        self.append_event(WorldEventBody::ModuleRuntimeCharged(charge), None)
+            .map_err(|err| ModuleCallFailure {
+                module_id: module_id.to_string(),
+                trace_id: trace_id.to_string(),
+                code: ModuleCallErrorCode::PolicyDenied,
+                detail: format!("module runtime fee apply failed: {err:?}"),
+            })?;
+        Ok(())
+    }
+}
+
+fn metering_units(bytes: u64) -> i64 {
+    if bytes == 0 {
+        return 0;
+    }
+    let units = bytes.saturating_add(MODULE_RUNTIME_FEE_BYTES_PER_UNIT - 1)
+        / MODULE_RUNTIME_FEE_BYTES_PER_UNIT;
+    units.min(i64::MAX as u64) as i64
+}

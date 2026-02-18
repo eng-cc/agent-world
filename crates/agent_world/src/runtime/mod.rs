@@ -167,4 +167,4 @@ pub use state::{
 pub use world::{M1ScenarioBootstrapConfig, World};
 
 // World event
-pub use world_event::{WorldEvent, WorldEventBody};
+pub use world_event::{ModuleRuntimeChargeEvent, WorldEvent, WorldEventBody};

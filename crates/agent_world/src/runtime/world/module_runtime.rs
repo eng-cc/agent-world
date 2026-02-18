@@ -104,6 +104,7 @@ impl World {
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<ModuleOutput, WorldError> {
         let trace_id = trace_id.into();
+        let input_bytes = input.len() as u64;
         let manifest = self.active_module_manifest(module_id)?.clone();
         let output = match self.call_module_raw(module_id, &trace_id, input, &manifest, sandbox) {
             Ok(output) => output,
@@ -113,7 +114,14 @@ impl World {
             }
         };
 
-        self.process_module_output(module_id, &trace_id, &manifest, &output, sandbox)?;
+        self.process_module_output(
+            module_id,
+            &trace_id,
+            &manifest,
+            input_bytes,
+            &output,
+            sandbox,
+        )?;
         Ok(output)
     }
 
@@ -791,6 +799,7 @@ impl World {
         module_id: &str,
         trace_id: &str,
         manifest: &ModuleManifest,
+        input_bytes: u64,
         output: &ModuleOutput,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<(), WorldError> {
@@ -886,6 +895,12 @@ impl World {
                 return self.module_call_failed(failure);
             }
             resolved_caps.push(resolved_cap_ref);
+        }
+
+        if let Err(failure) =
+            self.try_charge_module_runtime(module_id, trace_id, manifest, input_bytes, output)
+        {
+            return self.module_call_failed(failure);
         }
 
         let mut intents = Vec::new();

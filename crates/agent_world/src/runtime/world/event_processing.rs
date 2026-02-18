@@ -1165,6 +1165,9 @@ impl World {
                     .module_states
                     .insert(update.module_id.clone(), update.state.clone());
             }
+            WorldEventBody::ModuleRuntimeCharged(charge) => {
+                self.apply_module_runtime_charge_event(charge, time)?;
+            }
             WorldEventBody::SnapshotCreated(_) => {}
             WorldEventBody::ManifestUpdated(update) => {
                 self.manifest = update.manifest.clone();

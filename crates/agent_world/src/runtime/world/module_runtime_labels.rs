@@ -50,6 +50,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
         WorldEventBody::ModuleCallFailed(_) => "module.call_failed",
         WorldEventBody::ModuleEmitted(_) => "module.emitted",
         WorldEventBody::ModuleStateUpdated(_) => "module.state_updated",
+        WorldEventBody::ModuleRuntimeCharged(_) => "module.runtime_charged",
         WorldEventBody::SnapshotCreated(_) => "snapshot.created",
         WorldEventBody::ManifestUpdated(_) => "manifest.updated",
         WorldEventBody::RollbackApplied(_) => "rollback.applied",
