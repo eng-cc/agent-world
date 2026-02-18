@@ -2,7 +2,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::Serialize;
 
 use crate::gossip_udp::{GossipAttestationMessage, GossipCommitMessage, GossipProposalMessage};
-use crate::NodeError;
+use crate::{NodeConsensusAction, NodeError};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ConsensusMessageSigner {
@@ -106,6 +106,8 @@ struct CommitSigningPayload<'a> {
     slot: u64,
     epoch: u64,
     block_hash: &'a str,
+    action_root: &'a str,
+    actions: &'a [NodeConsensusAction],
     committed_at_ms: i64,
     execution_block_hash: Option<&'a str>,
     execution_state_root: Option<&'a str>,
@@ -122,6 +124,8 @@ struct ProposalSigningPayload<'a> {
     slot: u64,
     epoch: u64,
     block_hash: &'a str,
+    action_root: &'a str,
+    actions: &'a [NodeConsensusAction],
     proposed_at_ms: i64,
     public_key_hex: Option<&'a str>,
 }
@@ -153,6 +157,8 @@ fn commit_signing_bytes(message: &GossipCommitMessage) -> Result<Vec<u8>, NodeEr
         slot: message.slot,
         epoch: message.epoch,
         block_hash: &message.block_hash,
+        action_root: &message.action_root,
+        actions: message.actions.as_slice(),
         committed_at_ms: message.committed_at_ms,
         execution_block_hash: message.execution_block_hash.as_deref(),
         execution_state_root: message.execution_state_root.as_deref(),
@@ -170,6 +176,8 @@ fn proposal_signing_bytes(message: &GossipProposalMessage) -> Result<Vec<u8>, No
         slot: message.slot,
         epoch: message.epoch,
         block_hash: &message.block_hash,
+        action_root: &message.action_root,
+        actions: message.actions.as_slice(),
         proposed_at_ms: message.proposed_at_ms,
         public_key_hex: message.public_key_hex.as_deref(),
     })

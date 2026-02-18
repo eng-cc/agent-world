@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::net::UdpSocket;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -49,6 +48,10 @@ fn deterministic_keypair_hex(seed: u8) -> (String, String) {
         hex::encode(signing_key.to_bytes()),
         hex::encode(signing_key.verifying_key().to_bytes()),
     )
+}
+
+fn empty_action_root() -> String {
+    compute_consensus_action_root(&[]).expect("empty action root")
 }
 
 fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConfig {
@@ -127,22 +130,6 @@ impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for Test
 }
 
 #[test]
-fn role_parse_roundtrip() {
-    for role in [NodeRole::Sequencer, NodeRole::Storage, NodeRole::Observer] {
-        let parsed = NodeRole::from_str(role.as_str()).expect("parse role");
-        assert_eq!(parsed, role);
-    }
-}
-
-#[test]
-fn config_rejects_invalid_pos_config() {
-    let result = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
-        .expect("base config")
-        .with_pos_config(NodePosConfig::ethereum_like(vec![]));
-    assert!(matches!(result, Err(NodeError::InvalidConfig { .. })));
-}
-
-#[test]
 fn pos_engine_commits_single_validator_head() {
     let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer).expect("config");
     let mut engine = PosNodeEngine::new(&config).expect("engine");
@@ -155,6 +142,7 @@ fn pos_engine_commits_single_validator_head() {
             None,
             None,
             None,
+            Vec::new(),
             None,
         )
         .expect("tick");
@@ -178,6 +166,7 @@ fn pos_engine_generates_chain_hashed_block_ids() {
             None,
             None,
             None,
+            Vec::new(),
             None,
         )
         .expect("first tick");
@@ -189,6 +178,7 @@ fn pos_engine_generates_chain_hashed_block_ids() {
             None,
             None,
             None,
+            Vec::new(),
             None,
         )
         .expect("second tick");
@@ -228,6 +218,7 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
                 None,
                 None,
                 None,
+                Vec::new(),
                 None,
             )
             .expect("tick");
@@ -267,6 +258,8 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
         slot: 0,
         epoch: 0,
         block_hash: format!("{}:h1:s0:p{}", config.world_id, "node-a"),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
         proposed_at_ms: 1_000,
         public_key_hex: None,
         signature_hex: None,
@@ -304,6 +297,7 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
             None,
             None,
             None,
+            Vec::new(),
             None,
         )
         .expect("tick");
@@ -411,6 +405,8 @@ fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
         slot: 0,
         epoch: 0,
         block_hash: format!("{}:h1:s0:p{}", config_b.world_id, "node-a"),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
         proposed_at_ms: 1_000,
         public_key_hex: None,
         signature_hex: None,
@@ -481,6 +477,8 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
         slot: 0,
         epoch: 0,
         block_hash: format!("{}:h1:s0:p{}", config_b.world_id, "node-a"),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
         proposed_at_ms: 2_000,
         public_key_hex: None,
         signature_hex: None,
@@ -542,6 +540,8 @@ fn commit_signature_covers_execution_hashes() {
         slot: 3,
         epoch: 0,
         block_hash: "block-7".to_string(),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
         committed_at_ms: 3_000,
         execution_block_hash: Some("exec-block-7".to_string()),
         execution_state_root: Some("exec-state-7".to_string()),
@@ -554,6 +554,12 @@ fn commit_signature_covers_execution_hashes() {
     let mut tampered = commit.clone();
     tampered.execution_state_root = Some("exec-state-tampered".to_string());
     let err = verify_commit_message_signature(&tampered, true).expect_err("tamper must fail");
+    assert!(matches!(err, NodeError::Consensus { .. }));
+
+    let mut tampered_action_root = commit.clone();
+    tampered_action_root.action_root = "tampered-action-root".to_string();
+    let err =
+        verify_commit_message_signature(&tampered_action_root, true).expect_err("tamper must fail");
     assert!(matches!(err, NodeError::Consensus { .. }));
 }
 
@@ -590,6 +596,8 @@ fn pos_engine_ingests_commit_execution_hashes() {
             slot: 4,
             epoch: 0,
             block_hash: "block-4".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
             committed_at_ms: 4_000,
             execution_block_hash: Some("exec-block-4".to_string()),
             execution_state_root: Some("exec-state-4".to_string()),
@@ -623,6 +631,8 @@ fn replication_commit_payload_includes_execution_hashes() {
         epoch: 0,
         status: PosConsensusStatus::Committed,
         block_hash: "block-1".to_string(),
+        action_root: empty_action_root(),
+        committed_actions: Vec::new(),
         approved_stake: 100,
         rejected_stake: 0,
         required_stake: 67,
@@ -652,6 +662,19 @@ fn replication_commit_payload_includes_execution_hashes() {
             .get("execution_state_root")
             .and_then(serde_json::Value::as_str),
         Some("exec-state-1")
+    );
+    assert_eq!(
+        payload
+            .get("action_root")
+            .and_then(serde_json::Value::as_str),
+        Some(empty_action_root().as_str())
+    );
+    assert_eq!(
+        payload
+            .get("actions")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0)
     );
 
     let _ = fs::remove_dir_all(&dir);

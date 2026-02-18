@@ -1,9 +1,12 @@
 use std::fs;
 use std::path::Path;
 
-use agent_world::runtime::{blake3_hex, BlobStore, LocalCasStore, World as RuntimeWorld};
+use agent_world::runtime::{
+    blake3_hex, Action as RuntimeAction, BlobStore, LocalCasStore, World as RuntimeWorld,
+};
 use agent_world_node::{
-    NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeSnapshot,
+    compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
+    NodeExecutionHook, NodeSnapshot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -98,6 +101,34 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
                 execution_state_root,
             });
         }
+        if context.height != self.state.last_applied_committed_height.saturating_add(1) {
+            return Err(format!(
+                "execution driver requires contiguous committed heights: last_applied={} incoming={}",
+                self.state.last_applied_committed_height, context.height
+            ));
+        }
+
+        let computed_action_root =
+            compute_consensus_action_root(context.committed_actions.as_slice())
+                .map_err(|err| format!("execution driver compute action root failed: {err:?}"))?;
+        if computed_action_root != context.action_root {
+            return Err(format!(
+                "execution driver action_root mismatch expected={} actual={}",
+                computed_action_root, context.action_root
+            ));
+        }
+
+        let mut decoded_actions = Vec::with_capacity(context.committed_actions.len());
+        for action in &context.committed_actions {
+            let decoded: RuntimeAction = serde_cbor::from_slice(action.payload_cbor.as_slice())
+                .map_err(|err| {
+                    format!(
+                        "execution driver decode committed action failed action_id={} err={}",
+                        action.action_id, err
+                    )
+                })?;
+            decoded_actions.push(decoded);
+        }
 
         fs::create_dir_all(self.records_dir.as_path()).map_err(|err| {
             format!(
@@ -107,66 +138,63 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             )
         })?;
 
-        for height in (self.state.last_applied_committed_height + 1)..=context.height {
-            self.execution_world.step().map_err(|err| {
-                format!(
-                    "execution driver world.step failed at height {}: {:?}",
-                    height, err
-                )
-            })?;
-
-            let snapshot_value = self.execution_world.snapshot();
-            let journal_value = self.execution_world.journal().clone();
-            let snapshot_bytes = to_cbor(snapshot_value)?;
-            let journal_bytes = to_cbor(journal_value)?;
-
-            let snapshot_ref = self
-                .execution_store
-                .put_bytes(snapshot_bytes.as_slice())
-                .map_err(|err| format!("execution driver CAS snapshot put failed: {:?}", err))?;
-            let journal_ref = self
-                .execution_store
-                .put_bytes(journal_bytes.as_slice())
-                .map_err(|err| format!("execution driver CAS journal put failed: {:?}", err))?;
-
-            let execution_state_root = blake3_hex(snapshot_bytes.as_slice());
-            let prev_execution_block_hash = self
-                .state
-                .last_execution_block_hash
-                .clone()
-                .unwrap_or_else(|| "genesis".to_string());
-            let hash_payload = ExecutionHashPayload {
-                world_id: context.world_id.as_str(),
-                height,
-                prev_execution_block_hash: prev_execution_block_hash.as_str(),
-                execution_state_root: execution_state_root.as_str(),
-                journal_len: self.execution_world.journal().len(),
-            };
-            let execution_block_hash = blake3_hex(to_cbor(hash_payload)?.as_slice());
-            let node_block_hash = if height == context.height {
-                Some(context.node_block_hash.clone())
-            } else {
-                None
-            };
-
-            let record = ExecutionBridgeRecord {
-                world_id: context.world_id.clone(),
-                height,
-                node_block_hash: node_block_hash.clone(),
-                execution_block_hash: execution_block_hash.clone(),
-                execution_state_root: execution_state_root.clone(),
-                journal_len: self.execution_world.journal().len(),
-                snapshot_ref,
-                journal_ref,
-                timestamp_ms: context.committed_at_unix_ms,
-            };
-            persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
-
-            self.state.last_applied_committed_height = height;
-            self.state.last_execution_block_hash = Some(execution_block_hash);
-            self.state.last_execution_state_root = Some(execution_state_root);
-            self.state.last_node_block_hash = node_block_hash;
+        for action in decoded_actions {
+            self.execution_world.submit_action(action);
         }
+        self.execution_world.step().map_err(|err| {
+            format!(
+                "execution driver world.step failed at height {}: {:?}",
+                context.height, err
+            )
+        })?;
+
+        let snapshot_value = self.execution_world.snapshot();
+        let journal_value = self.execution_world.journal().clone();
+        let snapshot_bytes = to_cbor(snapshot_value)?;
+        let journal_bytes = to_cbor(journal_value)?;
+
+        let snapshot_ref = self
+            .execution_store
+            .put_bytes(snapshot_bytes.as_slice())
+            .map_err(|err| format!("execution driver CAS snapshot put failed: {:?}", err))?;
+        let journal_ref = self
+            .execution_store
+            .put_bytes(journal_bytes.as_slice())
+            .map_err(|err| format!("execution driver CAS journal put failed: {:?}", err))?;
+
+        let execution_state_root = blake3_hex(snapshot_bytes.as_slice());
+        let prev_execution_block_hash = self
+            .state
+            .last_execution_block_hash
+            .clone()
+            .unwrap_or_else(|| "genesis".to_string());
+        let hash_payload = ExecutionHashPayload {
+            world_id: context.world_id.as_str(),
+            height: context.height,
+            prev_execution_block_hash: prev_execution_block_hash.as_str(),
+            execution_state_root: execution_state_root.as_str(),
+            journal_len: self.execution_world.journal().len(),
+        };
+        let execution_block_hash = blake3_hex(to_cbor(hash_payload)?.as_slice());
+        let node_block_hash = Some(context.node_block_hash.clone());
+
+        let record = ExecutionBridgeRecord {
+            world_id: context.world_id.clone(),
+            height: context.height,
+            node_block_hash: node_block_hash.clone(),
+            execution_block_hash: execution_block_hash.clone(),
+            execution_state_root: execution_state_root.clone(),
+            journal_len: self.execution_world.journal().len(),
+            snapshot_ref,
+            journal_ref,
+            timestamp_ms: context.committed_at_unix_ms,
+        };
+        persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
+
+        self.state.last_applied_committed_height = context.height;
+        self.state.last_execution_block_hash = Some(execution_block_hash);
+        self.state.last_execution_state_root = Some(execution_state_root);
+        self.state.last_node_block_hash = node_block_hash;
 
         persist_execution_bridge_state(self.state_path.as_path(), &self.state)?;
         persist_execution_world(self.world_dir.as_path(), &self.execution_world)?;
@@ -479,6 +507,7 @@ mod tests {
             storage_root,
         )
         .expect("driver");
+        let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
 
         let first = driver
             .on_commit(NodeExecutionCommitContext {
@@ -488,6 +517,8 @@ mod tests {
                 slot: 0,
                 epoch: 0,
                 node_block_hash: "node-h1".to_string(),
+                action_root: empty_action_root.clone(),
+                committed_actions: Vec::new(),
                 committed_at_unix_ms: 1_000,
             })
             .expect("first commit");
@@ -499,6 +530,8 @@ mod tests {
                 slot: 1,
                 epoch: 0,
                 node_block_hash: "node-h2".to_string(),
+                action_root: empty_action_root,
+                committed_actions: Vec::new(),
                 committed_at_unix_ms: 2_000,
             })
             .expect("second commit");

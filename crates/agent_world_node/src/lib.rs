@@ -7,6 +7,7 @@ use std::thread::{self, JoinHandle};
 
 use agent_world_distfs::blake3_hex;
 
+mod consensus_action;
 mod consensus_signature;
 mod error;
 mod execution_hook;
@@ -23,6 +24,11 @@ mod replication;
 mod runtime_util;
 mod types;
 
+pub use consensus_action::{compute_consensus_action_root, NodeConsensusAction};
+use consensus_action::{
+    drain_ordered_consensus_actions, merge_pending_consensus_actions,
+    validate_consensus_action_root,
+};
 use consensus_signature::{
     sign_attestation_message, sign_commit_message, sign_proposal_message,
     verify_attestation_message_signature, verify_commit_message_signature,
@@ -59,6 +65,7 @@ pub struct NodeRuntime {
     config: NodeConfig,
     replication_network: Option<NodeReplicationNetworkHandle>,
     execution_hook: Option<std::sync::Arc<std::sync::Mutex<Box<dyn NodeExecutionHook>>>>,
+    pending_consensus_actions: Arc<Mutex<Vec<NodeConsensusAction>>>,
     running: Arc<AtomicBool>,
     state: Arc<Mutex<RuntimeState>>,
     stop_tx: Option<mpsc::Sender<()>>,
@@ -104,6 +111,7 @@ impl NodeRuntime {
             config,
             replication_network: None,
             execution_hook: None,
+            pending_consensus_actions: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(AtomicBool::new(false)),
             state: Arc::new(Mutex::new(RuntimeState::default())),
             stop_tx: None,
@@ -126,6 +134,20 @@ impl NodeRuntime {
 
     pub fn config(&self) -> &NodeConfig {
         &self.config
+    }
+
+    pub fn submit_consensus_action_payload(
+        &self,
+        action_id: u64,
+        payload_cbor: Vec<u8>,
+    ) -> Result<(), NodeError> {
+        let action = NodeConsensusAction::from_payload(action_id, payload_cbor)?;
+        let mut pending = self
+            .pending_consensus_actions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        pending.push(action);
+        Ok(())
     }
 
     pub fn start(&mut self) -> Result<(), NodeError> {
@@ -196,6 +218,7 @@ impl NodeRuntime {
         let running = Arc::clone(&self.running);
         let state = Arc::clone(&self.state);
         let execution_hook = self.execution_hook.clone();
+        let pending_consensus_actions = Arc::clone(&self.pending_consensus_actions);
         let node_id = self.config.node_id.clone();
         let world_id = self.config.world_id.clone();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -216,6 +239,12 @@ impl NodeRuntime {
 
                             let tick_result = if let Some(execution_hook) = execution_hook.as_ref()
                             {
+                                let queued_actions = {
+                                    let mut pending = pending_consensus_actions
+                                        .lock()
+                                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                    std::mem::take(&mut *pending)
+                                };
                                 match execution_hook.lock() {
                                     Ok(mut hook) => engine.tick(
                                         &node_id,
@@ -224,6 +253,7 @@ impl NodeRuntime {
                                         gossip.as_mut(),
                                         replication.as_mut(),
                                         replication_network.as_mut(),
+                                        queued_actions,
                                         Some(hook.as_mut()),
                                     ),
                                     Err(_) => Err(NodeError::Execution {
@@ -231,6 +261,12 @@ impl NodeRuntime {
                                     }),
                                 }
                             } else {
+                                let queued_actions = {
+                                    let mut pending = pending_consensus_actions
+                                        .lock()
+                                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                                    std::mem::take(&mut *pending)
+                                };
                                 engine.tick(
                                     &node_id,
                                     &world_id,
@@ -238,6 +274,7 @@ impl NodeRuntime {
                                     gossip.as_mut(),
                                     replication.as_mut(),
                                     replication_network.as_mut(),
+                                    queued_actions,
                                     None,
                                 )
                             };
@@ -345,6 +382,7 @@ struct PosNodeEngine {
     last_execution_height: u64,
     last_execution_block_hash: Option<String>,
     last_execution_state_root: Option<String>,
+    pending_consensus_actions: BTreeMap<u64, NodeConsensusAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -364,6 +402,8 @@ struct PendingProposal {
     epoch: u64,
     proposer_id: String,
     block_hash: String,
+    action_root: String,
+    committed_actions: Vec<NodeConsensusAction>,
     attestations: BTreeMap<String, PosAttestation>,
     approved_stake: u64,
     rejected_stake: u64,
@@ -377,6 +417,8 @@ struct PosDecision {
     epoch: u64,
     status: PosConsensusStatus,
     block_hash: String,
+    action_root: String,
+    committed_actions: Vec<NodeConsensusAction>,
     approved_stake: u64,
     rejected_stake: u64,
     required_stake: u64,
@@ -430,6 +472,7 @@ impl PosNodeEngine {
             last_execution_height: 0,
             last_execution_block_hash: None,
             last_execution_state_root: None,
+            pending_consensus_actions: BTreeMap::new(),
         })
     }
 
@@ -441,8 +484,11 @@ impl PosNodeEngine {
         gossip: Option<&mut GossipEndpoint>,
         mut replication: Option<&mut ReplicationRuntime>,
         replication_network: Option<&mut ReplicationNetworkEndpoint>,
+        queued_actions: Vec<NodeConsensusAction>,
         execution_hook: Option<&mut dyn NodeExecutionHook>,
     ) -> Result<NodeConsensusSnapshot, NodeError> {
+        merge_pending_consensus_actions(&mut self.pending_consensus_actions, queued_actions)?;
+
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
         }
@@ -506,6 +552,9 @@ impl PosNodeEngine {
     ) -> Result<PosDecision, NodeError> {
         let slot = self.next_slot;
         let epoch = self.slot_epoch(slot);
+        let committed_actions =
+            drain_ordered_consensus_actions(&mut self.pending_consensus_actions);
+        let action_root = compute_consensus_action_root(committed_actions.as_slice())?;
         let proposer_id = self
             .expected_proposer(slot)
             .ok_or_else(|| NodeError::Consensus {
@@ -522,6 +571,7 @@ impl PosNodeEngine {
             epoch,
             proposer_id.as_str(),
             parent_block_hash,
+            action_root.as_str(),
         )?;
 
         let mut proposal = PendingProposal {
@@ -530,6 +580,8 @@ impl PosNodeEngine {
             epoch,
             proposer_id: proposer_id.clone(),
             block_hash: block_hash.clone(),
+            action_root: action_root.clone(),
+            committed_actions,
             attestations: BTreeMap::new(),
             approved_stake: 0,
             rejected_stake: 0,
@@ -640,6 +692,8 @@ impl PosNodeEngine {
             epoch: proposal.epoch,
             status: proposal.status,
             block_hash: proposal.block_hash.clone(),
+            action_root: proposal.action_root.clone(),
+            committed_actions: proposal.committed_actions.clone(),
             approved_stake: proposal.approved_stake,
             rejected_stake: proposal.rejected_stake,
             required_stake: self.required_stake,
@@ -658,6 +712,10 @@ impl PosNodeEngine {
                 self.pending = None;
             }
             PosConsensusStatus::Rejected => {
+                let _ = merge_pending_consensus_actions(
+                    &mut self.pending_consensus_actions,
+                    decision.committed_actions.clone(),
+                );
                 self.next_height = decision.height.saturating_add(1);
                 self.pending = None;
             }
@@ -690,6 +748,8 @@ impl PosNodeEngine {
                 slot: decision.slot,
                 epoch: decision.epoch,
                 node_block_hash: decision.block_hash.clone(),
+                action_root: decision.action_root.clone(),
+                committed_actions: decision.committed_actions.clone(),
                 committed_at_unix_ms: now_ms,
             })
             .map_err(|reason| NodeError::Execution { reason })?;
@@ -780,6 +840,8 @@ impl PosNodeEngine {
             slot: proposal.slot,
             epoch: proposal.epoch,
             block_hash: proposal.block_hash.clone(),
+            action_root: proposal.action_root.clone(),
+            actions: proposal.committed_actions.clone(),
             proposed_at_ms: now_ms,
             public_key_hex: None,
             signature_hex: None,
@@ -858,6 +920,8 @@ impl PosNodeEngine {
             slot: decision.slot,
             epoch: decision.epoch,
             block_hash: decision.block_hash.clone(),
+            action_root: decision.action_root.clone(),
+            actions: decision.committed_actions.clone(),
             committed_at_ms: now_ms,
             execution_block_hash: execution_block_hash.map(str::to_string),
             execution_state_root: execution_state_root.map(str::to_string),
@@ -942,6 +1006,11 @@ impl PosNodeEngine {
                 return Ok(());
             }
         }
+        if validate_consensus_action_root(message.action_root.as_str(), message.actions.as_slice())
+            .is_err()
+        {
+            return Ok(());
+        }
 
         let mut proposal = PendingProposal {
             height: message.height,
@@ -949,6 +1018,8 @@ impl PosNodeEngine {
             epoch: message.epoch,
             proposer_id: message.proposer_id.clone(),
             block_hash: message.block_hash.clone(),
+            action_root: message.action_root.clone(),
+            committed_actions: message.actions.clone(),
             attestations: BTreeMap::new(),
             approved_stake: 0,
             rejected_stake: 0,
@@ -1025,6 +1096,14 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
+                    if validate_consensus_action_root(
+                        commit.action_root.as_str(),
+                        commit.actions.as_slice(),
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
                     let previous_height = self
                         .peer_heads
                         .get(commit.node_id.as_str())
@@ -1091,6 +1170,7 @@ impl PosNodeEngine {
         epoch: u64,
         proposer_id: &str,
         parent_block_hash: &str,
+        action_root: &str,
     ) -> Result<String, NodeError> {
         let payload = (
             1_u8,
@@ -1100,6 +1180,7 @@ impl PosNodeEngine {
             epoch,
             proposer_id,
             parent_block_hash,
+            action_root,
         );
         let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeError::Consensus {
             reason: format!("encode block hash payload failed: {err}"),
@@ -1110,3 +1191,5 @@ impl PosNodeEngine {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_action_payload;

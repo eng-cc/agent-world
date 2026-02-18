@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::NodeConsensusAction;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NodeExecutionCommitContext {
     pub world_id: String,
@@ -8,6 +10,9 @@ pub struct NodeExecutionCommitContext {
     pub slot: u64,
     pub epoch: u64,
     pub node_block_hash: String,
+    pub action_root: String,
+    #[serde(default)]
+    pub committed_actions: Vec<NodeConsensusAction>,
     pub committed_at_unix_ms: i64,
 }
 

@@ -121,6 +121,7 @@ impl PosNodeEngine {
 
     pub(super) fn restore_state_snapshot(&mut self, snapshot: PosNodeStateSnapshot) {
         self.pending = None;
+        self.pending_consensus_actions.clear();
         self.committed_height = snapshot.committed_height;
         self.network_committed_height = snapshot
             .network_committed_height

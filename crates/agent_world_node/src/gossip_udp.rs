@@ -3,7 +3,7 @@ use std::net::{SocketAddr, UdpSocket};
 use serde::{Deserialize, Serialize};
 
 use crate::replication::GossipReplicationMessage;
-use crate::{NodeError, NodeGossipConfig};
+use crate::{NodeConsensusAction, NodeError, NodeGossipConfig};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct GossipCommitMessage {
@@ -14,6 +14,10 @@ pub(crate) struct GossipCommitMessage {
     pub slot: u64,
     pub epoch: u64,
     pub block_hash: String,
+    #[serde(default)]
+    pub action_root: String,
+    #[serde(default)]
+    pub actions: Vec<NodeConsensusAction>,
     pub committed_at_ms: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution_block_hash: Option<String>,
@@ -35,6 +39,10 @@ pub(crate) struct GossipProposalMessage {
     pub slot: u64,
     pub epoch: u64,
     pub block_hash: String,
+    #[serde(default)]
+    pub action_root: String,
+    #[serde(default)]
+    pub actions: Vec<NodeConsensusAction>,
     pub proposed_at_ms: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_key_hex: Option<String>,

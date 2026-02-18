@@ -8,7 +8,7 @@ use agent_world_distfs::{
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
-use crate::{NodeError, PosConsensusStatus, PosDecision};
+use crate::{NodeConsensusAction, NodeError, PosConsensusStatus, PosDecision};
 
 const REPLICATION_VERSION: u8 = 1;
 const COMMIT_FILE_PREFIX: &str = "consensus/commits";
@@ -148,6 +148,8 @@ struct ReplicatedCommitPayload {
     slot: u64,
     epoch: u64,
     block_hash: String,
+    action_root: String,
+    actions: Vec<NodeConsensusAction>,
     committed_at_ms: i64,
     execution_block_hash: Option<String>,
     execution_state_root: Option<String>,
@@ -218,6 +220,8 @@ impl ReplicationRuntime {
             slot: decision.slot,
             epoch: decision.epoch,
             block_hash: decision.block_hash.clone(),
+            action_root: decision.action_root.clone(),
+            actions: decision.committed_actions.clone(),
             committed_at_ms: now_ms,
             execution_block_hash: execution_block_hash.map(str::to_string),
             execution_state_root: execution_state_root.map(str::to_string),
