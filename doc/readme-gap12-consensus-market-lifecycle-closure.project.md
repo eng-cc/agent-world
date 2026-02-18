@@ -8,7 +8,7 @@
   - viewer live 提交/回放闭环
   - payload envelope + execution bridge 兼容
   - required tests
-- [ ] T2：Simulator/LLM 模块市场生命周期入口
+- [x] T2：Simulator/LLM 模块市场生命周期入口
   - action/event/model/kernel/replay
   - llm parser/prompt/schema
   - required tests
@@ -30,6 +30,6 @@
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态
-- 当前阶段：T0/T1 完成，T2 进行中。
+- 当前阶段：T0/T1/T2 完成，T3 进行中。
 - 阻塞项：无。
-- 下一步：实现 T2（Simulator/LLM 模块市场生命周期入口）。
+- 下一步：执行 T3（回归与收口）。

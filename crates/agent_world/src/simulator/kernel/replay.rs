@@ -34,7 +34,22 @@ impl WorldKernel {
         self.time = event.time;
         self.next_event_id = self.next_event_id.saturating_add(1);
 
+        if let Some(result) = self.replay_module_lifecycle_event(&event.kind) {
+            result.map_err(|message| PersistError::ReplayConflict { message })?;
+            return Ok(());
+        }
+
         match &event.kind {
+            WorldEventKind::ModuleArtifactDeployed { .. }
+            | WorldEventKind::ModuleInstalled { .. }
+            | WorldEventKind::ModuleArtifactListed { .. }
+            | WorldEventKind::ModuleArtifactDelisted { .. }
+            | WorldEventKind::ModuleArtifactBidPlaced { .. }
+            | WorldEventKind::ModuleArtifactBidCancelled { .. }
+            | WorldEventKind::ModuleArtifactSaleCompleted { .. }
+            | WorldEventKind::ModuleArtifactDestroyed { .. } => {
+                unreachable!("module lifecycle events should be handled before replay match")
+            }
             WorldEventKind::LocationRegistered {
                 location_id,
                 name,
@@ -403,38 +418,6 @@ impl WorldKernel {
                 if *data_output > 0 {
                     self.add_to_owner_for_replay(owner, ResourceKind::Data, *data_output)?;
                 }
-            }
-            WorldEventKind::ModuleArtifactDeployed {
-                publisher_agent_id,
-                wasm_hash,
-                wasm_bytes,
-                bytes_len,
-                module_id_hint,
-            } => {
-                self.replay_module_artifact_deployed(
-                    publisher_agent_id,
-                    wasm_hash,
-                    wasm_bytes,
-                    *bytes_len,
-                    module_id_hint.as_deref(),
-                )
-                .map_err(|message| PersistError::ReplayConflict { message })?;
-            }
-            WorldEventKind::ModuleInstalled {
-                installer_agent_id,
-                module_id,
-                module_version,
-                wasm_hash,
-                active,
-            } => {
-                self.replay_module_installed(
-                    installer_agent_id,
-                    module_id,
-                    module_version,
-                    wasm_hash,
-                    *active,
-                )
-                .map_err(|message| PersistError::ReplayConflict { message })?;
             }
             WorldEventKind::ChunkGenerated {
                 coord,
@@ -1064,7 +1047,7 @@ impl WorldKernel {
         Ok(())
     }
 
-    fn remove_from_owner_for_replay(
+    pub(super) fn remove_from_owner_for_replay(
         &mut self,
         owner: &ResourceOwner,
         kind: ResourceKind,
@@ -1113,7 +1096,7 @@ impl WorldKernel {
         })
     }
 
-    fn add_to_owner_for_replay(
+    pub(super) fn add_to_owner_for_replay(
         &mut self,
         owner: &ResourceOwner,
         kind: ResourceKind,

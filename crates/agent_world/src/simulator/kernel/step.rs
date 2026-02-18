@@ -291,6 +291,44 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("installer_agent_id must be the submitter agent")
             }
         }
+        Action::ListModuleArtifactForSale {
+            seller_agent_id, ..
+        }
+        | Action::DelistModuleArtifact {
+            seller_agent_id, ..
+        } => {
+            if seller_agent_id == agent_id {
+                None
+            } else {
+                denied("seller_agent_id must be the submitter agent")
+            }
+        }
+        Action::BuyModuleArtifact { buyer_agent_id, .. } => {
+            if buyer_agent_id == agent_id {
+                None
+            } else {
+                denied("buyer_agent_id must be the submitter agent")
+            }
+        }
+        Action::DestroyModuleArtifact { owner_agent_id, .. } => {
+            if owner_agent_id == agent_id {
+                None
+            } else {
+                denied("owner_agent_id must be the submitter agent")
+            }
+        }
+        Action::PlaceModuleArtifactBid {
+            bidder_agent_id, ..
+        }
+        | Action::CancelModuleArtifactBid {
+            bidder_agent_id, ..
+        } => {
+            if bidder_agent_id == agent_id {
+                None
+            } else {
+                denied("bidder_agent_id must be the submitter agent")
+            }
+        }
         Action::DrawPower { .. } | Action::StorePower { .. } => None,
     }
 }

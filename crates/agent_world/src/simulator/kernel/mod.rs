@@ -3,6 +3,7 @@
 mod actions;
 mod fragment_replenish;
 mod module_lifecycle;
+mod module_market_lifecycle;
 mod observation;
 mod persistence;
 mod power;

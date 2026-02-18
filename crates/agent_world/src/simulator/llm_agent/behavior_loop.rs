@@ -930,6 +930,20 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                     },
                 );
             }
+            WorldEventKind::ModuleArtifactSaleCompleted {
+                buyer_agent_id,
+                wasm_hash,
+                ..
+            } => {
+                if let Some(record) = self.known_module_artifacts.get_mut(wasm_hash) {
+                    record.publisher_agent_id = buyer_agent_id.clone();
+                }
+            }
+            WorldEventKind::ModuleArtifactDestroyed { wasm_hash, .. } => {
+                self.known_module_artifacts.remove(wasm_hash);
+                self.known_installed_modules
+                    .retain(|_, record| record.wasm_hash != *wasm_hash);
+            }
             _ => {}
         }
         if !result.success {

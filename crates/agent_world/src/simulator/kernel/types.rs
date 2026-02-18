@@ -163,6 +163,49 @@ pub enum WorldEventKind {
         wasm_hash: String,
         active: bool,
     },
+    ModuleArtifactListed {
+        seller_agent_id: AgentId,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+        order_id: u64,
+    },
+    ModuleArtifactDelisted {
+        seller_agent_id: AgentId,
+        wasm_hash: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        order_id: Option<u64>,
+    },
+    ModuleArtifactBidPlaced {
+        bidder_agent_id: AgentId,
+        wasm_hash: String,
+        order_id: u64,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    ModuleArtifactBidCancelled {
+        bidder_agent_id: AgentId,
+        wasm_hash: String,
+        order_id: u64,
+        reason: String,
+    },
+    ModuleArtifactSaleCompleted {
+        buyer_agent_id: AgentId,
+        seller_agent_id: AgentId,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+        sale_id: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        listing_order_id: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        bid_order_id: Option<u64>,
+    },
+    ModuleArtifactDestroyed {
+        owner_agent_id: AgentId,
+        wasm_hash: String,
+        reason: String,
+    },
     ModuleVisualEntityUpserted {
         entity: ModuleVisualEntity,
     },

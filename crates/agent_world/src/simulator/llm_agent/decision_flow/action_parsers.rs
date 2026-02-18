@@ -20,6 +20,14 @@ pub(super) fn parse_market_or_social_action(
         "install_module_from_artifact" => {
             Some(parse_install_module_from_artifact(parsed, agent_id))
         }
+        "list_module_artifact_for_sale" => {
+            Some(parse_list_module_artifact_for_sale(parsed, agent_id))
+        }
+        "buy_module_artifact" => Some(parse_buy_module_artifact(parsed, agent_id)),
+        "delist_module_artifact" => Some(parse_delist_module_artifact(parsed, agent_id)),
+        "destroy_module_artifact" => Some(parse_destroy_module_artifact(parsed, agent_id)),
+        "place_module_artifact_bid" => Some(parse_place_module_artifact_bid(parsed, agent_id)),
+        "cancel_module_artifact_bid" => Some(parse_cancel_module_artifact_bid(parsed, agent_id)),
         "publish_social_fact" => Some(parse_publish_social_fact(parsed, agent_id)),
         "challenge_social_fact" => Some(parse_challenge_social_fact(parsed, agent_id)),
         "adjudicate_social_fact" => Some(parse_adjudicate_social_fact(parsed, agent_id)),
@@ -184,6 +192,176 @@ fn parse_install_module_from_artifact(
         module_version,
         wasm_hash,
         activate,
+    })
+}
+
+fn parse_list_module_artifact_for_sale(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let seller_agent_id = parse_agent_identity_or_self(
+        parsed.seller.as_deref(),
+        "list_module_artifact_for_sale",
+        "seller",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "list_module_artifact_for_sale",
+        "wasm_hash",
+    )?;
+    let price_kind = parse_resource_kind(
+        parse_required_text(
+            parsed.price_kind.as_deref(),
+            "list_module_artifact_for_sale",
+            "price_kind",
+        )?
+        .as_str(),
+    )
+    .ok_or_else(|| "list_module_artifact_for_sale invalid price_kind".to_string())?;
+    let price_amount = parse_positive_i64(
+        parsed.price_amount,
+        "list_module_artifact_for_sale",
+        "price_amount",
+    )?;
+    Ok(Action::ListModuleArtifactForSale {
+        seller_agent_id,
+        wasm_hash,
+        price_kind,
+        price_amount,
+    })
+}
+
+fn parse_buy_module_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let buyer_agent_id = parse_agent_identity_or_self(
+        parsed.buyer.as_deref(),
+        "buy_module_artifact",
+        "buyer",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "buy_module_artifact",
+        "wasm_hash",
+    )?;
+    Ok(Action::BuyModuleArtifact {
+        buyer_agent_id,
+        wasm_hash,
+    })
+}
+
+fn parse_delist_module_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let seller_agent_id = parse_agent_identity_or_self(
+        parsed.seller.as_deref(),
+        "delist_module_artifact",
+        "seller",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "delist_module_artifact",
+        "wasm_hash",
+    )?;
+    Ok(Action::DelistModuleArtifact {
+        seller_agent_id,
+        wasm_hash,
+    })
+}
+
+fn parse_destroy_module_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let owner_agent_id = parse_agent_identity_or_self(
+        parsed.owner.as_deref(),
+        "destroy_module_artifact",
+        "owner",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "destroy_module_artifact",
+        "wasm_hash",
+    )?;
+    let reason = parse_required_text(
+        parsed.reason.as_deref(),
+        "destroy_module_artifact",
+        "reason",
+    )?;
+    Ok(Action::DestroyModuleArtifact {
+        owner_agent_id,
+        wasm_hash,
+        reason,
+    })
+}
+
+fn parse_place_module_artifact_bid(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let bidder_agent_id = parse_agent_identity_or_self(
+        parsed.bidder.as_deref(),
+        "place_module_artifact_bid",
+        "bidder",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "place_module_artifact_bid",
+        "wasm_hash",
+    )?;
+    let price_kind = parse_resource_kind(
+        parse_required_text(
+            parsed.price_kind.as_deref(),
+            "place_module_artifact_bid",
+            "price_kind",
+        )?
+        .as_str(),
+    )
+    .ok_or_else(|| "place_module_artifact_bid invalid price_kind".to_string())?;
+    let price_amount = parse_positive_i64(
+        parsed.price_amount,
+        "place_module_artifact_bid",
+        "price_amount",
+    )?;
+    Ok(Action::PlaceModuleArtifactBid {
+        bidder_agent_id,
+        wasm_hash,
+        price_kind,
+        price_amount,
+    })
+}
+
+fn parse_cancel_module_artifact_bid(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let bidder_agent_id = parse_agent_identity_or_self(
+        parsed.bidder.as_deref(),
+        "cancel_module_artifact_bid",
+        "bidder",
+        agent_id,
+    )?;
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "cancel_module_artifact_bid",
+        "wasm_hash",
+    )?;
+    let bid_order_id = parse_positive_u64(
+        parsed.bid_order_id,
+        "cancel_module_artifact_bid",
+        "bid_order_id",
+    )?;
+    Ok(Action::CancelModuleArtifactBid {
+        bidder_agent_id,
+        wasm_hash,
+        bid_order_id,
     })
 }
 

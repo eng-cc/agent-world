@@ -7,6 +7,8 @@ use crate::models::RobotBodySpec;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeMap;
 
+mod module_market;
+
 use super::chunking::{chunk_coord_of, ChunkCoord};
 use super::fragment_physics::FragmentPhysicalProfile;
 use super::memory::LongTermMemoryEntry;
@@ -22,6 +24,10 @@ use super::types::{
     DEFAULT_VISIBILITY_RANGE_CM, PPM_BASE,
 };
 use super::ResourceOwner;
+use module_market::{default_next_module_market_order_id, default_next_module_market_sale_id};
+pub use module_market::{
+    InstalledModuleState, ModuleArtifactBidState, ModuleArtifactListingState, ModuleArtifactState,
+};
 
 const MOVE_COST_REFERENCE_TIME_STEP_S: i64 = 10;
 const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
@@ -142,30 +148,6 @@ pub struct Factory {
     pub kind: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ModuleArtifactState {
-    pub wasm_hash: String,
-    pub publisher_agent_id: AgentId,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub module_id_hint: Option<String>,
-    #[serde(default)]
-    pub wasm_bytes: Vec<u8>,
-    #[serde(default)]
-    pub deployed_at_tick: WorldTime,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct InstalledModuleState {
-    pub module_id: String,
-    pub module_version: String,
-    pub wasm_hash: String,
-    pub installer_agent_id: AgentId,
-    #[serde(default)]
-    pub active: bool,
-    #[serde(default)]
-    pub installed_at_tick: WorldTime,
-}
-
 fn default_next_power_order_id() -> u64 {
     1
 }
@@ -218,6 +200,14 @@ pub struct WorldModel {
     pub module_artifacts: BTreeMap<String, ModuleArtifactState>,
     #[serde(default)]
     pub installed_modules: BTreeMap<String, InstalledModuleState>,
+    #[serde(default)]
+    pub module_artifact_listings: BTreeMap<String, ModuleArtifactListingState>,
+    #[serde(default)]
+    pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
+    #[serde(default = "default_next_module_market_order_id")]
+    pub next_module_market_order_id: u64,
+    #[serde(default = "default_next_module_market_sale_id")]
+    pub next_module_market_sale_id: u64,
     #[serde(default)]
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]

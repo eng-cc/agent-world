@@ -1054,6 +1054,46 @@ impl WorldKernel {
                 wasm_hash,
                 activate,
             ),
+            Action::ListModuleArtifactForSale {
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            } => self.apply_list_module_artifact_for_sale(
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            ),
+            Action::BuyModuleArtifact {
+                buyer_agent_id,
+                wasm_hash,
+            } => self.apply_buy_module_artifact(buyer_agent_id, wasm_hash),
+            Action::DelistModuleArtifact {
+                seller_agent_id,
+                wasm_hash,
+            } => self.apply_delist_module_artifact(seller_agent_id, wasm_hash),
+            Action::DestroyModuleArtifact {
+                owner_agent_id,
+                wasm_hash,
+                reason,
+            } => self.apply_destroy_module_artifact(owner_agent_id, wasm_hash, reason),
+            Action::PlaceModuleArtifactBid {
+                bidder_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            } => self.apply_place_module_artifact_bid(
+                bidder_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            ),
+            Action::CancelModuleArtifactBid {
+                bidder_agent_id,
+                wasm_hash,
+                bid_order_id,
+            } => self.apply_cancel_module_artifact_bid(bidder_agent_id, wasm_hash, bid_order_id),
             Action::PublishSocialFact {
                 actor,
                 schema_id,
@@ -2149,7 +2189,10 @@ impl WorldKernel {
         }
     }
 
-    fn owner_stock(&self, owner: &ResourceOwner) -> Option<&super::super::types::ResourceStock> {
+    pub(super) fn owner_stock(
+        &self,
+        owner: &ResourceOwner,
+    ) -> Option<&super::super::types::ResourceStock> {
         match owner {
             ResourceOwner::Agent { agent_id } => {
                 self.model.agents.get(agent_id).map(|a| &a.resources)

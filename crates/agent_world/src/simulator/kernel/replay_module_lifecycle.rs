@@ -1,8 +1,112 @@
-use super::super::world_model::{InstalledModuleState, ModuleArtifactState};
+use super::super::types::{ResourceKind, ResourceOwner};
+use super::super::world_model::{
+    InstalledModuleState, ModuleArtifactBidState, ModuleArtifactListingState, ModuleArtifactState,
+};
+use super::types::WorldEventKind;
 use super::WorldKernel;
 use sha2::{Digest, Sha256};
 
 impl WorldKernel {
+    pub(super) fn replay_module_lifecycle_event(
+        &mut self,
+        kind: &WorldEventKind,
+    ) -> Option<Result<(), String>> {
+        match kind {
+            WorldEventKind::ModuleArtifactDeployed {
+                publisher_agent_id,
+                wasm_hash,
+                wasm_bytes,
+                bytes_len,
+                module_id_hint,
+            } => Some(self.replay_module_artifact_deployed(
+                publisher_agent_id,
+                wasm_hash,
+                wasm_bytes,
+                *bytes_len,
+                module_id_hint.as_deref(),
+            )),
+            WorldEventKind::ModuleInstalled {
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                active,
+            } => Some(self.replay_module_installed(
+                installer_agent_id,
+                module_id,
+                module_version,
+                wasm_hash,
+                *active,
+            )),
+            WorldEventKind::ModuleArtifactListed {
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+                order_id,
+            } => Some(self.replay_module_artifact_listed(
+                seller_agent_id,
+                wasm_hash,
+                *price_kind,
+                *price_amount,
+                *order_id,
+            )),
+            WorldEventKind::ModuleArtifactDelisted {
+                seller_agent_id,
+                wasm_hash,
+                order_id,
+            } => Some(self.replay_module_artifact_delisted(seller_agent_id, wasm_hash, *order_id)),
+            WorldEventKind::ModuleArtifactBidPlaced {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                price_kind,
+                price_amount,
+            } => Some(self.replay_module_artifact_bid_placed(
+                bidder_agent_id,
+                wasm_hash,
+                *order_id,
+                *price_kind,
+                *price_amount,
+            )),
+            WorldEventKind::ModuleArtifactBidCancelled {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                ..
+            } => Some(self.replay_module_artifact_bid_cancelled(
+                bidder_agent_id,
+                wasm_hash,
+                *order_id,
+            )),
+            WorldEventKind::ModuleArtifactSaleCompleted {
+                buyer_agent_id,
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+                sale_id,
+                listing_order_id,
+                bid_order_id,
+            } => Some(self.replay_module_artifact_sale_completed(
+                buyer_agent_id,
+                seller_agent_id,
+                wasm_hash,
+                *price_kind,
+                *price_amount,
+                *sale_id,
+                *listing_order_id,
+                *bid_order_id,
+            )),
+            WorldEventKind::ModuleArtifactDestroyed {
+                owner_agent_id,
+                wasm_hash,
+                reason,
+            } => Some(self.replay_module_artifact_destroyed(owner_agent_id, wasm_hash, reason)),
+            _ => None,
+        }
+    }
+
     pub(super) fn replay_module_artifact_deployed(
         &mut self,
         publisher_agent_id: &str,
@@ -111,6 +215,382 @@ impl WorldKernel {
             },
         );
 
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_listed(
+        &mut self,
+        seller_agent_id: &str,
+        wasm_hash: &str,
+        price_kind: ResourceKind,
+        price_amount: i64,
+        order_id: u64,
+    ) -> Result<(), String> {
+        if order_id == 0 {
+            return Err("module artifact listing order_id must be > 0".to_string());
+        }
+        if price_amount <= 0 {
+            return Err(format!(
+                "module artifact listing price must be > 0, got {}",
+                price_amount
+            ));
+        }
+        if !self.model.agents.contains_key(seller_agent_id) {
+            return Err(format!(
+                "module artifact seller not found: {}",
+                seller_agent_id
+            ));
+        }
+        let Some(artifact) = self.model.module_artifacts.get(wasm_hash) else {
+            return Err(format!(
+                "module artifact listing missing artifact: {}",
+                wasm_hash
+            ));
+        };
+        if artifact.publisher_agent_id != seller_agent_id {
+            return Err(format!(
+                "module artifact listing owner mismatch: seller {} owner {}",
+                seller_agent_id, artifact.publisher_agent_id
+            ));
+        }
+
+        self.model.next_module_market_order_id = self
+            .model
+            .next_module_market_order_id
+            .max(order_id.saturating_add(1));
+        self.model.module_artifact_listings.insert(
+            wasm_hash.to_string(),
+            ModuleArtifactListingState {
+                order_id,
+                wasm_hash: wasm_hash.to_string(),
+                seller_agent_id: seller_agent_id.to_string(),
+                price_kind,
+                price_amount,
+                listed_at_tick: self.time,
+            },
+        );
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_delisted(
+        &mut self,
+        seller_agent_id: &str,
+        wasm_hash: &str,
+        order_id: Option<u64>,
+    ) -> Result<(), String> {
+        let Some(listing) = self.model.module_artifact_listings.get(wasm_hash).cloned() else {
+            return Err(format!(
+                "module artifact delist missing listing for hash {}",
+                wasm_hash
+            ));
+        };
+        if listing.seller_agent_id != seller_agent_id {
+            return Err(format!(
+                "module artifact delist seller mismatch: listing seller {} event seller {}",
+                listing.seller_agent_id, seller_agent_id
+            ));
+        }
+        if let Some(expected_order_id) = order_id {
+            if expected_order_id == 0 {
+                return Err("module artifact delist order_id must be > 0".to_string());
+            }
+            if listing.order_id != expected_order_id {
+                return Err(format!(
+                    "module artifact delist order mismatch: listing={} event={}",
+                    listing.order_id, expected_order_id
+                ));
+            }
+        }
+
+        self.model.module_artifact_listings.remove(wasm_hash);
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_bid_placed(
+        &mut self,
+        bidder_agent_id: &str,
+        wasm_hash: &str,
+        order_id: u64,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    ) -> Result<(), String> {
+        if order_id == 0 {
+            return Err("module artifact bid order_id must be > 0".to_string());
+        }
+        if price_amount <= 0 {
+            return Err(format!(
+                "module artifact bid price must be > 0, got {}",
+                price_amount
+            ));
+        }
+        if !self.model.agents.contains_key(bidder_agent_id) {
+            return Err(format!(
+                "module artifact bidder not found: {}",
+                bidder_agent_id
+            ));
+        }
+        let Some(artifact) = self.model.module_artifacts.get(wasm_hash) else {
+            return Err(format!(
+                "module artifact bid missing artifact for hash {}",
+                wasm_hash
+            ));
+        };
+        if artifact.publisher_agent_id == bidder_agent_id {
+            return Err(format!(
+                "module artifact bid rejected: bidder {} already owns {}",
+                bidder_agent_id, wasm_hash
+            ));
+        }
+        let available = self
+            .model
+            .agents
+            .get(bidder_agent_id)
+            .map(|agent| agent.resources.get(price_kind))
+            .unwrap_or(0);
+        if available < price_amount {
+            return Err(format!(
+                "module artifact bid insufficient {:?}: requested {} available {}",
+                price_kind, price_amount, available
+            ));
+        }
+
+        self.model.next_module_market_order_id = self
+            .model
+            .next_module_market_order_id
+            .max(order_id.saturating_add(1));
+        self.model
+            .module_artifact_bids
+            .entry(wasm_hash.to_string())
+            .or_default()
+            .push(ModuleArtifactBidState {
+                order_id,
+                wasm_hash: wasm_hash.to_string(),
+                bidder_agent_id: bidder_agent_id.to_string(),
+                price_kind,
+                price_amount,
+                placed_at_tick: self.time,
+            });
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_bid_cancelled(
+        &mut self,
+        bidder_agent_id: &str,
+        wasm_hash: &str,
+        order_id: u64,
+    ) -> Result<(), String> {
+        if order_id == 0 {
+            return Err("module artifact bid cancel order_id must be > 0".to_string());
+        }
+        let remove_empty = {
+            let bids = self
+                .model
+                .module_artifact_bids
+                .get_mut(wasm_hash)
+                .ok_or_else(|| format!("module artifact bids missing for hash {}", wasm_hash))?;
+            let before = bids.len();
+            bids.retain(|entry| {
+                !(entry.order_id == order_id && entry.bidder_agent_id == bidder_agent_id)
+            });
+            if before == bids.len() {
+                return Err(format!(
+                    "module artifact bid cancel target missing: hash={} order={} bidder={}",
+                    wasm_hash, order_id, bidder_agent_id
+                ));
+            }
+            bids.is_empty()
+        };
+        if remove_empty {
+            self.model.module_artifact_bids.remove(wasm_hash);
+        }
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_sale_completed(
+        &mut self,
+        buyer_agent_id: &str,
+        seller_agent_id: &str,
+        wasm_hash: &str,
+        price_kind: ResourceKind,
+        price_amount: i64,
+        sale_id: u64,
+        listing_order_id: Option<u64>,
+        bid_order_id: Option<u64>,
+    ) -> Result<(), String> {
+        if buyer_agent_id == seller_agent_id {
+            return Err(format!(
+                "module artifact buyer and seller cannot match: {}",
+                buyer_agent_id
+            ));
+        }
+        if price_amount <= 0 {
+            return Err(format!(
+                "module artifact sale price must be > 0, got {}",
+                price_amount
+            ));
+        }
+        if !self.model.agents.contains_key(buyer_agent_id) {
+            return Err(format!(
+                "module artifact buyer not found: {}",
+                buyer_agent_id
+            ));
+        }
+        if !self.model.agents.contains_key(seller_agent_id) {
+            return Err(format!(
+                "module artifact seller not found: {}",
+                seller_agent_id
+            ));
+        }
+
+        let artifact = self.model.module_artifacts.get(wasm_hash).ok_or_else(|| {
+            format!(
+                "module artifact sale references missing artifact {}",
+                wasm_hash
+            )
+        })?;
+        if artifact.publisher_agent_id != seller_agent_id {
+            return Err(format!(
+                "module artifact sale seller mismatch: owner {} seller {}",
+                artifact.publisher_agent_id, seller_agent_id
+            ));
+        }
+
+        if let Some(listing) = self.model.module_artifact_listings.get(wasm_hash) {
+            if listing.seller_agent_id != seller_agent_id
+                || listing.price_kind != price_kind
+                || listing.price_amount != price_amount
+            {
+                return Err(format!(
+                    "module artifact sale listing mismatch for hash {}",
+                    wasm_hash
+                ));
+            }
+            if let Some(expected_listing_order_id) = listing_order_id {
+                if expected_listing_order_id == 0 {
+                    return Err("module artifact listing_order_id must be > 0".to_string());
+                }
+                if listing.order_id != expected_listing_order_id {
+                    return Err(format!(
+                        "module artifact sale listing order mismatch: listing={} event={}",
+                        listing.order_id, expected_listing_order_id
+                    ));
+                }
+            }
+        }
+
+        if let Some(order_id) = listing_order_id {
+            if order_id == 0 {
+                return Err("module artifact listing_order_id must be > 0".to_string());
+            }
+            self.model.next_module_market_order_id = self
+                .model
+                .next_module_market_order_id
+                .max(order_id.saturating_add(1));
+        }
+        if let Some(order_id) = bid_order_id {
+            if order_id == 0 {
+                return Err("module artifact bid_order_id must be > 0".to_string());
+            }
+            self.model.next_module_market_order_id = self
+                .model
+                .next_module_market_order_id
+                .max(order_id.saturating_add(1));
+        }
+
+        self.remove_from_owner_for_replay(
+            &ResourceOwner::Agent {
+                agent_id: buyer_agent_id.to_string(),
+            },
+            price_kind,
+            price_amount,
+        )
+        .map_err(|err| format!("module artifact sale buyer debit failed: {err:?}"))?;
+        self.add_to_owner_for_replay(
+            &ResourceOwner::Agent {
+                agent_id: seller_agent_id.to_string(),
+            },
+            price_kind,
+            price_amount,
+        )
+        .map_err(|err| format!("module artifact sale seller credit failed: {err:?}"))?;
+
+        if let Some(order_id) = bid_order_id {
+            let mut remove_empty = false;
+            if let Some(bids) = self.model.module_artifact_bids.get_mut(wasm_hash) {
+                let before = bids.len();
+                bids.retain(|entry| {
+                    !(entry.order_id == order_id && entry.bidder_agent_id == buyer_agent_id)
+                });
+                remove_empty = before != bids.len() && bids.is_empty();
+            }
+            if remove_empty {
+                self.model.module_artifact_bids.remove(wasm_hash);
+            }
+        }
+        self.model.module_artifact_listings.remove(wasm_hash);
+
+        let artifact = self
+            .model
+            .module_artifacts
+            .get_mut(wasm_hash)
+            .ok_or_else(|| {
+                format!(
+                    "module artifact sale missing mutable artifact after validation: {}",
+                    wasm_hash
+                )
+            })?;
+        artifact.publisher_agent_id = buyer_agent_id.to_string();
+
+        if sale_id > 0 {
+            self.model.next_module_market_sale_id = self
+                .model
+                .next_module_market_sale_id
+                .max(sale_id.saturating_add(1));
+        }
+
+        Ok(())
+    }
+
+    pub(super) fn replay_module_artifact_destroyed(
+        &mut self,
+        owner_agent_id: &str,
+        wasm_hash: &str,
+        reason: &str,
+    ) -> Result<(), String> {
+        if reason.trim().is_empty() {
+            return Err("module artifact destroy reason cannot be empty".to_string());
+        }
+        if !self.model.agents.contains_key(owner_agent_id) {
+            return Err(format!(
+                "module artifact owner not found: {}",
+                owner_agent_id
+            ));
+        }
+        let artifact = self.model.module_artifacts.get(wasm_hash).ok_or_else(|| {
+            format!(
+                "module artifact destroy missing artifact for hash {}",
+                wasm_hash
+            )
+        })?;
+        if artifact.publisher_agent_id != owner_agent_id {
+            return Err(format!(
+                "module artifact destroy owner mismatch: owner {} artifact owner {}",
+                owner_agent_id, artifact.publisher_agent_id
+            ));
+        }
+        if self.has_active_installed_module_using_artifact(wasm_hash) {
+            return Err(format!(
+                "module artifact destroy rejected: active module still uses {}",
+                wasm_hash
+            ));
+        }
+
+        self.model.module_artifacts.remove(wasm_hash);
+        self.model.module_artifact_listings.remove(wasm_hash);
+        self.model.module_artifact_bids.remove(wasm_hash);
+        self.model
+            .installed_modules
+            .retain(|_, installed| installed.wasm_hash != wasm_hash);
         Ok(())
     }
 }

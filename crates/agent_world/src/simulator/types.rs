@@ -516,6 +516,36 @@ pub enum Action {
         wasm_hash: String,
         activate: bool,
     },
+    ListModuleArtifactForSale {
+        seller_agent_id: AgentId,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    BuyModuleArtifact {
+        buyer_agent_id: AgentId,
+        wasm_hash: String,
+    },
+    DelistModuleArtifact {
+        seller_agent_id: AgentId,
+        wasm_hash: String,
+    },
+    DestroyModuleArtifact {
+        owner_agent_id: AgentId,
+        wasm_hash: String,
+        reason: String,
+    },
+    PlaceModuleArtifactBid {
+        bidder_agent_id: AgentId,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    CancelModuleArtifactBid {
+        bidder_agent_id: AgentId,
+        wasm_hash: String,
+        bid_order_id: u64,
+    },
     PublishSocialFact {
         actor: ResourceOwner,
         schema_id: String,

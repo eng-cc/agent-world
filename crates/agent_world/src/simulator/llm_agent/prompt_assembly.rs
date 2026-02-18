@@ -251,6 +251,12 @@ impl PromptAssembler {
 {{"decision":"compile_module_artifact_from_source","publisher":"<self|agent:<id>>","module_id":"<module_id>","manifest_path":"<relative_manifest_path>","source_files":{{"Cargo.toml":"<text>","src/lib.rs":"<text>"}}}}
 {{"decision":"deploy_module_artifact","publisher":"<self|agent:<id>>","module_id":"<module_id optional>","wasm_hash":"<sha256_hex>","wasm_bytes_hex":"<hex_bytes>"}}
 {{"decision":"install_module_from_artifact","installer":"<self|agent:<id>>","module_id":"<module_id>","module_version":"<semver>","wasm_hash":"<sha256_hex>","activate":<bool>}}
+{{"decision":"list_module_artifact_for_sale","seller":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|compound|hardware|data>","price_amount":<i64 >=1>}}
+{{"decision":"buy_module_artifact","buyer":"<self|agent:<id>>","wasm_hash":"<sha256_hex>"}}
+{{"decision":"delist_module_artifact","seller":"<self|agent:<id>>","wasm_hash":"<sha256_hex>"}}
+{{"decision":"destroy_module_artifact","owner":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","reason":"<text>"}}
+{{"decision":"place_module_artifact_bid","bidder":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|compound|hardware|data>","price_amount":<i64 >=1>}}
+{{"decision":"cancel_module_artifact_bid","bidder":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","bid_order_id":<u64 >=1>}}
 {{"decision":"publish_social_fact","actor":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","subject":"<self|agent:<id>|location:<id>>","object":"<self|agent:<id>|location:<id>>","claim":"<text>","confidence_ppm":<i64 1..=1000000>,"evidence_event_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>,"stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
 {{"decision":"challenge_social_fact","challenger":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>","stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
 {{"decision":"adjudicate_social_fact","adjudicator":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"adjudication":"<confirm|retract>","notes":"<text>"}}
@@ -269,6 +275,8 @@ impl PromptAssembler {
 - 推荐 schedule_recipe 模板: {{"decision":"schedule_recipe","owner":"self","factory_id":"factory.<name>","recipe_id":"recipe.assembler.logistics_drone","batches":1}}
 - 推荐 compile 模板: {{"decision":"compile_module_artifact_from_source","publisher":"self","module_id":"m.llm.example","manifest_path":"Cargo.toml","source_files":{{"Cargo.toml":"<text>","src/lib.rs":"<text>"}}}}
 - 推荐 install 模板: {{"decision":"install_module_from_artifact","installer":"self","module_id":"m.llm.example","module_version":"0.1.0","wasm_hash":"<sha256_hex>","activate":true}}
+- 推荐 list_module_artifact_for_sale 模板: {{"decision":"list_module_artifact_for_sale","seller":"self","wasm_hash":"<sha256_hex>","price_kind":"data","price_amount":1}}
+- 推荐 place_module_artifact_bid 模板: {{"decision":"place_module_artifact_bid","bidder":"self","wasm_hash":"<sha256_hex>","price_kind":"data","price_amount":2}}
 - 推荐 publish_social_fact 模板: {{"decision":"publish_social_fact","actor":"self","schema_id":"social.reputation.v1","subject":"agent:<id>","claim":"<text>","confidence_ppm":800000,"evidence_event_ids":[<u64 >=1>]}}
 - 推荐 declare_social_edge 模板: {{"decision":"declare_social_edge","declarer":"self","schema_id":"social.relation.v1","relation_kind":"trusted_peer","from":"self","to":"agent:<id>","weight_bps":5000,"backing_fact_ids":[<u64 >=1>]}}
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
@@ -290,6 +298,8 @@ impl PromptAssembler {
 - compile_module_artifact_from_source: module_id/manifest_path/source_files 必填；source_files value 必须是 utf8 文本
 - deploy_module_artifact: wasm_hash 必须为 sha256 hex；wasm_bytes_hex 必须是非空 hex 字节串
 - install_module_from_artifact: installer 必须是 self 或 agent:<id>；module_version 为空时默认 0.1.0
+- module 市场动作（list/buy/delist/destroy/place_bid/cancel_bid）中的 agent 字段仅允许 self 或 agent:<id>
+- module 市场动作的 price_amount 必须是正整数；cancel_module_artifact_bid.bid_order_id 必须是正整数
 - 若准备 install 但缺少 wasm_hash，先调用 `module.lifecycle.status` 读取最近 artifact 列表再执行
 - 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8
 - 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.hardware / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe

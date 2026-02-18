@@ -28,6 +28,12 @@ fn decision_tool_schema_includes_module_lifecycle_actions_and_fields() {
     assert!(decision_enum.contains(&"compile_module_artifact_from_source"));
     assert!(decision_enum.contains(&"deploy_module_artifact"));
     assert!(decision_enum.contains(&"install_module_from_artifact"));
+    assert!(decision_enum.contains(&"list_module_artifact_for_sale"));
+    assert!(decision_enum.contains(&"buy_module_artifact"));
+    assert!(decision_enum.contains(&"delist_module_artifact"));
+    assert!(decision_enum.contains(&"destroy_module_artifact"));
+    assert!(decision_enum.contains(&"place_module_artifact_bid"));
+    assert!(decision_enum.contains(&"cancel_module_artifact_bid"));
 
     let properties = parameters
         .get("properties")
@@ -39,6 +45,10 @@ fn decision_tool_schema_includes_module_lifecycle_actions_and_fields() {
     assert!(properties.contains_key("wasm_bytes_hex"));
     assert!(properties.contains_key("module_version"));
     assert!(properties.contains_key("activate"));
+    assert!(properties.contains_key("price_kind"));
+    assert!(properties.contains_key("price_amount"));
+    assert!(properties.contains_key("bid_order_id"));
+    assert!(properties.contains_key("bidder"));
 }
 
 #[test]
@@ -120,6 +130,51 @@ fn llm_parse_install_module_from_artifact_defaults_version_and_activate() {
             assert!(*activate);
         }
         other => panic!("unexpected parsed turn: {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_list_module_artifact_for_sale_action() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"list_module_artifact_for_sale","seller":"self","wasm_hash":"hash-1","price_kind":"data","price_amount":3}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1");
+
+    match parsed.first().expect("parsed turn") {
+        ParsedLlmTurn::Decision {
+            decision:
+                AgentDecision::Act(Action::ListModuleArtifactForSale {
+                    seller_agent_id,
+                    wasm_hash,
+                    price_kind,
+                    price_amount,
+                }),
+            ..
+        } => {
+            assert_eq!(seller_agent_id, "agent-1");
+            assert_eq!(wasm_hash, "hash-1");
+            assert_eq!(*price_kind, ResourceKind::Data);
+            assert_eq!(*price_amount, 3);
+        }
+        other => panic!("unexpected parsed turn: {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_cancel_module_artifact_bid_rejects_non_agent_bidder() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"cancel_module_artifact_bid","bidder":"location:loc-a","wasm_hash":"hash-1","bid_order_id":7}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1");
+
+    match parsed.first().expect("parsed turn") {
+        ParsedLlmTurn::Invalid(message) => {
+            assert!(
+                message.contains("self or agent:<id>"),
+                "unexpected parse error: {message}"
+            );
+        }
+        other => panic!("expected invalid decision, got {other:?}"),
     }
 }
 
@@ -219,5 +274,9 @@ fn llm_agent_prompt_mentions_module_lifecycle_decisions() {
     assert!(prompt.contains("compile_module_artifact_from_source"));
     assert!(prompt.contains("deploy_module_artifact"));
     assert!(prompt.contains("install_module_from_artifact"));
+    assert!(prompt.contains("list_module_artifact_for_sale"));
+    assert!(prompt.contains("buy_module_artifact"));
+    assert!(prompt.contains("place_module_artifact_bid"));
+    assert!(prompt.contains("cancel_module_artifact_bid"));
     assert!(prompt.contains("module.lifecycle.status"));
 }

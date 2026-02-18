@@ -888,6 +888,40 @@ pub(super) fn event_primary_target(
             id: installer_agent_id.clone(),
             name: None,
         }),
+        WorldEventKind::ModuleArtifactListed {
+            seller_agent_id, ..
+        }
+        | WorldEventKind::ModuleArtifactDelisted {
+            seller_agent_id, ..
+        } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: seller_agent_id.clone(),
+            name: None,
+        }),
+        WorldEventKind::ModuleArtifactBidPlaced {
+            bidder_agent_id, ..
+        }
+        | WorldEventKind::ModuleArtifactBidCancelled {
+            bidder_agent_id, ..
+        } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: bidder_agent_id.clone(),
+            name: None,
+        }),
+        WorldEventKind::ModuleArtifactSaleCompleted {
+            buyer_agent_id,
+            seller_agent_id,
+            ..
+        } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: buyer_agent_id.clone(),
+            name: Some(seller_agent_id.clone()),
+        }),
+        WorldEventKind::ModuleArtifactDestroyed { owner_agent_id, .. } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: owner_agent_id.clone(),
+            name: None,
+        }),
         WorldEventKind::ModuleVisualEntityUpserted { entity } => Some(SelectionTarget {
             kind: SelectionKind::Asset,
             id: entity.entity_id.clone(),

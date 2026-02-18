@@ -396,6 +396,40 @@ fn action_signature(action: &Action) -> String {
         } => format!(
             "install_module_from_artifact:{installer_agent_id}:{module_id}:{module_version}:{wasm_hash}:{activate}"
         ),
+        Action::ListModuleArtifactForSale {
+            seller_agent_id,
+            wasm_hash,
+            price_kind,
+            price_amount,
+        } => format!(
+            "list_module_artifact_for_sale:{seller_agent_id}:{wasm_hash}:{price_kind:?}:{price_amount}"
+        ),
+        Action::BuyModuleArtifact {
+            buyer_agent_id,
+            wasm_hash,
+        } => format!("buy_module_artifact:{buyer_agent_id}:{wasm_hash}"),
+        Action::DelistModuleArtifact {
+            seller_agent_id,
+            wasm_hash,
+        } => format!("delist_module_artifact:{seller_agent_id}:{wasm_hash}"),
+        Action::DestroyModuleArtifact {
+            owner_agent_id,
+            wasm_hash,
+            reason,
+        } => format!("destroy_module_artifact:{owner_agent_id}:{wasm_hash}:{reason}"),
+        Action::PlaceModuleArtifactBid {
+            bidder_agent_id,
+            wasm_hash,
+            price_kind,
+            price_amount,
+        } => format!(
+            "place_module_artifact_bid:{bidder_agent_id}:{wasm_hash}:{price_kind:?}:{price_amount}"
+        ),
+        Action::CancelModuleArtifactBid {
+            bidder_agent_id,
+            wasm_hash,
+            bid_order_id,
+        } => format!("cancel_module_artifact_bid:{bidder_agent_id}:{wasm_hash}:{bid_order_id}"),
         Action::PublishSocialFact {
             actor,
             schema_id,
@@ -588,6 +622,90 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 && left_module_id == right_module_id
                 && left_module_version == right_module_version
                 && left_wasm_hash == right_wasm_hash
+        }
+        (
+            Action::ListModuleArtifactForSale {
+                seller_agent_id: left_seller,
+                wasm_hash: left_wasm_hash,
+                price_kind: left_price_kind,
+                ..
+            },
+            Action::ListModuleArtifactForSale {
+                seller_agent_id: right_seller,
+                wasm_hash: right_wasm_hash,
+                price_kind: right_price_kind,
+                ..
+            },
+        ) => {
+            left_seller == right_seller
+                && left_wasm_hash == right_wasm_hash
+                && left_price_kind == right_price_kind
+        }
+        (
+            Action::BuyModuleArtifact {
+                buyer_agent_id: left_buyer,
+                wasm_hash: left_wasm_hash,
+            },
+            Action::BuyModuleArtifact {
+                buyer_agent_id: right_buyer,
+                wasm_hash: right_wasm_hash,
+            },
+        ) => left_buyer == right_buyer && left_wasm_hash == right_wasm_hash,
+        (
+            Action::DelistModuleArtifact {
+                seller_agent_id: left_seller,
+                wasm_hash: left_wasm_hash,
+            },
+            Action::DelistModuleArtifact {
+                seller_agent_id: right_seller,
+                wasm_hash: right_wasm_hash,
+            },
+        ) => left_seller == right_seller && left_wasm_hash == right_wasm_hash,
+        (
+            Action::DestroyModuleArtifact {
+                owner_agent_id: left_owner,
+                wasm_hash: left_wasm_hash,
+                ..
+            },
+            Action::DestroyModuleArtifact {
+                owner_agent_id: right_owner,
+                wasm_hash: right_wasm_hash,
+                ..
+            },
+        ) => left_owner == right_owner && left_wasm_hash == right_wasm_hash,
+        (
+            Action::PlaceModuleArtifactBid {
+                bidder_agent_id: left_bidder,
+                wasm_hash: left_wasm_hash,
+                price_kind: left_price_kind,
+                ..
+            },
+            Action::PlaceModuleArtifactBid {
+                bidder_agent_id: right_bidder,
+                wasm_hash: right_wasm_hash,
+                price_kind: right_price_kind,
+                ..
+            },
+        ) => {
+            left_bidder == right_bidder
+                && left_wasm_hash == right_wasm_hash
+                && left_price_kind == right_price_kind
+        }
+        (
+            Action::CancelModuleArtifactBid {
+                bidder_agent_id: left_bidder,
+                wasm_hash: left_wasm_hash,
+                bid_order_id: left_order_id,
+            },
+            Action::CancelModuleArtifactBid {
+                bidder_agent_id: right_bidder,
+                wasm_hash: right_wasm_hash,
+                bid_order_id: right_order_id,
+            },
+        ) => {
+            left_bidder == right_bidder
+                && left_wasm_hash == right_wasm_hash
+                && left_order_id == right_order_id
         }
         (
             Action::MineCompound {
