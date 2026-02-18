@@ -275,6 +275,7 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
                 wasm_hash: sold_hash,
                 price_kind: ResourceKind::Hardware,
                 price_amount: 7,
+                ..
             }
         )) if buyer_agent_id == "buyer-1" && seller_agent_id == "seller-1" && sold_hash == &wasm_hash
     ));
@@ -440,6 +441,7 @@ fn delist_module_artifact_removes_listing_and_charges_data_fee() {
     let WorldEventBody::Domain(DomainEvent::ModuleArtifactDelisted {
         seller_agent_id,
         wasm_hash: delisted_hash,
+        order_id: _,
         fee_kind,
         fee_amount,
     }) = &event.body
@@ -548,4 +550,169 @@ fn destroy_module_artifact_rejects_when_artifact_is_used_by_active_module() {
     world.step().expect("destroy guarded artifact");
 
     assert_last_rejection_note(&world, action_id, "used by active module");
+}
+
+#[test]
+fn module_artifact_bid_auto_matches_on_listing() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "buyer-1");
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 30);
+
+    let wasm_bytes = b"module-action-loop-bid-auto-match".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::PlaceModuleArtifactBid {
+        bidder_agent_id: "buyer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 9,
+    });
+    world.step().expect("place bid");
+
+    let bid_order_id = match &world.journal().events.last().expect("bid event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleArtifactBidPlaced { order_id, .. }) => *order_id,
+        other => panic!("expected module artifact bid placed event: {other:?}"),
+    };
+    assert!(bid_order_id > 0);
+
+    world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 7,
+    });
+    world.step().expect("list and match");
+
+    let event = world.journal().events.last().expect("sale event");
+    let WorldEventBody::Domain(DomainEvent::ModuleArtifactSaleCompleted {
+        buyer_agent_id,
+        seller_agent_id,
+        price_kind,
+        price_amount,
+        bid_order_id: matched_bid_order_id,
+        ..
+    }) = &event.body
+    else {
+        panic!(
+            "expected module artifact sale completed event for auto match: {:?}",
+            event.body
+        );
+    };
+    assert_eq!(buyer_agent_id, "buyer-1");
+    assert_eq!(seller_agent_id, "seller-1");
+    assert_eq!(*price_kind, ResourceKind::Hardware);
+    assert_eq!(*price_amount, 7);
+    assert_eq!(*matched_bid_order_id, Some(bid_order_id));
+    assert_eq!(
+        world.state().module_artifact_owners.get(&wasm_hash),
+        Some(&"buyer-1".to_string())
+    );
+    assert!(!world
+        .state()
+        .module_artifact_listings
+        .contains_key(&wasm_hash));
+    assert!(!world.state().module_artifact_bids.contains_key(&wasm_hash));
+}
+
+#[test]
+fn cancel_module_artifact_bid_removes_order() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "buyer-1");
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 20);
+
+    let wasm_bytes = b"module-action-loop-bid-cancel".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::PlaceModuleArtifactBid {
+        bidder_agent_id: "buyer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 8,
+    });
+    world.step().expect("place bid");
+    let bid_order_id = match &world.journal().events.last().expect("bid event").body {
+        WorldEventBody::Domain(DomainEvent::ModuleArtifactBidPlaced { order_id, .. }) => *order_id,
+        other => panic!("expected module artifact bid placed event: {other:?}"),
+    };
+
+    world.submit_action(Action::CancelModuleArtifactBid {
+        bidder_agent_id: "buyer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        bid_order_id,
+    });
+    world.step().expect("cancel bid");
+
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::ModuleArtifactBidCancelled {
+            bidder_agent_id,
+            order_id,
+            ..
+        })) if bidder_agent_id == "buyer-1" && *order_id == bid_order_id
+    ));
+    assert!(!world.state().module_artifact_bids.contains_key(&wasm_hash));
+}
+
+#[test]
+fn module_artifact_bid_match_prefers_highest_price() {
+    let mut world = World::new();
+    register_agent(&mut world, "seller-1");
+    register_agent(&mut world, "buyer-low");
+    register_agent(&mut world, "buyer-high");
+    set_agent_resource(&mut world, "buyer-low", ResourceKind::Hardware, 20);
+    set_agent_resource(&mut world, "buyer-high", ResourceKind::Hardware, 20);
+
+    let wasm_bytes = b"module-action-loop-bid-priority".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    world.submit_action(Action::PlaceModuleArtifactBid {
+        bidder_agent_id: "buyer-low".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 8,
+    });
+    world.step().expect("place low bid");
+    world.submit_action(Action::PlaceModuleArtifactBid {
+        bidder_agent_id: "buyer-high".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 9,
+    });
+    world.step().expect("place high bid");
+
+    world.submit_action(Action::ListModuleArtifactForSale {
+        seller_agent_id: "seller-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        price_kind: ResourceKind::Hardware,
+        price_amount: 7,
+    });
+    world.step().expect("list and match");
+
+    let event = world.journal().events.last().expect("sale event");
+    let WorldEventBody::Domain(DomainEvent::ModuleArtifactSaleCompleted { buyer_agent_id, .. }) =
+        &event.body
+    else {
+        panic!("expected sale completion event: {:?}", event.body);
+    };
+    assert_eq!(buyer_agent_id, "buyer-high");
 }

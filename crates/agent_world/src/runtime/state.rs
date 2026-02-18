@@ -28,6 +28,14 @@ fn default_material_ledgers() -> BTreeMap<MaterialLedgerId, BTreeMap<String, i64
     ledgers
 }
 
+fn default_module_market_order_id() -> u64 {
+    1
+}
+
+fn default_module_market_sale_id() -> u64 {
+    1
+}
+
 /// Persisted factory instance state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FactoryState {
@@ -91,10 +99,22 @@ pub struct MaterialTransitJobState {
 /// Active market listing for one module artifact.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModuleArtifactListingState {
+    #[serde(default)]
+    pub order_id: u64,
     pub seller_agent_id: String,
     pub price_kind: ResourceKind,
     pub price_amount: i64,
     pub listed_at: WorldTime,
+}
+
+/// Active bid order for one module artifact.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleArtifactBidState {
+    pub order_id: u64,
+    pub bidder_agent_id: String,
+    pub price_kind: ResourceKind,
+    pub price_amount: i64,
+    pub bid_at: WorldTime,
 }
 
 /// The mutable state of the world.
@@ -122,6 +142,12 @@ pub struct WorldState {
     pub module_artifact_owners: BTreeMap<String, String>,
     #[serde(default)]
     pub module_artifact_listings: BTreeMap<String, ModuleArtifactListingState>,
+    #[serde(default)]
+    pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
+    #[serde(default = "default_module_market_order_id")]
+    pub next_module_market_order_id: u64,
+    #[serde(default = "default_module_market_sale_id")]
+    pub next_module_market_sale_id: u64,
     #[serde(default)]
     pub reward_asset_config: RewardAssetConfig,
     #[serde(default)]
@@ -155,6 +181,9 @@ impl Default for WorldState {
             module_states: BTreeMap::new(),
             module_artifact_owners: BTreeMap::new(),
             module_artifact_listings: BTreeMap::new(),
+            module_artifact_bids: BTreeMap::new(),
+            next_module_market_order_id: default_module_market_order_id(),
+            next_module_market_sale_id: default_module_market_sale_id(),
             reward_asset_config: RewardAssetConfig::default(),
             node_asset_balances: BTreeMap::new(),
             protocol_power_reserve: ProtocolPowerReserve::default(),
@@ -330,6 +359,7 @@ impl WorldState {
                 self.module_artifact_owners
                     .insert(wasm_hash.clone(), publisher_agent_id.clone());
                 self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
             }
             DomainEvent::ModuleInstalled {
                 installer_agent_id,
@@ -349,6 +379,7 @@ impl WorldState {
                 wasm_hash,
                 price_kind,
                 price_amount,
+                order_id,
                 fee_kind,
                 fee_amount,
             } => {
@@ -385,16 +416,23 @@ impl WorldState {
                 self.module_artifact_listings.insert(
                     wasm_hash.clone(),
                     ModuleArtifactListingState {
+                        order_id: *order_id,
                         seller_agent_id: seller_agent_id.clone(),
                         price_kind: *price_kind,
                         price_amount: *price_amount,
                         listed_at: now,
                     },
                 );
+                if *order_id > 0 {
+                    self.next_module_market_order_id = self
+                        .next_module_market_order_id
+                        .max(order_id.saturating_add(1));
+                }
             }
             DomainEvent::ModuleArtifactDelisted {
                 seller_agent_id,
                 wasm_hash,
+                order_id,
                 fee_kind,
                 fee_amount,
             } => {
@@ -411,6 +449,16 @@ impl WorldState {
                             wasm_hash, listing.seller_agent_id, seller_agent_id
                         ),
                     });
+                }
+                if let Some(expected_order_id) = order_id {
+                    if listing.order_id != *expected_order_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact delist order mismatch: hash={} listing_order_id={} event_order_id={}",
+                                wasm_hash, listing.order_id, expected_order_id
+                            ),
+                        });
+                    }
                 }
                 let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
                     WorldError::ResourceBalanceInvalid {
@@ -475,6 +523,86 @@ impl WorldState {
                 )?;
                 self.module_artifact_owners.remove(wasm_hash);
                 self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
+            }
+            DomainEvent::ModuleArtifactBidPlaced {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                price_kind,
+                price_amount,
+            } => {
+                if *order_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact bid order_id must be > 0 for hash {}",
+                            wasm_hash
+                        ),
+                    });
+                }
+                if *price_amount <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact bid price must be > 0, got {}",
+                            price_amount
+                        ),
+                    });
+                }
+                if !self.agents.contains_key(bidder_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: bidder_agent_id.clone(),
+                    });
+                }
+                self.next_module_market_order_id = self
+                    .next_module_market_order_id
+                    .max(order_id.saturating_add(1));
+                self.module_artifact_bids
+                    .entry(wasm_hash.clone())
+                    .or_default()
+                    .push(ModuleArtifactBidState {
+                        order_id: *order_id,
+                        bidder_agent_id: bidder_agent_id.clone(),
+                        price_kind: *price_kind,
+                        price_amount: *price_amount,
+                        bid_at: now,
+                    });
+                if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ModuleArtifactBidCancelled {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                ..
+            } => {
+                let remove_empty_entry = {
+                    let bids = self
+                        .module_artifact_bids
+                        .get_mut(wasm_hash)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("module artifact bids missing for hash {}", wasm_hash),
+                        })?;
+                    let before = bids.len();
+                    bids.retain(|entry| {
+                        !(entry.order_id == *order_id && entry.bidder_agent_id == *bidder_agent_id)
+                    });
+                    if before == bids.len() {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact bid cancel target not found: hash={} order_id={} bidder={}",
+                                wasm_hash, order_id, bidder_agent_id
+                            ),
+                        });
+                    }
+                    bids.is_empty()
+                };
+                if remove_empty_entry {
+                    self.module_artifact_bids.remove(wasm_hash);
+                }
+                if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
+                    cell.last_active = now;
+                }
             }
             DomainEvent::ModuleArtifactSaleCompleted {
                 buyer_agent_id,
@@ -482,6 +610,9 @@ impl WorldState {
                 wasm_hash,
                 price_kind,
                 price_amount,
+                sale_id,
+                listing_order_id,
+                bid_order_id,
             } => {
                 if buyer_agent_id == seller_agent_id {
                     return Err(WorldError::ResourceBalanceInvalid {
@@ -513,6 +644,16 @@ impl WorldState {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!("module artifact listing mismatch for hash {}", wasm_hash),
                     });
+                }
+                if let Some(expected_listing_order_id) = listing_order_id {
+                    if listing.order_id != *expected_listing_order_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact sale listing order mismatch: hash={} listing_order_id={} event_order_id={}",
+                                wasm_hash, listing.order_id, expected_listing_order_id
+                            ),
+                        });
+                    }
                 }
                 let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
                     WorldError::ResourceBalanceInvalid {
@@ -564,6 +705,41 @@ impl WorldState {
                 self.module_artifact_owners
                     .insert(wasm_hash.clone(), buyer_agent_id.clone());
                 self.module_artifact_listings.remove(wasm_hash);
+                if let Some(expected_bid_order_id) = bid_order_id {
+                    let remove_empty_entry = {
+                        let bids =
+                            self.module_artifact_bids
+                                .get_mut(wasm_hash)
+                                .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                    reason: format!(
+                                        "module artifact sale bid missing for hash {} order_id {}",
+                                        wasm_hash, expected_bid_order_id
+                                    ),
+                                })?;
+                        let before = bids.len();
+                        bids.retain(|entry| {
+                            !(entry.order_id == *expected_bid_order_id
+                                && entry.bidder_agent_id == *buyer_agent_id)
+                        });
+                        if before == bids.len() {
+                            return Err(WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "module artifact sale bid not found: hash={} order_id={} buyer={}",
+                                    wasm_hash, expected_bid_order_id, buyer_agent_id
+                                ),
+                            });
+                        }
+                        bids.is_empty()
+                    };
+                    if remove_empty_entry {
+                        self.module_artifact_bids.remove(wasm_hash);
+                    }
+                }
+                if *sale_id > 0 {
+                    self.next_module_market_sale_id = self
+                        .next_module_market_sale_id
+                        .max(sale_id.saturating_add(1));
+                }
             }
             DomainEvent::ResourceTransferred {
                 from_agent_id,

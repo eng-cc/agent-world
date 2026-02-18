@@ -8,7 +8,8 @@ use super::super::module_visual::ModuleVisualEntity;
 use super::super::power::PowerEvent;
 use super::super::types::{
     Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, FragmentElementKind, LocationId,
-    LocationProfile, ResourceKind, ResourceOwner, ResourceStock, WorldEventId, WorldTime,
+    LocationProfile, PowerOrderSide, ResourceKind, ResourceOwner, ResourceStock, WorldEventId,
+    WorldTime,
 };
 use super::super::world_model::{AgentPromptProfile, Location};
 
@@ -59,6 +60,19 @@ pub struct WorldEvent {
 pub struct FragmentReplenishedEntry {
     pub coord: ChunkCoord,
     pub location: Location,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerOrderFill {
+    pub buy_order_id: u64,
+    pub sell_order_id: u64,
+    pub buyer: ResourceOwner,
+    pub seller: ResourceOwner,
+    pub amount: i64,
+    pub loss: i64,
+    pub quoted_price_per_pu: i64,
+    pub price_per_pu: i64,
+    pub settlement_amount: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -155,6 +169,24 @@ pub enum WorldEventKind {
         digest: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         rolled_back_to_version: Option<u64>,
+    },
+    PowerOrderPlaced {
+        order_id: u64,
+        owner: ResourceOwner,
+        side: PowerOrderSide,
+        requested_amount: i64,
+        remaining_amount: i64,
+        limit_price_per_pu: i64,
+        #[serde(default)]
+        fills: Vec<PowerOrderFill>,
+        #[serde(default)]
+        auto_cancelled_order_ids: Vec<u64>,
+    },
+    PowerOrderCancelled {
+        owner: ResourceOwner,
+        order_id: u64,
+        side: PowerOrderSide,
+        remaining_amount: i64,
     },
     ActionRejected {
         reason: RejectReason,

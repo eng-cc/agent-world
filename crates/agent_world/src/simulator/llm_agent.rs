@@ -1019,6 +1019,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::HarvestRadiation { .. } => "harvest_radiation",
             Action::BuyPower { .. } => "buy_power",
             Action::SellPower { .. } => "sell_power",
+            Action::PlacePowerOrder { .. } => "place_power_order",
+            Action::CancelPowerOrder { .. } => "cancel_power_order",
             Action::TransferResource { .. } => "transfer_resource",
             Action::DebugGrantResource { .. } => "debug_grant_resource",
             Action::MineCompound { .. } => "mine_compound",

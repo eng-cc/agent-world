@@ -53,7 +53,8 @@ pub use types::{
     merge_kernel_rule_decisions, ChunkGenerationCause, FragmentReplenishedEntry, KernelRuleCost,
     KernelRuleDecision, KernelRuleDecisionMergeError, KernelRuleModuleContext,
     KernelRuleModuleInput, KernelRuleModuleOutput, KernelRuleVerdict, Observation, ObservedAgent,
-    ObservedLocation, PromptUpdateOperation, RejectReason, WorldEvent, WorldEventKind,
+    ObservedLocation, PowerOrderFill, PromptUpdateOperation, RejectReason, WorldEvent,
+    WorldEventKind,
 };
 
 type PreActionRuleHook =

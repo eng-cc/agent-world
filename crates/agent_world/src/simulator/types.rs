@@ -349,6 +349,13 @@ pub enum ResourceOwner {
     Location { location_id: LocationId },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PowerOrderSide {
+    Buy,
+    Sell,
+}
+
 // ============================================================================
 // Action Types
 // ============================================================================
@@ -429,6 +436,16 @@ pub enum Action {
         buyer: ResourceOwner,
         amount: i64,
         price_per_pu: i64,
+    },
+    PlacePowerOrder {
+        owner: ResourceOwner,
+        side: PowerOrderSide,
+        amount: i64,
+        limit_price_per_pu: i64,
+    },
+    CancelPowerOrder {
+        owner: ResourceOwner,
+        order_id: u64,
     },
     TransferResource {
         from: ResourceOwner,

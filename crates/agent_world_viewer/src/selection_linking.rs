@@ -824,6 +824,8 @@ pub(super) fn event_primary_target(
         | WorldEventKind::CompoundRefined { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::FactoryBuilt { owner, .. }
         | WorldEventKind::RecipeScheduled { owner, .. } => owner_to_target(owner, snapshot),
+        WorldEventKind::PowerOrderPlaced { owner, .. }
+        | WorldEventKind::PowerOrderCancelled { owner, .. } => owner_to_target(owner, snapshot),
         WorldEventKind::ChunkGenerated { coord, .. } => Some(SelectionTarget {
             kind: SelectionKind::Chunk,
             id: chunk_id(*coord),

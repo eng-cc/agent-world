@@ -5,7 +5,7 @@ use super::super::init::{
 use super::super::persist::PersistError;
 use super::super::power::PowerEvent;
 use super::super::types::{ResourceKind, ResourceOwner, StockError};
-use super::super::world_model::{Factory, Location};
+use super::super::world_model::{Factory, Location, PowerOrderState};
 use super::super::ChunkState;
 use super::types::{WorldEvent, WorldEventKind};
 use super::WorldKernel;
@@ -487,6 +487,276 @@ impl WorldKernel {
                 self.model
                     .agent_prompt_profiles
                     .insert(profile.agent_id.clone(), profile.clone());
+            }
+            WorldEventKind::PowerOrderPlaced {
+                order_id,
+                owner,
+                side,
+                requested_amount,
+                remaining_amount,
+                limit_price_per_pu,
+                fills,
+                auto_cancelled_order_ids,
+            } => {
+                if *order_id == 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: "power order id must be > 0".to_string(),
+                    });
+                }
+                if *requested_amount <= 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power requested amount must be > 0, got {}",
+                            requested_amount
+                        ),
+                    });
+                }
+                if *remaining_amount < 0 || *remaining_amount > *requested_amount {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "invalid power remaining amount {} for requested {}",
+                            remaining_amount, requested_amount
+                        ),
+                    });
+                }
+                if *limit_price_per_pu < 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("invalid power order limit price {}", limit_price_per_pu),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid power order owner: {reason:?}"),
+                    })?;
+                if matches!(owner, ResourceOwner::Location { .. }) {
+                    return Err(PersistError::ReplayConflict {
+                        message: LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string(),
+                    });
+                }
+                if self
+                    .model
+                    .power_order_book
+                    .open_orders
+                    .iter()
+                    .any(|entry| entry.order_id == *order_id)
+                {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("power order already exists: {order_id}"),
+                    });
+                }
+                self.model.power_order_book.next_order_id = self
+                    .model
+                    .power_order_book
+                    .next_order_id
+                    .max(order_id.saturating_add(1));
+
+                for cancelled_order_id in auto_cancelled_order_ids {
+                    let Some(cancelled_index) = self
+                        .model
+                        .power_order_book
+                        .open_orders
+                        .iter()
+                        .position(|entry| entry.order_id == *cancelled_order_id)
+                    else {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "power order auto-cancel target not found: {}",
+                                cancelled_order_id
+                            ),
+                        });
+                    };
+                    self.model
+                        .power_order_book
+                        .open_orders
+                        .remove(cancelled_index);
+                }
+
+                let mut incoming_filled_amount = 0_i64;
+                for fill in fills {
+                    if fill.amount <= 0 || fill.loss < 0 || fill.loss >= fill.amount {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "invalid power order fill values: amount {} loss {}",
+                                fill.amount, fill.loss
+                            ),
+                        });
+                    }
+                    if fill.buy_order_id == fill.sell_order_id {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "power order fill buy/sell id cannot be equal: {}",
+                                fill.buy_order_id
+                            ),
+                        });
+                    }
+                    if fill.buy_order_id == *order_id || fill.sell_order_id == *order_id {
+                        incoming_filled_amount = incoming_filled_amount.saturating_add(fill.amount);
+                    }
+
+                    self.ensure_owner_exists(&fill.seller).map_err(|reason| {
+                        PersistError::ReplayConflict {
+                            message: format!("invalid power fill seller: {reason:?}"),
+                        }
+                    })?;
+                    self.ensure_owner_exists(&fill.buyer).map_err(|reason| {
+                        PersistError::ReplayConflict {
+                            message: format!("invalid power fill buyer: {reason:?}"),
+                        }
+                    })?;
+                    self.ensure_owner_chunks_generated(&fill.seller, &fill.buyer)
+                        .map_err(|reason| PersistError::ReplayConflict {
+                            message: format!(
+                                "power order fill owner chunk generation failed: {reason:?}"
+                            ),
+                        })?;
+                    if matches!(fill.seller, ResourceOwner::Location { .. })
+                        || matches!(fill.buyer, ResourceOwner::Location { .. })
+                    {
+                        return Err(PersistError::ReplayConflict {
+                            message: LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string(),
+                        });
+                    }
+
+                    self.remove_from_owner_for_replay(
+                        &fill.seller,
+                        ResourceKind::Electricity,
+                        fill.amount,
+                    )?;
+                    let delivered = fill.amount.saturating_sub(fill.loss);
+                    if delivered <= 0 {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "power order fill delivered amount must be positive: {}",
+                                delivered
+                            ),
+                        });
+                    }
+                    self.add_to_owner_for_replay(
+                        &fill.buyer,
+                        ResourceKind::Electricity,
+                        delivered,
+                    )?;
+
+                    for resting_order_id in [fill.buy_order_id, fill.sell_order_id] {
+                        if resting_order_id == *order_id {
+                            continue;
+                        }
+                        let Some(resting_index) = self
+                            .model
+                            .power_order_book
+                            .open_orders
+                            .iter()
+                            .position(|entry| entry.order_id == resting_order_id)
+                        else {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power order fill resting order not found: {}",
+                                    resting_order_id
+                                ),
+                            });
+                        };
+                        let resting = &mut self.model.power_order_book.open_orders[resting_index];
+                        if resting.remaining_amount < fill.amount {
+                            return Err(PersistError::ReplayConflict {
+                                message: format!(
+                                    "power order fill exceeds resting order remaining: order {} remaining {} fill {}",
+                                    resting_order_id, resting.remaining_amount, fill.amount
+                                ),
+                            });
+                        }
+                        resting.remaining_amount =
+                            resting.remaining_amount.saturating_sub(fill.amount);
+                        if resting.remaining_amount == 0 {
+                            self.model
+                                .power_order_book
+                                .open_orders
+                                .remove(resting_index);
+                        }
+                    }
+                }
+
+                let expected_remaining = requested_amount.saturating_sub(incoming_filled_amount);
+                if expected_remaining != *remaining_amount {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power order remaining mismatch: expected {}, got {}",
+                            expected_remaining, remaining_amount
+                        ),
+                    });
+                }
+                if *remaining_amount > 0 {
+                    self.model
+                        .power_order_book
+                        .open_orders
+                        .push(PowerOrderState {
+                            order_id: *order_id,
+                            owner: owner.clone(),
+                            side: *side,
+                            remaining_amount: *remaining_amount,
+                            limit_price_per_pu: *limit_price_per_pu,
+                            created_at: event.time,
+                        });
+                }
+            }
+            WorldEventKind::PowerOrderCancelled {
+                owner,
+                order_id,
+                side,
+                remaining_amount,
+            } => {
+                if *order_id == 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: "power order cancel id must be > 0".to_string(),
+                    });
+                }
+                if *remaining_amount <= 0 {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power order cancel remaining amount must be > 0, got {}",
+                            remaining_amount
+                        ),
+                    });
+                }
+                self.ensure_owner_exists(owner)
+                    .map_err(|reason| PersistError::ReplayConflict {
+                        message: format!("invalid power order cancel owner: {reason:?}"),
+                    })?;
+                if matches!(owner, ResourceOwner::Location { .. }) {
+                    return Err(PersistError::ReplayConflict {
+                        message: LOCATION_ELECTRICITY_POOL_REMOVED_NOTE.to_string(),
+                    });
+                }
+                let Some(order_index) = self
+                    .model
+                    .power_order_book
+                    .open_orders
+                    .iter()
+                    .position(|entry| entry.order_id == *order_id && entry.owner == *owner)
+                else {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power order cancel target not found: order_id={} owner={:?}",
+                            order_id, owner
+                        ),
+                    });
+                };
+                let removed = self.model.power_order_book.open_orders.remove(order_index);
+                if removed.side != *side {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power order cancel side mismatch: order {} expected {:?} got {:?}",
+                            order_id, removed.side, side
+                        ),
+                    });
+                }
+                if removed.remaining_amount != *remaining_amount {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!(
+                            "power order cancel remaining mismatch: order {} expected {} got {}",
+                            order_id, removed.remaining_amount, remaining_amount
+                        ),
+                    });
+                }
             }
             WorldEventKind::ActionRejected { .. } => {}
             WorldEventKind::ModuleVisualEntityUpserted { entity } => {

@@ -13,9 +13,9 @@ use super::module_visual::ModuleVisualEntity;
 use super::power::{AgentPowerStatus, PowerConfig, PowerPlant, PowerStorage};
 use super::types::{
     AgentId, AssetId, ChunkResourceBudget, ElementBudgetError, FacilityId, FragmentElementKind,
-    FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, ResourceKind, ResourceStock,
-    WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM,
-    PPM_BASE,
+    FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, PowerOrderSide,
+    ResourceKind, ResourceStock, WorldTime, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+    DEFAULT_VISIBILITY_RANGE_CM, PPM_BASE,
 };
 use super::ResourceOwner;
 
@@ -138,6 +138,37 @@ pub struct Factory {
     pub kind: String,
 }
 
+fn default_next_power_order_id() -> u64 {
+    1
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerOrderState {
+    pub order_id: u64,
+    pub owner: ResourceOwner,
+    pub side: PowerOrderSide,
+    pub remaining_amount: i64,
+    pub limit_price_per_pu: i64,
+    pub created_at: WorldTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerOrderBookState {
+    #[serde(default = "default_next_power_order_id")]
+    pub next_order_id: u64,
+    #[serde(default)]
+    pub open_orders: Vec<PowerOrderState>,
+}
+
+impl Default for PowerOrderBookState {
+    fn default() -> Self {
+        Self {
+            next_order_id: default_next_power_order_id(),
+            open_orders: Vec::new(),
+        }
+    }
+}
+
 // ============================================================================
 // World Model (aggregate)
 // ============================================================================
@@ -155,6 +186,8 @@ pub struct WorldModel {
     pub power_plants: BTreeMap<FacilityId, PowerPlant>,
     #[serde(default)]
     pub power_storages: BTreeMap<FacilityId, PowerStorage>,
+    #[serde(default)]
+    pub power_order_book: PowerOrderBookState,
     #[serde(default)]
     pub factories: BTreeMap<FacilityId, Factory>,
     #[serde(

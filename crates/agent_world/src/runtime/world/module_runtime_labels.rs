@@ -20,6 +20,10 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::ModuleArtifactListed { .. } => "domain.module_artifact_listed",
             DomainEvent::ModuleArtifactDelisted { .. } => "domain.module_artifact_delisted",
             DomainEvent::ModuleArtifactDestroyed { .. } => "domain.module_artifact_destroyed",
+            DomainEvent::ModuleArtifactBidPlaced { .. } => "domain.module_artifact_bid_placed",
+            DomainEvent::ModuleArtifactBidCancelled { .. } => {
+                "domain.module_artifact_bid_cancelled"
+            }
             DomainEvent::ModuleArtifactSaleCompleted { .. } => "domain.module_artifact_sold",
             DomainEvent::ResourceTransferred { .. } => "domain.resource_transferred",
             DomainEvent::PowerRedeemed { .. } => "domain.power_redeemed",
@@ -67,6 +71,8 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::DelistModuleArtifact { .. } => "action.module.delist_artifact",
         Action::DestroyModuleArtifact { .. } => "action.module.destroy_artifact",
+        Action::PlaceModuleArtifactBid { .. } => "action.module.place_artifact_bid",
+        Action::CancelModuleArtifactBid { .. } => "action.module.cancel_artifact_bid",
         Action::TransferResource { .. } => "action.transfer_resource",
         Action::RedeemPower { .. } => "action.redeem_power",
         Action::RedeemPowerSigned { .. } => "action.redeem_power_signed",

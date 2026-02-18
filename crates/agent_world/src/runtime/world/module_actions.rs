@@ -1,3 +1,4 @@
+use super::super::state::{ModuleArtifactBidState, ModuleArtifactListingState};
 use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, ModuleActivation, ModuleChangeSet,
     ProposalDecision, RejectReason, WorldError, WorldEventBody,
@@ -33,7 +34,6 @@ impl World {
         agent_id: &str,
         fee_kind: ResourceKind,
         fee_amount: i64,
-        action_name: &str,
     ) -> Result<bool, WorldError> {
         if fee_amount <= 0 {
             return Ok(true);
@@ -59,7 +59,6 @@ impl World {
             )?;
             return Ok(false);
         }
-        let _ = action_name;
         Ok(true)
     }
 
@@ -75,6 +74,87 @@ impl World {
                     .map(|record| record.manifest.wasm_hash == wasm_hash)
                     .unwrap_or(false)
             })
+    }
+
+    fn peek_next_module_market_order_id(&self) -> u64 {
+        self.state.next_module_market_order_id.max(1)
+    }
+
+    fn peek_next_module_market_sale_id(&self) -> u64 {
+        self.state.next_module_market_sale_id.max(1)
+    }
+
+    fn best_bid_for_listing(
+        &self,
+        wasm_hash: &str,
+        listing: &ModuleArtifactListingState,
+    ) -> Option<ModuleArtifactBidState> {
+        let bids = self.state.module_artifact_bids.get(wasm_hash)?;
+        let mut best: Option<ModuleArtifactBidState> = None;
+        for bid in bids {
+            if bid.price_kind != listing.price_kind {
+                continue;
+            }
+            if bid.price_amount < listing.price_amount {
+                continue;
+            }
+            if bid.bidder_agent_id == listing.seller_agent_id {
+                continue;
+            }
+            let available = self
+                .state
+                .agents
+                .get(&bid.bidder_agent_id)
+                .map(|cell| cell.state.resources.get(listing.price_kind))
+                .unwrap_or(0);
+            if available < listing.price_amount {
+                continue;
+            }
+            let replace = match &best {
+                Some(current) => {
+                    bid.price_amount > current.price_amount
+                        || (bid.price_amount == current.price_amount
+                            && bid.order_id < current.order_id)
+                }
+                None => true,
+            };
+            if replace {
+                best = Some(bid.clone());
+            }
+        }
+        best
+    }
+
+    fn try_match_module_listing(
+        &mut self,
+        wasm_hash: &str,
+        action_id: u64,
+    ) -> Result<(), WorldError> {
+        let Some(listing) = self.state.module_artifact_listings.get(wasm_hash).cloned() else {
+            return Ok(());
+        };
+        let Some(best_bid) = self.best_bid_for_listing(wasm_hash, &listing) else {
+            return Ok(());
+        };
+        let sale_id = self.peek_next_module_market_sale_id();
+        self.append_event(
+            WorldEventBody::Domain(DomainEvent::ModuleArtifactSaleCompleted {
+                buyer_agent_id: best_bid.bidder_agent_id,
+                seller_agent_id: listing.seller_agent_id,
+                wasm_hash: wasm_hash.to_string(),
+                price_kind: listing.price_kind,
+                price_amount: listing.price_amount,
+                sale_id,
+                listing_order_id: if listing.order_id > 0 {
+                    Some(listing.order_id)
+                } else {
+                    None
+                },
+                bid_order_id: Some(best_bid.order_id),
+            }),
+            Some(CausedBy::Action(action_id)),
+        )?;
+        Ok(())
     }
 
     pub(super) fn try_apply_runtime_module_action(
@@ -125,7 +205,6 @@ impl World {
                     publisher_agent_id.as_str(),
                     fee_kind,
                     fee_amount,
-                    "deploy_module_artifact",
                 )? {
                     return Ok(true);
                 }
@@ -203,7 +282,6 @@ impl World {
                     installer_agent_id.as_str(),
                     fee_kind,
                     fee_amount,
-                    "install_module_from_artifact",
                 )? {
                     return Ok(true);
                 }
@@ -415,10 +493,10 @@ impl World {
                     seller_agent_id.as_str(),
                     fee_kind,
                     fee_amount,
-                    "list_module_artifact_for_sale",
                 )? {
                     return Ok(true);
                 }
+                let order_id = self.peek_next_module_market_order_id();
 
                 self.append_event(
                     WorldEventBody::Domain(DomainEvent::ModuleArtifactListed {
@@ -426,11 +504,13 @@ impl World {
                         wasm_hash: wasm_hash.clone(),
                         price_kind: *price_kind,
                         price_amount: *price_amount,
+                        order_id,
                         fee_kind,
                         fee_amount,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
+                self.try_match_module_listing(wasm_hash.as_str(), action_id)?;
                 Ok(true)
             }
             Action::BuyModuleArtifact {
@@ -515,6 +595,7 @@ impl World {
                     )?;
                     return Ok(true);
                 }
+                let sale_id = self.peek_next_module_market_sale_id();
 
                 self.append_event(
                     WorldEventBody::Domain(DomainEvent::ModuleArtifactSaleCompleted {
@@ -523,6 +604,13 @@ impl World {
                         wasm_hash: wasm_hash.clone(),
                         price_kind: listing.price_kind,
                         price_amount: listing.price_amount,
+                        sale_id,
+                        listing_order_id: if listing.order_id > 0 {
+                            Some(listing.order_id)
+                        } else {
+                            None
+                        },
+                        bid_order_id: None,
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
@@ -545,7 +633,8 @@ impl World {
                     return Ok(true);
                 }
 
-                let Some(listing) = self.state.module_artifact_listings.get(wasm_hash) else {
+                let Some(listing) = self.state.module_artifact_listings.get(wasm_hash).cloned()
+                else {
                     self.append_event(
                         WorldEventBody::Domain(DomainEvent::ActionRejected {
                             action_id,
@@ -613,7 +702,6 @@ impl World {
                     seller_agent_id.as_str(),
                     fee_kind,
                     fee_amount,
-                    "delist_module_artifact",
                 )? {
                     return Ok(true);
                 }
@@ -622,8 +710,185 @@ impl World {
                     WorldEventBody::Domain(DomainEvent::ModuleArtifactDelisted {
                         seller_agent_id: seller_agent_id.clone(),
                         wasm_hash: wasm_hash.clone(),
+                        order_id: if listing.order_id > 0 {
+                            Some(listing.order_id)
+                        } else {
+                            None
+                        },
                         fee_kind,
                         fee_amount,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::PlaceModuleArtifactBid {
+                bidder_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+            } => {
+                if !self.state.agents.contains_key(bidder_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: bidder_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if *price_amount <= 0 {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InvalidAmount {
+                                amount: *price_amount,
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                if !self.module_artifacts.contains(wasm_hash) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "place module artifact bid rejected: missing artifact {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(owner) = self.state.module_artifact_owners.get(wasm_hash) else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "place module artifact bid rejected: owner missing for {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if owner == bidder_agent_id {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "place module artifact bid rejected: bidder {} already owns {}",
+                                    bidder_agent_id, wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let available = self
+                    .state
+                    .agents
+                    .get(bidder_agent_id)
+                    .map(|cell| cell.state.resources.get(*price_kind))
+                    .unwrap_or(0);
+                if available < *price_amount {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InsufficientResource {
+                                agent_id: bidder_agent_id.clone(),
+                                kind: *price_kind,
+                                requested: *price_amount,
+                                available,
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                let order_id = self.peek_next_module_market_order_id();
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleArtifactBidPlaced {
+                        bidder_agent_id: bidder_agent_id.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        order_id,
+                        price_kind: *price_kind,
+                        price_amount: *price_amount,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                self.try_match_module_listing(wasm_hash.as_str(), action_id)?;
+                Ok(true)
+            }
+            Action::CancelModuleArtifactBid {
+                bidder_agent_id,
+                wasm_hash,
+                bid_order_id,
+            } => {
+                if !self.state.agents.contains_key(bidder_agent_id) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: bidder_agent_id.clone(),
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+                let Some(bids) = self.state.module_artifact_bids.get(wasm_hash) else {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "cancel module artifact bid rejected: no bids for {}",
+                                    wasm_hash
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                };
+                if !bids.iter().any(|entry| {
+                    entry.order_id == *bid_order_id && entry.bidder_agent_id == *bidder_agent_id
+                }) {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "cancel module artifact bid rejected: bid {} not found for {}",
+                                    bid_order_id, bidder_agent_id
+                                )],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ModuleArtifactBidCancelled {
+                        bidder_agent_id: bidder_agent_id.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        order_id: *bid_order_id,
+                        reason: "cancelled_by_bidder".to_string(),
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;
@@ -729,7 +994,6 @@ impl World {
                     owner_agent_id.as_str(),
                     fee_kind,
                     fee_amount,
-                    "destroy_module_artifact",
                 )? {
                     return Ok(true);
                 }

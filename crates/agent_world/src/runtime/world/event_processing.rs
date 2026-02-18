@@ -193,6 +193,26 @@ impl World {
                     },
                 }))
             }
+            Action::PlaceModuleArtifactBid { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "place_module_artifact_bid requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
+            Action::CancelModuleArtifactBid { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "cancel_module_artifact_bid requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::TransferResource {
                 from_agent_id,
                 to_agent_id,

@@ -79,8 +79,8 @@ pub use scenario::{ScenarioSpecError, WorldScenario, WorldScenarioSpec};
 pub use types::{
     Action, ActionEnvelope, ActionId, AgentId, AssetId, ChunkResourceBudget, ElementBudgetError,
     ElementComposition, FacilityId, FragmentElementKind, FragmentResourceBudget, LocationId,
-    LocationProfile, MaterialKind, ResourceKind, ResourceOwner, ResourceStock, StockError,
-    WorldEventId, WorldTime, CHUNK_GENERATION_SCHEMA_VERSION, CM_PER_KM,
+    LocationProfile, MaterialKind, PowerOrderSide, ResourceKind, ResourceOwner, ResourceStock,
+    StockError, WorldEventId, WorldTime, CHUNK_GENERATION_SCHEMA_VERSION, CM_PER_KM,
     DEFAULT_ELEMENT_RECOVERABILITY_PPM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
     DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, PPM_BASE, SNAPSHOT_VERSION,
 };
@@ -88,7 +88,8 @@ pub use world_model::{
     physics_parameter_specs, Agent, AgentPromptProfile, Asset, AssetKind, AsteroidFragmentConfig,
     BoundaryReservation, ChunkState, EconomyConfig, Factory, FragmentResourceError, Location,
     MaterialDistributionStrategy, MaterialRadiationFactors, MaterialWeights, PhysicsConfig,
-    PhysicsParameterSpec, SpaceConfig, ThermalStatus, WorldConfig, WorldModel,
+    PhysicsParameterSpec, PowerOrderBookState, PowerOrderState, SpaceConfig, ThermalStatus,
+    WorldConfig, WorldModel,
 };
 
 // Re-export power system types
@@ -101,6 +102,6 @@ pub use power::{
 pub use kernel::{
     merge_kernel_rule_decisions, ChunkGenerationCause, KernelRuleCost, KernelRuleDecision,
     KernelRuleDecisionMergeError, KernelRuleModuleContext, KernelRuleModuleInput,
-    KernelRuleModuleOutput, KernelRuleVerdict, PromptUpdateOperation, RejectReason, WorldEvent,
-    WorldEventKind,
+    KernelRuleModuleOutput, KernelRuleVerdict, PowerOrderFill, PromptUpdateOperation, RejectReason,
+    WorldEvent, WorldEventKind,
 };

@@ -107,6 +107,17 @@ pub enum Action {
         wasm_hash: String,
         reason: String,
     },
+    PlaceModuleArtifactBid {
+        bidder_agent_id: String,
+        wasm_hash: String,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    CancelModuleArtifactBid {
+        bidder_agent_id: String,
+        wasm_hash: String,
+        bid_order_id: u64,
+    },
     TransferResource {
         from_agent_id: String,
         to_agent_id: String,
@@ -253,6 +264,8 @@ pub enum DomainEvent {
         wasm_hash: String,
         price_kind: ResourceKind,
         price_amount: i64,
+        #[serde(default)]
+        order_id: u64,
         #[serde(default = "default_module_action_fee_kind")]
         fee_kind: ResourceKind,
         #[serde(default)]
@@ -261,6 +274,8 @@ pub enum DomainEvent {
     ModuleArtifactDelisted {
         seller_agent_id: String,
         wasm_hash: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        order_id: Option<u64>,
         #[serde(default = "default_module_action_fee_kind")]
         fee_kind: ResourceKind,
         #[serde(default)]
@@ -275,12 +290,31 @@ pub enum DomainEvent {
         #[serde(default)]
         fee_amount: i64,
     },
+    ModuleArtifactBidPlaced {
+        bidder_agent_id: String,
+        wasm_hash: String,
+        order_id: u64,
+        price_kind: ResourceKind,
+        price_amount: i64,
+    },
+    ModuleArtifactBidCancelled {
+        bidder_agent_id: String,
+        wasm_hash: String,
+        order_id: u64,
+        reason: String,
+    },
     ModuleArtifactSaleCompleted {
         buyer_agent_id: String,
         seller_agent_id: String,
         wasm_hash: String,
         price_kind: ResourceKind,
         price_amount: i64,
+        #[serde(default)]
+        sale_id: u64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        listing_order_id: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        bid_order_id: Option<u64>,
     },
     ResourceTransferred {
         from_agent_id: String,
@@ -418,6 +452,12 @@ impl DomainEvent {
             DomainEvent::ModuleArtifactDestroyed { owner_agent_id, .. } => {
                 Some(owner_agent_id.as_str())
             }
+            DomainEvent::ModuleArtifactBidPlaced {
+                bidder_agent_id, ..
+            } => Some(bidder_agent_id.as_str()),
+            DomainEvent::ModuleArtifactBidCancelled {
+                bidder_agent_id, ..
+            } => Some(bidder_agent_id.as_str()),
             DomainEvent::ModuleArtifactSaleCompleted { buyer_agent_id, .. } => {
                 Some(buyer_agent_id.as_str())
             }
