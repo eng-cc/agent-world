@@ -6,7 +6,7 @@
 - [x] T1：实现缺口 1（`CompileModuleArtifactFromSource` + 编译器 + required 测试）
 - [x] T2：实现缺口 2（共识动作载荷/签名/复制/执行 hook 贯通 + required 测试）
 - [x] T3：实现缺口 3（模块按次计费 + 可审计事件 + 余额不足拒绝 + required 测试）
-- [ ] T4：回归验证（`cargo check` + 定向 required tests）并回写文档/devlog
+- [x] T4：回归验证（`cargo check` + 定向 required tests）并回写文档/devlog
 
 ## 依赖
 - Runtime action/事件：
@@ -31,6 +31,6 @@
   - `crates/agent_world_node/src/tests.rs`
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3 已完成，T4 待完成）
+- 当前阶段：已完成（T0~T4 全部完成）
 - 阻塞项：无
-- 下一步：执行 T4（回归验证与文档收口）
+- 下一步：无（本轮 README 缺口 1/2/3 收口完成）
