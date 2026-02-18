@@ -1,4 +1,5 @@
 use agent_world_distfs::{BlobStore, HashAlgorithm, LocalCasStore};
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -67,7 +68,7 @@ fn parse_args() -> Result<Options, String> {
     })
 }
 
-fn parse_manifest_line(line: &str) -> Result<Option<(String, String)>, String> {
+fn parse_manifest_line(line: &str) -> Result<Option<(String, Vec<String>)>, String> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return Ok(None);
@@ -77,14 +78,18 @@ fn parse_manifest_line(line: &str) -> Result<Option<(String, String)>, String> {
     let Some(module_id) = parts.next() else {
         return Ok(None);
     };
-    let Some(hash) = parts.next() else {
+    let hashes: Vec<String> = parts.map(str::to_string).collect();
+    if hashes.is_empty() {
         return Err(format!("invalid manifest line (missing hash): {line}"));
-    };
-    if parts.next().is_some() {
-        return Err(format!("invalid manifest line (too many columns): {line}"));
     }
 
-    Ok(Some((module_id.to_string(), hash.to_string())))
+    Ok(Some((module_id.to_string(), hashes)))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 fn run() -> Result<(), String> {
@@ -102,7 +107,7 @@ fn run() -> Result<(), String> {
     let mut newly_written = 0usize;
 
     for line in manifest_content.lines() {
-        let Some((module_id, hash)) = parse_manifest_line(line)? else {
+        let Some((module_id, expected_hashes)) = parse_manifest_line(line)? else {
             continue;
         };
 
@@ -114,18 +119,31 @@ fn run() -> Result<(), String> {
             )
         })?;
 
-        let existed = store.has(&hash).map_err(|error| {
+        let actual_hash = sha256_hex(&bytes);
+        if !expected_hashes
+            .iter()
+            .any(|expected| expected == &actual_hash)
+        {
+            return Err(format!(
+                "built wasm hash not listed in manifest module_id={} built_hash={} expected_hashes=[{}]",
+                module_id,
+                actual_hash,
+                expected_hashes.join(",")
+            ));
+        }
+
+        let existed = store.has(&actual_hash).map_err(|error| {
             format!(
                 "failed to check distfs blob existence hash={} root={}: {error:?}",
-                hash,
+                actual_hash,
                 options.root.display()
             )
         })?;
 
-        store.put(&hash, &bytes).map_err(|error| {
+        store.put(&actual_hash, &bytes).map_err(|error| {
             format!(
                 "failed to put distfs blob hash={} module_id={} root={}: {error:?}",
-                hash,
+                actual_hash,
                 module_id,
                 options.root.display()
             )

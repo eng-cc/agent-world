@@ -64,9 +64,32 @@ read_module_ids() {
   fi
 }
 
-manifest_hash_for() {
+manifest_hashes_for() {
   local module_id="$1"
-  awk -v m="$module_id" '$1 == m { print $2; exit }' "$HASH_MANIFEST_PATH"
+  awk -v m="$module_id" '
+    $1 == m {
+      for (i = 2; i <= NF; i++) {
+        print $i
+      }
+      exit
+    }
+  ' "$HASH_MANIFEST_PATH"
+}
+
+manifest_entry_count() {
+  awk 'NF > 0 { count += 1 } END { print count + 0 }' "$HASH_MANIFEST_PATH"
+}
+
+array_contains() {
+  local needle="$1"
+  shift
+  local candidate
+  for candidate in "$@"; do
+    if [[ "$candidate" == "$needle" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 hydrate_distfs_blobs() {
@@ -144,7 +167,7 @@ if [[ ! -f "$HASH_MANIFEST_PATH" ]]; then
 fi
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
-  manifest_line_count="$(wc -l < "$HASH_MANIFEST_PATH" | tr -d '[:space:]')"
+  manifest_line_count="$(manifest_entry_count)"
   if [[ "$manifest_line_count" -ne "${#MODULE_IDS[@]}" ]]; then
     echo "error: hash manifest line count mismatch" >&2
     echo "  manifest_lines=$manifest_line_count" >&2
@@ -160,17 +183,21 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     fi
 
     built_hash="$(sha256_file "$built_path")"
-    manifest_hash="$(manifest_hash_for "$module_id")"
+    manifest_hashes=()
+    while IFS= read -r manifest_hash; do
+      [[ -z "$manifest_hash" ]] && continue
+      manifest_hashes+=("$manifest_hash")
+    done < <(manifest_hashes_for "$module_id")
 
-    if [[ -z "$manifest_hash" ]]; then
+    if [[ "${#manifest_hashes[@]}" -eq 0 ]]; then
       echo "error: module hash missing in manifest: $module_id" >&2
       exit 1
     fi
 
-    if [[ "$built_hash" != "$manifest_hash" ]]; then
+    if ! array_contains "$built_hash" "${manifest_hashes[@]}"; then
       echo "error: hash manifest is stale vs built wasm for module: $module_id" >&2
       echo "  built   =$built_hash" >&2
-      echo "  manifest=$manifest_hash" >&2
+      echo "  manifest=${manifest_hashes[*]}" >&2
       echo "hint: run scripts/sync-m1-builtin-wasm-artifacts.sh" >&2
       exit 1
     fi
@@ -195,8 +222,25 @@ for module_id in "${MODULE_IDS[@]}"; do
     exit 1
   fi
 
-  module_hash="$(sha256_file "$built_path")"
-  printf "%s %s\n" "$module_id" "$module_hash" >> "$tmp_manifest"
+  built_hash="$(sha256_file "$built_path")"
+  merged_hashes=()
+  if [[ -f "$HASH_MANIFEST_PATH" ]]; then
+    while IFS= read -r existing_hash; do
+      [[ -z "$existing_hash" ]] && continue
+      if ! array_contains "$existing_hash" "${merged_hashes[@]}"; then
+        merged_hashes+=("$existing_hash")
+      fi
+    done < <(manifest_hashes_for "$module_id")
+  fi
+  if ! array_contains "$built_hash" "${merged_hashes[@]}"; then
+    merged_hashes+=("$built_hash")
+  fi
+
+  printf "%s" "$module_id" >> "$tmp_manifest"
+  for module_hash in "${merged_hashes[@]}"; do
+    printf " %s" "$module_hash" >> "$tmp_manifest"
+  done
+  printf "\n" >> "$tmp_manifest"
 done
 
 mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"

@@ -7,11 +7,16 @@
 - [x] T3 同步 m1 hash 清单并验证 `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
 - [x] T4 回归验证：`CI_VERBOSE=1 ./scripts/ci-tests.sh required`
 - [x] T5 更新 `doc/devlog/2026-02-18.md` 并提交
+- [x] T6 支持多 hash manifest（`module_id hash1 hash2 ...`）并改造 `sync-m1 --check/sync`
+- [x] T7 改造 DistFS hydration + runtime builtin wasm loader（候选 hash 列表匹配）
+- [x] T8 补齐 m1 manifest 的 Linux hash（与 macOS hash 共存）并完成 required 回归
 
 ## 依赖
 - 统一测试入口：`scripts/ci-tests.sh`
 - m1 校验脚本：`scripts/sync-m1-builtin-wasm-artifacts.sh`
 - m1 hash 清单：`crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`
+- DistFS hydration：`crates/agent_world_distfs/src/bin/hydrate_builtin_wasm.rs`
+- runtime materializer：`crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
 
 ## 状态
 - 当前阶段：已完成

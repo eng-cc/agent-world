@@ -30,7 +30,7 @@ fn builtin_wasm_distfs_root() -> PathBuf {
         .join("builtin_wasm")
 }
 
-fn hash_manifest_for_module(module_id: &str) -> Option<&'static str> {
+fn hash_manifest_for_module(module_id: &str) -> Option<Vec<&'static str>> {
     for line in M1_BUILTIN_HASH_MANIFEST.lines() {
         let line = line.trim();
         if line.is_empty() {
@@ -40,11 +40,11 @@ fn hash_manifest_for_module(module_id: &str) -> Option<&'static str> {
         let Some(id) = parts.next() else {
             continue;
         };
-        let Some(hash) = parts.next() else {
-            continue;
-        };
         if id == module_id {
-            return Some(hash);
+            let hashes: Vec<&'static str> = parts.collect();
+            if !hashes.is_empty() {
+                return Some(hashes);
+            }
         }
     }
     None
@@ -53,18 +53,19 @@ fn hash_manifest_for_module(module_id: &str) -> Option<&'static str> {
 pub(crate) fn m1_builtin_wasm_module_artifact_bytes(
     module_id: &str,
 ) -> Result<Vec<u8>, WorldError> {
-    let expected_hash =
+    let expected_hashes =
         hash_manifest_for_module(module_id).ok_or_else(|| WorldError::ModuleChangeInvalid {
             reason: format!("missing builtin wasm hash manifest entry for module_id={module_id}"),
         })?;
     let distfs_root = builtin_wasm_distfs_root();
-    let wasm_bytes = load_builtin_wasm_with_fetch_fallback(module_id, expected_hash, &distfs_root)
+    let wasm_bytes = load_builtin_wasm_with_fetch_fallback(module_id, &expected_hashes, &distfs_root)
         .map_err(|error| WorldError::ModuleChangeInvalid {
-        reason: format!(
-            "failed to materialize builtin wasm artifact module_id={module_id}, hash={expected_hash}, distfs_root={}, err={error:?}",
-            distfs_root.display()
-        ),
-    })?;
+            reason: format!(
+                "failed to materialize builtin wasm artifact module_id={module_id}, hashes=[{}], distfs_root={}, err={error:?}",
+                expected_hashes.join(","),
+                distfs_root.display()
+            ),
+        })?;
 
     Ok(wasm_bytes)
 }

@@ -19,38 +19,47 @@ const BUILTIN_WASM_BUILD_PROFILE: &str = "release";
 
 pub(crate) fn load_builtin_wasm_with_fetch_fallback(
     module_id: &str,
-    expected_hash: &str,
+    expected_hashes: &[&str],
     distfs_root: &Path,
 ) -> Result<Vec<u8>, WorldError> {
+    if expected_hashes.is_empty() {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!("builtin wasm expected hash list is empty module_id={module_id}"),
+        });
+    }
+
     let store = LocalCasStore::new_with_hash_algorithm(distfs_root, HashAlgorithm::Sha256);
-    if let Ok(bytes) = store.get_verified(expected_hash) {
-        return Ok(bytes);
+    for expected_hash in expected_hashes {
+        if let Ok(bytes) = store.get_verified(expected_hash) {
+            return Ok(bytes);
+        }
     }
 
-    if let Some(fetched) = try_fetch_builtin_wasm(module_id, expected_hash)? {
-        store.put(expected_hash, &fetched)?;
-        return store.get_verified(expected_hash).map_err(WorldError::from);
+    if let Some((actual_hash, fetched)) = try_fetch_builtin_wasm(module_id, expected_hashes)? {
+        store.put(&actual_hash, &fetched)?;
+        return store.get_verified(&actual_hash).map_err(WorldError::from);
     }
 
-    let compiled = compile_builtin_wasm(module_id, expected_hash)?;
-    store.put(expected_hash, &compiled)?;
-    store.get_verified(expected_hash).map_err(WorldError::from)
+    let compiled = compile_builtin_wasm(module_id, expected_hashes)?;
+    let actual_hash = util::sha256_hex(&compiled);
+    store.put(&actual_hash, &compiled)?;
+    store.get_verified(&actual_hash).map_err(WorldError::from)
 }
 
 fn try_fetch_builtin_wasm(
     module_id: &str,
-    expected_hash: &str,
-) -> Result<Option<Vec<u8>>, WorldError> {
-    if let Some(bytes) = try_fetch_via_fetcher(module_id, expected_hash)? {
-        return Ok(Some(bytes));
+    expected_hashes: &[&str],
+) -> Result<Option<(String, Vec<u8>)>, WorldError> {
+    if let Some(fetched) = try_fetch_via_fetcher(module_id, expected_hashes)? {
+        return Ok(Some(fetched));
     }
-    try_fetch_via_http(expected_hash)
+    try_fetch_via_http(expected_hashes)
 }
 
 fn try_fetch_via_fetcher(
     module_id: &str,
-    expected_hash: &str,
-) -> Result<Option<Vec<u8>>, WorldError> {
+    expected_hashes: &[&str],
+) -> Result<Option<(String, Vec<u8>)>, WorldError> {
     let Some(fetcher_path) = env_non_empty(BUILTIN_WASM_FETCHER_ENV) else {
         return Ok(None);
     };
@@ -60,31 +69,34 @@ fn try_fetch_via_fetcher(
     };
     fs::create_dir_all(parent)?;
 
-    let status = match Command::new(fetcher_path)
-        .arg(module_id)
-        .arg(expected_hash)
-        .arg(&out_path)
-        .status()
-    {
-        Ok(status) => status,
-        Err(_) => return Ok(None),
-    };
-    if !status.success() {
-        return Ok(None);
-    }
+    for expected_hash in expected_hashes {
+        let status = match Command::new(&fetcher_path)
+            .arg(module_id)
+            .arg(expected_hash)
+            .arg(&out_path)
+            .status()
+        {
+            Ok(status) => status,
+            Err(_) => return Ok(None),
+        };
+        if !status.success() {
+            continue;
+        }
 
-    let bytes = match fs::read(&out_path) {
-        Ok(bytes) => bytes,
-        Err(_) => return Ok(None),
-    };
-    if util::sha256_hex(&bytes) != expected_hash {
-        return Ok(None);
+        let bytes = match fs::read(&out_path) {
+            Ok(bytes) => bytes,
+            Err(_) => continue,
+        };
+        let actual_hash = util::sha256_hex(&bytes);
+        if is_expected_hash(expected_hashes, &actual_hash) {
+            return Ok(Some((actual_hash, bytes)));
+        }
     }
-    Ok(Some(bytes))
+    Ok(None)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn try_fetch_via_http(expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError> {
+fn try_fetch_via_http(expected_hashes: &[&str]) -> Result<Option<(String, Vec<u8>)>, WorldError> {
     let Some(fetch_urls) = env_non_empty(BUILTIN_WASM_FETCH_URLS_ENV) else {
         return Ok(None);
     };
@@ -100,22 +112,25 @@ fn try_fetch_via_http(expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError
         .filter(|url| !url.is_empty())
     {
         let trimmed = base.trim_end_matches('/');
-        let candidates = [
-            format!("{trimmed}/{expected_hash}.blob"),
-            format!("{trimmed}/{expected_hash}"),
-        ];
-        for url in candidates {
-            let Ok(response) = client.get(&url).send() else {
-                continue;
-            };
-            if !response.status().is_success() {
-                continue;
-            }
-            let Ok(bytes) = response.bytes() else {
-                continue;
-            };
-            if util::sha256_hex(bytes.as_ref()) == expected_hash {
-                return Ok(Some(bytes.to_vec()));
+        for expected_hash in expected_hashes {
+            let candidates = [
+                format!("{trimmed}/{expected_hash}.blob"),
+                format!("{trimmed}/{expected_hash}"),
+            ];
+            for url in candidates {
+                let Ok(response) = client.get(&url).send() else {
+                    continue;
+                };
+                if !response.status().is_success() {
+                    continue;
+                }
+                let Ok(bytes) = response.bytes() else {
+                    continue;
+                };
+                let actual_hash = util::sha256_hex(bytes.as_ref());
+                if is_expected_hash(expected_hashes, &actual_hash) {
+                    return Ok(Some((actual_hash, bytes.to_vec())));
+                }
             }
         }
     }
@@ -123,21 +138,21 @@ fn try_fetch_via_http(expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError
 }
 
 #[cfg(target_arch = "wasm32")]
-fn try_fetch_via_http(_expected_hash: &str) -> Result<Option<Vec<u8>>, WorldError> {
+fn try_fetch_via_http(_expected_hashes: &[&str]) -> Result<Option<(String, Vec<u8>)>, WorldError> {
     Ok(None)
 }
 
-fn compile_builtin_wasm(module_id: &str, expected_hash: &str) -> Result<Vec<u8>, WorldError> {
+fn compile_builtin_wasm(module_id: &str, expected_hashes: &[&str]) -> Result<Vec<u8>, WorldError> {
     if let Some(compiler_path) = env_non_empty(BUILTIN_WASM_COMPILER_ENV) {
-        return compile_via_command(Path::new(&compiler_path), module_id, expected_hash);
+        return compile_via_command(Path::new(&compiler_path), module_id, expected_hashes);
     }
-    compile_via_default_script(module_id, expected_hash)
+    compile_via_default_script(module_id, expected_hashes)
 }
 
 fn compile_via_command(
     compiler_path: &Path,
     module_id: &str,
-    expected_hash: &str,
+    expected_hashes: &[&str],
 ) -> Result<Vec<u8>, WorldError> {
     let out_path = temp_artifact_path("compiled", module_id);
     let Some(parent) = out_path.parent() else {
@@ -147,39 +162,50 @@ fn compile_via_command(
     };
     fs::create_dir_all(parent)?;
 
-    let status = Command::new(compiler_path)
-        .arg(module_id)
-        .arg(expected_hash)
-        .arg(&out_path)
-        .status()
-        .map_err(|error| WorldError::ModuleChangeInvalid {
+    let mut failed_statuses = Vec::new();
+    for expected_hash in expected_hashes {
+        let status = Command::new(compiler_path)
+            .arg(module_id)
+            .arg(expected_hash)
+            .arg(&out_path)
+            .status()
+            .map_err(|error| WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "failed to execute builtin wasm compiler={} err={error}",
+                    compiler_path.display()
+                ),
+            })?;
+
+        if !status.success() {
+            failed_statuses.push(format!("{expected_hash}:{status}"));
+            continue;
+        }
+
+        let bytes = fs::read(&out_path).map_err(|error| WorldError::ModuleChangeInvalid {
             reason: format!(
-                "failed to execute builtin wasm compiler={} err={error}",
-                compiler_path.display()
+                "builtin wasm compiler output missing module_id={module_id} out={} err={error}",
+                out_path.display()
             ),
         })?;
 
-    if !status.success() {
-        return Err(WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "builtin wasm compiler exited non-zero compiler={} status={status}",
-                compiler_path.display()
-            ),
-        });
+        validate_compiled_hash(module_id, expected_hashes, &bytes)?;
+        return Ok(bytes);
     }
 
-    let bytes = fs::read(&out_path).map_err(|error| WorldError::ModuleChangeInvalid {
+    Err(WorldError::ModuleChangeInvalid {
         reason: format!(
-            "builtin wasm compiler output missing module_id={module_id} out={} err={error}",
-            out_path.display()
+            "builtin wasm compiler exited non-zero for all expected hashes module_id={module_id} compiler={} expected_hashes=[{}] statuses=[{}]",
+            compiler_path.display(),
+            expected_hashes.join(","),
+            failed_statuses.join(",")
         ),
-    })?;
-
-    validate_compiled_hash(module_id, expected_hash, &bytes)?;
-    Ok(bytes)
+    })
 }
 
-fn compile_via_default_script(module_id: &str, expected_hash: &str) -> Result<Vec<u8>, WorldError> {
+fn compile_via_default_script(
+    module_id: &str,
+    expected_hashes: &[&str],
+) -> Result<Vec<u8>, WorldError> {
     let repo_root = repo_root();
     let build_script = repo_root
         .join("scripts")
@@ -218,25 +244,32 @@ fn compile_via_default_script(module_id: &str, expected_hash: &str) -> Result<Ve
             artifact_path.display()
         ),
     })?;
-    validate_compiled_hash(module_id, expected_hash, &bytes)?;
+    validate_compiled_hash(module_id, expected_hashes, &bytes)?;
     let _ = fs::remove_dir_all(&out_dir);
     Ok(bytes)
 }
 
 fn validate_compiled_hash(
     module_id: &str,
-    expected_hash: &str,
+    expected_hashes: &[&str],
     bytes: &[u8],
 ) -> Result<(), WorldError> {
     let actual = util::sha256_hex(bytes);
-    if actual != expected_hash {
+    if !is_expected_hash(expected_hashes, &actual) {
         return Err(WorldError::ModuleChangeInvalid {
             reason: format!(
-                "fallback compile hash mismatch module_id={module_id} expected={expected_hash} actual={actual}",
+                "fallback compile hash mismatch module_id={module_id} expected=[{}] actual={actual}",
+                expected_hashes.join(","),
             ),
         });
     }
     Ok(())
+}
+
+fn is_expected_hash(expected_hashes: &[&str], actual_hash: &str) -> bool {
+    expected_hashes
+        .iter()
+        .any(|expected| *expected == actual_hash)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

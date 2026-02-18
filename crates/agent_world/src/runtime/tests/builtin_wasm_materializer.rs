@@ -28,7 +28,8 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     write_fetcher_script(&fetcher, &fetch_log);
 
     let module_id = "m1.rule.move";
-    let expected_hash = manifest_hash_for_module(module_id).expect("manifest hash");
+    let expected_hashes = manifest_hashes_for_module(module_id).expect("manifest hashes");
+    let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
     let _distfs_guard = EnvVarGuard::capture(DISTFS_ROOT_ENV);
@@ -36,10 +37,14 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     std::env::set_var(DISTFS_ROOT_ENV, &distfs_root);
 
     let load_result =
-        load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash, &distfs_root);
+        load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash_refs, &distfs_root);
 
     let bytes = load_result.expect("load builtin wasm");
-    assert_eq!(util::sha256_hex(&bytes), expected_hash);
+    let actual_hash = util::sha256_hex(&bytes);
+    assert!(
+        expected_hashes.iter().any(|hash| hash == &actual_hash),
+        "loaded hash should be listed in manifest"
+    );
 
     let fetched_log = fs::read_to_string(&fetch_log).expect("read fetch log");
     assert!(
@@ -47,14 +52,16 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
         "fetcher log should contain module_id"
     );
     assert!(
-        fetched_log.contains(&expected_hash),
-        "fetcher log should contain expected hash"
+        expected_hashes
+            .iter()
+            .any(|hash| fetched_log.contains(hash)),
+        "fetcher log should contain one of expected hashes"
     );
 
     let store = LocalCasStore::new_with_hash_algorithm(&distfs_root, HashAlgorithm::Sha256);
-    assert!(store.has(&expected_hash).expect("distfs has expected hash"));
+    assert!(store.has(&actual_hash).expect("distfs has expected hash"));
     let cached = store
-        .get_verified(&expected_hash)
+        .get_verified(&actual_hash)
         .expect("verified distfs blob");
     assert_eq!(cached, bytes);
 
@@ -75,7 +82,7 @@ fn write_fetcher_script(script_path: &Path, fetch_log: &Path) {
     }
 }
 
-fn manifest_hash_for_module(module_id: &str) -> Option<String> {
+fn manifest_hashes_for_module(module_id: &str) -> Option<Vec<String>> {
     let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("runtime")
@@ -86,9 +93,13 @@ fn manifest_hash_for_module(module_id: &str) -> Option<String> {
     content.lines().find_map(|line| {
         let mut parts = line.split_whitespace();
         let id = parts.next()?;
-        let hash = parts.next()?;
         if id == module_id {
-            Some(hash.to_string())
+            let hashes: Vec<String> = parts.map(str::to_string).collect();
+            if hashes.is_empty() {
+                None
+            } else {
+                Some(hashes)
+            }
         } else {
             None
         }
