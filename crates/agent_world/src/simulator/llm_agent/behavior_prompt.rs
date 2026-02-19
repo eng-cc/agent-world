@@ -182,6 +182,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::CompileModuleArtifactFromSource { .. } => "compile_module_artifact_from_source",
             Action::DeployModuleArtifact { .. } => "deploy_module_artifact",
             Action::InstallModuleFromArtifact { .. } => "install_module_from_artifact",
+            Action::InstallModuleToTargetFromArtifact { .. } => {
+                "install_module_to_target_from_artifact"
+            }
             Action::ListModuleArtifactForSale { .. } => "list_module_artifact_for_sale",
             Action::BuyModuleArtifact { .. } => "buy_module_artifact",
             Action::DelistModuleArtifact { .. } => "delist_module_artifact",

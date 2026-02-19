@@ -4,7 +4,7 @@ use super::super::{
     ProposalDecision, RejectReason, WorldError, WorldEventBody,
 };
 use super::World;
-use crate::simulator::ResourceKind;
+use crate::simulator::{ModuleInstallTarget, ResourceKind};
 
 const MODULE_DEPLOY_FEE_BYTES_PER_ELECTRICITY: i64 = 2_048;
 const MODULE_COMPILE_FEE_BYTES_PER_ELECTRICITY: i64 = 1_024;
@@ -504,11 +504,27 @@ impl World {
                         installer_agent_id: installer_agent_id.clone(),
                         module_id: manifest.module_id.clone(),
                         module_version: manifest.version.clone(),
+                        install_target: ModuleInstallTarget::SelfAgent,
                         active: *activate,
                         proposal_id,
                         manifest_hash,
                         fee_kind,
                         fee_amount,
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                Ok(true)
+            }
+            Action::InstallModuleToTargetFromArtifact { .. } => {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "install_module_to_target_from_artifact is not enabled yet"
+                                    .to_string(),
+                            ],
+                        },
                     }),
                     Some(CausedBy::Action(action_id)),
                 )?;

@@ -1,4 +1,5 @@
 use super::super::world_model::{InstalledModuleState, ModuleArtifactState};
+use super::super::ModuleInstallTarget;
 use super::types::{RejectReason, WorldEventKind};
 use super::WorldKernel;
 use crate::runtime::{compile_module_artifact_from_source, ModuleSourcePackage};
@@ -166,6 +167,7 @@ impl WorldKernel {
                 module_version: module_version.clone(),
                 wasm_hash: wasm_hash.clone(),
                 installer_agent_id: installer_agent_id.clone(),
+                install_target: ModuleInstallTarget::SelfAgent,
                 active: activate,
                 installed_at_tick: self.time,
             },
@@ -176,6 +178,7 @@ impl WorldKernel {
             module_id,
             module_version,
             wasm_hash,
+            install_target: ModuleInstallTarget::SelfAgent,
             active: activate,
         }
     }

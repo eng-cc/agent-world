@@ -2,7 +2,7 @@
 
 use crate::geometry::GeoPos;
 use crate::models::{BodyKernelView, BodySlotType};
-use crate::simulator::ResourceKind;
+use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
     FactoryModuleSpec, MaterialStack, ModuleManifest, ProductValidationDecision,
     RecipeExecutionPlan,
@@ -99,6 +99,13 @@ pub enum Action {
         installer_agent_id: String,
         manifest: ModuleManifest,
         activate: bool,
+    },
+    InstallModuleToTargetFromArtifact {
+        installer_agent_id: String,
+        manifest: ModuleManifest,
+        activate: bool,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
     },
     ListModuleArtifactForSale {
         seller_agent_id: String,
@@ -263,6 +270,8 @@ pub enum DomainEvent {
         installer_agent_id: String,
         module_id: String,
         module_version: String,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
         active: bool,
         proposal_id: ProposalId,
         manifest_hash: String,

@@ -284,6 +284,9 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
         }
         Action::InstallModuleFromArtifact {
             installer_agent_id, ..
+        }
+        | Action::InstallModuleToTargetFromArtifact {
+            installer_agent_id, ..
         } => {
             if installer_agent_id == agent_id {
                 None

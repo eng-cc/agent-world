@@ -1,4 +1,4 @@
-use super::super::types::{AgentId, ResourceKind, WorldTime};
+use super::super::types::{AgentId, ModuleInstallTarget, ResourceKind, WorldTime};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -19,6 +19,8 @@ pub struct InstalledModuleState {
     pub module_version: String,
     pub wasm_hash: String,
     pub installer_agent_id: AgentId,
+    #[serde(default)]
+    pub install_target: ModuleInstallTarget,
     #[serde(default)]
     pub active: bool,
     #[serde(default)]

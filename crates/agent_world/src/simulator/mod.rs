@@ -84,9 +84,9 @@ pub use social::{
 pub use types::{
     Action, ActionEnvelope, ActionId, ActionSubmitter, AgentId, AssetId, ChunkResourceBudget,
     ElementBudgetError, ElementComposition, FacilityId, FragmentElementKind,
-    FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, PowerOrderSide,
-    ResourceKind, ResourceOwner, ResourceStock, StockError, WorldEventId, WorldTime,
-    CHUNK_GENERATION_SCHEMA_VERSION, CM_PER_KM, DEFAULT_ELEMENT_RECOVERABILITY_PPM,
+    FragmentResourceBudget, LocationId, LocationProfile, MaterialKind, ModuleInstallTarget,
+    PowerOrderSide, ResourceKind, ResourceOwner, ResourceStock, StockError, WorldEventId,
+    WorldTime, CHUNK_GENERATION_SCHEMA_VERSION, CM_PER_KM, DEFAULT_ELEMENT_RECOVERABILITY_PPM,
     DEFAULT_MOVE_COST_PER_KM_ELECTRICITY, DEFAULT_VISIBILITY_RANGE_CM, JOURNAL_VERSION, PPM_BASE,
     SNAPSHOT_VERSION,
 };

@@ -127,12 +127,14 @@ fn module_lifecycle_deploy_and_install_succeeds_for_owner() {
             module_version,
             wasm_hash: event_hash,
             active,
+            install_target,
         } => {
             assert_eq!(installer_agent_id, "agent-1");
             assert_eq!(module_id, "m.sim.lifecycle");
             assert_eq!(module_version, "0.1.0");
             assert_eq!(event_hash, wasm_hash);
             assert!(active);
+            assert_eq!(install_target, ModuleInstallTarget::SelfAgent);
         }
         other => panic!("unexpected install event: {other:?}"),
     }

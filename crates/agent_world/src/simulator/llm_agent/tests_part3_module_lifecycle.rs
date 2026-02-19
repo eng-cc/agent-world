@@ -1,4 +1,5 @@
 use super::*;
+use crate::simulator::ModuleInstallTarget;
 
 #[test]
 fn decision_tool_schema_includes_module_lifecycle_actions_and_fields() {
@@ -222,6 +223,7 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
                 module_version: "0.1.0".to_string(),
                 wasm_hash: "hash-1".to_string(),
                 active: true,
+                install_target: ModuleInstallTarget::SelfAgent,
             },
         },
     });

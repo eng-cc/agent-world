@@ -11,8 +11,8 @@ use super::super::social::{
 };
 use super::super::types::{
     Action, ActionId, AgentId, ChunkResourceBudget, FacilityId, FragmentElementKind, LocationId,
-    LocationProfile, PowerOrderSide, ResourceKind, ResourceOwner, ResourceStock, WorldEventId,
-    WorldTime,
+    LocationProfile, ModuleInstallTarget, PowerOrderSide, ResourceKind, ResourceOwner,
+    ResourceStock, WorldEventId, WorldTime,
 };
 use super::super::world_model::{AgentPromptProfile, Location};
 
@@ -161,6 +161,8 @@ pub enum WorldEventKind {
         module_id: String,
         module_version: String,
         wasm_hash: String,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
         active: bool,
     },
     ModuleArtifactListed {

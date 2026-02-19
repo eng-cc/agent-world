@@ -71,6 +71,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
             "action.module.compile_artifact_from_source"
         }
         Action::InstallModuleFromArtifact { .. } => "action.module.install_from_artifact",
+        Action::InstallModuleToTargetFromArtifact { .. } => {
+            "action.module.install_to_target_from_artifact"
+        }
         Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::DelistModuleArtifact { .. } => "action.module.delist_artifact",

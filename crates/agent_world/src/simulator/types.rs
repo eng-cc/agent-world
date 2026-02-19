@@ -349,6 +349,16 @@ pub enum ResourceOwner {
     Location { location_id: LocationId },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+pub enum ModuleInstallTarget {
+    #[default]
+    SelfAgent,
+    LocationInfrastructure {
+        location_id: LocationId,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PowerOrderSide {
@@ -515,6 +525,14 @@ pub enum Action {
         module_version: String,
         wasm_hash: String,
         activate: bool,
+    },
+    InstallModuleToTargetFromArtifact {
+        installer_agent_id: AgentId,
+        module_id: String,
+        module_version: String,
+        wasm_hash: String,
+        activate: bool,
+        install_target: ModuleInstallTarget,
     },
     ListModuleArtifactForSale {
         seller_agent_id: AgentId,

@@ -1,6 +1,6 @@
 use super::super::*;
 use super::pos;
-use crate::simulator::ResourceKind;
+use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -285,6 +285,7 @@ fn install_module_from_artifact_action_runs_governance_closure() {
         module_id,
         module_version,
         active,
+        install_target,
         proposal_id,
         manifest_hash,
         fee_kind,
@@ -297,6 +298,7 @@ fn install_module_from_artifact_action_runs_governance_closure() {
     assert_eq!(module_id, "m.loop.active");
     assert_eq!(module_version, "0.1.0");
     assert!(*active);
+    assert_eq!(*install_target, ModuleInstallTarget::SelfAgent);
     assert!(!manifest_hash.is_empty());
     assert_eq!(*fee_kind, ResourceKind::Electricity);
     assert!(*fee_amount > 0);

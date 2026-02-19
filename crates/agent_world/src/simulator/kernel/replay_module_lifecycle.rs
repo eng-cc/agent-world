@@ -1,4 +1,4 @@
-use super::super::types::{ResourceKind, ResourceOwner};
+use super::super::types::{ModuleInstallTarget, ResourceKind, ResourceOwner};
 use super::super::world_model::{
     InstalledModuleState, ModuleArtifactBidState, ModuleArtifactListingState, ModuleArtifactState,
 };
@@ -30,12 +30,14 @@ impl WorldKernel {
                 module_id,
                 module_version,
                 wasm_hash,
+                install_target,
                 active,
             } => Some(self.replay_module_installed(
                 installer_agent_id,
                 module_id,
                 module_version,
                 wasm_hash,
+                install_target,
                 *active,
             )),
             WorldEventKind::ModuleArtifactListed {
@@ -172,6 +174,7 @@ impl WorldKernel {
         module_id: &str,
         module_version: &str,
         wasm_hash: &str,
+        install_target: &ModuleInstallTarget,
         active: bool,
     ) -> Result<(), String> {
         if !self.model.agents.contains_key(installer_agent_id) {
@@ -210,6 +213,7 @@ impl WorldKernel {
                 module_version: module_version.to_string(),
                 wasm_hash: wasm_hash.to_string(),
                 installer_agent_id: installer_agent_id.to_string(),
+                install_target: install_target.clone(),
                 active,
                 installed_at_tick: self.time,
             },

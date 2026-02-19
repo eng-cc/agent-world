@@ -918,6 +918,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 module_version,
                 wasm_hash,
                 active,
+                ..
             } => {
                 self.known_installed_modules.insert(
                     module_id.clone(),
