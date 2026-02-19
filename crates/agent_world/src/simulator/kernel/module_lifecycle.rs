@@ -102,6 +102,44 @@ impl WorldKernel {
         wasm_hash: String,
         activate: bool,
     ) -> WorldEventKind {
+        self.apply_install_module_from_artifact_to_target(
+            installer_agent_id,
+            module_id,
+            module_version,
+            wasm_hash,
+            activate,
+            ModuleInstallTarget::SelfAgent,
+        )
+    }
+
+    pub(super) fn apply_install_module_to_target_from_artifact(
+        &mut self,
+        installer_agent_id: String,
+        module_id: String,
+        module_version: String,
+        wasm_hash: String,
+        activate: bool,
+        install_target: ModuleInstallTarget,
+    ) -> WorldEventKind {
+        self.apply_install_module_from_artifact_to_target(
+            installer_agent_id,
+            module_id,
+            module_version,
+            wasm_hash,
+            activate,
+            install_target,
+        )
+    }
+
+    fn apply_install_module_from_artifact_to_target(
+        &mut self,
+        installer_agent_id: String,
+        module_id: String,
+        module_version: String,
+        wasm_hash: String,
+        activate: bool,
+        install_target: ModuleInstallTarget,
+    ) -> WorldEventKind {
         if !self.model.agents.contains_key(&installer_agent_id) {
             return WorldEventKind::ActionRejected {
                 reason: RejectReason::AgentNotFound {
@@ -109,6 +147,12 @@ impl WorldKernel {
                 },
             };
         }
+        let installer_location_id = self
+            .model
+            .agents
+            .get(&installer_agent_id)
+            .map(|agent| agent.location_id.clone())
+            .unwrap_or_default();
 
         let module_id = module_id.trim().to_string();
         if module_id.is_empty() {
@@ -160,6 +204,38 @@ impl WorldKernel {
             };
         }
 
+        let install_target = match install_target {
+            ModuleInstallTarget::SelfAgent => ModuleInstallTarget::SelfAgent,
+            ModuleInstallTarget::LocationInfrastructure { location_id } => {
+                let location_id = location_id.trim().to_string();
+                if location_id.is_empty() {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "install module rejected: location infrastructure target requires non-empty location_id".to_string(),
+                            ],
+                        },
+                    };
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::LocationNotFound { location_id },
+                    };
+                }
+                if installer_location_id != location_id {
+                    return WorldEventKind::ActionRejected {
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "install module rejected: installer {} is at {} but target infrastructure is {}",
+                                installer_agent_id, installer_location_id, location_id
+                            )],
+                        },
+                    };
+                }
+                ModuleInstallTarget::LocationInfrastructure { location_id }
+            }
+        };
+
         self.model.installed_modules.insert(
             module_id.clone(),
             InstalledModuleState {
@@ -167,7 +243,7 @@ impl WorldKernel {
                 module_version: module_version.clone(),
                 wasm_hash: wasm_hash.clone(),
                 installer_agent_id: installer_agent_id.clone(),
-                install_target: ModuleInstallTarget::SelfAgent,
+                install_target: install_target.clone(),
                 active: activate,
                 installed_at_tick: self.time,
             },
@@ -178,7 +254,7 @@ impl WorldKernel {
             module_id,
             module_version,
             wasm_hash,
-            install_target: ModuleInstallTarget::SelfAgent,
+            install_target,
             active: activate,
         }
     }

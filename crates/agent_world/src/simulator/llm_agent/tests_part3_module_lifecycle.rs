@@ -29,6 +29,7 @@ fn decision_tool_schema_includes_module_lifecycle_actions_and_fields() {
     assert!(decision_enum.contains(&"compile_module_artifact_from_source"));
     assert!(decision_enum.contains(&"deploy_module_artifact"));
     assert!(decision_enum.contains(&"install_module_from_artifact"));
+    assert!(decision_enum.contains(&"install_module_to_target_from_artifact"));
     assert!(decision_enum.contains(&"list_module_artifact_for_sale"));
     assert!(decision_enum.contains(&"buy_module_artifact"));
     assert!(decision_enum.contains(&"delist_module_artifact"));
@@ -46,6 +47,8 @@ fn decision_tool_schema_includes_module_lifecycle_actions_and_fields() {
     assert!(properties.contains_key("wasm_bytes_hex"));
     assert!(properties.contains_key("module_version"));
     assert!(properties.contains_key("activate"));
+    assert!(properties.contains_key("install_target_type"));
+    assert!(properties.contains_key("install_target_location_id"));
     assert!(properties.contains_key("price_kind"));
     assert!(properties.contains_key("price_amount"));
     assert!(properties.contains_key("bid_order_id"));
@@ -129,6 +132,42 @@ fn llm_parse_install_module_from_artifact_defaults_version_and_activate() {
             assert_eq!(module_version, "0.1.0");
             assert_eq!(wasm_hash, "abcd");
             assert!(*activate);
+        }
+        other => panic!("unexpected parsed turn: {other:?}"),
+    }
+}
+
+#[test]
+fn llm_parse_install_module_to_target_from_artifact_action() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"install_module_to_target_from_artifact","installer":"self","module_id":"m.llm.install.target","module_version":"0.2.0","wasm_hash":"hash-target","activate":false,"install_target_type":"location_infrastructure","install_target_location_id":"loc-hub"}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1");
+
+    match parsed.first().expect("parsed turn") {
+        ParsedLlmTurn::Decision {
+            decision:
+                AgentDecision::Act(Action::InstallModuleToTargetFromArtifact {
+                    installer_agent_id,
+                    module_id,
+                    module_version,
+                    wasm_hash,
+                    activate,
+                    install_target,
+                }),
+            ..
+        } => {
+            assert_eq!(installer_agent_id, "agent-1");
+            assert_eq!(module_id, "m.llm.install.target");
+            assert_eq!(module_version, "0.2.0");
+            assert_eq!(wasm_hash, "hash-target");
+            assert!(!*activate);
+            assert_eq!(
+                install_target,
+                &ModuleInstallTarget::LocationInfrastructure {
+                    location_id: "loc-hub".to_string(),
+                }
+            );
         }
         other => panic!("unexpected parsed turn: {other:?}"),
     }
@@ -266,6 +305,13 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
             .and_then(|value| value.as_str()),
         Some("m.llm.lifecycle")
     );
+    assert_eq!(
+        installed[0]
+            .get("install_target")
+            .and_then(|value| value.get("type"))
+            .and_then(|value| value.as_str()),
+        Some("self_agent")
+    );
 }
 
 #[test]
@@ -276,6 +322,7 @@ fn llm_agent_prompt_mentions_module_lifecycle_decisions() {
     assert!(prompt.contains("compile_module_artifact_from_source"));
     assert!(prompt.contains("deploy_module_artifact"));
     assert!(prompt.contains("install_module_from_artifact"));
+    assert!(prompt.contains("install_module_to_target_from_artifact"));
     assert!(prompt.contains("list_module_artifact_for_sale"));
     assert!(prompt.contains("buy_module_artifact"));
     assert!(prompt.contains("place_module_artifact_bid"));

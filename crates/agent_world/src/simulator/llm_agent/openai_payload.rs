@@ -22,6 +22,7 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
         "compile_module_artifact_from_source",
         "deploy_module_artifact",
         "install_module_from_artifact",
+        "install_module_to_target_from_artifact",
         "list_module_artifact_for_sale",
         "buy_module_artifact",
         "delist_module_artifact",
@@ -62,6 +63,11 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
     "bidder": { "type": "string" },
     "module_id": { "type": "string" },
     "module_version": { "type": "string" },
+    "install_target_type": {
+      "type": "string",
+      "enum": ["self_agent", "location_infrastructure"]
+    },
+    "install_target_location_id": { "type": "string" },
     "manifest_path": { "type": "string" },
     "source_files": {
       "type": "object",

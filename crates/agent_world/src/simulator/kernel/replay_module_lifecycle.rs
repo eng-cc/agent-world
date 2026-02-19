@@ -183,6 +183,12 @@ impl WorldKernel {
                 installer_agent_id
             ));
         }
+        let installer_location_id = self
+            .model
+            .agents
+            .get(installer_agent_id)
+            .map(|agent| agent.location_id.clone())
+            .unwrap_or_default();
         if module_id.trim().is_empty() {
             return Err("installed module_id cannot be empty".to_string());
         }
@@ -206,6 +212,32 @@ impl WorldKernel {
             ));
         }
 
+        let install_target = match install_target {
+            ModuleInstallTarget::SelfAgent => ModuleInstallTarget::SelfAgent,
+            ModuleInstallTarget::LocationInfrastructure { location_id } => {
+                let location_id = location_id.trim().to_string();
+                if location_id.is_empty() {
+                    return Err(
+                        "installed module infrastructure target requires non-empty location_id"
+                            .to_string(),
+                    );
+                }
+                if !self.model.locations.contains_key(&location_id) {
+                    return Err(format!(
+                        "installed module target location not found: {}",
+                        location_id
+                    ));
+                }
+                if installer_location_id != location_id {
+                    return Err(format!(
+                        "installed module infrastructure location mismatch: installer={} at={} target={}",
+                        installer_agent_id, installer_location_id, location_id
+                    ));
+                }
+                ModuleInstallTarget::LocationInfrastructure { location_id }
+            }
+        };
+
         self.model.installed_modules.insert(
             module_id.to_string(),
             InstalledModuleState {
@@ -213,7 +245,7 @@ impl WorldKernel {
                 module_version: module_version.to_string(),
                 wasm_hash: wasm_hash.to_string(),
                 installer_agent_id: installer_agent_id.to_string(),
-                install_target: install_target.clone(),
+                install_target,
                 active,
                 installed_at_tick: self.time,
             },

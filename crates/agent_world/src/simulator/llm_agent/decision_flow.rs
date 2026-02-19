@@ -93,6 +93,8 @@ struct LlmDecisionPayload {
     bidder: Option<String>,
     module_id: Option<String>,
     module_version: Option<String>,
+    install_target_type: Option<String>,
+    install_target_location_id: Option<String>,
     manifest_path: Option<String>,
     source_files: Option<BTreeMap<String, String>>,
     wasm_hash: Option<String>,

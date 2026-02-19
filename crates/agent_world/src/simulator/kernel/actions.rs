@@ -1060,13 +1060,14 @@ impl WorldKernel {
                 module_version,
                 wasm_hash,
                 activate,
-                ..
-            } => self.apply_install_module_from_artifact(
+                install_target,
+            } => self.apply_install_module_to_target_from_artifact(
                 installer_agent_id,
                 module_id,
                 module_version,
                 wasm_hash,
                 activate,
+                install_target,
             ),
             Action::ListModuleArtifactForSale {
                 seller_agent_id,

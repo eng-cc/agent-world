@@ -1,5 +1,7 @@
 use super::super::super::social::{SocialAdjudicationDecision, SocialStake};
-use super::super::super::types::{Action, PowerOrderSide, ResourceOwner, PPM_BASE};
+use super::super::super::types::{
+    Action, ModuleInstallTarget, PowerOrderSide, ResourceOwner, PPM_BASE,
+};
 use super::{parse_owner_spec, parse_resource_kind, LlmDecisionPayload, LlmSocialStakePayload};
 use std::collections::BTreeMap;
 
@@ -20,6 +22,9 @@ pub(super) fn parse_market_or_social_action(
         "install_module_from_artifact" => {
             Some(parse_install_module_from_artifact(parsed, agent_id))
         }
+        "install_module_to_target_from_artifact" => Some(
+            parse_install_module_to_target_from_artifact(parsed, agent_id),
+        ),
         "list_module_artifact_for_sale" => {
             Some(parse_list_module_artifact_for_sale(parsed, agent_id))
         }
@@ -193,6 +198,83 @@ fn parse_install_module_from_artifact(
         wasm_hash,
         activate,
     })
+}
+
+fn parse_install_module_to_target_from_artifact(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let installer_agent_id = parse_agent_identity_or_self(
+        parsed.installer.as_deref(),
+        "install_module_to_target_from_artifact",
+        "installer",
+        agent_id,
+    )?;
+    let module_id = parse_required_text(
+        parsed.module_id.as_deref(),
+        "install_module_to_target_from_artifact",
+        "module_id",
+    )?;
+    let module_version = parsed
+        .module_version
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("0.1.0")
+        .to_string();
+    let wasm_hash = parse_required_text(
+        parsed.wasm_hash.as_deref(),
+        "install_module_to_target_from_artifact",
+        "wasm_hash",
+    )?;
+    let install_target = parse_install_target(
+        parsed.install_target_type.as_deref(),
+        parsed.install_target_location_id.as_deref(),
+    )?;
+    let activate = parsed.activate.unwrap_or(true);
+    Ok(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id,
+        module_id,
+        module_version,
+        wasm_hash,
+        activate,
+        install_target,
+    })
+}
+
+fn parse_install_target(
+    target_type: Option<&str>,
+    target_location_id: Option<&str>,
+) -> Result<ModuleInstallTarget, String> {
+    let normalized_type = target_type
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("self_agent");
+    match normalized_type {
+        "self_agent" => {
+            if target_location_id
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .is_some()
+            {
+                return Err(
+                    "install_module_to_target_from_artifact install_target_location_id must be empty when install_target_type=self_agent".to_string(),
+                );
+            }
+            Ok(ModuleInstallTarget::SelfAgent)
+        }
+        "location_infrastructure" => {
+            let location_id = parse_required_text(
+                target_location_id,
+                "install_module_to_target_from_artifact",
+                "install_target_location_id",
+            )?;
+            Ok(ModuleInstallTarget::LocationInfrastructure { location_id })
+        }
+        other => Err(format!(
+            "install_module_to_target_from_artifact invalid install_target_type: {other}"
+        )),
+    }
 }
 
 fn parse_list_module_artifact_for_sale(

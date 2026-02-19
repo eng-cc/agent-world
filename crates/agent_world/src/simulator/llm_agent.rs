@@ -22,7 +22,8 @@ use super::agent::{
 use super::kernel::{Observation, RejectReason, WorldEvent, WorldEventKind};
 use super::memory::{AgentMemory, LongTermMemoryEntry, MemoryEntry};
 use super::types::{
-    Action, ResourceKind, ResourceOwner, CM_PER_KM, DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
+    Action, ModuleInstallTarget, ResourceKind, ResourceOwner, CM_PER_KM,
+    DEFAULT_MOVE_COST_PER_KM_ELECTRICITY,
 };
 
 mod behavior_guardrails;
@@ -270,6 +271,7 @@ pub(super) struct KnownInstalledModuleRecord {
     pub module_version: String,
     pub wasm_hash: String,
     pub installer_agent_id: String,
+    pub install_target: ModuleInstallTarget,
     pub active: bool,
 }
 

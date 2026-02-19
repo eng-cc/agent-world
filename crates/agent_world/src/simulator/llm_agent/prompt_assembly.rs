@@ -298,6 +298,7 @@ impl PromptAssembler {
 - compile_module_artifact_from_source: module_id/manifest_path/source_files 必填；source_files value 必须是 utf8 文本
 - deploy_module_artifact: wasm_hash 必须为 sha256 hex；wasm_bytes_hex 必须是非空 hex 字节串
 - install_module_from_artifact: installer 必须是 self 或 agent:<id>；module_version 为空时默认 0.1.0
+- install_module_to_target_from_artifact: install_target_type 仅允许 self_agent/location_infrastructure（location_infrastructure 需要 install_target_location_id）
 - module 市场动作（list/buy/delist/destroy/place_bid/cancel_bid）中的 agent 字段仅允许 self 或 agent:<id>
 - module 市场动作的 price_amount 必须是正整数；cancel_module_artifact_bid.bid_order_id 必须是正整数
 - 若准备 install 但缺少 wasm_hash，先调用 `module.lifecycle.status` 读取最近 artifact 列表再执行

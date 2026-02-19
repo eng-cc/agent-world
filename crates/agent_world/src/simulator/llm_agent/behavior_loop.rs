@@ -917,6 +917,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 module_id,
                 module_version,
                 wasm_hash,
+                install_target,
                 active,
                 ..
             } => {
@@ -927,6 +928,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         module_version: module_version.clone(),
                         wasm_hash: wasm_hash.clone(),
                         installer_agent_id: installer_agent_id.clone(),
+                        install_target: install_target.clone(),
                         active: *active,
                     },
                 );

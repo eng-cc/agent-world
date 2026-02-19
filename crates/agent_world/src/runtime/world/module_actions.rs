@@ -165,6 +165,177 @@ impl World {
         Ok(())
     }
 
+    fn apply_install_module_action(
+        &mut self,
+        action_id: u64,
+        installer_agent_id: &str,
+        manifest: &agent_world_wasm_abi::ModuleManifest,
+        activate: bool,
+        install_target: ModuleInstallTarget,
+    ) -> Result<bool, WorldError> {
+        if !self.state.agents.contains_key(installer_agent_id) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::AgentNotFound {
+                        agent_id: installer_agent_id.to_string(),
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if let Some(owner_agent_id) = self.state.module_artifact_owners.get(&manifest.wasm_hash) {
+            if owner_agent_id != installer_agent_id {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "install module artifact rejected: installer {} does not own {} (owner {})",
+                                installer_agent_id, manifest.wasm_hash, owner_agent_id
+                            )],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        }
+        let fee_kind = ResourceKind::Electricity;
+        let fee_amount = Self::module_install_fee_amount(manifest);
+        if !self.ensure_module_fee_affordable(
+            action_id,
+            installer_agent_id,
+            fee_kind,
+            fee_amount,
+        )? {
+            return Ok(true);
+        }
+
+        let mut changes = ModuleChangeSet {
+            register: vec![manifest.clone()],
+            ..ModuleChangeSet::default()
+        };
+        if activate {
+            changes.activate.push(ModuleActivation {
+                module_id: manifest.module_id.clone(),
+                version: manifest.version.clone(),
+            });
+        }
+
+        let module_changes_value = match serde_json::to_value(&changes) {
+            Ok(value) => value,
+            Err(err) => {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("serialize module changes failed: {err}")],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        };
+
+        let mut manifest_update = self.manifest.clone();
+        manifest_update.version = manifest_update.version.saturating_add(1);
+        let serde_json::Value::Object(content) = &mut manifest_update.content else {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["current manifest content must be object".to_string()],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        };
+        content.insert("module_changes".to_string(), module_changes_value);
+
+        let proposal_id =
+            match self.propose_manifest_update(manifest_update, installer_agent_id.to_string()) {
+                Ok(proposal_id) => proposal_id,
+                Err(err) => {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("propose module install rejected: {err:?}")],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+            };
+
+        if let Err(err) = self.shadow_proposal(proposal_id) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("shadow module install rejected: {err:?}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        if let Err(err) = self.approve_proposal(
+            proposal_id,
+            installer_agent_id.to_string(),
+            ProposalDecision::Approve,
+        ) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("approve module install rejected: {err:?}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        let manifest_hash = match self.apply_proposal(proposal_id) {
+            Ok(hash) => hash,
+            Err(err) => {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("apply module install rejected: {err:?}")],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        };
+
+        self.append_event(
+            WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+                installer_agent_id: installer_agent_id.to_string(),
+                module_id: manifest.module_id.clone(),
+                module_version: manifest.version.clone(),
+                install_target,
+                active: activate,
+                proposal_id,
+                manifest_hash,
+                fee_kind,
+                fee_amount,
+            }),
+            Some(CausedBy::Action(action_id)),
+        )?;
+        Ok(true)
+    }
+
     pub(super) fn try_apply_runtime_module_action(
         &mut self,
         envelope: &ActionEnvelope,
@@ -347,189 +518,25 @@ impl World {
                 installer_agent_id,
                 manifest,
                 activate,
-            } => {
-                if !self.state.agents.contains_key(installer_agent_id) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::AgentNotFound {
-                                agent_id: installer_agent_id.clone(),
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-                if let Some(owner_agent_id) =
-                    self.state.module_artifact_owners.get(&manifest.wasm_hash)
-                {
-                    if owner_agent_id != installer_agent_id {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ActionRejected {
-                                action_id,
-                                reason: RejectReason::RuleDenied {
-                                    notes: vec![format!(
-                                        "install module artifact rejected: installer {} does not own {} (owner {})",
-                                        installer_agent_id, manifest.wasm_hash, owner_agent_id
-                                    )],
-                                },
-                            }),
-                            Some(CausedBy::Action(action_id)),
-                        )?;
-                        return Ok(true);
-                    }
-                }
-                let fee_kind = ResourceKind::Electricity;
-                let fee_amount = Self::module_install_fee_amount(manifest);
-                if !self.ensure_module_fee_affordable(
-                    action_id,
-                    installer_agent_id.as_str(),
-                    fee_kind,
-                    fee_amount,
-                )? {
-                    return Ok(true);
-                }
-
-                let mut changes = ModuleChangeSet {
-                    register: vec![manifest.clone()],
-                    ..ModuleChangeSet::default()
-                };
-                if *activate {
-                    changes.activate.push(ModuleActivation {
-                        module_id: manifest.module_id.clone(),
-                        version: manifest.version.clone(),
-                    });
-                }
-
-                let module_changes_value = match serde_json::to_value(&changes) {
-                    Ok(value) => value,
-                    Err(err) => {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ActionRejected {
-                                action_id,
-                                reason: RejectReason::RuleDenied {
-                                    notes: vec![format!("serialize module changes failed: {err}")],
-                                },
-                            }),
-                            Some(CausedBy::Action(action_id)),
-                        )?;
-                        return Ok(true);
-                    }
-                };
-
-                let mut manifest_update = self.manifest.clone();
-                manifest_update.version = manifest_update.version.saturating_add(1);
-                let serde_json::Value::Object(content) = &mut manifest_update.content else {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec!["current manifest content must be object".to_string()],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                };
-                content.insert("module_changes".to_string(), module_changes_value);
-
-                let proposal_id = match self
-                    .propose_manifest_update(manifest_update, installer_agent_id.clone())
-                {
-                    Ok(proposal_id) => proposal_id,
-                    Err(err) => {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ActionRejected {
-                                action_id,
-                                reason: RejectReason::RuleDenied {
-                                    notes: vec![format!(
-                                        "propose module install rejected: {err:?}"
-                                    )],
-                                },
-                            }),
-                            Some(CausedBy::Action(action_id)),
-                        )?;
-                        return Ok(true);
-                    }
-                };
-
-                if let Err(err) = self.shadow_proposal(proposal_id) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!("shadow module install rejected: {err:?}")],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-
-                if let Err(err) = self.approve_proposal(
-                    proposal_id,
-                    installer_agent_id.clone(),
-                    ProposalDecision::Approve,
-                ) {
-                    self.append_event(
-                        WorldEventBody::Domain(DomainEvent::ActionRejected {
-                            action_id,
-                            reason: RejectReason::RuleDenied {
-                                notes: vec![format!("approve module install rejected: {err:?}")],
-                            },
-                        }),
-                        Some(CausedBy::Action(action_id)),
-                    )?;
-                    return Ok(true);
-                }
-
-                let manifest_hash = match self.apply_proposal(proposal_id) {
-                    Ok(hash) => hash,
-                    Err(err) => {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ActionRejected {
-                                action_id,
-                                reason: RejectReason::RuleDenied {
-                                    notes: vec![format!("apply module install rejected: {err:?}")],
-                                },
-                            }),
-                            Some(CausedBy::Action(action_id)),
-                        )?;
-                        return Ok(true);
-                    }
-                };
-
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ModuleInstalled {
-                        installer_agent_id: installer_agent_id.clone(),
-                        module_id: manifest.module_id.clone(),
-                        module_version: manifest.version.clone(),
-                        install_target: ModuleInstallTarget::SelfAgent,
-                        active: *activate,
-                        proposal_id,
-                        manifest_hash,
-                        fee_kind,
-                        fee_amount,
-                    }),
-                    Some(CausedBy::Action(action_id)),
-                )?;
-                Ok(true)
-            }
-            Action::InstallModuleToTargetFromArtifact { .. } => {
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ActionRejected {
-                        action_id,
-                        reason: RejectReason::RuleDenied {
-                            notes: vec![
-                                "install_module_to_target_from_artifact is not enabled yet"
-                                    .to_string(),
-                            ],
-                        },
-                    }),
-                    Some(CausedBy::Action(action_id)),
-                )?;
-                Ok(true)
-            }
+            } => self.apply_install_module_action(
+                action_id,
+                installer_agent_id.as_str(),
+                manifest,
+                *activate,
+                ModuleInstallTarget::SelfAgent,
+            ),
+            Action::InstallModuleToTargetFromArtifact {
+                installer_agent_id,
+                manifest,
+                activate,
+                install_target,
+            } => self.apply_install_module_action(
+                action_id,
+                installer_agent_id.as_str(),
+                manifest,
+                *activate,
+                install_target.clone(),
+            ),
             Action::ListModuleArtifactForSale {
                 seller_agent_id,
                 wasm_hash,
