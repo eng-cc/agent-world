@@ -13,7 +13,16 @@ pub(crate) fn validate_pos_config(pos_config: &NodePosConfig) -> Result<(), Node
 
 pub(crate) fn validated_pos_state(
     pos_config: &NodePosConfig,
-) -> Result<(BTreeMap<String, u64>, BTreeMap<String, String>, u64, u64), NodeError> {
+) -> Result<
+    (
+        BTreeMap<String, u64>,
+        BTreeMap<String, String>,
+        BTreeMap<String, String>,
+        u64,
+        u64,
+    ),
+    NodeError,
+> {
     if pos_config.validators.is_empty() {
         return Err(NodeError::InvalidConfig {
             reason: "pos validators cannot be empty".to_string(),
@@ -44,6 +53,7 @@ pub(crate) fn validated_pos_state(
 
     let mut validators = BTreeMap::new();
     let mut validator_players = BTreeMap::new();
+    let mut validator_signers = BTreeMap::new();
     let mut player_to_validator = BTreeMap::new();
     for validator in &pos_config.validators {
         let validator_id = validator.validator_id.trim();
@@ -99,6 +109,42 @@ pub(crate) fn validated_pos_state(
             });
         }
     }
+    if !pos_config.validator_signer_public_keys.is_empty() {
+        let mut signer_to_validator = BTreeMap::new();
+        for validator_id in validators.keys() {
+            let raw_signer = pos_config
+                .validator_signer_public_keys
+                .get(validator_id.as_str())
+                .ok_or_else(|| NodeError::InvalidConfig {
+                    reason: format!("missing signer binding for validator {}", validator_id),
+                })?;
+            let normalized_signer = normalize_consensus_public_key_hex(
+                raw_signer,
+                format!("validator_signer_public_keys[{validator_id}]").as_str(),
+            )?;
+            if let Some(existing_validator) =
+                signer_to_validator.insert(normalized_signer.clone(), validator_id.to_string())
+            {
+                return Err(NodeError::InvalidConfig {
+                    reason: format!(
+                        "signer {} is bound to multiple validators: {} and {}",
+                        normalized_signer, existing_validator, validator_id
+                    ),
+                });
+            }
+            validator_signers.insert(validator_id.to_string(), normalized_signer);
+        }
+        for validator_id in pos_config.validator_signer_public_keys.keys() {
+            if !validators.contains_key(validator_id.as_str()) {
+                return Err(NodeError::InvalidConfig {
+                    reason: format!(
+                        "validator signer binding references unknown validator: {}",
+                        validator_id
+                    ),
+                });
+            }
+        }
+    }
 
     let total_stake = validators
         .values()
@@ -114,7 +160,13 @@ pub(crate) fn validated_pos_state(
     .map_err(|reason| NodeError::InvalidConfig {
         reason: format!("invalid pos supermajority: {}", reason),
     })?;
-    Ok((validators, validator_players, total_stake, required_stake))
+    Ok((
+        validators,
+        validator_players,
+        validator_signers,
+        total_stake,
+        required_stake,
+    ))
 }
 
 pub(crate) fn decide_status(
@@ -128,4 +180,23 @@ pub(crate) fn decide_status(
         PosDecisionStatus::Committed => PosConsensusStatus::Committed,
         PosDecisionStatus::Rejected => PosConsensusStatus::Rejected,
     }
+}
+
+pub(crate) fn normalize_consensus_public_key_hex(
+    raw: &str,
+    field: &str,
+) -> Result<String, NodeError> {
+    let normalized = raw.trim();
+    if normalized.is_empty() {
+        return Err(NodeError::InvalidConfig {
+            reason: format!("{field} cannot be empty"),
+        });
+    }
+    let bytes = hex::decode(normalized).map_err(|_| NodeError::InvalidConfig {
+        reason: format!("{field} must be valid hex"),
+    })?;
+    let key_bytes: [u8; 32] = bytes.try_into().map_err(|_| NodeError::InvalidConfig {
+        reason: format!("{field} must be 32-byte hex"),
+    })?;
+    Ok(hex::encode(key_bytes))
 }

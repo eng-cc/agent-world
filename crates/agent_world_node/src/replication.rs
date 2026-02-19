@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{
-    apply_replication_record, build_replication_record_with_epoch, BlobStore as _,
+    apply_replication_record, blake3_hex, build_replication_record_with_epoch, BlobStore as _,
     FileReplicationRecord, LocalCasStore, SingleWriterReplicationGuard,
     StorageChallengeProbeConfig, StorageChallengeProbeReport,
 };
@@ -347,30 +347,11 @@ impl ReplicationRuntime {
         world_id: &str,
         message: &GossipReplicationMessage,
     ) -> Result<(), NodeError> {
-        if message.version != REPLICATION_VERSION {
+        if !self.should_process_remote_message(node_id, world_id, message) {
             return Ok(());
         }
-        if message.node_id == node_id {
-            return Ok(());
-        }
-        if message.world_id != world_id || message.record.world_id != world_id {
-            return Ok(());
-        }
-
-        if self.enforce_signature
-            || message.signature_hex.is_some()
-            || message.public_key_hex.is_some()
-        {
-            verify_replication_message_signature(message)?;
-            if let Some(public_key_hex) = message.public_key_hex.as_deref() {
-                if message.record.writer_id != public_key_hex {
-                    return Err(NodeError::Replication {
-                        reason: "replication writer_id does not match signature public key"
-                            .to_string(),
-                    });
-                }
-            }
-        }
+        self.validate_remote_message_signature_binding(message)?;
+        self.validate_remote_message_payload_hash(message)?;
 
         if self.is_stale_remote_record(&message.record) {
             return Ok(());
@@ -389,6 +370,20 @@ impl ReplicationRuntime {
         }
 
         write_json_pretty(self.config.guard_state_path().as_path(), &self.guard)
+    }
+
+    pub(crate) fn validate_remote_message_for_observe(
+        &self,
+        node_id: &str,
+        world_id: &str,
+        message: &GossipReplicationMessage,
+    ) -> Result<bool, NodeError> {
+        if !self.should_process_remote_message(node_id, world_id, message) {
+            return Ok(false);
+        }
+        self.validate_remote_message_signature_binding(message)?;
+        self.validate_remote_message_payload_hash(message)?;
+        Ok(true)
     }
 
     fn persist_state(&self, node_id: &str) -> Result<(), NodeError> {
@@ -507,6 +502,61 @@ impl ReplicationRuntime {
             height = height.saturating_sub(1);
         }
         Ok(samples)
+    }
+
+    fn should_process_remote_message(
+        &self,
+        node_id: &str,
+        world_id: &str,
+        message: &GossipReplicationMessage,
+    ) -> bool {
+        if message.version != REPLICATION_VERSION {
+            return false;
+        }
+        if message.node_id == node_id {
+            return false;
+        }
+        if message.world_id != world_id || message.record.world_id != world_id {
+            return false;
+        }
+        true
+    }
+
+    fn validate_remote_message_signature_binding(
+        &self,
+        message: &GossipReplicationMessage,
+    ) -> Result<(), NodeError> {
+        if self.enforce_signature
+            || message.signature_hex.is_some()
+            || message.public_key_hex.is_some()
+        {
+            verify_replication_message_signature(message)?;
+            if let Some(public_key_hex) = message.public_key_hex.as_deref() {
+                if message.record.writer_id != public_key_hex {
+                    return Err(NodeError::Replication {
+                        reason: "replication writer_id does not match signature public key"
+                            .to_string(),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_remote_message_payload_hash(
+        &self,
+        message: &GossipReplicationMessage,
+    ) -> Result<(), NodeError> {
+        let computed_hash = blake3_hex(message.payload.as_slice());
+        if computed_hash != message.record.content_hash {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "replication payload hash mismatch expected={} actual={}",
+                    message.record.content_hash, computed_hash
+                ),
+            });
+        }
+        Ok(())
     }
 }
 

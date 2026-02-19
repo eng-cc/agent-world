@@ -62,7 +62,7 @@ pub use types::{
 use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
 use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
-use pos_validation::{decide_status, validated_pos_state};
+use pos_validation::{decide_status, normalize_consensus_public_key_hex, validated_pos_state};
 use replication::{
     load_blob_from_root, load_commit_message_from_root, FetchBlobRequest, FetchBlobResponse,
     FetchCommitRequest, FetchCommitResponse, ReplicationRuntime, REPLICATION_FETCH_BLOB_PROTOCOL,
@@ -131,8 +131,13 @@ impl NodeRuntime {
             .as_ref()
             .map(PosNodeStateStore::from_replication);
         if let Some(store) = pos_state_store.as_ref() {
-            if let Ok(Some(snapshot)) = store.load() {
-                engine.restore_state_snapshot(snapshot);
+            match store.load() {
+                Ok(Some(snapshot)) => engine.restore_state_snapshot(snapshot),
+                Ok(None) => {}
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(err);
+                }
             }
         }
         let mut gossip = if let Some(config) = &self.config.gossip {
@@ -442,6 +447,7 @@ fn network_replication_error(err: ProtoWorldError) -> NodeError {
 struct PosNodeEngine {
     validators: BTreeMap<String, u64>,
     validator_players: BTreeMap<String, String>,
+    validator_signers: BTreeMap<String, String>,
     total_stake: u64,
     required_stake: u64,
     epoch_length_slots: u64,
@@ -536,7 +542,7 @@ struct NodeEngineTickResult {
 
 impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
-        let (validators, validator_players, total_stake, required_stake) =
+        let (validators, validator_players, validator_signers, total_stake, required_stake) =
             validated_pos_state(&config.pos_config)?;
         let (consensus_signer, enforce_consensus_signature) =
             if let Some(replication) = &config.replication {
@@ -563,6 +569,7 @@ impl PosNodeEngine {
         Ok(Self {
             validators,
             validator_players,
+            validator_signers,
             total_stake,
             required_stake,
             epoch_length_slots: config.pos_config.epoch_length_slots,
@@ -1146,31 +1153,65 @@ impl PosNodeEngine {
         world_id: &str,
         mut replication: Option<&mut ReplicationRuntime>,
     ) -> Result<(), NodeError> {
+        let Some(replication_runtime) = replication.as_deref_mut() else {
+            return Ok(());
+        };
         let messages = endpoint.drain_replications()?;
+        let mut rejected = Vec::new();
         for message in messages {
             let payload_view = parse_replication_commit_payload_view(message.payload.as_slice());
+            match replication_runtime
+                .validate_remote_message_for_observe(node_id, world_id, &message)
+            {
+                Ok(true) => {}
+                Ok(false) => continue,
+                Err(err) => {
+                    rejected.push(format!(
+                        "node_id={} world_id={} err={}",
+                        message.node_id, message.world_id, err
+                    ));
+                    continue;
+                }
+            }
             if let Some(payload) = payload_view.as_ref() {
                 self.observe_network_replication_commit(message.node_id.as_str(), payload);
             }
-            if let Some(replication_runtime) = replication.as_deref_mut() {
-                let should_apply = payload_view
-                    .as_ref()
-                    .map(|payload| payload.height <= self.committed_height.saturating_add(1))
-                    .unwrap_or(true);
-                if !should_apply {
-                    continue;
-                }
-                let _ = replication_runtime.apply_remote_message(node_id, world_id, &message);
-                if let Some(payload) = payload_view {
-                    if payload.height == self.committed_height.saturating_add(1)
-                        && replication_runtime
-                            .load_commit_message_by_height(world_id, payload.height)?
-                            .is_some()
-                    {
-                        self.record_synced_replication_height(payload.height, payload.block_hash);
+            let should_apply = payload_view
+                .as_ref()
+                .map(|payload| payload.height <= self.committed_height.saturating_add(1))
+                .unwrap_or(true);
+            if !should_apply {
+                continue;
+            }
+            match replication_runtime.apply_remote_message(node_id, world_id, &message) {
+                Ok(()) => {
+                    if let Some(payload) = payload_view {
+                        if payload.height == self.committed_height.saturating_add(1)
+                            && replication_runtime
+                                .load_commit_message_by_height(world_id, payload.height)?
+                                .is_some()
+                        {
+                            self.record_synced_replication_height(
+                                payload.height,
+                                payload.block_hash,
+                            );
+                        }
                     }
                 }
+                Err(err) => rejected.push(format!(
+                    "node_id={} world_id={} err={}",
+                    message.node_id, message.world_id, err
+                )),
             }
+        }
+        if !rejected.is_empty() {
+            let rejected_count = rejected.len();
+            let sample = rejected.into_iter().take(3).collect::<Vec<_>>();
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "replication ingest rejected {rejected_count} message(s); sample={sample:?}"
+                ),
+            });
         }
         Ok(())
     }
@@ -1376,6 +1417,16 @@ impl PosNodeEngine {
         {
             return Ok(());
         }
+        if self
+            .validate_message_signer_binding(
+                message.proposer_id.as_str(),
+                message.public_key_hex.as_deref(),
+                "proposal",
+            )
+            .is_err()
+        {
+            return Ok(());
+        }
         if message.height < self.next_height {
             return Ok(());
         }
@@ -1446,6 +1497,16 @@ impl PosNodeEngine {
         {
             return Ok(());
         }
+        if self
+            .validate_message_signer_binding(
+                message.validator_id.as_str(),
+                message.public_key_hex.as_deref(),
+                "attestation",
+            )
+            .is_err()
+        {
+            return Ok(());
+        }
         let Some(mut proposal) = self.pending.clone() else {
             return Ok(());
         };
@@ -1500,6 +1561,16 @@ impl PosNodeEngine {
                         .validate_message_player_binding(
                             commit.node_id.as_str(),
                             commit.player_id.as_str(),
+                            "commit",
+                        )
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    if self
+                        .validate_message_signer_binding(
+                            commit.node_id.as_str(),
+                            commit.public_key_hex.as_deref(),
                             "commit",
                         )
                         .is_err()
@@ -1599,6 +1670,16 @@ impl PosNodeEngine {
                         .validate_message_player_binding(
                             commit.node_id.as_str(),
                             commit.player_id.as_str(),
+                            "commit",
+                        )
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    if self
+                        .validate_message_signer_binding(
+                            commit.node_id.as_str(),
+                            commit.public_key_hex.as_deref(),
                             "commit",
                         )
                         .is_err()
@@ -1716,3 +1797,5 @@ mod tests;
 mod tests_action_payload;
 #[cfg(test)]
 mod tests_gossip_player;
+#[cfg(test)]
+mod tests_hardening;

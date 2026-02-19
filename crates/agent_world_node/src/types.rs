@@ -69,6 +69,7 @@ pub struct PosValidator {
 pub struct NodePosConfig {
     pub validators: Vec<PosValidator>,
     pub validator_player_ids: BTreeMap<String, String>,
+    pub validator_signer_public_keys: BTreeMap<String, String>,
     pub supermajority_numerator: u64,
     pub supermajority_denominator: u64,
     pub epoch_length_slots: u64,
@@ -86,6 +87,7 @@ impl NodePosConfig {
         Self {
             validators,
             validator_player_ids,
+            validator_signer_public_keys: BTreeMap::new(),
             supermajority_numerator: 2,
             supermajority_denominator: 3,
             epoch_length_slots: 32,
@@ -97,6 +99,15 @@ impl NodePosConfig {
         validator_player_ids: BTreeMap<String, String>,
     ) -> Result<Self, NodeError> {
         self.validator_player_ids = validator_player_ids;
+        validate_pos_config(&self)?;
+        Ok(self)
+    }
+
+    pub fn with_validator_signer_public_keys(
+        mut self,
+        validator_signer_public_keys: BTreeMap<String, String>,
+    ) -> Result<Self, NodeError> {
+        self.validator_signer_public_keys = validator_signer_public_keys;
         validate_pos_config(&self)?;
         Ok(self)
     }

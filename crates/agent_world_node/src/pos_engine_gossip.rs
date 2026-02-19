@@ -42,6 +42,37 @@ impl PosNodeEngine {
         Ok(())
     }
 
+    pub(super) fn validate_message_signer_binding(
+        &self,
+        validator_id: &str,
+        message_public_key_hex: Option<&str>,
+        label: &str,
+    ) -> Result<(), NodeError> {
+        let Some(expected_public_key) = self.validator_signers.get(validator_id) else {
+            return Ok(());
+        };
+        let Some(actual_raw) = message_public_key_hex else {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "{label} signer binding missing public_key_hex for validator_id={validator_id}"
+                ),
+            });
+        };
+        let actual_public_key = normalize_consensus_public_key_hex(
+            actual_raw,
+            format!("{label}.public_key_hex").as_str(),
+        )?;
+        if &actual_public_key != expected_public_key {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "{label} signer binding mismatch validator_id={} expected={} actual={}",
+                    validator_id, expected_public_key, actual_public_key
+                ),
+            });
+        }
+        Ok(())
+    }
+
     pub(super) fn broadcast_local_proposal(
         &mut self,
         endpoint: &GossipEndpoint,
