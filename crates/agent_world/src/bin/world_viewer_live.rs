@@ -48,7 +48,9 @@ mod observation_trace_runtime;
 mod reward_runtime_network;
 #[path = "world_viewer_live/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
-use cli::{parse_options, print_help, CliOptions, NodeTopologyMode};
+use cli::{
+    parse_options, print_help, resolve_triad_distributed_gossip, CliOptions, NodeTopologyMode,
+};
 use distfs_challenge_network::{
     storage_proof_hint_value_from_semantics, DistfsChallengeNetworkDriver,
     DistfsChallengeNetworkTickReport,
@@ -383,16 +385,8 @@ fn default_replication_network_config(
             apply_role_replication_addrs(&mut config, role, sequencer, storage, observer)?;
         }
         NodeTopologyMode::TriadDistributed => {
-            let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
-                "--triad-sequencer-gossip is required in triad_distributed".to_string()
-            })?;
-            let storage = options.triad_distributed_storage_gossip.ok_or_else(|| {
-                "--triad-storage-gossip is required in triad_distributed".to_string()
-            })?;
-            let observer = options.triad_distributed_observer_gossip.ok_or_else(|| {
-                "--triad-observer-gossip is required in triad_distributed".to_string()
-            })?;
-            apply_role_replication_addrs(&mut config, role, sequencer, storage, observer)?;
+            let (bind_addr, peers) = resolve_triad_distributed_gossip(options, role)?;
+            apply_role_replication_addrs_from_peer_set(&mut config, role, bind_addr, peers)?;
         }
     }
     Ok(config)
@@ -422,6 +416,35 @@ fn apply_role_replication_addrs(
             )
         })?);
     for peer in peers {
+        config
+            .bootstrap_peers
+            .push(socket_addr_to_multiaddr(peer).parse().map_err(|err| {
+                format!(
+                    "default replication peer multiaddr invalid for role {}: {err}",
+                    role.as_str()
+                )
+            })?);
+    }
+    Ok(())
+}
+
+fn apply_role_replication_addrs_from_peer_set(
+    config: &mut Libp2pReplicationNetworkConfig,
+    role: NodeRole,
+    bind_gossip: SocketAddr,
+    peer_gossip: Vec<SocketAddr>,
+) -> Result<(), String> {
+    let listen = with_replication_port_offset(bind_gossip, "triad distributed gossip bind")?;
+    config
+        .listen_addrs
+        .push(socket_addr_to_multiaddr(listen).parse().map_err(|err| {
+            format!(
+                "default replication listen multiaddr invalid for role {}: {err}",
+                role.as_str()
+            )
+        })?);
+    for peer_gossip_addr in peer_gossip {
+        let peer = with_replication_port_offset(peer_gossip_addr, "triad distributed gossip peer")?;
         config
             .bootstrap_peers
             .push(socket_addr_to_multiaddr(peer).parse().map_err(|err| {
@@ -655,15 +678,7 @@ fn start_triad_distributed_live_node(
     let sequencer_node_id = format!("{base_id}-sequencer");
     let storage_node_id = format!("{base_id}-storage");
     let observer_node_id = format!("{base_id}-observer");
-    let sequencer_bind = options
-        .triad_distributed_sequencer_gossip
-        .ok_or_else(|| "--triad-sequencer-gossip is required in triad_distributed".to_string())?;
-    let storage_bind = options
-        .triad_distributed_storage_gossip
-        .ok_or_else(|| "--triad-storage-gossip is required in triad_distributed".to_string())?;
-    let observer_bind = options
-        .triad_distributed_observer_gossip
-        .ok_or_else(|| "--triad-observer-gossip is required in triad_distributed".to_string())?;
+    let (bind_addr, peers) = resolve_triad_distributed_gossip(options, options.node_role)?;
 
     let validators = vec![
         PosValidator {
@@ -679,25 +694,10 @@ fn start_triad_distributed_live_node(
             stake: 33,
         },
     ];
-    let (node_id, bind_addr, peers, attach_execution_hook) = match options.node_role {
-        NodeRole::Sequencer => (
-            sequencer_node_id,
-            sequencer_bind,
-            vec![storage_bind, observer_bind],
-            true,
-        ),
-        NodeRole::Storage => (
-            storage_node_id,
-            storage_bind,
-            vec![sequencer_bind, observer_bind],
-            false,
-        ),
-        NodeRole::Observer => (
-            observer_node_id,
-            observer_bind,
-            vec![sequencer_bind, storage_bind],
-            false,
-        ),
+    let (node_id, attach_execution_hook) = match options.node_role {
+        NodeRole::Sequencer => (sequencer_node_id, true),
+        NodeRole::Storage => (storage_node_id, false),
+        NodeRole::Observer => (observer_node_id, false),
     };
 
     let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), options.node_role)

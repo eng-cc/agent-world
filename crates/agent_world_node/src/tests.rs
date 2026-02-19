@@ -2,7 +2,7 @@ use super::consensus_signature::{
     sign_attestation_message, sign_commit_message, sign_proposal_message,
     verify_commit_message_signature, ConsensusMessageSigner,
 };
-use super::gossip_udp::{GossipCommitMessage, GossipEndpoint};
+use super::gossip_udp::{GossipCommitMessage, GossipEndpoint, GossipMessage};
 use super::*;
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use agent_world_proto::distributed_net::NetworkSubscription;
@@ -733,6 +733,97 @@ fn config_with_gossip_rejects_empty_peers() {
         .expect("config")
         .with_gossip(bind_addr, vec![]);
     assert!(matches!(config, Err(NodeError::InvalidConfig { .. })));
+}
+
+#[test]
+fn gossip_endpoint_learns_inbound_peer_for_followup_broadcasts() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let world_id = "world-gossip-discovery";
+    let config_a = NodeConfig::new("node-a", world_id, NodeRole::Observer)
+        .expect("config a")
+        .with_pos_validators(vec![
+            PosValidator {
+                validator_id: "node-a".to_string(),
+                stake: 50,
+            },
+            PosValidator {
+                validator_id: "node-b".to_string(),
+                stake: 50,
+            },
+        ])
+        .expect("validators")
+        .with_gossip_optional(addr_a, Vec::new());
+    let mut engine_a = PosNodeEngine::new(&config_a).expect("engine a");
+
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: Vec::new(),
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    endpoint_b
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: world_id.to_string(),
+            node_id: "node-b".to_string(),
+            player_id: "node-b".to_string(),
+            height: 1,
+            slot: 1,
+            epoch: 0,
+            block_hash: "block-b-1".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 1_000,
+            execution_block_hash: None,
+            execution_state_root: None,
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast to a");
+    thread::sleep(Duration::from_millis(20));
+    engine_a
+        .ingest_peer_messages(&endpoint_a, "node-a", world_id, None)
+        .expect("ingest from b");
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: world_id.to_string(),
+            node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
+            height: 2,
+            slot: 2,
+            epoch: 0,
+            block_hash: "block-a-2".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 2_000,
+            execution_block_hash: None,
+            execution_state_root: None,
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("rebroadcast to discovered peer");
+    thread::sleep(Duration::from_millis(20));
+
+    let echoed = endpoint_b.drain_messages().expect("drain endpoint b");
+    assert!(echoed.iter().any(|received| {
+        matches!(
+            &received.message,
+            GossipMessage::Commit(commit) if commit.node_id == "node-a" && commit.height == 2
+        )
+    }));
 }
 
 #[test]

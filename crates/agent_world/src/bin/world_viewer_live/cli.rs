@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::net::SocketAddr;
 use std::process;
 
@@ -448,26 +449,7 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
         if options.node_gossip_bind.is_some() || !options.node_gossip_peers.is_empty() {
             return Err("--node-gossip-* is only supported in --topology single".to_string());
         }
-
-        let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
-            "--topology triad_distributed requires --triad-sequencer-gossip <addr:port>".to_string()
-        })?;
-        let storage = options.triad_distributed_storage_gossip.ok_or_else(|| {
-            "--topology triad_distributed requires --triad-storage-gossip <addr:port>".to_string()
-        })?;
-        let observer = options.triad_distributed_observer_gossip.ok_or_else(|| {
-            "--topology triad_distributed requires --triad-observer-gossip <addr:port>".to_string()
-        })?;
-        let mut dedup = std::collections::BTreeSet::new();
-        dedup.insert(sequencer);
-        dedup.insert(storage);
-        dedup.insert(observer);
-        if dedup.len() != 3 {
-            return Err(
-                "--topology triad_distributed requires distinct addresses for sequencer/storage/observer gossip"
-                    .to_string(),
-            );
-        }
+        let _ = resolve_triad_distributed_gossip(&options, options.node_role)?;
     }
     if options
         .reward_distfs_probe_config
@@ -509,9 +491,15 @@ pub(super) fn print_help() {
         "  --topology <mode> Node topology mode: single|triad|triad_distributed (default: triad)"
     );
     println!("  --triad-gossip-base-port <port> Triad gossip base UDP port (default: 5500)");
-    println!("  --triad-sequencer-gossip <addr:port> Triad distributed sequencer gossip bind");
-    println!("  --triad-storage-gossip <addr:port> Triad distributed storage gossip bind");
-    println!("  --triad-observer-gossip <addr:port> Triad distributed observer gossip bind");
+    println!(
+        "  --triad-sequencer-gossip <addr:port> Triad distributed sequencer gossip bind/bootstrap (required for all roles)"
+    );
+    println!(
+        "  --triad-storage-gossip <addr:port> Triad distributed storage gossip bind (required when --node-role storage)"
+    );
+    println!(
+        "  --triad-observer-gossip <addr:port> Triad distributed observer gossip bind (required when --node-role observer)"
+    );
     println!(
         "  --viewer-no-consensus-gate Disable viewer tick gating by node consensus/execution height"
     );
@@ -615,4 +603,74 @@ fn parse_validator_spec(raw: &str) -> Result<PosValidator, String> {
 fn parse_socket_addr(raw: &str, flag: &str) -> Result<SocketAddr, String> {
     raw.parse::<SocketAddr>()
         .map_err(|_| format!("{flag} requires a valid <addr:port>, got: {raw}"))
+}
+
+fn triad_distributed_missing_addr_error(role: NodeRole, flag: &str) -> String {
+    format!(
+        "--topology triad_distributed with --node-role {} requires {flag} <addr:port>",
+        role.as_str()
+    )
+}
+
+pub(super) fn resolve_triad_distributed_gossip(
+    options: &CliOptions,
+    role: NodeRole,
+) -> Result<(SocketAddr, Vec<SocketAddr>), String> {
+    let (bind_addr, mut peers) = match role {
+        NodeRole::Sequencer => (
+            options.triad_distributed_sequencer_gossip.ok_or_else(|| {
+                triad_distributed_missing_addr_error(role, "--triad-sequencer-gossip")
+            })?,
+            vec![
+                options.triad_distributed_storage_gossip,
+                options.triad_distributed_observer_gossip,
+            ],
+        ),
+        NodeRole::Storage => {
+            let bind_addr = options.triad_distributed_storage_gossip.ok_or_else(|| {
+                triad_distributed_missing_addr_error(role, "--triad-storage-gossip")
+            })?;
+            let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
+                triad_distributed_missing_addr_error(role, "--triad-sequencer-gossip")
+            })?;
+            if sequencer == bind_addr {
+                return Err(
+                    "--topology triad_distributed requires --triad-storage-gossip distinct from --triad-sequencer-gossip"
+                        .to_string(),
+                );
+            }
+            (
+                bind_addr,
+                vec![Some(sequencer), options.triad_distributed_observer_gossip],
+            )
+        }
+        NodeRole::Observer => {
+            let bind_addr = options.triad_distributed_observer_gossip.ok_or_else(|| {
+                triad_distributed_missing_addr_error(role, "--triad-observer-gossip")
+            })?;
+            let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
+                triad_distributed_missing_addr_error(role, "--triad-sequencer-gossip")
+            })?;
+            if sequencer == bind_addr {
+                return Err(
+                    "--topology triad_distributed requires --triad-observer-gossip distinct from --triad-sequencer-gossip"
+                        .to_string(),
+                );
+            }
+            (
+                bind_addr,
+                vec![Some(sequencer), options.triad_distributed_storage_gossip],
+            )
+        }
+    };
+
+    let mut dedup = BTreeSet::new();
+    peers.retain(Option::is_some);
+    let peers = peers
+        .into_iter()
+        .flatten()
+        .filter(|peer| *peer != bind_addr)
+        .filter(|peer| dedup.insert(*peer))
+        .collect::<Vec<_>>();
+    Ok((bind_addr, peers))
 }

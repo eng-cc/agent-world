@@ -1449,8 +1449,9 @@ impl PosNodeEngine {
         mut replication: Option<&mut ReplicationRuntime>,
     ) -> Result<(), NodeError> {
         let messages = endpoint.drain_messages()?;
-        for message in messages {
-            match message {
+        for received in messages {
+            let from = received.from;
+            match received.message {
                 GossipMessage::Commit(commit) => {
                     if commit.version != 1 || commit.world_id != world_id {
                         continue;
@@ -1483,6 +1484,7 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
+                    endpoint.remember_peer(from)?;
                     let previous_height = self
                         .peer_heads
                         .get(commit.node_id.as_str())
@@ -1506,6 +1508,9 @@ impl PosNodeEngine {
                     }
                 }
                 GossipMessage::Proposal(proposal) => {
+                    if proposal.version != 1 || proposal.world_id != world_id {
+                        continue;
+                    }
                     if verify_proposal_message_signature(
                         &proposal,
                         self.enforce_consensus_signature,
@@ -1515,8 +1520,12 @@ impl PosNodeEngine {
                         continue;
                     }
                     self.ingest_proposal_message(world_id, &proposal)?;
+                    endpoint.remember_peer(from)?;
                 }
                 GossipMessage::Attestation(attestation) => {
+                    if attestation.version != 1 || attestation.world_id != world_id {
+                        continue;
+                    }
                     if verify_attestation_message_signature(
                         &attestation,
                         self.enforce_consensus_signature,
@@ -1526,14 +1535,22 @@ impl PosNodeEngine {
                         continue;
                     }
                     self.ingest_attestation_message(world_id, &attestation)?;
+                    endpoint.remember_peer(from)?;
                 }
                 GossipMessage::Replication(replication_msg) => {
+                    if replication_msg.version != 1
+                        || replication_msg.world_id != world_id
+                        || replication_msg.record.world_id != world_id
+                    {
+                        continue;
+                    }
                     if let Some(replication_runtime) = replication.as_deref_mut() {
-                        let _ = replication_runtime.apply_remote_message(
-                            node_id,
-                            world_id,
-                            &replication_msg,
-                        );
+                        if replication_runtime
+                            .apply_remote_message(node_id, world_id, &replication_msg)
+                            .is_ok()
+                        {
+                            endpoint.remember_peer(from)?;
+                        }
                     }
                 }
             }

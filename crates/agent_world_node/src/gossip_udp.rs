@@ -1,4 +1,6 @@
+use std::collections::BTreeSet;
 use std::net::{SocketAddr, UdpSocket};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
@@ -93,7 +95,14 @@ pub(crate) enum GossipMessage {
 #[derive(Debug)]
 pub(crate) struct GossipEndpoint {
     socket: UdpSocket,
-    peers: Vec<SocketAddr>,
+    bind_addr: SocketAddr,
+    peers: Mutex<BTreeSet<SocketAddr>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ReceivedGossipMessage {
+    pub from: SocketAddr,
+    pub message: GossipMessage,
 }
 
 impl GossipEndpoint {
@@ -106,9 +115,16 @@ impl GossipEndpoint {
             .map_err(|err| NodeError::Gossip {
                 reason: format!("set_nonblocking failed: {}", err),
             })?;
+        let peers = config
+            .peers
+            .iter()
+            .copied()
+            .filter(|peer| *peer != config.bind_addr)
+            .collect::<BTreeSet<_>>();
         Ok(Self {
             socket,
-            peers: config.peers.clone(),
+            bind_addr: config.bind_addr,
+            peers: Mutex::new(peers),
         })
     }
 
@@ -145,9 +161,9 @@ impl GossipEndpoint {
     }
 
     fn broadcast_bytes(&self, bytes: &[u8]) -> Result<(), NodeError> {
-        for peer in &self.peers {
+        for peer in self.snapshot_peers()? {
             self.socket
-                .send_to(bytes, peer)
+                .send_to(bytes, &peer)
                 .map_err(|err| NodeError::Gossip {
                     reason: format!("send_to {} failed: {}", peer, err),
                 })?;
@@ -155,19 +171,33 @@ impl GossipEndpoint {
         Ok(())
     }
 
-    pub(crate) fn drain_messages(&self) -> Result<Vec<GossipMessage>, NodeError> {
+    pub(crate) fn remember_peer(&self, peer: SocketAddr) -> Result<(), NodeError> {
+        if peer == self.bind_addr || peer.port() == 0 {
+            return Ok(());
+        }
+        let mut peers = self.peers.lock().map_err(|_| NodeError::Gossip {
+            reason: "peers mutex poisoned".to_string(),
+        })?;
+        peers.insert(peer);
+        Ok(())
+    }
+
+    pub(crate) fn drain_messages(&self) -> Result<Vec<ReceivedGossipMessage>, NodeError> {
         let mut buf = [0u8; 4096];
         let mut messages = Vec::new();
         loop {
             match self.socket.recv_from(&mut buf) {
-                Ok((size, _from)) => {
+                Ok((size, from)) => {
                     let payload = &buf[..size];
                     if let Ok(message) = serde_json::from_slice::<GossipMessage>(payload) {
-                        messages.push(message);
+                        messages.push(ReceivedGossipMessage { from, message });
                         continue;
                     }
                     if let Ok(commit) = serde_json::from_slice::<GossipCommitMessage>(payload) {
-                        messages.push(GossipMessage::Commit(commit));
+                        messages.push(ReceivedGossipMessage {
+                            from,
+                            message: GossipMessage::Commit(commit),
+                        });
                     }
                 }
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -179,5 +209,12 @@ impl GossipEndpoint {
             }
         }
         Ok(messages)
+    }
+
+    fn snapshot_peers(&self) -> Result<Vec<SocketAddr>, NodeError> {
+        let peers = self.peers.lock().map_err(|_| NodeError::Gossip {
+            reason: "peers mutex poisoned".to_string(),
+        })?;
+        Ok(peers.iter().copied().collect())
     }
 }
