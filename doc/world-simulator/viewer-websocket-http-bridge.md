@@ -4,6 +4,7 @@
 - 为 `agent_world_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
 - 在不破坏现有 TCP viewer 协议的前提下，增加一条浏览器可用的桥接通道（WebSocket over HTTP Upgrade）。
 - 建立最小在线闭环：`world_viewer_live --web-bind` 启动后，Web Viewer 能收到 `snapshot/event/metrics` 并可发送 `control/prompt_control`。
+- 明确角色边界：Web 端是 Viewer + 网关接入客户端，不承担完整分布式节点职责。
 
 ## 范围
 - 范围内：
@@ -15,6 +16,7 @@
   - 不在本阶段新增浏览器端重型 E2E 套件（保持 Playwright CLI 最小闭环）。
   - 不改造 Viewer 业务协议字段（沿用现有 `ViewerRequest/ViewerResponse` JSON 协议）。
   - 不引入多租户会话管理或鉴权（默认本地开发地址）。
+  - 不在浏览器端实现 `agent_world_node` 的完整分布式能力（gossip/replication/共识）。
 
 ## 接口 / 数据
 

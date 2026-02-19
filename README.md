@@ -139,7 +139,8 @@ Distributed Storage & Networking
 
 
 世界状态通过去中心化共识维护。  
-每个玩家运行节点。
+每个玩家可运行节点（推荐 native 进程）。  
+Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live --web-bind` 网关桥接接入，不承担完整分布式节点职责。
 
 ---
 

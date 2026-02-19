@@ -9,6 +9,7 @@
 - 联调服务端：`crates/agent_world --bin world_viewer_live`
 - Web 闭环入口：`scripts/run-viewer-web.sh` + Playwright CLI
 - native fallback 脚本：`scripts/capture-viewer-frame.sh`
+- 角色边界：Web 端定位为 Viewer（观察/调试/间接控制），不承担完整分布式节点职责；共识与复制由后端节点进程负责。
 
 ## 快速开始
 
@@ -33,7 +34,8 @@ AGENT_WORLD_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p agent_world_viewe
 env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
 - 打开浏览器访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`
-- Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server。
+- Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server（Viewer + 网关路径）。
+- Web 端不直接运行 `agent_world_node` 的完整分布式协议栈（不承担 gossip/replication/共识职责）。
 - 首次运行前需安装：
   - `trunk`（`cargo install trunk`）
   - `wasm32-unknown-unknown`（`rustup target add wasm32-unknown-unknown`）
@@ -87,6 +89,8 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 
 ## Web 闭环（默认，推荐调试/回归）
+
+说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
 
 ### 前置要求
 - Node.js 20+（需 `npx` 可用）

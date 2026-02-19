@@ -26,6 +26,10 @@
 - [x] WLB5.1 修复 websocket 刷新后无法重连（断连时主动释放 upstream socket）
 - [x] WLB5.2 增加 bridge 重连回归测试（覆盖“首连断开后二次连接可用”）
 
+### WLB6 口径澄清（Viewer + 网关）
+- [x] WLB6.1 修订 `README.md`，明确 Web 端为 Viewer + 网关接入，不承担完整分布式节点职责
+- [x] WLB6.2 修订 `doc/viewer-manual.md` 与本设计文档，统一“方案1”边界描述
+
 ## 依赖
 - `crates/agent_world/src/viewer/live.rs`
 - `crates/agent_world/src/bin/world_viewer_live.rs`
@@ -36,6 +40,6 @@
 - `doc/world-simulator.project.md`
 
 ## 状态
-- 当前阶段：WLB1~WLB5 全部完成。
-- 下一步：按 Web 默认闭环口径维持回归，必要时补充 bridge 稳定性压力测试（慢消费者/并发连接）。
-- 最近更新：2026-02-16（完成刷新重连修复与回归测试）。
+- 当前阶段：WLB1~WLB6 全部完成。
+- 下一步：按 Viewer + 网关口径维持回归，必要时补充 bridge 稳定性压力测试（慢消费者/并发连接）。
+- 最近更新：2026-02-19（完成方案1边界口径修订）。
