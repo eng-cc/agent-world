@@ -36,6 +36,10 @@ fn default_module_market_sale_id() -> u64 {
     1
 }
 
+fn default_next_module_instance_id() -> u64 {
+    1
+}
+
 /// Persisted factory instance state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FactoryState {
@@ -117,6 +121,23 @@ pub struct ModuleArtifactBidState {
     pub bid_at: WorldTime,
 }
 
+/// Installed module instance tracked independently from global module_id activation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModuleInstanceState {
+    pub instance_id: String,
+    pub module_id: String,
+    pub module_version: String,
+    #[serde(default)]
+    pub wasm_hash: String,
+    pub owner_agent_id: String,
+    #[serde(default)]
+    pub install_target: ModuleInstallTarget,
+    #[serde(default)]
+    pub active: bool,
+    #[serde(default)]
+    pub installed_at: WorldTime,
+}
+
 /// The mutable state of the world.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldState {
@@ -145,7 +166,11 @@ pub struct WorldState {
     #[serde(default)]
     pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
     #[serde(default)]
+    pub module_instances: BTreeMap<String, ModuleInstanceState>,
+    #[serde(default)]
     pub installed_module_targets: BTreeMap<String, ModuleInstallTarget>,
+    #[serde(default = "default_next_module_instance_id")]
+    pub next_module_instance_id: u64,
     #[serde(default = "default_module_market_order_id")]
     pub next_module_market_order_id: u64,
     #[serde(default = "default_module_market_sale_id")]
@@ -184,7 +209,9 @@ impl Default for WorldState {
             module_artifact_owners: BTreeMap::new(),
             module_artifact_listings: BTreeMap::new(),
             module_artifact_bids: BTreeMap::new(),
+            module_instances: BTreeMap::new(),
             installed_module_targets: BTreeMap::new(),
+            next_module_instance_id: default_next_module_instance_id(),
             next_module_market_order_id: default_module_market_order_id(),
             next_module_market_sale_id: default_module_market_sale_id(),
             reward_asset_config: RewardAssetConfig::default(),
@@ -366,8 +393,12 @@ impl WorldState {
             }
             DomainEvent::ModuleInstalled {
                 installer_agent_id,
+                instance_id,
                 module_id,
                 install_target,
+                module_version,
+                wasm_hash,
+                active,
                 fee_kind,
                 fee_amount,
                 ..
@@ -378,6 +409,25 @@ impl WorldState {
                     *fee_amount,
                     now,
                 )?;
+                let resolved_instance_id = if instance_id.trim().is_empty() {
+                    module_id.clone()
+                } else {
+                    instance_id.trim().to_string()
+                };
+                self.module_instances.insert(
+                    resolved_instance_id.clone(),
+                    ModuleInstanceState {
+                        instance_id: resolved_instance_id,
+                        module_id: module_id.clone(),
+                        module_version: module_version.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        owner_agent_id: installer_agent_id.clone(),
+                        install_target: install_target.clone(),
+                        active: *active,
+                        installed_at: now,
+                    },
+                );
+                self.next_module_instance_id = self.next_module_instance_id.saturating_add(1);
                 self.installed_module_targets
                     .insert(module_id.clone(), install_target.clone());
             }

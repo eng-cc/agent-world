@@ -381,8 +381,10 @@ fn install_module_from_artifact_action_runs_governance_closure() {
     let event = world.journal().events.last().expect("last event");
     let WorldEventBody::Domain(DomainEvent::ModuleInstalled {
         installer_agent_id,
+        instance_id,
         module_id,
         module_version,
+        wasm_hash: event_wasm_hash,
         active,
         install_target,
         proposal_id,
@@ -394,8 +396,10 @@ fn install_module_from_artifact_action_runs_governance_closure() {
         panic!("expected module installed event: {:?}", event.body);
     };
     assert_eq!(installer_agent_id, "installer-1");
+    assert!(!instance_id.is_empty());
     assert_eq!(module_id, "m.loop.active");
     assert_eq!(module_version, "0.1.0");
+    assert_eq!(event_wasm_hash, &wasm_hash);
     assert!(*active);
     assert_eq!(*install_target, ModuleInstallTarget::SelfAgent);
     assert!(!manifest_hash.is_empty());
@@ -521,8 +525,10 @@ fn install_module_from_artifact_action_rejects_missing_artifact() {
 fn module_installed_domain_event_legacy_payload_defaults_install_target() {
     let current = DomainEvent::ModuleInstalled {
         installer_agent_id: "agent-legacy".to_string(),
+        instance_id: "m.legacy#1".to_string(),
         module_id: "m.legacy".to_string(),
         module_version: "0.1.0".to_string(),
+        wasm_hash: "legacy-hash".to_string(),
         install_target: ModuleInstallTarget::SelfAgent,
         active: true,
         proposal_id: 7,

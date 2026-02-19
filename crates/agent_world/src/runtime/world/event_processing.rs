@@ -1139,6 +1139,30 @@ impl World {
             WorldEventBody::Domain(event) => {
                 self.state.apply_domain_event(event, time)?;
                 self.state.route_domain_event(event);
+                if let super::super::DomainEvent::ModuleInstalled {
+                    instance_id,
+                    module_id,
+                    module_version,
+                    active,
+                    ..
+                } = event
+                {
+                    let schedule_key = if instance_id.trim().is_empty() {
+                        module_id.as_str()
+                    } else {
+                        instance_id.as_str()
+                    };
+                    if *active {
+                        self.sync_tick_schedule_for_instance(
+                            schedule_key,
+                            module_id.as_str(),
+                            module_version.as_str(),
+                            time,
+                        )?;
+                    } else {
+                        self.remove_tick_schedule(schedule_key);
+                    }
+                }
             }
             WorldEventBody::EffectQueued(intent) => {
                 self.pending_effects.push_back(intent.clone());

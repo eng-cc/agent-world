@@ -1365,6 +1365,29 @@ impl ModuleSandbox for TickLifecycleSandbox {
     }
 }
 
+#[derive(Default)]
+struct InstanceStateSandbox {
+    traces: Vec<String>,
+    states: Vec<Option<Vec<u8>>>,
+    origin_kinds: Vec<String>,
+}
+
+impl ModuleSandbox for InstanceStateSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let input: ModuleCallInput = serde_cbor::from_slice(&request.input).expect("decode input");
+        self.traces.push(request.trace_id.clone());
+        self.states.push(input.state.clone());
+        self.origin_kinds.push(input.ctx.origin.kind);
+        Ok(ModuleOutput {
+            new_state: Some(request.trace_id.as_bytes().to_vec()),
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::WakeAfterTicks { ticks: 1 }),
+            output_bytes: request.trace_id.len() as u64,
+        })
+    }
+}
+
 #[test]
 fn step_with_modules_routes_tick_lifecycle_with_wake_and_suspend() {
     let mut world = World::new();
@@ -1552,6 +1575,109 @@ fn step_with_modules_routes_location_infrastructure_install_as_infrastructure_ti
     assert_eq!(input.ctx.origin.kind, "infrastructure_tick");
     assert_eq!(input.ctx.origin.id, format!("loc-hub-1:{}", input.ctx.time));
     assert_eq!(input.ctx.stage.as_deref(), Some("tick"));
+}
+
+#[test]
+fn step_with_modules_routes_same_module_id_as_isolated_instances() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "installer-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register installer");
+    world
+        .set_agent_resource_balance("installer-1", ResourceKind::Electricity, 256)
+        .expect("seed installer resources");
+    world
+        .set_agent_resource_balance("installer-1", ResourceKind::Data, 256)
+        .expect("seed installer data");
+
+    let wasm_bytes = b"module-instance-tick-router";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes: wasm_bytes.to_vec(),
+    });
+    world.step().expect("deploy artifact");
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.tick-router.instance".to_string(),
+        name: "TickRouterInstance".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: Vec::new(),
+            stage: Some(ModuleSubscriptionStage::Tick),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: module_manifest.clone(),
+        activate: true,
+    });
+    world.step().expect("install self instance");
+    world.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: module_manifest.clone(),
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-instance".to_string(),
+        },
+    });
+    world.step().expect("install infrastructure instance");
+
+    assert_eq!(world.state().module_instances.len(), 2);
+
+    let mut sandbox = InstanceStateSandbox::default();
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("first tick with module instances");
+    assert_eq!(sandbox.traces.len(), 2);
+    assert_eq!(sandbox.states.len(), 2);
+    assert!(sandbox
+        .states
+        .iter()
+        .all(|state| state.as_ref().is_none_or(Vec::is_empty)));
+    assert!(sandbox.origin_kinds.iter().any(|kind| kind == "tick"));
+    assert!(sandbox
+        .origin_kinds
+        .iter()
+        .any(|kind| kind == "infrastructure_tick"));
+    let first_tick_traces = sandbox.traces.clone();
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("second tick with module instances");
+    assert_eq!(sandbox.traces.len(), 4);
+    assert_eq!(sandbox.states.len(), 4);
+    assert_eq!(
+        sandbox.states[2].clone().expect("instance-1 state"),
+        first_tick_traces[0].as_bytes().to_vec()
+    );
+    assert_eq!(
+        sandbox.states[3].clone().expect("instance-2 state"),
+        first_tick_traces[1].as_bytes().to_vec()
+    );
 }
 
 #[derive(Default)]

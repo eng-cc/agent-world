@@ -268,8 +268,12 @@ pub enum DomainEvent {
     },
     ModuleInstalled {
         installer_agent_id: String,
+        #[serde(default)]
+        instance_id: String,
         module_id: String,
         module_version: String,
+        #[serde(default)]
+        wasm_hash: String,
         #[serde(default)]
         install_target: ModuleInstallTarget,
         active: bool,

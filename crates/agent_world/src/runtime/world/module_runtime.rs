@@ -20,6 +20,15 @@ use super::module_runtime_labels::{
     subscription_stage_label,
 };
 use super::World;
+use crate::simulator::ModuleInstallTarget;
+
+#[derive(Debug, Clone)]
+pub(super) struct ActiveModuleInvocation {
+    pub(super) instance_id: String,
+    pub(super) module_id: String,
+    pub(super) install_target: ModuleInstallTarget,
+    pub(super) manifest: ModuleManifest,
+}
 
 impl World {
     // ---------------------------------------------------------------------
@@ -103,10 +112,28 @@ impl World {
         input: Vec<u8>,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<ModuleOutput, WorldError> {
-        let trace_id = trace_id.into();
-        let input_bytes = input.len() as u64;
         let manifest = self.active_module_manifest(module_id)?.clone();
-        let output = match self.call_module_raw(module_id, &trace_id, input, &manifest, sandbox) {
+        self.execute_module_call_with_manifest_and_state_key(
+            module_id,
+            module_id,
+            &manifest,
+            trace_id.into(),
+            input,
+            sandbox,
+        )
+    }
+
+    pub(super) fn execute_module_call_with_manifest_and_state_key(
+        &mut self,
+        module_id: &str,
+        state_key: &str,
+        manifest: &ModuleManifest,
+        trace_id: String,
+        input: Vec<u8>,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, WorldError> {
+        let input_bytes = input.len() as u64;
+        let output = match self.call_module_raw(module_id, &trace_id, input, manifest, sandbox) {
             Ok(output) => output,
             Err(failure) => {
                 self.module_call_failed(failure)?;
@@ -116,13 +143,82 @@ impl World {
 
         self.process_module_output(
             module_id,
+            state_key,
             &trace_id,
-            &manifest,
+            manifest,
             input_bytes,
             &output,
             sandbox,
         )?;
         Ok(output)
+    }
+
+    pub(super) fn collect_active_module_invocations(
+        &self,
+    ) -> Result<Vec<ActiveModuleInvocation>, WorldError> {
+        let mut invocations = Vec::new();
+        let mut module_ids_with_instances = BTreeSet::new();
+
+        for instance in self.state.module_instances.values() {
+            module_ids_with_instances.insert(instance.module_id.clone());
+        }
+
+        let mut instance_ids: Vec<String> = self.state.module_instances.keys().cloned().collect();
+        instance_ids.sort();
+        for instance_id in instance_ids {
+            let Some(instance) = self.state.module_instances.get(&instance_id) else {
+                continue;
+            };
+            if !instance.active {
+                continue;
+            }
+            let key = ModuleRegistry::record_key(&instance.module_id, &instance.module_version);
+            let record = self.module_registry.records.get(&key).ok_or_else(|| {
+                WorldError::ModuleChangeInvalid {
+                    reason: format!("module record missing {key}"),
+                }
+            })?;
+            invocations.push(ActiveModuleInvocation {
+                instance_id: instance.instance_id.clone(),
+                module_id: instance.module_id.clone(),
+                install_target: instance.install_target.clone(),
+                manifest: record.manifest.clone(),
+            });
+        }
+
+        let mut legacy_module_ids: Vec<String> =
+            self.module_registry.active.keys().cloned().collect();
+        legacy_module_ids.sort();
+        for module_id in legacy_module_ids {
+            if module_ids_with_instances.contains(&module_id) {
+                continue;
+            }
+            let version = self.module_registry.active.get(&module_id).ok_or_else(|| {
+                WorldError::ModuleChangeInvalid {
+                    reason: format!("module not active {module_id}"),
+                }
+            })?;
+            let key = ModuleRegistry::record_key(&module_id, version);
+            let record = self.module_registry.records.get(&key).ok_or_else(|| {
+                WorldError::ModuleChangeInvalid {
+                    reason: format!("module record missing {key}"),
+                }
+            })?;
+            invocations.push(ActiveModuleInvocation {
+                instance_id: module_id.clone(),
+                module_id: module_id.clone(),
+                install_target: self
+                    .state
+                    .installed_module_targets
+                    .get(&module_id)
+                    .cloned()
+                    .unwrap_or(ModuleInstallTarget::SelfAgent),
+                manifest: record.manifest.clone(),
+            });
+        }
+
+        invocations.sort_by(|left, right| left.instance_id.cmp(&right.instance_id));
+        Ok(invocations)
     }
 
     pub fn route_event_to_modules(
@@ -132,34 +228,21 @@ impl World {
     ) -> Result<usize, WorldError> {
         let event_kind = event_kind_label(&event.body);
         let event_value = serde_json::to_value(event)?;
-        let mut module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
-        module_ids.sort();
+        let invocations = self.collect_active_module_invocations()?;
         let event_bytes = to_canonical_cbor(event)?;
         let world_config_hash = self.current_manifest_hash()?;
         let mut invoked = 0;
-        for module_id in module_ids {
-            let (subscribed, manifest) = {
-                let version = self.module_registry.active.get(&module_id).ok_or_else(|| {
-                    WorldError::ModuleChangeInvalid {
-                        reason: format!("module not active {module_id}"),
-                    }
-                })?;
-                let key = ModuleRegistry::record_key(&module_id, version);
-                let record = self.module_registry.records.get(&key).ok_or_else(|| {
-                    WorldError::ModuleChangeInvalid {
-                        reason: format!("module record missing {key}"),
-                    }
-                })?;
-                let manifest = record.manifest.clone();
-                let subscribed =
-                    module_subscribes_to_event(&manifest.subscriptions, event_kind, &event_value);
-                (subscribed, manifest)
-            };
+        for invocation in invocations {
+            let manifest = invocation.manifest;
+            let module_id = invocation.module_id;
+            let instance_id = invocation.instance_id;
+            let subscribed =
+                module_subscribes_to_event(&manifest.subscriptions, event_kind, &event_value);
             if !subscribed {
                 continue;
             }
 
-            let trace_id = format!("event-{}-{}", event.id, module_id);
+            let trace_id = format!("event-{}-{}", event.id, instance_id);
             let ctx = ModuleContext {
                 v: "wasm-1".to_string(),
                 module_id: module_id.clone(),
@@ -182,7 +265,7 @@ impl World {
                 ModuleKind::Reducer => Some(
                     self.state
                         .module_states
-                        .get(&module_id)
+                        .get(&instance_id)
                         .cloned()
                         .unwrap_or_default(),
                 ),
@@ -195,7 +278,14 @@ impl World {
                 state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
-            self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
+            self.execute_module_call_with_manifest_and_state_key(
+                module_id.as_str(),
+                instance_id.as_str(),
+                &manifest,
+                trace_id,
+                input_bytes,
+                sandbox,
+            )?;
             invoked += 1;
         }
         Ok(invoked)
@@ -221,39 +311,26 @@ impl World {
     ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
         let action_value = serde_json::to_value(envelope)?;
-        let mut module_ids: Vec<String> = self.module_registry.active.keys().cloned().collect();
-        module_ids.sort();
+        let invocations = self.collect_active_module_invocations()?;
         let action_bytes = to_canonical_cbor(envelope)?;
         let world_config_hash = self.current_manifest_hash()?;
         let mut invoked = 0;
 
-        for module_id in module_ids {
-            let (subscribed, manifest) = {
-                let version = self.module_registry.active.get(&module_id).ok_or_else(|| {
-                    WorldError::ModuleChangeInvalid {
-                        reason: format!("module not active {module_id}"),
-                    }
-                })?;
-                let key = ModuleRegistry::record_key(&module_id, version);
-                let record = self.module_registry.records.get(&key).ok_or_else(|| {
-                    WorldError::ModuleChangeInvalid {
-                        reason: format!("module record missing {key}"),
-                    }
-                })?;
-                let manifest = record.manifest.clone();
-                let subscribed = module_subscribes_to_action(
-                    &manifest.subscriptions,
-                    stage,
-                    action_kind,
-                    &action_value,
-                );
-                (subscribed, manifest)
-            };
+        for invocation in invocations {
+            let manifest = invocation.manifest;
+            let module_id = invocation.module_id;
+            let instance_id = invocation.instance_id;
+            let subscribed = module_subscribes_to_action(
+                &manifest.subscriptions,
+                stage,
+                action_kind,
+                &action_value,
+            );
             if !subscribed {
                 continue;
             }
 
-            let trace_id = format!("action-{}-{}", envelope.id, module_id);
+            let trace_id = format!("action-{}-{}", envelope.id, instance_id);
             let ctx = ModuleContext {
                 v: "wasm-1".to_string(),
                 module_id: module_id.clone(),
@@ -276,7 +353,7 @@ impl World {
                 ModuleKind::Reducer => Some(
                     self.state
                         .module_states
-                        .get(&module_id)
+                        .get(&instance_id)
                         .cloned()
                         .unwrap_or_default(),
                 ),
@@ -289,7 +366,14 @@ impl World {
                 state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
-            self.execute_module_call(&module_id, trace_id, input_bytes, sandbox)?;
+            self.execute_module_call_with_manifest_and_state_key(
+                module_id.as_str(),
+                instance_id.as_str(),
+                &manifest,
+                trace_id,
+                input_bytes,
+                sandbox,
+            )?;
             invoked += 1;
         }
 
@@ -797,6 +881,7 @@ impl World {
     fn process_module_output(
         &mut self,
         module_id: &str,
+        state_key: &str,
         trace_id: &str,
         manifest: &ModuleManifest,
         input_bytes: u64,
@@ -946,7 +1031,7 @@ impl World {
 
         if let Some(state) = &output.new_state {
             let update = ModuleStateUpdate {
-                module_id: module_id.to_string(),
+                module_id: state_key.to_string(),
                 trace_id: trace_id.to_string(),
                 state: state.clone(),
             };

@@ -161,7 +161,8 @@ pub use snapshot::{
 
 // State
 pub use state::{
-    FactoryBuildJobState, FactoryState, MaterialTransitJobState, RecipeJobState, WorldState,
+    FactoryBuildJobState, FactoryState, MaterialTransitJobState, ModuleInstanceState,
+    RecipeJobState, WorldState,
 };
 
 // World
