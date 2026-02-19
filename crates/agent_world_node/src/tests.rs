@@ -1142,6 +1142,118 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
 }
 
 #[test]
+fn runtime_replication_storage_challenge_gate_blocks_on_local_probe_failure() {
+    let dir = temp_dir("challenge-gate-local");
+    let config = NodeConfig::new("node-a", "world-challenge-local", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick")
+        .with_pos_validators(vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }])
+        .expect("validators")
+        .with_auto_attest_all_validators(true)
+        .with_replication(signed_replication_config(dir.clone(), 83));
+    let mut runtime = with_noop_execution_hook(NodeRuntime::new(config));
+
+    runtime.start().expect("start runtime");
+    let committed = wait_until(Instant::now() + Duration::from_secs(2), || {
+        runtime.snapshot().consensus.committed_height >= 1
+    });
+    assert!(committed, "runtime did not produce first commit in time");
+
+    let store = LocalCasStore::new(dir.join("store"));
+    for entry in fs::read_dir(store.blobs_dir()).expect("list blobs") {
+        let entry = entry.expect("blob entry");
+        if entry.file_type().expect("blob type").is_file() {
+            fs::write(entry.path(), b"tampered-local-blob").expect("tamper blob");
+        }
+    }
+
+    let errored = wait_until(Instant::now() + Duration::from_secs(3), || {
+        runtime
+            .snapshot()
+            .last_error
+            .as_deref()
+            .map(|reason| reason.contains("storage challenge gate failed"))
+            .unwrap_or(false)
+    });
+    assert!(
+        errored,
+        "runtime did not report storage challenge gate failure"
+    );
+
+    runtime.stop().expect("stop runtime");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn runtime_replication_storage_challenge_gate_blocks_on_network_blob_mismatch() {
+    let dir = temp_dir("challenge-gate-network");
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+    let config = NodeConfig::new("node-a", "world-challenge-network", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick")
+        .with_pos_validators(vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }])
+        .expect("validators")
+        .with_auto_attest_all_validators(true)
+        .with_replication(signed_replication_config(dir.clone(), 84));
+    let mut runtime = with_noop_execution_hook(NodeRuntime::new(config))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+
+    runtime.start().expect("start runtime");
+    let committed = wait_until(Instant::now() + Duration::from_secs(2), || {
+        runtime.snapshot().consensus.committed_height >= 1
+    });
+    assert!(committed, "runtime did not produce first commit in time");
+
+    network
+        .register_handler(
+            super::replication::REPLICATION_FETCH_BLOB_PROTOCOL,
+            Box::new(|payload| {
+                let request =
+                    serde_json::from_slice::<super::replication::FetchBlobRequest>(payload)
+                        .map_err(|err| WorldError::DistributedValidationFailed {
+                            reason: format!("decode fetch blob request failed: {err}"),
+                        })?;
+                let response = super::replication::FetchBlobResponse {
+                    found: true,
+                    blob: Some(format!("bad-{}", request.content_hash).into_bytes()),
+                };
+                serde_json::to_vec(&response).map_err(|err| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!("encode fetch blob response failed: {err}"),
+                    }
+                })
+            }),
+        )
+        .expect("register mismatched blob handler");
+
+    let errored = wait_until(Instant::now() + Duration::from_secs(3), || {
+        runtime
+            .snapshot()
+            .last_error
+            .as_deref()
+            .map(|reason| reason.contains("network blob hash mismatch"))
+            .unwrap_or(false)
+    });
+    assert!(
+        errored,
+        "runtime did not report network blob mismatch gate failure"
+    );
+
+    runtime.stop().expect("stop runtime");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn replication_network_handle_rejects_empty_topic() {
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use agent_world_distfs::{
     apply_replication_record, build_replication_record_with_epoch, BlobStore as _,
     FileReplicationRecord, LocalCasStore, SingleWriterReplicationGuard,
+    StorageChallengeProbeConfig, StorageChallengeProbeReport,
 };
 use agent_world_proto::world_error::WorldError;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -469,6 +470,30 @@ impl ReplicationRuntime {
         content_hash: &str,
     ) -> Result<Option<Vec<u8>>, NodeError> {
         load_blob_from_root(self.config.root_dir.as_path(), content_hash)
+    }
+
+    pub(crate) fn probe_storage_challenges(
+        &self,
+        world_id: &str,
+        node_id: &str,
+        observed_at_unix_ms: i64,
+    ) -> Result<StorageChallengeProbeReport, NodeError> {
+        let config = StorageChallengeProbeConfig::default();
+        self.store
+            .probe_storage_challenges(world_id, node_id, observed_at_unix_ms, &config)
+            .map_err(distfs_error_to_node_error)
+    }
+
+    pub(crate) fn latest_replicated_content_hash(
+        &self,
+        world_id: &str,
+    ) -> Result<Option<String>, NodeError> {
+        if self.writer_state.last_replicated_height == 0 {
+            return Ok(None);
+        }
+        let message =
+            self.load_commit_message_by_height(world_id, self.writer_state.last_replicated_height)?;
+        Ok(message.map(|entry| entry.record.content_hash))
     }
 }
 

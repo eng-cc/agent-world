@@ -968,6 +968,13 @@ impl PosNodeEngine {
         let Some(replication) = replication else {
             return Ok(());
         };
+        self.enforce_storage_challenge_gate(
+            replication,
+            network_endpoint,
+            node_id,
+            world_id,
+            now_ms,
+        )?;
         let (execution_block_hash, execution_state_root) =
             self.commit_execution_binding_for_height(decision.height)?;
         if let Some(message) = replication.build_local_commit_message(
@@ -983,6 +990,78 @@ impl PosNodeEngine {
             } else if let Some(endpoint) = gossip_endpoint {
                 endpoint.broadcast_replication(&message)?;
             }
+        }
+        Ok(())
+    }
+
+    fn enforce_storage_challenge_gate(
+        &self,
+        replication: &ReplicationRuntime,
+        network_endpoint: Option<&ReplicationNetworkEndpoint>,
+        node_id: &str,
+        world_id: &str,
+        now_ms: i64,
+    ) -> Result<(), NodeError> {
+        let report = replication.probe_storage_challenges(world_id, node_id, now_ms)?;
+        if report.failed_checks > 0 {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "storage challenge gate failed: total_checks={} failed_checks={} reasons={:?}",
+                    report.total_checks, report.failed_checks, report.failure_reasons
+                ),
+            });
+        }
+
+        let Some(endpoint) = network_endpoint else {
+            return Ok(());
+        };
+        let Some(content_hash) = replication.latest_replicated_content_hash(world_id)? else {
+            return Ok(());
+        };
+        let local_blob = replication
+            .load_blob_by_hash(content_hash.as_str())?
+            .ok_or_else(|| NodeError::Consensus {
+                reason: format!(
+                    "storage challenge gate local blob missing for hash {}",
+                    content_hash
+                ),
+            })?;
+
+        let response = endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
+            REPLICATION_FETCH_BLOB_PROTOCOL,
+            &FetchBlobRequest {
+                content_hash: content_hash.clone(),
+            },
+        )?;
+        if !response.found {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "storage challenge gate network blob not found for hash {}",
+                    content_hash
+                ),
+            });
+        }
+        let network_blob = response.blob.ok_or_else(|| NodeError::Consensus {
+            reason: format!(
+                "storage challenge gate network blob payload missing for hash {}",
+                content_hash
+            ),
+        })?;
+        if blake3_hex(network_blob.as_slice()) != content_hash {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "storage challenge gate network blob hash mismatch for hash {}",
+                    content_hash
+                ),
+            });
+        }
+        if network_blob != local_blob {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "storage challenge gate network blob bytes mismatch for hash {}",
+                    content_hash
+                ),
+            });
         }
         Ok(())
     }
