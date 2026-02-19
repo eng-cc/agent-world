@@ -188,6 +188,34 @@
     - 全程 `decision_wait=0`、`decision_wait_ticks=0`，未出现旧的提前空转。
     - 日志出现冷却守卫命中记录（`mine_compound cooldown guardrail rerouted...`），验证 TODO-20 跳过窗口在在线样本中生效。
 
+### MMD10 未收口稳定性项复现与评估（2026-02-19）
+- 复现实验 #1（120 tick，完整口径）：
+  - 命令：`AGENT_WORLD_LLM_SYSTEM_PROMPT='你是工业闭环调度Agent。每轮只输出一个可执行 tool call 对应的 decision，不输出解释文本。优先形成稳定工业闭环，避免在同一耗尽矿点连续重试。' AGENT_WORLD_LLM_SHORT_TERM_GOAL='120 tick 内完成：1) build_factory(factory.power.radiation.mk1) 成功>=1；2) build_factory(factory.assembler.mk1) 成功>=1；3) schedule_recipe 成功覆盖 recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone 各>=1。覆盖完成后继续排产，禁止 wait/wait_ticks。恢复规则：electricity不足->harvest_radiation；hardware不足->mine_compound+refine_compound；factory_not_found->build_factory。' AGENT_WORLD_LLM_LONG_TERM_GOAL='维持 harvest_radiation -> mine_compound -> refine_compound -> build_factory -> schedule_recipe 的持续产出闭环，减少 move/mine 抖动和无效重试。' env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 120 --print-llm-io --llm-io-max-chars 1800 --report-json output/llm_bootstrap/repro_mmd9_2026-02-19_110325/report.json`
+  - 产物：
+    - `output/llm_bootstrap/repro_mmd9_2026-02-19_110325/run.log`
+    - `output/llm_bootstrap/repro_mmd9_2026-02-19_110325/report.json`
+  - 指标：
+    - `ticks_requested=120`、`active_ticks=120`
+    - `action_success=49`、`action_failure=71`
+    - `action_reject_reason_counts={rule_denied:42, facility_not_found:25, location_not_found:3, agent_already_at_location:1}`
+    - `llm_errors=0`、`parse_errors=0`、`repair_rounds_total=3`
+    - `llm_input_chars_max=60197`、`prompt_section_clipped=380`
+  - 观测：
+    - TODO-26/TODO-27 均已高强度复现，且占总失败 `67/71`。
+    - 同轮出现多段 `---` 输出（`run.log` 中 `---` 共 7 次），协议不稳定仍存在。
+    - TODO-21 对应的 `insufficient_resource` 在本轮为 `0`，失败主因已切换到工厂选择/配方工厂匹配错误。
+- 复现实验 #2（同口径二次复现，执行到 `tick=51` 后手动中断）：
+  - 产物：`output/llm_bootstrap/repro_mmd9_b_2026-02-19_111015/run.log`
+  - 观测：
+    - 截止 `tick=51`，已出现 `rule_denied=12`、`facility_not_found=6`、`location_not_found=1`。
+    - 与实验 #1 的失败模式一致，复现具有稳定性，不是单次偶发。
+- 是否需要优化（结论）：
+  - 需要，且应立即进入优化迭代。
+  - 优先级建议：
+    - P0：先收敛 TODO-26/TODO-27（工厂 ID 归一 + recipe/factory_kind 前置 guardrail），压降主失败源。
+    - P1：补 location_id 归一与无效 location 拦截，收敛 `location_not_found`。
+    - P2：继续推进多段输出协议约束与 Prompt 体积治理，降低 `---` 输出与高裁剪带来的行为漂移。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -203,9 +231,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD9 已完成（TODO-22~TODO-25 全部落地并通过回归）。
-- 下一阶段：聚焦 TODO-21 及在线样本中新暴露的工厂选择误差，继续压降后半程无效失败。
-- 最近更新：2026-02-18（完成 MMD9.4：`execute_until` guardrail 改写后 `until` 条件重建 + 120 tick 在线抽样）。
+- 当前阶段：MMD10 已完成（未收口稳定性项复现 + 优先级评估）。
+- 下一阶段：进入 MMD11，优先收敛 TODO-26/TODO-27，并处理 `location_not_found` 与多段输出协议漂移。
+- 最近更新：2026-02-19（完成 MMD10 复现实验与优化优先级评估）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
@@ -214,10 +242,12 @@
 - TODO-18：已完成（MMD8.2），单轮多 tool call 硬拒绝，且 `schedule_recipe.batches<=0` 自动归一为合法下界。
 - TODO-19：已完成（MMD8.3），`schedule_recipe` 与 `move_agent` 增加电力前置预算预检并可自动回切 `harvest_radiation`。
 - TODO-20：已完成（MMD8.4），矿点耗尽引入短期冷却/跳过窗口并支持冷却过期后重试。
-- TODO-21：最新在线样本（`mmd9_opt_all_factory_all_products_2026-02-18_115214`）中 `insufficient_resource` 失败为 20/24（仍集中在“矿点反复探测 + 电力短缺的采矿/精炼链路”）；可继续强化低收益矿点黑名单与电力门槛前置策略。
+- TODO-21：`mmd9_opt_all_factory_all_products_2026-02-18_115214` 中 `insufficient_resource=20/24`；但在 `repro_mmd9_2026-02-19_110325` 中未复现（`0`）。该问题暂降为次优先级，后续在收敛工厂选择误差后再复查。
 - TODO-22：已完成（MMD9.1），`execute_until` 现可正确跟踪 `mine_compound/refine_compound` 的失败/拒绝，避免“失败后继续 auto step”。
 - TODO-23：已完成（MMD9.2），kernel `schedule_recipe` 现会校验 recipe 所需工厂类型，已阻断 power factory 调度 assembler recipe。
 - TODO-24：已完成（MMD9.3），新增矿点失败 streak 记忆并接入候选排序，优先避开连续失败矿点，降低耗尽矿点重复重试。
 - TODO-25：已完成（MMD9.4），`execute_until.action` 经 guardrail 改写后会同步重建默认 `until` 条件，避免动作类型切换后沿用旧条件导致抖动。
-- TODO-26：在线样本出现 `facility_not_found`（2 次），主要为 LLM 生成不存在的 factory_id 别名；可补“已知工厂集合硬约束 + alias 自动归一”的保守策略。
-- TODO-27：在线样本出现 `rule_denied`（1 次），来源为 LLM 将 assembler recipe 投递到 power factory；可在 agent 层增加“recipe->factory_kind”前置校验，减少无效调用。
+- TODO-26：`repro_mmd9_2026-02-19_110325` 中 `facility_not_found=25`，且二次复现前 51 tick 再现 `6` 次；需优先补“已知工厂集合硬约束 + factory_id alias 归一 + 缺厂时优先 build_factory(factory.assembler.mk1)”。
+- TODO-27：`repro_mmd9_2026-02-19_110325` 中 `rule_denied=42`，且二次复现前 51 tick 再现 `12` 次；需优先补“schedule_recipe 前置 recipe->factory_kind 强校验 + 不兼容时改写为建厂/切换配方”。
+- TODO-28：在线样本出现 `location_not_found`（完整样本 3 次，二次复现前 51 tick 1 次），来源为 LLM 生成不存在 location_id 别名；可补“location_id 归一 + 不可识别 location 直接回退 `self.current_location`”。
+- TODO-29：多段 `---` 输出仍出现（`repro_mmd9_2026-02-19_110325` 中 7 次）且 `prompt_section_clipped=380`，需继续推进“多段输出硬拒绝/末段决策提取 + prompt 体积治理”。
