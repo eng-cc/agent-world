@@ -178,6 +178,16 @@ impl World {
                     },
                 }))
             }
+            Action::UpgradeModuleFromArtifact { .. } => {
+                Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![
+                            "upgrade_module_from_artifact requires runtime action loop".to_string()
+                        ],
+                    },
+                }))
+            }
             Action::ListModuleArtifactForSale { .. } => {
                 Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                     action_id,
@@ -1161,6 +1171,25 @@ impl World {
                         )?;
                     } else {
                         self.remove_tick_schedule(schedule_key);
+                    }
+                }
+                if let super::super::DomainEvent::ModuleUpgraded {
+                    instance_id,
+                    module_id,
+                    to_module_version,
+                    active,
+                    ..
+                } = event
+                {
+                    if *active {
+                        self.sync_tick_schedule_for_instance(
+                            instance_id.as_str(),
+                            module_id.as_str(),
+                            to_module_version.as_str(),
+                            time,
+                        )?;
+                    } else {
+                        self.remove_tick_schedule(instance_id.as_str());
                     }
                 }
             }

@@ -107,6 +107,13 @@ pub enum Action {
         #[serde(default)]
         install_target: ModuleInstallTarget,
     },
+    UpgradeModuleFromArtifact {
+        upgrader_agent_id: String,
+        instance_id: String,
+        from_module_version: String,
+        manifest: ModuleManifest,
+        activate: bool,
+    },
     ListModuleArtifactForSale {
         seller_agent_id: String,
         wasm_hash: String,
@@ -273,6 +280,23 @@ pub enum DomainEvent {
         module_id: String,
         module_version: String,
         #[serde(default)]
+        wasm_hash: String,
+        #[serde(default)]
+        install_target: ModuleInstallTarget,
+        active: bool,
+        proposal_id: ProposalId,
+        manifest_hash: String,
+        #[serde(default = "default_module_action_fee_kind")]
+        fee_kind: ResourceKind,
+        #[serde(default)]
+        fee_amount: i64,
+    },
+    ModuleUpgraded {
+        upgrader_agent_id: String,
+        instance_id: String,
+        module_id: String,
+        from_module_version: String,
+        to_module_version: String,
         wasm_hash: String,
         #[serde(default)]
         install_target: ModuleInstallTarget,
@@ -468,6 +492,9 @@ impl DomainEvent {
             DomainEvent::ModuleInstalled {
                 installer_agent_id, ..
             } => Some(installer_agent_id.as_str()),
+            DomainEvent::ModuleUpgraded {
+                upgrader_agent_id, ..
+            } => Some(upgrader_agent_id.as_str()),
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id, ..
             } => Some(seller_agent_id.as_str()),

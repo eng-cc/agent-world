@@ -445,6 +445,11 @@ impl World {
                     reason: format!("module version already registered {to_key}"),
                 });
             }
+            if !planned_records.insert(to_key.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module version already registered {to_key}"),
+                });
+            }
 
             let from_key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.from_version);
             if !self.module_registry.records.contains_key(&from_key) {

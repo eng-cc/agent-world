@@ -1,7 +1,7 @@
 use super::super::state::{ModuleArtifactBidState, ModuleArtifactListingState};
 use super::super::{
     Action, ActionEnvelope, CausedBy, DomainEvent, ModuleActivation, ModuleChangeSet,
-    ProposalDecision, RejectReason, WorldError, WorldEventBody,
+    ModuleUpgrade, ProposalDecision, RejectReason, WorldError, WorldEventBody,
 };
 use super::World;
 use crate::simulator::{ModuleInstallTarget, ResourceKind};
@@ -39,6 +39,74 @@ impl World {
     fn next_module_instance_id(&self, module_id: &str) -> String {
         let seq = self.state.next_module_instance_id.max(1);
         format!("{module_id}#{seq}")
+    }
+
+    fn validate_upgrade_interface_compatible(
+        current: &agent_world_wasm_abi::ModuleManifest,
+        next: &agent_world_wasm_abi::ModuleManifest,
+    ) -> Result<(), String> {
+        if current.interface_version != next.interface_version {
+            return Err(format!(
+                "upgrade interface_version mismatch: from={} to={}",
+                current.interface_version, next.interface_version
+            ));
+        }
+
+        let missing_exports: Vec<String> = current
+            .exports
+            .iter()
+            .filter(|export_name| !next.exports.contains(*export_name))
+            .cloned()
+            .collect();
+        if !missing_exports.is_empty() {
+            return Err(format!(
+                "upgrade exports incompatible: missing {:?}",
+                missing_exports
+            ));
+        }
+
+        for subscription in &current.subscriptions {
+            if !next.subscriptions.contains(subscription) {
+                return Err(
+                    "upgrade subscriptions incompatible: existing subscription removed or modified"
+                        .to_string(),
+                );
+            }
+        }
+
+        if current.abi_contract.abi_version != next.abi_contract.abi_version {
+            return Err("upgrade abi_version mismatch".to_string());
+        }
+        if current.abi_contract.input_schema != next.abi_contract.input_schema
+            || current.abi_contract.output_schema != next.abi_contract.output_schema
+        {
+            return Err("upgrade abi input/output schema mismatch".to_string());
+        }
+        for (slot, cap_ref) in &current.abi_contract.cap_slots {
+            match next.abi_contract.cap_slots.get(slot) {
+                Some(next_cap_ref) if next_cap_ref == cap_ref => {}
+                _ => {
+                    return Err(format!("upgrade abi cap slot mismatch for slot {}", slot));
+                }
+            }
+        }
+        for hook in &current.abi_contract.policy_hooks {
+            if !next.abi_contract.policy_hooks.contains(hook) {
+                return Err(format!(
+                    "upgrade abi policy_hooks incompatible: missing {}",
+                    hook
+                ));
+            }
+        }
+        for required_cap in &current.required_caps {
+            if !next.required_caps.contains(required_cap) {
+                return Err(format!(
+                    "upgrade required_caps incompatible: missing {}",
+                    required_cap
+                ));
+            }
+        }
+        Ok(())
     }
 
     fn ensure_module_fee_affordable(
@@ -395,6 +463,293 @@ impl World {
         Ok(true)
     }
 
+    fn apply_upgrade_module_action(
+        &mut self,
+        action_id: u64,
+        upgrader_agent_id: &str,
+        instance_id: &str,
+        from_module_version: &str,
+        manifest: &agent_world_wasm_abi::ModuleManifest,
+        activate: bool,
+    ) -> Result<bool, WorldError> {
+        if !self.state.agents.contains_key(upgrader_agent_id) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::AgentNotFound {
+                        agent_id: upgrader_agent_id.to_string(),
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        let Some(instance) = self.state.module_instances.get(instance_id).cloned() else {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: instance not found {}",
+                            instance_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        };
+        if instance.owner_agent_id != upgrader_agent_id {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: upgrader {} does not own instance {} (owner {})",
+                            upgrader_agent_id, instance_id, instance.owner_agent_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if instance.module_version != from_module_version {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: from_version mismatch for instance {} expected {} got {}",
+                            instance_id, instance.module_version, from_module_version
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if manifest.module_id != instance.module_id {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: manifest module_id mismatch for instance {} expected {} got {}",
+                            instance_id, instance.module_id, manifest.module_id
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if manifest.version == instance.module_version {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: target version equals current version {}",
+                            manifest.version
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+        if let Some(owner_agent_id) = self.state.module_artifact_owners.get(&manifest.wasm_hash) {
+            if owner_agent_id != upgrader_agent_id {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "upgrade module artifact rejected: upgrader {} does not own {} (owner {})",
+                                upgrader_agent_id, manifest.wasm_hash, owner_agent_id
+                            )],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        }
+
+        let current_key = agent_world_wasm_abi::ModuleRegistry::record_key(
+            instance.module_id.as_str(),
+            instance.module_version.as_str(),
+        );
+        let Some(current_record) = self.module_registry.records.get(current_key.as_str()) else {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!(
+                            "upgrade module rejected: current module record missing {}",
+                            current_key
+                        )],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        };
+        if let Err(reason) =
+            Self::validate_upgrade_interface_compatible(&current_record.manifest, manifest)
+        {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("upgrade module rejected: {reason}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        let fee_kind = ResourceKind::Electricity;
+        let fee_amount = Self::module_install_fee_amount(manifest);
+        if !self.ensure_module_fee_affordable(action_id, upgrader_agent_id, fee_kind, fee_amount)? {
+            return Ok(true);
+        }
+
+        let mut changes = ModuleChangeSet {
+            upgrade: vec![ModuleUpgrade {
+                module_id: instance.module_id.clone(),
+                from_version: instance.module_version.clone(),
+                to_version: manifest.version.clone(),
+                wasm_hash: manifest.wasm_hash.clone(),
+                manifest: manifest.clone(),
+            }],
+            ..ModuleChangeSet::default()
+        };
+        if activate {
+            changes.activate.push(ModuleActivation {
+                module_id: manifest.module_id.clone(),
+                version: manifest.version.clone(),
+            });
+        }
+
+        let module_changes_value = match serde_json::to_value(&changes) {
+            Ok(value) => value,
+            Err(err) => {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("serialize module changes failed: {err}")],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        };
+
+        let mut manifest_update = self.manifest.clone();
+        manifest_update.version = manifest_update.version.saturating_add(1);
+        let serde_json::Value::Object(content) = &mut manifest_update.content else {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec!["current manifest content must be object".to_string()],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        };
+        content.insert("module_changes".to_string(), module_changes_value);
+
+        let proposal_id =
+            match self.propose_manifest_update(manifest_update, upgrader_agent_id.to_string()) {
+                Ok(proposal_id) => proposal_id,
+                Err(err) => {
+                    self.append_event(
+                        WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("propose module upgrade rejected: {err:?}")],
+                            },
+                        }),
+                        Some(CausedBy::Action(action_id)),
+                    )?;
+                    return Ok(true);
+                }
+            };
+
+        if let Err(err) = self.shadow_proposal(proposal_id) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("shadow module upgrade rejected: {err:?}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        if let Err(err) = self.approve_proposal(
+            proposal_id,
+            upgrader_agent_id.to_string(),
+            ProposalDecision::Approve,
+        ) {
+            self.append_event(
+                WorldEventBody::Domain(DomainEvent::ActionRejected {
+                    action_id,
+                    reason: RejectReason::RuleDenied {
+                        notes: vec![format!("approve module upgrade rejected: {err:?}")],
+                    },
+                }),
+                Some(CausedBy::Action(action_id)),
+            )?;
+            return Ok(true);
+        }
+
+        let manifest_hash = match self.apply_proposal(proposal_id) {
+            Ok(hash) => hash,
+            Err(err) => {
+                self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("apply module upgrade rejected: {err:?}")],
+                        },
+                    }),
+                    Some(CausedBy::Action(action_id)),
+                )?;
+                return Ok(true);
+            }
+        };
+
+        self.append_event(
+            WorldEventBody::Domain(DomainEvent::ModuleUpgraded {
+                upgrader_agent_id: upgrader_agent_id.to_string(),
+                instance_id: instance.instance_id,
+                module_id: instance.module_id,
+                from_module_version: from_module_version.to_string(),
+                to_module_version: manifest.version.clone(),
+                wasm_hash: manifest.wasm_hash.clone(),
+                install_target: instance.install_target,
+                active: activate,
+                proposal_id,
+                manifest_hash,
+                fee_kind,
+                fee_amount,
+            }),
+            Some(CausedBy::Action(action_id)),
+        )?;
+        Ok(true)
+    }
+
     pub(super) fn try_apply_runtime_module_action(
         &mut self,
         envelope: &ActionEnvelope,
@@ -595,6 +950,20 @@ impl World {
                 manifest,
                 *activate,
                 install_target.clone(),
+            ),
+            Action::UpgradeModuleFromArtifact {
+                upgrader_agent_id,
+                instance_id,
+                from_module_version,
+                manifest,
+                activate,
+            } => self.apply_upgrade_module_action(
+                action_id,
+                upgrader_agent_id.as_str(),
+                instance_id.as_str(),
+                from_module_version.as_str(),
+                manifest,
+                *activate,
             ),
             Action::ListModuleArtifactForSale {
                 seller_agent_id,

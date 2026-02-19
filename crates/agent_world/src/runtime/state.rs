@@ -431,6 +431,61 @@ impl WorldState {
                 self.installed_module_targets
                     .insert(module_id.clone(), install_target.clone());
             }
+            DomainEvent::ModuleUpgraded {
+                upgrader_agent_id,
+                instance_id,
+                module_id,
+                from_module_version,
+                to_module_version,
+                wasm_hash,
+                install_target,
+                active,
+                fee_kind,
+                fee_amount,
+                ..
+            } => {
+                self.settle_module_action_fee(
+                    upgrader_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                let instance = self.module_instances.get_mut(instance_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("module instance missing for upgrade {instance_id}"),
+                    }
+                })?;
+                if instance.owner_agent_id != *upgrader_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance owner mismatch for upgrade: instance={} owner={} upgrader={}",
+                            instance_id, instance.owner_agent_id, upgrader_agent_id
+                        ),
+                    });
+                }
+                if instance.module_id != *module_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance module_id mismatch for upgrade: instance={} state_module_id={} event_module_id={}",
+                            instance_id, instance.module_id, module_id
+                        ),
+                    });
+                }
+                if instance.module_version != *from_module_version {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance from_version mismatch for upgrade: instance={} state_version={} event_from={}",
+                            instance_id, instance.module_version, from_module_version
+                        ),
+                    });
+                }
+                instance.module_version = to_module_version.clone();
+                instance.wasm_hash = wasm_hash.clone();
+                instance.install_target = install_target.clone();
+                instance.active = *active;
+                self.installed_module_targets
+                    .insert(module_id.clone(), install_target.clone());
+            }
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id,
                 wasm_hash,

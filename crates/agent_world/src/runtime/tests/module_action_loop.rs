@@ -522,6 +522,183 @@ fn install_module_from_artifact_action_rejects_missing_artifact() {
 }
 
 #[test]
+fn upgrade_module_from_artifact_action_updates_instance_and_emits_audit_event() {
+    let mut world = World::new();
+    register_agent(&mut world, "installer-1");
+
+    let wasm_v1_bytes = b"module-action-loop-upgrade-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+
+    let manifest_v1 = base_manifest("m.loop.upgrade", "0.1.0", &wasm_v1_hash);
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: manifest_v1.clone(),
+        activate: true,
+    });
+    world.step().expect("install v1 module");
+
+    let (instance_id, install_target) = {
+        let event = world.journal().events.last().expect("install event");
+        let WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+            instance_id,
+            install_target,
+            ..
+        }) = &event.body
+        else {
+            panic!("expected module installed event: {:?}", event.body);
+        };
+        (instance_id.clone(), install_target.clone())
+    };
+
+    let wasm_v2_bytes = b"module-action-loop-upgrade-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+
+    let manifest_v2 = base_manifest("m.loop.upgrade", "0.2.0", &wasm_v2_hash);
+    world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "installer-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: manifest_v2.clone(),
+        activate: true,
+    });
+    world.step().expect("upgrade module action");
+
+    let proposal_id = {
+        let event = world.journal().events.last().expect("upgrade event");
+        let WorldEventBody::Domain(DomainEvent::ModuleUpgraded {
+            upgrader_agent_id,
+            instance_id: event_instance_id,
+            module_id,
+            from_module_version,
+            to_module_version,
+            wasm_hash,
+            install_target: event_target,
+            active,
+            proposal_id,
+            manifest_hash,
+            fee_kind,
+            fee_amount,
+        }) = &event.body
+        else {
+            panic!("expected module upgraded event: {:?}", event.body);
+        };
+        assert_eq!(upgrader_agent_id, "installer-1");
+        assert_eq!(event_instance_id, &instance_id);
+        assert_eq!(module_id, "m.loop.upgrade");
+        assert_eq!(from_module_version, "0.1.0");
+        assert_eq!(to_module_version, "0.2.0");
+        assert_eq!(wasm_hash, &wasm_v2_hash);
+        assert_eq!(event_target, &install_target);
+        assert!(*active);
+        assert!(*proposal_id > 0);
+        assert!(!manifest_hash.is_empty());
+        assert_eq!(*fee_kind, ResourceKind::Electricity);
+        assert!(*fee_amount > 0);
+        *proposal_id
+    };
+
+    let upgraded = world
+        .state()
+        .module_instances
+        .get(&instance_id)
+        .expect("upgraded instance state");
+    assert_eq!(upgraded.instance_id, instance_id);
+    assert_eq!(upgraded.owner_agent_id, "installer-1");
+    assert_eq!(upgraded.module_id, "m.loop.upgrade");
+    assert_eq!(upgraded.module_version, "0.2.0");
+    assert_eq!(upgraded.wasm_hash, wasm_v2_hash);
+    assert_eq!(upgraded.install_target, install_target);
+    assert!(upgraded.active);
+
+    let v2_key = ModuleRegistry::record_key("m.loop.upgrade", "0.2.0");
+    assert!(world.module_registry().records.contains_key(&v2_key));
+    assert_eq!(
+        world.module_registry().active.get("m.loop.upgrade"),
+        Some(&"0.2.0".to_string())
+    );
+    assert!(matches!(
+        world
+            .proposals()
+            .get(&proposal_id)
+            .map(|proposal| &proposal.status),
+        Some(ProposalStatus::Applied { .. })
+    ));
+}
+
+#[test]
+fn upgrade_module_from_artifact_rejects_incompatible_interface() {
+    let mut world = World::new();
+    register_agent(&mut world, "installer-1");
+
+    let wasm_v1_bytes = b"module-action-loop-upgrade-guard-v1".to_vec();
+    let wasm_v1_hash = util::sha256_hex(&wasm_v1_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_v1_hash.clone(),
+        wasm_bytes: wasm_v1_bytes,
+    });
+    world.step().expect("deploy v1 artifact");
+
+    let manifest_v1 = base_manifest("m.loop.upgrade.guard", "0.1.0", &wasm_v1_hash);
+    world.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: manifest_v1.clone(),
+        activate: true,
+    });
+    world.step().expect("install v1 module");
+    let instance_id = {
+        let event = world.journal().events.last().expect("install event");
+        let WorldEventBody::Domain(DomainEvent::ModuleInstalled { instance_id, .. }) = &event.body
+        else {
+            panic!("expected module installed event: {:?}", event.body);
+        };
+        instance_id.clone()
+    };
+
+    let wasm_v2_bytes = b"module-action-loop-upgrade-guard-v2".to_vec();
+    let wasm_v2_hash = util::sha256_hex(&wasm_v2_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_v2_hash.clone(),
+        wasm_bytes: wasm_v2_bytes,
+    });
+    world.step().expect("deploy v2 artifact");
+
+    let mut incompatible_manifest = base_manifest("m.loop.upgrade.guard", "0.2.0", &wasm_v2_hash);
+    incompatible_manifest.interface_version = "wasm-2".to_string();
+    let action_id = world.submit_action(Action::UpgradeModuleFromArtifact {
+        upgrader_agent_id: "installer-1".to_string(),
+        instance_id: instance_id.clone(),
+        from_module_version: "0.1.0".to_string(),
+        manifest: incompatible_manifest,
+        activate: true,
+    });
+    world.step().expect("upgrade incompatible module");
+
+    assert_last_rejection_note(&world, action_id, "interface_version mismatch");
+    let instance = world
+        .state()
+        .module_instances
+        .get(&instance_id)
+        .expect("instance state after rejected upgrade");
+    assert_eq!(instance.module_version, "0.1.0");
+    let v2_key = ModuleRegistry::record_key("m.loop.upgrade.guard", "0.2.0");
+    assert!(!world.module_registry().records.contains_key(&v2_key));
+}
+
+#[test]
 fn module_installed_domain_event_legacy_payload_defaults_install_target() {
     let current = DomainEvent::ModuleInstalled {
         installer_agent_id: "agent-legacy".to_string(),

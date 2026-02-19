@@ -17,6 +17,7 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             }
             DomainEvent::ModuleArtifactDeployed { .. } => "domain.module_artifact_deployed",
             DomainEvent::ModuleInstalled { .. } => "domain.module_installed",
+            DomainEvent::ModuleUpgraded { .. } => "domain.module_upgraded",
             DomainEvent::ModuleArtifactListed { .. } => "domain.module_artifact_listed",
             DomainEvent::ModuleArtifactDelisted { .. } => "domain.module_artifact_delisted",
             DomainEvent::ModuleArtifactDestroyed { .. } => "domain.module_artifact_destroyed",
@@ -74,6 +75,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::InstallModuleToTargetFromArtifact { .. } => {
             "action.module.install_to_target_from_artifact"
         }
+        Action::UpgradeModuleFromArtifact { .. } => "action.module.upgrade_from_artifact",
         Action::ListModuleArtifactForSale { .. } => "action.module.list_artifact_for_sale",
         Action::BuyModuleArtifact { .. } => "action.module.buy_artifact",
         Action::DelistModuleArtifact { .. } => "action.module.delist_artifact",
