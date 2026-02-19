@@ -13,7 +13,7 @@
   - 编译进程 timeout
   - 环境变量最小化与隔离临时目录
   - required tests
-- [ ] T3：回归验证与收口
+- [x] T3：回归验证与收口
   - `env -u RUSTC_WRAPPER cargo check`
   - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
   - 项目文档状态 + devlog 回写
@@ -23,6 +23,6 @@
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2 完成，T3 待执行）。
+- 当前阶段：已完成（T0/T1/T2/T3 全部完成）。
 - 阻塞项：无。
-- 下一步：执行 T3（回归验证与收口）。
+- 下一步：无。
