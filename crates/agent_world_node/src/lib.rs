@@ -7,6 +7,7 @@ use std::thread::{self, JoinHandle};
 use agent_world_distfs::blake3_hex;
 use agent_world_proto::distributed::DistributedErrorCode;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
+use serde::Deserialize;
 
 mod consensus_action;
 mod consensus_signature;
@@ -487,6 +488,17 @@ struct PeerCommittedHead {
     execution_state_root: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ReplicationCommitPayloadView {
+    height: u64,
+    block_hash: String,
+    committed_at_ms: i64,
+    #[serde(default)]
+    execution_block_hash: Option<String>,
+    #[serde(default)]
+    execution_state_root: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NodeEngineTickResult {
     consensus_snapshot: NodeConsensusSnapshot,
@@ -568,6 +580,12 @@ impl PosNodeEngine {
         }
         if let Some(endpoint) = replication_network.as_ref() {
             self.ingest_network_replications(
+                endpoint,
+                node_id,
+                world_id,
+                replication.as_deref_mut(),
+            )?;
+            self.sync_missing_replication_commits(
                 endpoint,
                 node_id,
                 world_id,
@@ -978,11 +996,145 @@ impl PosNodeEngine {
     ) -> Result<(), NodeError> {
         let messages = endpoint.drain_replications()?;
         for message in messages {
+            let payload_view = parse_replication_commit_payload_view(message.payload.as_slice());
+            if let Some(payload) = payload_view.as_ref() {
+                self.observe_network_replication_commit(message.node_id.as_str(), payload);
+            }
             if let Some(replication_runtime) = replication.as_deref_mut() {
+                let should_apply = payload_view
+                    .as_ref()
+                    .map(|payload| payload.height <= self.committed_height.saturating_add(1))
+                    .unwrap_or(true);
+                if !should_apply {
+                    continue;
+                }
                 let _ = replication_runtime.apply_remote_message(node_id, world_id, &message);
+                if let Some(payload) = payload_view {
+                    if payload.height == self.committed_height.saturating_add(1)
+                        && replication_runtime
+                            .load_commit_message_by_height(world_id, payload.height)?
+                            .is_some()
+                    {
+                        self.record_synced_replication_height(payload.height, payload.block_hash);
+                    }
+                }
             }
         }
         Ok(())
+    }
+
+    fn observe_network_replication_commit(
+        &mut self,
+        peer_node_id: &str,
+        payload: &ReplicationCommitPayloadView,
+    ) {
+        if payload.height == 0 {
+            return;
+        }
+        self.network_committed_height = self.network_committed_height.max(payload.height);
+        self.peer_heads.insert(
+            peer_node_id.to_string(),
+            PeerCommittedHead {
+                height: payload.height,
+                block_hash: payload.block_hash.clone(),
+                committed_at_ms: payload.committed_at_ms,
+                execution_block_hash: payload.execution_block_hash.clone(),
+                execution_state_root: payload.execution_state_root.clone(),
+            },
+        );
+    }
+
+    fn sync_missing_replication_commits(
+        &mut self,
+        endpoint: &ReplicationNetworkEndpoint,
+        node_id: &str,
+        world_id: &str,
+        mut replication: Option<&mut ReplicationRuntime>,
+    ) -> Result<(), NodeError> {
+        let Some(replication_runtime) = replication.as_deref_mut() else {
+            return Ok(());
+        };
+        if self.network_committed_height <= self.committed_height {
+            return Ok(());
+        }
+
+        let mut next_height = self.committed_height.saturating_add(1);
+        while next_height <= self.network_committed_height {
+            let request = FetchCommitRequest {
+                world_id: world_id.to_string(),
+                height: next_height,
+            };
+            let response = match endpoint.request_json::<FetchCommitRequest, FetchCommitResponse>(
+                REPLICATION_FETCH_COMMIT_PROTOCOL,
+                &request,
+            ) {
+                Ok(response) => response,
+                Err(_) => break,
+            };
+            if !response.found {
+                break;
+            }
+            let mut message = match response.message {
+                Some(message) => message,
+                None => break,
+            };
+            if message.world_id != world_id || message.record.world_id != world_id {
+                break;
+            }
+
+            let blob_request = FetchBlobRequest {
+                content_hash: message.record.content_hash.clone(),
+            };
+            let blob_response = match endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
+                REPLICATION_FETCH_BLOB_PROTOCOL,
+                &blob_request,
+            ) {
+                Ok(response) => response,
+                Err(_) => break,
+            };
+            if !blob_response.found {
+                break;
+            }
+            let Some(blob) = blob_response.blob else {
+                break;
+            };
+            message.payload = blob;
+            let Some(payload) = parse_replication_commit_payload_view(message.payload.as_slice())
+            else {
+                break;
+            };
+            if payload.height != next_height {
+                break;
+            }
+            if replication_runtime
+                .apply_remote_message(node_id, world_id, &message)
+                .is_err()
+            {
+                break;
+            }
+            let persisted =
+                replication_runtime.load_commit_message_by_height(world_id, next_height)?;
+            if persisted
+                .as_ref()
+                .map(|entry| entry.record.content_hash.as_str())
+                != Some(message.record.content_hash.as_str())
+            {
+                break;
+            }
+            self.record_synced_replication_height(next_height, payload.block_hash);
+            next_height = next_height.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    fn record_synced_replication_height(&mut self, height: u64, block_hash: String) {
+        if height <= self.committed_height {
+            return;
+        }
+        self.committed_height = height;
+        self.next_height = self.next_height.max(height.saturating_add(1));
+        self.last_committed_block_hash = Some(block_hash);
+        self.pending = None;
     }
 
     fn ingest_proposal_message(
@@ -1221,6 +1373,10 @@ impl PosNodeEngine {
         })?;
         Ok(blake3_hex(bytes.as_slice()))
     }
+}
+
+fn parse_replication_commit_payload_view(payload: &[u8]) -> Option<ReplicationCommitPayloadView> {
+    serde_json::from_slice::<ReplicationCommitPayloadView>(payload).ok()
 }
 
 #[cfg(test)]

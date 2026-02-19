@@ -6,7 +6,7 @@
 - [x] T1：共识提交-执行强绑定 + 默认投票策略收口（Gap 3/4）
 - [x] T2：writer epoch failover（Gap 5）
 - [x] T3：replication block exchange 协议与 handler（Gap 1/2）
-- [ ] T4：网络优先补洞同步主路径（Gap 1/2）
+- [x] T4：网络优先补洞同步主路径（Gap 1/2）
 - [ ] T5：存储挑战纳入共识门控（Gap 6）
 - [ ] T6：默认分布式网络集成收口（Gap 8）
 - [ ] T7：回归验证（`env -u RUSTC_WRAPPER cargo check` + required-tier）+ 文档/devlog 收口
@@ -18,6 +18,6 @@
 - T6 可并行，但在 T7 统一回归。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3 完成，T4 起）
+- 当前阶段：进行中（T0/T1/T2/T3/T4 完成，T5 起）
 - 阻塞项：无
-- 下一步：执行 T4
+- 下一步：执行 T5
