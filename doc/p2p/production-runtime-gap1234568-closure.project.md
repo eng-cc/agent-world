@@ -9,7 +9,7 @@
 - [x] T4：网络优先补洞同步主路径（Gap 1/2）
 - [x] T5：存储挑战纳入共识门控（Gap 6）
 - [x] T6：默认分布式网络集成收口（Gap 8）
-- [ ] T7：回归验证（`env -u RUSTC_WRAPPER cargo check` + required-tier）+ 文档/devlog 收口
+- [x] T7：回归验证（`env -u RUSTC_WRAPPER cargo check` + required-tier）+ 文档/devlog 收口
 
 ## 依赖
 - T2 依赖 T1 的主循环稳定（避免 failover 与执行绑定互相放大回归面）。
@@ -18,6 +18,6 @@
 - T6 可并行，但在 T7 统一回归。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3/T4/T5/T6 完成，T7 起）
+- 当前阶段：已完成（T0/T1/T2/T3/T4/T5/T6/T7 完成）
 - 阻塞项：无
-- 下一步：执行 T7
+- 下一步：无（本轮 Gap 1/2/3/4/5/6/8 收口完成）
