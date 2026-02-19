@@ -58,14 +58,12 @@ impl World {
         self.journal.save_json(journal_path)?;
         snapshot.save_json(snapshot_path)?;
         self.save_distfs_sidecar(dir, &snapshot)?;
+        self.save_module_store_to_dir(dir)?;
         Ok(())
     }
 
     pub fn save_to_dir_with_modules(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
-        let dir = dir.as_ref();
-        self.save_to_dir(dir)?;
-        self.save_module_store_to_dir(dir)?;
-        Ok(())
+        self.save_to_dir(dir)
     }
 
     pub fn save_module_store_to_dir(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
@@ -87,24 +85,28 @@ impl World {
     pub fn load_from_dir(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
         let dir = dir.as_ref();
         if let Some((snapshot, journal)) = Self::try_load_from_distfs_sidecar(dir)? {
-            return Self::from_snapshot(snapshot, journal);
+            let mut world = Self::from_snapshot(snapshot, journal)?;
+            world.load_module_store_from_dir(dir)?;
+            return Ok(world);
         }
         let journal_path = dir.join(JOURNAL_FILE);
         let snapshot_path = dir.join(SNAPSHOT_FILE);
         let journal = Journal::load_json(journal_path)?;
         let snapshot = Snapshot::load_json(snapshot_path)?;
-        Self::from_snapshot(snapshot, journal)
-    }
-
-    pub fn load_from_dir_with_modules(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
-        let dir = dir.as_ref();
-        let mut world = Self::load_from_dir(dir)?;
+        let mut world = Self::from_snapshot(snapshot, journal)?;
         world.load_module_store_from_dir(dir)?;
         Ok(world)
     }
 
+    pub fn load_from_dir_with_modules(dir: impl AsRef<Path>) -> Result<Self, WorldError> {
+        Self::load_from_dir(dir)
+    }
+
     pub fn load_module_store_from_dir(&mut self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
         let store = ModuleStore::new(dir);
+        if !store.registry_path().exists() {
+            return Ok(());
+        }
         let registry = store.load_registry()?;
         self.module_registry = registry;
         self.module_artifacts.clear();

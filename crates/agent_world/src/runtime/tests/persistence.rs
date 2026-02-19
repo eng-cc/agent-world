@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -10,6 +11,54 @@ fn temp_dir(prefix: &str) -> PathBuf {
         .expect("duration")
         .as_nanos();
     std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
+}
+
+fn install_test_module(world: &mut World, module_id: &str, wasm_bytes: &[u8]) -> String {
+    world.set_policy(PolicySet::allow_all());
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .expect("register module artifact");
+
+    let module_manifest = ModuleManifest {
+        module_id: module_id.to_string(),
+        name: "Persistence Module".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Rule,
+        wasm_hash: wasm_hash.clone(),
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: Vec::new(),
+        required_caps: Vec::new(),
+        artifact_identity: None,
+        limits: ModuleLimits::unbounded(),
+    };
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+    let manifest = Manifest {
+        version: 2,
+        content: json!({
+            "module_changes": changes,
+        }),
+    };
+
+    let proposal_id = world
+        .propose_manifest_update(manifest, "alice")
+        .expect("propose module manifest");
+    world.shadow_proposal(proposal_id).expect("shadow proposal");
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .expect("approve proposal");
+    world.apply_proposal(proposal_id).expect("apply proposal");
+    wasm_hash
 }
 
 #[test]
@@ -27,6 +76,64 @@ fn persist_and_restore_world() {
 
     let restored = World::load_from_dir(&dir).unwrap();
     assert_eq!(restored.state(), world.state());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn persist_and_restore_world_defaults_to_module_store_roundtrip() {
+    let mut world = World::new();
+    let wasm_hash = install_test_module(&mut world, "m.persistence.default", b"persist-default");
+    let module_record_key = ModuleRegistry::record_key("m.persistence.default", "0.1.0");
+    let dir = temp_dir("persist-module-store-default");
+
+    world
+        .save_to_dir(&dir)
+        .expect("save with default module store");
+    assert!(
+        dir.join("module_registry.json").exists(),
+        "default save should persist module registry"
+    );
+    assert!(
+        dir.join("modules")
+            .join(format!("{wasm_hash}.wasm"))
+            .exists(),
+        "default save should persist module artifact bytes"
+    );
+
+    let mut restored = World::load_from_dir(&dir).expect("load with default module store");
+    assert!(restored
+        .module_registry()
+        .records
+        .contains_key(&module_record_key));
+    let artifact = restored
+        .load_module(&wasm_hash)
+        .expect("module bytes hydrated from default load");
+    assert_eq!(artifact.bytes, b"persist-default".to_vec());
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn load_from_dir_without_module_store_keeps_legacy_compatibility() {
+    let mut world = World::new();
+    let wasm_hash = install_test_module(&mut world, "m.persistence.legacy", b"persist-legacy");
+    let module_record_key = ModuleRegistry::record_key("m.persistence.legacy", "0.1.0");
+    let dir = temp_dir("persist-module-store-legacy");
+
+    world.save_to_dir(&dir).expect("save world");
+    fs::remove_file(dir.join("module_registry.json")).expect("remove module registry");
+    fs::remove_dir_all(dir.join("modules")).expect("remove module store modules dir");
+
+    let mut restored = World::load_from_dir(&dir).expect("legacy load without module store");
+    assert!(restored
+        .module_registry()
+        .records
+        .contains_key(&module_record_key));
+    let err = restored
+        .load_module(&wasm_hash)
+        .expect_err("legacy world should load without hydrated module bytes");
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 
     let _ = fs::remove_dir_all(&dir);
 }
