@@ -1,4 +1,17 @@
-# Builtin Wasm Canonical 构建环境固化方案
+# Builtin Wasm Canonical 构建环境固化方案（已终止）
+
+> 状态（2026-02-19）：已终止。Docker/Podman 容器化 canonical builder 路线不再推进。
+
+## 终止说明（2026-02-19）
+- 本方案原计划通过 Docker/Podman 固化单一构建环境；按当前决策，该路线停止推进。
+- 下列事项不再执行：
+  - 不新增 `scripts/build-builtin-wasm-canonical.sh`。
+  - 不将 `sync-m1/m4` 默认路径切换为容器化 canonical builder。
+  - 不将 CI required gate 切换为容器化 canonical builder 产物校验。
+  - 不引入 `AGENT_WORLD_ALLOW_NON_CANONICAL_WASM` 回退开关。
+- 替代路线：继续沿用并维护 pinned nightly + `-Z build-std` 方案，见 `doc/scripts/builtin-wasm-nightly-build-std.md`。
+
+## 原方案归档
 
 ## 目标
 - 固化 builtin wasm 的 canonical 构建环境，使 hash 清单由单一环境产出并可重复生成。
@@ -48,4 +61,3 @@
 - 镜像版本漂移会破坏可复现性；必须固定 tag，并建立升级流程。
 - 若 canonical builder 与 runtime 真实加载链路脱节，可能出现“清单通过但运行异常”；需保留 runtime smoke check。
 - 初次切换会导致清单 hash 整体变化，需要一次性同步并与团队对齐。
-
