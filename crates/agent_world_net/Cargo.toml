@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [features]
-default = ["self_tests"]
+default = ["self_tests", "libp2p"]
 libp2p = ["dep:libp2p", "dep:futures", "dep:async-std"]
 runtime_bridge = ["dep:agent_world", "dep:agent_world_distfs"]
 self_tests = []

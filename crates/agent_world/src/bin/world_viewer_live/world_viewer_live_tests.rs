@@ -552,6 +552,7 @@ fn start_live_node_applies_pos_options() {
     let runtime = start_live_node(&options)
         .expect("start")
         .expect("runtime exists");
+    assert!(runtime.reward_network.is_some());
     let mut locked = runtime.primary_runtime.lock().expect("lock runtime");
     let config = locked.config();
     assert_eq!(config.pos_config.validators.len(), 2);
@@ -596,6 +597,7 @@ fn start_live_node_starts_triad_topology_by_default() {
     let runtime = start_live_node(&options)
         .expect("start triad")
         .expect("runtime exists");
+    assert!(runtime.reward_network.is_some());
 
     let primary_snapshot = runtime
         .primary_runtime
@@ -640,6 +642,7 @@ fn start_live_node_starts_triad_distributed_storage_role() {
     let runtime = start_live_node(&options)
         .expect("start triad distributed")
         .expect("runtime exists");
+    assert!(runtime.reward_network.is_some());
 
     let mut locked = runtime.primary_runtime.lock().expect("lock runtime");
     let snapshot = locked.snapshot();
@@ -664,10 +667,9 @@ fn start_live_node_starts_triad_distributed_storage_role() {
 }
 
 #[test]
-fn parse_options_rejects_repl_topic_without_repl_network() {
-    let err = parse_options(["--node-repl-topic", "aw.topic"].into_iter())
-        .expect_err("repl topic should require network");
-    assert!(err.contains("--node-repl-topic"));
+fn parse_options_allows_repl_topic_without_explicit_repl_addrs() {
+    let options = parse_options(["--node-repl-topic", "aw.topic"].into_iter()).expect("repl topic");
+    assert_eq!(options.node_repl_topic.as_deref(), Some("aw.topic"));
 }
 
 #[test]

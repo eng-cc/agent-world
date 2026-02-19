@@ -394,15 +394,6 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             )
         })?;
     }
-    if options.node_repl_topic.is_some()
-        && options.node_repl_libp2p_listen.is_empty()
-        && options.node_repl_libp2p_peers.is_empty()
-    {
-        return Err(
-            "--node-repl-topic requires --node-repl-libp2p-listen or --node-repl-libp2p-peer"
-                .to_string(),
-        );
-    }
     if options.node_topology == NodeTopologyMode::Triad {
         if !options.node_enabled {
             return Err(
@@ -425,11 +416,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
         if options.node_gossip_bind.is_some() || !options.node_gossip_peers.is_empty() {
             return Err("--node-gossip-* is only supported in --topology single".to_string());
         }
-        if !options.node_repl_libp2p_listen.is_empty()
-            || !options.node_repl_libp2p_peers.is_empty()
-            || options.node_repl_topic.is_some()
+        if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty()
         {
-            return Err("--node-repl-* is only supported in --topology single".to_string());
+            return Err("--node-repl-libp2p-* is only supported in --topology single".to_string());
         }
         if options.triad_distributed_sequencer_gossip.is_some()
             || options.triad_distributed_storage_gossip.is_some()

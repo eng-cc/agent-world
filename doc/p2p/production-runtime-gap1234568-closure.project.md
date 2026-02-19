@@ -8,7 +8,7 @@
 - [x] T3：replication block exchange 协议与 handler（Gap 1/2）
 - [x] T4：网络优先补洞同步主路径（Gap 1/2）
 - [x] T5：存储挑战纳入共识门控（Gap 6）
-- [ ] T6：默认分布式网络集成收口（Gap 8）
+- [x] T6：默认分布式网络集成收口（Gap 8）
 - [ ] T7：回归验证（`env -u RUSTC_WRAPPER cargo check` + required-tier）+ 文档/devlog 收口
 
 ## 依赖
@@ -18,6 +18,6 @@
 - T6 可并行，但在 T7 统一回归。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3/T4/T5 完成，T6 起）
+- 当前阶段：进行中（T0/T1/T2/T3/T4/T5/T6 完成，T7 起）
 - 阻塞项：无
-- 下一步：执行 T6
+- 下一步：执行 T7

@@ -90,6 +90,7 @@ const DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR: &str = "reward-runtime-executi
 const DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR: &str = "reward-runtime-execution-records";
 const DEFAULT_REWARD_RUNTIME_RESERVE_UNITS: i64 = 100_000;
 const DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES: u32 = 1;
+const DEFAULT_REPLICATION_PORT_OFFSET: u16 = 100;
 
 #[derive(Clone)]
 struct LiveNodeHandle {
@@ -296,6 +297,7 @@ fn build_node_replication_config(
 fn attach_optional_replication_network(
     options: &CliOptions,
     mut runtime: NodeRuntime,
+    role: NodeRole,
 ) -> Result<
     (
         NodeRuntime,
@@ -303,11 +305,14 @@ fn attach_optional_replication_network(
     ),
     String,
 > {
-    let mut reward_network: Option<
-        Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
-    > = None;
+    let mut net_config = if !options.node_repl_libp2p_listen.is_empty()
+        || !options.node_repl_libp2p_peers.is_empty()
+    {
+        Libp2pReplicationNetworkConfig::default()
+    } else {
+        default_replication_network_config(options, role)?
+    };
     if !options.node_repl_libp2p_listen.is_empty() || !options.node_repl_libp2p_peers.is_empty() {
-        let mut net_config = Libp2pReplicationNetworkConfig::default();
         for raw in &options.node_repl_libp2p_listen {
             let addr = raw.parse().map_err(|err| {
                 format!("--node-repl-libp2p-listen invalid multiaddr `{raw}`: {err}")
@@ -320,20 +325,138 @@ fn attach_optional_replication_network(
             })?;
             net_config.bootstrap_peers.push(addr);
         }
-
-        let network: Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync> =
-            Arc::new(Libp2pReplicationNetwork::new(net_config));
-        let mut handle = NodeReplicationNetworkHandle::new(network);
-        if let Some(topic) = options.node_repl_topic.as_deref() {
-            handle = handle
-                .with_topic(topic)
-                .map_err(|err| format!("failed to configure replication topic: {err}"))?;
-        }
-        reward_network = Some(handle.clone_network());
-        runtime = runtime.with_replication_network(handle);
     }
 
+    let network: Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync> =
+        Arc::new(Libp2pReplicationNetwork::new(net_config));
+    let mut handle = NodeReplicationNetworkHandle::new(network);
+    if let Some(topic) = options.node_repl_topic.as_deref() {
+        handle = handle
+            .with_topic(topic)
+            .map_err(|err| format!("failed to configure replication topic: {err}"))?;
+    }
+    let reward_network = Some(handle.clone_network());
+    runtime = runtime.with_replication_network(handle);
+
     Ok((runtime, reward_network))
+}
+
+fn default_replication_network_config(
+    options: &CliOptions,
+    role: NodeRole,
+) -> Result<Libp2pReplicationNetworkConfig, String> {
+    let mut config = Libp2pReplicationNetworkConfig::default();
+    match options.node_topology {
+        NodeTopologyMode::Single => {
+            config.listen_addrs.push(
+                "/ip4/127.0.0.1/tcp/0".parse().map_err(|err| {
+                    format!("default replication listen multiaddr invalid: {err}")
+                })?,
+            );
+        }
+        NodeTopologyMode::Triad => {
+            let ip = infer_triad_gossip_ip(options.bind_addr.as_str());
+            let sequencer = SocketAddr::new(
+                ip,
+                checked_add_port(
+                    options.triad_gossip_base_port,
+                    0,
+                    "triad sequencer gossip port",
+                )?,
+            );
+            let storage = SocketAddr::new(
+                ip,
+                checked_add_port(
+                    options.triad_gossip_base_port,
+                    1,
+                    "triad storage gossip port",
+                )?,
+            );
+            let observer = SocketAddr::new(
+                ip,
+                checked_add_port(
+                    options.triad_gossip_base_port,
+                    2,
+                    "triad observer gossip port",
+                )?,
+            );
+            apply_role_replication_addrs(&mut config, role, sequencer, storage, observer)?;
+        }
+        NodeTopologyMode::TriadDistributed => {
+            let sequencer = options.triad_distributed_sequencer_gossip.ok_or_else(|| {
+                "--triad-sequencer-gossip is required in triad_distributed".to_string()
+            })?;
+            let storage = options.triad_distributed_storage_gossip.ok_or_else(|| {
+                "--triad-storage-gossip is required in triad_distributed".to_string()
+            })?;
+            let observer = options.triad_distributed_observer_gossip.ok_or_else(|| {
+                "--triad-observer-gossip is required in triad_distributed".to_string()
+            })?;
+            apply_role_replication_addrs(&mut config, role, sequencer, storage, observer)?;
+        }
+    }
+    Ok(config)
+}
+
+fn apply_role_replication_addrs(
+    config: &mut Libp2pReplicationNetworkConfig,
+    role: NodeRole,
+    sequencer_gossip: SocketAddr,
+    storage_gossip: SocketAddr,
+    observer_gossip: SocketAddr,
+) -> Result<(), String> {
+    let sequencer = with_replication_port_offset(sequencer_gossip, "triad sequencer gossip")?;
+    let storage = with_replication_port_offset(storage_gossip, "triad storage gossip")?;
+    let observer = with_replication_port_offset(observer_gossip, "triad observer gossip")?;
+    let (listen, peers) = match role {
+        NodeRole::Sequencer => (sequencer, vec![storage, observer]),
+        NodeRole::Storage => (storage, vec![sequencer, observer]),
+        NodeRole::Observer => (observer, vec![sequencer, storage]),
+    };
+    config
+        .listen_addrs
+        .push(socket_addr_to_multiaddr(listen).parse().map_err(|err| {
+            format!(
+                "default replication listen multiaddr invalid for role {}: {err}",
+                role.as_str()
+            )
+        })?);
+    for peer in peers {
+        config
+            .bootstrap_peers
+            .push(socket_addr_to_multiaddr(peer).parse().map_err(|err| {
+                format!(
+                    "default replication peer multiaddr invalid for role {}: {err}",
+                    role.as_str()
+                )
+            })?);
+    }
+    Ok(())
+}
+
+fn checked_add_port(base: u16, offset: u16, label: &str) -> Result<u16, String> {
+    base.checked_add(offset)
+        .ok_or_else(|| format!("{label} overflows u16"))
+}
+
+fn with_replication_port_offset(addr: SocketAddr, label: &str) -> Result<SocketAddr, String> {
+    let port = addr
+        .port()
+        .checked_add(DEFAULT_REPLICATION_PORT_OFFSET)
+        .ok_or_else(|| {
+            format!(
+                "{} + replication port offset {} overflows u16",
+                label, DEFAULT_REPLICATION_PORT_OFFSET
+            )
+        })?;
+    Ok(SocketAddr::new(addr.ip(), port))
+}
+
+fn socket_addr_to_multiaddr(addr: SocketAddr) -> String {
+    match addr.ip() {
+        IpAddr::V4(ip) => format!("/ip4/{ip}/tcp/{}", addr.port()),
+        IpAddr::V6(ip) => format!("/ip6/{ip}/tcp/{}", addr.port()),
+    }
 }
 
 fn start_single_live_node(
@@ -382,7 +505,8 @@ fn start_single_live_node(
     .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
     runtime = runtime.with_execution_hook(execution_driver);
 
-    let (mut runtime, reward_network) = attach_optional_replication_network(options, runtime)?;
+    let (mut runtime, reward_network) =
+        attach_optional_replication_network(options, runtime, options.node_role)?;
     runtime
         .start()
         .map_err(|err| format!("failed to start node runtime: {err:?}"))?;
@@ -455,6 +579,9 @@ fn start_triad_live_nodes(
     ];
 
     let mut runtimes: Vec<Arc<Mutex<NodeRuntime>>> = Vec::new();
+    let mut primary_reward_network: Option<
+        Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
+    > = None;
     for (node_id, role, bind_addr, peers, attach_execution_hook) in node_specs {
         let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), role)
             .and_then(|cfg| cfg.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
@@ -484,6 +611,12 @@ fn start_triad_live_nodes(
             .map_err(|err| format!("failed to initialize triad execution driver: {err}"))?;
             runtime = runtime.with_execution_hook(execution_driver);
         }
+        let (runtime_with_network, reward_network) =
+            attach_optional_replication_network(options, runtime, role)?;
+        runtime = runtime_with_network;
+        if matches!(role, NodeRole::Sequencer) {
+            primary_reward_network = reward_network;
+        }
 
         if let Err(err) = runtime.start() {
             for started in &runtimes {
@@ -506,7 +639,7 @@ fn start_triad_live_nodes(
         auxiliary_runtimes,
         world_id: world_id.to_string(),
         primary_node_id,
-        reward_network: None,
+        reward_network: primary_reward_network,
     })
 }
 
@@ -597,7 +730,8 @@ fn start_triad_distributed_live_node(
         .map_err(|err| format!("failed to initialize triad_distributed execution driver: {err}"))?;
         runtime = runtime.with_execution_hook(execution_driver);
     }
-    let (mut runtime, reward_network) = attach_optional_replication_network(options, runtime)?;
+    let (mut runtime, reward_network) =
+        attach_optional_replication_network(options, runtime, options.node_role)?;
     runtime
         .start()
         .map_err(|err| format!("failed to start triad_distributed runtime {node_id}: {err:?}"))?;
