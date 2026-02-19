@@ -548,8 +548,8 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
     let mut world = World::new();
     register_agent(&mut world, "seller-1");
     register_agent(&mut world, "buyer-1");
-    set_agent_resource(&mut world, "seller-1", ResourceKind::Hardware, 3);
-    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 20);
+    set_agent_resource(&mut world, "seller-1", ResourceKind::Data, 3);
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Data, 20);
 
     let wasm_bytes = b"module-action-loop-market-list-and-buy".to_vec();
     let wasm_hash = util::sha256_hex(&wasm_bytes);
@@ -563,7 +563,7 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
     world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "seller-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 7,
     });
     world.step().expect("list artifact");
@@ -572,7 +572,7 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
         Some(WorldEventBody::Domain(DomainEvent::ModuleArtifactListed {
             seller_agent_id,
             wasm_hash: listed_hash,
-            price_kind: ResourceKind::Hardware,
+            price_kind: ResourceKind::Data,
             price_amount: 7,
             ..
         })) if seller_agent_id == "seller-1" && listed_hash == &wasm_hash
@@ -590,7 +590,7 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
                 buyer_agent_id,
                 seller_agent_id,
                 wasm_hash: sold_hash,
-                price_kind: ResourceKind::Hardware,
+                price_kind: ResourceKind::Data,
                 price_amount: 7,
                 ..
             }
@@ -607,15 +607,15 @@ fn module_artifact_listing_and_purchase_transfers_owner_and_settles_price() {
         .contains_key(&wasm_hash));
     assert_eq!(
         world
-            .agent_resource_balance("buyer-1", ResourceKind::Hardware)
+            .agent_resource_balance("buyer-1", ResourceKind::Data)
             .expect("buyer resource"),
         13
     );
     assert_eq!(
         world
-            .agent_resource_balance("seller-1", ResourceKind::Hardware)
+            .agent_resource_balance("seller-1", ResourceKind::Data)
             .expect("seller resource"),
-        10
+        9
     );
 }
 
@@ -637,7 +637,7 @@ fn list_module_artifact_for_sale_rejects_non_owner() {
     let action_id = world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "intruder-1".to_string(),
         wasm_hash,
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 5,
     });
     world.step().expect("list non-owner");
@@ -650,7 +650,7 @@ fn buy_module_artifact_rejects_when_buyer_has_insufficient_price_resource() {
     let mut world = World::new();
     register_agent(&mut world, "seller-1");
     register_agent(&mut world, "buyer-1");
-    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 2);
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Data, 2);
 
     let wasm_bytes = b"module-action-loop-buy-insufficient".to_vec();
     let wasm_hash = util::sha256_hex(&wasm_bytes);
@@ -663,7 +663,7 @@ fn buy_module_artifact_rejects_when_buyer_has_insufficient_price_resource() {
     world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "seller-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 5,
     });
     world.step().expect("list artifact");
@@ -680,7 +680,7 @@ fn buy_module_artifact_rejects_when_buyer_has_insufficient_price_resource() {
         reason:
             RejectReason::InsufficientResource {
                 agent_id,
-                kind: ResourceKind::Hardware,
+                kind: ResourceKind::Data,
                 requested,
                 available,
             },
@@ -739,7 +739,7 @@ fn delist_module_artifact_removes_listing_and_charges_data_fee() {
     world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "seller-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 5,
     });
     world.step().expect("list artifact");
@@ -874,7 +874,7 @@ fn module_artifact_bid_auto_matches_on_listing() {
     let mut world = World::new();
     register_agent(&mut world, "seller-1");
     register_agent(&mut world, "buyer-1");
-    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 30);
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Data, 30);
 
     let wasm_bytes = b"module-action-loop-bid-auto-match".to_vec();
     let wasm_hash = util::sha256_hex(&wasm_bytes);
@@ -888,7 +888,7 @@ fn module_artifact_bid_auto_matches_on_listing() {
     world.submit_action(Action::PlaceModuleArtifactBid {
         bidder_agent_id: "buyer-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 9,
     });
     world.step().expect("place bid");
@@ -902,7 +902,7 @@ fn module_artifact_bid_auto_matches_on_listing() {
     world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "seller-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 7,
     });
     world.step().expect("list and match");
@@ -924,7 +924,7 @@ fn module_artifact_bid_auto_matches_on_listing() {
     };
     assert_eq!(buyer_agent_id, "buyer-1");
     assert_eq!(seller_agent_id, "seller-1");
-    assert_eq!(*price_kind, ResourceKind::Hardware);
+    assert_eq!(*price_kind, ResourceKind::Data);
     assert_eq!(*price_amount, 7);
     assert_eq!(*matched_bid_order_id, Some(bid_order_id));
     assert_eq!(
@@ -943,7 +943,7 @@ fn cancel_module_artifact_bid_removes_order() {
     let mut world = World::new();
     register_agent(&mut world, "seller-1");
     register_agent(&mut world, "buyer-1");
-    set_agent_resource(&mut world, "buyer-1", ResourceKind::Hardware, 20);
+    set_agent_resource(&mut world, "buyer-1", ResourceKind::Data, 20);
 
     let wasm_bytes = b"module-action-loop-bid-cancel".to_vec();
     let wasm_hash = util::sha256_hex(&wasm_bytes);
@@ -957,7 +957,7 @@ fn cancel_module_artifact_bid_removes_order() {
     world.submit_action(Action::PlaceModuleArtifactBid {
         bidder_agent_id: "buyer-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 8,
     });
     world.step().expect("place bid");
@@ -990,8 +990,8 @@ fn module_artifact_bid_match_prefers_highest_price() {
     register_agent(&mut world, "seller-1");
     register_agent(&mut world, "buyer-low");
     register_agent(&mut world, "buyer-high");
-    set_agent_resource(&mut world, "buyer-low", ResourceKind::Hardware, 20);
-    set_agent_resource(&mut world, "buyer-high", ResourceKind::Hardware, 20);
+    set_agent_resource(&mut world, "buyer-low", ResourceKind::Data, 20);
+    set_agent_resource(&mut world, "buyer-high", ResourceKind::Data, 20);
 
     let wasm_bytes = b"module-action-loop-bid-priority".to_vec();
     let wasm_hash = util::sha256_hex(&wasm_bytes);
@@ -1005,14 +1005,14 @@ fn module_artifact_bid_match_prefers_highest_price() {
     world.submit_action(Action::PlaceModuleArtifactBid {
         bidder_agent_id: "buyer-low".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 8,
     });
     world.step().expect("place low bid");
     world.submit_action(Action::PlaceModuleArtifactBid {
         bidder_agent_id: "buyer-high".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 9,
     });
     world.step().expect("place high bid");
@@ -1020,7 +1020,7 @@ fn module_artifact_bid_match_prefers_highest_price() {
     world.submit_action(Action::ListModuleArtifactForSale {
         seller_agent_id: "seller-1".to_string(),
         wasm_hash: wasm_hash.clone(),
-        price_kind: ResourceKind::Hardware,
+        price_kind: ResourceKind::Data,
         price_amount: 7,
     });
     world.step().expect("list and match");

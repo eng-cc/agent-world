@@ -894,8 +894,6 @@ fn parse_owner_spec(value: &str, default_agent_id: &str) -> Result<ResourceOwner
 fn parse_resource_kind(value: &str) -> Option<ResourceKind> {
     match value.trim().to_ascii_lowercase().as_str() {
         "electricity" | "power" => Some(ResourceKind::Electricity),
-        "compound" | "ore" => Some(ResourceKind::Compound),
-        "hardware" => Some(ResourceKind::Hardware),
         "data" => Some(ResourceKind::Data),
         _ => None,
     }

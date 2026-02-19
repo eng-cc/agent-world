@@ -376,7 +376,7 @@ fn replay_from_snapshot_applies_compound_refined_event() {
         ResourceOwner::Agent {
             agent_id: "agent-refiner".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         2_500,
     );
     let snapshot = kernel.snapshot();
@@ -398,7 +398,7 @@ fn replay_from_snapshot_applies_compound_refined_event() {
         .get("agent-refiner")
         .expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 5);
 }
 
 #[test]
@@ -464,7 +464,7 @@ fn replay_from_snapshot_applies_compound_mined_event() {
         .agents
         .get("agent-miner")
         .expect("agent exists");
-    assert_eq!(agent.resources.get(ResourceKind::Compound), 1_200);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 1_200);
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 26);
     let location = replayed
         .model()
@@ -494,7 +494,7 @@ fn replay_from_snapshot_applies_debug_resource_granted_event() {
         owner: ResourceOwner::Agent {
             agent_id: "agent-debug".to_string(),
         },
-        kind: ResourceKind::Hardware,
+        kind: ResourceKind::Data,
         amount: 99,
     });
     kernel.step().expect("debug grant");
@@ -506,7 +506,7 @@ fn replay_from_snapshot_applies_debug_resource_granted_event() {
         .agents
         .get("agent-debug")
         .expect("agent exists");
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 99);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 99);
 }
 
 #[test]

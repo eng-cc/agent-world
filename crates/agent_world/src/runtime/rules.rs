@@ -217,17 +217,15 @@ mod tests {
     fn resource_delta_deficits_report_shortfall() {
         let mut balances = BTreeMap::new();
         balances.insert(ResourceKind::Electricity, 3);
-        balances.insert(ResourceKind::Hardware, 5);
+        balances.insert(ResourceKind::Data, 5);
 
         let mut delta = ResourceDelta::default();
         delta.entries.insert(ResourceKind::Electricity, -5);
-        delta.entries.insert(ResourceKind::Hardware, -2);
-        delta.entries.insert(ResourceKind::Data, 4);
+        delta.entries.insert(ResourceKind::Data, -7);
 
         let deficits = delta.deficits(&balances);
         assert_eq!(deficits.get(&ResourceKind::Electricity), Some(&2));
-        assert_eq!(deficits.get(&ResourceKind::Hardware), None);
-        assert_eq!(deficits.get(&ResourceKind::Data), None);
+        assert_eq!(deficits.get(&ResourceKind::Data), Some(&2));
     }
 
     #[test]

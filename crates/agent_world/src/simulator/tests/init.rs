@@ -103,13 +103,13 @@ fn init_seeds_locations_and_resources() {
     location_seed.pos = Some(pos(10.0, 10.0));
     location_seed
         .resources
-        .add(ResourceKind::Hardware, 3)
+        .add(ResourceKind::Data, 3)
         .expect("seed location resources");
     init.locations.push(location_seed);
 
     let (model, _) = build_world_model(&config, &init).expect("init should succeed");
     let base = model.locations.get("base").expect("base exists");
-    assert_eq!(base.resources.get(ResourceKind::Hardware), 3);
+    assert_eq!(base.resources.get(ResourceKind::Data), 3);
     let agent = model.agents.get("agent-0").expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Data), 5);
 }
@@ -356,7 +356,7 @@ fn resource_bootstrap_seeds_stock() {
     let agent = model.agents.get("agent-0").expect("agent exists");
 
     assert_eq!(origin.resources.get(ResourceKind::Electricity), 0);
-    assert_eq!(origin.resources.get(ResourceKind::Hardware), 20);
+    assert_eq!(origin.resources.get(ResourceKind::Data), 20);
     assert_eq!(agent.resources.get(ResourceKind::Data), 10);
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 25);
 }

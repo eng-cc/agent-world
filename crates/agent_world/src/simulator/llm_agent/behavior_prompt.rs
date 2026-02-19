@@ -204,8 +204,6 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             RejectReason::InsufficientResource { kind, .. } => {
                 let kind = match kind {
                     ResourceKind::Electricity => "electricity",
-                    ResourceKind::Compound => "compound",
-                    ResourceKind::Hardware => "hardware",
                     ResourceKind::Data => "data",
                 };
                 format!("insufficient_resource.{kind}")

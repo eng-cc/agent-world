@@ -97,8 +97,8 @@ Agent World 是一个持久化的多主体 AI 世界模拟框架。在该系统�
 
 当前实现采用“最小内建资源 + 模块扩展资源”的分层：
 
-- 内建资源（由 runtime/共识直接校验）：`Electricity`、`Compound`、`Hardware`、`Data`
-- 模块扩展资源（由 WASM 模块定义）：信用、许可、税票、组织积分等制度化资产
+- 内建资源（由 runtime/共识直接校验）：`Electricity`、`Data`
+- 模块扩展资源（由 WASM 模块定义）：包括原先 `Compound`/`Hardware` 在内的产业资源，以及信用、许可、税票、组织积分等制度化资产
 
 其中，算力/存储/带宽在当前实现中由内建资源组合近似表达，细粒度规则由模块层决定。
 
@@ -207,8 +207,8 @@ Agent 为硅基机器人：
 
 文明资源分两层：
 
-- 内建资源：`Electricity`、`Compound`、`Hardware`、`Data`
-- 模块扩展资源：由 WASM 在世界内定义和结算的制度化资产
+- 内建资源：`Electricity`、`Data`
+- 模块扩展资源：由 WASM 在世界内定义和结算的产业与制度化资产（如 `Compound`、`Hardware`、信用、许可等）
 
 资源获取、消耗与维护成本构成行为约束。
 

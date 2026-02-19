@@ -614,7 +614,7 @@ impl WorldKernel {
                         return WorldEventKind::ActionRejected {
                             reason: RejectReason::InsufficientResource {
                                 owner: site_owner.clone(),
-                                kind: ResourceKind::Compound,
+                                kind: ResourceKind::Data,
                                 requested: compound_mass_g,
                                 available,
                             },
@@ -659,8 +659,7 @@ impl WorldKernel {
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
-                if let Err(reason) =
-                    self.add_to_owner(&owner, ResourceKind::Compound, compound_mass_g)
+                if let Err(reason) = self.add_to_owner(&owner, ResourceKind::Data, compound_mass_g)
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -700,13 +699,13 @@ impl WorldKernel {
 
                 let available_compound = self
                     .owner_stock(&owner)
-                    .map(|stock| stock.get(ResourceKind::Compound))
+                    .map(|stock| stock.get(ResourceKind::Data))
                     .unwrap_or(0);
                 if available_compound < compound_mass_g {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::InsufficientResource {
                             owner: owner.clone(),
-                            kind: ResourceKind::Compound,
+                            kind: ResourceKind::Data,
                             requested: compound_mass_g,
                             available: available_compound,
                         },
@@ -729,7 +728,7 @@ impl WorldKernel {
                 }
 
                 if let Err(reason) =
-                    self.remove_from_owner(&owner, ResourceKind::Compound, compound_mass_g)
+                    self.remove_from_owner(&owner, ResourceKind::Data, compound_mass_g)
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -738,8 +737,7 @@ impl WorldKernel {
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
-                if let Err(reason) =
-                    self.add_to_owner(&owner, ResourceKind::Hardware, hardware_output)
+                if let Err(reason) = self.add_to_owner(&owner, ResourceKind::Data, hardware_output)
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -825,13 +823,13 @@ impl WorldKernel {
                 }
                 let available_hardware = self
                     .owner_stock(&owner)
-                    .map(|stock| stock.get(ResourceKind::Hardware))
+                    .map(|stock| stock.get(ResourceKind::Data))
                     .unwrap_or(0);
                 if available_hardware < hardware_cost {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::InsufficientResource {
                             owner,
-                            kind: ResourceKind::Hardware,
+                            kind: ResourceKind::Data,
                             requested: hardware_cost,
                             available: available_hardware,
                         },
@@ -844,7 +842,7 @@ impl WorldKernel {
                     return WorldEventKind::ActionRejected { reason };
                 }
                 if let Err(reason) =
-                    self.remove_from_owner(&owner, ResourceKind::Hardware, hardware_cost)
+                    self.remove_from_owner(&owner, ResourceKind::Data, hardware_cost)
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -977,13 +975,13 @@ impl WorldKernel {
                 }
                 let available_hardware = self
                     .owner_stock(&owner)
-                    .map(|stock| stock.get(ResourceKind::Hardware))
+                    .map(|stock| stock.get(ResourceKind::Data))
                     .unwrap_or(0);
                 if available_hardware < hardware_cost {
                     return WorldEventKind::ActionRejected {
                         reason: RejectReason::InsufficientResource {
                             owner,
-                            kind: ResourceKind::Hardware,
+                            kind: ResourceKind::Data,
                             requested: hardware_cost,
                             available: available_hardware,
                         },
@@ -996,7 +994,7 @@ impl WorldKernel {
                     return WorldEventKind::ActionRejected { reason };
                 }
                 if let Err(reason) =
-                    self.remove_from_owner(&owner, ResourceKind::Hardware, hardware_cost)
+                    self.remove_from_owner(&owner, ResourceKind::Data, hardware_cost)
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
@@ -2027,7 +2025,7 @@ impl WorldKernel {
                 owner: ResourceOwner::Location {
                     location_id: location_id.to_string(),
                 },
-                kind: ResourceKind::Compound,
+                kind: ResourceKind::Data,
                 requested: compound_mass_g,
                 available: 0,
             }
@@ -2044,7 +2042,7 @@ impl WorldKernel {
                 owner: ResourceOwner::Location {
                     location_id: location_id.to_string(),
                 },
-                kind: ResourceKind::Compound,
+                kind: ResourceKind::Data,
                 requested: compound_mass_g,
                 available: total_available,
             });
@@ -2070,7 +2068,7 @@ impl WorldKernel {
                 owner: ResourceOwner::Location {
                     location_id: location_id.to_string(),
                 },
-                kind: ResourceKind::Compound,
+                kind: ResourceKind::Data,
                 requested: compound_mass_g,
                 available: compound_mass_g.saturating_sub(remaining),
             });
@@ -2101,7 +2099,7 @@ impl WorldKernel {
             FragmentResourceError::FragmentBudgetMissing { location_id } => {
                 RejectReason::InsufficientResource {
                     owner: ResourceOwner::Location { location_id },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 1,
                     available: 0,
                 }
@@ -2131,7 +2129,7 @@ impl WorldKernel {
                 owner: ResourceOwner::Location {
                     location_id: location_id.to_string(),
                 },
-                kind: ResourceKind::Compound,
+                kind: ResourceKind::Data,
                 requested: requested_g,
                 available: remaining_g,
             },

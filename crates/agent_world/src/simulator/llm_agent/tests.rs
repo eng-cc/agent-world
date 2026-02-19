@@ -260,8 +260,8 @@ fn make_observation() -> Observation {
         .add(ResourceKind::Electricity, 30)
         .expect("seed electricity");
     self_resources
-        .add(ResourceKind::Hardware, 0)
-        .expect("seed hardware");
+        .add(ResourceKind::Data, 0)
+        .expect("seed data");
     self_resources
         .add(ResourceKind::Data, 12)
         .expect("seed data");
@@ -795,7 +795,7 @@ fn response_function_call_maps_decision_tool_to_typed_decision_turn() {
 #[test]
 fn response_function_call_maps_debug_grant_tool_to_typed_decision_turn() {
     let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
-        arguments: "{\"owner\":\"self\",\"kind\":\"hardware\",\"amount\":3}".to_string(),
+        arguments: "{\"owner\":\"self\",\"kind\":\"data\",\"amount\":3}".to_string(),
         call_id: "call_debug".to_string(),
         name: OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string(),
         id: None,
@@ -811,7 +811,7 @@ fn response_function_call_maps_debug_grant_tool_to_typed_decision_turn() {
             );
             assert_eq!(
                 payload.get("kind").and_then(|value| value.as_str()),
-                Some("hardware")
+                Some("data")
             );
             assert_eq!(
                 payload.get("amount").and_then(|value| value.as_i64()),
@@ -1041,8 +1041,7 @@ fn llm_agent_parse_refine_compound_action_defaults_to_self_owner() {
 fn llm_agent_parse_debug_grant_resource_action_when_debug_mode_enabled() {
     let client = MockClient {
         output: Some(
-            "{\"decision\":\"debug_grant_resource\",\"kind\":\"hardware\",\"amount\":9}"
-                .to_string(),
+            "{\"decision\":\"debug_grant_resource\",\"kind\":\"data\",\"amount\":9}".to_string(),
         ),
         err: None,
     };
@@ -1057,7 +1056,7 @@ fn llm_agent_parse_debug_grant_resource_action_when_debug_mode_enabled() {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            kind: ResourceKind::Hardware,
+            kind: ResourceKind::Data,
             amount: 9,
         })
     );
@@ -1067,8 +1066,7 @@ fn llm_agent_parse_debug_grant_resource_action_when_debug_mode_enabled() {
 fn llm_agent_rejects_debug_grant_resource_action_when_debug_mode_disabled() {
     let client = MockClient {
         output: Some(
-            "{\"decision\":\"debug_grant_resource\",\"kind\":\"hardware\",\"amount\":9}"
-                .to_string(),
+            "{\"decision\":\"debug_grant_resource\",\"kind\":\"data\",\"amount\":9}".to_string(),
         ),
         err: None,
     };
@@ -1140,8 +1138,8 @@ fn llm_agent_parse_schedule_recipe_action_with_default_batches() {
     let mut observation = make_observation();
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 2)
-        .expect("add test hardware");
+        .add(ResourceKind::Data, 2)
+        .expect("add test data");
     let decision = behavior.decide(&observation);
 
     assert_eq!(
@@ -1211,7 +1209,7 @@ fn llm_agent_parse_place_power_order_action() {
 fn llm_agent_parse_publish_social_fact_action() {
     let client = MockClient {
         output: Some(
-            "{\"decision\":\"publish_social_fact\",\"actor\":\"self\",\"schema_id\":\"social.reputation.v1\",\"subject\":\"agent:agent-2\",\"claim\":\"agent-2 completed delivery\",\"confidence_ppm\":800000,\"evidence_event_ids\":[7,8],\"ttl_ticks\":12,\"stake\":{\"kind\":\"hardware\",\"amount\":2}}".to_string(),
+            "{\"decision\":\"publish_social_fact\",\"actor\":\"self\",\"schema_id\":\"social.reputation.v1\",\"subject\":\"agent:agent-2\",\"claim\":\"agent-2 completed delivery\",\"confidence_ppm\":800000,\"evidence_event_ids\":[7,8],\"ttl_ticks\":12,\"stake\":{\"kind\":\"data\",\"amount\":2}}".to_string(),
         ),
         err: None,
     };
@@ -1234,7 +1232,7 @@ fn llm_agent_parse_publish_social_fact_action() {
             evidence_event_ids: vec![7, 8],
             ttl_ticks: Some(12),
             stake: Some(SocialStake {
-                kind: ResourceKind::Hardware,
+                kind: ResourceKind::Data,
                 amount: 2,
             }),
         })

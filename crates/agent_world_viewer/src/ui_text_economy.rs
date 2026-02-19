@@ -89,11 +89,8 @@ pub(super) fn economy_dashboard_summary(
     }
 
     let electricity_flow = amount_or_zero(&rollup.flow_by_kind, ResourceKind::Electricity);
-    let hardware_flow = amount_or_zero(&rollup.flow_by_kind, ResourceKind::Hardware);
     let data_flow = amount_or_zero(&rollup.flow_by_kind, ResourceKind::Data);
-    let outbound_value_proxy = electricity_flow
-        .saturating_add(hardware_flow.saturating_mul(4))
-        .saturating_add(data_flow.saturating_mul(2));
+    let outbound_value_proxy = electricity_flow.saturating_add(data_flow.saturating_mul(2));
     let total_cost_proxy = rollup
         .power_trade_settlement
         .saturating_add(rollup.refine_electricity_cost)
@@ -102,11 +99,7 @@ pub(super) fn economy_dashboard_summary(
 
     let mut lines = vec!["Economy Dashboard:".to_string()];
     lines.push("Supply & Demand:".to_string());
-    for kind in [
-        ResourceKind::Electricity,
-        ResourceKind::Hardware,
-        ResourceKind::Data,
-    ] {
+    for kind in [ResourceKind::Electricity, ResourceKind::Data] {
         let stock = amount_or_zero(&rollup.stock_by_kind, kind);
         let flow = amount_or_zero(&rollup.flow_by_kind, kind);
         let shortfall = amount_or_zero(&rollup.shortfall_by_kind, kind);
@@ -216,7 +209,7 @@ mod tests {
         model.agents.insert("agent-1".to_string(), agent);
 
         let mut location = Location::new("loc-a", "Alpha", GeoPos::new(0.0, 0.0, 0.0));
-        location.resources.set(ResourceKind::Hardware, 9).ok();
+        location.resources.set(ResourceKind::Data, 9).ok();
         model.locations.insert("loc-a".to_string(), location);
 
         let snapshot = WorldSnapshot {
@@ -243,7 +236,7 @@ mod tests {
                     to: ResourceOwner::Agent {
                         agent_id: "agent-1".to_string(),
                     },
-                    kind: ResourceKind::Hardware,
+                    kind: ResourceKind::Data,
                     amount: 6,
                 },
             },
@@ -295,7 +288,7 @@ mod tests {
         assert!(summary.contains("Economy Dashboard:"));
         assert!(summary.contains("Supply & Demand:"));
         assert!(summary.contains("Electricity: stock=25"));
-        assert!(summary.contains("Hardware: stock=9"));
+        assert!(summary.contains("Data: stock=9"));
         assert!(summary.contains("Insufficient Rejects(Recent): 1"));
         assert!(summary.contains("Cost & Revenue Proxy:"));
         assert!(summary.contains("Power Trade Settlement(Recent): 30"));

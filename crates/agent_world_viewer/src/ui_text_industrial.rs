@@ -45,8 +45,6 @@ impl ProductionVisualCounts {
 struct LogisticsRouteStats {
     transfer_events: usize,
     electricity: i64,
-    compound: i64,
-    hardware: i64,
     data: i64,
     power: i64,
     power_loss: i64,
@@ -99,12 +97,6 @@ pub(super) fn industrial_ops_summary(
                     ResourceKind::Electricity => {
                         entry.electricity = entry.electricity.saturating_add(*amount);
                     }
-                    ResourceKind::Compound => {
-                        entry.compound = entry.compound.saturating_add(*amount);
-                    }
-                    ResourceKind::Hardware => {
-                        entry.hardware = entry.hardware.saturating_add(*amount);
-                    }
                     ResourceKind::Data => {
                         entry.data = entry.data.saturating_add(*amount);
                     }
@@ -148,9 +140,7 @@ pub(super) fn industrial_ops_summary(
     lines.push(format!("- Logistics Visuals: {}", visuals.logistics));
     lines.push(format!("- Recent Refine Events: {recent_refine_events}"));
     lines.push(format!("- Recent Line Updates: {recent_line_updates}"));
-    lines.push(format!(
-        "- Hardware Output(Recent): {recent_hardware_output}"
-    ));
+    lines.push(format!("- Refine Output(Recent): {recent_hardware_output}"));
 
     lines.push("".to_string());
     lines.push("Logistics Routes:".to_string());
@@ -171,13 +161,11 @@ pub(super) fn industrial_ops_summary(
 
     for ((from, to), stats) in top_routes.into_iter().take(INDUSTRIAL_TOP_ROUTE_LIMIT) {
         lines.push(format!(
-            "- Route {} -> {} moves={} electricity={} compound={} hardware={} data={} power={} loss={}",
+            "- Route {} -> {} moves={} electricity={} data={} power={} loss={}",
             from,
             to,
             stats.transfer_events,
             stats.electricity,
-            stats.compound,
-            stats.hardware,
             stats.data,
             stats.power,
             stats.power_loss
@@ -230,8 +218,6 @@ fn route_weight(stats: &LogisticsRouteStats) -> i64 {
     stats
         .electricity
         .abs()
-        .saturating_add(stats.compound.abs())
-        .saturating_add(stats.hardware.abs())
         .saturating_add(stats.data.abs())
         .saturating_add(stats.power.abs())
 }
@@ -341,7 +327,7 @@ mod tests {
                     to: ResourceOwner::Location {
                         location_id: "loc-b".to_string(),
                     },
-                    kind: ResourceKind::Hardware,
+                    kind: ResourceKind::Data,
                     amount: 5,
                 },
             },
@@ -369,7 +355,7 @@ mod tests {
         assert!(summary.contains("- Recipe Visuals: 1"));
         assert!(summary.contains("- Product Visuals: 1"));
         assert!(summary.contains("- Recent Refine Events: 1"));
-        assert!(summary.contains("- Hardware Output(Recent): 9"));
+        assert!(summary.contains("- Refine Output(Recent): 9"));
         assert!(summary.contains("Logistics Routes:"));
         assert!(summary.contains("- Active Routes: 1"));
         assert!(summary.contains("- Power Moved: 11 (loss=1)"));

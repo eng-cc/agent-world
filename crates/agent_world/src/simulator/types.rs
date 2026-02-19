@@ -36,8 +36,6 @@ pub const DEFAULT_ELEMENT_RECOVERABILITY_PPM: i64 = 850_000;
 #[serde(rename_all = "snake_case")]
 pub enum ResourceKind {
     Electricity,
-    Compound,
-    Hardware,
     Data,
 }
 

@@ -825,7 +825,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         ResourceOwner::Location {
                             location_id: rejected_location_id,
                         },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     available,
                     ..
                 }) = result.reject_reason()

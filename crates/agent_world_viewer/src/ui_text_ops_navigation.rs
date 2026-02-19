@@ -264,7 +264,7 @@ mod tests {
                     to: ResourceOwner::Location {
                         location_id: "loc-b".to_string(),
                     },
-                    kind: ResourceKind::Hardware,
+                    kind: ResourceKind::Data,
                     amount: 2,
                 },
             },

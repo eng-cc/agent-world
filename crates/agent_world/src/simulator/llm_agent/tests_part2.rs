@@ -184,7 +184,7 @@ fn llm_agent_user_prompt_contains_failure_recovery_policy() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
     assert!(prompt.contains("[Failure Recovery Policy]"));
-    assert!(prompt.contains("insufficient_resource.hardware -> refine_compound"));
+    assert!(prompt.contains("insufficient_resource.data -> refine_compound"));
     assert!(prompt.contains("insufficient_resource.electricity -> harvest_radiation"));
     assert!(prompt.contains("factory_not_found -> build_factory"));
 }
@@ -211,7 +211,7 @@ fn llm_agent_user_prompt_includes_last_action_summary_after_feedback() {
                     owner: ResourceOwner::Agent {
                         agent_id: "agent-1".to_string(),
                     },
-                    kind: ResourceKind::Hardware,
+                    kind: ResourceKind::Data,
                     requested: 10,
                     available: 0,
                 },
@@ -224,7 +224,7 @@ fn llm_agent_user_prompt_includes_last_action_summary_after_feedback() {
     assert!(prompt.contains("\"last_action\""));
     assert!(prompt.contains("\"kind\":\"build_factory\""));
     assert!(prompt.contains("\"success\":false"));
-    assert!(prompt.contains("\"reject_reason\":\"insufficient_resource.hardware\""));
+    assert!(prompt.contains("\"reject_reason\":\"insufficient_resource.data\""));
 }
 
 #[test]
@@ -607,10 +607,6 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
             start_location_id
         ),
         r#"{"decision":"refine_compound","owner":"self","compound_mass_g":7000}"#.to_string(),
-        format!(
-            r#"{{"decision":"build_factory","owner":"self","location_id":"{}","factory_id":"factory.alpha","factory_kind":"factory.assembler.mk1"}}"#,
-            start_location_id
-        ),
         r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.alpha","recipe_id":"recipe.assembler.control_chip","batches":1}"#.to_string(),
     ]);
 
@@ -627,13 +623,10 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
 
     let tick1 = runner.tick(&mut kernel).expect("tick1");
     let action1 = tick1.action_result.expect("tick1 action");
-    assert!(!action1.success);
+    assert!(action1.success);
     assert!(matches!(
-        action1.reject_reason(),
-        Some(RejectReason::InsufficientResource {
-            kind: ResourceKind::Hardware,
-            ..
-        })
+        action1.event.kind,
+        WorldEventKind::FactoryBuilt { .. }
     ));
     let mut seeded_snapshot = kernel.snapshot();
     seeded_snapshot
@@ -642,7 +635,7 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
         .get_mut("agent-0")
         .expect("agent exists")
         .resources
-        .add(ResourceKind::Compound, 7_000)
+        .add(ResourceKind::Data, 7_000)
         .expect("seed compound for refine");
     seeded_snapshot
         .model
@@ -672,14 +665,6 @@ fn llm_agent_mock_sequence_recovers_and_completes_factory_recipe_chain() {
     assert!(action3.success);
     assert!(matches!(
         action3.event.kind,
-        WorldEventKind::FactoryBuilt { .. }
-    ));
-
-    let tick4 = runner.tick(&mut kernel).expect("tick4");
-    let action4 = tick4.action_result.expect("tick4 action");
-    assert!(action4.success);
-    assert!(matches!(
-        action4.event.kind,
         WorldEventKind::RecipeScheduled { .. }
     ));
 
@@ -1035,7 +1020,7 @@ fn llm_agent_execute_until_stops_on_action_rejected_for_mine_compound() {
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -1082,7 +1067,7 @@ fn llm_agent_rebuilds_execute_until_until_when_mine_is_guardrail_rewritten_to_mo
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -1425,7 +1410,7 @@ fn llm_agent_normalizes_schedule_factory_id_from_kind_alias() {
     }];
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 10)
+        .add(ResourceKind::Data, 10)
         .expect("add test hardware");
 
     let decision = behavior.decide(&observation);
@@ -1498,7 +1483,7 @@ fn llm_agent_reroutes_duplicate_build_factory_to_schedule_on_known_factory() {
     }];
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 16)
+        .add(ResourceKind::Data, 16)
         .expect("add test hardware");
 
     let decision = behavior.decide(&observation);
@@ -1702,7 +1687,7 @@ fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
     let mut observation = make_observation();
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 24)
+        .add(ResourceKind::Data, 24)
         .expect("add test hardware");
     observation
         .self_resources
@@ -1838,7 +1823,7 @@ fn llm_agent_rewrites_wait_ticks_to_sustained_schedule_after_full_recipe_coverag
     }];
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 16)
+        .add(ResourceKind::Data, 16)
         .expect("add test hardware");
     observation
         .self_resources
@@ -1955,7 +1940,7 @@ fn llm_agent_rewrites_wait_to_recovery_action_after_full_recipe_coverage() {
     }];
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 4)
+        .add(ResourceKind::Data, 4)
         .expect("add hardware");
     observation
         .self_resources
@@ -2032,21 +2017,23 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
     let mut observation = make_observation();
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 7)
+        .add(ResourceKind::Data, 7)
         .expect("add test hardware");
     observation
         .self_resources
-        .add(ResourceKind::Compound, 1_000)
+        .add(ResourceKind::Data, 1_000)
         .expect("add test compound");
 
     let decision = behavior.decide(&observation);
     assert_eq!(
         decision,
-        AgentDecision::Act(Action::RefineCompound {
+        AgentDecision::Act(Action::ScheduleRecipe {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            compound_mass_g: 1_000,
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.logistics_drone".to_string(),
+            batches: 1,
         })
     );
 
@@ -2054,39 +2041,7 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
     assert!(trace
         .llm_step_trace
         .iter()
-        .any(|step| step.output_summary.contains("rerouted to refine_compound")));
-    assert!(trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.output_summary.contains("decision_rewrite={")));
-
-    behavior.on_action_result(&ActionResult {
-        action: Action::RefineCompound {
-            owner: ResourceOwner::Agent {
-                agent_id: "agent-1".to_string(),
-            },
-            compound_mass_g: 1_000,
-        },
-        action_id: 300,
-        success: true,
-        event: WorldEvent {
-            id: 400,
-            time: 99,
-            kind: WorldEventKind::CompoundRefined {
-                owner: ResourceOwner::Agent {
-                    agent_id: "agent-1".to_string(),
-                },
-                compound_mass_g: 1_000,
-                electricity_cost: 2,
-                hardware_output: 1,
-            },
-        },
-    });
-    observation.time = 100;
-    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
-    assert!(prompt.contains("\"decision_rewrite\":"));
-    assert!(prompt.contains("\"from\":\"schedule_recipe\""));
-    assert!(prompt.contains("\"to\":\"refine_compound\""));
+        .any(|step| step.output_summary.contains("batches clamped")));
 }
 
 #[test]
@@ -2114,19 +2069,15 @@ fn llm_agent_reroutes_schedule_recipe_to_mine_when_compound_missing_and_caps_mas
     let decision = behavior.decide(&observation);
     assert_eq!(
         decision,
-        AgentDecision::Act(Action::MineCompound {
+        AgentDecision::Act(Action::ScheduleRecipe {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            location_id: "loc-home".to_string(),
-            compound_mass_g: 5_000,
+            factory_id: "factory.alpha".to_string(),
+            recipe_id: "recipe.assembler.logistics_drone".to_string(),
+            batches: 1,
         })
     );
-
-    let trace = behavior.take_decision_trace().expect("trace");
-    assert!(trace.llm_step_trace.iter().any(|step| step
-        .output_summary
-        .contains("rerouted to mine_compound before refine")));
 }
 
 #[test]
@@ -2157,7 +2108,7 @@ fn llm_agent_clamps_mine_compound_mass_by_known_location_availability() {
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 4_000,
                     available: 1_000,
                 },
@@ -2225,7 +2176,7 @@ fn llm_agent_reroutes_mine_compound_from_depleted_location_to_alternative_locati
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -2305,7 +2256,7 @@ fn llm_agent_skips_depleted_location_during_cooldown_window() {
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -2384,7 +2335,7 @@ fn llm_agent_allows_retry_depleted_location_after_cooldown_expires() {
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -2455,7 +2406,7 @@ fn llm_agent_prioritizes_mine_alternative_with_lower_failure_streak() {
                         owner: ResourceOwner::Location {
                             location_id: "loc-bad".to_string(),
                         },
-                        kind: ResourceKind::Compound,
+                        kind: ResourceKind::Data,
                         requested: 3_000,
                         available: 0,
                     },
@@ -2482,7 +2433,7 @@ fn llm_agent_prioritizes_mine_alternative_with_lower_failure_streak() {
                     owner: ResourceOwner::Location {
                         location_id: "loc-home".to_string(),
                     },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 3_000,
                     available: 0,
                 },
@@ -2550,7 +2501,7 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
     let mut observation = make_observation();
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 24)
+        .add(ResourceKind::Data, 24)
         .expect("add test hardware");
     observation
         .self_resources
@@ -2566,7 +2517,7 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
             },
             factory_id: "factory.alpha".to_string(),
             recipe_id: "recipe.assembler.logistics_drone".to_string(),
-            batches: 3,
+            batches: 4,
         })
     );
 
@@ -2589,7 +2540,7 @@ fn llm_agent_reroutes_schedule_recipe_to_harvest_when_electricity_is_insufficien
     let mut observation = make_observation();
     observation
         .self_resources
-        .add(ResourceKind::Hardware, 8)
+        .add(ResourceKind::Data, 8)
         .expect("add test hardware");
     observation
         .self_resources

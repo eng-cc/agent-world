@@ -243,7 +243,7 @@ impl PromptAssembler {
 {{"decision":"sell_power","seller":"<self|agent:<id>|location:<id>>","buyer":"<self|agent:<id>|location:<id>>","amount":<i64 >=1>,"price_per_pu":<i64 >=0>}}
 {{"decision":"place_power_order","owner":"<self|agent:<id>|location:<id>>","side":"<buy|sell>","amount":<i64 >=1>,"limit_price_per_pu":<i64 >=0>}}
 {{"decision":"cancel_power_order","owner":"<self|agent:<id>|location:<id>>","order_id":<u64 >=1>}}
-{{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}
+{{"decision":"transfer_resource","from_owner":"<self|agent:<id>|location:<id>>","to_owner":"<self|agent:<id>|location:<id>>","kind":"<electricity|data>","amount":<i64 >=1>}}
 {{"decision":"mine_compound","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","compound_mass_g":<i64 >=1>}}
 {{"decision":"refine_compound","owner":"<self|agent:<id>|location:<id>>","compound_mass_g":<i64 >=1>}}
 {{"decision":"build_factory","owner":"<self|agent:<id>|location:<id>>","location_id":"<location_id>","factory_id":"<factory_id>","factory_kind":"<factory_kind>"}}
@@ -251,14 +251,14 @@ impl PromptAssembler {
 {{"decision":"compile_module_artifact_from_source","publisher":"<self|agent:<id>>","module_id":"<module_id>","manifest_path":"<relative_manifest_path>","source_files":{{"Cargo.toml":"<text>","src/lib.rs":"<text>"}}}}
 {{"decision":"deploy_module_artifact","publisher":"<self|agent:<id>>","module_id":"<module_id optional>","wasm_hash":"<sha256_hex>","wasm_bytes_hex":"<hex_bytes>"}}
 {{"decision":"install_module_from_artifact","installer":"<self|agent:<id>>","module_id":"<module_id>","module_version":"<semver>","wasm_hash":"<sha256_hex>","activate":<bool>}}
-{{"decision":"list_module_artifact_for_sale","seller":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|compound|hardware|data>","price_amount":<i64 >=1>}}
+{{"decision":"list_module_artifact_for_sale","seller":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|data>","price_amount":<i64 >=1>}}
 {{"decision":"buy_module_artifact","buyer":"<self|agent:<id>>","wasm_hash":"<sha256_hex>"}}
 {{"decision":"delist_module_artifact","seller":"<self|agent:<id>>","wasm_hash":"<sha256_hex>"}}
 {{"decision":"destroy_module_artifact","owner":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","reason":"<text>"}}
-{{"decision":"place_module_artifact_bid","bidder":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|compound|hardware|data>","price_amount":<i64 >=1>}}
+{{"decision":"place_module_artifact_bid","bidder":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","price_kind":"<electricity|data>","price_amount":<i64 >=1>}}
 {{"decision":"cancel_module_artifact_bid","bidder":"<self|agent:<id>>","wasm_hash":"<sha256_hex>","bid_order_id":<u64 >=1>}}
-{{"decision":"publish_social_fact","actor":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","subject":"<self|agent:<id>|location:<id>>","object":"<self|agent:<id>|location:<id>>","claim":"<text>","confidence_ppm":<i64 1..=1000000>,"evidence_event_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>,"stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
-{{"decision":"challenge_social_fact","challenger":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>","stake":{{"kind":"<electricity|compound|hardware|data>","amount":<i64 >=1>}}}}
+{{"decision":"publish_social_fact","actor":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","subject":"<self|agent:<id>|location:<id>>","object":"<self|agent:<id>|location:<id>>","claim":"<text>","confidence_ppm":<i64 1..=1000000>,"evidence_event_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>,"stake":{{"kind":"<electricity|data>","amount":<i64 >=1>}}}}
+{{"decision":"challenge_social_fact","challenger":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>","stake":{{"kind":"<electricity|data>","amount":<i64 >=1>}}}}
 {{"decision":"adjudicate_social_fact","adjudicator":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"adjudication":"<confirm|retract>","notes":"<text>"}}
 {{"decision":"revoke_social_fact","actor":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>"}}
 {{"decision":"declare_social_edge","declarer":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","relation_kind":"<relation_kind>","from":"<self|agent:<id>|location:<id>>","to":"<self|agent:<id>|location:<id>>","weight_bps":<i64 -10000..=10000>,"backing_fact_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>}}
@@ -286,7 +286,7 @@ impl PromptAssembler {
 - buy_power/sell_power.amount 必须是正整数；price_per_pu 必须 >= 0（0 表示按市场报价）
 - place_power_order.side 仅允许 buy/sell；amount 必须是正整数；limit_price_per_pu 必须 >= 0
 - cancel_power_order.order_id 必须是正整数
-- transfer_resource.kind 仅允许 electricity/compound/hardware/data，amount 必须为正整数
+- transfer_resource.kind 仅允许 electricity/data，amount 必须为正整数
 - owner 字段仅允许 self/agent:<id>/location:<id>
 - publish_social_fact.confidence_ppm 必须在 1..=1000000；evidence_event_ids/backing_fact_ids 不能为空
 - adjudicate_social_fact.adjudication 仅允许 confirm/retract
@@ -303,11 +303,11 @@ impl PromptAssembler {
 - module 市场动作的 price_amount 必须是正整数；cancel_module_artifact_bid.bid_order_id 必须是正整数
 - 若准备 install 但缺少 wasm_hash，先调用 `module.lifecycle.status` 读取最近 artifact 列表再执行
 - 默认 recipe_hardware_cost_per_batch：control_chip=2，motor_mk1=4，logistics_drone=8
-- 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.hardware / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe
+- 当 owner=self 时，schedule_recipe.batches 必须 <= floor(self_resources.data / recipe_hardware_cost_per_batch)；若上界为 0，先 refine_compound 再 schedule_recipe
 - 当 observation.recipe_coverage.missing 非空且你准备重复 observation.recipe_coverage.completed 中的 recipe 时，必须先切换到 missing 列表中的配方（优先 missing[0]）
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - [Failure Recovery Policy] 当 observation.last_action.success=false 时，必须优先按 reject_reason 切换下一动作：
-  - insufficient_resource.hardware -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=hardware)
+  - insufficient_resource.data -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=data)
   - insufficient_resource.electricity -> harvest_radiation 或 transfer_resource(kind=electricity)
   - factory_not_found -> build_factory（先建厂再 schedule_recipe）
   - agent_already_at_location -> 禁止重复 move_agent 到同 location，改为 schedule_recipe/refine_compound/harvest_radiation
@@ -1003,7 +1003,7 @@ mod tests {
             .contains("默认 recipe_hardware_cost_per_batch"));
         assert!(output
             .user_prompt
-            .contains("schedule_recipe.batches 必须 <= floor(self_resources.hardware"));
+            .contains("schedule_recipe.batches 必须 <= floor(self_resources.data"));
         assert!(output.user_prompt.contains("compound_mass_g >= 1000"));
         assert!(output
             .user_prompt
@@ -1017,7 +1017,7 @@ mod tests {
         assert!(output.user_prompt.contains("[Failure Recovery Policy]"));
         assert!(output
             .user_prompt
-            .contains("insufficient_resource.hardware -> refine_compound"));
+            .contains("insufficient_resource.data -> refine_compound"));
         assert!(output
             .user_prompt
             .contains("insufficient_resource.electricity -> harvest_radiation"));

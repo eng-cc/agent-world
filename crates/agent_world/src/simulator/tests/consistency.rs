@@ -43,7 +43,7 @@ fn replay_from_snapshot_matches_same_seed_and_action_sequence() {
         ResourceOwner::Agent {
             agent_id: "agent-0".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         1_000,
     );
     let mid_snapshot = kernel.snapshot();

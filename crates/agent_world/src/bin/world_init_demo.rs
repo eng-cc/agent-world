@@ -106,11 +106,10 @@ fn main() {
         for location_id in location_ids {
             let location = &model.locations[location_id];
             let electricity = location.resources.get(ResourceKind::Electricity);
-            let hardware = location.resources.get(ResourceKind::Hardware);
             let data = location.resources.get(ResourceKind::Data);
             println!(
-                "- {}: electricity={} hardware={} data={}",
-                location_id, electricity, hardware, data
+                "- {}: electricity={} data={}",
+                location_id, electricity, data
             );
         }
 
@@ -144,12 +143,8 @@ fn main() {
         for agent_id in agent_ids {
             let agent = &model.agents[agent_id];
             let electricity = agent.resources.get(ResourceKind::Electricity);
-            let hardware = agent.resources.get(ResourceKind::Hardware);
             let data = agent.resources.get(ResourceKind::Data);
-            println!(
-                "- {}: electricity={} hardware={} data={}",
-                agent_id, electricity, hardware, data
-            );
+            println!("- {}: electricity={} data={}", agent_id, electricity, data);
         }
     }
 }

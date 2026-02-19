@@ -72,7 +72,7 @@ fn kernel_action_behavior_snapshot_stays_stable() {
         ResourceOwner::Agent {
             agent_id: "agent-1".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         1_000,
     );
 
@@ -258,7 +258,7 @@ fn kernel_action_behavior_snapshot_stays_stable() {
     let agent = kernel.model().agents.get("agent-1").expect("agent exists");
     assert_eq!(agent.location_id, "loc-b");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 3);
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 1);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 1);
 
     let origin = kernel
         .model()

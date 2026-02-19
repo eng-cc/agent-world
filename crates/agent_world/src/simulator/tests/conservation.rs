@@ -144,7 +144,7 @@ fn harvest_and_refine_follow_resource_ledger_without_free_gain() {
         ResourceOwner::Agent {
             agent_id: "agent-1".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         refine_mass_g,
     );
     kernel.submit_action(Action::RefineCompound {
@@ -173,7 +173,7 @@ fn harvest_and_refine_follow_resource_ledger_without_free_gain() {
 
     let agent = kernel.model().agents.get("agent-1").expect("agent exists");
     let electricity_after = agent.resources.get(ResourceKind::Electricity);
-    let hardware_after = agent.resources.get(ResourceKind::Hardware);
+    let hardware_after = agent.resources.get(ResourceKind::Data);
 
     assert_eq!(electricity_after, harvested - electricity_cost);
     assert_eq!(hardware_after, hardware_output);

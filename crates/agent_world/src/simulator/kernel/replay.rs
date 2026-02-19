@@ -265,7 +265,7 @@ impl WorldKernel {
                             ),
                         })?;
                 }
-                self.add_to_owner_for_replay(owner, ResourceKind::Compound, *compound_mass_g)?;
+                self.add_to_owner_for_replay(owner, ResourceKind::Data, *compound_mass_g)?;
                 let location = self.model.locations.get_mut(location_id).ok_or_else(|| {
                     PersistError::ReplayConflict {
                         message: format!("mining location missing after consume: {location_id}"),
@@ -294,13 +294,13 @@ impl WorldKernel {
                     .map_err(|reason| PersistError::ReplayConflict {
                         message: format!("invalid refine owner: {reason:?}"),
                     })?;
-                self.remove_from_owner_for_replay(owner, ResourceKind::Compound, *compound_mass_g)?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Data, *compound_mass_g)?;
                 self.remove_from_owner_for_replay(
                     owner,
                     ResourceKind::Electricity,
                     *electricity_cost,
                 )?;
-                self.add_to_owner_for_replay(owner, ResourceKind::Hardware, *hardware_output)?;
+                self.add_to_owner_for_replay(owner, ResourceKind::Data, *hardware_output)?;
             }
             WorldEventKind::FactoryBuilt {
                 owner,
@@ -334,7 +334,7 @@ impl WorldKernel {
                     ResourceKind::Electricity,
                     *electricity_cost,
                 )?;
-                self.remove_from_owner_for_replay(owner, ResourceKind::Hardware, *hardware_cost)?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Data, *hardware_cost)?;
                 self.model.factories.insert(
                     factory_id.clone(),
                     Factory {
@@ -414,7 +414,7 @@ impl WorldKernel {
                     ResourceKind::Electricity,
                     *electricity_cost,
                 )?;
-                self.remove_from_owner_for_replay(owner, ResourceKind::Hardware, *hardware_cost)?;
+                self.remove_from_owner_for_replay(owner, ResourceKind::Data, *hardware_cost)?;
                 if *data_output > 0 {
                     self.add_to_owner_for_replay(owner, ResourceKind::Data, *data_output)?;
                 }

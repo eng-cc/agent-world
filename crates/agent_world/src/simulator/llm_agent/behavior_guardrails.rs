@@ -458,10 +458,10 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     }
                 }
 
-                let available_hardware = observation.self_resources.get(ResourceKind::Hardware);
+                let available_hardware = observation.self_resources.get(ResourceKind::Data);
                 let available_electricity =
                     observation.self_resources.get(ResourceKind::Electricity);
-                let available_compound = observation.self_resources.get(ResourceKind::Compound);
+                let available_compound = observation.self_resources.get(ResourceKind::Data);
                 if available_hardware < cost_per_batch {
                     let hardware_shortfall = cost_per_batch.saturating_sub(available_hardware);
                     let target_recovery_mass_g = hardware_shortfall

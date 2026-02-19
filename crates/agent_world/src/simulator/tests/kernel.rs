@@ -1122,7 +1122,7 @@ fn mine_compound_consumes_fragment_budget_and_awards_owner_compound() {
         .agents
         .get("agent-miner")
         .expect("agent exists");
-    assert_eq!(agent.resources.get(ResourceKind::Compound), 2_000);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 2_000);
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 46);
 
     let after_fragment = kernel
@@ -1208,7 +1208,7 @@ fn mine_compound_enforces_location_cap() {
                 reason,
                 RejectReason::InsufficientResource {
                     owner: ResourceOwner::Location { .. },
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 600,
                     available: 500,
                 }
@@ -1237,7 +1237,7 @@ fn debug_grant_resource_adds_requested_amount_to_owner_stock() {
         owner: ResourceOwner::Agent {
             agent_id: "agent-debug".to_string(),
         },
-        kind: ResourceKind::Hardware,
+        kind: ResourceKind::Data,
         amount: 123,
     });
     let event = kernel.step().expect("debug grant");
@@ -1253,7 +1253,7 @@ fn debug_grant_resource_adds_requested_amount_to_owner_stock() {
                     agent_id: "agent-debug".to_string(),
                 }
             );
-            assert_eq!(kind, ResourceKind::Hardware);
+            assert_eq!(kind, ResourceKind::Data);
             assert_eq!(amount, 123);
         }
         other => panic!("unexpected event: {other:?}"),
@@ -1264,7 +1264,7 @@ fn debug_grant_resource_adds_requested_amount_to_owner_stock() {
         .agents
         .get("agent-debug")
         .expect("agent exists");
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 123);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 123);
 }
 
 #[test]
@@ -1298,7 +1298,7 @@ fn refine_compound_consumes_electricity_and_outputs_hardware() {
         ResourceOwner::Agent {
             agent_id: "agent-refiner".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         2_500,
     );
 
@@ -1336,7 +1336,7 @@ fn refine_compound_consumes_electricity_and_outputs_hardware() {
         .get("agent-refiner")
         .expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 41);
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 5);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 5);
 }
 
 #[test]
@@ -1380,7 +1380,7 @@ fn refine_compound_rejects_when_compound_insufficient() {
             assert!(matches!(
                 reason,
                 RejectReason::InsufficientResource {
-                    kind: ResourceKind::Compound,
+                    kind: ResourceKind::Data,
                     requested: 1_500,
                     available: 0,
                     ..
@@ -1414,7 +1414,7 @@ fn refine_compound_rejects_when_electricity_insufficient() {
         ResourceOwner::Agent {
             agent_id: "agent-refiner".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         1_500,
     );
 
@@ -1475,7 +1475,7 @@ fn build_factory_consumes_resources_and_persists_factory_state() {
         ResourceOwner::Agent {
             agent_id: "agent-builder".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         3_000,
     );
 
@@ -1527,7 +1527,7 @@ fn build_factory_consumes_resources_and_persists_factory_state() {
         .get("agent-builder")
         .expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 20);
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 0);
+    assert_eq!(agent.resources.get(ResourceKind::Data), 0);
     assert!(kernel.model().factories.contains_key("factory.alpha"));
 }
 
@@ -1568,7 +1568,7 @@ fn schedule_recipe_consumes_inputs_and_outputs_data() {
         ResourceOwner::Agent {
             agent_id: "agent-builder".to_string(),
         },
-        ResourceKind::Compound,
+        ResourceKind::Data,
         16_000,
     );
 
@@ -1635,7 +1635,6 @@ fn schedule_recipe_consumes_inputs_and_outputs_data() {
         .get("agent-builder")
         .expect("agent exists");
     assert_eq!(agent.resources.get(ResourceKind::Electricity), 24);
-    assert_eq!(agent.resources.get(ResourceKind::Hardware), 0);
     assert_eq!(agent.resources.get(ResourceKind::Data), 24);
 }
 

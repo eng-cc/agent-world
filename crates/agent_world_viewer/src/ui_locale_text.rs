@@ -491,7 +491,8 @@ pub(super) fn localize_industrial_ops_block(text: String, locale: UiLocale) -> S
     converted = converted.replace("Logistics Visuals:", "物流可视实体:");
     converted = converted.replace("Recent Refine Events:", "近期精炼事件:");
     converted = converted.replace("Recent Line Updates:", "近期产线更新:");
-    converted = converted.replace("Hardware Output(Recent):", "近期硬件产出:");
+    converted = converted.replace("Refine Output(Recent):", "近期精炼产出:");
+    converted = converted.replace("Hardware Output(Recent):", "近期精炼产出:");
     converted = converted.replace("Logistics Routes:", "物流路由:");
     converted = converted.replace("Active Routes:", "活跃路由:");
     converted = converted.replace("Transfer Events:", "传输事件:");

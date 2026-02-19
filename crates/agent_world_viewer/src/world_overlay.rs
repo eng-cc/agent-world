@@ -501,11 +501,8 @@ fn top_heat_location(snapshot: &WorldSnapshot) -> Option<(String, i64)> {
         .iter()
         .map(|(location_id, location)| {
             let electricity = location.resources.get(ResourceKind::Electricity).max(0);
-            let hardware = location.resources.get(ResourceKind::Hardware).max(0);
             let data = location.resources.get(ResourceKind::Data).max(0);
-            let score = electricity
-                .saturating_add(hardware.saturating_mul(4))
-                .saturating_add(data.saturating_mul(2));
+            let score = electricity.saturating_add(data.saturating_mul(4));
             (location_id.clone(), score)
         })
         .max_by_key(|(_, score)| *score)
@@ -522,11 +519,8 @@ fn collect_location_heat_points(
         .values()
         .map(|location| {
             let electricity = location.resources.get(ResourceKind::Electricity).max(0);
-            let hardware = location.resources.get(ResourceKind::Hardware).max(0);
             let data = location.resources.get(ResourceKind::Data).max(0);
-            let intensity = electricity
-                .saturating_add(hardware.saturating_mul(4))
-                .saturating_add(data.saturating_mul(2));
+            let intensity = electricity.saturating_add(data.saturating_mul(4));
             LocationHeatPoint {
                 anchor: geo_to_vec3(location.pos, origin, cm_to_unit),
                 intensity,
@@ -788,7 +782,7 @@ mod tests {
                     to: ResourceOwner::Location {
                         location_id: "loc-b".to_string(),
                     },
-                    kind: ResourceKind::Hardware,
+                    kind: ResourceKind::Data,
                     amount: 5,
                 },
             },
