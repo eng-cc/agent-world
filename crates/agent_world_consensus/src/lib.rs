@@ -33,9 +33,9 @@ pub mod distributed_consensus {
 
 pub mod distributed_pos_consensus {
     pub use super::pos::{
-        attest_world_head_with_pos, propose_world_head_with_pos, PosAttestation, PosConsensus,
-        PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord, PosValidator,
-        POS_CONSENSUS_SNAPSHOT_VERSION,
+        attest_world_head_with_pos, decide_pos_status, propose_world_head_with_pos, PosAttestation,
+        PosConsensus, PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord,
+        PosValidator, POS_CONSENSUS_SNAPSHOT_VERSION,
     };
 }
 
@@ -183,9 +183,9 @@ pub use membership_recovery::{
 };
 pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};
 pub use pos::{
-    attest_world_head_with_pos, propose_world_head_with_pos, PosAttestation, PosConsensus,
-    PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord, PosValidator,
-    POS_CONSENSUS_SNAPSHOT_VERSION,
+    attest_world_head_with_pos, decide_pos_status, propose_world_head_with_pos, PosAttestation,
+    PosConsensus, PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord,
+    PosValidator, POS_CONSENSUS_SNAPSHOT_VERSION,
 };
 pub use quorum::{
     ensure_lease_holder_validator, propose_world_head_with_quorum, vote_world_head_with_quorum,

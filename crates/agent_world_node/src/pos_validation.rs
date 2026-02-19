@@ -1,5 +1,9 @@
 use std::collections::BTreeMap;
 
+use agent_world_proto::distributed_pos::{
+    decide_pos_status, required_supermajority_stake, PosDecisionStatus,
+};
+
 use crate::{NodeError, NodePosConfig, PosConsensusStatus};
 
 pub(crate) fn validate_pos_config(pos_config: &NodePosConfig) -> Result<(), NodeError> {
@@ -41,7 +45,6 @@ pub(crate) fn validated_pos_state(
     let mut validators = BTreeMap::new();
     let mut validator_players = BTreeMap::new();
     let mut player_to_validator = BTreeMap::new();
-    let mut total_stake = 0u64;
     for validator in &pos_config.validators {
         let validator_id = validator.validator_id.trim();
         if validator_id.is_empty() {
@@ -85,12 +88,6 @@ pub(crate) fn validated_pos_state(
             });
         }
         validator_players.insert(validator_id.to_string(), player_id.to_string());
-        total_stake =
-            total_stake
-                .checked_add(validator.stake)
-                .ok_or_else(|| NodeError::InvalidConfig {
-                    reason: "total stake overflow".to_string(),
-                })?;
     }
     for validator_id in pos_config.validator_player_ids.keys() {
         if !validators.contains_key(validator_id.as_str()) {
@@ -103,11 +100,20 @@ pub(crate) fn validated_pos_state(
         }
     }
 
+    let total_stake = validators
+        .values()
+        .try_fold(0u64, |acc, stake| acc.checked_add(*stake))
+        .ok_or_else(|| NodeError::InvalidConfig {
+            reason: "total stake overflow".to_string(),
+        })?;
     let required_stake = required_supermajority_stake(
         total_stake,
         pos_config.supermajority_numerator,
         pos_config.supermajority_denominator,
-    )?;
+    )
+    .map_err(|reason| NodeError::InvalidConfig {
+        reason: format!("invalid pos supermajority: {}", reason),
+    })?;
     Ok((validators, validator_players, total_stake, required_stake))
 }
 
@@ -117,41 +123,9 @@ pub(crate) fn decide_status(
     approved_stake: u64,
     rejected_stake: u64,
 ) -> PosConsensusStatus {
-    if approved_stake >= required_stake {
-        return PosConsensusStatus::Committed;
+    match decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake) {
+        PosDecisionStatus::Pending => PosConsensusStatus::Pending,
+        PosDecisionStatus::Committed => PosConsensusStatus::Committed,
+        PosDecisionStatus::Rejected => PosConsensusStatus::Rejected,
     }
-    if total_stake.saturating_sub(rejected_stake) < required_stake {
-        PosConsensusStatus::Rejected
-    } else {
-        PosConsensusStatus::Pending
-    }
-}
-
-fn required_supermajority_stake(
-    total_stake: u64,
-    numerator: u64,
-    denominator: u64,
-) -> Result<u64, NodeError> {
-    let multiplied = u128::from(total_stake)
-        .checked_mul(u128::from(numerator))
-        .ok_or_else(|| NodeError::InvalidConfig {
-            reason: "required stake overflow".to_string(),
-        })?;
-    let denominator = u128::from(denominator);
-    let mut required = multiplied / denominator;
-    if multiplied % denominator != 0 {
-        required += 1;
-    }
-    let required = u64::try_from(required).map_err(|_| NodeError::InvalidConfig {
-        reason: "required stake overflow".to_string(),
-    })?;
-    if required == 0 || required > total_stake {
-        return Err(NodeError::InvalidConfig {
-            reason: format!(
-                "invalid required stake {} for total stake {}",
-                required, total_stake
-            ),
-        });
-    }
-    Ok(required)
 }

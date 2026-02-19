@@ -225,6 +225,7 @@ dependencies = [
 name = "agent_world_proto"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "serde",
  "serde_cbor",
  "serde_json",

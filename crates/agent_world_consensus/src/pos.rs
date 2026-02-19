@@ -4,10 +4,17 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use agent_world_proto::distributed_pos::{
+    decide_pos_status as shared_decide_pos_status,
+    required_supermajority_stake as shared_required_supermajority_stake,
+    slot_epoch as shared_slot_epoch, weighted_expected_proposer,
+    PosDecisionStatus as SharedPosDecisionStatus,
+};
+
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
-use super::util::{blake3_hex, read_json_from_path, write_json_to_path};
+use super::util::{read_json_from_path, write_json_to_path};
 
 pub const POS_CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
 
@@ -224,27 +231,11 @@ impl PosConsensus {
     }
 
     pub fn expected_proposer(&self, slot: u64) -> Option<String> {
-        if self.validators.is_empty() || self.total_stake == 0 {
-            return None;
-        }
-        let mut slot_seed = [0u8; 8];
-        slot_seed.copy_from_slice(&slot.to_le_bytes());
-        let seed_hash = blake3_hex(&slot_seed);
-        let mut seed_bytes = [0u8; 8];
-        let decoded = hex::decode(seed_hash).ok()?;
-        seed_bytes.copy_from_slice(decoded.get(..8)?);
-        let mut target = u64::from_le_bytes(seed_bytes) % self.total_stake;
-        for (validator_id, stake) in &self.validators {
-            if target < *stake {
-                return Some(validator_id.clone());
-            }
-            target = target.saturating_sub(*stake);
-        }
-        self.validators.keys().next().cloned()
+        weighted_expected_proposer(&self.validators, self.total_stake, slot)
     }
 
     pub fn slot_epoch(&self, slot: u64) -> u64 {
-        slot / self.epoch_length_slots
+        shared_slot_epoch(self.epoch_length_slots, slot)
     }
 
     pub fn save_snapshot_to_path(&self, path: impl AsRef<Path>) -> Result<(), WorldError> {
@@ -750,29 +741,11 @@ fn required_supermajority_stake(
     numerator: u64,
     denominator: u64,
 ) -> Result<u64, WorldError> {
-    let multiplied = u128::from(total_stake)
-        .checked_mul(u128::from(numerator))
-        .ok_or_else(|| WorldError::DistributedValidationFailed {
-            reason: "required stake multiplication overflow".to_string(),
-        })?;
-    let denominator = u128::from(denominator);
-    let mut required = multiplied / denominator;
-    if multiplied % denominator != 0 {
-        required += 1;
-    }
-    let required =
-        u64::try_from(required).map_err(|_| WorldError::DistributedValidationFailed {
-            reason: "required stake overflow".to_string(),
-        })?;
-    if required == 0 || required > total_stake {
-        return Err(WorldError::DistributedValidationFailed {
-            reason: format!(
-                "invalid required stake {} for total stake {}",
-                required, total_stake
-            ),
-        });
-    }
-    Ok(required)
+    shared_required_supermajority_stake(total_stake, numerator, denominator).map_err(|reason| {
+        WorldError::DistributedValidationFailed {
+            reason: format!("invalid pos supermajority: {}", reason),
+        }
+    })
 }
 
 fn stake_totals(
@@ -810,20 +783,26 @@ fn stake_totals(
     Ok((approved_stake, rejected_stake))
 }
 
+pub fn decide_pos_status(
+    total_stake: u64,
+    required_stake: u64,
+    approved_stake: u64,
+    rejected_stake: u64,
+) -> PosConsensusStatus {
+    match shared_decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake) {
+        SharedPosDecisionStatus::Pending => PosConsensusStatus::Pending,
+        SharedPosDecisionStatus::Committed => PosConsensusStatus::Committed,
+        SharedPosDecisionStatus::Rejected => PosConsensusStatus::Rejected,
+    }
+}
+
 fn decide_status(
     total_stake: u64,
     required_stake: u64,
     approved_stake: u64,
     rejected_stake: u64,
 ) -> PosConsensusStatus {
-    if approved_stake >= required_stake {
-        return PosConsensusStatus::Committed;
-    }
-    if total_stake.saturating_sub(rejected_stake) < required_stake {
-        PosConsensusStatus::Rejected
-    } else {
-        PosConsensusStatus::Pending
-    }
+    decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake)
 }
 
 fn decision_from_record(record: &PosHeadRecord, total_stake: u64) -> PosConsensusDecision {
