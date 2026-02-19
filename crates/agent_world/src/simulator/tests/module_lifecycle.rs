@@ -189,6 +189,143 @@ fn module_lifecycle_install_rejects_non_owner() {
 }
 
 #[test]
+fn module_lifecycle_install_to_location_infrastructure_succeeds_when_colocated() {
+    let mut kernel = setup_kernel_with_agent("agent-1");
+    let wasm_bytes = b"simulator-module-location-target".to_vec();
+    let wasm_hash = sha256_hex(wasm_bytes.as_slice());
+
+    kernel.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "agent-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+        module_id_hint: Some("m.sim.location.target".to_string()),
+    });
+    kernel.step().expect("deploy event");
+
+    kernel.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "agent-1".to_string(),
+        module_id: "m.sim.location.target".to_string(),
+        module_version: "0.1.0".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-home".to_string(),
+        },
+    });
+    let event = kernel.step().expect("install to location event");
+    match event.kind {
+        WorldEventKind::ModuleInstalled {
+            module_id,
+            install_target,
+            ..
+        } => {
+            assert_eq!(module_id, "m.sim.location.target");
+            assert_eq!(
+                install_target,
+                ModuleInstallTarget::LocationInfrastructure {
+                    location_id: "loc-home".to_string(),
+                }
+            );
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let installed = kernel
+        .model()
+        .installed_modules
+        .get("m.sim.location.target")
+        .expect("installed module exists");
+    assert_eq!(
+        installed.install_target,
+        ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-home".to_string(),
+        }
+    );
+}
+
+#[test]
+fn module_lifecycle_install_to_location_infrastructure_rejects_missing_location() {
+    let mut kernel = setup_kernel_with_agent("agent-1");
+    let wasm_bytes = b"simulator-module-location-missing".to_vec();
+    let wasm_hash = sha256_hex(wasm_bytes.as_slice());
+
+    kernel.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "agent-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+        module_id_hint: Some("m.sim.location.missing".to_string()),
+    });
+    kernel.step().expect("deploy event");
+
+    kernel.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "agent-1".to_string(),
+        module_id: "m.sim.location.missing".to_string(),
+        module_version: "0.1.0".to_string(),
+        wasm_hash,
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-missing".to_string(),
+        },
+    });
+    let event = kernel.step().expect("install reject event");
+    match event.kind {
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::LocationNotFound { location_id },
+        } => {
+            assert_eq!(location_id, "loc-missing");
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn module_lifecycle_install_to_location_infrastructure_rejects_not_colocated() {
+    let mut kernel = setup_kernel_with_agent("agent-1");
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-remote".to_string(),
+        name: "remote".to_string(),
+        pos: pos(10.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.step().expect("register remote location");
+
+    let wasm_bytes = b"simulator-module-location-not-colocated".to_vec();
+    let wasm_hash = sha256_hex(wasm_bytes.as_slice());
+    kernel.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "agent-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+        module_id_hint: Some("m.sim.location.not_colocated".to_string()),
+    });
+    kernel.step().expect("deploy event");
+
+    kernel.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "agent-1".to_string(),
+        module_id: "m.sim.location.not_colocated".to_string(),
+        module_version: "0.1.0".to_string(),
+        wasm_hash,
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-remote".to_string(),
+        },
+    });
+    let event = kernel.step().expect("install reject event");
+    match event.kind {
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+        } => {
+            assert!(
+                notes
+                    .iter()
+                    .any(|note| note.contains("target infrastructure is loc-remote")),
+                "unexpected notes: {notes:?}"
+            );
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
 fn module_lifecycle_compile_from_source_deploys_artifact() {
     let _lock = source_compiler_env_lock().lock().expect("env lock");
     let _guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
@@ -285,6 +422,65 @@ fn module_lifecycle_replay_restores_artifact_and_install_state() {
         .expect("installed module present after replay");
     assert_eq!(installed.module_version, "0.2.0");
     assert!(installed.active);
+}
+
+#[test]
+fn module_lifecycle_replay_legacy_module_installed_defaults_install_target_to_self_agent() {
+    let mut kernel = setup_kernel_with_agent("agent-1");
+    let snapshot = kernel.snapshot();
+
+    let wasm_bytes = b"sim-replay-legacy-install-target".to_vec();
+    let wasm_hash = sha256_hex(wasm_bytes.as_slice());
+    kernel.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "agent-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+        module_id_hint: Some("m.sim.replay.legacy".to_string()),
+    });
+    kernel.step().expect("deploy event");
+    kernel.submit_action(Action::InstallModuleFromArtifact {
+        installer_agent_id: "agent-1".to_string(),
+        module_id: "m.sim.replay.legacy".to_string(),
+        module_version: "0.3.0".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        activate: true,
+    });
+    kernel.step().expect("install event");
+
+    let mut journal_value =
+        serde_json::to_value(kernel.journal_snapshot()).expect("serialize journal");
+    let events = journal_value
+        .get_mut("events")
+        .and_then(|value| value.as_array_mut())
+        .expect("events array");
+    let install_event = events
+        .iter_mut()
+        .find(|event| {
+            event
+                .get("kind")
+                .and_then(|kind| kind.get("data"))
+                .and_then(|data| data.get("module_id"))
+                .and_then(|value| value.as_str())
+                == Some("m.sim.replay.legacy")
+        })
+        .expect("module_installed event");
+    install_event
+        .get_mut("kind")
+        .and_then(|kind| kind.get_mut("data"))
+        .and_then(|data| data.as_object_mut())
+        .expect("module_installed data")
+        .remove("install_target");
+    let legacy_journal: WorldJournal =
+        serde_json::from_value(journal_value).expect("deserialize legacy journal");
+
+    let replayed =
+        WorldKernel::replay_from_snapshot(snapshot, legacy_journal).expect("replay from snapshot");
+    let installed = replayed
+        .model()
+        .installed_modules
+        .get("m.sim.replay.legacy")
+        .expect("installed module present after replay");
+    assert_eq!(installed.install_target, ModuleInstallTarget::SelfAgent);
 }
 
 #[test]

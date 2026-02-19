@@ -319,6 +319,49 @@ fn install_module_from_artifact_action_runs_governance_closure() {
 }
 
 #[test]
+fn install_module_to_target_from_artifact_action_emits_target() {
+    let mut world = World::new();
+    register_agent(&mut world, "installer-1");
+
+    let wasm_bytes = b"module-action-loop-install-target".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    world.submit_action(Action::DeployModuleArtifact {
+        publisher_agent_id: "installer-1".to_string(),
+        wasm_hash: wasm_hash.clone(),
+        wasm_bytes,
+    });
+    world.step().expect("deploy artifact");
+
+    let manifest = base_manifest("m.loop.targeted", "0.1.0", &wasm_hash);
+    world.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: manifest.clone(),
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-edge".to_string(),
+        },
+    });
+    world.step().expect("install module to target action");
+
+    let event = world.journal().events.last().expect("last event");
+    let WorldEventBody::Domain(DomainEvent::ModuleInstalled {
+        module_id,
+        install_target,
+        ..
+    }) = &event.body
+    else {
+        panic!("expected module installed event: {:?}", event.body);
+    };
+    assert_eq!(module_id, "m.loop.targeted");
+    assert_eq!(
+        *install_target,
+        ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-edge".to_string(),
+        }
+    );
+}
+
+#[test]
 fn install_module_from_artifact_action_without_activate_keeps_module_inactive() {
     let mut world = World::new();
     register_agent(&mut world, "installer-1");
@@ -373,6 +416,32 @@ fn install_module_from_artifact_action_rejects_missing_artifact() {
     assert_last_rejection_note(&world, action_id, "module artifact missing");
     assert!(world.module_registry().records.is_empty());
     assert!(world.module_registry().active.is_empty());
+}
+
+#[test]
+fn module_installed_domain_event_legacy_payload_defaults_install_target() {
+    let current = DomainEvent::ModuleInstalled {
+        installer_agent_id: "agent-legacy".to_string(),
+        module_id: "m.legacy".to_string(),
+        module_version: "0.1.0".to_string(),
+        install_target: ModuleInstallTarget::SelfAgent,
+        active: true,
+        proposal_id: 7,
+        manifest_hash: "manifest-hash".to_string(),
+        fee_kind: ResourceKind::Electricity,
+        fee_amount: 2,
+    };
+    let mut value = serde_json::to_value(current).expect("serialize domain event");
+    value
+        .get_mut("data")
+        .and_then(|data| data.as_object_mut())
+        .expect("domain event data")
+        .remove("install_target");
+    let decoded: DomainEvent = serde_json::from_value(value).expect("deserialize legacy payload");
+    let DomainEvent::ModuleInstalled { install_target, .. } = decoded else {
+        panic!("expected module installed event");
+    };
+    assert_eq!(install_target, ModuleInstallTarget::SelfAgent);
 }
 
 #[test]

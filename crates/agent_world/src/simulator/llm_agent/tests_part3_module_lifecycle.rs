@@ -174,6 +174,24 @@ fn llm_parse_install_module_to_target_from_artifact_action() {
 }
 
 #[test]
+fn llm_parse_install_module_to_target_from_artifact_rejects_missing_location_id() {
+    let turns = completion_turns_from_output(
+        r#"{"decision":"install_module_to_target_from_artifact","installer":"self","module_id":"m.llm.install.target","wasm_hash":"hash-target","install_target_type":"location_infrastructure"}"#,
+    );
+    let parsed = super::decision_flow::parse_llm_turn_payloads(turns.as_slice(), "agent-1");
+
+    match parsed.first().expect("parsed turn") {
+        ParsedLlmTurn::Invalid(message) => {
+            assert!(
+                message.contains("install_target_location_id"),
+                "unexpected parse error: {message}"
+            );
+        }
+        other => panic!("expected invalid decision, got {other:?}"),
+    }
+}
+
+#[test]
 fn llm_parse_list_module_artifact_for_sale_action() {
     let turns = completion_turns_from_output(
         r#"{"decision":"list_module_artifact_for_sale","seller":"self","wasm_hash":"hash-1","price_kind":"data","price_amount":3}"#,
