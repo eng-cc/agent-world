@@ -39,7 +39,7 @@ fn parse_options_defaults() {
     assert_eq!(options.node_id, "viewer-live-node");
     assert_eq!(options.node_role, NodeRole::Observer);
     assert_eq!(options.node_tick_ms, 200);
-    assert!(options.node_auto_attest_all_validators);
+    assert!(!options.node_auto_attest_all_validators);
     assert!(options.node_validators.is_empty());
     assert!(options.node_gossip_bind.is_none());
     assert!(options.node_gossip_peers.is_empty());
@@ -87,6 +87,12 @@ fn parse_options_defaults() {
 fn parse_options_enables_llm_mode() {
     let options = parse_options(["--llm"].into_iter()).expect("llm mode");
     assert!(options.llm_mode);
+}
+
+#[test]
+fn parse_options_enables_auto_attest_all_when_requested() {
+    let options = parse_options(["--node-auto-attest-all"].into_iter()).expect("auto attest");
+    assert!(options.node_auto_attest_all_validators);
 }
 
 #[test]

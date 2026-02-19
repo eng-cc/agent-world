@@ -136,7 +136,9 @@ fn runtime_drains_committed_action_batches_for_viewer_consumers() {
         .expect("config")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick interval");
-    let mut runtime = NodeRuntime::new(config);
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let hook = RecordingExecutionHook::new(Arc::clone(&calls));
+    let mut runtime = NodeRuntime::new(config).with_execution_hook(hook);
 
     let payload_b = serde_cbor::to_vec(&serde_json::json!({"kind": "b"})).expect("payload b");
     let payload_a = serde_cbor::to_vec(&serde_json::json!({"kind": "a"})).expect("payload a");

@@ -84,7 +84,7 @@ impl Default for CliOptions {
             node_id: "viewer-live-node".to_string(),
             node_role: NodeRole::Observer,
             node_tick_ms: 200,
-            node_auto_attest_all_validators: true,
+            node_auto_attest_all_validators: false,
             node_validators: Vec::new(),
             node_gossip_bind: None,
             node_gossip_peers: Vec::new(),
@@ -227,6 +227,9 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
             }
             "--node-no-auto-attest-all" => {
                 options.node_auto_attest_all_validators = false;
+            }
+            "--node-auto-attest-all" => {
+                options.node_auto_attest_all_validators = true;
             }
             "--node-gossip-bind" => {
                 let raw = iter
@@ -528,7 +531,10 @@ pub(super) fn print_help() {
     println!("  --node-role <r>   Node role: sequencer|storage|observer (default: observer)");
     println!("  --node-tick-ms <ms> Node runtime tick interval (default: 200)");
     println!("  --node-validator <id:stake> Add PoS validator stake (repeatable)");
-    println!("  --node-no-auto-attest-all Disable auto-attesting all validators per tick");
+    println!(
+        "  --node-no-auto-attest-all Disable auto-attesting all validators per tick (default)"
+    );
+    println!("  --node-auto-attest-all Enable auto-attesting all validators per tick");
     println!("  --node-gossip-bind <addr:port> Bind UDP endpoint for node gossip");
     println!("  --node-gossip-peer <addr:port> Add UDP peer endpoint for node gossip");
     println!(

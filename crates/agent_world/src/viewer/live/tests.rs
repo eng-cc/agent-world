@@ -1,5 +1,8 @@
 use super::*;
-use agent_world_node::{NodeConfig, NodeRole, NodeRuntime};
+use agent_world_node::{
+    NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
+    NodeRuntime,
+};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -12,6 +15,22 @@ fn set_test_llm_env() {
         "https://api.openai.com/v1",
     );
     std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+}
+
+#[derive(Default)]
+struct TestNoopExecutionHook;
+
+impl NodeExecutionHook for TestNoopExecutionHook {
+    fn on_commit(
+        &mut self,
+        context: NodeExecutionCommitContext,
+    ) -> Result<NodeExecutionCommitResult, String> {
+        Ok(NodeExecutionCommitResult {
+            execution_height: context.height,
+            execution_block_hash: format!("viewer-test-exec-block-{}", context.height),
+            execution_state_root: format!("viewer-test-exec-state-{}", context.height),
+        })
+    }
 }
 
 #[test]
@@ -349,7 +368,7 @@ fn live_world_consensus_bridge_applies_only_committed_actions() {
         .expect("node config")
         .with_tick_interval(Duration::from_millis(10))
         .expect("node tick interval");
-    let mut node_runtime = NodeRuntime::new(node_config);
+    let mut node_runtime = NodeRuntime::new(node_config).with_execution_hook(TestNoopExecutionHook);
     node_runtime.start().expect("start node runtime");
     let shared_runtime = Arc::new(Mutex::new(node_runtime));
 

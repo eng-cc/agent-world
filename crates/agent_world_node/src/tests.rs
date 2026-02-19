@@ -90,6 +90,11 @@ impl NodeExecutionHook for RecordingExecutionHook {
     }
 }
 
+fn with_noop_execution_hook(runtime: NodeRuntime) -> NodeRuntime {
+    let calls: Arc<Mutex<Vec<NodeExecutionCommitContext>>> = Arc::new(Mutex::new(Vec::new()));
+    runtime.with_execution_hook(RecordingExecutionHook::new(calls))
+}
+
 #[derive(Clone, Default)]
 struct TestInMemoryNetwork {
     inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
@@ -205,7 +210,7 @@ fn pos_engine_generates_chain_hashed_block_ids() {
 }
 
 #[test]
-fn pos_engine_progresses_pending_when_auto_attest_disabled() {
+fn pos_engine_stays_pending_without_peer_votes_when_auto_attest_disabled() {
     let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
         .expect("config")
         .with_pos_validators(multi_validators())
@@ -213,7 +218,6 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
         .with_auto_attest_all_validators(false);
     let mut engine = PosNodeEngine::new(&config).expect("engine");
 
-    let mut committed_height = 0;
     for offset in 0..12 {
         let snapshot = engine
             .tick(
@@ -227,12 +231,28 @@ fn pos_engine_progresses_pending_when_auto_attest_disabled() {
                 None,
             )
             .expect("tick");
-        committed_height = snapshot.consensus_snapshot.committed_height;
-        if committed_height > 0 {
-            break;
-        }
+        assert_eq!(snapshot.consensus_snapshot.committed_height, 0);
     }
-    assert!(committed_height >= 1);
+}
+
+#[test]
+fn sequencer_commit_requires_execution_hook() {
+    let config = NodeConfig::new("sequencer-a", "world-a", NodeRole::Sequencer)
+        .expect("config")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick interval");
+    let mut runtime = NodeRuntime::new(config);
+    runtime.start().expect("start");
+    thread::sleep(Duration::from_millis(80));
+    runtime.stop().expect("stop");
+
+    let snapshot = runtime.snapshot();
+    assert_eq!(snapshot.consensus.committed_height, 0);
+    assert!(snapshot
+        .last_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("execution hook is required"));
 }
 
 #[test]
@@ -729,7 +749,7 @@ fn runtime_gossip_tracks_peer_committed_heads() {
         .expect("validators b")
         .with_gossip_optional(addr_b, vec![addr_a]);
 
-    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a));
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
@@ -787,7 +807,7 @@ fn runtime_gossip_replication_syncs_distfs_commit_files() {
         .with_replication_root(dir_b.clone())
         .expect("replication b");
 
-    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a));
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
@@ -831,6 +851,7 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
         .expect("tick a")
         .with_pos_validators(validators.clone())
         .expect("validators a")
+        .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 71));
     let config_b = NodeConfig::new("node-b", "world-network-repl", NodeRole::Observer)
         .expect("config b")
@@ -840,7 +861,7 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
         .expect("validators b")
         .with_replication(signed_replication_config(dir_b.clone(), 72));
 
-    let mut runtime_a = NodeRuntime::new(config_a)
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
         .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
     let mut runtime_b = NodeRuntime::new(config_b)
         .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
@@ -896,6 +917,7 @@ fn runtime_network_replication_respects_topic_isolation() {
         .expect("tick a")
         .with_pos_validators(validators.clone())
         .expect("validators a")
+        .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 81));
     let config_b = NodeConfig::new("node-b", "world-topic-repl", NodeRole::Observer)
         .expect("config b")
@@ -905,11 +927,12 @@ fn runtime_network_replication_respects_topic_isolation() {
         .expect("validators b")
         .with_replication(signed_replication_config(dir_b.clone(), 82));
 
-    let mut runtime_a = NodeRuntime::new(config_a).with_replication_network(
-        NodeReplicationNetworkHandle::new(Arc::clone(&network))
-            .with_topic("aw.world-topic-repl.replication.a")
-            .expect("topic a"),
-    );
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
+        .with_replication_network(
+            NodeReplicationNetworkHandle::new(Arc::clone(&network))
+                .with_topic("aw.world-topic-repl.replication.a")
+                .expect("topic a"),
+        );
     let mut runtime_b = NodeRuntime::new(config_b).with_replication_network(
         NodeReplicationNetworkHandle::new(Arc::clone(&network))
             .with_topic("aw.world-topic-repl.replication.b")
@@ -969,7 +992,7 @@ fn runtime_gossip_replication_with_signature_applies_files() {
         .with_gossip_optional(addr_b, vec![addr_a])
         .with_replication(signed_replication_config(dir_b.clone(), 22));
 
-    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a));
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
@@ -1028,7 +1051,7 @@ fn runtime_gossip_replication_rejects_unsigned_when_signature_enforced() {
         .with_gossip_optional(addr_b, vec![addr_a])
         .with_replication(signed_replication_config(dir_b.clone(), 33));
 
-    let mut runtime_a = NodeRuntime::new(config_a);
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a));
     let mut runtime_b = NodeRuntime::new(config_b);
     runtime_a.start().expect("start a");
     runtime_b.start().expect("start b");
@@ -1074,6 +1097,7 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
             .expect("tick a")
             .with_pos_validators(validators.clone())
             .expect("validators a")
+            .with_auto_attest_all_validators(true)
             .with_gossip_optional(addr_a, vec![addr_b])
             .with_replication(signed_replication_config(dir_a.clone(), 55))
     };
@@ -1088,7 +1112,7 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
             .with_replication(signed_replication_config(dir_b.clone(), 66))
     };
 
-    let mut runtime_a = NodeRuntime::new(build_config_a());
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(build_config_a()));
     let mut runtime_b = NodeRuntime::new(build_config_b());
     runtime_a.start().expect("start a first");
     runtime_b.start().expect("start b first");
@@ -1104,7 +1128,7 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
             .expect("parse guard before");
     assert!(guard_before.last_sequence >= 1);
 
-    let mut runtime_a = NodeRuntime::new(build_config_a());
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(build_config_a()));
     let mut runtime_b = NodeRuntime::new(build_config_b());
     runtime_a.start().expect("start a second");
     runtime_b.start().expect("start b second");

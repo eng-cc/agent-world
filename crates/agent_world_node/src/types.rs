@@ -153,7 +153,7 @@ impl NodeConfig {
             tick_interval: Duration::from_millis(200),
             role,
             pos_config,
-            auto_attest_all_validators: true,
+            auto_attest_all_validators: false,
             gossip: None,
             replication: None,
         })

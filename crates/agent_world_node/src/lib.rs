@@ -307,7 +307,9 @@ struct PosNodeEngine {
     total_stake: u64,
     required_stake: u64,
     epoch_length_slots: u64,
+    local_validator_id: String,
     node_player_id: String,
+    require_execution_on_commit: bool,
     next_height: u64,
     next_slot: u64,
     committed_height: u64,
@@ -415,7 +417,9 @@ impl PosNodeEngine {
             total_stake,
             required_stake,
             epoch_length_slots: config.pos_config.epoch_length_slots,
+            local_validator_id: config.node_id.clone(),
             node_player_id: config.player_id.clone(),
+            require_execution_on_commit: matches!(config.role, NodeRole::Sequencer),
             next_height: 1,
             next_slot: 0,
             committed_height: 0,
@@ -479,8 +483,8 @@ impl PosNodeEngine {
         }
 
         let prev_committed_height = self.committed_height;
-        self.apply_decision(&decision);
         self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
+        self.apply_decision(&decision);
         if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
         }
@@ -592,29 +596,45 @@ impl PosNodeEngine {
             reason: "missing pending proposal".to_string(),
         })?;
 
-        for validator_id in self.validators.keys() {
-            if proposal.attestations.contains_key(validator_id.as_str()) {
-                continue;
+        if self.auto_attest_all_validators {
+            for validator_id in self.validators.keys() {
+                if proposal.attestations.contains_key(validator_id.as_str()) {
+                    continue;
+                }
+                let epoch = proposal.epoch;
+                self.insert_attestation(
+                    &mut proposal,
+                    validator_id,
+                    true,
+                    now_ms,
+                    epoch.saturating_sub(1),
+                    epoch,
+                    Some("node mainloop auto attestation".to_string()),
+                )?;
+                if matches!(
+                    proposal.status,
+                    PosConsensusStatus::Committed | PosConsensusStatus::Rejected
+                ) {
+                    break;
+                }
             }
+        } else if self
+            .validators
+            .contains_key(self.local_validator_id.as_str())
+            && !proposal
+                .attestations
+                .contains_key(self.local_validator_id.as_str())
+        {
             let epoch = proposal.epoch;
             self.insert_attestation(
                 &mut proposal,
-                validator_id,
+                self.local_validator_id.as_str(),
                 true,
                 now_ms,
                 epoch.saturating_sub(1),
                 epoch,
-                Some("node mainloop auto attestation".to_string()),
+                Some("node local validator attestation".to_string()),
             )?;
-            if matches!(
-                proposal.status,
-                PosConsensusStatus::Committed | PosConsensusStatus::Rejected
-            ) {
-                break;
-            }
-            if !self.auto_attest_all_validators {
-                break;
-            }
         }
 
         let decision = self.decision_from_proposal(&proposal);
@@ -720,6 +740,14 @@ impl PosNodeEngine {
             return Ok(());
         }
         let Some(execution_hook) = execution_hook else {
+            if self.require_execution_on_commit {
+                return Err(NodeError::Execution {
+                    reason: format!(
+                        "execution hook is required before committing height {}",
+                        decision.height
+                    ),
+                });
+            }
             return Ok(());
         };
 
