@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -484,16 +485,28 @@ impl ReplicationRuntime {
             .map_err(distfs_error_to_node_error)
     }
 
-    pub(crate) fn latest_replicated_content_hash(
+    pub(crate) fn recent_replicated_content_hashes(
         &self,
         world_id: &str,
-    ) -> Result<Option<String>, NodeError> {
-        if self.writer_state.last_replicated_height == 0 {
-            return Ok(None);
+        max_samples: usize,
+    ) -> Result<Vec<String>, NodeError> {
+        if max_samples == 0 || self.writer_state.last_replicated_height == 0 {
+            return Ok(Vec::new());
         }
-        let message =
-            self.load_commit_message_by_height(world_id, self.writer_state.last_replicated_height)?;
-        Ok(message.map(|entry| entry.record.content_hash))
+
+        let mut samples = Vec::with_capacity(max_samples);
+        let mut seen = BTreeSet::new();
+        let mut height = self.writer_state.last_replicated_height;
+        while height > 0 && samples.len() < max_samples {
+            if let Some(message) = self.load_commit_message_by_height(world_id, height)? {
+                let content_hash = message.record.content_hash.trim();
+                if !content_hash.is_empty() && seen.insert(content_hash.to_string()) {
+                    samples.push(content_hash.to_string());
+                }
+            }
+            height = height.saturating_sub(1);
+        }
+        Ok(samples)
     }
 }
 

@@ -1241,12 +1241,124 @@ fn runtime_replication_storage_challenge_gate_blocks_on_network_blob_mismatch() 
             .snapshot()
             .last_error
             .as_deref()
-            .map(|reason| reason.contains("network blob hash mismatch"))
+            .map(|reason| {
+                reason.contains("network threshold unmet")
+                    && reason.contains("network blob hash mismatch")
+            })
             .unwrap_or(false)
     });
     assert!(
         errored,
         "runtime did not report network blob mismatch gate failure"
+    );
+
+    runtime.stop().expect("stop runtime");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn runtime_replication_storage_challenge_gate_allows_when_network_matches_reach_threshold() {
+    let dir = temp_dir("challenge-gate-threshold-pass");
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+    let config = NodeConfig::new(
+        "node-a",
+        "world-challenge-threshold-pass",
+        NodeRole::Sequencer,
+    )
+    .expect("config")
+    .with_tick_interval(Duration::from_millis(10))
+    .expect("tick")
+    .with_pos_validators(vec![PosValidator {
+        validator_id: "node-a".to_string(),
+        stake: 100,
+    }])
+    .expect("validators")
+    .with_auto_attest_all_validators(true)
+    .with_replication(signed_replication_config(dir.clone(), 86));
+    let mut runtime = with_noop_execution_hook(NodeRuntime::new(config))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+
+    let root_for_handler = dir.clone();
+    let matched_hashes = Arc::new(Mutex::new(Vec::<String>::new()));
+    let matched_hashes_for_handler = Arc::clone(&matched_hashes);
+    network
+        .register_handler(
+            super::replication::REPLICATION_FETCH_BLOB_PROTOCOL,
+            Box::new(move |payload| {
+                let request =
+                    serde_json::from_slice::<super::replication::FetchBlobRequest>(payload)
+                        .map_err(|err| WorldError::DistributedValidationFailed {
+                            reason: format!("decode fetch blob request failed: {err}"),
+                        })?;
+                let maybe_local = super::replication::load_blob_from_root(
+                    root_for_handler.as_path(),
+                    request.content_hash.as_str(),
+                )
+                .map_err(|err| WorldError::DistributedValidationFailed {
+                    reason: format!("load local blob failed: {err}"),
+                })?;
+                let Some(local_blob) = maybe_local else {
+                    let response = super::replication::FetchBlobResponse {
+                        found: false,
+                        blob: None,
+                    };
+                    return serde_json::to_vec(&response).map_err(|err| {
+                        WorldError::DistributedValidationFailed {
+                            reason: format!("encode fetch blob response failed: {err}"),
+                        }
+                    });
+                };
+
+                let mut matched_hashes = matched_hashes_for_handler
+                    .lock()
+                    .expect("lock matched hashes");
+                if matched_hashes.len() < 2
+                    && !matched_hashes
+                        .iter()
+                        .any(|hash| hash == &request.content_hash)
+                {
+                    matched_hashes.push(request.content_hash.clone());
+                }
+                let should_match = matched_hashes
+                    .iter()
+                    .any(|hash| hash == &request.content_hash);
+                drop(matched_hashes);
+                let response = super::replication::FetchBlobResponse {
+                    found: true,
+                    blob: Some(if should_match {
+                        local_blob
+                    } else {
+                        format!("bad-{}", request.content_hash).into_bytes()
+                    }),
+                };
+                serde_json::to_vec(&response).map_err(|err| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!("encode fetch blob response failed: {err}"),
+                    }
+                })
+            }),
+        )
+        .expect("register threshold pass blob handler");
+
+    runtime.start().expect("start runtime");
+    let advanced = wait_until(Instant::now() + Duration::from_secs(2), || {
+        runtime.snapshot().consensus.committed_height >= 5
+    });
+    assert!(
+        advanced,
+        "runtime did not continue committing under threshold-based gate"
+    );
+
+    let snapshot = runtime.snapshot();
+    assert!(
+        !snapshot
+            .last_error
+            .as_deref()
+            .map(|reason| reason.contains("network threshold unmet"))
+            .unwrap_or(false),
+        "runtime should not report threshold unmet when enough matches are available"
     );
 
     runtime.stop().expect("stop runtime");
