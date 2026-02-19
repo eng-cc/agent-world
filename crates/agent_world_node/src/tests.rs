@@ -1166,3 +1166,96 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
     let _ = fs::remove_dir_all(&dir_a);
     let _ = fs::remove_dir_all(&dir_b);
 }
+
+#[test]
+fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
+    let dir_a = temp_dir("failover-a");
+    let dir_b = temp_dir("failover-b");
+    let dir_c = temp_dir("failover-c");
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 34,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 33,
+        },
+        PosValidator {
+            validator_id: "node-c".to_string(),
+            stake: 33,
+        },
+    ];
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let build_observer = || {
+        NodeConfig::new("node-b", "world-failover-repl", NodeRole::Observer)
+            .expect("observer config")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("observer tick")
+            .with_pos_validators(validators.clone())
+            .expect("observer validators")
+            .with_replication(signed_replication_config(dir_b.clone(), 92))
+    };
+    let build_sequencer_a = || {
+        NodeConfig::new("node-a", "world-failover-repl", NodeRole::Sequencer)
+            .expect("sequencer a config")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("sequencer a tick")
+            .with_pos_validators(validators.clone())
+            .expect("sequencer a validators")
+            .with_auto_attest_all_validators(true)
+            .with_replication(signed_replication_config(dir_a.clone(), 91))
+    };
+    let build_sequencer_c = || {
+        NodeConfig::new("node-c", "world-failover-repl", NodeRole::Sequencer)
+            .expect("sequencer c config")
+            .with_tick_interval(Duration::from_millis(10))
+            .expect("sequencer c tick")
+            .with_pos_validators(validators.clone())
+            .expect("sequencer c validators")
+            .with_auto_attest_all_validators(true)
+            .with_replication(signed_replication_config(dir_c.clone(), 93))
+    };
+
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(build_sequencer_a()))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    let mut runtime_b = NodeRuntime::new(build_observer())
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b with a");
+    thread::sleep(Duration::from_millis(220));
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b after a");
+
+    let guard_path = dir_b.join("replication_guard.json");
+    let guard_before: SingleWriterReplicationGuard =
+        serde_json::from_slice(&fs::read(&guard_path).expect("read guard before"))
+            .expect("parse guard before");
+    assert!(guard_before.last_sequence >= 1);
+    assert!(guard_before.writer_epoch >= 1);
+    let writer_before = guard_before.writer_id.clone();
+
+    let mut runtime_c = with_noop_execution_hook(NodeRuntime::new(build_sequencer_c()))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    let mut runtime_b = NodeRuntime::new(build_observer())
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime_c.start().expect("start c");
+    runtime_b.start().expect("start b with c");
+    thread::sleep(Duration::from_millis(260));
+    runtime_c.stop().expect("stop c");
+    runtime_b.stop().expect("stop b after c");
+
+    let guard_after: SingleWriterReplicationGuard =
+        serde_json::from_slice(&fs::read(&guard_path).expect("read guard after"))
+            .expect("parse guard after");
+    assert!(guard_after.last_sequence >= 1);
+    assert!(guard_after.writer_epoch > guard_before.writer_epoch);
+    assert_ne!(guard_after.writer_id, writer_before);
+
+    let _ = fs::remove_dir_all(&dir_a);
+    let _ = fs::remove_dir_all(&dir_b);
+    let _ = fs::remove_dir_all(&dir_c);
+}

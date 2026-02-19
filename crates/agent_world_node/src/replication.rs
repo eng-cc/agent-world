@@ -1,9 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{
-    apply_replication_record, build_replication_record, FileReplicationRecord, LocalCasStore,
-    SingleWriterReplicationGuard,
+    apply_replication_record, build_replication_record_with_epoch, FileReplicationRecord,
+    LocalCasStore, SingleWriterReplicationGuard,
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use crate::{NodeConsensusAction, NodeError, PosConsensusStatus, PosDecision};
 
 const REPLICATION_VERSION: u8 = 1;
 const COMMIT_FILE_PREFIX: &str = "consensus/commits";
+const DEFAULT_WRITER_EPOCH: u64 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReplicationConfig {
@@ -134,10 +136,26 @@ pub(crate) struct ReplicationRuntime {
     enforce_signature: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+fn default_writer_epoch() -> u64 {
+    DEFAULT_WRITER_EPOCH
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LocalWriterState {
+    #[serde(default = "default_writer_epoch")]
+    writer_epoch: u64,
     last_sequence: u64,
     last_replicated_height: u64,
+}
+
+impl Default for LocalWriterState {
+    fn default() -> Self {
+        Self {
+            writer_epoch: DEFAULT_WRITER_EPOCH,
+            last_sequence: 0,
+            last_replicated_height: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -178,8 +196,17 @@ impl ReplicationRuntime {
         let guard = load_json_or_default::<SingleWriterReplicationGuard>(
             config.guard_state_path().as_path(),
         )?;
-        let writer_state =
+        let mut writer_state =
             load_json_or_default::<LocalWriterState>(config.writer_state_path(node_id).as_path())?;
+        if writer_state.writer_epoch == 0 {
+            writer_state.writer_epoch = DEFAULT_WRITER_EPOCH;
+        }
+        if writer_state.last_sequence == 0
+            && writer_state.last_replicated_height == 0
+            && writer_state.writer_epoch == DEFAULT_WRITER_EPOCH
+        {
+            writer_state.writer_epoch = seeded_writer_epoch();
+        }
         let signer = config.signing_keypair()?;
 
         Ok(Self {
@@ -234,15 +261,12 @@ impl ReplicationRuntime {
             .as_ref()
             .map(|signer| signer.public_key_hex.as_str())
             .unwrap_or(node_id);
-        let sequence = self
-            .guard
-            .last_sequence
-            .max(self.writer_state.last_sequence)
-            .saturating_add(1);
+        let (writer_epoch, sequence) = self.next_local_record_position(writer_id);
         let path = format!("{COMMIT_FILE_PREFIX}/{:020}.json", decision.height);
-        let record = build_replication_record(
+        let record = build_replication_record_with_epoch(
             world_id,
             writer_id,
+            writer_epoch,
             sequence,
             path.as_str(),
             &payload_bytes,
@@ -253,6 +277,7 @@ impl ReplicationRuntime {
         apply_replication_record(&self.store, &mut self.guard, &record, &payload_bytes)
             .map_err(distfs_error_to_node_error)?;
 
+        self.writer_state.writer_epoch = record.writer_epoch;
         self.writer_state.last_sequence = record.sequence;
         self.writer_state.last_replicated_height = decision.height;
         self.persist_state(node_id)?;
@@ -309,17 +334,7 @@ impl ReplicationRuntime {
             }
         }
 
-        if let Some(existing_writer) = self.guard.writer_id.as_deref() {
-            if existing_writer != message.record.writer_id.as_str() {
-                return Err(NodeError::Replication {
-                    reason: format!(
-                        "replication writer conflict: expected={}, got={}",
-                        existing_writer, message.record.writer_id
-                    ),
-                });
-            }
-        }
-        if message.record.sequence <= self.guard.last_sequence {
+        if self.is_stale_remote_record(&message.record) {
             return Ok(());
         }
 
@@ -340,6 +355,57 @@ impl ReplicationRuntime {
             self.config.writer_state_path(node_id).as_path(),
             &self.writer_state,
         )
+    }
+
+    fn next_local_record_position(&self, writer_id: &str) -> (u64, u64) {
+        let guard_epoch = self.guard.writer_epoch.max(DEFAULT_WRITER_EPOCH);
+        let state_epoch = self.writer_state.writer_epoch.max(DEFAULT_WRITER_EPOCH);
+        match self.guard.writer_id.as_deref() {
+            Some(existing_writer) if existing_writer == writer_id => {
+                let writer_epoch = guard_epoch.max(state_epoch);
+                let guard_sequence = if self.guard.writer_epoch == writer_epoch {
+                    self.guard.last_sequence
+                } else {
+                    0
+                };
+                let writer_state_sequence = if self.writer_state.writer_epoch == writer_epoch {
+                    self.writer_state.last_sequence
+                } else {
+                    0
+                };
+                (
+                    writer_epoch,
+                    guard_sequence.max(writer_state_sequence).saturating_add(1),
+                )
+            }
+            Some(_) => {
+                let writer_epoch = guard_epoch.max(state_epoch).saturating_add(1);
+                (writer_epoch, 1)
+            }
+            None => {
+                let writer_epoch = state_epoch;
+                let sequence = if self.writer_state.writer_epoch == writer_epoch {
+                    self.writer_state.last_sequence.saturating_add(1)
+                } else {
+                    1
+                };
+                (writer_epoch, sequence)
+            }
+        }
+    }
+
+    fn is_stale_remote_record(&self, record: &FileReplicationRecord) -> bool {
+        let local_epoch = self.guard.writer_epoch.max(DEFAULT_WRITER_EPOCH);
+        if record.writer_epoch < local_epoch {
+            return true;
+        }
+        if record.writer_epoch == local_epoch
+            && self.guard.writer_id.as_deref() == Some(record.writer_id.as_str())
+            && record.sequence <= self.guard.last_sequence
+        {
+            return true;
+        }
+        false
     }
 }
 
@@ -410,6 +476,14 @@ fn decode_hex_array<const N: usize>(value: &str, label: &str) -> Result<[u8; N],
     bytes.try_into().map_err(|_| NodeError::Replication {
         reason: format!("{} must be {} bytes hex", label, N),
     })
+}
+
+fn seeded_writer_epoch() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(DEFAULT_WRITER_EPOCH)
+        .max(DEFAULT_WRITER_EPOCH)
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>
