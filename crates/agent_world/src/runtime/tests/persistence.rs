@@ -159,6 +159,19 @@ fn persist_writes_distfs_sidecar_and_restores_without_json_files() {
 
     let restored = World::load_from_dir(&dir).expect("restore from distfs sidecar");
     assert_eq!(restored.state(), world.state());
+    let audit_value: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("distfs.recovery.audit.json")).expect("read distfs audit"),
+    )
+    .expect("decode distfs audit");
+    assert_eq!(
+        audit_value.get("status").and_then(|value| value.as_str()),
+        Some("distfs_restored")
+    );
+    assert!(audit_value.get("reason").is_none());
+    assert!(audit_value
+        .get("timestamp_ms")
+        .and_then(|value| value.as_i64())
+        .is_some());
 
     let _ = fs::remove_dir_all(&dir);
 }
@@ -182,6 +195,23 @@ fn load_from_dir_falls_back_to_json_when_distfs_sidecar_is_invalid() {
 
     let restored = World::load_from_dir(&dir).expect("fallback to legacy json");
     assert_eq!(restored.state(), world.state());
+    let audit_value: serde_json::Value = serde_json::from_slice(
+        &fs::read(dir.join("distfs.recovery.audit.json")).expect("read distfs fallback audit"),
+    )
+    .expect("decode distfs fallback audit");
+    assert_eq!(
+        audit_value.get("status").and_then(|value| value.as_str()),
+        Some("fallback_json")
+    );
+    assert!(audit_value
+        .get("reason")
+        .and_then(|value| value.as_str())
+        .map(|reason| reason.contains("distfs_restore_failed"))
+        .unwrap_or(false));
+    assert!(audit_value
+        .get("timestamp_ms")
+        .and_then(|value| value.as_i64())
+        .is_some());
 
     let _ = fs::remove_dir_all(&dir);
 }

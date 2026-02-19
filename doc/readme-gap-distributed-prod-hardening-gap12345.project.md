@@ -5,7 +5,7 @@
 - [x] T1：`agent_world_node` 复用 `agent_world_consensus` PoS 内核（提议者选择/阈值判定）并补测试（Gap 1）
 - [x] T2：存储挑战门控升级为多样本网络验证与匹配阈值，补齐回归（Gap 2）
 - [x] T3：gap sync 升级为分高度重试与错误可观测，补齐回归（Gap 3）
-- [ ] T4：DistFS sidecar 恢复失败审计落盘，保持 JSON 兜底并补测试（Gap 4）
+- [x] T4：DistFS sidecar 恢复失败审计落盘，保持 JSON 兜底并补测试（Gap 4）
 - [ ] T5：`triad_distributed` 最小引导 + gossip 自动发现，补齐 CLI/启动测试（Gap 5）
 - [ ] T6：执行 `env -u RUSTC_WRAPPER cargo check` + required-tier 定向测试并收口文档/devlog
 
@@ -16,6 +16,6 @@
 - T6 依赖 T1~T5 全部完成。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3 完成，T4~T6 待执行）
+- 当前阶段：进行中（T0/T1/T2/T3/T4 完成，T5~T6 待执行）
 - 阻塞项：无
-- 下一步：执行 T4（DistFS sidecar 恢复失败审计落盘）
+- 下一步：执行 T5（triad_distributed 最小引导 + gossip 自动发现）

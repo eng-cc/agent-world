@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{assemble_journal, assemble_snapshot};
 use agent_world_proto::distributed::SnapshotManifest;
+use serde::Serialize;
 
 use super::super::util::{hash_json, read_json_from_path, write_json_to_path};
 use super::super::{
@@ -18,7 +20,16 @@ const SNAPSHOT_FILE: &str = "snapshot.json";
 const DISTFS_STATE_DIR: &str = ".distfs-state";
 const DISTFS_SNAPSHOT_MANIFEST_FILE: &str = "snapshot.manifest.json";
 const DISTFS_JOURNAL_SEGMENTS_FILE: &str = "journal.segments.json";
+const DISTFS_RECOVERY_AUDIT_FILE: &str = "distfs.recovery.audit.json";
 const DISTFS_WORLD_ID_FALLBACK: &str = "runtime-world";
+
+#[derive(Debug, Serialize)]
+struct DistfsRecoveryAuditRecord {
+    timestamp_ms: i64,
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
+}
 
 impl World {
     // ---------------------------------------------------------------------
@@ -235,8 +246,18 @@ impl World {
             store_root.as_path(),
         );
         match restored {
-            Ok(value) => Ok(Some(value)),
-            Err(_) => Ok(None),
+            Ok(value) => {
+                let _ = write_distfs_recovery_audit(dir, "distfs_restored", None);
+                Ok(Some(value))
+            }
+            Err(err) => {
+                let _ = write_distfs_recovery_audit(
+                    dir,
+                    "fallback_json",
+                    Some(format!("distfs_restore_failed: {:?}", err)),
+                );
+                Ok(None)
+            }
         }
     }
 
@@ -262,4 +283,24 @@ fn distfs_world_id(dir: &Path) -> String {
         .filter(|name| !name.is_empty())
         .unwrap_or(DISTFS_WORLD_ID_FALLBACK)
         .to_string()
+}
+
+fn write_distfs_recovery_audit(
+    dir: &Path,
+    status: &str,
+    reason: Option<String>,
+) -> Result<(), WorldError> {
+    let record = DistfsRecoveryAuditRecord {
+        timestamp_ms: now_unix_ms(),
+        status: status.to_string(),
+        reason,
+    };
+    write_json_to_path(&record, dir.join(DISTFS_RECOVERY_AUDIT_FILE).as_path())
+}
+
+fn now_unix_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| i64::try_from(duration.as_millis()).unwrap_or(i64::MAX))
+        .unwrap_or(0)
 }
