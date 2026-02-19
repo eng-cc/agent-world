@@ -72,11 +72,18 @@ use runtime_util::{lock_state, now_unix_ms};
 
 const STORAGE_GATE_NETWORK_SAMPLES_PER_CHECK: usize = 3;
 const STORAGE_GATE_NETWORK_MIN_MATCHES_CAP: usize = 2;
+const REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT: usize = 3;
 
 fn required_network_blob_matches(sample_count: usize) -> usize {
     sample_count
         .min(STORAGE_GATE_NETWORK_MIN_MATCHES_CAP)
         .max(1)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum GapSyncHeightOutcome {
+    Synced { block_hash: String },
+    NotFound,
 }
 
 pub struct NodeRuntime {
@@ -1180,71 +1187,137 @@ impl PosNodeEngine {
 
         let mut next_height = self.committed_height.saturating_add(1);
         while next_height <= self.network_committed_height {
-            let request = FetchCommitRequest {
-                world_id: world_id.to_string(),
-                height: next_height,
-            };
-            let response = match endpoint.request_json::<FetchCommitRequest, FetchCommitResponse>(
-                REPLICATION_FETCH_COMMIT_PROTOCOL,
-                &request,
-            ) {
-                Ok(response) => response,
-                Err(_) => break,
-            };
-            if !response.found {
+            let mut synced_block_hash: Option<String> = None;
+            let mut not_found = false;
+            let mut last_error = None;
+            for attempt in 1..=REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT {
+                match Self::sync_replication_height_once(
+                    endpoint,
+                    node_id,
+                    world_id,
+                    replication_runtime,
+                    next_height,
+                ) {
+                    Ok(GapSyncHeightOutcome::Synced { block_hash }) => {
+                        synced_block_hash = Some(block_hash);
+                        break;
+                    }
+                    Ok(GapSyncHeightOutcome::NotFound) => {
+                        not_found = true;
+                        break;
+                    }
+                    Err(err) => {
+                        last_error = Some(format!(
+                            "attempt {attempt}/{} failed: {}",
+                            REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT, err
+                        ));
+                    }
+                }
+            }
+            if let Some(block_hash) = synced_block_hash {
+                self.record_synced_replication_height(next_height, block_hash);
+                next_height = next_height.saturating_add(1);
+                continue;
+            }
+            if not_found {
                 break;
             }
-            let mut message = match response.message {
-                Some(message) => message,
-                None => break,
-            };
-            if message.world_id != world_id || message.record.world_id != world_id {
-                break;
-            }
-
-            let blob_request = FetchBlobRequest {
-                content_hash: message.record.content_hash.clone(),
-            };
-            let blob_response = match endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
-                REPLICATION_FETCH_BLOB_PROTOCOL,
-                &blob_request,
-            ) {
-                Ok(response) => response,
-                Err(_) => break,
-            };
-            if !blob_response.found {
-                break;
-            }
-            let Some(blob) = blob_response.blob else {
-                break;
-            };
-            message.payload = blob;
-            let Some(payload) = parse_replication_commit_payload_view(message.payload.as_slice())
-            else {
-                break;
-            };
-            if payload.height != next_height {
-                break;
-            }
-            if replication_runtime
-                .apply_remote_message(node_id, world_id, &message)
-                .is_err()
-            {
-                break;
-            }
-            let persisted =
-                replication_runtime.load_commit_message_by_height(world_id, next_height)?;
-            if persisted
-                .as_ref()
-                .map(|entry| entry.record.content_hash.as_str())
-                != Some(message.record.content_hash.as_str())
-            {
-                break;
-            }
-            self.record_synced_replication_height(next_height, payload.block_hash);
-            next_height = next_height.saturating_add(1);
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} failed after {} attempts: {}",
+                    next_height,
+                    REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT,
+                    last_error.unwrap_or_else(|| "unknown error".to_string())
+                ),
+            });
         }
         Ok(())
+    }
+
+    fn sync_replication_height_once(
+        endpoint: &ReplicationNetworkEndpoint,
+        node_id: &str,
+        world_id: &str,
+        replication_runtime: &mut ReplicationRuntime,
+        height: u64,
+    ) -> Result<GapSyncHeightOutcome, NodeError> {
+        let request = FetchCommitRequest {
+            world_id: world_id.to_string(),
+            height,
+        };
+        let response = endpoint.request_json::<FetchCommitRequest, FetchCommitResponse>(
+            REPLICATION_FETCH_COMMIT_PROTOCOL,
+            &request,
+        )?;
+        if !response.found {
+            return Ok(GapSyncHeightOutcome::NotFound);
+        }
+        let mut message = response.message.ok_or_else(|| NodeError::Replication {
+            reason: format!(
+                "gap sync height {} commit response missing payload (found=true)",
+                height
+            ),
+        })?;
+        if message.world_id != world_id || message.record.world_id != world_id {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} world mismatch: expected={} actual_message={} actual_record={}",
+                    height, world_id, message.world_id, message.record.world_id
+                ),
+            });
+        }
+
+        let blob_request = FetchBlobRequest {
+            content_hash: message.record.content_hash.clone(),
+        };
+        let blob_response = endpoint.request_json::<FetchBlobRequest, FetchBlobResponse>(
+            REPLICATION_FETCH_BLOB_PROTOCOL,
+            &blob_request,
+        )?;
+        if !blob_response.found {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} blob not found for hash {}",
+                    height, message.record.content_hash
+                ),
+            });
+        }
+        let blob = blob_response.blob.ok_or_else(|| NodeError::Replication {
+            reason: format!(
+                "gap sync height {} blob payload missing for hash {}",
+                height, message.record.content_hash
+            ),
+        })?;
+        message.payload = blob;
+        let payload = parse_replication_commit_payload_view(message.payload.as_slice())
+            .ok_or_else(|| NodeError::Replication {
+                reason: format!("gap sync height {} payload decode failed", height),
+            })?;
+        if payload.height != height {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} payload mismatch actual={}",
+                    height, payload.height
+                ),
+            });
+        }
+        replication_runtime.apply_remote_message(node_id, world_id, &message)?;
+        let persisted = replication_runtime.load_commit_message_by_height(world_id, height)?;
+        if persisted
+            .as_ref()
+            .map(|entry| entry.record.content_hash.as_str())
+            != Some(message.record.content_hash.as_str())
+        {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} persisted commit hash mismatch expected={}",
+                    height, message.record.content_hash
+                ),
+            });
+        }
+        Ok(GapSyncHeightOutcome::Synced {
+            block_hash: payload.block_hash,
+        })
     }
 
     fn record_synced_replication_height(&mut self, height: u64, block_hash: String) {
