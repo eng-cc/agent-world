@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use agent_world_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
 use agent_world_proto::world_error::WorldError;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::replication::GossipReplicationMessage;
 use crate::NodeError;
@@ -111,6 +113,27 @@ impl ReplicationNetworkEndpoint {
             }
         }
         Ok(messages)
+    }
+
+    pub(crate) fn request_json<Req, Resp>(
+        &self,
+        protocol: &str,
+        request: &Req,
+    ) -> Result<Resp, NodeError>
+    where
+        Req: Serialize,
+        Resp: DeserializeOwned,
+    {
+        let payload = serde_json::to_vec(request).map_err(|err| NodeError::Replication {
+            reason: format!("serialize replication request {} failed: {}", protocol, err),
+        })?;
+        let response_bytes = self
+            .network
+            .request(protocol, payload.as_slice())
+            .map_err(network_err)?;
+        serde_json::from_slice::<Resp>(&response_bytes).map_err(|err| NodeError::Replication {
+            reason: format!("decode replication response {} failed: {}", protocol, err),
+        })
     }
 }
 

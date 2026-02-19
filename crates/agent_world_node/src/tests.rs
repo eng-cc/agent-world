@@ -98,6 +98,9 @@ fn with_noop_execution_hook(runtime: NodeRuntime) -> NodeRuntime {
 #[derive(Clone, Default)]
 struct TestInMemoryNetwork {
     inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
+    handlers: Arc<
+        Mutex<HashMap<String, Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>,
+    >,
 }
 
 impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
@@ -119,17 +122,25 @@ impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for Test
         ))
     }
 
-    fn request(&self, _protocol: &str, _payload: &[u8]) -> Result<Vec<u8>, WorldError> {
-        Err(WorldError::NetworkProtocolUnavailable {
-            protocol: "test".to_string(),
-        })
+    fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
+        let handlers = self.handlers.lock().expect("lock handlers");
+        let Some(handler) = handlers.get(protocol) else {
+            return Err(WorldError::NetworkProtocolUnavailable {
+                protocol: protocol.to_string(),
+            });
+        };
+        handler(payload)
     }
 
     fn register_handler(
         &self,
-        _protocol: &str,
-        _handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
+        protocol: &str,
+        handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
     ) -> Result<(), WorldError> {
+        self.handlers
+            .lock()
+            .expect("lock handlers")
+            .insert(protocol.to_string(), Arc::from(handler));
         Ok(())
     }
 }
@@ -880,6 +891,80 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
 
     let _ = fs::remove_dir_all(&dir_a);
     let _ = fs::remove_dir_all(&dir_b);
+}
+
+#[test]
+fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
+    let dir_a = temp_dir("network-fetch-a");
+    let validators = vec![PosValidator {
+        validator_id: "node-a".to_string(),
+        stake: 100,
+    }];
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let config_a = NodeConfig::new("node-a", "world-network-fetch", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators)
+        .expect("validators a")
+        .with_auto_attest_all_validators(true)
+        .with_replication(signed_replication_config(dir_a.clone(), 77));
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+
+    runtime_a.start().expect("start a");
+    thread::sleep(Duration::from_millis(180));
+    let snapshot = runtime_a.snapshot();
+    assert!(snapshot.consensus.committed_height >= 1);
+    let target_height = snapshot.consensus.committed_height;
+
+    let fetch_commit_request = super::replication::FetchCommitRequest {
+        world_id: "world-network-fetch".to_string(),
+        height: target_height,
+    };
+    let fetch_commit_payload =
+        serde_json::to_vec(&fetch_commit_request).expect("encode fetch commit request");
+    let fetch_commit_response_payload = network
+        .request(
+            super::replication::REPLICATION_FETCH_COMMIT_PROTOCOL,
+            fetch_commit_payload.as_slice(),
+        )
+        .expect("fetch commit response");
+    let fetch_commit_response: super::replication::FetchCommitResponse =
+        serde_json::from_slice(&fetch_commit_response_payload).expect("decode fetch commit");
+    assert!(fetch_commit_response.found);
+    let commit_message = fetch_commit_response.message.expect("commit message");
+    assert_eq!(commit_message.world_id, "world-network-fetch");
+    assert_eq!(commit_message.record.world_id, "world-network-fetch");
+    assert_eq!(
+        commit_message.record.path,
+        format!("consensus/commits/{:020}.json", target_height)
+    );
+
+    let fetch_blob_request = super::replication::FetchBlobRequest {
+        content_hash: commit_message.record.content_hash.clone(),
+    };
+    let fetch_blob_payload =
+        serde_json::to_vec(&fetch_blob_request).expect("encode fetch blob request");
+    let fetch_blob_response_payload = network
+        .request(
+            super::replication::REPLICATION_FETCH_BLOB_PROTOCOL,
+            fetch_blob_payload.as_slice(),
+        )
+        .expect("fetch blob response");
+    let fetch_blob_response: super::replication::FetchBlobResponse =
+        serde_json::from_slice(&fetch_blob_response_payload).expect("decode fetch blob");
+    assert!(fetch_blob_response.found);
+    assert_eq!(
+        fetch_blob_response.blob.expect("blob payload"),
+        commit_message.payload
+    );
+
+    runtime_a.stop().expect("stop a");
+    let _ = fs::remove_dir_all(&dir_a);
 }
 
 #[test]

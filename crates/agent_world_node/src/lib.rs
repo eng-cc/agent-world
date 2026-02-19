@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
 use agent_world_distfs::blake3_hex;
+use agent_world_proto::distributed::DistributedErrorCode;
+use agent_world_proto::world_error::WorldError as ProtoWorldError;
 
 mod consensus_action;
 mod consensus_signature;
@@ -60,7 +62,11 @@ use network_bridge::ReplicationNetworkEndpoint;
 use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
 use pos_validation::{decide_status, validated_pos_state};
-use replication::ReplicationRuntime;
+use replication::{
+    load_blob_from_root, load_commit_message_from_root, FetchBlobRequest, FetchBlobResponse,
+    FetchCommitRequest, FetchCommitResponse, ReplicationRuntime, REPLICATION_FETCH_BLOB_PROTOCOL,
+    REPLICATION_FETCH_COMMIT_PROTOCOL,
+};
 use runtime_util::{lock_state, now_unix_ms};
 
 pub struct NodeRuntime {
@@ -134,6 +140,18 @@ impl NodeRuntime {
         } else {
             None
         };
+        if let (Some(network), Some(replication_config)) =
+            (&self.replication_network, self.config.replication.as_ref())
+        {
+            if let Err(err) = register_replication_fetch_handlers(
+                network,
+                replication_config,
+                self.config.world_id.as_str(),
+            ) {
+                self.running.store(false, Ordering::SeqCst);
+                return Err(err);
+            }
+        }
         let mut replication_network = if let Some(network) = &self.replication_network {
             let subscribe = !matches!(self.config.role, NodeRole::Sequencer);
             match ReplicationNetworkEndpoint::new(network, &self.config.world_id, subscribe) {
@@ -297,6 +315,96 @@ impl Drop for NodeRuntime {
             let _ = worker.join();
         }
         self.running.store(false, Ordering::SeqCst);
+    }
+}
+
+fn register_replication_fetch_handlers(
+    handle: &NodeReplicationNetworkHandle,
+    replication: &NodeReplicationConfig,
+    world_id: &str,
+) -> Result<(), NodeError> {
+    let network = handle.clone_network();
+
+    let commit_root_dir = replication.root_dir.clone();
+    let commit_world_id = world_id.to_string();
+    network
+        .register_handler(
+            REPLICATION_FETCH_COMMIT_PROTOCOL,
+            Box::new(move |payload| {
+                let request =
+                    serde_json::from_slice::<FetchCommitRequest>(payload).map_err(|err| {
+                        network_bad_request(format!("decode fetch-commit request failed: {}", err))
+                    })?;
+                if request.world_id != commit_world_id {
+                    return Err(network_bad_request(format!(
+                        "fetch-commit world mismatch: expected={}, got={}",
+                        commit_world_id, request.world_id
+                    )));
+                }
+                let message = load_commit_message_from_root(
+                    commit_root_dir.as_path(),
+                    commit_world_id.as_str(),
+                    request.height,
+                )
+                .map_err(network_internal_error)?;
+                let response = FetchCommitResponse {
+                    found: message.is_some(),
+                    message,
+                };
+                serde_json::to_vec(&response).map_err(|err| {
+                    network_internal_error(NodeError::Replication {
+                        reason: format!("encode fetch-commit response failed: {}", err),
+                    })
+                })
+            }),
+        )
+        .map_err(network_replication_error)?;
+
+    let blob_root_dir = replication.root_dir.clone();
+    network
+        .register_handler(
+            REPLICATION_FETCH_BLOB_PROTOCOL,
+            Box::new(move |payload| {
+                let request =
+                    serde_json::from_slice::<FetchBlobRequest>(payload).map_err(|err| {
+                        network_bad_request(format!("decode fetch-blob request failed: {}", err))
+                    })?;
+                let blob =
+                    load_blob_from_root(blob_root_dir.as_path(), request.content_hash.as_str())
+                        .map_err(network_internal_error)?;
+                let response = FetchBlobResponse {
+                    found: blob.is_some(),
+                    blob,
+                };
+                serde_json::to_vec(&response).map_err(|err| {
+                    network_internal_error(NodeError::Replication {
+                        reason: format!("encode fetch-blob response failed: {}", err),
+                    })
+                })
+            }),
+        )
+        .map_err(network_replication_error)
+}
+
+fn network_bad_request(message: impl Into<String>) -> ProtoWorldError {
+    ProtoWorldError::NetworkRequestFailed {
+        code: DistributedErrorCode::ErrBadRequest,
+        message: message.into(),
+        retryable: false,
+    }
+}
+
+fn network_internal_error(err: NodeError) -> ProtoWorldError {
+    ProtoWorldError::NetworkRequestFailed {
+        code: DistributedErrorCode::ErrNotAvailable,
+        message: err.to_string(),
+        retryable: true,
+    }
+}
+
+fn network_replication_error(err: ProtoWorldError) -> NodeError {
+    NodeError::Replication {
+        reason: format!("replication network error: {err:?}"),
     }
 }
 

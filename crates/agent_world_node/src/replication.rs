@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_distfs::{
-    apply_replication_record, build_replication_record_with_epoch, FileReplicationRecord,
-    LocalCasStore, SingleWriterReplicationGuard,
+    apply_replication_record, build_replication_record_with_epoch, BlobStore as _,
+    FileReplicationRecord, LocalCasStore, SingleWriterReplicationGuard,
 };
+use agent_world_proto::world_error::WorldError;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +14,12 @@ use crate::{NodeConsensusAction, NodeError, PosConsensusStatus, PosDecision};
 
 const REPLICATION_VERSION: u8 = 1;
 const COMMIT_FILE_PREFIX: &str = "consensus/commits";
+const COMMIT_MESSAGE_DIR: &str = "replication_commit_messages";
 const DEFAULT_WRITER_EPOCH: u64 = 1;
+
+pub(crate) const REPLICATION_FETCH_COMMIT_PROTOCOL: &str =
+    "/aw/node/replication/fetch-commit/1.0.0";
+pub(crate) const REPLICATION_FETCH_BLOB_PROTOCOL: &str = "/aw/node/replication/fetch-blob/1.0.0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReplicationConfig {
@@ -107,6 +113,35 @@ impl NodeReplicationConfig {
         self.root_dir
             .join(format!("replication_writer_state_{node_id}.json"))
     }
+
+    fn commit_message_path(&self, height: u64) -> PathBuf {
+        self.root_dir
+            .join(COMMIT_MESSAGE_DIR)
+            .join(format!("{:020}.json", height))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct FetchCommitRequest {
+    pub world_id: String,
+    pub height: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct FetchCommitResponse {
+    pub found: bool,
+    pub message: Option<GossipReplicationMessage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct FetchBlobRequest {
+    pub content_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct FetchBlobResponse {
+    pub found: bool,
+    pub blob: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -299,6 +334,7 @@ impl ReplicationRuntime {
             let signature_hex = sign_replication_message(&message, signer)?;
             message.signature_hex = Some(signature_hex);
         }
+        self.persist_commit_message(decision.height, &message)?;
 
         Ok(Some(message))
     }
@@ -345,6 +381,10 @@ impl ReplicationRuntime {
             &message.payload,
         )
         .map_err(distfs_error_to_node_error)?;
+
+        if let Some(height) = commit_height_from_payload(message.payload.as_slice()) {
+            self.persist_commit_message(height, message)?;
+        }
 
         write_json_pretty(self.config.guard_state_path().as_path(), &self.guard)
     }
@@ -406,6 +446,29 @@ impl ReplicationRuntime {
             return true;
         }
         false
+    }
+
+    fn persist_commit_message(
+        &self,
+        height: u64,
+        message: &GossipReplicationMessage,
+    ) -> Result<(), NodeError> {
+        write_json_pretty(self.config.commit_message_path(height).as_path(), message)
+    }
+
+    pub(crate) fn load_commit_message_by_height(
+        &self,
+        world_id: &str,
+        height: u64,
+    ) -> Result<Option<GossipReplicationMessage>, NodeError> {
+        load_commit_message_from_root(self.config.root_dir.as_path(), world_id, height)
+    }
+
+    pub(crate) fn load_blob_by_hash(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<Vec<u8>>, NodeError> {
+        load_blob_from_root(self.config.root_dir.as_path(), content_hash)
     }
 }
 
@@ -484,6 +547,57 @@ fn seeded_writer_epoch() -> u64 {
         .map(|duration| duration.as_millis() as u64)
         .unwrap_or(DEFAULT_WRITER_EPOCH)
         .max(DEFAULT_WRITER_EPOCH)
+}
+
+fn commit_height_from_payload(payload: &[u8]) -> Option<u64> {
+    serde_json::from_slice::<ReplicatedCommitPayload>(payload)
+        .ok()
+        .map(|parsed| parsed.height)
+        .filter(|height| *height > 0)
+}
+
+pub(crate) fn load_commit_message_from_root(
+    root_dir: &Path,
+    world_id: &str,
+    height: u64,
+) -> Result<Option<GossipReplicationMessage>, NodeError> {
+    let path = commit_message_path_from_root(root_dir, height);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
+        reason: format!("read {} failed: {}", path.display(), err),
+    })?;
+    let message = serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
+        NodeError::Replication {
+            reason: format!("parse {} failed: {}", path.display(), err),
+        }
+    })?;
+    if message.version != REPLICATION_VERSION
+        || message.world_id != world_id
+        || message.record.world_id != world_id
+    {
+        return Ok(None);
+    }
+    Ok(Some(message))
+}
+
+pub(crate) fn load_blob_from_root(
+    root_dir: &Path,
+    content_hash: &str,
+) -> Result<Option<Vec<u8>>, NodeError> {
+    let store = LocalCasStore::new(root_dir.join("store"));
+    match store.get(content_hash) {
+        Ok(blob) => Ok(Some(blob)),
+        Err(WorldError::BlobNotFound { .. }) => Ok(None),
+        Err(err) => Err(distfs_error_to_node_error(err)),
+    }
+}
+
+fn commit_message_path_from_root(root_dir: &Path, height: u64) -> PathBuf {
+    root_dir
+        .join(COMMIT_MESSAGE_DIR)
+        .join(format!("{:020}.json", height))
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>
