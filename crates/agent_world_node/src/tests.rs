@@ -107,29 +107,64 @@ fn wait_until(deadline: Instant, mut predicate: impl FnMut() -> bool) -> bool {
 
 #[derive(Clone, Default)]
 struct TestInMemoryNetwork {
-    inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
+    retained: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
+    subscribers: Arc<Mutex<Vec<TestNetworkInbox>>>,
     handlers: Arc<
         Mutex<HashMap<String, Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>>>,
     >,
 }
 
+type TestNetworkInbox = Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>;
+
+impl TestInMemoryNetwork {
+    fn clear_topic(&self, topic: &str) {
+        self.retained
+            .lock()
+            .expect("lock retained")
+            .insert(topic.to_string(), Vec::new());
+        let subscribers = self.subscribers.lock().expect("lock subscribers");
+        for inbox in subscribers.iter() {
+            inbox
+                .lock()
+                .expect("lock subscriber inbox")
+                .insert(topic.to_string(), Vec::new());
+        }
+    }
+}
+
 impl agent_world_proto::distributed_net::DistributedNetwork<WorldError> for TestInMemoryNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
-        let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox
+        self.retained
+            .lock()
+            .expect("lock retained")
             .entry(topic.to_string())
             .or_default()
             .push(payload.to_vec());
+        let subscribers = self.subscribers.lock().expect("lock subscribers");
+        for inbox in subscribers.iter() {
+            let mut topic_inbox = inbox.lock().expect("lock subscriber inbox");
+            topic_inbox
+                .entry(topic.to_string())
+                .or_default()
+                .push(payload.to_vec());
+        }
         Ok(())
     }
 
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
-        let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox.entry(topic.to_string()).or_default();
-        Ok(NetworkSubscription::new(
-            topic.to_string(),
-            Arc::clone(&self.inbox),
-        ))
+        let inbox = Arc::new(Mutex::new(HashMap::<String, Vec<Vec<u8>>>::new()));
+        let retained = self.retained.lock().expect("lock retained");
+        let seeded = retained.get(topic).cloned().unwrap_or_default();
+        drop(retained);
+        {
+            let mut topic_inbox = inbox.lock().expect("lock subscriber inbox");
+            topic_inbox.insert(topic.to_string(), seeded);
+        }
+        self.subscribers
+            .lock()
+            .expect("lock subscribers")
+            .push(Arc::clone(&inbox));
+        Ok(NetworkSubscription::new(topic.to_string(), inbox))
     }
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
@@ -168,6 +203,7 @@ fn pos_engine_commits_single_validator_head() {
             None,
             None,
             None,
+            None,
             Vec::new(),
             None,
         )
@@ -195,6 +231,7 @@ fn pos_engine_generates_chain_hashed_block_ids() {
             None,
             None,
             None,
+            None,
             Vec::new(),
             None,
         )
@@ -204,6 +241,7 @@ fn pos_engine_generates_chain_hashed_block_ids() {
             &config.node_id,
             &config.world_id,
             2_000,
+            None,
             None,
             None,
             None,
@@ -245,6 +283,7 @@ fn pos_engine_stays_pending_without_peer_votes_when_auto_attest_disabled() {
                 &config.node_id,
                 &config.world_id,
                 2_000 + offset,
+                None,
                 None,
                 None,
                 None,
@@ -879,6 +918,54 @@ fn runtime_gossip_tracks_peer_committed_heads() {
 }
 
 #[test]
+fn runtime_network_consensus_syncs_peer_heads_without_udp_gossip() {
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let network: Arc<
+        dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
+    > = Arc::new(TestInMemoryNetwork::default());
+
+    let config_a = NodeConfig::new("node-a", "world-network-consensus", NodeRole::Sequencer)
+        .expect("config a")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick a")
+        .with_pos_validators(validators.clone())
+        .expect("validators a")
+        .with_auto_attest_all_validators(true);
+    let config_b = NodeConfig::new("node-b", "world-network-consensus", NodeRole::Observer)
+        .expect("config b")
+        .with_tick_interval(Duration::from_millis(10))
+        .expect("tick b")
+        .with_pos_validators(validators)
+        .expect("validators b");
+
+    let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    let mut runtime_b = NodeRuntime::new(config_b)
+        .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));
+    runtime_a.start().expect("start a");
+    runtime_b.start().expect("start b");
+    thread::sleep(Duration::from_millis(200));
+
+    let snapshot_a = runtime_a.snapshot();
+    let snapshot_b = runtime_b.snapshot();
+    assert!(snapshot_a.consensus.committed_height >= 1);
+    assert!(snapshot_b.consensus.network_committed_height >= 1);
+    assert!(snapshot_b.consensus.known_peer_heads >= 1);
+
+    runtime_a.stop().expect("stop a");
+    runtime_b.stop().expect("stop b");
+}
+
+#[test]
 fn runtime_gossip_replication_syncs_distfs_commit_files() {
     let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
     let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
@@ -1142,10 +1229,13 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
         .expect("high commit message");
 
     let topic = super::network_bridge::default_replication_topic(world_id);
-    {
-        let mut inbox = network_impl.inbox.lock().expect("lock inbox");
-        inbox.insert(topic.clone(), Vec::new());
-    }
+    network_impl.clear_topic(topic.as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_proposal_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_attestation_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_commit_topic(world_id).as_str());
     let high_payload = serde_json::to_vec(&high_message).expect("encode high message");
     network
         .publish(topic.as_str(), high_payload.as_slice())
@@ -1295,10 +1385,13 @@ fn runtime_network_replication_gap_sync_not_found_is_non_fatal() {
     let high_message = response.message.expect("high commit payload");
 
     let topic = super::network_bridge::default_replication_topic(world_id);
-    {
-        let mut inbox = network_impl.inbox.lock().expect("lock inbox");
-        inbox.insert(topic.clone(), Vec::new());
-    }
+    network_impl.clear_topic(topic.as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_proposal_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_attestation_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_commit_topic(world_id).as_str());
     let high_payload = serde_json::to_vec(&high_message).expect("encode high message");
     network
         .publish(topic.as_str(), high_payload.as_slice())
@@ -1408,10 +1501,13 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
     let high_message = response.message.expect("high commit payload");
 
     let topic = super::network_bridge::default_replication_topic(world_id);
-    {
-        let mut inbox = network_impl.inbox.lock().expect("lock inbox");
-        inbox.insert(topic.clone(), Vec::new());
-    }
+    network_impl.clear_topic(topic.as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_proposal_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_attestation_topic(world_id).as_str());
+    network_impl
+        .clear_topic(super::network_bridge::default_consensus_commit_topic(world_id).as_str());
     let high_payload = serde_json::to_vec(&high_message).expect("encode high message");
     network
         .publish(topic.as_str(), high_payload.as_slice())

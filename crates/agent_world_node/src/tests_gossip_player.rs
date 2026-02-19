@@ -73,6 +73,7 @@ fn pos_engine_applies_gossiped_proposal_and_attestation() {
             None,
             None,
             None,
+            None,
             Vec::new(),
             None,
         )

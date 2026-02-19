@@ -59,7 +59,7 @@ pub use types::{
     NodeGossipConfig, NodePosConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 
-use network_bridge::ReplicationNetworkEndpoint;
+use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
 use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
 use pos_validation::{decide_status, validated_pos_state};
@@ -181,6 +181,17 @@ impl NodeRuntime {
         } else {
             None
         };
+        let mut consensus_network = if let Some(network) = &self.replication_network {
+            match ConsensusNetworkEndpoint::new(network, &self.config.world_id, true) {
+                Ok(endpoint) => Some(endpoint),
+                Err(err) => {
+                    self.running.store(false, Ordering::SeqCst);
+                    return Err(err);
+                }
+            }
+        } else {
+            None
+        };
         let tick_interval = self.config.tick_interval;
         let worker_name = format!("aw-node-{}", self.config.node_id);
         let running = Arc::clone(&self.running);
@@ -222,6 +233,7 @@ impl NodeRuntime {
                                         gossip.as_mut(),
                                         replication.as_mut(),
                                         replication_network.as_mut(),
+                                        consensus_network.as_mut(),
                                         queued_actions,
                                         Some(hook.as_mut()),
                                     ),
@@ -243,6 +255,7 @@ impl NodeRuntime {
                                     gossip.as_mut(),
                                     replication.as_mut(),
                                     replication_network.as_mut(),
+                                    consensus_network.as_mut(),
                                     queued_actions,
                                     None,
                                 )
@@ -586,6 +599,7 @@ impl PosNodeEngine {
         gossip: Option<&mut GossipEndpoint>,
         mut replication: Option<&mut ReplicationRuntime>,
         replication_network: Option<&mut ReplicationNetworkEndpoint>,
+        consensus_network: Option<&mut ConsensusNetworkEndpoint>,
         queued_actions: Vec<NodeConsensusAction>,
         execution_hook: Option<&mut dyn NodeExecutionHook>,
     ) -> Result<NodeEngineTickResult, NodeError> {
@@ -593,6 +607,9 @@ impl PosNodeEngine {
 
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+        }
+        if let Some(endpoint) = consensus_network.as_ref() {
+            self.ingest_consensus_network_messages(endpoint, world_id)?;
         }
         if let Some(endpoint) = replication_network.as_ref() {
             self.ingest_network_replications(
@@ -619,7 +636,10 @@ impl PosNodeEngine {
             decision = self.advance_pending_attestations(now_ms)?;
         }
 
-        if let Some(endpoint) = gossip.as_ref() {
+        if let Some(endpoint) = consensus_network.as_ref() {
+            self.broadcast_local_proposal_network(endpoint, node_id, world_id, now_ms)?;
+            self.broadcast_local_attestation_network(endpoint, node_id, world_id, now_ms)?;
+        } else if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_proposal(endpoint, node_id, world_id, now_ms)?;
             self.broadcast_local_attestation(endpoint, node_id, world_id, now_ms)?;
         }
@@ -627,7 +647,9 @@ impl PosNodeEngine {
         let prev_committed_height = self.committed_height;
         self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
         self.apply_decision(&decision);
-        if let Some(endpoint) = gossip.as_ref() {
+        if let Some(endpoint) = consensus_network.as_ref() {
+            self.broadcast_local_commit_network(endpoint, node_id, world_id, now_ms, &decision)?;
+        } else if let Some(endpoint) = gossip.as_ref() {
             self.broadcast_local_commit(endpoint, node_id, world_id, now_ms, &decision)?;
         }
         self.broadcast_local_replication(
@@ -641,6 +663,9 @@ impl PosNodeEngine {
         )?;
         if let Some(endpoint) = gossip.as_ref() {
             self.ingest_peer_messages(endpoint, node_id, world_id, replication.as_deref_mut())?;
+        }
+        if let Some(endpoint) = consensus_network.as_ref() {
+            self.ingest_consensus_network_messages(endpoint, world_id)?;
         }
         if let Some(endpoint) = replication_network.as_ref() {
             self.ingest_network_replications(
@@ -1438,6 +1463,102 @@ impl PosNodeEngine {
             message.reason.clone(),
         )?;
         self.pending = Some(proposal);
+        Ok(())
+    }
+
+    fn ingest_consensus_network_messages(
+        &mut self,
+        endpoint: &ConsensusNetworkEndpoint,
+        world_id: &str,
+    ) -> Result<(), NodeError> {
+        let messages = endpoint.drain_messages()?;
+        for message in messages {
+            match message {
+                GossipMessage::Commit(commit) => {
+                    if commit.version != 1 || commit.world_id != world_id {
+                        continue;
+                    }
+                    if verify_commit_message_signature(&commit, self.enforce_consensus_signature)
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    if commit.execution_block_hash.is_some()
+                        != commit.execution_state_root.is_some()
+                    {
+                        continue;
+                    }
+                    if validate_consensus_action_root(
+                        commit.action_root.as_str(),
+                        commit.actions.as_slice(),
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
+                    if self
+                        .validate_message_player_binding(
+                            commit.node_id.as_str(),
+                            commit.player_id.as_str(),
+                            "commit",
+                        )
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    let previous_height = self
+                        .peer_heads
+                        .get(commit.node_id.as_str())
+                        .map(|head| head.height)
+                        .unwrap_or(0);
+                    if commit.height < previous_height {
+                        continue;
+                    }
+                    self.peer_heads.insert(
+                        commit.node_id.clone(),
+                        PeerCommittedHead {
+                            height: commit.height,
+                            block_hash: commit.block_hash.clone(),
+                            committed_at_ms: commit.committed_at_ms,
+                            execution_block_hash: commit.execution_block_hash.clone(),
+                            execution_state_root: commit.execution_state_root.clone(),
+                        },
+                    );
+                    if commit.height > self.network_committed_height {
+                        self.network_committed_height = commit.height;
+                    }
+                }
+                GossipMessage::Proposal(proposal) => {
+                    if proposal.version != 1 || proposal.world_id != world_id {
+                        continue;
+                    }
+                    if verify_proposal_message_signature(
+                        &proposal,
+                        self.enforce_consensus_signature,
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
+                    self.ingest_proposal_message(world_id, &proposal)?;
+                }
+                GossipMessage::Attestation(attestation) => {
+                    if attestation.version != 1 || attestation.world_id != world_id {
+                        continue;
+                    }
+                    if verify_attestation_message_signature(
+                        &attestation,
+                        self.enforce_consensus_signature,
+                    )
+                    .is_err()
+                    {
+                        continue;
+                    }
+                    self.ingest_attestation_message(world_id, &attestation)?;
+                }
+                GossipMessage::Replication(_) => {}
+            }
+        }
         Ok(())
     }
 
