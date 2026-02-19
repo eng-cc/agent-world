@@ -260,3 +260,52 @@
 - 兼容风险：动作匹配放宽后，可能影响极少数依赖“动作参数差异”继续执行的旧样例。
 - 收敛风险：矿点失败记忆过强可能抑制必要重试，需要设置温和值并在补给事件时清理。
 - 行为风险：`until` 重建过于激进可能提前退出自动执行，需通过回归用例覆盖 move/harvest/mine 三类路径。
+
+## MMD11 增量优化（TODO-26 ~ TODO-29）
+
+### 目标
+- 解决 `llm_bootstrap` 长窗口中“工厂选择漂移”导致的主失败源：
+  - `facility_not_found`（factory_id 别名/伪 ID 未归一）
+  - `rule_denied`（配方投递到不兼容工厂）
+  - `location_not_found`（build_factory 使用不可识别 location）
+- 在不改 kernel 拒绝语义前提下，把修复收敛在 LLM guardrail 层，优先提升动作可执行率与闭环稳定性。
+
+### 范围
+
+#### In Scope
+- TODO-26：`schedule_recipe` 的 factory_id 归一增强。
+  - 支持 `factory.<kind>.<suffix>` 伪 ID 映射到已知 canonical factory_id。
+  - 当 `factory_id` 不可识别时，按 `recipe_id` 所需 `factory_kind` 回退到已知工厂。
+- TODO-27：`schedule_recipe` 前置 `recipe -> factory_kind` 强校验。
+  - 发现不兼容时优先改写到兼容工厂；
+  - 若兼容工厂缺失，改写为 `build_factory(required_kind)`，不再把无效排产直接下发 kernel。
+- TODO-28：`build_factory.location_id` 合法化与同位预检。
+  - 不可见/不可识别 location 自动回退到当前 location；
+  - 可见但不同位时优先改写为 `move_agent`。
+- TODO-29：补充失败语义透传（`rule_denied`、`location_not_found`）与 prompt 恢复策略提示，降低“reject_reason=other”导致的恢复误判。
+- 补齐 `test_tier_required` 单测与在线 `llm_bootstrap` 对照复验。
+
+#### Out of Scope
+- 不修改 kernel 中 `schedule_recipe` 工厂兼容拒绝规则。
+- 不调整经济参数（配方成本、电力成本、采矿参数）。
+- 不改 viewer 展示层与场景生成逻辑。
+
+### 接口 / 数据
+- `LlmAgentBehavior` guardrail 扩展：
+  - `schedule_recipe`：增加 required factory kind 推导、factory_id 归一增强、缺厂时建厂回退。
+  - `build_factory`：增加 location 归一与同位移动预检；去重改写增加工厂类型兼容判断。
+- prompt 反馈扩展：
+  - `RejectReason::RuleDenied` -> `rule_denied`
+  - `RejectReason::LocationNotFound` -> `location_not_found`
+  - 更新 `[Failure Recovery Policy]`：新增 `rule_denied` / `location_not_found` 的恢复建议。
+
+### 里程碑
+- MMD11.1：文档增量设计与项目任务拆解。
+- MMD11.2：guardrail 修复（TODO-26/27/28）+ required-tier 单测。
+- MMD11.3：prompt/reject_reason 透传收敛（TODO-29）+ 单测。
+- MMD11.4：在线 `llm_bootstrap --ticks 120` 对照复验 + 文档/devlog 收口。
+
+### 风险
+- 改写激进风险：过度自动改写可能压制模型探索，需保留 note 与 trace 可审计。
+- 错误归一风险：factory/location 归一若命中错误对象，可能引入新的策略偏差；需以“已知集合”优先并在不可判定时回退最保守动作。
+- 行为漂移风险：prompt 恢复策略新增分支可能影响既有样本，需要 required-tier + 在线样本双口径回归。

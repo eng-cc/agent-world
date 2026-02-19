@@ -64,6 +64,12 @@
 - [x] MMD9.3 采矿失败记忆优先级（候选排序避开连续失败矿点）+ `test_tier_required` 回归
 - [x] MMD9.4 guardrail 改写后 `execute_until.until` 条件重建（抑制后半程 move/mine 抖动）+ 在线抽样复核
 
+### MMD11 TODO-26~29 收敛迭代（2026-02-19）
+- [x] MMD11.1 文档增量设计：补充 TODO-26/27/28/29 目标、接口与风险
+- [ ] MMD11.2 guardrail 修复：`schedule_recipe/build_factory` 的 factory/location 归一与兼容改写
+- [ ] MMD11.3 回归验证：`test_tier_required` 定向单测与 llm_agent 全量回归
+- [ ] MMD11.4 在线复验：`llm_bootstrap --ticks 120` 对照复跑并回写文档/devlog
+
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
   - 产物：
@@ -231,9 +237,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD10 已完成（未收口稳定性项复现 + 优先级评估）。
-- 下一阶段：进入 MMD11，优先收敛 TODO-26/TODO-27，并处理 `location_not_found` 与多段输出协议漂移。
-- 最近更新：2026-02-19（完成 MMD10 复现实验与优化优先级评估）。
+- 当前阶段：MMD11.1 已完成（增量设计与任务拆解）。
+- 下一阶段：执行 MMD11.2，优先收敛 TODO-26/TODO-27，并同步处理 TODO-28。
+- 最近更新：2026-02-19（新增 MMD11 任务链并启动实现阶段）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
