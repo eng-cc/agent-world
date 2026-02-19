@@ -23,6 +23,7 @@ pub struct Libp2pReplicationNetworkConfig {
     pub keypair: Option<Keypair>,
     pub listen_addrs: Vec<Multiaddr>,
     pub bootstrap_peers: Vec<Multiaddr>,
+    pub allow_local_handler_fallback_when_no_peers: bool,
 }
 
 impl Default for Libp2pReplicationNetworkConfig {
@@ -31,6 +32,7 @@ impl Default for Libp2pReplicationNetworkConfig {
             keypair: None,
             listen_addrs: Vec::new(),
             bootstrap_peers: Vec::new(),
+            allow_local_handler_fallback_when_no_peers: false,
         }
     }
 }
@@ -84,6 +86,12 @@ struct ReplicationResponse {
     error: Option<String>,
 }
 
+struct PendingRequest {
+    request: ReplicationRequest,
+    remaining_peers: Vec<PeerId>,
+    response: oneshot::Sender<Result<Vec<u8>, WorldError>>,
+}
+
 impl Libp2pReplicationNetwork {
     pub fn new(config: Libp2pReplicationNetworkConfig) -> Self {
         let keypair = config
@@ -101,19 +109,21 @@ impl Libp2pReplicationNetwork {
         let connected_peers_for_thread = Arc::clone(&connected_peers);
         let errors_for_thread = Arc::clone(&errors);
         let bootstrap_peers = config.bootstrap_peers.clone();
+        let listen_addrs = config.listen_addrs.clone();
+        let allow_local_handler_fallback_when_no_peers =
+            config.allow_local_handler_fallback_when_no_peers;
 
         std::thread::spawn(move || {
             let mut swarm = build_swarm(&keypair);
             let mut subscribed = HashSet::<String>::new();
             let mut topic_map: HashMap<TopicHash, String> = HashMap::new();
             let mut handlers: HashMap<String, Handler> = HashMap::new();
-            let mut pending: HashMap<
-                request_response::OutboundRequestId,
-                oneshot::Sender<Result<Vec<u8>, WorldError>>,
-            > = HashMap::new();
+            let mut pending: HashMap<request_response::OutboundRequestId, PendingRequest> =
+                HashMap::new();
             let mut peers = Vec::<PeerId>::new();
+            let mut request_peer_cursor = 0usize;
 
-            for addr in config.listen_addrs {
+            for addr in listen_addrs {
                 if let Err(err) = swarm.listen_on(addr) {
                     errors_for_thread
                         .lock()
@@ -150,17 +160,38 @@ impl Libp2pReplicationNetwork {
                                 }
                                 Some(Command::Request { protocol, payload, response }) => {
                                     if peers.is_empty() {
-                                        if let Some(handler) = handlers.get(protocol.as_str()) {
-                                            let _ = response.send(handler(payload.as_slice()));
+                                        if allow_local_handler_fallback_when_no_peers {
+                                            if let Some(handler) = handlers.get(protocol.as_str()) {
+                                                let _ = response.send(handler(payload.as_slice()));
+                                            } else {
+                                                let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
+                                                    protocol: format!(
+                                                        "libp2p-replication handler missing: {protocol}"
+                                                    ),
+                                                }));
+                                            }
                                         } else {
                                             let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
                                                 protocol: format!(
-                                                    "libp2p-replication handler missing: {protocol}"
+                                                    "libp2p-replication no connected peers for protocol {protocol}"
                                                 ),
                                             }));
                                         }
                                         continue;
                                     }
+
+                                    let mut request_peers =
+                                        rotated_peers(peers.as_slice(), request_peer_cursor);
+                                    request_peer_cursor = request_peer_cursor.wrapping_add(1);
+                                    let Some(first_peer) = request_peers.first().copied() else {
+                                        let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
+                                            protocol: format!(
+                                                "libp2p-replication no connected peers for protocol {protocol}"
+                                            ),
+                                        }));
+                                        continue;
+                                    };
+                                    request_peers.remove(0);
 
                                     let request = ReplicationRequest {
                                         protocol,
@@ -169,8 +200,15 @@ impl Libp2pReplicationNetwork {
                                     let request_id = swarm
                                         .behaviour_mut()
                                         .request_response
-                                        .send_request(&peers[0], request);
-                                    pending.insert(request_id, response);
+                                        .send_request(&first_peer, request.clone());
+                                    pending.insert(
+                                        request_id,
+                                        PendingRequest {
+                                            request,
+                                            remaining_peers: request_peers,
+                                            response,
+                                        },
+                                    );
                                 }
                                 Some(Command::RegisterHandler { protocol, handler }) => {
                                     handlers.insert(protocol, handler);
@@ -233,29 +271,49 @@ impl Libp2pReplicationNetwork {
                                                     }
                                                 }
                                                 request_response::Message::Response { request_id, response } => {
-                                                    if let Some(sender) = pending.remove(&request_id) {
+                                                    if let Some(mut pending_request) = pending.remove(&request_id) {
                                                         if response.ok {
-                                                            let _ = sender.send(Ok(response.payload));
+                                                            let _ = pending_request.response.send(Ok(response.payload));
                                                         } else {
-                                                            let _ = sender.send(Err(WorldError::NetworkRequestFailed {
-                                                                code: DistributedErrorCode::ErrNotFound,
-                                                                message: response.error.unwrap_or_else(|| {
-                                                                    "libp2p replication remote handler failed".to_string()
-                                                                }),
-                                                                retryable: false,
-                                                            }));
+                                                            let retry_peer = pending_request.remaining_peers.first().copied();
+                                                            if let Some(peer_id) = retry_peer {
+                                                                pending_request.remaining_peers.remove(0);
+                                                                let next_request_id = swarm
+                                                                    .behaviour_mut()
+                                                                    .request_response
+                                                                    .send_request(&peer_id, pending_request.request.clone());
+                                                                pending.insert(next_request_id, pending_request);
+                                                            } else {
+                                                                let _ = pending_request.response.send(Err(WorldError::NetworkRequestFailed {
+                                                                    code: DistributedErrorCode::ErrNotFound,
+                                                                    message: response.error.unwrap_or_else(|| {
+                                                                        "libp2p replication remote handler failed".to_string()
+                                                                    }),
+                                                                    retryable: false,
+                                                                }));
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
                                         request_response::Event::OutboundFailure { request_id, error, .. } => {
-                                            if let Some(sender) = pending.remove(&request_id) {
-                                                let _ = sender.send(Err(WorldError::NetworkProtocolUnavailable {
-                                                    protocol: format!(
-                                                        "libp2p-replication outbound request failed: {error:?}"
-                                                    ),
-                                                }));
+                                            if let Some(mut pending_request) = pending.remove(&request_id) {
+                                                let retry_peer = pending_request.remaining_peers.first().copied();
+                                                if let Some(peer_id) = retry_peer {
+                                                    pending_request.remaining_peers.remove(0);
+                                                    let next_request_id = swarm
+                                                        .behaviour_mut()
+                                                        .request_response
+                                                        .send_request(&peer_id, pending_request.request.clone());
+                                                    pending.insert(next_request_id, pending_request);
+                                                } else {
+                                                    let _ = pending_request.response.send(Err(WorldError::NetworkProtocolUnavailable {
+                                                        protocol: format!(
+                                                            "libp2p-replication outbound request failed: {error:?}"
+                                                        ),
+                                                    }));
+                                                }
                                             }
                                         }
                                         request_response::Event::InboundFailure { peer, error, .. } => {
@@ -508,10 +566,41 @@ fn split_peer_id(mut addr: Multiaddr) -> (Option<PeerId>, Multiaddr) {
     (peer_id, addr)
 }
 
+fn rotated_peers(peers: &[PeerId], cursor: usize) -> Vec<PeerId> {
+    if peers.is_empty() {
+        return Vec::new();
+    }
+    let start = cursor % peers.len();
+    peers[start..]
+        .iter()
+        .chain(peers[..start].iter())
+        .copied()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::time::{Duration, Instant};
+
+    fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {
+        while Instant::now() < deadline {
+            if condition() {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        panic!("timed out waiting for condition: {what}");
+    }
+
+    fn listening_addr_with_peer_id(network: &Libp2pReplicationNetwork) -> Multiaddr {
+        network
+            .listening_addrs()
+            .into_iter()
+            .find(|addr| addr.to_string().contains("127.0.0.1"))
+            .expect("listener visible addr")
+            .with(libp2p::multiaddr::Protocol::P2p(network.peer_id().into()))
+    }
 
     #[test]
     fn libp2p_replication_network_generates_peer_id() {
@@ -520,8 +609,23 @@ mod tests {
     }
 
     #[test]
-    fn libp2p_replication_network_request_falls_back_to_local_handler() {
+    fn libp2p_replication_network_request_rejects_without_connected_peers_by_default() {
         let network = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig::default());
+        let result = network.request("/aw/node/replication/ping", b"hello");
+        match result {
+            Err(WorldError::NetworkProtocolUnavailable { protocol }) => {
+                assert!(protocol.contains("no connected peers"));
+            }
+            other => panic!("expected NetworkProtocolUnavailable, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn libp2p_replication_network_request_falls_back_to_local_handler_when_enabled() {
+        let network = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            allow_local_handler_fallback_when_no_peers: true,
+            ..Libp2pReplicationNetworkConfig::default()
+        });
         network
             .register_handler(
                 "/aw/node/replication/ping",
@@ -541,16 +645,6 @@ mod tests {
 
     #[test]
     fn libp2p_replication_network_request_response_between_peers() {
-        fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {
-            while Instant::now() < deadline {
-                if condition() {
-                    return;
-                }
-                std::thread::sleep(Duration::from_millis(20));
-            }
-            panic!("timed out waiting for condition: {what}");
-        }
-
         let listener = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
             listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listener addr")],
             ..Libp2pReplicationNetworkConfig::default()
@@ -560,12 +654,7 @@ mod tests {
             !listener.listening_addrs().is_empty()
         });
 
-        let dial_addr = listener
-            .listening_addrs()
-            .into_iter()
-            .find(|addr| addr.to_string().contains("127.0.0.1"))
-            .expect("listener visible addr")
-            .with(libp2p::multiaddr::Protocol::P2p(listener.peer_id().into()));
+        let dial_addr = listening_addr_with_peer_id(&listener);
         listener
             .register_handler(
                 "/aw/node/replication/ping",
@@ -600,5 +689,138 @@ mod tests {
                 ),
             }
         });
+    }
+
+    #[test]
+    fn libp2p_replication_network_request_round_robins_across_connected_peers() {
+        let listener_a = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listener a addr")],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let listener_b = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listener b addr")],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let listen_deadline = Instant::now() + Duration::from_secs(10);
+        wait_until("listener a bind", listen_deadline, || {
+            !listener_a.listening_addrs().is_empty()
+        });
+        wait_until("listener b bind", listen_deadline, || {
+            !listener_b.listening_addrs().is_empty()
+        });
+
+        listener_a
+            .register_handler(
+                "/aw/node/replication/ping",
+                Box::new(|payload| {
+                    let mut out = payload.to_vec();
+                    out.extend_from_slice(b"-a");
+                    Ok(out)
+                }),
+            )
+            .expect("register listener a handler");
+        listener_b
+            .register_handler(
+                "/aw/node/replication/ping",
+                Box::new(|payload| {
+                    let mut out = payload.to_vec();
+                    out.extend_from_slice(b"-b");
+                    Ok(out)
+                }),
+            )
+            .expect("register listener b handler");
+
+        let dialer = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("dialer addr")],
+            bootstrap_peers: vec![
+                listening_addr_with_peer_id(&listener_a),
+                listening_addr_with_peer_id(&listener_b),
+            ],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let connect_deadline = Instant::now() + Duration::from_secs(10);
+        wait_until("dialer connects to two peers", connect_deadline, || {
+            dialer.connected_peers().len() >= 2
+        });
+
+        let first = dialer
+            .request("/aw/node/replication/ping", b"node")
+            .expect("first request");
+        let second = dialer
+            .request("/aw/node/replication/ping", b"node")
+            .expect("second request");
+
+        assert_ne!(
+            first, second,
+            "expected round-robin request targets to differ"
+        );
+        let mut responses = vec![first, second];
+        responses.sort();
+        assert_eq!(responses, vec![b"node-a".to_vec(), b"node-b".to_vec()]);
+    }
+
+    #[test]
+    fn libp2p_replication_network_request_retries_next_peer_when_remote_handler_fails() {
+        let listener_fail = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listener fail addr")],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let listener_ok = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("listener ok addr")],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let listen_deadline = Instant::now() + Duration::from_secs(10);
+        wait_until("listener fail bind", listen_deadline, || {
+            !listener_fail.listening_addrs().is_empty()
+        });
+        wait_until("listener ok bind", listen_deadline, || {
+            !listener_ok.listening_addrs().is_empty()
+        });
+
+        listener_fail
+            .register_handler(
+                "/aw/node/replication/ping",
+                Box::new(|_payload| {
+                    Err(WorldError::NetworkRequestFailed {
+                        code: DistributedErrorCode::ErrUnsupported,
+                        message: "forced failure".to_string(),
+                        retryable: false,
+                    })
+                }),
+            )
+            .expect("register listener fail handler");
+        listener_ok
+            .register_handler(
+                "/aw/node/replication/ping",
+                Box::new(|payload| {
+                    let mut out = payload.to_vec();
+                    out.extend_from_slice(b"-ok");
+                    Ok(out)
+                }),
+            )
+            .expect("register listener ok handler");
+
+        let dialer = Libp2pReplicationNetwork::new(Libp2pReplicationNetworkConfig {
+            listen_addrs: vec!["/ip4/127.0.0.1/tcp/0".parse().expect("dialer addr")],
+            bootstrap_peers: vec![
+                listening_addr_with_peer_id(&listener_fail),
+                listening_addr_with_peer_id(&listener_ok),
+            ],
+            ..Libp2pReplicationNetworkConfig::default()
+        });
+        let connect_deadline = Instant::now() + Duration::from_secs(10);
+        wait_until("dialer connects to two peers", connect_deadline, || {
+            dialer.connected_peers().len() >= 2
+        });
+
+        let first = dialer
+            .request("/aw/node/replication/ping", b"node")
+            .expect("first request should succeed via retry");
+        let second = dialer
+            .request("/aw/node/replication/ping", b"node")
+            .expect("second request should succeed via retry");
+
+        assert_eq!(first, b"node-ok".to_vec());
+        assert_eq!(second, b"node-ok".to_vec());
     }
 }
