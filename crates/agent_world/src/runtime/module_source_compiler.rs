@@ -1,11 +1,46 @@
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus};
+use std::time::{Duration, Instant};
 
 use super::{ModuleSourcePackage, WorldError};
 
 const MODULE_SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
 const MODULE_SOURCE_BUILD_PROFILE: &str = "release";
+const MODULE_SOURCE_MAX_FILES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILES";
+const MODULE_SOURCE_MAX_FILE_BYTES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILE_BYTES";
+const MODULE_SOURCE_MAX_TOTAL_BYTES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_TOTAL_BYTES";
+const MODULE_SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILE_TIMEOUT_MS";
+
+const DEFAULT_MODULE_SOURCE_MAX_FILES: usize = 128;
+const DEFAULT_MODULE_SOURCE_MAX_FILE_BYTES: usize = 512 * 1024;
+const DEFAULT_MODULE_SOURCE_MAX_TOTAL_BYTES: usize = 4 * 1024 * 1024;
+const DEFAULT_MODULE_SOURCE_COMPILE_TIMEOUT_MS: u64 = 120_000;
+
+const COMPILER_ENV_ALLOWLIST: &[&str] = &[
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "RUSTUP_HOME",
+    "RUSTUP_TOOLCHAIN",
+    "CARGO_HOME",
+    "CARGO_TARGET_DIR",
+    "RUSTFLAGS",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "GIT_SSL_CAINFO",
+];
 
 pub(crate) fn compile_module_artifact_from_source(
     module_id: &str,
@@ -27,8 +62,12 @@ pub(crate) fn compile_module_artifact_from_source(
         });
     }
 
+    validate_source_package_limits(source_package)?;
+
     let workspace_dir = temp_source_workspace(module_id);
     fs::create_dir_all(&workspace_dir).map_err(WorldError::from)?;
+    let sandbox_tmp_dir = workspace_dir.join("tmp");
+    fs::create_dir_all(&sandbox_tmp_dir).map_err(WorldError::from)?;
 
     let result = (|| {
         let manifest_rel = validate_relative_source_path(source_package.manifest_path.as_str())?;
@@ -63,6 +102,7 @@ pub(crate) fn compile_module_artifact_from_source(
                 workspace_dir.as_path(),
                 source_package.manifest_path.as_str(),
                 out_path.as_path(),
+                sandbox_tmp_dir.as_path(),
             )?;
         } else {
             compile_via_default_script(
@@ -70,6 +110,7 @@ pub(crate) fn compile_module_artifact_from_source(
                 workspace_dir.as_path(),
                 source_package.manifest_path.as_str(),
                 out_dir.as_path(),
+                sandbox_tmp_dir.as_path(),
             )?;
         }
 
@@ -93,19 +134,22 @@ fn compile_via_custom_command(
     workspace_dir: &Path,
     manifest_path: &str,
     out_path: &Path,
+    sandbox_tmp_dir: &Path,
 ) -> Result<(), WorldError> {
-    let status = Command::new(compiler_path)
+    let mut command = Command::new(compiler_path);
+    command
+        .current_dir(workspace_dir)
         .arg(module_id)
         .arg(workspace_dir)
         .arg(manifest_path)
-        .arg(out_path)
-        .status()
-        .map_err(|error| WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "compile module source rejected: execute compiler failed compiler={} err={error}",
-                compiler_path.display()
-            ),
-        })?;
+        .arg(out_path);
+    apply_compiler_environment(&mut command, sandbox_tmp_dir);
+
+    let status = run_command_with_timeout(
+        &mut command,
+        compile_timeout(),
+        format!("compiler={}", compiler_path.display()).as_str(),
+    )?;
 
     if status.success() {
         return Ok(());
@@ -124,11 +168,14 @@ fn compile_via_default_script(
     workspace_dir: &Path,
     manifest_path: &str,
     out_dir: &Path,
+    sandbox_tmp_dir: &Path,
 ) -> Result<(), WorldError> {
     let script_path = repo_root().join("scripts").join("build-wasm-module.sh");
     let manifest_abs = workspace_dir.join(manifest_path);
 
-    let status = Command::new(script_path.as_path())
+    let mut command = Command::new(script_path.as_path());
+    command
+        .current_dir(workspace_dir)
         .arg("--module-id")
         .arg(module_id)
         .arg("--manifest-path")
@@ -136,14 +183,14 @@ fn compile_via_default_script(
         .arg("--out-dir")
         .arg(out_dir)
         .arg("--profile")
-        .arg(MODULE_SOURCE_BUILD_PROFILE)
-        .status()
-        .map_err(|error| WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "compile module source rejected: execute default builder failed script={} err={error}",
-                script_path.display()
-            ),
-        })?;
+        .arg(MODULE_SOURCE_BUILD_PROFILE);
+    apply_compiler_environment(&mut command, sandbox_tmp_dir);
+
+    let status = run_command_with_timeout(
+        &mut command,
+        compile_timeout(),
+        format!("script={}", script_path.display()).as_str(),
+    )?;
 
     if status.success() {
         return Ok(());
@@ -186,6 +233,121 @@ fn validate_relative_source_path(raw: &str) -> Result<PathBuf, WorldError> {
         }
     }
     Ok(path.to_path_buf())
+}
+
+fn validate_source_package_limits(source_package: &ModuleSourcePackage) -> Result<(), WorldError> {
+    let max_files = env_limit_usize(MODULE_SOURCE_MAX_FILES_ENV, DEFAULT_MODULE_SOURCE_MAX_FILES);
+    let max_file_bytes = env_limit_usize(
+        MODULE_SOURCE_MAX_FILE_BYTES_ENV,
+        DEFAULT_MODULE_SOURCE_MAX_FILE_BYTES,
+    );
+    let max_total_bytes = env_limit_usize(
+        MODULE_SOURCE_MAX_TOTAL_BYTES_ENV,
+        DEFAULT_MODULE_SOURCE_MAX_TOTAL_BYTES,
+    );
+
+    if source_package.files.len() > max_files {
+        return Err(WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "compile module source rejected: source file count exceeds limit count={} limit={max_files}",
+                source_package.files.len()
+            ),
+        });
+    }
+
+    let mut total_bytes = 0usize;
+    for (path, file_bytes) in &source_package.files {
+        if file_bytes.len() > max_file_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "compile module source rejected: source file exceeds size limit path={} bytes={} limit={max_file_bytes}",
+                    path,
+                    file_bytes.len()
+                ),
+            });
+        }
+        total_bytes = total_bytes.saturating_add(file_bytes.len());
+        if total_bytes > max_total_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "compile module source rejected: source package exceeds total size limit bytes={total_bytes} limit={max_total_bytes}",
+                ),
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn run_command_with_timeout(
+    command: &mut Command,
+    timeout: Duration,
+    command_label: &str,
+) -> Result<ExitStatus, WorldError> {
+    let mut child = command
+        .spawn()
+        .map_err(|error| WorldError::ModuleChangeInvalid {
+            reason: format!(
+                "compile module source rejected: execute compiler failed {} err={error}",
+                command_label
+            ),
+        })?;
+
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "compile module source rejected: wait compiler failed {} err={error}",
+                    command_label
+                ),
+            })?
+        {
+            return Ok(status);
+        }
+
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "compile module source rejected: compiler timed out {} timeout_ms={}",
+                    command_label,
+                    timeout.as_millis(),
+                ),
+            });
+        }
+
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn apply_compiler_environment(command: &mut Command, sandbox_tmp_dir: &Path) {
+    command.env_clear();
+    for key in COMPILER_ENV_ALLOWLIST {
+        if let Some(value) = env_non_empty(key) {
+            command.env(key, value);
+        }
+    }
+    command.env("TMPDIR", sandbox_tmp_dir);
+    command.env("TMP", sandbox_tmp_dir);
+    command.env("TEMP", sandbox_tmp_dir);
+}
+
+fn compile_timeout() -> Duration {
+    let timeout_ms = env_non_empty(MODULE_SOURCE_COMPILE_TIMEOUT_MS_ENV)
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_MODULE_SOURCE_COMPILE_TIMEOUT_MS);
+    Duration::from_millis(timeout_ms)
+}
+
+fn env_limit_usize(key: &str, default: usize) -> usize {
+    env_non_empty(key)
+        .and_then(|raw| raw.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(default)
 }
 
 fn env_non_empty(key: &str) -> Option<String> {

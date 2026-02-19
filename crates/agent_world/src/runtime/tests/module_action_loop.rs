@@ -8,6 +8,9 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const SOURCE_COMPILER_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILER";
+const SOURCE_MAX_FILES_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_MAX_FILES";
+const SOURCE_COMPILE_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_MODULE_SOURCE_COMPILE_TIMEOUT_MS";
+const SOURCE_SANDBOX_SECRET_ENV: &str = "AGENT_WORLD_SOURCE_SANDBOX_TEST_SECRET";
 static SOURCE_COMPILER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn register_agent(world: &mut World, agent_id: &str) {
@@ -106,6 +109,10 @@ fn write_fake_source_compiler(script_path: &Path, produced_wasm_bytes: &str) {
     let script = format!(
         "#!/usr/bin/env bash\nset -euo pipefail\nout_path=\"$4\"\nprintf '%s' '{produced_wasm_bytes}' > \"$out_path\"\n"
     );
+    write_executable_script(script_path, script.as_str());
+}
+
+fn write_executable_script(script_path: &Path, script: &str) {
     fs::write(script_path, script).expect("write fake source compiler");
     #[cfg(unix)]
     {
@@ -255,6 +262,98 @@ fn compile_module_artifact_from_source_rejects_when_manifest_path_missing_in_fil
     world.step().expect("compile invalid source action");
 
     assert_last_rejection_note(&world, action_id, "manifest path missing");
+}
+
+#[test]
+fn compile_module_artifact_from_source_rejects_when_file_count_exceeds_limit() {
+    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
+    let _env_guard = EnvVarGuard::capture(SOURCE_MAX_FILES_ENV);
+    std::env::set_var(SOURCE_MAX_FILES_ENV, "1");
+
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+
+    let action_id = world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.too-many-files".to_string(),
+        source_package: sample_module_source_package(),
+    });
+    world.step().expect("compile source with too many files");
+
+    assert_last_rejection_note(&world, action_id, "source file count exceeds limit");
+}
+
+#[test]
+fn compile_module_artifact_from_source_rejects_when_compiler_times_out() {
+    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
+    let _compiler_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
+    let _timeout_guard = EnvVarGuard::capture(SOURCE_COMPILE_TIMEOUT_MS_ENV);
+
+    let temp_root = temp_dir("compile-module-artifact-timeout");
+    fs::create_dir_all(&temp_root).expect("create temp dir");
+    let compiler_script = temp_root.join("compiler-timeout.sh");
+    write_executable_script(
+        compiler_script.as_path(),
+        "#!/usr/bin/env bash\nset -euo pipefail\nsleep 1\nprintf '%s' 'late-module' > \"$4\"\n",
+    );
+    std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
+    std::env::set_var(SOURCE_COMPILE_TIMEOUT_MS_ENV, "20");
+
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+
+    let action_id = world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.timeout".to_string(),
+        source_package: sample_module_source_package(),
+    });
+    world.step().expect("compile timeout action");
+
+    assert_last_rejection_note(&world, action_id, "compiler timed out");
+    let _ = fs::remove_dir_all(temp_root);
+}
+
+#[test]
+fn compile_module_artifact_from_source_sanitizes_env_and_isolates_tmpdir() {
+    let _env_lock = SOURCE_COMPILER_ENV_LOCK.lock().expect("lock compile env");
+    let _compiler_guard = EnvVarGuard::capture(SOURCE_COMPILER_ENV);
+    let _secret_guard = EnvVarGuard::capture(SOURCE_SANDBOX_SECRET_ENV);
+
+    let temp_root = temp_dir("compile-module-artifact-sandbox-env");
+    fs::create_dir_all(&temp_root).expect("create temp dir");
+    let compiler_script = temp_root.join("compiler-sandbox-env.sh");
+    write_executable_script(
+        compiler_script.as_path(),
+        format!(
+            "#!/usr/bin/env bash\nset -euo pipefail\nworkspace=\"$2\"\nif [[ -n \"${{{SOURCE_SANDBOX_SECRET_ENV}:-}}\" ]]; then\n  exit 17\nfi\nif [[ \"${{TMPDIR:-}}\" != \"$workspace/tmp\" ]]; then\n  exit 19\nfi\nprintf '%s' 'compiled-sandbox-env' > \"$4\"\n"
+        )
+        .as_str(),
+    );
+    std::env::set_var(SOURCE_COMPILER_ENV, compiler_script.as_os_str());
+    std::env::set_var(SOURCE_SANDBOX_SECRET_ENV, "must-not-leak");
+
+    let mut world = World::new();
+    register_agent(&mut world, "publisher-1");
+
+    world.submit_action(Action::CompileModuleArtifactFromSource {
+        publisher_agent_id: "publisher-1".to_string(),
+        module_id: "m.loop.source.sandbox-env".to_string(),
+        source_package: sample_module_source_package(),
+    });
+    world.step().expect("compile source with sandbox env");
+
+    let wasm_bytes = b"compiled-sandbox-env".to_vec();
+    let wasm_hash = util::sha256_hex(&wasm_bytes);
+    assert!(matches!(
+        world.journal().events.last().map(|event| &event.body),
+        Some(WorldEventBody::Domain(DomainEvent::ModuleArtifactDeployed {
+            publisher_agent_id,
+            wasm_hash: event_hash,
+            ..
+        })) if publisher_agent_id == "publisher-1" && event_hash == &wasm_hash
+    ));
+
+    let _ = fs::remove_dir_all(temp_root);
 }
 
 #[test]
