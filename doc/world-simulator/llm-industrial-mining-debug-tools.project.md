@@ -66,9 +66,9 @@
 
 ### MMD11 TODO-26~29 收敛迭代（2026-02-19）
 - [x] MMD11.1 文档增量设计：补充 TODO-26/27/28/29 目标、接口与风险
-- [ ] MMD11.2 guardrail 修复：`schedule_recipe/build_factory` 的 factory/location 归一与兼容改写
-- [ ] MMD11.3 回归验证：`test_tier_required` 定向单测与 llm_agent 全量回归
-- [ ] MMD11.4 在线复验：`llm_bootstrap --ticks 120` 对照复跑并回写文档/devlog
+- [x] MMD11.2 guardrail 修复：`schedule_recipe/build_factory` 的 factory/location 归一与兼容改写
+- [x] MMD11.3 回归验证：`test_tier_required` 定向单测与 llm_agent 全量回归
+- [x] MMD11.4 在线复验：`llm_bootstrap --ticks 120` 对照复跑并回写文档/devlog
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -222,6 +222,38 @@
     - P1：补 location_id 归一与无效 location 拦截，收敛 `location_not_found`。
     - P2：继续推进多段输出协议约束与 Prompt 体积治理，降低 `---` 输出与高裁剪带来的行为漂移。
 
+### MMD11 收口实施与在线复验（2026-02-19）
+- MMD11.2/MMD11.3 代码与测试：
+  - 代码：
+    - `crates/agent_world/src/simulator/llm_agent/behavior_runtime_helpers.rs`
+    - `crates/agent_world/src/simulator/llm_agent/behavior_guardrails.rs`
+    - `crates/agent_world/src/simulator/llm_agent/behavior_prompt.rs`
+    - `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
+  - 测试：
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_reroutes_schedule_recipe --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_build_factory_normalizes_unknown_location_to_current_location --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_user_prompt_preserves_ --features test_tier_required -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent --features test_tier_required -- --nocapture`
+- MMD11.4 在线复验（120 tick，同 MMD10 口径）：
+  - 产物：
+    - `output/llm_bootstrap/mmd11_verify_2026-02-19_115519/run.log`
+    - `output/llm_bootstrap/mmd11_verify_2026-02-19_115519/report.json`
+  - 指标（对比 `repro_mmd9_2026-02-19_110325`）：
+    - `action_failure`: `71 -> 10`
+    - `rule_denied`: `42 -> 0`
+    - `facility_not_found`: `25 -> 0`
+    - `location_not_found`: `3 -> 10`（退化）
+    - `parse_errors`: `0 -> 60`（显著退化）
+    - `decision_wait`: `0 -> 60`（出现大面积空转）
+    - `prompt_section_clipped`: `380 -> 1192`
+    - `run.log` 中 `---` 次数：`7 -> 214`
+  - 观测：
+    - 工厂/配方不兼容拒绝（TODO-26/27 目标项）在本轮 reject_reason 统计中已清零；
+    - 但协议噪声与 prompt 裁剪恶化，导致大量 `Wait` 与低有效动作占比，闭环目标未达成。
+  - 结论：
+    - TODO-26/TODO-27 进入“代码已落地、在线样本待二次确认”状态；
+    - TODO-28/TODO-29 仍未收口，且优先级上升为 P0（先协议、再位置）。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -237,9 +269,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD11.1 已完成（增量设计与任务拆解）。
-- 下一阶段：执行 MMD11.2，优先收敛 TODO-26/TODO-27，并同步处理 TODO-28。
-- 最近更新：2026-02-19（新增 MMD11 任务链并启动实现阶段）。
+- 当前阶段：MMD11.2~MMD11.4 已执行完成（含代码、required-tier 回归、在线复验）。
+- 下一阶段：围绕 TODO-29/TODO-28 开启下一轮收敛（协议稳定性优先，随后复核 location 归一）。
+- 最近更新：2026-02-19（完成 MMD11 实施与在线复验回写）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
@@ -253,7 +285,7 @@
 - TODO-23：已完成（MMD9.2），kernel `schedule_recipe` 现会校验 recipe 所需工厂类型，已阻断 power factory 调度 assembler recipe。
 - TODO-24：已完成（MMD9.3），新增矿点失败 streak 记忆并接入候选排序，优先避开连续失败矿点，降低耗尽矿点重复重试。
 - TODO-25：已完成（MMD9.4），`execute_until.action` 经 guardrail 改写后会同步重建默认 `until` 条件，避免动作类型切换后沿用旧条件导致抖动。
-- TODO-26：`repro_mmd9_2026-02-19_110325` 中 `facility_not_found=25`，且二次复现前 51 tick 再现 `6` 次；需优先补“已知工厂集合硬约束 + factory_id alias 归一 + 缺厂时优先 build_factory(factory.assembler.mk1)”。
-- TODO-27：`repro_mmd9_2026-02-19_110325` 中 `rule_denied=42`，且二次复现前 51 tick 再现 `12` 次；需优先补“schedule_recipe 前置 recipe->factory_kind 强校验 + 不兼容时改写为建厂/切换配方”。
-- TODO-28：在线样本出现 `location_not_found`（完整样本 3 次，二次复现前 51 tick 1 次），来源为 LLM 生成不存在 location_id 别名；可补“location_id 归一 + 不可识别 location 直接回退 `self.current_location`”。
-- TODO-29：多段 `---` 输出仍出现（`repro_mmd9_2026-02-19_110325` 中 7 次）且 `prompt_section_clipped=380`，需继续推进“多段输出硬拒绝/末段决策提取 + prompt 体积治理”。
+- TODO-26：已在 MMD11.2 落地（factory_id 归一 + 缺厂改写 build_factory）；定向单测与 llm_agent required-tier 已通过。`mmd11_verify_2026-02-19_115519` 中 `facility_not_found=0`，但受高 parse_error 干扰，需在 TODO-29 收敛后做二次在线复核。
+- TODO-27：已在 MMD11.2/MMD11.3 落地（recipe->factory_kind 前置校验 + 兼容工厂改写 + prompt 恢复策略）；定向单测与 llm_agent required-tier 已通过。`mmd11_verify_2026-02-19_115519` 中 `rule_denied=0`，同样需在协议稳定后复核持续性。
+- TODO-28：未收口且出现退化；`location_not_found` 由基线 `3` 升至 `10`。需继续收敛“不可识别 location 直接回退当前 location”并减少模型生成伪 location alias。
+- TODO-29：未收口且显著退化；`parse_errors=60`、`run.log` 中 `---=214`、`prompt_section_clipped=1192`。需优先推进“多段输出硬拒绝/末段决策提取 + prompt 体积治理”。
