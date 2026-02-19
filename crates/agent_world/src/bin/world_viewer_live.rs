@@ -29,6 +29,7 @@ use agent_world_node::{
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 #[path = "world_viewer_live/cli.rs"]
 mod cli;
 #[path = "world_viewer_live/distfs_probe_runtime.rs"]
@@ -812,6 +813,7 @@ fn reward_runtime_loop(
             RuntimeWorld::new()
         }
     };
+    let mut execution_sandbox = WasmExecutor::new(WasmExecutorConfig::default());
     let execution_store = LocalCasStore::new(config.storage_root.as_path());
     let mut reward_world = RuntimeWorld::new();
     reward_world.set_reward_asset_config(config.reward_asset_config.clone());
@@ -920,6 +922,7 @@ fn reward_runtime_loop(
                 &snapshot,
                 observed_at_unix_ms,
                 &mut execution_world,
+                &mut execution_sandbox,
                 &execution_store,
                 config.execution_records_dir.as_path(),
                 &mut execution_bridge_state,

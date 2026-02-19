@@ -11,6 +11,8 @@ use agent_world_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
 };
+use agent_world_wasm_abi::ModuleSandbox;
+use agent_world_wasm_executor::{WasmExecutor, WasmExecutorConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,6 +52,7 @@ pub(super) struct NodeRuntimeExecutionDriver {
     execution_store: LocalCasStore,
     state: ExecutionBridgeState,
     execution_world: RuntimeWorld,
+    execution_sandbox: Box<dyn ModuleSandbox + Send>,
 }
 
 impl NodeRuntimeExecutionDriver {
@@ -61,14 +64,37 @@ impl NodeRuntimeExecutionDriver {
     ) -> Result<Self, String> {
         let state = load_execution_bridge_state(state_path.as_path())?;
         let execution_world = load_execution_world(world_dir.as_path())?;
-        Ok(Self {
+        let execution_sandbox: Box<dyn ModuleSandbox + Send> =
+            Box::new(WasmExecutor::new(WasmExecutorConfig::default()));
+        Ok(Self::new_with_sandbox(
+            state_path,
+            world_dir,
+            records_dir,
+            storage_root,
+            state,
+            execution_world,
+            execution_sandbox,
+        ))
+    }
+
+    fn new_with_sandbox(
+        state_path: std::path::PathBuf,
+        world_dir: std::path::PathBuf,
+        records_dir: std::path::PathBuf,
+        storage_root: std::path::PathBuf,
+        state: ExecutionBridgeState,
+        execution_world: RuntimeWorld,
+        execution_sandbox: Box<dyn ModuleSandbox + Send>,
+    ) -> Self {
+        Self {
             state_path,
             world_dir,
             records_dir,
             execution_store: LocalCasStore::new(storage_root),
             state,
             execution_world,
-        })
+            execution_sandbox,
+        }
     }
 }
 
@@ -148,12 +174,14 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
         for action in decoded_actions {
             self.execution_world.submit_action(action);
         }
-        self.execution_world.step().map_err(|err| {
-            format!(
-                "execution driver world.step failed at height {}: {:?}",
-                context.height, err
-            )
-        })?;
+        self.execution_world
+            .step_with_modules(&mut *self.execution_sandbox)
+            .map_err(|err| {
+                format!(
+                    "execution driver world.step failed at height {}: {:?}",
+                    context.height, err
+                )
+            })?;
 
         let snapshot_value = self.execution_world.snapshot();
         let journal_value = self.execution_world.journal().clone();
@@ -283,6 +311,7 @@ pub(super) fn bridge_committed_heights(
     snapshot: &NodeSnapshot,
     observed_at_unix_ms: i64,
     execution_world: &mut RuntimeWorld,
+    execution_sandbox: &mut dyn ModuleSandbox,
     execution_store: &LocalCasStore,
     execution_records_dir: &Path,
     state: &mut ExecutionBridgeState,
@@ -302,12 +331,14 @@ pub(super) fn bridge_committed_heights(
 
     let mut records = Vec::new();
     for height in (state.last_applied_committed_height + 1)..=target_height {
-        execution_world.step().map_err(|err| {
-            format!(
-                "execution bridge world.step failed at height {}: {:?}",
-                height, err
-            )
-        })?;
+        execution_world
+            .step_with_modules(execution_sandbox)
+            .map_err(|err| {
+                format!(
+                    "execution bridge world.step failed at height {}: {:?}",
+                    height, err
+                )
+            })?;
 
         let snapshot_value = execution_world.snapshot();
         let journal_value = execution_world.journal().clone();
@@ -384,8 +415,15 @@ fn to_cbor<T: Serialize>(value: T) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
     use agent_world::consensus_action_payload::encode_consensus_action_payload;
+    use agent_world::runtime::{
+        Action as RuntimeAction, ModuleKind, ModuleLimits, ModuleManifest, ModuleRole,
+        ModuleSubscription, ModuleSubscriptionStage,
+    };
     use agent_world::simulator::{Action as SimulatorAction, ActionSubmitter};
     use agent_world_node::{NodeConsensusSnapshot, NodeRole};
+    use agent_world_wasm_abi::{ModuleCallFailure, ModuleOutput};
+    use agent_world_wasm_executor::FixedSandbox;
+    use sha2::{Digest, Sha256};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
@@ -419,6 +457,13 @@ mod tests {
         let dir = temp_dir("execution-bridge");
         let store = LocalCasStore::new(dir.join("store"));
         let mut world = RuntimeWorld::new();
+        let mut sandbox = FixedSandbox::succeed(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: None,
+            output_bytes: 0,
+        });
         let mut state = ExecutionBridgeState::default();
         let records_dir = dir.join("records");
 
@@ -427,6 +472,7 @@ mod tests {
             &snapshot,
             1_000,
             &mut world,
+            &mut sandbox,
             &store,
             records_dir.as_path(),
             &mut state,
@@ -448,6 +494,13 @@ mod tests {
         let dir = temp_dir("execution-bridge-noop");
         let store = LocalCasStore::new(dir.join("store"));
         let mut world = RuntimeWorld::new();
+        let mut sandbox = FixedSandbox::succeed(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits: Vec::new(),
+            tick_lifecycle: None,
+            output_bytes: 0,
+        });
         let mut state = ExecutionBridgeState {
             last_applied_committed_height: 3,
             last_execution_block_hash: Some("h3".to_string()),
@@ -460,6 +513,7 @@ mod tests {
             &snapshot,
             1_100,
             &mut world,
+            &mut sandbox,
             &store,
             dir.join("records").as_path(),
             &mut state,
@@ -499,6 +553,116 @@ mod tests {
         persist_execution_world(world_dir.as_path(), &world).expect("persist world");
         let loaded = load_execution_world(world_dir.as_path()).expect("load world");
         assert_eq!(loaded.journal().len(), world.journal().len());
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    fn tick_manifest(wasm_hash: &str) -> ModuleManifest {
+        ModuleManifest {
+            module_id: "m.test.tick".to_string(),
+            name: "Tick Test".to_string(),
+            version: "0.1.0".to_string(),
+            kind: ModuleKind::Reducer,
+            role: ModuleRole::Rule,
+            wasm_hash: wasm_hash.to_string(),
+            interface_version: "wasm-1".to_string(),
+            abi_contract: agent_world_wasm_abi::ModuleAbiContract::default(),
+            exports: vec!["reduce".to_string()],
+            subscriptions: vec![ModuleSubscription {
+                event_kinds: Vec::new(),
+                action_kinds: Vec::new(),
+                stage: Some(ModuleSubscriptionStage::Tick),
+                filters: None,
+            }],
+            required_caps: Vec::new(),
+            artifact_identity: None,
+            limits: ModuleLimits::default(),
+        }
+    }
+
+    #[test]
+    fn node_runtime_execution_driver_commit_routes_modules_via_step_with_modules() {
+        let dir = temp_dir("execution-driver-modules");
+        let state_path = dir.join("state.json");
+        let world_dir = dir.join("world");
+        let records_dir = dir.join("records");
+        let storage_root = dir.join("store");
+
+        let wasm_bytes = b"bridge-modules-wasm".to_vec();
+        let wasm_hash = {
+            let mut hasher = Sha256::new();
+            hasher.update(wasm_bytes.as_slice());
+            hex::encode(hasher.finalize())
+        };
+        let manifest = tick_manifest(&wasm_hash);
+        let mut world = RuntimeWorld::new();
+        world.submit_action(RuntimeAction::RegisterAgent {
+            agent_id: "agent-0".to_string(),
+            pos: agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("register");
+        world
+            .set_agent_resource_balance(
+                "agent-0",
+                agent_world::simulator::ResourceKind::Electricity,
+                128,
+            )
+            .expect("seed electricity");
+        world
+            .set_agent_resource_balance("agent-0", agent_world::simulator::ResourceKind::Data, 64)
+            .expect("seed data");
+        world.submit_action(RuntimeAction::DeployModuleArtifact {
+            publisher_agent_id: "agent-0".to_string(),
+            wasm_hash: wasm_hash.clone(),
+            wasm_bytes: wasm_bytes.clone(),
+        });
+        world.step().expect("deploy");
+        world.submit_action(RuntimeAction::InstallModuleFromArtifact {
+            installer_agent_id: "agent-0".to_string(),
+            manifest: manifest.clone(),
+            activate: true,
+        });
+        world.step().expect("install");
+
+        let expected_trace = format!(
+            "tick-{}-{}",
+            world.state().time.saturating_add(1),
+            manifest.module_id
+        );
+        let sandbox = FixedSandbox::fail(ModuleCallFailure {
+            module_id: manifest.module_id.clone(),
+            trace_id: expected_trace.clone(),
+            code: agent_world_wasm_abi::ModuleCallErrorCode::PolicyDenied,
+            detail: "forced failure for routing assertion".to_string(),
+        });
+        let mut driver = NodeRuntimeExecutionDriver::new_with_sandbox(
+            state_path,
+            world_dir,
+            records_dir,
+            storage_root,
+            ExecutionBridgeState::default(),
+            world,
+            Box::new(sandbox.clone()),
+        );
+
+        let empty_action_root = compute_consensus_action_root(&[]).expect("empty action root");
+        let err = driver
+            .on_commit(NodeExecutionCommitContext {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                height: 1,
+                slot: 0,
+                epoch: 0,
+                node_block_hash: "node-h1".to_string(),
+                action_root: empty_action_root,
+                committed_actions: Vec::new(),
+                committed_at_unix_ms: 1_000,
+            })
+            .expect_err("forced module failure should bubble");
+        assert!(
+            err.contains("world.step failed"),
+            "unexpected error from commit path: {err}"
+        );
 
         let _ = fs::remove_dir_all(dir);
     }

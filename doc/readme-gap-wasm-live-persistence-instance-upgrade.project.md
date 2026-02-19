@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme-gap-wasm-live-persistence-instance-upgrade.md`）与项目管理文档（本文件）
-- [ ] T1：live/bridge 主循环切到 `step_with_modules`，并补一条 required-tier 端到端用例
+- [x] T1：live/bridge 主循环切到 `step_with_modules`，并补一条 required-tier 端到端用例
 - [ ] T2：`save_to_dir/load_from_dir` 默认升级为包含 module store（兼容旧目录）
 - [ ] T3：落地模块实例化模型（`instance_id + owner + target`），替代 `module_id` 全局单实例
 - [ ] T4：新增对外 `upgrade_module` 动作，要求仅接口兼容可升级，并补齐治理/审计/测试
@@ -23,6 +23,6 @@
   - `crates/agent_world/src/bin/world_viewer_live/execution_bridge.rs` 内测试
 
 ## 状态
-- 当前阶段：T1 实现中
-- 最近更新：完成 T0 文档建档，待进入 live/bridge 与持久化默认路径改造。
+- 当前阶段：T2 待实现
+- 最近更新：完成 T1，live/bridge 提交路径与 reward runtime bridge 均切换到 `step_with_modules`，并新增 required-tier 路由回归用例。
 - 阻塞项：无。
