@@ -210,8 +210,10 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             }
             RejectReason::FacilityNotFound { .. } => "factory_not_found".to_string(),
             RejectReason::FacilityAlreadyExists { .. } => "facility_already_exists".to_string(),
+            RejectReason::LocationNotFound { .. } => "location_not_found".to_string(),
             RejectReason::AgentAlreadyAtLocation { .. } => "agent_already_at_location".to_string(),
             RejectReason::AgentNotAtLocation { .. } => "agent_not_at_location".to_string(),
+            RejectReason::RuleDenied { .. } => "rule_denied".to_string(),
             RejectReason::ThermalOverload { .. } => "thermal_overload".to_string(),
             RejectReason::RadiationUnavailable { .. } => "radiation_unavailable".to_string(),
             _ => "other".to_string(),

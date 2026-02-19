@@ -310,6 +310,8 @@ impl PromptAssembler {
   - insufficient_resource.data -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=data)
   - insufficient_resource.electricity -> harvest_radiation 或 transfer_resource(kind=electricity)
   - factory_not_found -> build_factory（先建厂再 schedule_recipe）
+  - location_not_found -> 仅使用 observation.visible_locations 中可见 location_id；未知 location 回退当前 location
+  - rule_denied -> 检查 recipe_id 与 factory_kind 兼容关系；不兼容时切换兼容工厂或先 build_factory(factory.assembler.mk1)
   - agent_already_at_location -> 禁止重复 move_agent 到同 location，改为 schedule_recipe/refine_compound/harvest_radiation
   - 其他 reject_reason -> 先输出最小可执行补救动作，不得原样重试失败参数
 - 禁止连续超过 2 轮同参数 harvest_radiation；若连续采集未推进目标，下一轮必须切到 refine_compound/build_factory/schedule_recipe

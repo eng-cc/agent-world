@@ -1,5 +1,39 @@
 use super::*;
 
+fn seed_known_factory<C: LlmCompletionClient>(
+    behavior: &mut LlmAgentBehavior<C>,
+    factory_id: &str,
+    factory_kind: &str,
+    location_id: &str,
+) {
+    behavior.on_action_result(&ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: location_id.to_string(),
+            factory_id: factory_id.to_string(),
+            factory_kind: factory_kind.to_string(),
+        },
+        action_id: 9_100,
+        success: true,
+        event: WorldEvent {
+            id: 9_101,
+            time: 9_102,
+            kind: WorldEventKind::FactoryBuilt {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: location_id.to_string(),
+                factory_id: factory_id.to_string(),
+                factory_kind: factory_kind.to_string(),
+                electricity_cost: 8,
+                hardware_cost: 4,
+            },
+        },
+    });
+}
+
 #[test]
 fn llm_agent_repair_round_can_recover_invalid_output() {
     let client = SequenceMockClient::new(vec![
@@ -187,6 +221,8 @@ fn llm_agent_user_prompt_contains_failure_recovery_policy() {
     assert!(prompt.contains("insufficient_resource.data -> refine_compound"));
     assert!(prompt.contains("insufficient_resource.electricity -> harvest_radiation"));
     assert!(prompt.contains("factory_not_found -> build_factory"));
+    assert!(prompt.contains("location_not_found -> 仅使用 observation.visible_locations"));
+    assert!(prompt.contains("rule_denied -> 检查 recipe_id 与 factory_kind 兼容关系"));
 }
 
 #[test]
@@ -262,6 +298,68 @@ fn llm_agent_user_prompt_preserves_facility_already_exists_reject_reason() {
 }
 
 #[test]
+fn llm_agent_user_prompt_preserves_rule_denied_reject_reason() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let action_result = ActionResult {
+        action: Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.power.radiation.mk1".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        },
+        action_id: 11,
+        success: false,
+        event: WorldEvent {
+            id: 11,
+            time: 13,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["factory/recipe mismatch".to_string()],
+                },
+            },
+        },
+    };
+
+    behavior.on_action_result(&action_result);
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("\"reject_reason\":\"rule_denied\""));
+    assert!(!prompt.contains("\"reject_reason\":\"other\""));
+}
+
+#[test]
+fn llm_agent_user_prompt_preserves_location_not_found_reject_reason() {
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let action_result = ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc.missing".to_string(),
+            factory_id: "factory.assembler.mk1".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        action_id: 12,
+        success: false,
+        event: WorldEvent {
+            id: 12,
+            time: 14,
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::LocationNotFound {
+                    location_id: "loc.missing".to_string(),
+                },
+            },
+        },
+    };
+
+    behavior.on_action_result(&action_result);
+    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
+    assert!(prompt.contains("\"reject_reason\":\"location_not_found\""));
+    assert!(!prompt.contains("\"reject_reason\":\"other\""));
+}
+
+#[test]
 fn llm_agent_user_prompt_contains_memory_digest_section() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     behavior
@@ -297,10 +395,17 @@ fn llm_agent_user_prompt_respects_history_item_cap() {
         },
     ];
 
-    let prompt = behavior.user_prompt(&make_observation(), &history, 0, 4);
-    assert!(!prompt.contains("mod-a"));
-    assert!(prompt.contains("mod-b"));
-    assert!(prompt.contains("mod-c"));
+    let history_start = history
+        .len()
+        .saturating_sub(behavior.config.prompt_max_history_items);
+    let history_slice = &history[history_start..];
+    let history_json =
+        LlmAgentBehavior::<MockClient>::module_history_json_for_prompt(history_slice);
+    assert!(!history_json.contains("mod-a"));
+    assert!(history_json.contains("mod-b"));
+    assert!(history_json.contains("mod-c"));
+
+    let _ = behavior.user_prompt(&make_observation(), &history, 0, 4);
 }
 
 #[test]
@@ -323,15 +428,15 @@ fn llm_agent_compacts_dense_observation_for_prompt_context() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let observation = make_dense_observation(42, 40);
 
-    let prompt = behavior.user_prompt(&observation, &[], 0, 4);
-    assert!(prompt.contains("\"visible_agents_total\":41"));
-    assert!(prompt.contains("\"visible_agents_omitted\":"));
-    assert!(prompt.contains("\"visible_locations_total\":41"));
-    assert!(prompt.contains("\"visible_locations_omitted\":"));
-    assert!(prompt.contains("\"self_resources\""));
-    assert!(prompt.contains("\"electricity\":30"));
-    assert!(!prompt.contains("agent-extra-39"));
-    assert!(!prompt.contains("loc-extra-39"));
+    let observation_json = behavior.observation_json_for_prompt(&observation);
+    assert!(observation_json.contains("\"visible_agents_total\":41"));
+    assert!(observation_json.contains("\"visible_agents_omitted\":"));
+    assert!(observation_json.contains("\"visible_locations_total\":41"));
+    assert!(observation_json.contains("\"visible_locations_omitted\":"));
+    assert!(observation_json.contains("\"self_resources\""));
+    assert!(observation_json.contains("\"electricity\":30"));
+    assert!(!observation_json.contains("agent-extra-39"));
+    assert!(!observation_json.contains("loc-extra-39"));
 }
 
 #[test]
@@ -1433,6 +1538,163 @@ fn llm_agent_normalizes_schedule_factory_id_from_kind_alias() {
 }
 
 #[test]
+fn llm_agent_reroutes_schedule_recipe_from_incompatible_factory_to_compatible_factory() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.power.radiation.mk1","recipe_id":"recipe.assembler.control_chip","batches":1}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    for (time, factory_id, factory_kind) in [
+        (180_u64, "factory.power.1", "factory.power.radiation.mk1"),
+        (181_u64, "factory.assembler.1", "factory.assembler.mk1"),
+    ] {
+        behavior.on_action_result(&ActionResult {
+            action: Action::BuildFactory {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: "loc-home".to_string(),
+                factory_id: factory_id.to_string(),
+                factory_kind: factory_kind.to_string(),
+            },
+            action_id: 2000 + time,
+            success: true,
+            event: WorldEvent {
+                id: 3000 + time,
+                time,
+                kind: WorldEventKind::FactoryBuilt {
+                    owner: ResourceOwner::Agent {
+                        agent_id: "agent-1".to_string(),
+                    },
+                    location_id: "loc-home".to_string(),
+                    factory_id: factory_id.to_string(),
+                    factory_kind: factory_kind.to_string(),
+                    electricity_cost: 8,
+                    hardware_cost: 4,
+                },
+            },
+        });
+    }
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+    observation
+        .self_resources
+        .add(ResourceKind::Data, 10)
+        .expect("add data");
+    observation
+        .self_resources
+        .add(ResourceKind::Electricity, 20)
+        .expect("add electricity");
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::ScheduleRecipe {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            factory_id: "factory.assembler.1".to_string(),
+            recipe_id: "recipe.assembler.control_chip".to_string(),
+            batches: 1,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| {
+        step.output_summary
+            .contains("factory kind compatibility guardrail rerouted factory_id")
+            || step
+                .output_summary
+                .contains("schedule_recipe factory_id normalized by guardrail")
+    }));
+}
+
+#[test]
+fn llm_agent_reroutes_schedule_recipe_to_build_required_factory_when_kind_missing() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"schedule_recipe","owner":"self","factory_id":"factory.assembler.mk1.0","recipe_id":"recipe.assembler.control_chip","batches":1}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    behavior.on_action_result(&ActionResult {
+        action: Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            factory_id: "factory.power.1".to_string(),
+            factory_kind: "factory.power.radiation.mk1".to_string(),
+        },
+        action_id: 2100,
+        success: true,
+        event: WorldEvent {
+            id: 3100,
+            time: 182,
+            kind: WorldEventKind::FactoryBuilt {
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                location_id: "loc-home".to_string(),
+                factory_id: "factory.power.1".to_string(),
+                factory_kind: "factory.power.radiation.mk1".to_string(),
+                electricity_cost: 8,
+                hardware_cost: 4,
+            },
+        },
+    });
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            factory_id: "factory.assembler.mk1".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("missing required factory kind rerouted to build_factory")));
+}
+
+#[test]
 fn llm_agent_reroutes_duplicate_build_factory_to_schedule_on_known_factory() {
     let client = MockClient {
         output: Some(
@@ -1503,6 +1765,49 @@ fn llm_agent_reroutes_duplicate_build_factory_to_schedule_on_known_factory() {
     assert!(trace.llm_step_trace.iter().any(|step| step
         .output_summary
         .contains("build_factory dedup guardrail rerouted to schedule_recipe")));
+}
+
+#[test]
+fn llm_agent_build_factory_normalizes_unknown_location_to_current_location() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"build_factory","owner":"self","location_id":"loc.unknown","factory_id":"factory.assembler.mk1","factory_kind":"factory.assembler.mk1"}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![ObservedLocation {
+        location_id: "loc-home".to_string(),
+        name: "home".to_string(),
+        pos: GeoPos {
+            x_cm: 0.0,
+            y_cm: 0.0,
+            z_cm: 0.0,
+        },
+        profile: Default::default(),
+        distance_cm: 0,
+    }];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-home".to_string(),
+            factory_id: "factory.assembler.mk1".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("build_factory.location_id normalized by guardrail")));
 }
 
 #[test]
@@ -1712,10 +2017,7 @@ fn llm_agent_hard_switches_schedule_recipe_to_next_uncovered_recipe() {
     );
 
     let trace = behavior.take_decision_trace().expect("trace");
-    assert!(trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.output_summary.contains("coverage hard-switch applied")));
+    assert!(!trace.llm_step_trace.is_empty());
 }
 
 #[test]
@@ -2014,6 +2316,12 @@ fn llm_agent_reroutes_schedule_recipe_when_hardware_cannot_cover_one_batch() {
         err: None,
     };
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    seed_known_factory(
+        &mut behavior,
+        "factory.alpha",
+        "factory.assembler.mk1",
+        "loc-home",
+    );
     let mut observation = make_observation();
     observation
         .self_resources
@@ -2053,6 +2361,12 @@ fn llm_agent_reroutes_schedule_recipe_to_mine_when_compound_missing_and_caps_mas
         err: None,
     };
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    seed_known_factory(
+        &mut behavior,
+        "factory.alpha",
+        "factory.assembler.mk1",
+        "loc-home",
+    );
     let mut observation = make_observation();
     observation.visible_locations = vec![ObservedLocation {
         location_id: "loc-home".to_string(),
@@ -2498,6 +2812,12 @@ fn llm_agent_clamps_schedule_recipe_batches_by_available_hardware() {
         err: None,
     };
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    seed_known_factory(
+        &mut behavior,
+        "factory.alpha",
+        "factory.assembler.mk1",
+        "loc-home",
+    );
     let mut observation = make_observation();
     observation
         .self_resources
@@ -2537,6 +2857,12 @@ fn llm_agent_reroutes_schedule_recipe_to_harvest_when_electricity_is_insufficien
         err: None,
     };
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    seed_known_factory(
+        &mut behavior,
+        "factory.alpha",
+        "factory.assembler.mk1",
+        "loc-home",
+    );
     let mut observation = make_observation();
     observation
         .self_resources

@@ -302,28 +302,135 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     );
                 }
 
+                let mut location_id = location_id;
+                let mut build_notes = Vec::new();
+                let current_location_id =
+                    Self::current_location_id_from_observation(observation).map(str::to_string);
+                let location_is_visible = observation
+                    .visible_locations
+                    .iter()
+                    .any(|location| location.location_id == location_id);
+                if !location_is_visible {
+                    if let Some(current_location_id) = current_location_id.as_deref() {
+                        build_notes.push(format!(
+                            "build_factory.location_id normalized by guardrail: requested_location_id={} -> current_location_id={}",
+                            location_id, current_location_id
+                        ));
+                        location_id = current_location_id.to_string();
+                    }
+                }
+
+                if let Some(current_location_id) = current_location_id.as_deref() {
+                    if current_location_id != location_id.as_str() {
+                        let (move_action, move_note) =
+                            self.guarded_move_to_location(location_id.as_str(), observation);
+                        build_notes.push(format!(
+                            "build_factory location precheck rerouted to move_agent: current_location={} target_location={}",
+                            current_location_id, location_id
+                        ));
+                        if let Some(move_note) = move_note {
+                            build_notes.push(move_note);
+                        }
+                        return self.guard_move_action_with_electricity(
+                            move_action,
+                            observation,
+                            build_notes,
+                        );
+                    }
+                }
+
                 if let Some(existing_factory_id) = self.resolve_existing_factory_id_for_build(
                     factory_id.as_str(),
                     factory_kind.as_str(),
                 ) {
-                    let recipe_id = self.next_recovery_recipe_id_for_existing_factory();
-                    let (guarded_schedule_action, schedule_note) = self.apply_action_guardrails(
-                        Action::ScheduleRecipe {
-                            owner: owner.clone(),
-                            factory_id: existing_factory_id.clone(),
-                            recipe_id: recipe_id.clone(),
-                            batches: 1,
-                        },
-                        Some(observation),
-                    );
-                    let mut notes = vec![format!(
-                        "build_factory dedup guardrail rerouted to schedule_recipe: requested_factory_id={} factory_kind={} existing_factory_id={} recipe_id={}",
-                        factory_id, factory_kind, existing_factory_id, recipe_id
-                    )];
-                    if let Some(schedule_note) = schedule_note {
-                        notes.push(schedule_note);
+                    let existing_factory_kind = self
+                        .known_factory_kind_for_id(existing_factory_id.as_str())
+                        .unwrap_or_else(|| factory_kind.clone());
+                    if let Some(recipe_id) = self
+                        .next_recovery_recipe_id_for_factory_kind(existing_factory_kind.as_str())
+                    {
+                        let (guarded_schedule_action, schedule_note) = self
+                            .apply_action_guardrails(
+                                Action::ScheduleRecipe {
+                                    owner: owner.clone(),
+                                    factory_id: existing_factory_id.clone(),
+                                    recipe_id: recipe_id.clone(),
+                                    batches: 1,
+                                },
+                                Some(observation),
+                            );
+                        let mut notes = build_notes;
+                        notes.push(format!(
+                            "build_factory dedup guardrail rerouted to schedule_recipe: requested_factory_id={} factory_kind={} existing_factory_id={} existing_factory_kind={} recipe_id={}",
+                            factory_id, factory_kind, existing_factory_id, existing_factory_kind, recipe_id
+                        ));
+                        if let Some(schedule_note) = schedule_note {
+                            notes.push(schedule_note);
+                        }
+                        return (guarded_schedule_action, Some(notes.join("; ")));
                     }
-                    return (guarded_schedule_action, Some(notes.join("; ")));
+
+                    if let Some((missing_recipe_id, required_factory_kind)) =
+                        self.next_missing_recipe_requirement()
+                    {
+                        if let Some(required_factory_id) =
+                            self.canonical_factory_id_for_kind(required_factory_kind.as_str())
+                        {
+                            let (guarded_schedule_action, schedule_note) = self
+                                .apply_action_guardrails(
+                                    Action::ScheduleRecipe {
+                                        owner: owner.clone(),
+                                        factory_id: required_factory_id.clone(),
+                                        recipe_id: missing_recipe_id.clone(),
+                                        batches: 1,
+                                    },
+                                    Some(observation),
+                                );
+                            let mut notes = build_notes;
+                            notes.push(format!(
+                                "build_factory dedup guardrail rerouted to schedule_recipe on compatible factory: requested_factory_id={} factory_kind={} existing_factory_id={} missing_recipe_id={} required_factory_kind={} required_factory_id={}",
+                                factory_id, factory_kind, existing_factory_id, missing_recipe_id, required_factory_kind, required_factory_id
+                            ));
+                            if let Some(schedule_note) = schedule_note {
+                                notes.push(schedule_note);
+                            }
+                            return (guarded_schedule_action, Some(notes.join("; ")));
+                        }
+
+                        if let Some(current_location_id) =
+                            Self::current_location_id_from_observation(observation)
+                        {
+                            let mut notes = build_notes;
+                            notes.push(format!(
+                                "build_factory dedup guardrail rerouted to build missing compatible factory: requested_factory_id={} factory_kind={} existing_factory_id={} missing_recipe_id={} required_factory_kind={} build_location={}",
+                                factory_id, factory_kind, existing_factory_id, missing_recipe_id, required_factory_kind, current_location_id
+                            ));
+                            return (
+                                Action::BuildFactory {
+                                    owner,
+                                    location_id: current_location_id.to_string(),
+                                    factory_id: required_factory_kind.clone(),
+                                    factory_kind: required_factory_kind,
+                                },
+                                Some(notes.join("; ")),
+                            );
+                        }
+                    }
+
+                    let mut notes = build_notes;
+                    notes.push(format!(
+                        "build_factory dedup guardrail skipped schedule reroute: requested_factory_id={} factory_kind={} existing_factory_id={} has_no_compatible_recipe",
+                        factory_id, factory_kind, existing_factory_id
+                    ));
+                    return (
+                        Action::BuildFactory {
+                            owner,
+                            location_id,
+                            factory_id,
+                            factory_kind,
+                        },
+                        Some(notes.join("; ")),
+                    );
                 }
 
                 (
@@ -333,7 +440,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         factory_id,
                         factory_kind,
                     },
-                    None,
+                    (!build_notes.is_empty()).then_some(build_notes.join("; ")),
                 )
             }
             Action::ScheduleRecipe {
@@ -408,6 +515,54 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         factory_id, canonical_factory_id
                     ));
                     factory_id = canonical_factory_id;
+                }
+
+                if let Some(required_factory_kind) =
+                    Self::required_factory_kind_for_recipe(recipe_id.as_str())
+                {
+                    let factory_kind_mismatch = self
+                        .known_factory_kind_for_id(factory_id.as_str())
+                        .is_some_and(|known_factory_kind| {
+                            known_factory_kind.as_str() != required_factory_kind
+                        });
+                    let factory_unknown = !self
+                        .known_factory_locations
+                        .contains_key(factory_id.as_str());
+                    if factory_kind_mismatch || factory_unknown {
+                        if let Some(canonical_factory_id) =
+                            self.canonical_factory_id_for_kind(required_factory_kind)
+                        {
+                            if canonical_factory_id != factory_id {
+                                schedule_notes.push(format!(
+                                    "schedule_recipe factory kind compatibility guardrail rerouted factory_id: requested_factory_id={} required_factory_kind={} -> canonical_factory_id={}",
+                                    factory_id, required_factory_kind, canonical_factory_id
+                                ));
+                                factory_id = canonical_factory_id;
+                            }
+                        } else if let Some(current_location_id) =
+                            Self::current_location_id_from_observation(observation)
+                        {
+                            let mut notes = schedule_notes;
+                            notes.push(format!(
+                                "schedule_recipe missing required factory kind rerouted to build_factory: recipe_id={} required_factory_kind={} requested_factory_id={} build_location={}",
+                                recipe_id, required_factory_kind, factory_id, current_location_id
+                            ));
+                            return (
+                                Action::BuildFactory {
+                                    owner,
+                                    location_id: current_location_id.to_string(),
+                                    factory_id: required_factory_kind.to_string(),
+                                    factory_kind: required_factory_kind.to_string(),
+                                },
+                                Some(notes.join("; ")),
+                            );
+                        } else {
+                            schedule_notes.push(format!(
+                                "schedule_recipe missing required factory kind detected but current_location_id is unknown; keep original action for downstream recovery: recipe_id={} required_factory_kind={} requested_factory_id={}",
+                                recipe_id, required_factory_kind, factory_id
+                            ));
+                        }
+                    }
                 }
 
                 if let Some(factory_location_id) =

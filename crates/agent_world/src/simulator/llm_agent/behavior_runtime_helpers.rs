@@ -1,6 +1,15 @@
 use super::*;
 
 impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
+    pub(super) fn required_factory_kind_for_recipe(recipe_id: &str) -> Option<&'static str> {
+        match recipe_id.trim() {
+            "recipe.assembler.control_chip"
+            | "recipe.assembler.motor_mk1"
+            | "recipe.assembler.logistics_drone" => Some("factory.assembler.mk1"),
+            _ => None,
+        }
+    }
+
     pub(super) fn default_recipe_hardware_cost_per_batch(recipe_id: &str) -> Option<i64> {
         match recipe_id.trim() {
             "recipe.assembler.control_chip" => Some(DEFAULT_RECIPE_HARDWARE_COST_PER_BATCH),
@@ -45,6 +54,41 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     .contains_key(canonical_factory_id.as_str())
             })
             .cloned()
+            .or_else(|| {
+                self.known_factory_kind_aliases
+                    .iter()
+                    .find(|(factory_kind, canonical_factory_id)| {
+                        self.known_factory_locations
+                            .contains_key(canonical_factory_id.as_str())
+                            && requested_factory_id.starts_with(format!("{factory_kind}.").as_str())
+                    })
+                    .map(|(_, canonical_factory_id)| canonical_factory_id.clone())
+            })
+    }
+
+    pub(super) fn canonical_factory_id_for_kind(&self, factory_kind: &str) -> Option<String> {
+        let requested_factory_kind = factory_kind.trim();
+        if requested_factory_kind.is_empty() {
+            return None;
+        }
+        self.known_factory_kind_aliases
+            .get(requested_factory_kind)
+            .filter(|canonical_factory_id| {
+                self.known_factory_locations
+                    .contains_key(canonical_factory_id.as_str())
+            })
+            .cloned()
+    }
+
+    pub(super) fn known_factory_kind_for_id(&self, factory_id: &str) -> Option<String> {
+        let factory_id = factory_id.trim();
+        if factory_id.is_empty() {
+            return None;
+        }
+        self.known_factory_kind_aliases
+            .iter()
+            .find(|(_, canonical_factory_id)| canonical_factory_id.as_str() == factory_id)
+            .map(|(factory_kind, _)| factory_kind.clone())
     }
 
     pub(super) fn resolve_existing_factory_id_for_build(
@@ -64,27 +108,54 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         if requested_factory_kind.is_empty() {
             return None;
         }
-        self.known_factory_kind_aliases
-            .get(requested_factory_kind)
-            .cloned()
+        self.canonical_factory_id_for_kind(requested_factory_kind)
+            .or_else(|| {
+                self.normalize_schedule_factory_id(requested_factory_id)
+                    .filter(|factory_id| {
+                        self.known_factory_kind_for_id(factory_id.as_str())
+                            .as_deref()
+                            == Some(requested_factory_kind)
+                    })
+            })
     }
 
     pub(super) fn next_recovery_recipe_id_for_existing_factory(&self) -> String {
-        self.recipe_coverage
-            .missing_recipe_ids()
-            .into_iter()
-            .next()
+        self.next_recovery_recipe_id_for_factory_kind("factory.assembler.mk1")
             .unwrap_or_else(|| TRACKED_RECIPE_IDS[0].to_string())
     }
 
-    pub(super) fn preferred_sustained_factory_id(&self) -> Option<String> {
-        self.known_factory_kind_aliases
-            .get("factory.assembler.mk1")
-            .filter(|factory_id| {
-                self.known_factory_locations
-                    .contains_key(factory_id.as_str())
+    pub(super) fn next_recovery_recipe_id_for_factory_kind(
+        &self,
+        factory_kind: &str,
+    ) -> Option<String> {
+        self.recipe_coverage
+            .missing_recipe_ids()
+            .into_iter()
+            .find(|recipe_id| {
+                Self::required_factory_kind_for_recipe(recipe_id.as_str()) == Some(factory_kind)
             })
-            .cloned()
+            .or_else(|| {
+                TRACKED_RECIPE_IDS
+                    .iter()
+                    .find(|recipe_id| {
+                        Self::required_factory_kind_for_recipe(recipe_id) == Some(factory_kind)
+                    })
+                    .map(|recipe_id| (*recipe_id).to_string())
+            })
+    }
+
+    pub(super) fn next_missing_recipe_requirement(&self) -> Option<(String, String)> {
+        self.recipe_coverage
+            .missing_recipe_ids()
+            .into_iter()
+            .find_map(|recipe_id| {
+                Self::required_factory_kind_for_recipe(recipe_id.as_str())
+                    .map(|required_factory_kind| (recipe_id, required_factory_kind.to_string()))
+            })
+    }
+
+    pub(super) fn preferred_sustained_factory_id(&self) -> Option<String> {
+        self.canonical_factory_id_for_kind("factory.assembler.mk1")
             .or_else(|| self.known_factory_locations.keys().next().cloned())
     }
 
