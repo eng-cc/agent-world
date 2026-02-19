@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0：输出设计文档（`doc/readme-gap-infra-exec-compiler-sandbox.md`）
 - [x] T0：输出项目管理文档（本文件）
-- [ ] T1：实现基础设施模块执行引擎
+- [x] T1：实现基础设施模块执行引擎
   - `WorldState` 持久化安装目标
   - `ModuleInstalled` 事件应用更新目标
   - tick 路由输出 `infrastructure_tick` 语义
@@ -23,6 +23,6 @@
 - T3 依赖 T1/T2 完成后统一执行。
 
 ## 状态
-- 当前阶段：进行中（T0 完成，T1/T2/T3 待执行）。
+- 当前阶段：进行中（T0/T1 完成，T2/T3 待执行）。
 - 阻塞项：无。
-- 下一步：执行 T1（基础设施模块执行引擎）。
+- 下一步：执行 T2（编译 Sandbox 隔离）。

@@ -9,6 +9,7 @@ use super::module_runtime_labels::{
     module_kind_label, module_role_label, subscription_stage_label,
 };
 use super::World;
+use crate::simulator::ModuleInstallTarget;
 
 impl World {
     pub(super) fn sync_tick_schedule_for_activation(
@@ -66,7 +67,35 @@ impl World {
                 continue;
             }
 
-            let trace_id = format!("tick-{}-{}", now, module_id);
+            let install_target = self
+                .state
+                .installed_module_targets
+                .get(&module_id)
+                .cloned()
+                .unwrap_or(ModuleInstallTarget::SelfAgent);
+            let (origin_kind, origin_id, trace_id) = match install_target {
+                ModuleInstallTarget::SelfAgent => (
+                    "tick".to_string(),
+                    now.to_string(),
+                    format!("tick-{}-{}", now, module_id),
+                ),
+                ModuleInstallTarget::LocationInfrastructure { location_id } => {
+                    let location_id = location_id.trim().to_string();
+                    if location_id.is_empty() {
+                        (
+                            "tick".to_string(),
+                            now.to_string(),
+                            format!("tick-{}-{}", now, module_id),
+                        )
+                    } else {
+                        (
+                            "infrastructure_tick".to_string(),
+                            format!("{}:{}", location_id, now),
+                            format!("infra-tick-{}-{}-{}", now, location_id, module_id),
+                        )
+                    }
+                }
+            };
             let state = match manifest.kind {
                 ModuleKind::Reducer => Some(
                     self.state
@@ -84,8 +113,8 @@ impl World {
                     trace_id: trace_id.clone(),
                     time: now,
                     origin: ModuleCallOrigin {
-                        kind: "tick".to_string(),
-                        id: now.to_string(),
+                        kind: origin_kind,
+                        id: origin_id,
                     },
                     limits: manifest.limits.clone(),
                     stage: Some(

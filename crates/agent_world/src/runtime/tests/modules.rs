@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallRequest, ModuleEffectIntent,
     ModuleEmit, ModuleOutput, ModuleSandbox, ModuleTickLifecycleDirective,
@@ -1462,6 +1463,95 @@ fn step_with_modules_routes_tick_lifecycle_with_wake_and_suspend() {
     assert_eq!(first_input.ctx.origin.kind, "tick");
     assert_eq!(second_input.ctx.stage.as_deref(), Some("tick"));
     assert_eq!(second_input.ctx.origin.kind, "tick");
+}
+
+#[test]
+fn step_with_modules_routes_location_infrastructure_install_as_infrastructure_tick() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "installer-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register installer");
+    world
+        .set_agent_resource_balance("installer-1", ResourceKind::Electricity, 128)
+        .expect("seed installer electricity");
+
+    let wasm_bytes = b"module-infra-tick-router";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.tick-router.infrastructure".to_string(),
+        name: "TickRouterInfrastructure".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Reducer,
+        role: ModuleRole::Domain,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["reduce".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: Vec::new(),
+            stage: Some(ModuleSubscriptionStage::Tick),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 0,
+        },
+    };
+
+    world.submit_action(Action::InstallModuleToTargetFromArtifact {
+        installer_agent_id: "installer-1".to_string(),
+        manifest: module_manifest.clone(),
+        activate: true,
+        install_target: ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-hub-1".to_string(),
+        },
+    });
+    world
+        .step()
+        .expect("install module to infrastructure target");
+
+    assert_eq!(
+        world
+            .state()
+            .installed_module_targets
+            .get(module_manifest.module_id.as_str()),
+        Some(&ModuleInstallTarget::LocationInfrastructure {
+            location_id: "loc-hub-1".to_string(),
+        })
+    );
+
+    let mut sandbox = TickLifecycleSandbox::with_outputs(vec![ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: Vec::new(),
+        tick_lifecycle: Some(ModuleTickLifecycleDirective::Suspend),
+        output_bytes: 0,
+    }]);
+
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("tick with modules");
+    assert_eq!(sandbox.calls.len(), 1);
+    let input: ModuleCallInput =
+        serde_cbor::from_slice(&sandbox.calls[0].input).expect("decode infrastructure tick input");
+    assert_eq!(input.ctx.origin.kind, "infrastructure_tick");
+    assert_eq!(input.ctx.origin.id, format!("loc-hub-1:{}", input.ctx.time));
+    assert_eq!(input.ctx.stage.as_deref(), Some("tick"));
 }
 
 #[derive(Default)]

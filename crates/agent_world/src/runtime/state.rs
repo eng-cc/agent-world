@@ -1,7 +1,7 @@
 //! World state management.
 
 use crate::models::AgentState;
-use crate::simulator::ResourceKind;
+use crate::simulator::{ModuleInstallTarget, ResourceKind};
 use agent_world_wasm_abi::{FactoryModuleSpec, MaterialStack};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -144,6 +144,8 @@ pub struct WorldState {
     pub module_artifact_listings: BTreeMap<String, ModuleArtifactListingState>,
     #[serde(default)]
     pub module_artifact_bids: BTreeMap<String, Vec<ModuleArtifactBidState>>,
+    #[serde(default)]
+    pub installed_module_targets: BTreeMap<String, ModuleInstallTarget>,
     #[serde(default = "default_module_market_order_id")]
     pub next_module_market_order_id: u64,
     #[serde(default = "default_module_market_sale_id")]
@@ -182,6 +184,7 @@ impl Default for WorldState {
             module_artifact_owners: BTreeMap::new(),
             module_artifact_listings: BTreeMap::new(),
             module_artifact_bids: BTreeMap::new(),
+            installed_module_targets: BTreeMap::new(),
             next_module_market_order_id: default_module_market_order_id(),
             next_module_market_sale_id: default_module_market_sale_id(),
             reward_asset_config: RewardAssetConfig::default(),
@@ -363,6 +366,8 @@ impl WorldState {
             }
             DomainEvent::ModuleInstalled {
                 installer_agent_id,
+                module_id,
+                install_target,
                 fee_kind,
                 fee_amount,
                 ..
@@ -373,6 +378,8 @@ impl WorldState {
                     *fee_amount,
                     now,
                 )?;
+                self.installed_module_targets
+                    .insert(module_id.clone(), install_target.clone());
             }
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id,
