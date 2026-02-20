@@ -27,9 +27,9 @@
 - [x] C3D4.3 补齐后处理配置与回归测试
 
 ### C3D-5 收口
-- [ ] C3D5.1 更新 `doc/viewer-manual.md` 商业化 3D 配置说明
-- [ ] C3D5.2 更新项目状态与 `doc/devlog/2026-02-20.md`
-- [ ] C3D5.3 执行测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
+- [x] C3D5.1 更新 `doc/viewer-manual.md` 商业化 3D 配置说明
+- [x] C3D5.2 更新项目状态与 `doc/devlog/2026-02-20.md`
+- [x] C3D5.3 执行测试：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
 
 ## 依赖
 - `crates/agent_world_viewer/src/viewer_3d_config.rs`
@@ -39,6 +39,6 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：C3D-4 完成，C3D-5 进行中。
-- 下一步：更新 viewer 使用手册并完成最终收口测试。
-- 最近更新：2026-02-20（完成后处理链路接入与回归测试）。
+- 当前阶段：C3D-0 ~ C3D-5 全部完成。
+- 下一步：无（进入维护与后续迭代需求池）。
+- 最近更新：2026-02-20（完成手册同步、收口测试与项目结项）。

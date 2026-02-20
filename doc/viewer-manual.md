@@ -88,6 +88,61 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
   --automation-steps "mode=3d;focus=first_agent;zoom=0.8"
 ```
 
+## 3D 渲染档位与精调（商业化精致度）
+
+### 档位入口
+- `AGENT_WORLD_VIEWER_RENDER_PROFILE=debug|balanced|cinematic`
+- 默认：`balanced`
+- 建议：先选档位，再做单项覆盖（避免一次性改太多参数导致定位困难）。
+
+### 档位差异（默认值）
+- `debug`：低几何复杂度 + 关闭 location 壳层 + 偏可读性材质 + 无阴影 + 轻后处理（`Reinhard`、无 Bloom）。
+- `balanced`：中等几何复杂度 + 壳层开启 + 可读性材质 + 三点光默认比率 + `TonyMcMapface` + Bloom 默认开启。
+- `cinematic`：高几何复杂度 + 质感材质策略 + 阴影开启 + 三点光更强调轮廓 + `BlenderFilmic` + 更强 Bloom 与色彩后处理。
+
+### 资产层（Geometry/Shell）
+- `AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER=debug|balanced|cinematic`
+- `AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED=1|0`
+
+### 材质层（PBR/Fragment）
+- `AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY=readability|fidelity`
+- `AGENT_WORLD_VIEWER_FRAGMENT_UNLIT=1|0`
+- `AGENT_WORLD_VIEWER_FRAGMENT_ALPHA=<0.05..1.0>`
+- `AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST=<>=0`
+- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST=<>=0`
+- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST=<>=0`
+- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC=<0..1>`
+- `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST=<>=0`
+
+### 光照层（三点光）
+- `AGENT_WORLD_VIEWER_SHADOWS_ENABLED=1|0`
+- `AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS=<number>`
+- `AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO=<>=0`
+- `AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO=<>=0`
+
+### 后处理层（Post Process）
+- `AGENT_WORLD_VIEWER_TONEMAPPING=none|reinhard|reinhard_luminance|aces|agx|sbdt|tony_mc_mapface|blender_filmic`
+- `AGENT_WORLD_VIEWER_DEBAND_DITHER_ENABLED=1|0`
+- `AGENT_WORLD_VIEWER_BLOOM_ENABLED=1|0`
+- `AGENT_WORLD_VIEWER_BLOOM_INTENSITY=<0..2>`
+- `AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=<-8..8>`
+- `AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=<0..2>`
+
+### 推荐启动模板
+```bash
+AGENT_WORLD_VIEWER_RENDER_PROFILE=cinematic \
+AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY=fidelity \
+AGENT_WORLD_VIEWER_BLOOM_INTENSITY=0.24 \
+AGENT_WORLD_VIEWER_COLOR_GRADING_EXPOSURE=0.35 \
+AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=1.08 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+
 ## Web 闭环（默认，推荐调试/回归）
 
 说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
