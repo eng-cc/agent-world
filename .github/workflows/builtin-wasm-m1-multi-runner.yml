@@ -1,0 +1,66 @@
+name: Builtin Wasm m1 Multi Runner
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_TOOLCHAIN: 1.92.0
+  AGENT_WORLD_WASM_TOOLCHAIN: nightly-2025-12-11
+  AGENT_WORLD_WASM_TARGET: wasm32-unknown-unknown
+  AGENT_WORLD_WASM_BUILD_STD: "1"
+  AGENT_WORLD_WASM_BUILD_STD_COMPONENTS: std,panic_abort
+
+jobs:
+  m1-multi-runner-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner_os: ubuntu-24.04
+            runner_label: linux-x86_64
+          - runner_os: macos-14
+            runner_label: darwin-arm64
+    runs-on: ${{ matrix.runner_os }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned Rust toolchains
+        run: |
+          rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
+          rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
+          rustup default "${RUST_TOOLCHAIN}"
+          rustup toolchain install "${AGENT_WORLD_WASM_TOOLCHAIN}" --profile minimal --component rust-src
+          rustup target add "${AGENT_WORLD_WASM_TARGET}" --toolchain "${AGENT_WORLD_WASM_TOOLCHAIN}"
+      - name: Run m1 check and export summary
+        run: |
+          ./scripts/ci-m1-wasm-summary.sh \
+            --runner-label "${{ matrix.runner_label }}" \
+            --out "output/ci/m1-wasm-summary/${{ matrix.runner_label }}.json"
+      - name: Upload m1 summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-wasm-summary-${{ matrix.runner_label }}
+          path: output/ci/m1-wasm-summary/${{ matrix.runner_label }}.json
+          if-no-files-found: error
+
+  verify-m1-multi-runner-summary:
+    needs: m1-multi-runner-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download summary artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: m1-wasm-summary-*
+          path: output/ci/m1-wasm-summary
+          merge-multiple: true
+      - name: Verify multi-runner summaries
+        run: |
+          ./scripts/ci-verify-m1-wasm-summaries.py \
+            --summary-dir output/ci/m1-wasm-summary \
+            --expected-runners linux-x86_64,darwin-arm64
