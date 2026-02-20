@@ -380,8 +380,8 @@
 ### M4 交叉引用（当前实现）
 - 电力子系统已完成 **M4.1~M4.3**：基础电力状态管理、发电/储能设施、跨 Location 传输与交易基础接口。
 - 电价与市场机制（M4.4）仍为可选后续。
-- 详细设计与任务状态以 `doc/m4-power-system.md` 与 `doc/m4-power-system.project.md` 为准。
-- 工业生产链与 Recipe/Product/Factory 全 WASM 化接口设计见 `doc/m4-industrial-economy-wasm.md` 与 `doc/m4-industrial-economy-wasm.project.md`。
+- 详细设计与任务状态以 `doc/world-simulator/m4/m4-power-system.md` 与 `doc/world-simulator/m4/m4-power-system.project.md` 为准。
+- 工业生产链与 Recipe/Product/Factory 全 WASM 化接口设计见 `doc/world-simulator/m4/m4-industrial-economy-wasm.md` 与 `doc/world-simulator/m4/m4-industrial-economy-wasm.project.md`。
 - runtime 已落地工业生产链最小执行闭环：`BuildFactory` / `ScheduleRecipe` + 建造/排产开始与完成事件（详见分册状态）。
 - runtime 已接入模块驱动求值动作：`BuildFactoryWithModule` / `ScheduleRecipeWithModule`（`step_with_modules` 先求值再落地）。
 - runtime 已接入 Product 模块在线校验动作：`ValidateProductWithModule` / `ValidateProduct`，并新增 `ProductValidated` 事件。

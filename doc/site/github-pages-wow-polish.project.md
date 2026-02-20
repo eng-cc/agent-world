@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 输出二期设计文档（`doc/github-pages-wow-polish.md`）
+- [x] 输出二期设计文档（`doc/site/github-pages-wow-polish.md`）
 - [x] 输出二期项目管理文档（本文件）
 - [x] 建立发布前检查清单（视觉/内容/性能/可访问性）
 

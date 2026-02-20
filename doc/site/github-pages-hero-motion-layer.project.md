@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增增量设计文档（`doc/github-pages-hero-motion-layer.md`）
+- [x] 新增增量设计文档（`doc/site/github-pages-hero-motion-layer.md`）
 - [x] 新增增量项目管理文档（本文件）
 - [x] 明确验收标准（视觉增强/可访问性/性能保护）
 

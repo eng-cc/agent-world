@@ -47,8 +47,8 @@
 - [x] 补充 LLM 驱动与模块化记忆设计（OpenAI 兼容 API、memory module 为 WASM + 受限存储）
 
 ### 4. 社会系统（电力/硬件/数据）
-- [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本；M4.1~M4.3 已在 `doc/m4-power-system*.md` 完成，后续聚焦 M4.4）
-- [x] 输出 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册（`doc/m4-industrial-economy-wasm.md`、`doc/m4-industrial-economy-wasm.project.md`）
+- [ ] 电力供给/存储/消耗闭环（峰谷、停电、迁移成本；M4.1~M4.3 已在 `doc/world-simulator/m4/m4-power-system*.md` 完成，后续聚焦 M4.4）
+- [x] 输出 M4 工业生产链与 Recipe/Product/Factory WASM 接口分册（`doc/world-simulator/m4/m4-industrial-economy-wasm.md`、`doc/world-simulator/m4/m4-industrial-economy-wasm.project.md`）
 - [x] 接入 M4 内置工业模块包（factory/recipe/product）与治理安装入口（`install_m4_economy_bootstrap_modules`）
 - [x] 接入 Product 模块在线校验动作（`ValidateProductWithModule` -> `ValidateProduct` + `ProductValidated`）
 - [x] 接入配方完工自动 Product 校验与入账门禁（校验失败阻断产物/副产物入库）

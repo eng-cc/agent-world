@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增四期设计文档（`doc/github-pages-lean-tech-refresh.md`）
+- [x] 新增四期设计文档（`doc/site/github-pages-lean-tech-refresh.md`）
 - [x] 新增四期项目管理文档（本文件）
 - [x] 明确验收目标（信息密度/视觉层级/双语一致）
 

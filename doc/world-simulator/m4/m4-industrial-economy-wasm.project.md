@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### E1 设计收口
-- [x] 输出设计文档：`doc/m4-industrial-economy-wasm.md`
+- [x] 输出设计文档：`doc/world-simulator/m4/m4-industrial-economy-wasm.md`
 - [x] 明确资源分层、工厂渐进建造、Recipe/Product/Factory 三类模块接口
 
 ### E2 ABI 接口基础落地

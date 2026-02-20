@@ -1,7 +1,7 @@
 # README 高优先级缺口收口（三期）：世界内编译 + 共识动作载荷 + WASM 运行计费（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-gap123-runtime-consensus-metering.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-gap123-runtime-consensus-metering.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：实现缺口 1（`CompileModuleArtifactFromSource` + 编译器 + required 测试）
 - [x] T2：实现缺口 2（共识动作载荷/签名/复制/执行 hook 贯通 + required 测试）

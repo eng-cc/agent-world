@@ -30,8 +30,8 @@
 - 新增视觉素材：
   - `site/assets/images/world-constellation.svg`
 - 文档与管理：
-  - `doc/github-pages-benchmark-polish-v3.md`
-  - `doc/github-pages-benchmark-polish-v3.project.md`
+  - `doc/site/github-pages-benchmark-polish-v3.md`
+  - `doc/site/github-pages-benchmark-polish-v3.project.md`
 
 ### 结构约定
 - 新增导航锚点：`#path`、`#proof`。

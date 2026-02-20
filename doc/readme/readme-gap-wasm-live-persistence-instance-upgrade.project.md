@@ -1,7 +1,7 @@
 # README WASM 主链路收口：Live 模块执行 + 默认持久化模块仓库 + 模块实例化 + 升级动作（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-gap-wasm-live-persistence-instance-upgrade.md`）与项目管理文档（本文件）
+- [x] T0：输出设计文档（`doc/readme/readme-gap-wasm-live-persistence-instance-upgrade.md`）与项目管理文档（本文件）
 - [x] T1：live/bridge 主循环切到 `step_with_modules`，并补一条 required-tier 端到端用例
 - [x] T2：`save_to_dir/load_from_dir` 默认升级为包含 module store（兼容旧目录）
 - [x] T3：落地模块实例化模型（`instance_id + owner + target`），替代 `module_id` 全局单实例

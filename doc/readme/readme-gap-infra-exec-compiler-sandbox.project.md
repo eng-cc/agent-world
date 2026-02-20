@@ -1,7 +1,7 @@
 # README 收口：基础设施模块执行引擎 + 编译 Sandbox 隔离（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-gap-infra-exec-compiler-sandbox.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-gap-infra-exec-compiler-sandbox.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：实现基础设施模块执行引擎
   - `WorldState` 持久化安装目标

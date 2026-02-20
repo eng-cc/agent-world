@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增三期设计文档（`doc/github-pages-benchmark-polish-v3.md`）
+- [x] 新增三期设计文档（`doc/site/github-pages-benchmark-polish-v3.md`）
 - [x] 新增三期项目管理文档（本文件）
 - [x] 明确本轮对标落地验收项（内容/视觉/验证）
 

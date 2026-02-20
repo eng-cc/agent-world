@@ -1,7 +1,7 @@
 # README 对齐收口：P0/P1 项目管理文档
 
 ## 任务拆解
-- [x] T0：输出设计文档（`/Users/scc/ccwork/agent-world/doc/readme-p0-p1-closure.md`）
+- [x] T0：输出设计文档（`/Users/scc/ccwork/agent-world/doc/readme/readme-p0-p1-closure.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1（P0）：扩展 node commit/gossip/replication 执行哈希绑定并补齐测试
 - [x] T2（P1-A）：实现 viewer live 共识执行高度门控（默认开启）并补齐测试

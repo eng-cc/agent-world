@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增设计文档（`doc/site-manual-static-docs.md`）
+- [x] 新增设计文档（`doc/site/site-manual-static-docs.md`）
 - [x] 新增项目管理文档（本文件）
 - [x] 明确内容基线（`doc/viewer-manual.md`）
 

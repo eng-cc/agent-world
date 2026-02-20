@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增设计文档（`doc/viewer-manual-content-migration-2026-02-15.md`）
+- [x] 新增设计文档（`doc/site/viewer-manual-content-migration-2026-02-15.md`）
 - [x] 新增项目管理文档（本文件）
 - [x] 明确搬迁来源清单（viewer-* + capture 脚本文档）
 

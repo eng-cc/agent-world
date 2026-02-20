@@ -1,7 +1,7 @@
 # README 口径对齐：LLM P1/P2 生产级收口（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-llm-p1p2-production-closure.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-llm-p1p2-production-closure.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：LLM tool 协议收口（补齐 tool 注册/映射/提示词一致性）
 - [x] T2：Observation 快照扩展 + LLM 查询面扩展（module/power/social）

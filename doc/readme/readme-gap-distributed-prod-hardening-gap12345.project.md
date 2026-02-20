@@ -1,7 +1,7 @@
 # README 分布式计算与存储生产级收口（Gap 1/2/3/4/5）项目管理文档
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-gap-distributed-prod-hardening-gap12345.md`）与项目管理文档（本文件）
+- [x] T0：输出设计文档（`doc/readme/readme-gap-distributed-prod-hardening-gap12345.md`）与项目管理文档（本文件）
 - [x] T1：`agent_world_node` 复用 `agent_world_consensus` PoS 内核（提议者选择/阈值判定）并补测试（Gap 1）
 - [x] T2：存储挑战门控升级为多样本网络验证与匹配阈值，补齐回归（Gap 2）
 - [x] T3：gap sync 升级为分高度重试与错误可观测，补齐回归（Gap 3）

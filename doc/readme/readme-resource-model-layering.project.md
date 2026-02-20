@@ -1,7 +1,7 @@
 # README 资源模型口径修订：内建最小资源 + 模块扩展资源（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-resource-model-layering.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-resource-model-layering.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：修订 `README.md` 资源口径（内建最小资源 + 模块扩展资源），并回归校验
 

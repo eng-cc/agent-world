@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增增量设计文档（`doc/github-pages-architecture-svg-refresh.md`）
+- [x] 新增增量设计文档（`doc/site/github-pages-architecture-svg-refresh.md`）
 - [x] 新增增量项目管理文档（本文件）
 - [x] 明确验收标准（层次清晰/科技感提升/引用不变）
 

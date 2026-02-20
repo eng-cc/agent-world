@@ -1,7 +1,7 @@
 # README 高优先级缺口收口：模块交易 + 动态电价（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-gap12-market-closure.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-gap12-market-closure.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：Runtime 模块交易闭环（上架/购买动作 + 事件 + 状态 + 测试）
 - [x] T2：Simulator 动态电价闭环（报价 + 自动定价 + 价格带护栏 + 测试）

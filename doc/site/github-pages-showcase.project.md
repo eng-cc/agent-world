@@ -1,7 +1,7 @@
 # GitHub Pages 对外展示站点（项目管理文档）
 
 ## 任务拆解
-- [x] 输出设计文档（`doc/github-pages-showcase.md`）
+- [x] 输出设计文档（`doc/site/github-pages-showcase.md`）
 - [x] 输出项目管理文档（本文件）
 - [x] 明确首版信息架构与对外文案（首页各模块）
 - [x] 新增站点目录与静态资源骨架（`site/`）

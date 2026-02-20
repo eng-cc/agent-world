@@ -1,7 +1,7 @@
 # README 生产级缺口收口（二次）：默认 WASM 执行 + Replication RR + 分布式 Triad + 玩家节点身份（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-prod-gap1245-wasm-repl-topology-player.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-prod-gap1245-wasm-repl-topology-player.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：默认构建启用 `wasmtime`（缺口 1）并补齐测试/校验
 - [x] T2：实现 node libp2p replication request/handler 通道（缺口 2）并补齐测试

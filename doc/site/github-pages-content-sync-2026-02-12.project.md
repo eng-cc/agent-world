@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增设计文档（`doc/github-pages-content-sync-2026-02-12.md`）
+- [x] 新增设计文档（`doc/site/github-pages-content-sync-2026-02-12.md`）
 - [x] 新增项目管理文档（本文件）
 - [x] 明确一致性核对基线（`doc/world-simulator.project.md`）
 

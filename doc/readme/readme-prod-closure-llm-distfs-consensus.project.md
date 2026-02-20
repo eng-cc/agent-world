@@ -1,7 +1,7 @@
 # README 生产级收口：LLM 制度动作 + DistFS 状态主路径 + 去中心化默认拓扑（项目管理文档）
 
 ## 任务拆解
-- [x] T0：输出设计文档（`doc/readme-prod-closure-llm-distfs-consensus.md`）
+- [x] T0：输出设计文档（`doc/readme/readme-prod-closure-llm-distfs-consensus.md`）
 - [x] T0：输出项目管理文档（本文件）
 - [x] T1：扩展 LLM 决策主链路（市场/制度动作）+ `test_tier_required` 用例
 - [x] T2：DistFS 默认持久化主路径（写入+优先恢复+JSON 兜底）+ persistence 用例

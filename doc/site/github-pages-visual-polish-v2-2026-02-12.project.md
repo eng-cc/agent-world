@@ -3,7 +3,7 @@
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 新增设计文档（`doc/github-pages-visual-polish-v2-2026-02-12.md`）
+- [x] 新增设计文档（`doc/site/github-pages-visual-polish-v2-2026-02-12.md`）
 - [x] 新增项目管理文档（本文件）
 - [x] 明确本轮优化目标（移动端密度 / Hero+证据条层级 / 路线图状态编码）
 
