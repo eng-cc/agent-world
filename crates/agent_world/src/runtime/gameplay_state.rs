@@ -26,7 +26,63 @@ pub struct WarState {
     pub intensity: u32,
     #[serde(default)]
     pub active: bool,
+    #[serde(default)]
+    pub max_duration_ticks: u64,
+    #[serde(default)]
+    pub aggressor_score: i64,
+    #[serde(default)]
+    pub defender_score: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub concluded_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub winner_alliance_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settlement_summary: Option<String>,
     pub declared_at: WorldTime,
+}
+
+/// Lifecycle state for one governance proposal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GovernanceProposalStatus {
+    Open,
+    Passed,
+    Rejected,
+}
+
+impl Default for GovernanceProposalStatus {
+    fn default() -> Self {
+        Self::Open
+    }
+}
+
+/// Governance proposal lifecycle state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GovernanceProposalState {
+    pub proposal_key: String,
+    pub proposer_agent_id: String,
+    pub title: String,
+    pub description: String,
+    #[serde(default)]
+    pub options: Vec<String>,
+    #[serde(default)]
+    pub voting_window_ticks: u64,
+    #[serde(default)]
+    pub quorum_weight: u64,
+    #[serde(default)]
+    pub pass_threshold_bps: u16,
+    pub opened_at: WorldTime,
+    pub closes_at: WorldTime,
+    #[serde(default)]
+    pub status: GovernanceProposalStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finalized_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub winning_option: Option<String>,
+    #[serde(default)]
+    pub winning_weight: u64,
+    #[serde(default)]
+    pub total_weight_at_finalize: u64,
 }
 
 /// Persisted ballot for one voter in one governance proposal.
@@ -50,15 +106,44 @@ pub struct GovernanceVoteState {
     pub last_updated_at: WorldTime,
 }
 
-/// Persisted crisis resolution state.
+/// Lifecycle state for one crisis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CrisisStatus {
+    Active,
+    Resolved,
+    TimedOut,
+}
+
+impl Default for CrisisStatus {
+    fn default() -> Self {
+        Self::Resolved
+    }
+}
+
+/// Persisted crisis lifecycle state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrisisState {
     pub crisis_id: String,
-    pub resolver_agent_id: String,
-    pub strategy: String,
-    pub success: bool,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub severity: u32,
+    #[serde(default)]
+    pub status: CrisisStatus,
+    #[serde(default)]
+    pub opened_at: WorldTime,
+    #[serde(default)]
+    pub expires_at: WorldTime,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolver_agent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strategy: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
     pub impact: i64,
-    pub resolved_at: WorldTime,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_at: Option<WorldTime>,
 }
 
 /// Persisted meta progression state for one agent.
@@ -71,5 +156,7 @@ pub struct MetaProgressState {
     pub total_points: i64,
     #[serde(default)]
     pub achievements: Vec<String>,
+    #[serde(default)]
+    pub unlocked_tiers: BTreeMap<String, Vec<String>>,
     pub last_granted_at: WorldTime,
 }

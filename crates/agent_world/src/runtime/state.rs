@@ -10,8 +10,8 @@ use super::agent_cell::AgentCell;
 use super::error::WorldError;
 use super::events::DomainEvent;
 use super::gameplay_state::{
-    AllianceState, CrisisState, GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState,
-    WarState,
+    AllianceState, CrisisState, CrisisStatus, GovernanceProposalState, GovernanceProposalStatus,
+    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarState,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
@@ -168,6 +168,8 @@ pub struct WorldState {
     #[serde(default)]
     pub governance_votes: BTreeMap<String, GovernanceVoteState>,
     #[serde(default)]
+    pub governance_proposals: BTreeMap<String, GovernanceProposalState>,
+    #[serde(default)]
     pub crises: BTreeMap<String, CrisisState>,
     #[serde(default)]
     pub meta_progress: BTreeMap<String, MetaProgressState>,
@@ -222,6 +224,7 @@ impl Default for WorldState {
             alliances: BTreeMap::new(),
             wars: BTreeMap::new(),
             governance_votes: BTreeMap::new(),
+            governance_proposals: BTreeMap::new(),
             crises: BTreeMap::new(),
             meta_progress: BTreeMap::new(),
             module_states: BTreeMap::new(),
@@ -1372,6 +1375,12 @@ impl WorldState {
                         objective: objective.clone(),
                         intensity: *intensity,
                         active: true,
+                        max_duration_ticks: 6_u64.saturating_add(u64::from(*intensity) * 2),
+                        aggressor_score: 0,
+                        defender_score: 0,
+                        concluded_at: None,
+                        winner_alliance_id: None,
+                        settlement_summary: None,
                         declared_at: now,
                     },
                 );
@@ -1383,6 +1392,74 @@ impl WorldState {
                     });
                 }
             }
+            DomainEvent::WarConcluded {
+                war_id,
+                winner_alliance_id,
+                aggressor_score,
+                defender_score,
+                summary,
+            } => {
+                let Some(state) = self.wars.get_mut(war_id) else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("war not found for conclusion: {war_id}"),
+                    });
+                };
+                state.active = false;
+                state.aggressor_score = *aggressor_score;
+                state.defender_score = *defender_score;
+                state.concluded_at = Some(now);
+                state.winner_alliance_id = Some(winner_alliance_id.clone());
+                state.settlement_summary = Some(summary.clone());
+            }
+            DomainEvent::GovernanceProposalOpened {
+                proposer_agent_id,
+                proposal_key,
+                title,
+                description,
+                options,
+                voting_window_ticks,
+                closes_at,
+                quorum_weight,
+                pass_threshold_bps,
+            } => {
+                if !self.agents.contains_key(proposer_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: proposer_agent_id.clone(),
+                    });
+                }
+                self.governance_proposals.insert(
+                    proposal_key.clone(),
+                    GovernanceProposalState {
+                        proposal_key: proposal_key.clone(),
+                        proposer_agent_id: proposer_agent_id.clone(),
+                        title: title.clone(),
+                        description: description.clone(),
+                        options: options.clone(),
+                        voting_window_ticks: *voting_window_ticks,
+                        quorum_weight: *quorum_weight,
+                        pass_threshold_bps: *pass_threshold_bps,
+                        opened_at: now,
+                        closes_at: *closes_at,
+                        status: GovernanceProposalStatus::Open,
+                        finalized_at: None,
+                        winning_option: None,
+                        winning_weight: 0,
+                        total_weight_at_finalize: 0,
+                    },
+                );
+                self.governance_votes
+                    .entry(proposal_key.clone())
+                    .or_insert_with(|| GovernanceVoteState {
+                        proposal_key: proposal_key.clone(),
+                        votes_by_agent: BTreeMap::new(),
+                        tallies: BTreeMap::new(),
+                        total_weight: 0,
+                        last_updated_at: now,
+                    });
+                if let Some(cell) = self.agents.get_mut(proposer_agent_id) {
+                    cell.last_active = now;
+                }
+            }
             DomainEvent::GovernanceVoteCast {
                 voter_agent_id,
                 proposal_key,
@@ -1392,6 +1469,26 @@ impl WorldState {
                 if !self.agents.contains_key(voter_agent_id) {
                     return Err(WorldError::AgentNotFound {
                         agent_id: voter_agent_id.clone(),
+                    });
+                }
+                let Some(proposal) = self.governance_proposals.get(proposal_key) else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "governance vote references unknown proposal: {proposal_key}"
+                        ),
+                    });
+                };
+                if proposal.status != GovernanceProposalStatus::Open {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("governance proposal is not open: {proposal_key}"),
+                    });
+                }
+                if now > proposal.closes_at {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "governance proposal already closed at {}: {}",
+                            proposal.closes_at, proposal_key
+                        ),
                     });
                 }
 
@@ -1436,6 +1533,54 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
+            DomainEvent::GovernanceProposalFinalized {
+                proposal_key,
+                winning_option,
+                winning_weight,
+                total_weight,
+                passed,
+            } => {
+                let Some(state) = self.governance_proposals.get_mut(proposal_key) else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("governance proposal missing: {proposal_key}"),
+                    });
+                };
+                state.status = if *passed {
+                    GovernanceProposalStatus::Passed
+                } else {
+                    GovernanceProposalStatus::Rejected
+                };
+                state.finalized_at = Some(now);
+                state.winning_option = winning_option.clone();
+                state.winning_weight = *winning_weight;
+                state.total_weight_at_finalize = *total_weight;
+                if let Some(vote_state) = self.governance_votes.get_mut(proposal_key) {
+                    vote_state.last_updated_at = now;
+                }
+            }
+            DomainEvent::CrisisSpawned {
+                crisis_id,
+                kind,
+                severity,
+                expires_at,
+            } => {
+                self.crises.insert(
+                    crisis_id.clone(),
+                    CrisisState {
+                        crisis_id: crisis_id.clone(),
+                        kind: kind.clone(),
+                        severity: *severity,
+                        status: CrisisStatus::Active,
+                        opened_at: now,
+                        expires_at: *expires_at,
+                        resolver_agent_id: None,
+                        strategy: None,
+                        success: None,
+                        impact: 0,
+                        resolved_at: None,
+                    },
+                );
+            }
             DomainEvent::CrisisResolved {
                 resolver_agent_id,
                 crisis_id,
@@ -1443,17 +1588,28 @@ impl WorldState {
                 success,
                 impact,
             } => {
-                self.crises.insert(
-                    crisis_id.clone(),
-                    CrisisState {
+                let entry = self
+                    .crises
+                    .entry(crisis_id.clone())
+                    .or_insert_with(|| CrisisState {
                         crisis_id: crisis_id.clone(),
-                        resolver_agent_id: resolver_agent_id.clone(),
-                        strategy: strategy.clone(),
-                        success: *success,
-                        impact: *impact,
-                        resolved_at: now,
-                    },
-                );
+                        kind: "legacy".to_string(),
+                        severity: 1,
+                        status: CrisisStatus::Resolved,
+                        opened_at: now,
+                        expires_at: now,
+                        resolver_agent_id: None,
+                        strategy: None,
+                        success: None,
+                        impact: 0,
+                        resolved_at: None,
+                    });
+                entry.status = CrisisStatus::Resolved;
+                entry.resolver_agent_id = Some(resolver_agent_id.clone());
+                entry.strategy = Some(strategy.clone());
+                entry.success = Some(*success);
+                entry.impact = *impact;
+                entry.resolved_at = Some(now);
                 if let Some(cell) = self.agents.get_mut(resolver_agent_id) {
                     cell.last_active = now;
                 } else {
@@ -1461,6 +1617,20 @@ impl WorldState {
                         agent_id: resolver_agent_id.clone(),
                     });
                 }
+            }
+            DomainEvent::CrisisTimedOut {
+                crisis_id,
+                penalty_impact,
+            } => {
+                let Some(entry) = self.crises.get_mut(crisis_id) else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("crisis not found for timeout: {crisis_id}"),
+                    });
+                };
+                entry.status = CrisisStatus::TimedOut;
+                entry.success = Some(false);
+                entry.impact = *penalty_impact;
+                entry.resolved_at = Some(now);
             }
             DomainEvent::MetaProgressGranted {
                 operator_agent_id,
@@ -1488,6 +1658,7 @@ impl WorldState {
                         track_points: BTreeMap::new(),
                         total_points: 0,
                         achievements: Vec::new(),
+                        unlocked_tiers: BTreeMap::new(),
                         last_granted_at: now,
                     });
                 let next_track_points = progress
@@ -1511,6 +1682,7 @@ impl WorldState {
                         progress.achievements.sort();
                     }
                 }
+                unlock_meta_track_tiers(track, next_track_points, progress);
 
                 if let Some(cell) = self.agents.get_mut(operator_agent_id) {
                     cell.last_active = now;
@@ -1557,6 +1729,34 @@ impl WorldState {
             }
         }
     }
+}
+
+fn unlock_meta_track_tiers(track: &str, track_points: i64, progress: &mut MetaProgressState) {
+    const META_TIER_THRESHOLDS: [(&str, i64); 3] = [("bronze", 20), ("silver", 50), ("gold", 100)];
+    let unlocked_tiers = progress
+        .unlocked_tiers
+        .entry(track.to_string())
+        .or_default();
+    for (tier, threshold) in META_TIER_THRESHOLDS {
+        if track_points < threshold {
+            continue;
+        }
+        if !unlocked_tiers.iter().any(|value| value == tier) {
+            unlocked_tiers.push(tier.to_string());
+        }
+        let achievement_id = format!("tier.{track}.{tier}");
+        if !progress
+            .achievements
+            .iter()
+            .any(|value| value == &achievement_id)
+        {
+            progress.achievements.push(achievement_id);
+        }
+    }
+    unlocked_tiers.sort();
+    unlocked_tiers.dedup();
+    progress.achievements.sort();
+    progress.achievements.dedup();
 }
 
 fn apply_node_points_settlement_event(

@@ -1,7 +1,8 @@
 use super::super::{
-    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, DomainEvent,
-    EpochSettlementReport, MaterialLedgerId, MaterialStack, NodeRewardMintRecord, RejectReason,
-    WorldError, WorldEvent, WorldEventBody, WorldEventId, WorldTime,
+    util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, CrisisStatus, DomainEvent,
+    EpochSettlementReport, GovernanceProposalStatus, MaterialLedgerId, MaterialStack,
+    NodeRewardMintRecord, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId,
+    WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -12,6 +13,13 @@ use super::World;
 use crate::geometry::space_distance_cm;
 use crate::simulator::ResourceKind;
 use std::collections::BTreeSet;
+
+const GOVERNANCE_MIN_VOTING_WINDOW_TICKS: u64 = 1;
+const GOVERNANCE_MAX_VOTING_WINDOW_TICKS: u64 = 1_440;
+const GOVERNANCE_MIN_PASS_THRESHOLD_BPS: u16 = 5_000;
+const GOVERNANCE_MAX_PASS_THRESHOLD_BPS: u16 = 10_000;
+const WAR_MAX_INTENSITY: u32 = 10;
+const CRISIS_BASE_IMPACT_PER_SEVERITY: i64 = 10;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -596,6 +604,31 @@ impl World {
                         },
                     }));
                 }
+                if *intensity > WAR_MAX_INTENSITY {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("war intensity exceeds max {}", WAR_MAX_INTENSITY)],
+                        },
+                    }));
+                }
+                let has_active_conflict = self.state.wars.values().any(|war| {
+                    if !war.active {
+                        return false;
+                    }
+                    (war.aggressor_alliance_id == *aggressor_alliance_id
+                        && war.defender_alliance_id == *defender_alliance_id)
+                        || (war.aggressor_alliance_id == *defender_alliance_id
+                            && war.defender_alliance_id == *aggressor_alliance_id)
+                });
+                if has_active_conflict {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["active war already exists for alliance pair".to_string()],
+                        },
+                    }));
+                }
                 Ok(WorldEventBody::Domain(DomainEvent::WarDeclared {
                     initiator_agent_id: initiator_agent_id.clone(),
                     war_id: war_id.to_string(),
@@ -604,6 +637,127 @@ impl World {
                     objective: objective.to_string(),
                     intensity: *intensity,
                 }))
+            }
+            Action::OpenGovernanceProposal {
+                proposer_agent_id,
+                proposal_key,
+                title,
+                description,
+                options,
+                voting_window_ticks,
+                quorum_weight,
+                pass_threshold_bps,
+            } => {
+                if !self.state.agents.contains_key(proposer_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: proposer_agent_id.clone(),
+                        },
+                    }));
+                }
+                let proposal_key = proposal_key.trim();
+                if proposal_key.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["proposal_key cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.governance_proposals.contains_key(proposal_key) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("proposal already exists: {proposal_key}")],
+                        },
+                    }));
+                }
+                let title = title.trim();
+                if title.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["proposal title cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let description = description.trim();
+                if description.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["proposal description cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if *voting_window_ticks < GOVERNANCE_MIN_VOTING_WINDOW_TICKS
+                    || *voting_window_ticks > GOVERNANCE_MAX_VOTING_WINDOW_TICKS
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "voting_window_ticks must be within {}..={}",
+                                GOVERNANCE_MIN_VOTING_WINDOW_TICKS,
+                                GOVERNANCE_MAX_VOTING_WINDOW_TICKS
+                            )],
+                        },
+                    }));
+                }
+                if *quorum_weight == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["quorum_weight must be > 0".to_string()],
+                        },
+                    }));
+                }
+                if *pass_threshold_bps < GOVERNANCE_MIN_PASS_THRESHOLD_BPS
+                    || *pass_threshold_bps > GOVERNANCE_MAX_PASS_THRESHOLD_BPS
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "pass_threshold_bps must be within {}..={}",
+                                GOVERNANCE_MIN_PASS_THRESHOLD_BPS,
+                                GOVERNANCE_MAX_PASS_THRESHOLD_BPS
+                            )],
+                        },
+                    }));
+                }
+                let mut unique_options = BTreeSet::new();
+                for value in options {
+                    let normalized = value.trim();
+                    if normalized.is_empty() {
+                        continue;
+                    }
+                    unique_options.insert(normalized.to_string());
+                }
+                if unique_options.len() < 2 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["governance proposal requires at least 2 unique options"
+                                .to_string()],
+                        },
+                    }));
+                }
+                let closes_at = self.state.time.saturating_add(*voting_window_ticks);
+                Ok(WorldEventBody::Domain(
+                    DomainEvent::GovernanceProposalOpened {
+                        proposer_agent_id: proposer_agent_id.clone(),
+                        proposal_key: proposal_key.to_string(),
+                        title: title.to_string(),
+                        description: description.to_string(),
+                        options: unique_options.into_iter().collect(),
+                        voting_window_ticks: *voting_window_ticks,
+                        closes_at,
+                        quorum_weight: *quorum_weight,
+                        pass_threshold_bps: *pass_threshold_bps,
+                    },
+                ))
             }
             Action::CastGovernanceVote {
                 voter_agent_id,
@@ -628,12 +782,53 @@ impl World {
                         },
                     }));
                 }
+                let Some(proposal) = self.state.governance_proposals.get(proposal_key) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("governance proposal not found: {}", proposal_key)],
+                        },
+                    }));
+                };
+                if proposal.status != GovernanceProposalStatus::Open {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "governance proposal is not open: {}",
+                                proposal_key
+                            )],
+                        },
+                    }));
+                }
+                if self.state.time > proposal.closes_at {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "governance proposal has closed at {}",
+                                proposal.closes_at
+                            )],
+                        },
+                    }));
+                }
                 let option = option.trim();
                 if option.is_empty() {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,
                         reason: RejectReason::RuleDenied {
                             notes: vec!["vote option cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if !proposal.options.iter().any(|candidate| candidate == option) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "vote option '{}' is not allowed for proposal {}",
+                                option, proposal_key
+                            )],
                         },
                     }));
                 }
@@ -675,11 +870,33 @@ impl World {
                         },
                     }));
                 }
-                if self.state.crises.contains_key(crisis_id) {
+                let Some(crisis) = self.state.crises.get(crisis_id) else {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,
                         reason: RejectReason::RuleDenied {
-                            notes: vec![format!("crisis already resolved: {crisis_id}")],
+                            notes: vec![format!("crisis not found: {crisis_id}")],
+                        },
+                    }));
+                };
+                if crisis.status != CrisisStatus::Active {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "crisis is not active and cannot be resolved: {}",
+                                crisis_id
+                            )],
+                        },
+                    }));
+                }
+                if self.state.time > crisis.expires_at {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "crisis expired at {} and cannot be resolved: {}",
+                                crisis.expires_at, crisis_id
+                            )],
                         },
                     }));
                 }
@@ -692,7 +909,12 @@ impl World {
                         },
                     }));
                 }
-                let impact = if *success { 10_i64 } else { -10_i64 };
+                let severity = crisis.severity.max(1);
+                let impact = if *success {
+                    i64::from(severity).saturating_mul(CRISIS_BASE_IMPACT_PER_SEVERITY)
+                } else {
+                    -i64::from(severity).saturating_mul(CRISIS_BASE_IMPACT_PER_SEVERITY)
+                };
                 Ok(WorldEventBody::Domain(DomainEvent::CrisisResolved {
                     resolver_agent_id: resolver_agent_id.clone(),
                     crisis_id: crisis_id.to_string(),

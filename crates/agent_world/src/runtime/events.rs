@@ -192,6 +192,17 @@ pub enum Action {
         objective: String,
         intensity: u32,
     },
+    OpenGovernanceProposal {
+        proposer_agent_id: String,
+        proposal_key: String,
+        title: String,
+        description: String,
+        #[serde(default)]
+        options: Vec<String>,
+        voting_window_ticks: u64,
+        quorum_weight: u64,
+        pass_threshold_bps: u16,
+    },
     CastGovernanceVote {
         voter_agent_id: String,
         proposal_key: String,
@@ -514,11 +525,43 @@ pub enum DomainEvent {
         objective: String,
         intensity: u32,
     },
+    WarConcluded {
+        war_id: String,
+        winner_alliance_id: String,
+        aggressor_score: i64,
+        defender_score: i64,
+        summary: String,
+    },
+    GovernanceProposalOpened {
+        proposer_agent_id: String,
+        proposal_key: String,
+        title: String,
+        description: String,
+        options: Vec<String>,
+        voting_window_ticks: u64,
+        closes_at: WorldTime,
+        quorum_weight: u64,
+        pass_threshold_bps: u16,
+    },
     GovernanceVoteCast {
         voter_agent_id: String,
         proposal_key: String,
         option: String,
         weight: u32,
+    },
+    GovernanceProposalFinalized {
+        proposal_key: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        winning_option: Option<String>,
+        winning_weight: u64,
+        total_weight: u64,
+        passed: bool,
+    },
+    CrisisSpawned {
+        crisis_id: String,
+        kind: String,
+        severity: u32,
+        expires_at: WorldTime,
     },
     CrisisResolved {
         resolver_agent_id: String,
@@ -526,6 +569,10 @@ pub enum DomainEvent {
         strategy: String,
         success: bool,
         impact: i64,
+    },
+    CrisisTimedOut {
+        crisis_id: String,
+        penalty_impact: i64,
     },
     MetaProgressGranted {
         operator_agent_id: String,
@@ -619,10 +666,17 @@ impl DomainEvent {
             DomainEvent::WarDeclared {
                 initiator_agent_id, ..
             } => Some(initiator_agent_id.as_str()),
+            DomainEvent::WarConcluded { .. } => None,
+            DomainEvent::GovernanceProposalOpened {
+                proposer_agent_id, ..
+            } => Some(proposer_agent_id.as_str()),
             DomainEvent::GovernanceVoteCast { voter_agent_id, .. } => Some(voter_agent_id.as_str()),
+            DomainEvent::GovernanceProposalFinalized { .. } => None,
+            DomainEvent::CrisisSpawned { .. } => None,
             DomainEvent::CrisisResolved {
                 resolver_agent_id, ..
             } => Some(resolver_agent_id.as_str()),
+            DomainEvent::CrisisTimedOut { .. } => None,
             DomainEvent::MetaProgressGranted {
                 target_agent_id, ..
             } => Some(target_agent_id.as_str()),
