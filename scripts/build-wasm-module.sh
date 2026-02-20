@@ -82,8 +82,15 @@ prepare_nightly_build_std() {
     exit 1
   fi
 
-  rustup toolchain install "$WASM_TOOLCHAIN" --profile minimal --component rust-src >/dev/null
-  rustup target add "$WASM_TARGET" --toolchain "$WASM_TOOLCHAIN" >/dev/null
+  # Avoid network-bound rustup update checks on every invocation.
+  # Most CI/dev flows already have the canonical toolchain and target installed.
+  if ! rustup toolchain list | awk '{print $1}' | grep -Eq "^${WASM_TOOLCHAIN}($|-)"; then
+    rustup toolchain install "$WASM_TOOLCHAIN" --profile minimal --component rust-src >/dev/null
+  fi
+
+  if ! rustup target list --toolchain "$WASM_TOOLCHAIN" --installed | grep -Fxq "$WASM_TARGET"; then
+    rustup target add "$WASM_TARGET" --toolchain "$WASM_TOOLCHAIN" >/dev/null
+  fi
 
   export RUSTUP_TOOLCHAIN="$WASM_TOOLCHAIN"
   export AGENT_WORLD_WASM_BUILD_STD=1

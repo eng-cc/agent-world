@@ -16,6 +16,10 @@ const BUILTIN_WASM_FETCH_TIMEOUT_MS_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_FETCH_
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
 const BUILTIN_WASM_BUILD_PROFILE: &str = "release";
+const M1_BUILTIN_MODULE_IDS_PATH: &str =
+    "crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt";
+const M4_BUILTIN_MODULE_IDS_PATH: &str =
+    "crates/agent_world/src/runtime/world/artifacts/m4_builtin_module_ids.txt";
 
 pub(crate) fn load_builtin_wasm_with_fetch_fallback(
     module_id: &str,
@@ -213,13 +217,23 @@ fn compile_via_default_script(
     let out_dir = temp_build_dir(module_id);
     fs::create_dir_all(&out_dir)?;
 
-    let status = Command::new(&build_script)
+    let mut command = Command::new(&build_script);
+    // Tests may run under a stable rustup alias (for example 1.92.0-...); fallback
+    // build should pick the canonical wasm toolchain on its own.
+    command.env_remove("RUSTUP_TOOLCHAIN");
+    command
         .arg("--module-id")
         .arg(module_id)
         .arg("--out-dir")
         .arg(&out_dir)
         .arg("--profile")
-        .arg(BUILTIN_WASM_BUILD_PROFILE)
+        .arg(BUILTIN_WASM_BUILD_PROFILE);
+
+    if let Some(module_ids_path) = builtin_module_ids_path_for(module_id, &repo_root) {
+        command.arg("--module-ids-path").arg(module_ids_path);
+    }
+
+    let status = command
         .status()
         .map_err(|error| WorldError::ModuleChangeInvalid {
             reason: format!(
@@ -247,6 +261,16 @@ fn compile_via_default_script(
     validate_compiled_hash(module_id, expected_hashes, &bytes)?;
     let _ = fs::remove_dir_all(&out_dir);
     Ok(bytes)
+}
+
+fn builtin_module_ids_path_for(module_id: &str, repo_root: &Path) -> Option<PathBuf> {
+    if module_id.starts_with("m1.") {
+        return Some(repo_root.join(M1_BUILTIN_MODULE_IDS_PATH));
+    }
+    if module_id.starts_with("m4.") {
+        return Some(repo_root.join(M4_BUILTIN_MODULE_IDS_PATH));
+    }
+    None
 }
 
 fn validate_compiled_hash(

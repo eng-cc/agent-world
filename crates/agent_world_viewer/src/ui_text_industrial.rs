@@ -343,7 +343,9 @@ mod tests {
                     },
                     amount: 11,
                     loss: 1,
+                    quoted_price_per_pu: 0,
                     price_per_pu: 0,
+                    settlement_amount: 0,
                 }),
             },
         ];

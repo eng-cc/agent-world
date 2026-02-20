@@ -750,7 +750,9 @@ mod tests {
                 },
                 amount: 10,
                 loss: 1,
+                quoted_price_per_pu: 0,
                 price_per_pu: 0,
+                settlement_amount: 0,
             }),
         }];
 
@@ -798,7 +800,9 @@ mod tests {
                     },
                     amount: 9,
                     loss: 2,
+                    quoted_price_per_pu: 0,
                     price_per_pu: 0,
+                    settlement_amount: 0,
                 }),
             },
         ];

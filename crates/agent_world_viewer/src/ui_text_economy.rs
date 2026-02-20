@@ -252,7 +252,9 @@ mod tests {
                     },
                     amount: 10,
                     loss: 2,
+                    quoted_price_per_pu: 3,
                     price_per_pu: 3,
+                    settlement_amount: 30,
                 }),
             },
             WorldEvent {
