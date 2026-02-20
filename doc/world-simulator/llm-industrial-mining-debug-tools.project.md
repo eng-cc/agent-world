@@ -70,6 +70,13 @@
 - [x] MMD11.3 回归验证：`test_tier_required` 定向单测与 llm_agent 全量回归
 - [x] MMD11.4 在线复验：`llm_bootstrap --ticks 120` 对照复跑并回写文档/devlog
 
+### MMD12 P0 再验证与闭环修复（2026-02-20）
+- [x] MMD12.1 同口径 120 tick 基线复验：确认 TODO-28/TODO-29 在主线仍可复现
+- [x] MMD12.2 修复多段协议处理实现落位（helper 归位 + 多段终态折叠）
+- [x] MMD12.3 在线复验 #1：验证协议修复效果并定位剩余 location 别名失败模式
+- [x] MMD12.4 修复 `build_factory` location 推断兜底（当前位置优先、最近可见回退、不可推断保守回退）+ 单测
+- [x] MMD12.5 在线复验 #2 + 文档/devlog 收口
+
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
   - 产物：
@@ -254,6 +261,38 @@
     - TODO-26/TODO-27 进入“代码已落地、在线样本待二次确认”状态；
     - TODO-28/TODO-29 仍未收口，且优先级上升为 P0（先协议、再位置）。
 
+### MMD12 P0 再验证与闭环修复摘要（2026-02-20）
+- 基线复验（120 tick，同 MMD10/MMD11 口径）：
+  - 产物：
+    - `output/p0_verify_2026-02-20_122927/run.log`
+    - `output/p0_verify_2026-02-20_122927/report.json`
+  - 指标：
+    - `active_ticks=120`
+    - `location_not_found=8`
+    - `parse_errors=15`
+    - `decision_wait=15`
+    - `prompt_section_clipped=604`
+  - 结论：两条 P0 均仍存在，进入修复。
+- 在线复验 #1（修复协议 helper 落位 + 多段终态折叠后）：
+  - 产物：
+    - `output/p0_verify_fix_2026-02-20_124508/run.log`
+    - `output/p0_verify_fix_2026-02-20_124508/report.json`
+  - 指标：
+    - `location_not_found=7`（仅小幅下降）
+    - `parse_errors=30`、`decision_wait=30`（仍未收敛）
+  - 观测：`build_factory` 仍会收到伪 location（如 `loc-0/current/loc-current`）并触发 `LocationNotFound`，继续补 location 归一兜底。
+- 在线复验 #2（补 `build_factory` 位置推断兜底后）：
+  - 产物：
+    - `output/p0_verify_fix2_2026-02-20_125633/run.log`
+    - `output/p0_verify_fix2_2026-02-20_125633/report.json`
+  - 指标（对比基线 `p0_verify_2026-02-20_122927`）：
+    - `location_not_found: 8 -> 0`
+    - `parse_errors: 15 -> 0`
+    - `decision_wait: 15 -> 0`
+    - `prompt_section_clipped: 604 -> 576`
+    - `action_success: 88 -> 97`
+  - 结论：TODO-28/TODO-29 在当前口径样本下已收口。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -269,9 +308,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD11.2~MMD11.4 已执行完成（含代码、required-tier 回归、在线复验）。
-- 下一阶段：围绕 TODO-29/TODO-28 开启下一轮收敛（协议稳定性优先，随后复核 location 归一）。
-- 最近更新：2026-02-19（完成 MMD11 实施与在线复验回写）。
+- 当前阶段：MMD12.1~MMD12.5 已执行完成（含两轮在线复验与修复收口）。
+- 下一阶段：TODO-28/TODO-29 已关闭；后续优先评估 `facility_already_exists` 高频拒绝是否需要策略优化。
+- 最近更新：2026-02-20（完成 P0 再验证与闭环修复回写）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。
@@ -287,5 +326,5 @@
 - TODO-25：已完成（MMD9.4），`execute_until.action` 经 guardrail 改写后会同步重建默认 `until` 条件，避免动作类型切换后沿用旧条件导致抖动。
 - TODO-26：已在 MMD11.2 落地（factory_id 归一 + 缺厂改写 build_factory）；定向单测与 llm_agent required-tier 已通过。`mmd11_verify_2026-02-19_115519` 中 `facility_not_found=0`，但受高 parse_error 干扰，需在 TODO-29 收敛后做二次在线复核。
 - TODO-27：已在 MMD11.2/MMD11.3 落地（recipe->factory_kind 前置校验 + 兼容工厂改写 + prompt 恢复策略）；定向单测与 llm_agent required-tier 已通过。`mmd11_verify_2026-02-19_115519` 中 `rule_denied=0`，同样需在协议稳定后复核持续性。
-- TODO-28：未收口且出现退化；`location_not_found` 由基线 `3` 升至 `10`。需继续收敛“不可识别 location 直接回退当前 location”并减少模型生成伪 location alias。
-- TODO-29：未收口且显著退化；`parse_errors=60`、`run.log` 中 `---=214`、`prompt_section_clipped=1192`。需优先推进“多段输出硬拒绝/末段决策提取 + prompt 体积治理”。
+- TODO-28：已完成（MMD12.4/MMD12.5）。同口径 120 tick 复验 `location_not_found: 8 -> 0`（`output/p0_verify_2026-02-20_122927` -> `output/p0_verify_fix2_2026-02-20_125633`）。
+- TODO-29：已完成（MMD12.2/MMD12.5）。同口径 120 tick 复验 `parse_errors: 15 -> 0`、`decision_wait: 15 -> 0`。

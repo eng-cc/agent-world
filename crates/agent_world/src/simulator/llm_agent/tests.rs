@@ -1140,7 +1140,7 @@ fn llm_agent_parse_mine_compound_action_defaults_to_self_owner() {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            location_id: "frag-1".to_string(),
+            location_id: "loc-2".to_string(),
             compound_mass_g: 1_200,
         })
     );
@@ -1248,7 +1248,7 @@ fn llm_agent_parse_build_factory_action() {
             owner: ResourceOwner::Agent {
                 agent_id: "agent-1".to_string(),
             },
-            location_id: "loc-1".to_string(),
+            location_id: "loc-2".to_string(),
             factory_id: "factory.alpha".to_string(),
             factory_kind: "factory.assembler.mk1".to_string(),
         })
@@ -1568,7 +1568,7 @@ fn llm_agent_supports_module_call_then_decision() {
 }
 
 #[test]
-fn llm_agent_rejects_multi_json_output_and_repairs_with_second_turn() {
+fn llm_agent_collapses_multi_json_output_to_terminal_decision_without_repair() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
         vec![
@@ -1584,21 +1584,31 @@ fn llm_agent_rejects_multi_json_output_and_repairs_with_second_turn() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
 
     let decision = behavior.decide(&make_observation());
-    assert_eq!(decision, AgentDecision::Wait);
-    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MoveAgent {
+            agent_id: "agent-1".to_string(),
+            to: "loc-2".to_string(),
+        })
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
 
     let trace = behavior.take_decision_trace().expect("trace exists");
     assert!(trace.parse_error.is_none());
     assert_eq!(trace.llm_effect_intents.len(), 0);
     assert_eq!(trace.llm_effect_receipts.len(), 0);
-    assert!(trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.step_type == "repair"));
+    assert_eq!(
+        trace.llm_diagnostics.expect("diagnostics").retry_count,
+        0,
+        "collapsed output should not consume repair rounds"
+    );
+    assert!(trace.llm_chat_messages.iter().any(|msg| msg
+        .content
+        .contains("multi-turn output collapsed by guardrail")));
 }
 
 #[test]
-fn llm_agent_rejects_mixed_multi_turn_output_in_single_dialogue_turn() {
+fn llm_agent_collapses_mixed_multi_turn_output_to_last_terminal_decision() {
     let calls = Arc::new(AtomicUsize::new(0));
     let client = CountingSequenceMockClient::new(
         vec![
@@ -1626,16 +1636,20 @@ fn llm_agent_rejects_mixed_multi_turn_output_in_single_dialogue_turn() {
 
     let decision = behavior.decide(&make_observation());
     assert_eq!(decision, AgentDecision::Wait);
-    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
 
     let trace = behavior.take_decision_trace().expect("trace exists");
     assert!(trace.parse_error.is_none());
     assert_eq!(trace.llm_effect_intents.len(), 0);
     assert_eq!(trace.llm_effect_receipts.len(), 0);
-    assert!(trace
-        .llm_step_trace
-        .iter()
-        .any(|step| step.step_type == "repair"));
+    assert_eq!(
+        trace.llm_diagnostics.expect("diagnostics").retry_count,
+        0,
+        "collapsed output should not consume repair rounds"
+    );
+    assert!(trace.llm_chat_messages.iter().any(|msg| msg
+        .content
+        .contains("multi-turn output collapsed by guardrail")));
 }
 
 #[test]

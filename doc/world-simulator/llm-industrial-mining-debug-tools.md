@@ -309,3 +309,46 @@
 - 改写激进风险：过度自动改写可能压制模型探索，需保留 note 与 trace 可审计。
 - 错误归一风险：factory/location 归一若命中错误对象，可能引入新的策略偏差；需以“已知集合”优先并在不可判定时回退最保守动作。
 - 行为漂移风险：prompt 恢复策略新增分支可能影响既有样本，需要 required-tier + 在线样本双口径回归。
+
+## MMD12 P0 再验证与闭环修复（TODO-28 / TODO-29）
+
+### 目标
+- 在 MMD11 后按同口径 120 tick 复验，确认两条 P0 是否仍存在：
+  - P0-A：多段输出协议不稳导致 `parse_errors` 与 `decision_wait` 升高。
+  - P0-B：`build_factory` 使用伪 location 别名导致 `location_not_found`。
+- 若仍存在，完成最小改动修复并复验到可量化收敛（优先关注 `parse_errors`、`location_not_found`、`decision_wait`）。
+
+### 范围
+
+#### In Scope
+- `LlmAgentBehavior` 对多段输出的 guardrail 收敛：
+  - 在单轮解析出多段 payload 时，优先保留“最后一个终态 turn（decision/execute_until/decision_draft）”。
+- `build_factory` location guardrail 收敛：
+  - 当请求 location 不可见时，优先回退到“严格当前位置（distance=0）”，若缺失则回退到“最近可见 location”。
+  - 当不可见且无法推断任何当前位置时，回退到保守动作 `harvest_radiation`，避免直接下发高概率拒绝动作。
+- 补齐/更新 `test_tier_required` 相关单测，并执行同口径在线复验。
+
+#### Out of Scope
+- 不修改 kernel 拒绝语义与经济参数。
+- 不引入新的全局规划策略，仅修补 guardrail 与协议处理。
+- 不改 viewer 协议或展示逻辑。
+
+### 接口 / 数据
+- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
+  - `collapse_multi_turn_payloads` 与 `parsed_turn_kind_name` 作为 `LlmAgentBehavior` 固有 helper，服务单轮多段 payload 折叠。
+- `crates/agent_world/src/simulator/llm_agent/behavior_guardrails.rs`
+  - `build_factory` guardrail 增加 `inferred_current_location_id`（当前位置优先、最近可见兜底）与不可推断时的保守回退。
+- `crates/agent_world/src/simulator/llm_agent/tests.rs` / `tests_part2.rs`
+  - 更新旧协议断言为“折叠终态”语义；
+  - 新增“当前位置缺失时按最近可见位置归一”的覆盖用例。
+
+### 里程碑
+- MMD12.1：同口径在线基线复验（确认 P0 仍存在）。
+- MMD12.2：修复多段协议处理 + 编译/单测通过。
+- MMD12.3：在线复验 #1（验证协议收敛效果，定位剩余 location 问题）。
+- MMD12.4：修复 build location 归一兜底 + 在线复验 #2，完成文档/devlog 收口。
+
+### 风险
+- 最近可见位置兜底可能在极端观测误差下误判目标位置，需要依赖后续动作反馈纠偏。
+- 多段折叠策略偏“最后终态优先”，可能丢弃前序 module_call 结果；需通过 trace note 保持可审计。
+- 在线样本受模型随机性影响，单次 120 tick 仍可能波动，后续可按需要补多样本验证。

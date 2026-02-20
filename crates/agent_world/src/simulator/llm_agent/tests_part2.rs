@@ -1811,6 +1811,62 @@ fn llm_agent_build_factory_normalizes_unknown_location_to_current_location() {
 }
 
 #[test]
+fn llm_agent_build_factory_normalizes_unknown_location_to_nearest_visible_when_current_unknown() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"build_factory","owner":"self","location_id":"loc.current","factory_id":"factory.assembler.mk1","factory_kind":"factory.assembler.mk1"}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let mut observation = make_observation();
+    observation.visible_locations = vec![
+        ObservedLocation {
+            location_id: "loc-nearest".to_string(),
+            name: "near".to_string(),
+            pos: GeoPos {
+                x_cm: 50_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 50_000,
+        },
+        ObservedLocation {
+            location_id: "loc-far".to_string(),
+            name: "far".to_string(),
+            pos: GeoPos {
+                x_cm: 200_000.0,
+                y_cm: 0.0,
+                z_cm: 0.0,
+            },
+            profile: Default::default(),
+            distance_cm: 200_000,
+        },
+    ];
+
+    let decision = behavior.decide(&observation);
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::BuildFactory {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-nearest".to_string(),
+            factory_id: "factory.assembler.mk1".to_string(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.llm_step_trace.iter().any(|step| step
+        .output_summary
+        .contains("build_factory.location_id normalized by guardrail")));
+}
+
+#[test]
 fn llm_agent_segments_move_agent_when_target_distance_exceeds_limit() {
     let client = MockClient {
         output: Some(r#"{"decision":"move_agent","to":"loc-factory"}"#.to_string()),
@@ -3139,7 +3195,7 @@ fn llm_agent_prompt_contains_execute_until_and_exploration_guidance() {
 }
 
 #[test]
-fn llm_agent_rejects_multiple_tool_calls_in_single_turn() {
+fn llm_agent_collapses_multiple_tool_calls_in_single_turn() {
     let client = MockClient {
         output: Some(
             r#"{"decision":"wait"}
@@ -3159,8 +3215,83 @@ fn llm_agent_rejects_multiple_tool_calls_in_single_turn() {
     assert_eq!(decision, AgentDecision::Wait);
 
     let trace = behavior.take_decision_trace().expect("trace");
-    let parse_error = trace.parse_error.expect("parse error");
-    assert!(parse_error.contains("multiple tool calls in one dialogue turn"));
+    assert!(trace.parse_error.is_none());
+    assert!(trace
+        .llm_output
+        .as_deref()
+        .is_some_and(|output| output.contains("---")));
+    let notes = trace
+        .llm_chat_messages
+        .iter()
+        .filter(|msg| matches!(msg.role, LlmChatRole::System))
+        .map(|msg| msg.content.as_str())
+        .collect::<Vec<_>>();
+    assert!(notes
+        .iter()
+        .any(|note| note.contains("multi-turn output collapsed by guardrail")));
+}
+
+#[test]
+fn llm_agent_collapses_multi_segment_output_to_last_terminal_decision() {
+    let client = MockClient {
+        output: Some(
+            r#"{"type":"module_call","module":"environment.current_observation","args":{}}
+
+---
+
+{"type":"module_call","module":"environment.current_observation","args":{}}
+
+---
+
+{"decision":"harvest_radiation","max_amount":5}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut config = base_config();
+    config.max_repair_rounds = 0;
+    let mut behavior = LlmAgentBehavior::new("agent-1", config, client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::HarvestRadiation {
+            agent_id: "agent-1".to_string(),
+            max_amount: 5,
+        })
+    );
+
+    let trace = behavior.take_decision_trace().expect("trace");
+    assert!(trace.parse_error.is_none());
+    assert_eq!(
+        trace.llm_diagnostics.expect("diagnostics").retry_count,
+        0,
+        "collapsed multi-turn output should not consume repair rounds"
+    );
+}
+
+#[test]
+fn llm_agent_normalizes_mine_compound_unknown_location_to_inferred_current_location() {
+    let client = MockClient {
+        output: Some(
+            r#"{"decision":"mine_compound","owner":"self","location_id":"loc-001","compound_mass_g":1000}"#
+                .to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::MineCompound {
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            location_id: "loc-2".to_string(),
+            compound_mass_g: 1000,
+        })
+    );
 }
 
 #[test]

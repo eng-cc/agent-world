@@ -139,6 +139,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     );
                 }
 
+                let mut location_id = location_id;
                 let mut mine_notes = Vec::new();
                 let mut mine_mass_g =
                     compound_mass_g.clamp(1, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G);
@@ -147,6 +148,44 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         "mine_compound.mass clamped by mine_max_per_action_g: {} -> {} (mine_max_per_action_g={})",
                         compound_mass_g, mine_mass_g, DEFAULT_MINE_COMPOUND_MAX_PER_ACTION_G
                     ));
+                }
+
+                let inferred_current_location_id =
+                    Self::current_location_id_from_observation(observation)
+                        .or_else(|| {
+                            observation
+                                .visible_locations
+                                .iter()
+                                .min_by_key(|location| location.distance_cm)
+                                .map(|location| location.location_id.as_str())
+                        })
+                        .map(str::to_string);
+                let location_is_visible = observation
+                    .visible_locations
+                    .iter()
+                    .any(|location| location.location_id == location_id);
+                if !location_is_visible {
+                    if let Some(current_location_id) = inferred_current_location_id.as_deref() {
+                        if current_location_id != location_id.as_str() {
+                            mine_notes.push(format!(
+                                "mine_compound.location_id normalized by guardrail: requested_location_id={} -> inferred_current_location_id={}",
+                                location_id, current_location_id
+                            ));
+                            location_id = current_location_id.to_string();
+                        }
+                    } else {
+                        mine_notes.push(format!(
+                            "mine_compound guardrail rerouted to harvest_radiation: requested_location_id={} is not visible and inferred_current_location_id is unavailable",
+                            location_id
+                        ));
+                        return (
+                            Action::HarvestRadiation {
+                                agent_id: self.agent_id.clone(),
+                                max_amount: self.config.harvest_max_amount_cap,
+                            },
+                            Some(mine_notes.join("; ")),
+                        );
+                    }
                 }
 
                 if let Some(cooldown_remaining_ticks) = self
@@ -238,10 +277,8 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     }
                 }
 
-                if let Some(current_location_id) =
-                    Self::current_location_id_from_observation(observation)
-                {
-                    if current_location_id != location_id {
+                if let Some(current_location_id) = inferred_current_location_id.as_deref() {
+                    if current_location_id != location_id.as_str() {
                         let (move_action, move_note) =
                             self.guarded_move_to_location(location_id.as_str(), observation);
                         let mut notes = mine_notes;
@@ -304,23 +341,45 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
                 let mut location_id = location_id;
                 let mut build_notes = Vec::new();
-                let current_location_id =
-                    Self::current_location_id_from_observation(observation).map(str::to_string);
+                let inferred_current_location_id =
+                    Self::current_location_id_from_observation(observation)
+                        .or_else(|| {
+                            observation
+                                .visible_locations
+                                .iter()
+                                .min_by_key(|location| location.distance_cm)
+                                .map(|location| location.location_id.as_str())
+                        })
+                        .map(str::to_string);
                 let location_is_visible = observation
                     .visible_locations
                     .iter()
                     .any(|location| location.location_id == location_id);
                 if !location_is_visible {
-                    if let Some(current_location_id) = current_location_id.as_deref() {
+                    if let Some(current_location_id) = inferred_current_location_id.as_deref() {
+                        if current_location_id != location_id.as_str() {
+                            build_notes.push(format!(
+                                "build_factory.location_id normalized by guardrail: requested_location_id={} -> inferred_current_location_id={}",
+                                location_id, current_location_id
+                            ));
+                            location_id = current_location_id.to_string();
+                        }
+                    } else {
                         build_notes.push(format!(
-                            "build_factory.location_id normalized by guardrail: requested_location_id={} -> current_location_id={}",
-                            location_id, current_location_id
+                            "build_factory guardrail rerouted to harvest_radiation: requested_location_id={} is not visible and inferred_current_location_id is unavailable",
+                            location_id
                         ));
-                        location_id = current_location_id.to_string();
+                        return (
+                            Action::HarvestRadiation {
+                                agent_id: self.agent_id.clone(),
+                                max_amount: self.config.harvest_max_amount_cap,
+                            },
+                            Some(build_notes.join("; ")),
+                        );
                     }
                 }
 
-                if let Some(current_location_id) = current_location_id.as_deref() {
+                if let Some(current_location_id) = inferred_current_location_id.as_deref() {
                     if current_location_id != location_id.as_str() {
                         let (move_action, move_note) =
                             self.guarded_move_to_location(location_id.as_str(), observation);

@@ -1,6 +1,64 @@
 use super::*;
 use std::time::Instant;
 
+impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
+    fn collapse_multi_turn_payloads(
+        parsed_turns: Vec<ParsedLlmTurn>,
+    ) -> (Vec<ParsedLlmTurn>, Option<String>) {
+        if parsed_turns.len() <= 1 {
+            return (parsed_turns, None);
+        }
+
+        let observed_turns = parsed_turns.len();
+        let mut fallback_turn: Option<ParsedLlmTurn> = None;
+        let mut selected_turn: Option<ParsedLlmTurn> = None;
+        for parsed_turn in parsed_turns.into_iter().rev() {
+            if matches!(
+                &parsed_turn,
+                ParsedLlmTurn::Decision { .. }
+                    | ParsedLlmTurn::ExecuteUntil { .. }
+                    | ParsedLlmTurn::DecisionDraft { .. }
+            ) {
+                selected_turn = Some(parsed_turn);
+                break;
+            }
+            if fallback_turn.is_none() {
+                fallback_turn = Some(parsed_turn);
+            }
+        }
+
+        let Some(selected_turn) = selected_turn.or(fallback_turn) else {
+            return (
+                Vec::new(),
+                Some(format!(
+                    "multi-turn output collapsed by guardrail: observed_turns={} kept_turn=none",
+                    observed_turns
+                )),
+            );
+        };
+
+        let kept_turn_kind = Self::parsed_turn_kind_name(&selected_turn);
+        (
+            vec![selected_turn],
+            Some(format!(
+                "multi-turn output collapsed by guardrail: observed_turns={} kept_turn={}",
+                observed_turns, kept_turn_kind
+            )),
+        )
+    }
+
+    fn parsed_turn_kind_name(parsed_turn: &ParsedLlmTurn) -> &'static str {
+        match parsed_turn {
+            ParsedLlmTurn::Plan { .. } => "plan",
+            ParsedLlmTurn::DecisionDraft { .. } => "decision_draft",
+            ParsedLlmTurn::Decision { .. } => "decision",
+            ParsedLlmTurn::ExecuteUntil { .. } => "execute_until",
+            ParsedLlmTurn::ModuleCall { .. } => "module_call",
+            ParsedLlmTurn::Invalid(_) => "invalid",
+        }
+    }
+}
+
 impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
     fn agent_id(&self) -> &str {
         self.agent_id.as_str()
@@ -259,6 +317,21 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                         self.agent_id.as_str(),
                         self.config.llm_debug_mode,
                     );
+                    let (parsed_turns, multi_turn_note) =
+                        Self::collapse_multi_turn_payloads(parsed_turns);
+                    if let Some(note) = multi_turn_note {
+                        self.memory.record_note(observation.time, note.clone());
+                        let _ = self.append_conversation_message(
+                            observation.time,
+                            LlmChatRole::System,
+                            note.as_str(),
+                        );
+                        turn_output_summary = format!(
+                            "{}; {}",
+                            turn_output_summary,
+                            summarize_trace_text(note.as_str(), 160)
+                        );
+                    }
 
                     if parsed_turns.len() > 1 {
                         let err = format!(
