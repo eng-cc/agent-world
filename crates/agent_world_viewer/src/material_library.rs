@@ -1,3 +1,4 @@
+use super::viewer_3d_config::{ViewerFragmentMaterialConfig, ViewerFragmentMaterialStrategy};
 use agent_world::simulator::FragmentElementKind;
 use bevy::prelude::*;
 use std::collections::BTreeMap;
@@ -41,23 +42,46 @@ const ALL_FRAGMENT_ELEMENTS: [FragmentElementKind; 20] = [
 
 pub(super) fn build_fragment_element_material_handles(
     materials: &mut Assets<StandardMaterial>,
+    config: ViewerFragmentMaterialConfig,
 ) -> FragmentElementMaterialHandles {
     let mut by_element = BTreeMap::new();
     for element in ALL_FRAGMENT_ELEMENTS {
         by_element.insert(
             element,
-            materials.add(fragment_element_standard_material(element)),
+            materials.add(fragment_element_standard_material(element, config)),
         );
     }
     FragmentElementMaterialHandles { by_element }
 }
 
-fn fragment_element_standard_material(element: FragmentElementKind) -> StandardMaterial {
+fn fragment_element_standard_material(
+    element: FragmentElementKind,
+    config: ViewerFragmentMaterialConfig,
+) -> StandardMaterial {
     let (r, g, b) = fragment_element_base_tint(element);
+    let alpha = config.alpha.clamp(0.05, 1.0);
+    let (roughness, metallic) = match config.strategy {
+        ViewerFragmentMaterialStrategy::Readability => (0.78, 0.04),
+        ViewerFragmentMaterialStrategy::Fidelity => (0.42, 0.20),
+    };
+    let emissive_boost = config.emissive_boost.max(0.0);
     StandardMaterial {
-        base_color: Color::srgba(r, g, b, 0.92),
-        unlit: true,
-        alpha_mode: AlphaMode::Blend,
+        base_color: Color::srgba(r, g, b, alpha),
+        unlit: config.unlit,
+        alpha_mode: if alpha < 0.999 {
+            AlphaMode::Blend
+        } else {
+            AlphaMode::Opaque
+        },
+        perceptual_roughness: roughness,
+        metallic,
+        emissive: Color::srgb(
+            (r * emissive_boost).clamp(0.0, 4.0),
+            (g * emissive_boost).clamp(0.0, 4.0),
+            (b * emissive_boost).clamp(0.0, 4.0),
+        )
+        .into(),
+        double_sided: true,
         ..default()
     }
 }
@@ -94,7 +118,10 @@ mod tests {
     #[test]
     fn build_fragment_element_material_handles_covers_all_elements() {
         let mut materials = Assets::<StandardMaterial>::default();
-        let handles = build_fragment_element_material_handles(&mut materials);
+        let handles = build_fragment_element_material_handles(
+            &mut materials,
+            ViewerFragmentMaterialConfig::default(),
+        );
         assert_eq!(handles.by_element.len(), ALL_FRAGMENT_ELEMENTS.len());
 
         for element in ALL_FRAGMENT_ELEMENTS {
@@ -114,5 +141,24 @@ mod tests {
         assert_ne!(sulfur, uranium);
         assert!(sulfur.0 > iron.0);
         assert!(uranium.1 > iron.1);
+    }
+
+    #[test]
+    fn fragment_material_strategy_switches_unlit_and_pbr_balance() {
+        let mut config = ViewerFragmentMaterialConfig::default();
+        config.strategy = ViewerFragmentMaterialStrategy::Readability;
+        config.unlit = true;
+        let readability = fragment_element_standard_material(FragmentElementKind::Iron, config);
+
+        config.strategy = ViewerFragmentMaterialStrategy::Fidelity;
+        config.unlit = false;
+        config.alpha = 0.78;
+        let fidelity = fragment_element_standard_material(FragmentElementKind::Iron, config);
+
+        assert!(readability.unlit);
+        assert!(!fidelity.unlit);
+        assert!(fidelity.perceptual_roughness < readability.perceptual_roughness);
+        assert!(fidelity.metallic > readability.metallic);
+        assert!(matches!(fidelity.alpha_mode, AlphaMode::Blend));
     }
 }

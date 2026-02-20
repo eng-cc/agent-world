@@ -885,8 +885,14 @@ fn setup_3d_scene(
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(1.0, 0.42, 0.22),
-        perceptual_roughness: 0.38,
-        metallic: 0.08,
+        perceptual_roughness: config.materials.agent.roughness,
+        metallic: config.materials.agent.metallic,
+        emissive: Color::srgb(
+            (0.90 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
+            (0.38 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
+            (0.20 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
+        )
+        .into(),
         ..default()
     });
     let agent_module_marker_material = materials.add(StandardMaterial {
@@ -894,20 +900,42 @@ fn setup_3d_scene(
         unlit: true,
         ..default()
     });
-    let fragment_element_material_library = build_fragment_element_material_handles(&mut materials);
+    let fragment_element_material_library =
+        build_fragment_element_material_handles(&mut materials, config.materials.fragment);
     let asset_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.82, 0.76, 0.34),
-        perceptual_roughness: 0.55,
+        perceptual_roughness: config.materials.asset.roughness,
+        metallic: config.materials.asset.metallic,
+        emissive: Color::srgb(
+            (0.82 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
+            (0.76 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
+            (0.34 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
+        )
+        .into(),
         ..default()
     });
     let power_plant_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.95, 0.42, 0.2),
-        perceptual_roughness: 0.5,
+        perceptual_roughness: config.materials.facility.roughness,
+        metallic: config.materials.facility.metallic,
+        emissive: Color::srgb(
+            (0.95 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+            (0.42 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+            (0.20 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+        )
+        .into(),
         ..default()
     });
     let power_storage_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.2, 0.86, 0.48),
-        perceptual_roughness: 0.45,
+        perceptual_roughness: config.materials.facility.roughness,
+        metallic: config.materials.facility.metallic,
+        emissive: Color::srgb(
+            (0.20 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+            (0.86 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+            (0.48 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
+        )
+        .into(),
         ..default()
     });
     let chunk_unexplored_material = materials.add(StandardMaterial {

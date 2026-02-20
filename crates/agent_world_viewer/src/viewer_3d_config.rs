@@ -27,6 +27,20 @@ const DEFAULT_OVERLAY_MAX_HEAT_MARKERS: usize = 64;
 const DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS: usize = 80;
 const DEFAULT_GRID_LOD_DISTANCE: f32 = 120.0;
 const DEFAULT_LOCATION_SHELL_ENABLED: bool = true;
+const DEFAULT_MATERIAL_AGENT_ROUGHNESS: f32 = 0.38;
+const DEFAULT_MATERIAL_AGENT_METALLIC: f32 = 0.08;
+const DEFAULT_MATERIAL_AGENT_EMISSIVE_BOOST: f32 = 0.06;
+const DEFAULT_MATERIAL_ASSET_ROUGHNESS: f32 = 0.55;
+const DEFAULT_MATERIAL_ASSET_METALLIC: f32 = 0.12;
+const DEFAULT_MATERIAL_ASSET_EMISSIVE_BOOST: f32 = 0.02;
+const DEFAULT_MATERIAL_FACILITY_ROUGHNESS: f32 = 0.48;
+const DEFAULT_MATERIAL_FACILITY_METALLIC: f32 = 0.20;
+const DEFAULT_MATERIAL_FACILITY_EMISSIVE_BOOST: f32 = 0.08;
+const DEFAULT_FRAGMENT_UNLIT: bool = true;
+const DEFAULT_FRAGMENT_ALPHA: f32 = 0.92;
+const DEFAULT_FRAGMENT_EMISSIVE_BOOST: f32 = 0.24;
+const MIN_FRAGMENT_ALPHA: f32 = 0.05;
+const MAX_FRAGMENT_ALPHA: f32 = 1.0;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -36,6 +50,7 @@ pub(super) struct Viewer3dConfig {
     pub show_locations: bool,
     pub highlight_selected: bool,
     pub assets: ViewerAssetConfig,
+    pub materials: ViewerMaterialConfig,
     pub label_lod: ViewerLabelLodConfig,
     pub render_budget: ViewerRenderBudgetConfig,
     pub lighting: ViewerLightingConfig,
@@ -61,6 +76,7 @@ impl Default for Viewer3dConfig {
             show_locations: true,
             highlight_selected: true,
             assets: ViewerAssetConfig::default(),
+            materials: ViewerMaterialConfig::default(),
             label_lod: ViewerLabelLodConfig::default(),
             render_budget: ViewerRenderBudgetConfig::default(),
             lighting: ViewerLightingConfig::default(),
@@ -76,14 +92,26 @@ impl Viewer3dConfig {
             ViewerRenderProfile::Debug => {
                 self.assets.geometry_tier = ViewerGeometryTier::Debug;
                 self.assets.location_shell_enabled = false;
+                self.materials.fragment.strategy = ViewerFragmentMaterialStrategy::Readability;
+                self.materials.fragment.unlit = true;
+                self.materials.fragment.alpha = 0.95;
+                self.materials.fragment.emissive_boost = 0.34;
             }
             ViewerRenderProfile::Balanced => {
                 self.assets.geometry_tier = ViewerGeometryTier::Balanced;
                 self.assets.location_shell_enabled = true;
+                self.materials.fragment.strategy = ViewerFragmentMaterialStrategy::Readability;
+                self.materials.fragment.unlit = true;
+                self.materials.fragment.alpha = DEFAULT_FRAGMENT_ALPHA;
+                self.materials.fragment.emissive_boost = DEFAULT_FRAGMENT_EMISSIVE_BOOST;
             }
             ViewerRenderProfile::Cinematic => {
                 self.assets.geometry_tier = ViewerGeometryTier::Cinematic;
                 self.assets.location_shell_enabled = true;
+                self.materials.fragment.strategy = ViewerFragmentMaterialStrategy::Fidelity;
+                self.materials.fragment.unlit = false;
+                self.materials.fragment.alpha = 0.82;
+                self.materials.fragment.emissive_boost = 0.12;
             }
         }
     }
@@ -126,6 +154,85 @@ impl Default for ViewerAssetConfig {
         Self {
             geometry_tier: ViewerGeometryTier::Balanced,
             location_shell_enabled: DEFAULT_LOCATION_SHELL_ENABLED,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerFragmentMaterialStrategy {
+    Readability,
+    Fidelity,
+}
+
+impl Default for ViewerFragmentMaterialStrategy {
+    fn default() -> Self {
+        Self::Readability
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerPbrMaterialConfig {
+    pub roughness: f32,
+    pub metallic: f32,
+    pub emissive_boost: f32,
+}
+
+impl Default for ViewerPbrMaterialConfig {
+    fn default() -> Self {
+        Self {
+            roughness: DEFAULT_MATERIAL_AGENT_ROUGHNESS,
+            metallic: DEFAULT_MATERIAL_AGENT_METALLIC,
+            emissive_boost: DEFAULT_MATERIAL_AGENT_EMISSIVE_BOOST,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerFragmentMaterialConfig {
+    pub strategy: ViewerFragmentMaterialStrategy,
+    pub unlit: bool,
+    pub alpha: f32,
+    pub emissive_boost: f32,
+}
+
+impl Default for ViewerFragmentMaterialConfig {
+    fn default() -> Self {
+        Self {
+            strategy: ViewerFragmentMaterialStrategy::default(),
+            unlit: DEFAULT_FRAGMENT_UNLIT,
+            alpha: DEFAULT_FRAGMENT_ALPHA,
+            emissive_boost: DEFAULT_FRAGMENT_EMISSIVE_BOOST,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerMaterialConfig {
+    pub agent: ViewerPbrMaterialConfig,
+    pub asset: ViewerPbrMaterialConfig,
+    pub facility: ViewerPbrMaterialConfig,
+    pub fragment: ViewerFragmentMaterialConfig,
+}
+
+impl Default for ViewerMaterialConfig {
+    fn default() -> Self {
+        Self {
+            agent: ViewerPbrMaterialConfig {
+                roughness: DEFAULT_MATERIAL_AGENT_ROUGHNESS,
+                metallic: DEFAULT_MATERIAL_AGENT_METALLIC,
+                emissive_boost: DEFAULT_MATERIAL_AGENT_EMISSIVE_BOOST,
+            },
+            asset: ViewerPbrMaterialConfig {
+                roughness: DEFAULT_MATERIAL_ASSET_ROUGHNESS,
+                metallic: DEFAULT_MATERIAL_ASSET_METALLIC,
+                emissive_boost: DEFAULT_MATERIAL_ASSET_EMISSIVE_BOOST,
+            },
+            facility: ViewerPbrMaterialConfig {
+                roughness: DEFAULT_MATERIAL_FACILITY_ROUGHNESS,
+                metallic: DEFAULT_MATERIAL_FACILITY_METALLIC,
+                emissive_boost: DEFAULT_MATERIAL_FACILITY_EMISSIVE_BOOST,
+            },
+            fragment: ViewerFragmentMaterialConfig::default(),
         }
     }
 }
@@ -267,6 +374,72 @@ where
     }
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED") {
         config.assets.location_shell_enabled = value;
+    }
+    if let Some(value) =
+        parse_fragment_material_strategy(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY")
+    {
+        config.materials.fragment.strategy = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_UNLIT") {
+        config.materials.fragment.unlit = value;
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_ALPHA") {
+        if value.is_finite() && (MIN_FRAGMENT_ALPHA..=MAX_FRAGMENT_ALPHA).contains(&value) {
+            config.materials.fragment.alpha = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST") {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.fragment.emissive_boost = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.agent.roughness = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.agent.metallic = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_AGENT_EMISSIVE_BOOST") {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.agent.emissive_boost = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.asset.roughness = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.asset.metallic = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_ASSET_EMISSIVE_BOOST") {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.asset.emissive_boost = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.facility.roughness = value;
+        }
+    }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC") {
+        if value.is_finite() && (0.0..=1.0).contains(&value) {
+            config.materials.facility.metallic = value;
+        }
+    }
+    if let Some(value) = parse_f32(
+        &lookup,
+        "AGENT_WORLD_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST",
+    ) {
+        if value.is_finite() && value >= 0.0 {
+            config.materials.facility.emissive_boost = value;
+        }
     }
     if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_START") {
         if value.is_finite() && value >= 0.0 {
@@ -421,6 +594,20 @@ where
     })
 }
 
+fn parse_fragment_material_strategy<F>(
+    lookup: &F,
+    key: &str,
+) -> Option<ViewerFragmentMaterialStrategy>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
+        "readability" | "readable" | "clarity" => Some(ViewerFragmentMaterialStrategy::Readability),
+        "fidelity" | "quality" | "realistic" => Some(ViewerFragmentMaterialStrategy::Fidelity),
+        _ => None,
+    })
+}
+
 fn parse_f32<F>(lookup: &F, key: &str) -> Option<f32>
 where
     F: Fn(&str) -> Option<String>,
@@ -464,6 +651,20 @@ mod tests {
         assert!(config.highlight_selected);
         assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Balanced);
         assert!(config.assets.location_shell_enabled);
+        assert!(
+            (config.materials.agent.roughness - DEFAULT_MATERIAL_AGENT_ROUGHNESS).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (config.materials.agent.metallic - DEFAULT_MATERIAL_AGENT_METALLIC).abs()
+                < f32::EPSILON
+        );
+        assert_eq!(
+            config.materials.fragment.strategy,
+            ViewerFragmentMaterialStrategy::Readability
+        );
+        assert!(config.materials.fragment.unlit);
+        assert!((config.materials.fragment.alpha - DEFAULT_FRAGMENT_ALPHA).abs() < f32::EPSILON);
         assert!(
             (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
                 < f32::EPSILON
@@ -524,6 +725,16 @@ mod tests {
             ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
             ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
             ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_UNLIT", "false"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_ALPHA", "0.78"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST", "0.40"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS", "0.44"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC", "0.22"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_ASSET_ROUGHNESS", "0.61"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_ASSET_METALLIC", "0.33"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS", "0.53"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC", "0.47"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "44"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "110"),
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "32"),
@@ -556,6 +767,19 @@ mod tests {
         assert!(!config.highlight_selected);
         assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Cinematic);
         assert!(config.assets.location_shell_enabled);
+        assert_eq!(
+            config.materials.fragment.strategy,
+            ViewerFragmentMaterialStrategy::Fidelity
+        );
+        assert!(!config.materials.fragment.unlit);
+        assert!((config.materials.fragment.alpha - 0.78).abs() < f32::EPSILON);
+        assert!((config.materials.fragment.emissive_boost - 0.40).abs() < f32::EPSILON);
+        assert!((config.materials.agent.roughness - 0.44).abs() < f32::EPSILON);
+        assert!((config.materials.agent.metallic - 0.22).abs() < f32::EPSILON);
+        assert!((config.materials.asset.roughness - 0.61).abs() < f32::EPSILON);
+        assert!((config.materials.asset.metallic - 0.33).abs() < f32::EPSILON);
+        assert!((config.materials.facility.roughness - 0.53).abs() < f32::EPSILON);
+        assert!((config.materials.facility.metallic - 0.47).abs() < f32::EPSILON);
         assert!((config.label_lod.fade_start_distance - 44.0).abs() < f32::EPSILON);
         assert!((config.label_lod.fade_end_distance - 110.0).abs() < f32::EPSILON);
         assert_eq!(config.label_lod.max_visible_labels, 32);
@@ -587,6 +811,12 @@ mod tests {
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
             ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "ultra"),
             ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "maybe"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "hyper"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_UNLIT", "idk"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_ALPHA", "1.5"),
+            ("AGENT_WORLD_VIEWER_FRAGMENT_EMISSIVE_BOOST", "-1"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_ROUGHNESS", "4"),
+            ("AGENT_WORLD_VIEWER_MATERIAL_AGENT_METALLIC", "-3"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "-5"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "2"),
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "0"),
@@ -618,6 +848,20 @@ mod tests {
         assert_eq!(
             config.assets.location_shell_enabled,
             DEFAULT_LOCATION_SHELL_ENABLED
+        );
+        assert_eq!(
+            config.materials.fragment.strategy,
+            ViewerFragmentMaterialStrategy::Readability
+        );
+        assert_eq!(config.materials.fragment.unlit, DEFAULT_FRAGMENT_UNLIT);
+        assert!((config.materials.fragment.alpha - DEFAULT_FRAGMENT_ALPHA).abs() < f32::EPSILON);
+        assert!(
+            (config.materials.agent.roughness - DEFAULT_MATERIAL_AGENT_ROUGHNESS).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (config.materials.agent.metallic - DEFAULT_MATERIAL_AGENT_METALLIC).abs()
+                < f32::EPSILON
         );
         assert!(
             (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
@@ -687,6 +931,11 @@ mod tests {
         assert_eq!(debug_config.render_profile, ViewerRenderProfile::Debug);
         assert_eq!(debug_config.assets.geometry_tier, ViewerGeometryTier::Debug);
         assert!(!debug_config.assets.location_shell_enabled);
+        assert_eq!(
+            debug_config.materials.fragment.strategy,
+            ViewerFragmentMaterialStrategy::Readability
+        );
+        assert!(debug_config.materials.fragment.unlit);
 
         let cinematic_with_override_env = HashMap::from([
             ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "cinematic"),
@@ -704,6 +953,11 @@ mod tests {
             ViewerGeometryTier::Cinematic
         );
         assert!(!cinematic_config.assets.location_shell_enabled);
+        assert_eq!(
+            cinematic_config.materials.fragment.strategy,
+            ViewerFragmentMaterialStrategy::Fidelity
+        );
+        assert!(!cinematic_config.materials.fragment.unlit);
     }
 
     #[test]
