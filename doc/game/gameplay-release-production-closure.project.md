@@ -24,9 +24,9 @@
 - [x] 补充 runtime + llm_agent 定向测试
 
 ### T4 收口与回写
-- [ ] 回写本项目文档状态
-- [ ] 追加当日 devlog 任务日志（每任务一条）
-- [ ] 运行相关测试并记录
+- [x] 回写本项目文档状态
+- [x] 追加当日 devlog 任务日志（每任务一条）
+- [x] 运行相关测试并记录
 
 ## 依赖
 - Runtime Gameplay 基线：`crates/agent_world/src/runtime/world/*`
@@ -35,5 +35,5 @@
 - 测试口径手册：`testing-manual.md`
 
 ## 状态
-- 当前阶段：T4（进行中）
+- 当前阶段：已完成（T0~T4）
 - 阻塞项：无
