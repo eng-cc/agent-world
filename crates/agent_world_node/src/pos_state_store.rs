@@ -145,5 +145,7 @@ impl PosNodeEngine {
         self.last_execution_height = snapshot.last_execution_height;
         self.last_execution_block_hash = snapshot.last_execution_block_hash;
         self.last_execution_state_root = snapshot.last_execution_state_root;
+        self.execution_bindings.clear();
+        self.remember_execution_binding_for_height(self.last_execution_height);
     }
 }

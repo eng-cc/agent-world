@@ -56,7 +56,8 @@ pub use network_bridge::NodeReplicationNetworkHandle;
 pub use replication::NodeReplicationConfig;
 pub use types::{
     NodeCommittedActionBatch, NodeConfig, NodeConsensusMode, NodeConsensusSnapshot,
-    NodeGossipConfig, NodePosConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
+    NodeGossipConfig, NodePeerCommittedHead, NodePosConfig, NodeRole, NodeSnapshot,
+    PosConsensusStatus, PosValidator,
 };
 
 use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
@@ -73,6 +74,7 @@ use runtime_util::{lock_state, now_unix_ms};
 const STORAGE_GATE_NETWORK_SAMPLES_PER_CHECK: usize = 3;
 const STORAGE_GATE_NETWORK_MIN_MATCHES_CAP: usize = 2;
 const REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT: usize = 3;
+const EXECUTION_BINDING_HISTORY_LIMIT: usize = 256;
 
 fn required_network_blob_matches(sample_count: usize) -> usize {
     sample_count
@@ -82,7 +84,10 @@ fn required_network_blob_matches(sample_count: usize) -> usize {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum GapSyncHeightOutcome {
-    Synced { block_hash: String },
+    Synced {
+        block_hash: String,
+        committed_at_ms: i64,
+    },
     NotFound,
 }
 
@@ -464,13 +469,16 @@ struct PosNodeEngine {
     last_broadcast_local_attestation_height: u64,
     last_broadcast_committed_height: u64,
     replicate_local_commits: bool,
+    require_peer_execution_hashes: bool,
     consensus_signer: Option<ConsensusMessageSigner>,
     enforce_consensus_signature: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
+    last_committed_at_ms: Option<i64>,
     last_committed_block_hash: Option<String>,
     last_execution_height: u64,
     last_execution_block_hash: Option<String>,
     last_execution_state_root: Option<String>,
+    execution_bindings: BTreeMap<u64, (String, String)>,
     pending_consensus_actions: BTreeMap<u64, NodeConsensusAction>,
 }
 
@@ -534,6 +542,21 @@ struct ReplicationCommitPayloadView {
     execution_state_root: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ReplicationCommitPayload {
+    world_id: String,
+    node_id: String,
+    height: u64,
+    block_hash: String,
+    action_root: String,
+    actions: Vec<NodeConsensusAction>,
+    committed_at_ms: i64,
+    #[serde(default)]
+    execution_block_hash: Option<String>,
+    #[serde(default)]
+    execution_state_root: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NodeEngineTickResult {
     consensus_snapshot: NodeConsensusSnapshot,
@@ -575,7 +598,7 @@ impl PosNodeEngine {
             epoch_length_slots: config.pos_config.epoch_length_slots,
             local_validator_id: config.node_id.clone(),
             node_player_id: config.player_id.clone(),
-            require_execution_on_commit: matches!(config.role, NodeRole::Sequencer),
+            require_execution_on_commit: config.require_execution_on_commit,
             next_height: 1,
             next_slot: 0,
             committed_height: 0,
@@ -587,13 +610,16 @@ impl PosNodeEngine {
             last_broadcast_committed_height: 0,
             replicate_local_commits: matches!(config.role, NodeRole::Sequencer)
                 && config.replication.is_some(),
+            require_peer_execution_hashes: config.require_peer_execution_hashes,
             consensus_signer,
             enforce_consensus_signature,
             peer_heads: BTreeMap::new(),
+            last_committed_at_ms: None,
             last_committed_block_hash: None,
             last_execution_height: 0,
             last_execution_block_hash: None,
             last_execution_state_root: None,
+            execution_bindings: BTreeMap::new(),
             pending_consensus_actions: BTreeMap::new(),
         })
     }
@@ -654,6 +680,11 @@ impl PosNodeEngine {
         let prev_committed_height = self.committed_height;
         self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
         self.apply_decision(&decision);
+        if matches!(decision.status, PosConsensusStatus::Committed)
+            && decision.height > prev_committed_height
+        {
+            self.last_committed_at_ms = Some(now_ms);
+        }
         if let Some(endpoint) = consensus_network.as_ref() {
             self.broadcast_local_commit_network(endpoint, node_id, world_id, now_ms, &decision)?;
         } else if let Some(endpoint) = gossip.as_ref() {
@@ -961,18 +992,33 @@ impl PosNodeEngine {
         self.last_execution_height = result.execution_height;
         self.last_execution_block_hash = Some(result.execution_block_hash);
         self.last_execution_state_root = Some(result.execution_state_root);
+        self.remember_execution_binding_for_height(decision.height);
         Ok(())
     }
 
     fn snapshot_from_decision(&self, decision: &PosDecision) -> NodeConsensusSnapshot {
+        let peer_heads = self
+            .peer_heads
+            .iter()
+            .map(|(node_id, head)| NodePeerCommittedHead {
+                node_id: node_id.clone(),
+                height: head.height,
+                block_hash: head.block_hash.clone(),
+                committed_at_ms: head.committed_at_ms,
+                execution_block_hash: head.execution_block_hash.clone(),
+                execution_state_root: head.execution_state_root.clone(),
+            })
+            .collect::<Vec<_>>();
         NodeConsensusSnapshot {
             mode: NodeConsensusMode::Pos,
             slot: self.next_slot,
             epoch: self.slot_epoch(self.next_slot),
             latest_height: decision.height,
             committed_height: self.committed_height,
+            last_committed_at_ms: self.last_committed_at_ms,
             network_committed_height: self.network_committed_height.max(self.committed_height),
             known_peer_heads: self.peer_heads.len(),
+            peer_heads,
             last_status: Some(decision.status),
             last_block_hash: Some(decision.block_hash.clone()),
             last_execution_height: self.last_execution_height,
@@ -985,11 +1031,10 @@ impl PosNodeEngine {
         &self,
         committed_height: u64,
     ) -> Result<(Option<&str>, Option<&str>), NodeError> {
-        if self.last_execution_height != committed_height {
-            return Ok((None, None));
-        }
-        let execution_block_hash = self.last_execution_block_hash.as_deref();
-        let execution_state_root = self.last_execution_state_root.as_deref();
+        let (execution_block_hash, execution_state_root) = self
+            .execution_binding_for_height(committed_height)
+            .map(|(block_hash, state_root)| (Some(block_hash), Some(state_root)))
+            .unwrap_or((None, None));
         if execution_block_hash.is_some() != execution_state_root.is_some() {
             return Err(NodeError::Consensus {
                 reason:
@@ -998,6 +1043,88 @@ impl PosNodeEngine {
             });
         }
         Ok((execution_block_hash, execution_state_root))
+    }
+
+    fn execution_binding_for_height(&self, height: u64) -> Option<(&str, &str)> {
+        if let Some((block_hash, state_root)) = self.execution_bindings.get(&height) {
+            return Some((block_hash.as_str(), state_root.as_str()));
+        }
+        if self.last_execution_height != height {
+            return None;
+        }
+        match (
+            self.last_execution_block_hash.as_deref(),
+            self.last_execution_state_root.as_deref(),
+        ) {
+            (Some(block_hash), Some(state_root)) => Some((block_hash, state_root)),
+            _ => None,
+        }
+    }
+
+    fn remember_execution_binding_for_height(&mut self, height: u64) {
+        let (Some(block_hash), Some(state_root)) = (
+            self.last_execution_block_hash.as_ref(),
+            self.last_execution_state_root.as_ref(),
+        ) else {
+            return;
+        };
+        self.execution_bindings
+            .insert(height, (block_hash.clone(), state_root.clone()));
+        while self.execution_bindings.len() > EXECUTION_BINDING_HISTORY_LIMIT {
+            let Some(first_height) = self.execution_bindings.keys().next().copied() else {
+                break;
+            };
+            self.execution_bindings.remove(&first_height);
+        }
+    }
+
+    fn validate_peer_commit_execution_binding(
+        &self,
+        height: u64,
+        execution_block_hash: Option<&str>,
+        execution_state_root: Option<&str>,
+    ) -> Result<(), NodeError> {
+        if execution_block_hash.is_some() != execution_state_root.is_some() {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "peer commit execution binding malformed at height {}: block/state pair mismatch",
+                    height
+                ),
+            });
+        }
+        if self.require_peer_execution_hashes
+            && (execution_block_hash.is_none() || execution_state_root.is_none())
+        {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "peer commit missing required execution hashes at height {}",
+                    height
+                ),
+            });
+        }
+        let Some((local_block_hash, local_state_root)) = self.execution_binding_for_height(height)
+        else {
+            return Ok(());
+        };
+        let (Some(peer_block_hash), Some(peer_state_root)) =
+            (execution_block_hash, execution_state_root)
+        else {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "peer commit missing execution hashes at locally executed height {}",
+                    height
+                ),
+            });
+        };
+        if local_block_hash != peer_block_hash || local_state_root != peer_state_root {
+            return Err(NodeError::Consensus {
+                reason: format!(
+                    "peer commit execution mismatch at height {}: local_block={} peer_block={} local_state={} peer_state={}",
+                    height, local_block_hash, peer_block_hash, local_state_root, peer_state_root
+                ),
+            });
+        }
+        Ok(())
     }
 
     fn broadcast_local_replication(
@@ -1174,6 +1301,20 @@ impl PosNodeEngine {
                 }
             }
             if let Some(payload) = payload_view.as_ref() {
+                if self
+                    .validate_peer_commit_execution_binding(
+                        payload.height,
+                        payload.execution_block_hash.as_deref(),
+                        payload.execution_state_root.as_deref(),
+                    )
+                    .is_err()
+                {
+                    rejected.push(format!(
+                        "node_id={} world_id={} err=peer execution hash validation failed for height {}",
+                        message.node_id, message.world_id, payload.height
+                    ));
+                    continue;
+                }
                 self.observe_network_replication_commit(message.node_id.as_str(), payload);
             }
             let should_apply = payload_view
@@ -1194,6 +1335,7 @@ impl PosNodeEngine {
                             self.record_synced_replication_height(
                                 payload.height,
                                 payload.block_hash,
+                                payload.committed_at_ms,
                             );
                         }
                     }
@@ -1253,19 +1395,22 @@ impl PosNodeEngine {
 
         let mut next_height = self.committed_height.saturating_add(1);
         while next_height <= self.network_committed_height {
-            let mut synced_block_hash: Option<String> = None;
+            let mut synced_commit: Option<(String, i64)> = None;
             let mut not_found = false;
             let mut last_error = None;
             for attempt in 1..=REPLICATION_GAP_SYNC_MAX_RETRIES_PER_HEIGHT {
-                match Self::sync_replication_height_once(
+                match self.sync_replication_height_once(
                     endpoint,
                     node_id,
                     world_id,
                     replication_runtime,
                     next_height,
                 ) {
-                    Ok(GapSyncHeightOutcome::Synced { block_hash }) => {
-                        synced_block_hash = Some(block_hash);
+                    Ok(GapSyncHeightOutcome::Synced {
+                        block_hash,
+                        committed_at_ms,
+                    }) => {
+                        synced_commit = Some((block_hash, committed_at_ms));
                         break;
                     }
                     Ok(GapSyncHeightOutcome::NotFound) => {
@@ -1280,8 +1425,8 @@ impl PosNodeEngine {
                     }
                 }
             }
-            if let Some(block_hash) = synced_block_hash {
-                self.record_synced_replication_height(next_height, block_hash);
+            if let Some((block_hash, committed_at_ms)) = synced_commit {
+                self.record_synced_replication_height(next_height, block_hash, committed_at_ms);
                 next_height = next_height.saturating_add(1);
                 continue;
             }
@@ -1301,6 +1446,7 @@ impl PosNodeEngine {
     }
 
     fn sync_replication_height_once(
+        &self,
         endpoint: &ReplicationNetworkEndpoint,
         node_id: &str,
         world_id: &str,
@@ -1355,10 +1501,28 @@ impl PosNodeEngine {
             ),
         })?;
         message.payload = blob;
-        let payload = parse_replication_commit_payload_view(message.payload.as_slice())
-            .ok_or_else(|| NodeError::Replication {
-                reason: format!("gap sync height {} payload decode failed", height),
+        let payload =
+            parse_replication_commit_payload(message.payload.as_slice()).ok_or_else(|| {
+                NodeError::Replication {
+                    reason: format!("gap sync height {} payload decode failed", height),
+                }
             })?;
+        if payload.world_id != world_id {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} payload world mismatch expected={} actual={}",
+                    height, world_id, payload.world_id
+                ),
+            });
+        }
+        if payload.node_id != message.node_id {
+            return Err(NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} payload node mismatch expected={} actual={}",
+                    height, message.node_id, payload.node_id
+                ),
+            });
+        }
         if payload.height != height {
             return Err(NodeError::Replication {
                 reason: format!(
@@ -1367,6 +1531,29 @@ impl PosNodeEngine {
                 ),
             });
         }
+        if payload.block_hash.trim().is_empty() {
+            return Err(NodeError::Replication {
+                reason: format!("gap sync height {} payload block_hash is empty", height),
+            });
+        }
+        validate_consensus_action_root(payload.action_root.as_str(), payload.actions.as_slice())
+            .map_err(|err| NodeError::Replication {
+                reason: format!(
+                    "gap sync height {} action_root validation failed: {:?}",
+                    height, err
+                ),
+            })?;
+        self.validate_peer_commit_execution_binding(
+            payload.height,
+            payload.execution_block_hash.as_deref(),
+            payload.execution_state_root.as_deref(),
+        )
+        .map_err(|err| NodeError::Replication {
+            reason: format!(
+                "gap sync height {} execution hash validation failed: {}",
+                height, err
+            ),
+        })?;
         replication_runtime.apply_remote_message(node_id, world_id, &message)?;
         let persisted = replication_runtime.load_commit_message_by_height(world_id, height)?;
         if persisted
@@ -1382,15 +1569,22 @@ impl PosNodeEngine {
             });
         }
         Ok(GapSyncHeightOutcome::Synced {
-            block_hash: payload.block_hash,
+            block_hash: payload.block_hash.clone(),
+            committed_at_ms: payload.committed_at_ms,
         })
     }
 
-    fn record_synced_replication_height(&mut self, height: u64, block_hash: String) {
+    fn record_synced_replication_height(
+        &mut self,
+        height: u64,
+        block_hash: String,
+        committed_at_ms: i64,
+    ) {
         if height <= self.committed_height {
             return;
         }
         self.committed_height = height;
+        self.last_committed_at_ms = Some(committed_at_ms);
         self.next_height = self.next_height.max(height.saturating_add(1));
         self.last_committed_block_hash = Some(block_hash);
         self.pending = None;
@@ -1544,8 +1738,13 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    if commit.execution_block_hash.is_some()
-                        != commit.execution_state_root.is_some()
+                    if self
+                        .validate_peer_commit_execution_binding(
+                            commit.height,
+                            commit.execution_block_hash.as_deref(),
+                            commit.execution_state_root.as_deref(),
+                        )
+                        .is_err()
                     {
                         continue;
                     }
@@ -1653,8 +1852,13 @@ impl PosNodeEngine {
                     {
                         continue;
                     }
-                    if commit.execution_block_hash.is_some()
-                        != commit.execution_state_root.is_some()
+                    if self
+                        .validate_peer_commit_execution_binding(
+                            commit.height,
+                            commit.execution_block_hash.as_deref(),
+                            commit.execution_state_root.as_deref(),
+                        )
+                        .is_err()
                     {
                         continue;
                     }
@@ -1789,6 +1993,10 @@ impl PosNodeEngine {
 
 fn parse_replication_commit_payload_view(payload: &[u8]) -> Option<ReplicationCommitPayloadView> {
     serde_json::from_slice::<ReplicationCommitPayloadView>(payload).ok()
+}
+
+fn parse_replication_commit_payload(payload: &[u8]) -> Option<ReplicationCommitPayload> {
+    serde_json::from_slice::<ReplicationCommitPayload>(payload).ok()
 }
 
 #[cfg(test)]

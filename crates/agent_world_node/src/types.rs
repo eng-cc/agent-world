@@ -122,6 +122,8 @@ pub struct NodeConfig {
     pub role: NodeRole,
     pub pos_config: NodePosConfig,
     pub auto_attest_all_validators: bool,
+    pub require_execution_on_commit: bool,
+    pub require_peer_execution_hashes: bool,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
 }
@@ -165,6 +167,8 @@ impl NodeConfig {
             role,
             pos_config,
             auto_attest_all_validators: false,
+            require_execution_on_commit: matches!(role, NodeRole::Sequencer),
+            require_peer_execution_hashes: false,
             gossip: None,
             replication: None,
         })
@@ -203,6 +207,16 @@ impl NodeConfig {
 
     pub fn with_auto_attest_all_validators(mut self, enabled: bool) -> Self {
         self.auto_attest_all_validators = enabled;
+        self
+    }
+
+    pub fn with_require_execution_on_commit(mut self, enabled: bool) -> Self {
+        self.require_execution_on_commit = enabled;
+        self
+    }
+
+    pub fn with_require_peer_execution_hashes(mut self, enabled: bool) -> Self {
+        self.require_peer_execution_hashes = enabled;
         self
     }
 
@@ -271,13 +285,25 @@ pub struct NodeConsensusSnapshot {
     pub epoch: u64,
     pub latest_height: u64,
     pub committed_height: u64,
+    pub last_committed_at_ms: Option<i64>,
     pub network_committed_height: u64,
     pub known_peer_heads: usize,
+    pub peer_heads: Vec<NodePeerCommittedHead>,
     pub last_status: Option<PosConsensusStatus>,
     pub last_block_hash: Option<String>,
     pub last_execution_height: u64,
     pub last_execution_block_hash: Option<String>,
     pub last_execution_state_root: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct NodePeerCommittedHead {
+    pub node_id: String,
+    pub height: u64,
+    pub block_hash: String,
+    pub committed_at_ms: i64,
+    pub execution_block_hash: Option<String>,
+    pub execution_state_root: Option<String>,
 }
 
 impl Default for NodeConsensusSnapshot {
@@ -288,8 +314,10 @@ impl Default for NodeConsensusSnapshot {
             epoch: 0,
             latest_height: 0,
             committed_height: 0,
+            last_committed_at_ms: None,
             network_committed_height: 0,
             known_peer_heads: 0,
+            peer_heads: Vec::new(),
             last_status: None,
             last_block_hash: None,
             last_execution_height: 0,
