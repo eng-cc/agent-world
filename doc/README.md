@@ -10,6 +10,11 @@
 - `doc/viewer-manual.md`：Viewer 使用手册（中文基线）。
 - `doc/README.md`：本目录索引（当前文件）。
 
+## 文档治理入口
+- `doc/doc-structure-cleanup-2026-02-20.md` 与 `doc/doc-structure-cleanup-2026-02-20.project.md`：目录分层整理方案与执行状态。
+- `doc/doc-archive-audit-2026-02-20.md`、`doc/doc-archive-audit-2026-02-20.project.md`、`doc/doc-archive-audit-2026-02-20.result.md`：首轮归档审计方案与结果。
+- `doc/doc-structure-freshness-review-round2-2026-02-20.md`、`doc/doc-structure-freshness-review-round2-2026-02-20.project.md`、`doc/doc-structure-freshness-review-round2-2026-02-20.result.md`：第二轮结构与时效复核方案与结果。
+
 ## 目录分层
 - `doc/readme/`：README 对齐与缺口收口相关设计/项目文档。
 - `doc/site/`：GitHub Pages 与静态站手册同步相关文档。

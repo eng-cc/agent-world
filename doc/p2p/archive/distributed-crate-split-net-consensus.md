@@ -1,7 +1,6 @@
 > [!WARNING]
 > 该文档已过期，仅供历史追溯，不再作为当前实现依据。
 > 归档日期：2026-02-16
-
 # Agent World Runtime：`agent_world_net` + `agent_world_consensus` 拆分（设计文档）
 
 ## 目标
