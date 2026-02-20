@@ -1,3 +1,7 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Agent World Runtime：删除旧 `agent_world_builtin_wasm` 并替换为新流程设计
 
 ## 目标

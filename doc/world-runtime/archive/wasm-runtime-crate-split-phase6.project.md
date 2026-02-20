@@ -7,7 +7,7 @@
 
 
 ## 任务拆解
-- [x] R6-0 输出设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.md`）
+- [x] R6-0 输出设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase6.md`）
 - [x] R6-0 输出项目管理文档（本文件）
 - [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 

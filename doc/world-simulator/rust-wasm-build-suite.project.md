@@ -9,7 +9,7 @@
 ## 依赖
 - `tools/`
 - `scripts/`
-- `crates/agent_world/src/runtime/sandbox.rs`
+- `crates/agent_world_wasm_executor/src/lib.rs`
 - `doc/world-simulator/rust-wasm-build-suite.md`
 
 ## 状态

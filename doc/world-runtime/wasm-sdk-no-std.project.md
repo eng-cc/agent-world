@@ -8,7 +8,7 @@
 - `crates/agent_world_wasm_sdk`
 - `crates/agent_world_builtin_wasm_modules/*`
 - `crates/agent_world/src/runtime/*`
-- `third_party/agent-os/crates/aos-wasm-sdk`（参考）
+- `third_party/agent-os/`（参考）
 
 ## 状态
 - 当前阶段：NSDK-2 已完成。

@@ -7,7 +7,7 @@
 
 
 ## 任务拆解
-- [x] R3-0 输出设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.md`）
+- [x] R3-0 输出设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase3.md`）
 - [x] R3-0 输出项目管理文档（本文件）
 - [x] R3-1 迁移 `ModuleArtifact/ModuleCache` 到 `agent_world_wasm_abi` 并回归
 - [x] R3-2 迁移 `agent_world_net::ModuleArtifact` 到 ABI 统一定义并回归

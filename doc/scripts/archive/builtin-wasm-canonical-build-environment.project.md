@@ -1,7 +1,11 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Builtin Wasm Canonical 构建环境固化（项目管理文档）
 
 ## 任务拆解
-- [x] CBE-1 设计文档：`doc/scripts/builtin-wasm-canonical-build-environment.md`
+- [x] CBE-1 设计文档：`doc/scripts/archive/builtin-wasm-canonical-build-environment.md`
 - [x] CBE-2 项目管理文档：本文件
 - [x] CBE-3 新增 canonical builder 脚本（容器化入口）并支持 dry-run（已取消：不再推进 Docker/Podman 容器化路线，2026-02-19）
 - [x] CBE-4 在 `sync-m1/m4` 中接入 canonical builder（默认路径）（已取消：不再推进 Docker/Podman 容器化路线，2026-02-19）

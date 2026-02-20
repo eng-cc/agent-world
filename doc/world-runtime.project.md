@@ -112,8 +112,8 @@
 - [x] 完成默认模块回放一致性与降级策略测试
 
 ### 8. Builtin 模块独立 Crate 化（BMS）
-- [x] 输出 BMS 设计文档（`doc/world-runtime/builtin-wasm-crate-split.md`）
-- [x] 输出 BMS 项目管理文档（`doc/world-runtime/builtin-wasm-crate-split.project.md`）
+- [x] 输出 BMS 设计文档（`doc/world-runtime/archive/builtin-wasm-crate-split.md`）
+- [x] 输出 BMS 项目管理文档（`doc/world-runtime/archive/builtin-wasm-crate-split.project.md`）
 - [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）
 - [x] BMS-2 接入构建脚本并补充验证
 - [x] BMS-3 回归验证与文档收口
@@ -191,37 +191,37 @@
 - [x] BMS-75 回归验证、文档与 devlog 收口（阶段七运行时闭环联测）
 
 ### 9. WASM 运行时激进拆分（WRS）
-- [x] 输出 WRS 设计文档（`doc/world-runtime/wasm-runtime-crate-split.md`）
-- [x] 输出 WRS 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split.project.md`）
+- [x] 输出 WRS 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split.md`）
+- [x] 输出 WRS 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split.project.md`）
 - [x] WRS-2 新建 ABI/Executor/Router 三 crate 并接入 `agent_world`
 - [x] WRS-3 拆分 `agent_world_builtin_wasm/src/lib.rs`（目录化）
 - [x] WRS-4 回归验证、文档与 devlog 收口
 
 ### 10. WASM 拆分后测试加固（R2）
-- [x] 输出 R2 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.md`）
-- [x] 输出 R2 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase2.project.md`）
+- [x] 输出 R2 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase2.md`）
+- [x] 输出 R2 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase2.project.md`）
 - [x] R2-1 补齐 `agent_world_wasm_router` 单元测试并回归
 - [x] R2-2 补齐 `agent_world_wasm_executor` 单元测试并回归
 
 ### 11. WASM 运行时激进迁移（R3）
-- [x] 输出 R3 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.md`）
-- [x] 输出 R3 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase3.project.md`）
+- [x] 输出 R3 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase3.md`）
+- [x] 输出 R3 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase3.project.md`）
 - [x] R3-1 迁移 `ModuleArtifact/ModuleCache` 到 `agent_world_wasm_abi` 并回归
 - [x] R3-2 迁移 `agent_world_net::ModuleArtifact` 到 ABI 统一定义并回归
 
 ### 12. WASM 运行时激进迁移（R4）
-- [x] 输出 R4 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase4.md`）
-- [x] 输出 R4 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase4.project.md`）
+- [x] 输出 R4 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase4.md`）
+- [x] 输出 R4 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase4.project.md`）
 - [x] R4-1 迁移模块清单与变更计划类型到 `agent_world_wasm_abi` 并回归
 
 ### 13. WASM 运行时激进迁移（R5）
-- [x] 输出 R5 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.md`）
-- [x] 输出 R5 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase5.project.md`）
+- [x] 输出 R5 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase5.md`）
+- [x] 输出 R5 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase5.project.md`）
 - [x] R5-1 迁移模块注册表与生命周期事件类型到 `agent_world_wasm_abi` 并回归
 
 ### 14. WASM 运行时激进迁移（R6）
-- [x] 输出 R6 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.md`）
-- [x] 输出 R6 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase6.project.md`）
+- [x] 输出 R6 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase6.md`）
+- [x] 输出 R6 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase6.project.md`）
 - [x] R6-1 提取 `ModuleStore` 文件存储实现到独立 crate 并回归
 
 ### 15. 分布式能力彻底拆分（R7）
@@ -235,8 +235,8 @@
 - [x] R7-6 拆分全部超 1200 行 Rust 文件并回归
 
 ### 16. WASM 运行时边界收敛（R8）
-- [x] 输出 R8 设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase8.md`）
-- [x] 输出 R8 项目管理文档（`doc/world-runtime/wasm-runtime-crate-split-phase8.project.md`）
+- [x] 输出 R8 设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase8.md`）
+- [x] 输出 R8 项目管理文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase8.project.md`）
 - [x] R8-1 删除 `runtime/sandbox.rs` 门面并切换调用方到 `agent_world_wasm_abi` / `agent_world_wasm_executor`
 - [x] R8-2 回归验证（`agent_world` 编译与测试，`--features wasmtime`）
 

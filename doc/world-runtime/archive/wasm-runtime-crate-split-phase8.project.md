@@ -12,7 +12,7 @@
 - [x] R8-2：完成 `agent_world` 编译与回归测试（`cargo check` + `cargo test`，`--features wasmtime`）。
 
 ## 依赖
-- `doc/world-runtime/wasm-runtime-crate-split-phase8.md`
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase8.md`
 - `crates/agent_world`
 - `crates/agent_world_wasm_abi`
 - `crates/agent_world_wasm_executor`

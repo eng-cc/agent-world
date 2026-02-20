@@ -1,9 +1,13 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # GitHub Pages 惊艳化精修（二期）项目管理文档
 
 ## 任务拆解
 
 ### 0. 文档与基线
-- [x] 输出二期设计文档（`doc/site/github-pages-wow-polish.md`）
+- [x] 输出二期设计文档（`doc/site/archive/github-pages-wow-polish.md`）
 - [x] 输出二期项目管理文档（本文件）
 - [x] 建立发布前检查清单（视觉/内容/性能/可访问性）
 

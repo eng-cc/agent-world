@@ -7,7 +7,7 @@
 
 
 ## 任务拆解
-- [x] R4-0 输出设计文档（`doc/world-runtime/wasm-runtime-crate-split-phase4.md`）
+- [x] R4-0 输出设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split-phase4.md`）
 - [x] R4-0 输出项目管理文档（本文件）
 - [x] R4-1 迁移模块清单与变更计划类型到 `agent_world_wasm_abi` 并回归
 

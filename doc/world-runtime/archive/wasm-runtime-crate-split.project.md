@@ -7,7 +7,7 @@
 
 
 ## 任务拆解
-- [x] WRS-1 输出设计文档（`doc/world-runtime/wasm-runtime-crate-split.md`）
+- [x] WRS-1 输出设计文档（`doc/world-runtime/archive/wasm-runtime-crate-split.md`）
 - [x] WRS-1 输出项目管理文档（本文件）
 - [x] WRS-2 新建 `agent_world_wasm_abi` 并迁移 wasm ABI 协议类型/trait
 - [x] WRS-2 新建 `agent_world_wasm_executor` 并迁移执行器实现

@@ -1,3 +1,7 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Agent World Runtime：Builtin WASM 模块独立工程化（MIP）设计文档
 
 ## 目标

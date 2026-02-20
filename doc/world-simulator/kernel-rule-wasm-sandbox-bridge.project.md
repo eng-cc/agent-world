@@ -11,7 +11,7 @@
 - `crates/agent_world/src/simulator/kernel/step.rs`
 - `crates/agent_world/src/simulator/kernel/types.rs`
 - `crates/agent_world/src/simulator/tests/`
-- `crates/agent_world/src/runtime/sandbox.rs`
+- `crates/agent_world_wasm_executor/src/lib.rs`
 - `doc/world-simulator/kernel-rule-wasm-sandbox-bridge.md`
 
 ## 状态

@@ -236,7 +236,7 @@
   - 降低 `no terminal decision` 与 `module call limit exceeded` 的连锁概率。
   - 在不增加 LLM 请求次数的前提下提升多步协议收敛性。
 
-- 问题：当前模块调用主要依赖 `{"type":"module_call",...}` 文本协议，未充分利用 OpenAI `tools/tool_calls` 原生结构，跨模型兼容性与结构化约束不足。
+- 问题：当前模块调用主要依赖 `{"type":"module_call",...}` 文本协议，未充分利用 OpenAI tools/tool_calls 原生结构，跨模型兼容性与结构化约束不足。
 - 方案：将模块能力以 OpenAI `tools` 形态注册到请求层（现已迁移至 `async-openai` Responses API），并在响应侧优先解析函数调用：
   - 请求注册：每轮请求携带函数工具定义（name/description/parameters），`tool_choice=auto`。
   - 名称兼容：对外使用 OpenAI 友好命名（`agent_modules_list` 等），内部映射回既有模块名（`agent.modules.list` 等）。

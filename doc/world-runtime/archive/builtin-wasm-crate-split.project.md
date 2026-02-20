@@ -1,7 +1,11 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Agent World Runtime：Builtin 模块独立 Crate 化（BMS）项目管理文档
 
 ## 任务拆解
-- [x] BMS-0 输出设计文档（`doc/world-runtime/builtin-wasm-crate-split.md`）与项目管理文档（本文件）。
+- [x] BMS-0 输出设计文档（`doc/world-runtime/archive/builtin-wasm-crate-split.md`）与项目管理文档（本文件）。
 - [x] BMS-1 新增独立 crate 并迁移首个 builtin wasm 模块（`m1.rule.move`）。
 - [x] BMS-2 接入构建脚本（调用 Rust->Wasm 构建套件）并补充验证。
 - [x] BMS-3 回归验证、文档与 devlog 收口。

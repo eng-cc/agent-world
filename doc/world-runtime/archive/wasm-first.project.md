@@ -8,7 +8,7 @@
 
 ## 任务拆解
 ### 0. 对齐与准备
-- [x] 输出设计文档（`doc/world-runtime/wasm-first.md`）
+- [x] 输出设计文档（`doc/world-runtime/archive/wasm-first.md`）
 - [x] 输出项目管理文档（本文件）
 
 ### 1. Kernel 不变量与规则边界

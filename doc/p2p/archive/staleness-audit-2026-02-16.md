@@ -1,3 +1,7 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # P2P 文档过期性核查报告（2026-02-16）
 
 ## 核查目标
@@ -34,6 +38,6 @@
 - 个别历史路径以“历史说明”形式保留（非当前依赖）。
 
 ## 追踪文件
-- 最终迁移映射：`doc/p2p/migration-map.md`
+- 最终迁移映射：`doc/p2p/archive/migration-map.md`
 - 治理设计文档：`doc/p2p/p2p-doc-consolidation.md`
 - 治理项目文档：`doc/p2p/p2p-doc-consolidation.project.md`

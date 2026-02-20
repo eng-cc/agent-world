@@ -50,7 +50,7 @@
 - 位置：
   - `crates/agent_world/src/simulator/llm_agent/tests.rs`
   - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-  - 如需新文件：`crates/agent_world/src/simulator/llm_agent/tests_strategy.rs`
+  - 可按需要继续扩展 `crates/agent_world/src/simulator/llm_agent/tests.rs` 或新增分段测试文件
 - 用例设计：
   - 用例 A（成功主链路）：
     - mock 决策序列：`build_factory`（失败: insufficient hardware）-> `refine_compound` -> `build_factory`（成功）-> `schedule_recipe`（成功）。

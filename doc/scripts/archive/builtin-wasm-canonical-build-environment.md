@@ -1,3 +1,7 @@
+> [!WARNING]
+> 该文档已归档，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Builtin Wasm Canonical 构建环境固化方案（已终止）
 
 > 状态（2026-02-19）：已终止。Docker/Podman 容器化 canonical builder 路线不再推进。

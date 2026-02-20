@@ -67,16 +67,16 @@
 - `doc/world-runtime/testing.md`：集成测试用例与测试基架建议
 - `doc/world-runtime/module-storage.md`：模块存储持久化（registry/meta/artifacts）
 - `doc/p2p/distributed-runtime.md`：分布式计算与存储（计算/存储分离 + libp2p）
-- `doc/world-runtime/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
+- `doc/world-runtime/archive/wasm-first.md`：WASM First（除位置/资源/基础物理外全模块化）
 - `doc/world-runtime/agent-default-modules.md`：Agent 默认模块体系（身体/发电/储能/感知/移动/记忆/存储）
-- `doc/world-runtime/wasm-runtime-crate-split.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
-- `doc/world-runtime/wasm-runtime-crate-split-phase2.md`：WASM 拆分后测试加固（router/executor）
-- `doc/world-runtime/wasm-runtime-crate-split-phase3.md`：WASM 运行时激进迁移（工件/缓存类型下沉）
-- `doc/world-runtime/wasm-runtime-crate-split-phase4.md`：WASM 运行时激进迁移（模块清单/变更计划类型下沉）
-- `doc/world-runtime/wasm-runtime-crate-split-phase5.md`：WASM 运行时激进迁移（模块注册表/生命周期事件类型下沉）
-- `doc/world-runtime/wasm-runtime-crate-split-phase6.md`：WASM 运行时激进迁移（模块存储实现拆 crate）
+- `doc/world-runtime/archive/wasm-runtime-crate-split.md`：WASM 运行时激进拆分（ABI/执行器/路由拆 crate）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase2.md`：WASM 拆分后测试加固（router/executor）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase3.md`：WASM 运行时激进迁移（工件/缓存类型下沉）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase4.md`：WASM 运行时激进迁移（模块清单/变更计划类型下沉）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase5.md`：WASM 运行时激进迁移（模块注册表/生命周期事件类型下沉）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase6.md`：WASM 运行时激进迁移（模块存储实现拆 crate）
 - `doc/p2p/distributed-hard-split-phase7.md`：分布式能力彻底拆分（distfs + runtime distributed 清理 + viewer 协议下沉 + ABI 边界收敛）
-- `doc/world-runtime/wasm-runtime-crate-split-phase8.md`：WASM 运行时边界收敛（移除 runtime sandbox 门面，调用方直连 ABI/Executor）
+- `doc/world-runtime/archive/wasm-runtime-crate-split-phase8.md`：WASM 运行时边界收敛（移除 runtime sandbox 门面，调用方直连 ABI/Executor）
 
 ## 里程碑
 - **M0**：方案与接口冻结（本设计 + 项目管理文档）
