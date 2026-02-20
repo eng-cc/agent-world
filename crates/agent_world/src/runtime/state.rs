@@ -9,6 +9,10 @@ use std::collections::BTreeMap;
 use super::agent_cell::AgentCell;
 use super::error::WorldError;
 use super::events::DomainEvent;
+use super::gameplay_state::{
+    AllianceState, CrisisState, GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState,
+    WarState,
+};
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
     reward_mint_signature_v1, verify_reward_mint_signature_v2, NodeAssetBalance,
@@ -158,6 +162,16 @@ pub struct WorldState {
     #[serde(default)]
     pub pending_material_transits: BTreeMap<ActionId, MaterialTransitJobState>,
     #[serde(default)]
+    pub alliances: BTreeMap<String, AllianceState>,
+    #[serde(default)]
+    pub wars: BTreeMap<String, WarState>,
+    #[serde(default)]
+    pub governance_votes: BTreeMap<String, GovernanceVoteState>,
+    #[serde(default)]
+    pub crises: BTreeMap<String, CrisisState>,
+    #[serde(default)]
+    pub meta_progress: BTreeMap<String, MetaProgressState>,
+    #[serde(default)]
     pub module_states: BTreeMap<String, Vec<u8>>,
     #[serde(default)]
     pub module_artifact_owners: BTreeMap<String, String>,
@@ -205,6 +219,11 @@ impl Default for WorldState {
             pending_factory_builds: BTreeMap::new(),
             pending_recipe_jobs: BTreeMap::new(),
             pending_material_transits: BTreeMap::new(),
+            alliances: BTreeMap::new(),
+            wars: BTreeMap::new(),
+            governance_votes: BTreeMap::new(),
+            crises: BTreeMap::new(),
+            meta_progress: BTreeMap::new(),
             module_states: BTreeMap::new(),
             module_artifact_owners: BTreeMap::new(),
             module_artifact_listings: BTreeMap::new(),
@@ -1280,6 +1299,223 @@ impl WorldState {
                     })?;
                 }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::AllianceFormed {
+                proposer_agent_id,
+                alliance_id,
+                members,
+                charter,
+            } => {
+                for member in members {
+                    if !self.agents.contains_key(member) {
+                        return Err(WorldError::AgentNotFound {
+                            agent_id: member.clone(),
+                        });
+                    }
+                }
+                self.alliances.insert(
+                    alliance_id.clone(),
+                    AllianceState {
+                        alliance_id: alliance_id.clone(),
+                        members: members.clone(),
+                        charter: charter.clone(),
+                        formed_by_agent_id: proposer_agent_id.clone(),
+                        formed_at: now,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(proposer_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: proposer_agent_id.clone(),
+                    });
+                }
+                for member in members {
+                    if let Some(cell) = self.agents.get_mut(member) {
+                        cell.last_active = now;
+                    }
+                }
+            }
+            DomainEvent::WarDeclared {
+                initiator_agent_id,
+                war_id,
+                aggressor_alliance_id,
+                defender_alliance_id,
+                objective,
+                intensity,
+            } => {
+                if !self.alliances.contains_key(aggressor_alliance_id) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "war declare aggressor alliance missing: {}",
+                            aggressor_alliance_id
+                        ),
+                    });
+                }
+                if !self.alliances.contains_key(defender_alliance_id) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "war declare defender alliance missing: {}",
+                            defender_alliance_id
+                        ),
+                    });
+                }
+                self.wars.insert(
+                    war_id.clone(),
+                    WarState {
+                        war_id: war_id.clone(),
+                        initiator_agent_id: initiator_agent_id.clone(),
+                        aggressor_alliance_id: aggressor_alliance_id.clone(),
+                        defender_alliance_id: defender_alliance_id.clone(),
+                        objective: objective.clone(),
+                        intensity: *intensity,
+                        active: true,
+                        declared_at: now,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(initiator_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: initiator_agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::GovernanceVoteCast {
+                voter_agent_id,
+                proposal_key,
+                option,
+                weight,
+            } => {
+                if !self.agents.contains_key(voter_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: voter_agent_id.clone(),
+                    });
+                }
+
+                let state = self
+                    .governance_votes
+                    .entry(proposal_key.clone())
+                    .or_insert_with(|| GovernanceVoteState {
+                        proposal_key: proposal_key.clone(),
+                        votes_by_agent: BTreeMap::new(),
+                        tallies: BTreeMap::new(),
+                        total_weight: 0,
+                        last_updated_at: now,
+                    });
+
+                if let Some(previous_ballot) = state.votes_by_agent.get(voter_agent_id).cloned() {
+                    let previous_weight = u64::from(previous_ballot.weight);
+                    state.total_weight = state.total_weight.saturating_sub(previous_weight);
+                    if let Some(entry) = state.tallies.get_mut(&previous_ballot.option) {
+                        *entry = entry.saturating_sub(previous_weight);
+                        if *entry == 0 {
+                            state.tallies.remove(&previous_ballot.option);
+                        }
+                    }
+                }
+
+                state.votes_by_agent.insert(
+                    voter_agent_id.clone(),
+                    GovernanceVoteBallotState {
+                        option: option.clone(),
+                        weight: *weight,
+                        voted_at: now,
+                    },
+                );
+                let vote_weight = u64::from(*weight);
+                let current_tally = state.tallies.get(option).copied().unwrap_or(0);
+                *state.tallies.entry(option.clone()).or_insert(0) =
+                    current_tally.saturating_add(vote_weight);
+                state.total_weight = state.total_weight.saturating_add(vote_weight);
+                state.last_updated_at = now;
+
+                if let Some(cell) = self.agents.get_mut(voter_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::CrisisResolved {
+                resolver_agent_id,
+                crisis_id,
+                strategy,
+                success,
+                impact,
+            } => {
+                self.crises.insert(
+                    crisis_id.clone(),
+                    CrisisState {
+                        crisis_id: crisis_id.clone(),
+                        resolver_agent_id: resolver_agent_id.clone(),
+                        strategy: strategy.clone(),
+                        success: *success,
+                        impact: *impact,
+                        resolved_at: now,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(resolver_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: resolver_agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::MetaProgressGranted {
+                operator_agent_id,
+                target_agent_id,
+                track,
+                points,
+                achievement_id,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(target_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    });
+                }
+
+                let progress = self
+                    .meta_progress
+                    .entry(target_agent_id.clone())
+                    .or_insert_with(|| MetaProgressState {
+                        agent_id: target_agent_id.clone(),
+                        track_points: BTreeMap::new(),
+                        total_points: 0,
+                        achievements: Vec::new(),
+                        last_granted_at: now,
+                    });
+                let next_track_points = progress
+                    .track_points
+                    .get(track)
+                    .copied()
+                    .unwrap_or(0)
+                    .saturating_add(*points);
+                progress
+                    .track_points
+                    .insert(track.clone(), next_track_points);
+                progress.total_points = progress.total_points.saturating_add(*points);
+                progress.last_granted_at = now;
+                if let Some(achievement_id) = achievement_id {
+                    if !progress
+                        .achievements
+                        .iter()
+                        .any(|item| item == achievement_id)
+                    {
+                        progress.achievements.push(achievement_id.clone());
+                        progress.achievements.sort();
+                    }
+                }
+
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(target_agent_id) {
                     cell.last_active = now;
                 }
             }

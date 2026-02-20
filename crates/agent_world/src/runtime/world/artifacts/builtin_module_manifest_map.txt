@@ -21,3 +21,8 @@ m4.product.material.iron_ingot crates/agent_world_builtin_wasm_modules/m4_produc
 m4.product.component.control_chip crates/agent_world_builtin_wasm_modules/m4_product_component_control_chip/Cargo.toml
 m4.product.component.motor_mk1 crates/agent_world_builtin_wasm_modules/m4_product_component_motor_mk1/Cargo.toml
 m4.product.finished.logistics_drone crates/agent_world_builtin_wasm_modules/m4_product_finished_logistics_drone/Cargo.toml
+m5.gameplay.war.core crates/agent_world_builtin_wasm_modules/m5_gameplay_war_core/Cargo.toml
+m5.gameplay.governance.council crates/agent_world_builtin_wasm_modules/m5_gameplay_governance_council/Cargo.toml
+m5.gameplay.crisis.cycle crates/agent_world_builtin_wasm_modules/m5_gameplay_crisis_cycle/Cargo.toml
+m5.gameplay.economic.overlay crates/agent_world_builtin_wasm_modules/m5_gameplay_economic_overlay/Cargo.toml
+m5.gameplay.meta.progression crates/agent_world_builtin_wasm_modules/m5_gameplay_meta_progression/Cargo.toml

@@ -39,6 +39,11 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
+            DomainEvent::AllianceFormed { .. } => "domain.gameplay.alliance_formed",
+            DomainEvent::WarDeclared { .. } => "domain.gameplay.war_declared",
+            DomainEvent::GovernanceVoteCast { .. } => "domain.gameplay.governance_vote_cast",
+            DomainEvent::CrisisResolved { .. } => "domain.gameplay.crisis_resolved",
+            DomainEvent::MetaProgressGranted { .. } => "domain.gameplay.meta_progress_granted",
             DomainEvent::ProductValidated { .. } => "domain.economy.product_validated",
         },
         WorldEventBody::EffectQueued(_) => "effect.queued",
@@ -89,6 +94,11 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
             "action.reward.apply_node_points_settlement_signed"
         }
         Action::TransferMaterial { .. } => "action.transfer_material",
+        Action::FormAlliance { .. } => "action.gameplay.form_alliance",
+        Action::DeclareWar { .. } => "action.gameplay.declare_war",
+        Action::CastGovernanceVote { .. } => "action.gameplay.cast_governance_vote",
+        Action::ResolveCrisis { .. } => "action.gameplay.resolve_crisis",
+        Action::GrantMetaProgress { .. } => "action.gameplay.grant_meta_progress",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",
         Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",

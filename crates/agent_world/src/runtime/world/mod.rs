@@ -5,6 +5,7 @@ mod audit;
 mod base_layer;
 mod body;
 mod bootstrap_economy;
+mod bootstrap_gameplay;
 mod bootstrap_power;
 mod economy;
 mod effects;

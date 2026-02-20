@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 
 use super::{load_builtin_wasm_with_fetch_fallback, WorldError};
 
-const M4_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m4_builtin_modules.sha256");
+const M5_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m5_builtin_modules.sha256");
 const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
-pub(crate) fn m4_builtin_module_ids_manifest() -> Vec<&'static str> {
-    include_str!("world/artifacts/m4_builtin_module_ids.txt")
+pub(crate) fn m5_builtin_module_ids_manifest() -> Vec<&'static str> {
+    include_str!("world/artifacts/m5_builtin_module_ids.txt")
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
@@ -42,7 +42,7 @@ fn hash_value_from_manifest_token(token: &'static str) -> Option<&'static str> {
 }
 
 fn hash_manifest_for_module(module_id: &str) -> Option<Vec<&'static str>> {
-    for line in M4_BUILTIN_HASH_MANIFEST.lines() {
+    for line in M5_BUILTIN_HASH_MANIFEST.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -62,7 +62,7 @@ fn hash_manifest_for_module(module_id: &str) -> Option<Vec<&'static str>> {
     None
 }
 
-pub(crate) fn m4_builtin_wasm_module_artifact_bytes(
+pub(crate) fn m5_builtin_wasm_module_artifact_bytes(
     module_id: &str,
 ) -> Result<Vec<u8>, WorldError> {
     let expected_hashes =
@@ -73,12 +73,12 @@ pub(crate) fn m4_builtin_wasm_module_artifact_bytes(
     let wasm_bytes =
         load_builtin_wasm_with_fetch_fallback(module_id, &expected_hashes, &distfs_root).map_err(
             |error| WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "failed to materialize builtin wasm artifact module_id={module_id}, hashes=[{}], distfs_root={}, err={error:?}",
-                expected_hashes.join(","),
-                distfs_root.display()
-            ),
-        },
+                reason: format!(
+                    "failed to materialize builtin wasm artifact module_id={module_id}, hashes=[{}], distfs_root={}, err={error:?}",
+                    expected_hashes.join(","),
+                    distfs_root.display()
+                ),
+            },
         )?;
 
     Ok(wasm_bytes)

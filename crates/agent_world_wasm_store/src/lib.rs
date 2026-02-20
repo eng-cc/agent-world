@@ -21,6 +21,7 @@ pub const M1_STORAGE_POWER_MODULE_ID: &str = "m1.power.storage";
 pub const M1_AGENT_DEFAULT_MODULE_VERSION: &str = "0.1.0";
 pub const M1_POWER_MODULE_VERSION: &str = "0.1.0";
 pub const M4_ECONOMY_MODULE_VERSION: &str = "0.1.0";
+pub const M5_GAMEPLAY_MODULE_VERSION: &str = "0.1.0";
 
 pub const M4_FACTORY_MINER_MODULE_ID: &str = "m4.factory.miner.mk1";
 pub const M4_FACTORY_SMELTER_MODULE_ID: &str = "m4.factory.smelter.mk1";
@@ -35,6 +36,12 @@ pub const M4_PRODUCT_IRON_INGOT_MODULE_ID: &str = "m4.product.material.iron_ingo
 pub const M4_PRODUCT_CONTROL_CHIP_MODULE_ID: &str = "m4.product.component.control_chip";
 pub const M4_PRODUCT_MOTOR_MODULE_ID: &str = "m4.product.component.motor_mk1";
 pub const M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID: &str = "m4.product.finished.logistics_drone";
+
+pub const M5_GAMEPLAY_WAR_MODULE_ID: &str = "m5.gameplay.war.core";
+pub const M5_GAMEPLAY_GOVERNANCE_MODULE_ID: &str = "m5.gameplay.governance.council";
+pub const M5_GAMEPLAY_CRISIS_MODULE_ID: &str = "m5.gameplay.crisis.cycle";
+pub const M5_GAMEPLAY_ECONOMIC_MODULE_ID: &str = "m5.gameplay.economic.overlay";
+pub const M5_GAMEPLAY_META_MODULE_ID: &str = "m5.gameplay.meta.progression";
 
 pub const M1_BODY_ACTION_COST_ELECTRICITY: i64 = 10;
 pub const M1_MEMORY_MAX_ENTRIES: usize = 256;

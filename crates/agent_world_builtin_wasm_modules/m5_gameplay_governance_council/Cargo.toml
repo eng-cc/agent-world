@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "agent_world_builtin_wasm_m5_gameplay_governance_council"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+agent_world_wasm_sdk = { path = "../../agent_world_wasm_sdk", features = ["wire"] }

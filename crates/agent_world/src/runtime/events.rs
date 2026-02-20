@@ -177,6 +177,41 @@ pub enum Action {
         amount: i64,
         distance_km: i64,
     },
+    FormAlliance {
+        proposer_agent_id: String,
+        alliance_id: String,
+        #[serde(default)]
+        members: Vec<String>,
+        charter: String,
+    },
+    DeclareWar {
+        initiator_agent_id: String,
+        war_id: String,
+        aggressor_alliance_id: String,
+        defender_alliance_id: String,
+        objective: String,
+        intensity: u32,
+    },
+    CastGovernanceVote {
+        voter_agent_id: String,
+        proposal_key: String,
+        option: String,
+        weight: u32,
+    },
+    ResolveCrisis {
+        resolver_agent_id: String,
+        crisis_id: String,
+        strategy: String,
+        success: bool,
+    },
+    GrantMetaProgress {
+        operator_agent_id: String,
+        target_agent_id: String,
+        track: String,
+        points: i64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        achievement_id: Option<String>,
+    },
     EmitResourceTransfer {
         from_agent_id: String,
         to_agent_id: String,
@@ -465,6 +500,41 @@ pub enum DomainEvent {
         #[serde(default = "default_world_material_ledger")]
         output_ledger: MaterialLedgerId,
     },
+    AllianceFormed {
+        proposer_agent_id: String,
+        alliance_id: String,
+        members: Vec<String>,
+        charter: String,
+    },
+    WarDeclared {
+        initiator_agent_id: String,
+        war_id: String,
+        aggressor_alliance_id: String,
+        defender_alliance_id: String,
+        objective: String,
+        intensity: u32,
+    },
+    GovernanceVoteCast {
+        voter_agent_id: String,
+        proposal_key: String,
+        option: String,
+        weight: u32,
+    },
+    CrisisResolved {
+        resolver_agent_id: String,
+        crisis_id: String,
+        strategy: String,
+        success: bool,
+        impact: i64,
+    },
+    MetaProgressGranted {
+        operator_agent_id: String,
+        target_agent_id: String,
+        track: String,
+        points: i64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        achievement_id: Option<String>,
+    },
     ProductValidated {
         requester_agent_id: String,
         module_id: String,
@@ -543,6 +613,19 @@ impl DomainEvent {
             DomainEvent::RecipeCompleted {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
+            DomainEvent::AllianceFormed {
+                proposer_agent_id, ..
+            } => Some(proposer_agent_id.as_str()),
+            DomainEvent::WarDeclared {
+                initiator_agent_id, ..
+            } => Some(initiator_agent_id.as_str()),
+            DomainEvent::GovernanceVoteCast { voter_agent_id, .. } => Some(voter_agent_id.as_str()),
+            DomainEvent::CrisisResolved {
+                resolver_agent_id, ..
+            } => Some(resolver_agent_id.as_str()),
+            DomainEvent::MetaProgressGranted {
+                target_agent_id, ..
+            } => Some(target_agent_id.as_str()),
             DomainEvent::ProductValidated {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

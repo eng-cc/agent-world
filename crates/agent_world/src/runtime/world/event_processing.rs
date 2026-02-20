@@ -11,6 +11,7 @@ use super::logistics::{
 use super::World;
 use crate::geometry::space_distance_cm;
 use crate::simulator::ResourceKind;
+use std::collections::BTreeSet;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -416,6 +417,344 @@ impl World {
                         ready_at,
                     },
                 ))
+            }
+            Action::FormAlliance {
+                proposer_agent_id,
+                alliance_id,
+                members,
+                charter,
+            } => {
+                if !self.state.agents.contains_key(proposer_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: proposer_agent_id.clone(),
+                        },
+                    }));
+                }
+                let alliance_id = alliance_id.trim();
+                if alliance_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.alliances.contains_key(alliance_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("alliance already exists: {alliance_id}")],
+                        },
+                    }));
+                }
+                let charter = charter.trim();
+                if charter.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance charter cannot be empty".to_string()],
+                        },
+                    }));
+                }
+
+                let mut member_set = BTreeSet::new();
+                member_set.insert(proposer_agent_id.trim().to_string());
+                for member in members {
+                    let member = member.trim();
+                    if member.is_empty() {
+                        continue;
+                    }
+                    member_set.insert(member.to_string());
+                }
+                if member_set.len() < 2 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance requires at least 2 unique members".to_string()],
+                        },
+                    }));
+                }
+                let normalized_members: Vec<String> = member_set.into_iter().collect();
+                for member in &normalized_members {
+                    if !self.state.agents.contains_key(member) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: member.clone(),
+                            },
+                        }));
+                    }
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::AllianceFormed {
+                    proposer_agent_id: proposer_agent_id.clone(),
+                    alliance_id: alliance_id.to_string(),
+                    members: normalized_members,
+                    charter: charter.to_string(),
+                }))
+            }
+            Action::DeclareWar {
+                initiator_agent_id,
+                war_id,
+                aggressor_alliance_id,
+                defender_alliance_id,
+                objective,
+                intensity,
+            } => {
+                if !self.state.agents.contains_key(initiator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: initiator_agent_id.clone(),
+                        },
+                    }));
+                }
+                let war_id = war_id.trim();
+                if war_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["war_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.wars.contains_key(war_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("war already exists: {war_id}")],
+                        },
+                    }));
+                }
+                if aggressor_alliance_id == defender_alliance_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "aggressor_alliance_id and defender_alliance_id must differ"
+                                    .to_string(),
+                            ],
+                        },
+                    }));
+                }
+                let Some(aggressor) = self.state.alliances.get(aggressor_alliance_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "aggressor alliance not found: {}",
+                                aggressor_alliance_id
+                            )],
+                        },
+                    }));
+                };
+                if !aggressor
+                    .members
+                    .iter()
+                    .any(|member| member == initiator_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "initiator {} is not a member of aggressor alliance {}",
+                                initiator_agent_id, aggressor_alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if !self
+                    .state
+                    .alliances
+                    .contains_key(defender_alliance_id.as_str())
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "defender alliance not found: {}",
+                                defender_alliance_id
+                            )],
+                        },
+                    }));
+                }
+                let objective = objective.trim();
+                if objective.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["war objective cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if *intensity == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["war intensity must be > 0".to_string()],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::WarDeclared {
+                    initiator_agent_id: initiator_agent_id.clone(),
+                    war_id: war_id.to_string(),
+                    aggressor_alliance_id: aggressor_alliance_id.clone(),
+                    defender_alliance_id: defender_alliance_id.clone(),
+                    objective: objective.to_string(),
+                    intensity: *intensity,
+                }))
+            }
+            Action::CastGovernanceVote {
+                voter_agent_id,
+                proposal_key,
+                option,
+                weight,
+            } => {
+                if !self.state.agents.contains_key(voter_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: voter_agent_id.clone(),
+                        },
+                    }));
+                }
+                let proposal_key = proposal_key.trim();
+                if proposal_key.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["proposal_key cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let option = option.trim();
+                if option.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["vote option cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if *weight == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["vote weight must be > 0".to_string()],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::GovernanceVoteCast {
+                    voter_agent_id: voter_agent_id.clone(),
+                    proposal_key: proposal_key.to_string(),
+                    option: option.to_string(),
+                    weight: *weight,
+                }))
+            }
+            Action::ResolveCrisis {
+                resolver_agent_id,
+                crisis_id,
+                strategy,
+                success,
+            } => {
+                if !self.state.agents.contains_key(resolver_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: resolver_agent_id.clone(),
+                        },
+                    }));
+                }
+                let crisis_id = crisis_id.trim();
+                if crisis_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["crisis_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.crises.contains_key(crisis_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("crisis already resolved: {crisis_id}")],
+                        },
+                    }));
+                }
+                let strategy = strategy.trim();
+                if strategy.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["crisis strategy cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let impact = if *success { 10_i64 } else { -10_i64 };
+                Ok(WorldEventBody::Domain(DomainEvent::CrisisResolved {
+                    resolver_agent_id: resolver_agent_id.clone(),
+                    crisis_id: crisis_id.to_string(),
+                    strategy: strategy.to_string(),
+                    success: *success,
+                    impact,
+                }))
+            }
+            Action::GrantMetaProgress {
+                operator_agent_id,
+                target_agent_id,
+                track,
+                points,
+                achievement_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(target_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: target_agent_id.clone(),
+                        },
+                    }));
+                }
+                let track = track.trim();
+                if track.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["meta progression track cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if *points == 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount { amount: *points },
+                    }));
+                }
+                let normalized_achievement = achievement_id.as_ref().map(|value| value.trim());
+                if normalized_achievement.is_some_and(|value| value.is_empty()) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["achievement_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::MetaProgressGranted {
+                    operator_agent_id: operator_agent_id.clone(),
+                    target_agent_id: target_agent_id.clone(),
+                    track: track.to_string(),
+                    points: *points,
+                    achievement_id: normalized_achievement.map(str::to_string),
+                }))
             }
             Action::EmitResourceTransfer {
                 from_agent_id,
