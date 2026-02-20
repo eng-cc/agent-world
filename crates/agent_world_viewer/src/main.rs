@@ -22,7 +22,10 @@ use agent_world::simulator::{
 use agent_world::viewer::{
     ViewerControl, ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
+use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::view::{ColorGrading, ColorGradingGlobal};
 #[cfg(target_arch = "wasm32")]
 use gloo_timers::callback::Interval;
 #[cfg(target_arch = "wasm32")]
@@ -147,7 +150,9 @@ use ui_locale_text::{
 };
 use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
-use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig, ViewerGeometryTier};
+use viewer_3d_config::{
+    resolve_viewer_3d_config, Viewer3dConfig, ViewerGeometryTier, ViewerTonemappingMode,
+};
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
 };
@@ -598,6 +603,54 @@ fn lighting_illuminance_triplet(config: &Viewer3dConfig) -> (f32, f32, f32) {
     let fill = (key * config.lighting.fill_light_ratio.max(0.0)).max(800.0);
     let rim = (key * config.lighting.rim_light_ratio.max(0.0)).max(450.0);
     (key, fill, rim)
+}
+
+fn resolve_tonemapping(mode: ViewerTonemappingMode) -> Tonemapping {
+    match mode {
+        ViewerTonemappingMode::None => Tonemapping::None,
+        ViewerTonemappingMode::Reinhard => Tonemapping::Reinhard,
+        ViewerTonemappingMode::ReinhardLuminance => Tonemapping::ReinhardLuminance,
+        ViewerTonemappingMode::AcesFitted => Tonemapping::AcesFitted,
+        ViewerTonemappingMode::AgX => Tonemapping::AgX,
+        ViewerTonemappingMode::SomewhatBoringDisplayTransform => {
+            Tonemapping::SomewhatBoringDisplayTransform
+        }
+        ViewerTonemappingMode::TonyMcMapface => Tonemapping::TonyMcMapface,
+        ViewerTonemappingMode::BlenderFilmic => Tonemapping::BlenderFilmic,
+    }
+}
+
+fn build_color_grading(config: &Viewer3dConfig) -> ColorGrading {
+    let mut grading = ColorGrading::default();
+    grading.global = ColorGradingGlobal {
+        exposure: config.post_process.color_grading_exposure,
+        post_saturation: config.post_process.color_grading_post_saturation,
+        ..default()
+    };
+    grading
+}
+
+fn build_bloom(config: &Viewer3dConfig) -> Option<Bloom> {
+    if !config.post_process.bloom_enabled {
+        return None;
+    }
+    let mut bloom = Bloom::NATURAL;
+    bloom.intensity = config.post_process.bloom_intensity.max(0.0);
+    Some(bloom)
+}
+
+fn camera_post_process_components(
+    config: &Viewer3dConfig,
+) -> (Tonemapping, DebandDither, ColorGrading, Option<Bloom>) {
+    let tonemapping = resolve_tonemapping(config.post_process.tonemapping);
+    let deband_dither = if config.post_process.deband_dither_enabled {
+        DebandDither::Enabled
+    } else {
+        DebandDither::Disabled
+    };
+    let color_grading = build_color_grading(config);
+    let bloom = build_bloom(config);
+    (tonemapping, deband_dither, color_grading, bloom)
 }
 
 #[derive(Component, Copy, Clone)]
@@ -1054,7 +1107,9 @@ fn setup_3d_scene(
     if mode == ViewerCameraMode::TwoD {
         sync_2d_zoom_projection(&mut projection, orbit.radius, config.effective_cm_to_unit());
     }
-    commands.spawn((
+    let (tonemapping, deband_dither, color_grading, bloom) =
+        camera_post_process_components(&config);
+    let mut camera_entity = commands.spawn((
         Camera3d::default(),
         projection,
         Camera {
@@ -1064,7 +1119,13 @@ fn setup_3d_scene(
         transform,
         Viewer3dCamera,
         orbit,
+        tonemapping,
+        deband_dither,
+        color_grading,
     ));
+    if let Some(settings) = bloom {
+        camera_entity.insert(settings);
+    }
 
     commands.insert_resource(GlobalAmbientLight {
         color: Color::srgb(0.94, 0.97, 1.0),

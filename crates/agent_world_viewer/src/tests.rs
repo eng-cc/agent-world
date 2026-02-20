@@ -5,8 +5,9 @@ use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
 };
-use crate::viewer_3d_config::Viewer3dConfig;
+use crate::viewer_3d_config::{Viewer3dConfig, ViewerTonemappingMode};
 use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
+use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 
 #[path = "tests_selection_details.rs"]
 mod tests_selection_details;
@@ -772,6 +773,41 @@ fn lighting_illuminance_triplet_clamps_low_fill_and_rim() {
     let (_key, fill, rim) = lighting_illuminance_triplet(&config);
     assert!((fill - 800.0).abs() < f32::EPSILON);
     assert!((rim - 450.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn camera_post_process_components_map_config_values() {
+    let mut config = Viewer3dConfig::default();
+    config.post_process.tonemapping = ViewerTonemappingMode::AcesFitted;
+    config.post_process.deband_dither_enabled = true;
+    config.post_process.bloom_enabled = true;
+    config.post_process.bloom_intensity = 0.33;
+    config.post_process.color_grading_exposure = 0.6;
+    config.post_process.color_grading_post_saturation = 1.14;
+
+    let (tonemapping, deband, grading, bloom) = camera_post_process_components(&config);
+    assert_eq!(tonemapping, Tonemapping::AcesFitted);
+    assert_eq!(deband, DebandDither::Enabled);
+    assert!((grading.global.exposure - 0.6).abs() < f32::EPSILON);
+    assert!((grading.global.post_saturation - 1.14).abs() < f32::EPSILON);
+    assert!((bloom.expect("bloom").intensity - 0.33).abs() < f32::EPSILON);
+}
+
+#[test]
+fn camera_post_process_components_disable_bloom_and_deband() {
+    let mut config = Viewer3dConfig::default();
+    config.post_process.tonemapping = ViewerTonemappingMode::None;
+    config.post_process.deband_dither_enabled = false;
+    config.post_process.bloom_enabled = false;
+    config.post_process.color_grading_exposure = -0.35;
+    config.post_process.color_grading_post_saturation = 0.82;
+
+    let (tonemapping, deband, grading, bloom) = camera_post_process_components(&config);
+    assert_eq!(tonemapping, Tonemapping::None);
+    assert_eq!(deband, DebandDither::Disabled);
+    assert!((grading.global.exposure + 0.35).abs() < f32::EPSILON);
+    assert!((grading.global.post_saturation - 0.82).abs() < f32::EPSILON);
+    assert!(bloom.is_none());
 }
 
 #[path = "tests_scene_entities.rs"]

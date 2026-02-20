@@ -22,9 +22,9 @@
 - [x] C3D3.3 补齐光照参数解析与稳定性回归
 
 ### C3D-4 后处理层（缺口 4）
-- [ ] C3D4.1 相机接入 Tonemapping + DebandDither + ColorGrading
-- [ ] C3D4.2 接入 Bloom（含可关闭开关）
-- [ ] C3D4.3 补齐后处理配置与回归测试
+- [x] C3D4.1 相机接入 Tonemapping + DebandDither + ColorGrading
+- [x] C3D4.2 接入 Bloom（含可关闭开关）
+- [x] C3D4.3 补齐后处理配置与回归测试
 
 ### C3D-5 收口
 - [ ] C3D5.1 更新 `doc/viewer-manual.md` 商业化 3D 配置说明
@@ -39,6 +39,6 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：C3D-3 完成，C3D-4 进行中。
-- 下一步：接入 Tonemapping/Deband/ColorGrading/Bloom 后处理链路，并补齐回归测试。
-- 最近更新：2026-02-20（完成三点光照、档位阴影默认与光照回归测试）。
+- 当前阶段：C3D-4 完成，C3D-5 进行中。
+- 下一步：更新 viewer 使用手册并完成最终收口测试。
+- 最近更新：2026-02-20（完成后处理链路接入与回归测试）。
