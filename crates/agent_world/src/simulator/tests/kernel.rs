@@ -561,6 +561,274 @@ fn kernel_observe_visibility_range() {
 }
 
 #[test]
+fn kernel_observe_includes_module_power_and_social_snapshots() {
+    let config = WorldConfig::default();
+    let mut model = WorldModel::default();
+    let origin = pos(0.0, 0.0);
+    model.locations.insert(
+        "loc-1".to_string(),
+        Location::new_with_profile(
+            "loc-1".to_string(),
+            "origin".to_string(),
+            origin,
+            LocationProfile::default(),
+        ),
+    );
+    model.agents.insert(
+        "agent-1".to_string(),
+        Agent::new_with_power("agent-1", "loc-1", origin, &config.power),
+    );
+    model.module_artifacts.insert(
+        "hash-z".to_string(),
+        ModuleArtifactState {
+            wasm_hash: "hash-z".to_string(),
+            publisher_agent_id: "agent-1".to_string(),
+            module_id_hint: Some("m.z".to_string()),
+            wasm_bytes: vec![1, 2, 3],
+            deployed_at_tick: 8,
+        },
+    );
+    model.module_artifacts.insert(
+        "hash-a".to_string(),
+        ModuleArtifactState {
+            wasm_hash: "hash-a".to_string(),
+            publisher_agent_id: "agent-1".to_string(),
+            module_id_hint: Some("m.a".to_string()),
+            wasm_bytes: vec![4, 5],
+            deployed_at_tick: 7,
+        },
+    );
+    model.installed_modules.insert(
+        "m.z".to_string(),
+        InstalledModuleState {
+            module_id: "m.z".to_string(),
+            module_version: "0.2.0".to_string(),
+            wasm_hash: "hash-z".to_string(),
+            installer_agent_id: "agent-1".to_string(),
+            install_target: ModuleInstallTarget::SelfAgent,
+            active: true,
+            installed_at_tick: 9,
+        },
+    );
+    model.installed_modules.insert(
+        "m.a".to_string(),
+        InstalledModuleState {
+            module_id: "m.a".to_string(),
+            module_version: "0.1.0".to_string(),
+            wasm_hash: "hash-a".to_string(),
+            installer_agent_id: "agent-1".to_string(),
+            install_target: ModuleInstallTarget::SelfAgent,
+            active: false,
+            installed_at_tick: 10,
+        },
+    );
+    model.module_artifact_listings.insert(
+        "5".to_string(),
+        ModuleArtifactListingState {
+            order_id: 5,
+            wasm_hash: "hash-z".to_string(),
+            seller_agent_id: "agent-1".to_string(),
+            price_kind: ResourceKind::Data,
+            price_amount: 9,
+            listed_at_tick: 11,
+        },
+    );
+    model.module_artifact_listings.insert(
+        "2".to_string(),
+        ModuleArtifactListingState {
+            order_id: 2,
+            wasm_hash: "hash-a".to_string(),
+            seller_agent_id: "agent-1".to_string(),
+            price_kind: ResourceKind::Electricity,
+            price_amount: 3,
+            listed_at_tick: 12,
+        },
+    );
+    model.module_artifact_bids.insert(
+        "hash-a".to_string(),
+        vec![ModuleArtifactBidState {
+            order_id: 6,
+            wasm_hash: "hash-a".to_string(),
+            bidder_agent_id: "agent-2".to_string(),
+            price_kind: ResourceKind::Data,
+            price_amount: 4,
+            placed_at_tick: 13,
+        }],
+    );
+    model.module_artifact_bids.insert(
+        "hash-z".to_string(),
+        vec![ModuleArtifactBidState {
+            order_id: 4,
+            wasm_hash: "hash-z".to_string(),
+            bidder_agent_id: "agent-3".to_string(),
+            price_kind: ResourceKind::Electricity,
+            price_amount: 2,
+            placed_at_tick: 14,
+        }],
+    );
+    model.power_order_book.next_order_id = 12;
+    model.power_order_book.open_orders = vec![
+        PowerOrderState {
+            order_id: 9,
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            side: PowerOrderSide::Buy,
+            remaining_amount: 5,
+            limit_price_per_pu: 2,
+            created_at: 15,
+        },
+        PowerOrderState {
+            order_id: 1,
+            owner: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            side: PowerOrderSide::Sell,
+            remaining_amount: 8,
+            limit_price_per_pu: 3,
+            created_at: 16,
+        },
+    ];
+    model.social_facts.insert(
+        2,
+        SocialFactState {
+            fact_id: 2,
+            actor: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            schema_id: "s.alliance".to_string(),
+            subject: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            object: None,
+            claim: "allied".to_string(),
+            confidence_ppm: 900_000,
+            evidence_event_ids: vec![1],
+            ttl_ticks: None,
+            expires_at_tick: None,
+            stake: None,
+            challenge: None,
+            lifecycle: SocialFactLifecycleState::Active,
+            created_at_tick: 17,
+            updated_at_tick: 17,
+        },
+    );
+    model.social_facts.insert(
+        1,
+        SocialFactState {
+            fact_id: 1,
+            actor: ResourceOwner::Agent {
+                agent_id: "agent-3".to_string(),
+            },
+            schema_id: "s.risk".to_string(),
+            subject: ResourceOwner::Agent {
+                agent_id: "agent-4".to_string(),
+            },
+            object: None,
+            claim: "risk".to_string(),
+            confidence_ppm: 500_000,
+            evidence_event_ids: vec![2],
+            ttl_ticks: None,
+            expires_at_tick: None,
+            stake: None,
+            challenge: None,
+            lifecycle: SocialFactLifecycleState::Revoked,
+            created_at_tick: 18,
+            updated_at_tick: 18,
+        },
+    );
+    model.social_edges.insert(
+        8,
+        SocialEdgeState {
+            edge_id: 8,
+            declarer: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            schema_id: "s.network".to_string(),
+            relation_kind: "ally".to_string(),
+            from: ResourceOwner::Agent {
+                agent_id: "agent-1".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-2".to_string(),
+            },
+            weight_bps: 5_000,
+            backing_fact_ids: vec![2],
+            ttl_ticks: None,
+            expires_at_tick: None,
+            lifecycle: SocialEdgeLifecycleState::Active,
+            created_at_tick: 19,
+            updated_at_tick: 19,
+        },
+    );
+    model.social_edges.insert(
+        3,
+        SocialEdgeState {
+            edge_id: 3,
+            declarer: ResourceOwner::Agent {
+                agent_id: "agent-3".to_string(),
+            },
+            schema_id: "s.network".to_string(),
+            relation_kind: "former-ally".to_string(),
+            from: ResourceOwner::Agent {
+                agent_id: "agent-3".to_string(),
+            },
+            to: ResourceOwner::Agent {
+                agent_id: "agent-4".to_string(),
+            },
+            weight_bps: 2_500,
+            backing_fact_ids: vec![1],
+            ttl_ticks: None,
+            expires_at_tick: None,
+            lifecycle: SocialEdgeLifecycleState::Expired,
+            created_at_tick: 20,
+            updated_at_tick: 20,
+        },
+    );
+
+    let mut kernel = WorldKernel::with_model(config, model);
+    let observation = kernel.observe("agent-1").expect("observe");
+
+    assert_eq!(observation.module_lifecycle.artifacts.len(), 2);
+    assert_eq!(
+        observation.module_lifecycle.artifacts[0].wasm_hash,
+        "hash-a"
+    );
+    assert_eq!(
+        observation.module_lifecycle.artifacts[1].wasm_hash,
+        "hash-z"
+    );
+    assert_eq!(observation.module_lifecycle.installed_modules.len(), 2);
+    assert_eq!(
+        observation.module_lifecycle.installed_modules[0].module_id,
+        "m.a"
+    );
+    assert_eq!(
+        observation.module_lifecycle.installed_modules[1].module_id,
+        "m.z"
+    );
+
+    assert_eq!(observation.module_market.listings.len(), 2);
+    assert_eq!(observation.module_market.listings[0].order_id, 2);
+    assert_eq!(observation.module_market.listings[1].order_id, 5);
+    assert_eq!(observation.module_market.bids.len(), 2);
+    assert_eq!(observation.module_market.bids[0].order_id, 4);
+    assert_eq!(observation.module_market.bids[1].order_id, 6);
+
+    assert_eq!(observation.power_market.next_order_id, 12);
+    assert_eq!(observation.power_market.open_orders.len(), 2);
+    assert_eq!(observation.power_market.open_orders[0].order_id, 1);
+    assert_eq!(observation.power_market.open_orders[1].order_id, 9);
+
+    assert_eq!(observation.social_state.facts.len(), 2);
+    assert_eq!(observation.social_state.facts[0].fact_id, 1);
+    assert_eq!(observation.social_state.facts[1].fact_id, 2);
+    assert_eq!(observation.social_state.edges.len(), 2);
+    assert_eq!(observation.social_state.edges[0].edge_id, 3);
+    assert_eq!(observation.social_state.edges[1].edge_id, 8);
+}
+
+#[test]
 fn kernel_config_overrides_defaults() {
     let config = WorldConfig {
         visibility_range_cm: DEFAULT_VISIBILITY_RANGE_CM * 2,

@@ -55,7 +55,11 @@ pub use init::{
     WorldInitConfig, WorldInitError, WorldInitReport,
 };
 pub use kernel::ChunkRuntimeConfig;
-pub use kernel::{Observation, ObservedAgent, ObservedLocation, WorldKernel};
+pub use kernel::{
+    Observation, ObservedAgent, ObservedLocation, ObservedModuleArtifactRecord,
+    ObservedModuleLifecycleState, ObservedModuleMarketState, ObservedPowerMarketState,
+    ObservedSocialState, WorldKernel,
+};
 pub use llm_agent::{
     LlmAgentBehavior, LlmAgentBuildError, LlmAgentConfig, LlmClientError,
     OpenAiChatCompletionClient, DEFAULT_CONFIG_FILE_NAME,

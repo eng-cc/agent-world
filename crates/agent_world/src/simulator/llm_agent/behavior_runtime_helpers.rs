@@ -600,8 +600,35 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     },
                     {
                         "name": "module.lifecycle.status",
-                        "description": "读取最近已知的 wasm artifact 与 installed module 状态。",
-                        "args": {}
+                        "description": "读取模块生命周期快照（artifact 与 installed）。",
+                        "args": {
+                            "module_id": "string, optional",
+                            "limit_artifacts": "u64, optional, default=32, max=256",
+                            "limit_installed": "u64, optional, default=32, max=256"
+                        }
+                    },
+                    {
+                        "name": "power.order_book.status",
+                        "description": "读取电力订单簿快照。",
+                        "args": { "limit_orders": "u64, optional, default=32, max=256" }
+                    },
+                    {
+                        "name": "module.market.status",
+                        "description": "读取模块市场挂牌/竞价状态。",
+                        "args": {
+                            "wasm_hash": "string, optional",
+                            "limit_listings": "u64, optional, default=32, max=256",
+                            "limit_bids": "u64, optional, default=32, max=256"
+                        }
+                    },
+                    {
+                        "name": "social.state.status",
+                        "description": "读取社会事实与关系边状态。",
+                        "args": {
+                            "include_inactive": "bool, optional, default=true",
+                            "limit_facts": "u64, optional, default=32, max=256",
+                            "limit_edges": "u64, optional, default=32, max=256"
+                        }
                     }
                 ]
             })),
@@ -653,19 +680,107 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     .map_err(|err| format!("serialize long-term memory failed: {err}"))
             }
             "module.lifecycle.status" => {
-                let artifacts = self
-                    .known_module_artifacts
-                    .values()
-                    .cloned()
-                    .collect::<Vec<_>>();
-                let installed_modules = self
-                    .known_installed_modules
-                    .values()
-                    .cloned()
-                    .collect::<Vec<_>>();
+                let module_id_filter = request
+                    .args
+                    .get("module_id")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty());
+                let limit_artifacts = parse_limit_arg(request.args.get("limit_artifacts"), 32, 256);
+                let limit_installed = parse_limit_arg(request.args.get("limit_installed"), 32, 256);
+                let mut artifacts = observation.module_lifecycle.artifacts.clone();
+                if let Some(module_id) = module_id_filter {
+                    artifacts.retain(|artifact| {
+                        artifact
+                            .module_id_hint
+                            .as_deref()
+                            .is_some_and(|hint| hint == module_id)
+                    });
+                }
+                let artifacts_total = artifacts.len();
+                artifacts.truncate(limit_artifacts);
+
+                let mut installed_modules = observation.module_lifecycle.installed_modules.clone();
+                if let Some(module_id) = module_id_filter {
+                    installed_modules.retain(|installed| installed.module_id == module_id);
+                }
+                let installed_total = installed_modules.len();
+                installed_modules.truncate(limit_installed);
                 Ok(serde_json::json!({
+                    "artifacts_total": artifacts_total,
                     "artifacts": artifacts,
+                    "installed_modules_total": installed_total,
                     "installed_modules": installed_modules,
+                }))
+            }
+            "power.order_book.status" => {
+                let limit_orders = parse_limit_arg(request.args.get("limit_orders"), 32, 256);
+                let mut open_orders = observation.power_market.open_orders.clone();
+                let open_orders_total = open_orders.len();
+                open_orders.truncate(limit_orders);
+                Ok(serde_json::json!({
+                    "next_order_id": observation.power_market.next_order_id,
+                    "open_orders_total": open_orders_total,
+                    "open_orders": open_orders,
+                }))
+            }
+            "module.market.status" => {
+                let wasm_hash_filter = request
+                    .args
+                    .get("wasm_hash")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty());
+                let limit_listings = parse_limit_arg(request.args.get("limit_listings"), 32, 256);
+                let limit_bids = parse_limit_arg(request.args.get("limit_bids"), 32, 256);
+                let mut listings = observation.module_market.listings.clone();
+                let mut bids = observation.module_market.bids.clone();
+                if let Some(wasm_hash) = wasm_hash_filter {
+                    listings.retain(|listing| listing.wasm_hash == wasm_hash);
+                    bids.retain(|bid| bid.wasm_hash == wasm_hash);
+                }
+                let listings_total = listings.len();
+                let bids_total = bids.len();
+                listings.truncate(limit_listings);
+                bids.truncate(limit_bids);
+                Ok(serde_json::json!({
+                    "listings_total": listings_total,
+                    "listings": listings,
+                    "bids_total": bids_total,
+                    "bids": bids,
+                }))
+            }
+            "social.state.status" => {
+                let include_inactive = request
+                    .args
+                    .get("include_inactive")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(true);
+                let limit_facts = parse_limit_arg(request.args.get("limit_facts"), 32, 256);
+                let limit_edges = parse_limit_arg(request.args.get("limit_edges"), 32, 256);
+                let mut facts = observation
+                    .social_state
+                    .facts
+                    .iter()
+                    .filter(|fact| include_inactive || fact.supports_backing())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let mut edges = observation
+                    .social_state
+                    .edges
+                    .iter()
+                    .filter(|edge| include_inactive || edge.is_active())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let facts_total = facts.len();
+                let edges_total = edges.len();
+                facts.truncate(limit_facts);
+                edges.truncate(limit_edges);
+                Ok(serde_json::json!({
+                    "facts_total": facts_total,
+                    "facts": facts,
+                    "edges_total": edges_total,
+                    "edges": edges,
                 }))
             }
             other => Err(format!("unsupported module: {other}")),

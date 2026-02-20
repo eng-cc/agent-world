@@ -206,7 +206,81 @@ pub(super) fn responses_tools_with_debug_mode(debug_mode: bool) -> Vec<Tool> {
             description: Some("读取模块生命周期状态（artifact 与 installed）。".to_string()),
             parameters: Some(serde_json::json!({
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "module_id": {
+                        "type": "string"
+                    },
+                    "limit_artifacts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    },
+                    "limit_installed": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_POWER_ORDER_BOOK_STATUS.to_string(),
+            description: Some("读取电力订单簿快照。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "limit_orders": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_MODULE_MARKET_STATUS.to_string(),
+            description: Some("读取模块市场挂牌/竞价状态。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "wasm_hash": { "type": "string" },
+                    "limit_listings": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    },
+                    "limit_bids": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_SOCIAL_STATE_STATUS.to_string(),
+            description: Some("读取社会事实与关系边状态。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "include_inactive": { "type": "boolean" },
+                    "limit_facts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    },
+                    "limit_edges": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 256
+                    }
+                },
                 "additionalProperties": false,
             })),
             strict: None,
@@ -251,6 +325,9 @@ pub(super) fn module_name_from_tool_name(name: &str) -> &str {
         OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT => "memory.short_term.recent",
         OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH => "memory.long_term.search",
         OPENAI_TOOL_MODULE_LIFECYCLE_STATUS => "module.lifecycle.status",
+        OPENAI_TOOL_POWER_ORDER_BOOK_STATUS => "power.order_book.status",
+        OPENAI_TOOL_MODULE_MARKET_STATUS => "module.market.status",
+        OPENAI_TOOL_SOCIAL_STATE_STATUS => "social.state.status",
         other => other,
     }
 }

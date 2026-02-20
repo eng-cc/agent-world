@@ -237,16 +237,17 @@ fn llm_parse_cancel_module_artifact_bid_rejects_non_agent_bidder() {
 }
 
 #[test]
-fn llm_agent_module_lifecycle_status_module_reports_known_records() {
+fn llm_agent_module_lifecycle_status_module_reads_observation_snapshot() {
     let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
-    let action = Action::DeployModuleArtifact {
+    // Seed behavior cache with stale records and verify query output still follows observation.
+    let stale_action = Action::DeployModuleArtifact {
         publisher_agent_id: "agent-1".to_string(),
-        wasm_hash: "hash-1".to_string(),
+        wasm_hash: "stale-hash".to_string(),
         wasm_bytes: vec![0x00, 0x61, 0x73, 0x6d],
         module_id_hint: Some("m.llm.lifecycle".to_string()),
     };
     behavior.on_action_result(&ActionResult {
-        action: action.clone(),
+        action: stale_action.clone(),
         action_id: 1,
         success: true,
         event: WorldEvent {
@@ -254,7 +255,7 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
             time: 10,
             kind: WorldEventKind::ModuleArtifactDeployed {
                 publisher_agent_id: "agent-1".to_string(),
-                wasm_hash: "hash-1".to_string(),
+                wasm_hash: "stale-hash".to_string(),
                 wasm_bytes: vec![0x00, 0x61, 0x73, 0x6d],
                 bytes_len: 4,
                 module_id_hint: Some("m.llm.lifecycle".to_string()),
@@ -266,7 +267,7 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
             installer_agent_id: "agent-1".to_string(),
             module_id: "m.llm.lifecycle".to_string(),
             module_version: "0.1.0".to_string(),
-            wasm_hash: "hash-1".to_string(),
+            wasm_hash: "stale-hash".to_string(),
             activate: true,
         },
         action_id: 2,
@@ -278,19 +279,42 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
                 installer_agent_id: "agent-1".to_string(),
                 module_id: "m.llm.lifecycle".to_string(),
                 module_version: "0.1.0".to_string(),
-                wasm_hash: "hash-1".to_string(),
+                wasm_hash: "stale-hash".to_string(),
                 active: true,
                 install_target: ModuleInstallTarget::SelfAgent,
             },
         },
     });
 
+    let mut observation = make_observation();
+    observation.module_lifecycle = crate::simulator::ObservedModuleLifecycleState {
+        artifacts: vec![crate::simulator::ObservedModuleArtifactRecord {
+            wasm_hash: "hash-live".to_string(),
+            publisher_agent_id: "agent-1".to_string(),
+            module_id_hint: Some("m.llm.lifecycle".to_string()),
+            bytes_len: 128,
+            deployed_at_tick: 42,
+        }],
+        installed_modules: vec![crate::simulator::InstalledModuleState {
+            module_id: "m.llm.lifecycle".to_string(),
+            module_version: "0.2.0".to_string(),
+            wasm_hash: "hash-live".to_string(),
+            installer_agent_id: "agent-1".to_string(),
+            install_target: ModuleInstallTarget::SelfAgent,
+            active: true,
+            installed_at_tick: 43,
+        }],
+    };
     let result = behavior.run_prompt_module(
         &LlmModuleCallRequest {
             module: "module.lifecycle.status".to_string(),
-            args: serde_json::json!({}),
+            args: serde_json::json!({
+                "module_id": "m.llm.lifecycle",
+                "limit_artifacts": 4,
+                "limit_installed": 4
+            }),
         },
-        &make_observation(),
+        &observation,
     );
 
     assert_eq!(
@@ -309,7 +333,7 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
         artifacts[0]
             .get("wasm_hash")
             .and_then(|value| value.as_str()),
-        Some("hash-1")
+        Some("hash-live")
     );
 
     let installed = status
@@ -330,6 +354,12 @@ fn llm_agent_module_lifecycle_status_module_reports_known_records() {
             .and_then(|value| value.as_str()),
         Some("self_agent")
     );
+    assert_eq!(
+        installed[0]
+            .get("wasm_hash")
+            .and_then(|value| value.as_str()),
+        Some("hash-live")
+    );
 }
 
 #[test]
@@ -346,4 +376,302 @@ fn llm_agent_prompt_mentions_module_lifecycle_decisions() {
     assert!(prompt.contains("place_module_artifact_bid"));
     assert!(prompt.contains("cancel_module_artifact_bid"));
     assert!(prompt.contains("module.lifecycle.status"));
+}
+
+#[test]
+fn llm_agent_power_order_book_status_module_reads_snapshot_with_limit() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let mut observation = make_observation();
+    observation.power_market = crate::simulator::ObservedPowerMarketState {
+        next_order_id: 9,
+        open_orders: vec![
+            crate::simulator::PowerOrderState {
+                order_id: 3,
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                side: PowerOrderSide::Buy,
+                remaining_amount: 10,
+                limit_price_per_pu: 2,
+                created_at: 30,
+            },
+            crate::simulator::PowerOrderState {
+                order_id: 4,
+                owner: ResourceOwner::Agent {
+                    agent_id: "agent-2".to_string(),
+                },
+                side: PowerOrderSide::Sell,
+                remaining_amount: 8,
+                limit_price_per_pu: 3,
+                created_at: 31,
+            },
+        ],
+    };
+
+    let result = behavior.run_prompt_module(
+        &LlmModuleCallRequest {
+            module: "power.order_book.status".to_string(),
+            args: serde_json::json!({ "limit_orders": 1 }),
+        },
+        &observation,
+    );
+
+    assert_eq!(
+        result.get("ok").and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    let status = result
+        .get("result")
+        .expect("power order book module result");
+    assert_eq!(
+        status.get("next_order_id").and_then(|value| value.as_u64()),
+        Some(9)
+    );
+    assert_eq!(
+        status
+            .get("open_orders_total")
+            .and_then(|value| value.as_u64()),
+        Some(2)
+    );
+    let open_orders = status
+        .get("open_orders")
+        .and_then(|value| value.as_array())
+        .expect("open orders array");
+    assert_eq!(open_orders.len(), 1);
+    assert_eq!(
+        open_orders[0]
+            .get("order_id")
+            .and_then(|value| value.as_u64()),
+        Some(3)
+    );
+}
+
+#[test]
+fn llm_agent_module_market_status_module_filters_wasm_hash() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let mut observation = make_observation();
+    observation.module_market = crate::simulator::ObservedModuleMarketState {
+        listings: vec![
+            crate::simulator::ModuleArtifactListingState {
+                order_id: 11,
+                wasm_hash: "hash-a".to_string(),
+                seller_agent_id: "agent-1".to_string(),
+                price_kind: ResourceKind::Data,
+                price_amount: 7,
+                listed_at_tick: 15,
+            },
+            crate::simulator::ModuleArtifactListingState {
+                order_id: 12,
+                wasm_hash: "hash-b".to_string(),
+                seller_agent_id: "agent-2".to_string(),
+                price_kind: ResourceKind::Electricity,
+                price_amount: 5,
+                listed_at_tick: 16,
+            },
+        ],
+        bids: vec![
+            crate::simulator::ModuleArtifactBidState {
+                order_id: 13,
+                wasm_hash: "hash-a".to_string(),
+                bidder_agent_id: "agent-3".to_string(),
+                price_kind: ResourceKind::Data,
+                price_amount: 4,
+                placed_at_tick: 17,
+            },
+            crate::simulator::ModuleArtifactBidState {
+                order_id: 14,
+                wasm_hash: "hash-b".to_string(),
+                bidder_agent_id: "agent-4".to_string(),
+                price_kind: ResourceKind::Electricity,
+                price_amount: 9,
+                placed_at_tick: 18,
+            },
+        ],
+    };
+
+    let result = behavior.run_prompt_module(
+        &LlmModuleCallRequest {
+            module: "module.market.status".to_string(),
+            args: serde_json::json!({
+                "wasm_hash": "hash-b",
+                "limit_listings": 4,
+                "limit_bids": 4
+            }),
+        },
+        &observation,
+    );
+
+    assert_eq!(
+        result.get("ok").and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    let status = result.get("result").expect("module market status result");
+    assert_eq!(
+        status
+            .get("listings_total")
+            .and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        status.get("bids_total").and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        status
+            .get("listings")
+            .and_then(|value| value.as_array())
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("wasm_hash"))
+            .and_then(|value| value.as_str()),
+        Some("hash-b")
+    );
+    assert_eq!(
+        status
+            .get("bids")
+            .and_then(|value| value.as_array())
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("wasm_hash"))
+            .and_then(|value| value.as_str()),
+        Some("hash-b")
+    );
+}
+
+#[test]
+fn llm_agent_social_state_status_module_respects_include_inactive_flag() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let mut observation = make_observation();
+    observation.social_state = crate::simulator::ObservedSocialState {
+        facts: vec![
+            crate::simulator::SocialFactState {
+                fact_id: 1,
+                actor: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                schema_id: "s.alliance".to_string(),
+                subject: ResourceOwner::Agent {
+                    agent_id: "agent-2".to_string(),
+                },
+                object: None,
+                claim: "allied".to_string(),
+                confidence_ppm: 900_000,
+                evidence_event_ids: vec![7],
+                ttl_ticks: None,
+                expires_at_tick: None,
+                stake: None,
+                challenge: None,
+                lifecycle: crate::simulator::SocialFactLifecycleState::Active,
+                created_at_tick: 20,
+                updated_at_tick: 20,
+            },
+            crate::simulator::SocialFactState {
+                fact_id: 2,
+                actor: ResourceOwner::Agent {
+                    agent_id: "agent-3".to_string(),
+                },
+                schema_id: "s.risk".to_string(),
+                subject: ResourceOwner::Agent {
+                    agent_id: "agent-4".to_string(),
+                },
+                object: None,
+                claim: "risk".to_string(),
+                confidence_ppm: 400_000,
+                evidence_event_ids: vec![8],
+                ttl_ticks: None,
+                expires_at_tick: None,
+                stake: None,
+                challenge: None,
+                lifecycle: crate::simulator::SocialFactLifecycleState::Revoked,
+                created_at_tick: 21,
+                updated_at_tick: 21,
+            },
+        ],
+        edges: vec![
+            crate::simulator::SocialEdgeState {
+                edge_id: 10,
+                declarer: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                schema_id: "s.network".to_string(),
+                relation_kind: "ally".to_string(),
+                from: ResourceOwner::Agent {
+                    agent_id: "agent-1".to_string(),
+                },
+                to: ResourceOwner::Agent {
+                    agent_id: "agent-2".to_string(),
+                },
+                weight_bps: 5_000,
+                backing_fact_ids: vec![1],
+                ttl_ticks: None,
+                expires_at_tick: None,
+                lifecycle: crate::simulator::SocialEdgeLifecycleState::Active,
+                created_at_tick: 22,
+                updated_at_tick: 22,
+            },
+            crate::simulator::SocialEdgeState {
+                edge_id: 11,
+                declarer: ResourceOwner::Agent {
+                    agent_id: "agent-3".to_string(),
+                },
+                schema_id: "s.network".to_string(),
+                relation_kind: "former-ally".to_string(),
+                from: ResourceOwner::Agent {
+                    agent_id: "agent-3".to_string(),
+                },
+                to: ResourceOwner::Agent {
+                    agent_id: "agent-4".to_string(),
+                },
+                weight_bps: 2_500,
+                backing_fact_ids: vec![2],
+                ttl_ticks: None,
+                expires_at_tick: None,
+                lifecycle: crate::simulator::SocialEdgeLifecycleState::Expired,
+                created_at_tick: 23,
+                updated_at_tick: 23,
+            },
+        ],
+    };
+
+    let result = behavior.run_prompt_module(
+        &LlmModuleCallRequest {
+            module: "social.state.status".to_string(),
+            args: serde_json::json!({
+                "include_inactive": false,
+                "limit_facts": 8,
+                "limit_edges": 8
+            }),
+        },
+        &observation,
+    );
+
+    assert_eq!(
+        result.get("ok").and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    let status = result.get("result").expect("social state result");
+    assert_eq!(
+        status.get("facts_total").and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        status.get("edges_total").and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        status
+            .get("facts")
+            .and_then(|value| value.as_array())
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("fact_id"))
+            .and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        status
+            .get("edges")
+            .and_then(|value| value.as_array())
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("edge_id"))
+            .and_then(|value| value.as_u64()),
+        Some(10)
+    );
 }

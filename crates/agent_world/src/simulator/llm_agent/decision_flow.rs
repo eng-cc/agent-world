@@ -924,6 +924,20 @@ pub(super) fn normalize_prompt_module_name(value: &str) -> String {
         | "module_lifecycle_status"
         | "module-lifecycle-status"
         | "module.lifecycle_status" => Some("module.lifecycle.status"),
+        "power.order_book.status"
+        | "power_order_book_status"
+        | "power-order-book-status"
+        | "power.order_book_status"
+        | "power.orderbook.status"
+        | "power_orderbook_status" => Some("power.order_book.status"),
+        "module.market.status"
+        | "module_market_status"
+        | "module-market-status"
+        | "module.market_status" => Some("module.market.status"),
+        "social.state.status"
+        | "social_state_status"
+        | "social-state-status"
+        | "social.state_status" => Some("social.state.status"),
         _ => None,
     };
 

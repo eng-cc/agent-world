@@ -14,7 +14,10 @@ use super::super::types::{
     LocationProfile, ModuleInstallTarget, PowerOrderSide, ResourceKind, ResourceOwner,
     ResourceStock, WorldEventId, WorldTime,
 };
-use super::super::world_model::{AgentPromptProfile, Location};
+use super::super::world_model::{
+    AgentPromptProfile, InstalledModuleState, Location, ModuleArtifactBidState,
+    ModuleArtifactListingState, PowerOrderState,
+};
 
 // ============================================================================
 // Observation Types
@@ -29,6 +32,14 @@ pub struct Observation {
     pub visibility_range_cm: i64,
     pub visible_agents: Vec<ObservedAgent>,
     pub visible_locations: Vec<ObservedLocation>,
+    #[serde(default)]
+    pub module_lifecycle: ObservedModuleLifecycleState,
+    #[serde(default)]
+    pub module_market: ObservedModuleMarketState,
+    #[serde(default)]
+    pub power_market: ObservedPowerMarketState,
+    #[serde(default)]
+    pub social_state: ObservedSocialState,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -46,6 +57,49 @@ pub struct ObservedLocation {
     pub pos: GeoPos,
     pub profile: LocationProfile,
     pub distance_cm: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ObservedModuleLifecycleState {
+    #[serde(default)]
+    pub artifacts: Vec<ObservedModuleArtifactRecord>,
+    #[serde(default)]
+    pub installed_modules: Vec<InstalledModuleState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ObservedModuleArtifactRecord {
+    pub wasm_hash: String,
+    pub publisher_agent_id: AgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_id_hint: Option<String>,
+    #[serde(default)]
+    pub bytes_len: u64,
+    pub deployed_at_tick: WorldTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ObservedModuleMarketState {
+    #[serde(default)]
+    pub listings: Vec<ModuleArtifactListingState>,
+    #[serde(default)]
+    pub bids: Vec<ModuleArtifactBidState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ObservedPowerMarketState {
+    #[serde(default)]
+    pub next_order_id: u64,
+    #[serde(default)]
+    pub open_orders: Vec<PowerOrderState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ObservedSocialState {
+    #[serde(default)]
+    pub facts: Vec<SocialFactState>,
+    #[serde(default)]
+    pub edges: Vec<SocialEdgeState>,
 }
 
 // ============================================================================

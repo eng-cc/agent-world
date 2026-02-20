@@ -178,9 +178,9 @@ impl PromptAssembler {
                 priority: PromptSectionPriority::High,
                 content: r#"[Tool Protocol]
 - 本代理采用 tool-only 协议：每轮必须调用 tool，禁止输出 JSON 文本或自然语言正文
-- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search / module.lifecycle.status
+- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search / module.lifecycle.status / power.order_book.status / module.market.status / social.state.status
 - 最终决策工具：agent_submit_decision
-- 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search
+- 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search，module_lifecycle_status -> module.lifecycle.status，power_order_book_status -> power.order_book.status，module_market_status -> module.market.status，social_state_status -> social.state.status
 - 每轮只允许调用一个 tool；不要在同一回复混用查询工具与最终决策工具
 - 若需要对玩家说明意图，请在 `agent_submit_decision` 参数中使用可选字段 `message_to_user`
 - 当连续动作触发反重复门控时，优先查询新证据或输出 execute_until，不要复读同一终局动作"#.to_string(),

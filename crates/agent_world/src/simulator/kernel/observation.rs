@@ -4,8 +4,9 @@ use super::super::chunking::ChunkCoord;
 use super::super::init::{generate_chunk_fragments, AsteroidFragmentInitConfig, WorldInitConfig};
 use super::super::ChunkState;
 use super::types::{
-    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation, RejectReason,
-    WorldEventKind,
+    ChunkGenerationCause, Observation, ObservedAgent, ObservedLocation,
+    ObservedModuleArtifactRecord, ObservedModuleLifecycleState, ObservedModuleMarketState,
+    ObservedPowerMarketState, ObservedSocialState, RejectReason, WorldEventKind,
 };
 use super::WorldKernel;
 
@@ -55,6 +56,63 @@ impl WorldKernel {
             }
         }
 
+        let mut module_artifacts = self
+            .model
+            .module_artifacts
+            .values()
+            .map(|artifact| ObservedModuleArtifactRecord {
+                wasm_hash: artifact.wasm_hash.clone(),
+                publisher_agent_id: artifact.publisher_agent_id.clone(),
+                module_id_hint: artifact.module_id_hint.clone(),
+                bytes_len: artifact.wasm_bytes.len() as u64,
+                deployed_at_tick: artifact.deployed_at_tick,
+            })
+            .collect::<Vec<_>>();
+        module_artifacts.sort_by(|left, right| left.wasm_hash.cmp(&right.wasm_hash));
+
+        let mut installed_modules = self
+            .model
+            .installed_modules
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        installed_modules.sort_by(|left, right| left.module_id.cmp(&right.module_id));
+
+        let mut module_listings = self
+            .model
+            .module_artifact_listings
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        module_listings.sort_by(|left, right| left.order_id.cmp(&right.order_id));
+
+        let mut module_bids = self
+            .model
+            .module_artifact_bids
+            .values()
+            .flat_map(|bids| bids.iter().cloned())
+            .collect::<Vec<_>>();
+        module_bids.sort_by(|left, right| left.order_id.cmp(&right.order_id));
+
+        let mut power_open_orders = self.model.power_order_book.open_orders.clone();
+        power_open_orders.sort_by(|left, right| left.order_id.cmp(&right.order_id));
+
+        let mut social_facts = self
+            .model
+            .social_facts
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        social_facts.sort_by(|left, right| left.fact_id.cmp(&right.fact_id));
+
+        let mut social_edges = self
+            .model
+            .social_edges
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        social_edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
+
         Ok(Observation {
             time: self.time,
             agent_id: agent_id.to_string(),
@@ -63,6 +121,22 @@ impl WorldKernel {
             visibility_range_cm,
             visible_agents,
             visible_locations,
+            module_lifecycle: ObservedModuleLifecycleState {
+                artifacts: module_artifacts,
+                installed_modules,
+            },
+            module_market: ObservedModuleMarketState {
+                listings: module_listings,
+                bids: module_bids,
+            },
+            power_market: ObservedPowerMarketState {
+                next_order_id: self.model.power_order_book.next_order_id,
+                open_orders: power_open_orders,
+            },
+            social_state: ObservedSocialState {
+                facts: social_facts,
+                edges: social_edges,
+            },
         })
     }
 
