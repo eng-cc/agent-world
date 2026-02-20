@@ -147,7 +147,7 @@ use ui_locale_text::{
 };
 use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
-use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig};
+use viewer_3d_config::{resolve_viewer_3d_config, Viewer3dConfig, ViewerGeometryTier};
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
 };
@@ -550,6 +550,42 @@ fn grid_line_scale(axis: GridLineAxis, span: f32, thickness: f32) -> Vec3 {
     }
 }
 
+fn location_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
+    let subdivisions = match tier {
+        ViewerGeometryTier::Debug => 2,
+        ViewerGeometryTier::Balanced => 4,
+        ViewerGeometryTier::Cinematic => 6,
+    };
+    Sphere::new(1.0)
+        .mesh()
+        .ico(subdivisions)
+        .unwrap_or_else(|_| Sphere::new(1.0).into())
+}
+
+fn asset_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
+    match tier {
+        ViewerGeometryTier::Debug => Cuboid::new(0.40, 0.40, 0.40).into(),
+        ViewerGeometryTier::Balanced => Cuboid::new(0.45, 0.45, 0.45).into(),
+        ViewerGeometryTier::Cinematic => Cuboid::new(0.50, 0.46, 0.50).into(),
+    }
+}
+
+fn power_plant_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
+    match tier {
+        ViewerGeometryTier::Debug => Cuboid::new(0.85, 0.62, 0.85).into(),
+        ViewerGeometryTier::Balanced => Cuboid::new(0.95, 0.7, 0.95).into(),
+        ViewerGeometryTier::Cinematic => Cuboid::new(1.05, 0.78, 1.05).into(),
+    }
+}
+
+fn power_storage_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
+    match tier {
+        ViewerGeometryTier::Debug => Cuboid::new(0.62, 0.92, 0.62).into(),
+        ViewerGeometryTier::Balanced => Cuboid::new(0.7, 1.0, 0.7).into(),
+        ViewerGeometryTier::Cinematic => Cuboid::new(0.78, 1.08, 0.78).into(),
+    }
+}
+
 #[derive(Component, Copy, Clone)]
 struct BaseScale(Vec3);
 
@@ -825,6 +861,7 @@ fn setup_3d_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
+    let geometry_tier = config.assets.geometry_tier;
     let root_entity = commands
         .spawn((
             Transform::default(),
@@ -841,10 +878,10 @@ fn setup_3d_scene(
         AGENT_BODY_MESH_LENGTH,
     ));
     let agent_module_marker_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let location_mesh = meshes.add(Sphere::new(1.0));
-    let asset_mesh = meshes.add(Cuboid::new(0.45, 0.45, 0.45));
-    let power_plant_mesh = meshes.add(Cuboid::new(0.95, 0.7, 0.95));
-    let power_storage_mesh = meshes.add(Cuboid::new(0.7, 1.0, 0.7));
+    let location_mesh = meshes.add(location_mesh_for_geometry_tier(geometry_tier));
+    let asset_mesh = meshes.add(asset_mesh_for_geometry_tier(geometry_tier));
+    let power_plant_mesh = meshes.add(power_plant_mesh_for_geometry_tier(geometry_tier));
+    let power_storage_mesh = meshes.add(power_storage_mesh_for_geometry_tier(geometry_tier));
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(1.0, 0.42, 0.22),

@@ -149,7 +149,7 @@ fn spawn_location_entity_renders_fine_grained_ring_details() {
                 .starts_with("location:detail:halo:loc-detail-ring:")
         })
         .count();
-    assert_eq!(ring_count, 0);
+    assert!(ring_count >= 2);
     assert_eq!(halo_count, 0);
 }
 
@@ -206,8 +206,58 @@ fn spawn_location_entity_renders_radiation_halo_details() {
         })
         .count();
 
-    assert_eq!(ring_count, 0);
-    assert_eq!(halo_count, 0);
+    assert!(ring_count >= 2);
+    assert!(halo_count >= 1);
+}
+
+#[test]
+fn spawn_location_entity_skips_shell_details_when_disabled() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_detail_halo_test_system);
+    let mut config = Viewer3dConfig::default();
+    config.assets.location_shell_enabled = false;
+    app.insert_resource(config);
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(Viewer3dAssets {
+        agent_mesh: Handle::default(),
+        agent_material: Handle::default(),
+        agent_module_marker_mesh: Handle::default(),
+        agent_module_marker_material: Handle::default(),
+        location_mesh: Handle::default(),
+        fragment_element_material_library: FragmentElementMaterialHandles::default(),
+        asset_mesh: Handle::default(),
+        asset_material: Handle::default(),
+        power_plant_mesh: Handle::default(),
+        power_plant_material: Handle::default(),
+        power_storage_mesh: Handle::default(),
+        power_storage_material: Handle::default(),
+        chunk_unexplored_material: Handle::default(),
+        chunk_generated_material: Handle::default(),
+        chunk_exhausted_material: Handle::default(),
+        world_box_mesh: Handle::default(),
+        world_floor_material: Handle::default(),
+        world_bounds_material: Handle::default(),
+        world_grid_material: Handle::default(),
+        heat_low_material: Handle::default(),
+        heat_mid_material: Handle::default(),
+        heat_high_material: Handle::default(),
+        flow_power_material: Handle::default(),
+        flow_trade_material: Handle::default(),
+        label_font: Handle::default(),
+    });
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let detail_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str().starts_with("location:detail:")
+                && name.as_str().contains("loc-detail-halo")
+        })
+        .count();
+    assert_eq!(detail_count, 0);
 }
 
 #[test]

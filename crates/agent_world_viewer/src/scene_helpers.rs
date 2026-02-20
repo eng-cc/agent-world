@@ -603,7 +603,7 @@ enum ChunkAxis {
 pub(super) fn spawn_location_entity_with_radiation(
     commands: &mut Commands,
     config: &Viewer3dConfig,
-    _assets: &Viewer3dAssets,
+    assets: &Viewer3dAssets,
     scene: &mut Viewer3dScene,
     origin: GeoPos,
     location_id: &str,
@@ -639,6 +639,16 @@ pub(super) fn spawn_location_entity_with_radiation(
             .entity(*entity)
             .remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>)>();
         commands.entity(*entity).despawn_children();
+        commands.entity(*entity).with_children(|parent| {
+            spawn_location_shell_details(
+                parent,
+                config,
+                assets,
+                location_id,
+                material,
+                radiation_emission_per_tick,
+            );
+        });
         return;
     }
 
@@ -657,6 +667,16 @@ pub(super) fn spawn_location_entity_with_radiation(
         ))
         .id();
     attach_to_scene_root(commands, scene, entity);
+    commands.entity(entity).with_children(|parent| {
+        spawn_location_shell_details(
+            parent,
+            config,
+            assets,
+            location_id,
+            material,
+            radiation_emission_per_tick,
+        );
+    });
     scene
         .location_entities
         .insert(location_id.to_string(), entity);
@@ -1058,8 +1078,8 @@ mod scene_helpers_entities;
 
 use scene_helpers_entities::{
     id_hash_fraction, module_visual_anchor_pos_in_scene, module_visual_anchor_pos_in_snapshot,
-    spawn_agent_two_d_map_marker, spawn_asset_entity, spawn_module_visual_entity,
-    spawn_power_plant_entity, spawn_power_storage_entity,
+    spawn_agent_two_d_map_marker, spawn_asset_entity, spawn_location_shell_details,
+    spawn_module_visual_entity, spawn_power_plant_entity, spawn_power_storage_entity,
 };
 
 pub(super) fn spawn_chunk_entity(
@@ -1151,50 +1171,5 @@ pub(super) fn reset_entity_scale(
 }
 
 #[cfg(test)]
-mod depletion_tests {
-    use super::*;
-    use agent_world::simulator::FragmentElementKind;
-
-    #[test]
-    fn location_visual_radius_cm_keeps_base_when_budget_missing() {
-        assert_eq!(location_visual_radius_cm(900, None), 900);
-    }
-
-    #[test]
-    fn location_visual_radius_cm_tracks_remaining_mass_ratio() {
-        let mut budget = FragmentResourceBudget::default();
-        budget
-            .total_by_element_g
-            .insert(FragmentElementKind::Iron, 1_000);
-        budget
-            .remaining_by_element_g
-            .insert(FragmentElementKind::Iron, 125);
-
-        assert_eq!(location_visual_radius_cm(800, Some(&budget)), 400);
-
-        budget
-            .remaining_by_element_g
-            .insert(FragmentElementKind::Iron, 0);
-        let min_radius = location_visual_radius_cm(800, Some(&budget));
-        assert_eq!(min_radius, 192);
-    }
-
-    #[test]
-    fn location_render_radius_units_scales_by_world_units_without_clamp() {
-        let mapped = location_render_radius_units(500_000, 0.00001);
-        assert!((mapped - 5.0).abs() < f32::EPSILON);
-
-        let tiny = location_render_radius_units(100, 0.00001);
-        assert!((tiny - 0.001).abs() < f32::EPSILON);
-
-        let large = location_render_radius_units(10_000_000, 0.00001);
-        assert!((large - 100.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn should_apply_scale_highlight_skips_fragment() {
-        assert!(should_apply_scale_highlight(SelectionKind::Agent));
-        assert!(should_apply_scale_highlight(SelectionKind::Location));
-        assert!(!should_apply_scale_highlight(SelectionKind::Fragment));
-    }
-}
+#[path = "scene_helpers_depletion_tests.rs"]
+mod depletion_tests;

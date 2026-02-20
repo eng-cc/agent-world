@@ -26,13 +26,16 @@ const DEFAULT_OVERLAY_REFRESH_TICKS: u64 = 3;
 const DEFAULT_OVERLAY_MAX_HEAT_MARKERS: usize = 64;
 const DEFAULT_OVERLAY_MAX_FLOW_SEGMENTS: usize = 80;
 const DEFAULT_GRID_LOD_DISTANCE: f32 = 120.0;
+const DEFAULT_LOCATION_SHELL_ENABLED: bool = true;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
     pub cm_to_unit: f32,
+    pub render_profile: ViewerRenderProfile,
     pub show_agents: bool,
     pub show_locations: bool,
     pub highlight_selected: bool,
+    pub assets: ViewerAssetConfig,
     pub label_lod: ViewerLabelLodConfig,
     pub render_budget: ViewerRenderBudgetConfig,
     pub lighting: ViewerLightingConfig,
@@ -53,13 +56,76 @@ impl Default for Viewer3dConfig {
     fn default() -> Self {
         Self {
             cm_to_unit: DEFAULT_CM_TO_UNIT,
+            render_profile: ViewerRenderProfile::default(),
             show_agents: true,
             show_locations: true,
             highlight_selected: true,
+            assets: ViewerAssetConfig::default(),
             label_lod: ViewerLabelLodConfig::default(),
             render_budget: ViewerRenderBudgetConfig::default(),
             lighting: ViewerLightingConfig::default(),
             physical: ViewerPhysicalRenderConfig::default(),
+        }
+    }
+}
+
+impl Viewer3dConfig {
+    pub(super) fn apply_render_profile(&mut self, profile: ViewerRenderProfile) {
+        self.render_profile = profile;
+        match profile {
+            ViewerRenderProfile::Debug => {
+                self.assets.geometry_tier = ViewerGeometryTier::Debug;
+                self.assets.location_shell_enabled = false;
+            }
+            ViewerRenderProfile::Balanced => {
+                self.assets.geometry_tier = ViewerGeometryTier::Balanced;
+                self.assets.location_shell_enabled = true;
+            }
+            ViewerRenderProfile::Cinematic => {
+                self.assets.geometry_tier = ViewerGeometryTier::Cinematic;
+                self.assets.location_shell_enabled = true;
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerRenderProfile {
+    Debug,
+    Balanced,
+    Cinematic,
+}
+
+impl Default for ViewerRenderProfile {
+    fn default() -> Self {
+        Self::Balanced
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerGeometryTier {
+    Debug,
+    Balanced,
+    Cinematic,
+}
+
+impl Default for ViewerGeometryTier {
+    fn default() -> Self {
+        Self::Balanced
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerAssetConfig {
+    pub geometry_tier: ViewerGeometryTier,
+    pub location_shell_enabled: bool,
+}
+
+impl Default for ViewerAssetConfig {
+    fn default() -> Self {
+        Self {
+            geometry_tier: ViewerGeometryTier::Balanced,
+            location_shell_enabled: DEFAULT_LOCATION_SHELL_ENABLED,
         }
     }
 }
@@ -179,6 +245,9 @@ where
     F: Fn(&str) -> Option<String>,
 {
     let mut config = Viewer3dConfig::default();
+    if let Some(profile) = parse_render_profile(&lookup, "AGENT_WORLD_VIEWER_RENDER_PROFILE") {
+        config.apply_render_profile(profile);
+    }
     if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_CM_TO_UNIT") {
         if value.is_finite() && value > 0.0 {
             config.cm_to_unit = value;
@@ -192,6 +261,12 @@ where
     }
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED") {
         config.highlight_selected = value;
+    }
+    if let Some(value) = parse_geometry_tier(&lookup, "AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER") {
+        config.assets.geometry_tier = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED") {
+        config.assets.location_shell_enabled = value;
     }
     if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_LABEL_FADE_START") {
         if value.is_finite() && value >= 0.0 {
@@ -322,6 +397,30 @@ where
     })
 }
 
+fn parse_render_profile<F>(lookup: &F, key: &str) -> Option<ViewerRenderProfile>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
+        "debug" | "dbg" => Some(ViewerRenderProfile::Debug),
+        "balanced" | "balance" | "default" => Some(ViewerRenderProfile::Balanced),
+        "cinematic" | "cinema" | "quality" => Some(ViewerRenderProfile::Cinematic),
+        _ => None,
+    })
+}
+
+fn parse_geometry_tier<F>(lookup: &F, key: &str) -> Option<ViewerGeometryTier>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
+        "debug" | "low" => Some(ViewerGeometryTier::Debug),
+        "balanced" | "medium" => Some(ViewerGeometryTier::Balanced),
+        "cinematic" | "high" => Some(ViewerGeometryTier::Cinematic),
+        _ => None,
+    })
+}
+
 fn parse_f32<F>(lookup: &F, key: &str) -> Option<f32>
 where
     F: Fn(&str) -> Option<String>,
@@ -359,9 +458,12 @@ mod tests {
     fn defaults_match_rpa1_baseline() {
         let config = Viewer3dConfig::default();
         assert!((config.cm_to_unit - 0.00001).abs() < f32::EPSILON);
+        assert_eq!(config.render_profile, ViewerRenderProfile::Balanced);
         assert!(config.show_agents);
         assert!(config.show_locations);
         assert!(config.highlight_selected);
+        assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Balanced);
+        assert!(config.assets.location_shell_enabled);
         assert!(
             (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
                 < f32::EPSILON
@@ -416,9 +518,12 @@ mod tests {
     fn load_viewer_3d_config_applies_env_overrides() {
         let env = HashMap::from([
             ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0.0002"),
+            ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "debug"),
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
             ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
             ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
+            ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
+            ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "44"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "110"),
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "32"),
@@ -445,9 +550,12 @@ mod tests {
         let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
 
         assert!((config.cm_to_unit - 0.0002).abs() < f32::EPSILON);
+        assert_eq!(config.render_profile, ViewerRenderProfile::Debug);
         assert!(!config.show_agents);
         assert!(!config.show_locations);
         assert!(!config.highlight_selected);
+        assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Cinematic);
+        assert!(config.assets.location_shell_enabled);
         assert!((config.label_lod.fade_start_distance - 44.0).abs() < f32::EPSILON);
         assert!((config.label_lod.fade_end_distance - 110.0).abs() < f32::EPSILON);
         assert_eq!(config.label_lod.max_visible_labels, 32);
@@ -475,7 +583,10 @@ mod tests {
     fn load_viewer_3d_config_ignores_invalid_values() {
         let env = HashMap::from([
             ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
+            ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "invalid"),
             ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
+            ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "ultra"),
+            ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "maybe"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_START", "-5"),
             ("AGENT_WORLD_VIEWER_LABEL_FADE_END", "2"),
             ("AGENT_WORLD_VIEWER_MAX_VISIBLE_LABELS", "0"),
@@ -501,7 +612,13 @@ mod tests {
         let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
 
         assert!((config.cm_to_unit - DEFAULT_CM_TO_UNIT).abs() < f32::EPSILON);
+        assert_eq!(config.render_profile, ViewerRenderProfile::Balanced);
         assert!(config.show_agents);
+        assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Balanced);
+        assert_eq!(
+            config.assets.location_shell_enabled,
+            DEFAULT_LOCATION_SHELL_ENABLED
+        );
         assert!(
             (config.label_lod.fade_start_distance - DEFAULT_LABEL_FADE_START_DISTANCE).abs()
                 < f32::EPSILON
@@ -560,6 +677,33 @@ mod tests {
                 .abs()
                 < f32::EPSILON
         );
+    }
+
+    #[test]
+    fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
+        let debug_profile_env = HashMap::from([("AGENT_WORLD_VIEWER_RENDER_PROFILE", "debug")]);
+        let debug_config =
+            load_viewer_3d_config_from(|key| debug_profile_env.get(key).map(|v| v.to_string()));
+        assert_eq!(debug_config.render_profile, ViewerRenderProfile::Debug);
+        assert_eq!(debug_config.assets.geometry_tier, ViewerGeometryTier::Debug);
+        assert!(!debug_config.assets.location_shell_enabled);
+
+        let cinematic_with_override_env = HashMap::from([
+            ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "cinematic"),
+            ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "false"),
+        ]);
+        let cinematic_config = load_viewer_3d_config_from(|key| {
+            cinematic_with_override_env.get(key).map(|v| v.to_string())
+        });
+        assert_eq!(
+            cinematic_config.render_profile,
+            ViewerRenderProfile::Cinematic
+        );
+        assert_eq!(
+            cinematic_config.assets.geometry_tier,
+            ViewerGeometryTier::Cinematic
+        );
+        assert!(!cinematic_config.assets.location_shell_enabled);
     }
 
     #[test]

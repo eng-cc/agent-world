@@ -123,6 +123,86 @@ fn module_visual_translation(base: Vec3, module_id: &str, entity_id: &str) -> Ve
     base + lateral + Vec3::Y * MODULE_VISUAL_VERTICAL_OFFSET
 }
 
+fn location_shell_ring_layers(config: &Viewer3dConfig) -> usize {
+    match config.assets.geometry_tier {
+        ViewerGeometryTier::Debug => 1,
+        ViewerGeometryTier::Balanced => 2,
+        ViewerGeometryTier::Cinematic => 3,
+    }
+}
+
+fn location_shell_halo_layers(config: &Viewer3dConfig) -> usize {
+    match config.assets.geometry_tier {
+        ViewerGeometryTier::Debug => 1,
+        ViewerGeometryTier::Balanced => 1,
+        ViewerGeometryTier::Cinematic => 2,
+    }
+}
+
+fn location_core_material(
+    assets: &Viewer3dAssets,
+    material: MaterialKind,
+) -> Handle<StandardMaterial> {
+    match material {
+        MaterialKind::Silicate => assets.chunk_unexplored_material.clone(),
+        MaterialKind::Metal => assets.chunk_generated_material.clone(),
+        MaterialKind::Ice => assets.chunk_exhausted_material.clone(),
+        MaterialKind::Carbon => assets.chunk_generated_material.clone(),
+        MaterialKind::Composite => assets.chunk_unexplored_material.clone(),
+    }
+}
+
+pub(super) fn spawn_location_shell_details(
+    parent: &mut ChildSpawnerCommands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    location_id: &str,
+    material: MaterialKind,
+    radiation_emission_per_tick: i64,
+) {
+    if !config.assets.location_shell_enabled {
+        return;
+    }
+
+    let core_scale = Vec3::splat(1.0);
+    parent.spawn((
+        Mesh3d(assets.location_mesh.clone()),
+        MeshMaterial3d(location_core_material(assets, material)),
+        Transform::from_scale(core_scale),
+        BaseScale(core_scale),
+        Name::new(format!("location:detail:core:{location_id}")),
+        DetailZoomEntity,
+    ));
+
+    for ring_idx in 0..location_shell_ring_layers(config) {
+        let scale_factor = 1.12 + ring_idx as f32 * 0.18;
+        let ring_scale = Vec3::new(scale_factor, 0.13 + ring_idx as f32 * 0.02, scale_factor);
+        parent.spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(assets.world_grid_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, ring_idx as f32 * 0.018, 0.0))
+                .with_scale(ring_scale),
+            BaseScale(ring_scale),
+            Name::new(format!("location:detail:ring:{location_id}:{ring_idx}")),
+            DetailZoomEntity,
+        ));
+    }
+
+    if radiation_emission_per_tick > 0 {
+        for halo_idx in 0..location_shell_halo_layers(config) {
+            let halo_scale = Vec3::splat(1.24 + halo_idx as f32 * 0.18);
+            parent.spawn((
+                Mesh3d(assets.location_mesh.clone()),
+                MeshMaterial3d(assets.world_bounds_material.clone()),
+                Transform::from_scale(halo_scale),
+                BaseScale(halo_scale),
+                Name::new(format!("location:detail:halo:{location_id}:{halo_idx}")),
+                DetailZoomEntity,
+            ));
+        }
+    }
+}
+
 pub(super) fn spawn_module_visual_entity(
     commands: &mut Commands,
     config: &Viewer3dConfig,

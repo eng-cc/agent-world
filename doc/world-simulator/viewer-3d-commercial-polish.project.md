@@ -7,9 +7,9 @@
 - [x] C3D0.2 输出项目管理文档（本文件）
 
 ### C3D-1 资产层（缺口 1）
-- [ ] C3D1.1 新增 `ViewerRenderProfile` 与资产分档配置（debug/balanced/cinematic）
-- [ ] C3D1.2 接入几何精度分档与 Location 壳层可选渲染
-- [ ] C3D1.3 补齐配置解析与场景回归测试
+- [x] C3D1.1 新增 `ViewerRenderProfile` 与资产分档配置（debug/balanced/cinematic）
+- [x] C3D1.2 接入几何精度分档与 Location 壳层可选渲染
+- [x] C3D1.3 补齐配置解析与场景回归测试
 
 ### C3D-2 材质层（缺口 2）
 - [ ] C3D2.1 新增材质分层配置（工业风 PBR 参数组）
@@ -39,6 +39,6 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：C3D-0 完成，C3D-1 进行中。
-- 下一步：实现渲染档位与资产分档配置并补齐单测。
-- 最近更新：2026-02-20（完成设计建模并启动实现）。
+- 当前阶段：C3D-1 完成，C3D-2 进行中。
+- 下一步：实现工业风材质分层与元素材质策略，并补齐材质回归测试。
+- 最近更新：2026-02-20（完成 render profile/资产分档/location shell 与回归测试）。
