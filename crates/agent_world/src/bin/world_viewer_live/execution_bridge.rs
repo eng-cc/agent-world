@@ -7,6 +7,9 @@ use agent_world::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
 use agent_world::runtime::{blake3_hex, BlobStore, LocalCasStore, World as RuntimeWorld};
+use agent_world::simulator::{
+    Action as SimulatorAction, ActionSubmitter, WorldEventKind, WorldKernel,
+};
 use agent_world_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
@@ -33,7 +36,19 @@ pub(super) struct ExecutionBridgeRecord {
     pub journal_len: usize,
     pub snapshot_ref: String,
     pub journal_ref: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub simulator_mirror: Option<ExecutionSimulatorMirrorRecord>,
     pub timestamp_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) struct ExecutionSimulatorMirrorRecord {
+    pub action_count: usize,
+    pub rejected_action_count: usize,
+    pub journal_len: usize,
+    pub snapshot_ref: String,
+    pub journal_ref: String,
+    pub state_root: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,9 +64,11 @@ pub(super) struct NodeRuntimeExecutionDriver {
     state_path: std::path::PathBuf,
     world_dir: std::path::PathBuf,
     records_dir: std::path::PathBuf,
+    simulator_world_dir: std::path::PathBuf,
     execution_store: LocalCasStore,
     state: ExecutionBridgeState,
     execution_world: RuntimeWorld,
+    simulator_mirror: WorldKernel,
     execution_sandbox: Box<dyn ModuleSandbox + Send>,
 }
 
@@ -66,7 +83,7 @@ impl NodeRuntimeExecutionDriver {
         let execution_world = load_execution_world(world_dir.as_path())?;
         let execution_sandbox: Box<dyn ModuleSandbox + Send> =
             Box::new(WasmExecutor::new(WasmExecutorConfig::default()));
-        Ok(Self::new_with_sandbox(
+        let mut driver = Self::new_with_sandbox(
             state_path,
             world_dir,
             records_dir,
@@ -74,7 +91,10 @@ impl NodeRuntimeExecutionDriver {
             state,
             execution_world,
             execution_sandbox,
-        ))
+        );
+        driver.simulator_mirror =
+            load_simulator_execution_world(driver.simulator_world_dir.as_path())?;
+        Ok(driver)
     }
 
     fn new_with_sandbox(
@@ -86,15 +106,93 @@ impl NodeRuntimeExecutionDriver {
         execution_world: RuntimeWorld,
         execution_sandbox: Box<dyn ModuleSandbox + Send>,
     ) -> Self {
+        let simulator_world_dir = simulator_world_dir_from_execution_world_dir(world_dir.as_path());
         Self {
             state_path,
             world_dir,
             records_dir,
+            simulator_world_dir,
             execution_store: LocalCasStore::new(storage_root),
             state,
             execution_world,
+            simulator_mirror: WorldKernel::new(),
             execution_sandbox,
         }
+    }
+
+    fn apply_simulator_actions(
+        &mut self,
+        height: u64,
+        simulator_actions: &[(SimulatorAction, ActionSubmitter)],
+    ) -> Result<Option<ExecutionSimulatorMirrorRecord>, String> {
+        if simulator_actions.is_empty() {
+            return Ok(None);
+        }
+
+        let mut rejected_action_count = 0_usize;
+        for (action, submitter) in simulator_actions {
+            match submitter {
+                ActionSubmitter::System => {
+                    self.simulator_mirror
+                        .submit_action_from_system(action.clone());
+                }
+                ActionSubmitter::Agent { agent_id } => {
+                    self.simulator_mirror
+                        .submit_action_from_agent(agent_id.clone(), action.clone());
+                }
+                ActionSubmitter::Player { player_id } => {
+                    self.simulator_mirror
+                        .submit_action_from_player(player_id.clone(), action.clone());
+                }
+            }
+
+            let event = self.simulator_mirror.step().ok_or_else(|| {
+                format!(
+                    "execution driver simulator mirror step produced no event at height={height}"
+                )
+            })?;
+            if matches!(event.kind, WorldEventKind::ActionRejected { .. }) {
+                rejected_action_count = rejected_action_count.saturating_add(1);
+            }
+        }
+
+        let snapshot_value = self.simulator_mirror.snapshot();
+        let journal_value = self.simulator_mirror.journal_snapshot();
+        let snapshot_bytes = to_cbor(snapshot_value)?;
+        let journal_bytes = to_cbor(journal_value)?;
+
+        let snapshot_ref = self
+            .execution_store
+            .put_bytes(snapshot_bytes.as_slice())
+            .map_err(|err| {
+                format!(
+                    "execution driver simulator CAS snapshot put failed: {:?}",
+                    err
+                )
+            })?;
+        let journal_ref = self
+            .execution_store
+            .put_bytes(journal_bytes.as_slice())
+            .map_err(|err| {
+                format!(
+                    "execution driver simulator CAS journal put failed: {:?}",
+                    err
+                )
+            })?;
+        let state_root = blake3_hex(snapshot_bytes.as_slice());
+        persist_simulator_execution_world(
+            self.simulator_world_dir.as_path(),
+            &self.simulator_mirror,
+        )?;
+
+        Ok(Some(ExecutionSimulatorMirrorRecord {
+            action_count: simulator_actions.len(),
+            rejected_action_count,
+            journal_len: self.simulator_mirror.journal().len(),
+            snapshot_ref,
+            journal_ref,
+            state_root,
+        }))
     }
 }
 
@@ -147,13 +245,16 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             ));
         }
 
-        let mut decoded_actions = Vec::with_capacity(context.committed_actions.len());
+        let mut decoded_runtime_actions = Vec::with_capacity(context.committed_actions.len());
+        let mut decoded_simulator_actions = Vec::with_capacity(context.committed_actions.len());
         for action in &context.committed_actions {
             match decode_consensus_action_payload(action.payload_cbor.as_slice()) {
                 Ok(ConsensusActionPayloadBody::RuntimeAction { action: decoded }) => {
-                    decoded_actions.push(decoded);
+                    decoded_runtime_actions.push(decoded);
                 }
-                Ok(ConsensusActionPayloadBody::SimulatorAction { .. }) => {}
+                Ok(ConsensusActionPayloadBody::SimulatorAction { action, submitter }) => {
+                    decoded_simulator_actions.push((action, submitter));
+                }
                 Err(err) => {
                     return Err(format!(
                         "execution driver decode committed action failed action_id={} err={}",
@@ -171,7 +272,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             )
         })?;
 
-        for action in decoded_actions {
+        for action in decoded_runtime_actions {
             self.execution_world.submit_action(action);
         }
         self.execution_world
@@ -182,6 +283,8 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
                     context.height, err
                 )
             })?;
+        let simulator_mirror =
+            self.apply_simulator_actions(context.height, decoded_simulator_actions.as_slice())?;
 
         let snapshot_value = self.execution_world.snapshot();
         let journal_value = self.execution_world.journal().clone();
@@ -222,6 +325,7 @@ impl NodeExecutionHook for NodeRuntimeExecutionDriver {
             journal_len: self.execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
+            simulator_mirror,
             timestamp_ms: context.committed_at_unix_ms,
         };
         persist_execution_bridge_record(self.records_dir.as_path(), &record)?;
@@ -307,6 +411,43 @@ pub(super) fn persist_execution_world(
     })
 }
 
+fn simulator_world_dir_from_execution_world_dir(world_dir: &Path) -> std::path::PathBuf {
+    match world_dir.file_name().and_then(|name| name.to_str()) {
+        Some(name) if !name.is_empty() => {
+            world_dir.with_file_name(format!("{name}-simulator-mirror"))
+        }
+        _ => world_dir.join("simulator-mirror"),
+    }
+}
+
+fn load_simulator_execution_world(world_dir: &Path) -> Result<WorldKernel, String> {
+    let snapshot_path = world_dir.join("snapshot.json");
+    let journal_path = world_dir.join("journal.json");
+    if !snapshot_path.exists() || !journal_path.exists() {
+        return Ok(WorldKernel::new());
+    }
+    WorldKernel::load_from_dir(world_dir).map_err(|err| {
+        format!(
+            "load simulator execution mirror from {} failed: {:?}",
+            world_dir.display(),
+            err
+        )
+    })
+}
+
+fn persist_simulator_execution_world(
+    world_dir: &Path,
+    simulator_world: &WorldKernel,
+) -> Result<(), String> {
+    simulator_world.save_to_dir(world_dir).map_err(|err| {
+        format!(
+            "save simulator execution mirror to {} failed: {:?}",
+            world_dir.display(),
+            err
+        )
+    })
+}
+
 pub(super) fn bridge_committed_heights(
     snapshot: &NodeSnapshot,
     observed_at_unix_ms: i64,
@@ -380,6 +521,7 @@ pub(super) fn bridge_committed_heights(
             journal_len: execution_world.journal().len(),
             snapshot_ref,
             journal_ref,
+            simulator_mirror: None,
             timestamp_ms: observed_at_unix_ms,
         };
         persist_execution_bridge_record(execution_records_dir, &record)?;
@@ -724,10 +866,11 @@ mod tests {
     }
 
     #[test]
-    fn node_runtime_execution_driver_ignores_simulator_payload_envelope() {
+    fn node_runtime_execution_driver_processes_simulator_payload_envelope() {
         let dir = temp_dir("execution-driver-simulator-payload");
         let state_path = dir.join("state.json");
         let world_dir = dir.join("world");
+        let simulator_world_dir = simulator_world_dir_from_execution_world_dir(world_dir.as_path());
         let records_dir = dir.join("records");
         let storage_root = dir.join("store");
         let mut driver = NodeRuntimeExecutionDriver::new(
@@ -770,6 +913,20 @@ mod tests {
 
         assert_eq!(result.execution_height, 1);
         assert!(records_dir.join("00000000000000000001.json").exists());
+        let record_bytes = fs::read(records_dir.join("00000000000000000001.json"))
+            .expect("read execution bridge record");
+        let record: ExecutionBridgeRecord =
+            serde_json::from_slice(record_bytes.as_slice()).expect("parse execution bridge record");
+        let simulator = record
+            .simulator_mirror
+            .expect("simulator mirror record should exist");
+        assert_eq!(simulator.action_count, 1);
+        assert_eq!(simulator.rejected_action_count, 1);
+        assert!(!simulator.snapshot_ref.is_empty());
+        assert!(!simulator.journal_ref.is_empty());
+        assert!(!simulator.state_root.is_empty());
+        assert!(simulator_world_dir.join("snapshot.json").exists());
+        assert!(simulator_world_dir.join("journal.json").exists());
         let _ = fs::remove_dir_all(dir);
     }
 }
