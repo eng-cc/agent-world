@@ -159,13 +159,13 @@ Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live 
 
 ## 项目状态
 
-早期实验阶段。
+基础模拟已实现，正在推进游戏层。
 
 当前重点：
 
-- 模拟一致性
-- 架构模块化
-- 可扩展执行模型
+- 游戏层玩法框架落地
+- 模拟一致性持续验证
+- 架构模块化与可扩展执行模型
 
 欢迎讨论与贡献。
 
@@ -178,6 +178,8 @@ Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live 
 - 世界规则细则：[`world-rule.md`](./world-rule.md)
 - Viewer/运行使用说明：[`doc/viewer-manual.md`](./doc/viewer-manual.md)
 - 闭环测试与套件矩阵：[`testing-manual.md`](./testing-manual.md)
+- 游戏可玩性顶层设计：[`doc/game/gameplay-top-level-design.md`](./doc/game/gameplay-top-level-design.md)
+- 游戏玩法工程架构设计：[`doc/game/gameplay-engineering-architecture.md`](./doc/game/gameplay-engineering-architecture.md)
 
 ---
 
