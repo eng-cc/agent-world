@@ -3,7 +3,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
@@ -25,7 +25,8 @@ use agent_world::viewer::{
 use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world_node::{
     Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
-    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, PosConsensusStatus, PosValidator,
+    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, NodeSnapshot, PosConsensusStatus,
+    PosValidator,
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
@@ -117,6 +118,9 @@ impl fmt::Debug for LiveNodeHandle {
 struct RewardRuntimeLoopConfig {
     world_id: String,
     local_node_id: String,
+    settlement_leader_node_id: String,
+    settlement_leader_stale_ms: u64,
+    settlement_failover_enabled: bool,
     reward_network: Option<Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>>,
     poll_interval: Duration,
     signer_node_id: String,
@@ -482,6 +486,59 @@ fn socket_addr_to_multiaddr(addr: SocketAddr) -> String {
     }
 }
 
+fn reward_runtime_node_report_root(report_dir: &str, node_id: &str) -> PathBuf {
+    Path::new(report_dir).join("nodes").join(node_id)
+}
+
+fn infer_default_reward_runtime_leader_node_id(local_node_id: &str) -> String {
+    if let Some(base) = local_node_id.strip_suffix("-sequencer") {
+        return format!("{base}-sequencer");
+    }
+    if let Some(base) = local_node_id.strip_suffix("-storage") {
+        return format!("{base}-sequencer");
+    }
+    if let Some(base) = local_node_id.strip_suffix("-observer") {
+        return format!("{base}-sequencer");
+    }
+    local_node_id.to_string()
+}
+
+fn select_failover_publisher_node_id(
+    snapshot: &NodeSnapshot,
+    leader_node_id: &str,
+) -> Option<String> {
+    let mut candidates = vec![(
+        snapshot.node_id.clone(),
+        snapshot.consensus.committed_height,
+        snapshot.consensus.last_committed_at_ms.unwrap_or(0),
+    )];
+    for peer_head in &snapshot.consensus.peer_heads {
+        if peer_head.node_id == leader_node_id {
+            continue;
+        }
+        candidates.push((
+            peer_head.node_id.clone(),
+            peer_head.height,
+            peer_head.committed_at_ms,
+        ));
+    }
+    let max_height = candidates.iter().map(|(_, height, _)| *height).max()?;
+    let latest_candidates = candidates
+        .into_iter()
+        .filter(|(_, height, _)| *height == max_height)
+        .collect::<Vec<_>>();
+    let max_committed_at_ms = latest_candidates
+        .iter()
+        .map(|(_, _, committed_at_ms)| *committed_at_ms)
+        .max()
+        .unwrap_or(0);
+    latest_candidates
+        .into_iter()
+        .filter(|(_, _, committed_at_ms)| *committed_at_ms == max_committed_at_ms)
+        .map(|(node_id, _, _)| node_id)
+        .min()
+}
+
 fn start_single_live_node(
     options: &CliOptions,
     world_id: &str,
@@ -500,6 +557,9 @@ fn start_single_live_node(
             .map_err(|err| format!("failed to apply node validators: {err:?}"))?;
     }
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    config = config
+        .with_require_execution_on_commit(true)
+        .with_require_peer_execution_hashes(true);
     if !options.node_gossip_peers.is_empty() && options.node_gossip_bind.is_none() {
         return Err("node gossip peers require --node-gossip-bind".to_string());
     }
@@ -515,14 +575,15 @@ fn start_single_live_node(
         .join("node-distfs")
         .join(options.node_id.as_str())
         .join("store");
+    let node_report_root = reward_runtime_node_report_root(
+        options.reward_runtime_report_dir.as_str(),
+        options.node_id.as_str(),
+    );
     let mut runtime = NodeRuntime::new(config);
     let execution_driver = NodeRuntimeExecutionDriver::new(
-        Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
-        Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
-        Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+        node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
         storage_root,
     )
     .map_err(|err| format!("failed to initialize node execution driver: {err}"))?;
@@ -590,14 +651,14 @@ fn start_triad_live_nodes(
             NodeRole::Storage,
             storage_bind,
             vec![sequencer_bind, observer_bind],
-            false,
+            true,
         ),
         (
             observer_node_id,
             NodeRole::Observer,
             observer_bind,
             vec![sequencer_bind, storage_bind],
-            false,
+            true,
         ),
     ];
 
@@ -613,6 +674,9 @@ fn start_triad_live_nodes(
             .with_pos_validators(validators.clone())
             .map_err(|err| format!("failed to apply triad validators for {node_id}: {err:?}"))?;
         config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+        config = config
+            .with_require_execution_on_commit(true)
+            .with_require_peer_execution_hashes(true);
         config = config.with_gossip_optional(bind_addr, peers);
         config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
 
@@ -622,13 +686,14 @@ fn start_triad_live_nodes(
                 .join("node-distfs")
                 .join(node_id.as_str())
                 .join("store");
+            let node_report_root = reward_runtime_node_report_root(
+                options.reward_runtime_report_dir.as_str(),
+                node_id.as_str(),
+            );
             let execution_driver = NodeRuntimeExecutionDriver::new(
-                Path::new(options.reward_runtime_report_dir.as_str())
-                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
-                Path::new(options.reward_runtime_report_dir.as_str())
-                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
-                Path::new(options.reward_runtime_report_dir.as_str())
-                    .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+                node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+                node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+                node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
                 storage_root,
             )
             .map_err(|err| format!("failed to initialize triad execution driver: {err}"))?;
@@ -696,8 +761,8 @@ fn start_triad_distributed_live_node(
     ];
     let (node_id, attach_execution_hook) = match options.node_role {
         NodeRole::Sequencer => (sequencer_node_id, true),
-        NodeRole::Storage => (storage_node_id, false),
-        NodeRole::Observer => (observer_node_id, false),
+        NodeRole::Storage => (storage_node_id, true),
+        NodeRole::Observer => (observer_node_id, true),
     };
 
     let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), options.node_role)
@@ -709,6 +774,9 @@ fn start_triad_distributed_live_node(
         format!("failed to apply triad_distributed validators for {node_id}: {err:?}")
     })?;
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
+    config = config
+        .with_require_execution_on_commit(true)
+        .with_require_peer_execution_hashes(true);
     config = config.with_gossip_optional(bind_addr, peers);
     config = config.with_replication(build_node_replication_config(node_id.as_str(), keypair)?);
 
@@ -718,13 +786,14 @@ fn start_triad_distributed_live_node(
             .join("node-distfs")
             .join(node_id.as_str())
             .join("store");
+        let node_report_root = reward_runtime_node_report_root(
+            options.reward_runtime_report_dir.as_str(),
+            node_id.as_str(),
+        );
         let execution_driver = NodeRuntimeExecutionDriver::new(
-            Path::new(options.reward_runtime_report_dir.as_str())
-                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
-            Path::new(options.reward_runtime_report_dir.as_str())
-                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
-            Path::new(options.reward_runtime_report_dir.as_str())
-                .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+            node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
             storage_root,
         )
         .map_err(|err| format!("failed to initialize triad_distributed execution driver: {err}"))?;
@@ -839,27 +908,38 @@ fn start_reward_runtime_worker(
         .map_err(|err| format!("failed to load reward runtime signer keypair: {err}"))?;
     let world_id = handle.world_id.clone();
     let primary_node_id = handle.primary_node_id.clone();
+    let settlement_leader_node_id = options
+        .reward_runtime_leader_node_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| infer_default_reward_runtime_leader_node_id(primary_node_id.as_str()));
+    let node_report_root = reward_runtime_node_report_root(
+        options.reward_runtime_report_dir.as_str(),
+        primary_node_id.as_str(),
+    );
     let reward_network = handle.reward_network.clone();
 
     let config = RewardRuntimeLoopConfig {
         world_id,
         local_node_id: primary_node_id.clone(),
+        settlement_leader_node_id,
+        settlement_leader_stale_ms: options.reward_runtime_leader_stale_ms,
+        settlement_failover_enabled: options.reward_runtime_failover_enabled,
         reward_network,
         poll_interval: Duration::from_millis(options.tick_ms),
         signer_node_id,
         signer_private_key_hex: signer_keypair.private_key_hex,
         signer_public_key_hex: signer_keypair.public_key_hex,
         report_dir,
-        state_path: Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
-        distfs_probe_state_path: Path::new(options.reward_runtime_report_dir.as_str())
+        state_path: node_report_root.join(DEFAULT_REWARD_RUNTIME_STATE_FILE),
+        distfs_probe_state_path: node_report_root
             .join(DEFAULT_REWARD_RUNTIME_DISTFS_PROBE_STATE_FILE),
-        execution_bridge_state_path: Path::new(options.reward_runtime_report_dir.as_str())
+        execution_bridge_state_path: node_report_root
             .join(DEFAULT_REWARD_RUNTIME_EXECUTION_BRIDGE_STATE_FILE),
-        execution_world_dir: Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
-        execution_records_dir: Path::new(options.reward_runtime_report_dir.as_str())
-            .join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
+        execution_world_dir: node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_WORLD_DIR),
+        execution_records_dir: node_report_root.join(DEFAULT_REWARD_RUNTIME_EXECUTION_RECORDS_DIR),
         storage_root: Path::new("output")
             .join("node-distfs")
             .join(primary_node_id.as_str())
@@ -1340,13 +1420,40 @@ fn reward_runtime_loop(
         epoch_observer_nodes.clear();
 
         rollover_reward_reserve_epoch(&mut reward_world, report.epoch_index);
+        let settlement_leader_node_id = config.settlement_leader_node_id.as_str();
+        let leader_last_commit_at_ms = if snapshot.node_id == settlement_leader_node_id {
+            snapshot.consensus.last_committed_at_ms
+        } else {
+            snapshot
+                .consensus
+                .peer_heads
+                .iter()
+                .find(|head| head.node_id == settlement_leader_node_id)
+                .map(|head| head.committed_at_ms)
+        };
+        let leader_is_stale = leader_last_commit_at_ms
+            .map(|committed_at_ms| {
+                observed_at_unix_ms.saturating_sub(committed_at_ms)
+                    > config.settlement_leader_stale_ms as i64
+            })
+            .unwrap_or(false);
+        let failover_publisher_node_id = if settlement_network_enabled
+            && config.settlement_failover_enabled
+            && leader_is_stale
+        {
+            select_failover_publisher_node_id(&snapshot, settlement_leader_node_id)
+        } else {
+            None
+        };
+        let local_is_settlement_publisher = snapshot.node_id == settlement_leader_node_id
+            || failover_publisher_node_id.as_deref() == Some(snapshot.node_id.as_str());
         let should_publish_settlement = settlement_network_enabled
             && observer_trace_threshold_met
-            && snapshot.role == NodeRole::Sequencer
             && matches!(
                 snapshot.consensus.last_status,
                 Some(PosConsensusStatus::Committed)
-            );
+            )
+            && local_is_settlement_publisher;
         let requires_local_settlement = observer_trace_threshold_met
             && (should_publish_settlement || !settlement_network_enabled);
         let minted_records = if requires_local_settlement {
@@ -1372,6 +1479,29 @@ fn reward_runtime_loop(
                 "observer trace threshold not met: have {}, require {}",
                 observer_trace_count_for_epoch, config.min_observer_traces
             ));
+        } else if settlement_network_enabled && !should_publish_settlement {
+            settlement_skipped_reason = if !matches!(
+                snapshot.consensus.last_status,
+                Some(PosConsensusStatus::Committed)
+            ) {
+                Some("local node consensus status is not committed".to_string())
+            } else if snapshot.node_id != settlement_leader_node_id
+                && !config.settlement_failover_enabled
+            {
+                Some(format!(
+                    "local node is not leader {} and failover is disabled",
+                    settlement_leader_node_id
+                ))
+            } else if snapshot.node_id != settlement_leader_node_id && !leader_is_stale {
+                Some(format!("leader {} is not stale", settlement_leader_node_id))
+            } else if snapshot.node_id != settlement_leader_node_id {
+                Some(format!(
+                    "failover publisher selected as {}",
+                    failover_publisher_node_id.as_deref().unwrap_or("none")
+                ))
+            } else {
+                Some("leader publish conditions are not met".to_string())
+            };
         }
 
         if observer_trace_threshold_met && settlement_network_enabled {
@@ -1498,8 +1628,10 @@ fn reward_runtime_loop(
                     "epoch": snapshot.consensus.epoch,
                     "latest_height": snapshot.consensus.latest_height,
                     "committed_height": snapshot.consensus.committed_height,
+                    "last_committed_at_ms": snapshot.consensus.last_committed_at_ms,
                     "network_committed_height": snapshot.consensus.network_committed_height,
                     "known_peer_heads": snapshot.consensus.known_peer_heads,
+                    "peer_heads": snapshot.consensus.peer_heads,
                     "last_status": snapshot.consensus.last_status.map(|status| format!("{status:?}")),
                     "last_block_hash": snapshot.consensus.last_block_hash,
                     "last_execution_height": snapshot.consensus.last_execution_height,
@@ -1529,6 +1661,11 @@ fn reward_runtime_loop(
                 "network_enabled": settlement_network_enabled,
                 "settlement_topic": settlement_topic,
                 "should_publish_settlement": should_publish_settlement,
+                "settlement_leader_node_id": settlement_leader_node_id,
+                "leader_last_commit_at_ms": leader_last_commit_at_ms,
+                "leader_is_stale": leader_is_stale,
+                "settlement_failover_enabled": config.settlement_failover_enabled,
+                "failover_publisher_node_id": failover_publisher_node_id,
                 "published_settlement_envelope_id": published_settlement_envelope_id,
                 "applied_settlement_envelope_ids": applied_settlement_ids_this_tick,
                 "observer_trace_threshold_met": observer_trace_threshold_met,

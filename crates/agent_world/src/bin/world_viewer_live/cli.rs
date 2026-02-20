@@ -57,6 +57,9 @@ pub(super) struct CliOptions {
     pub reward_runtime_enabled: bool,
     pub reward_runtime_auto_redeem: bool,
     pub reward_runtime_signer_node_id: Option<String>,
+    pub reward_runtime_leader_node_id: Option<String>,
+    pub reward_runtime_leader_stale_ms: u64,
+    pub reward_runtime_failover_enabled: bool,
     pub reward_runtime_report_dir: String,
     pub reward_runtime_min_observer_traces: u32,
     pub reward_points_per_credit: u64,
@@ -95,6 +98,9 @@ impl Default for CliOptions {
             reward_runtime_enabled: false,
             reward_runtime_auto_redeem: false,
             reward_runtime_signer_node_id: None,
+            reward_runtime_leader_node_id: None,
+            reward_runtime_leader_stale_ms: 3_000,
+            reward_runtime_failover_enabled: true,
             reward_runtime_report_dir: DEFAULT_REWARD_RUNTIME_REPORT_DIR.to_string(),
             reward_runtime_min_observer_traces: DEFAULT_REWARD_RUNTIME_MIN_OBSERVER_TRACES,
             reward_points_per_credit: RewardAssetConfig::default().points_per_credit,
@@ -283,6 +289,33 @@ pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<C
                     return Err("--reward-runtime-signer requires non-empty <node_id>".to_string());
                 }
                 options.reward_runtime_signer_node_id = Some(signer.to_string());
+            }
+            "--reward-runtime-leader-node" => {
+                let leader = iter
+                    .next()
+                    .ok_or_else(|| "--reward-runtime-leader-node requires <node_id>".to_string())?;
+                let leader = leader.trim();
+                if leader.is_empty() {
+                    return Err(
+                        "--reward-runtime-leader-node requires non-empty <node_id>".to_string()
+                    );
+                }
+                options.reward_runtime_leader_node_id = Some(leader.to_string());
+            }
+            "--reward-runtime-leader-stale-ms" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--reward-runtime-leader-stale-ms requires a positive integer".to_string()
+                })?;
+                options.reward_runtime_leader_stale_ms = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or_else(|| {
+                        "--reward-runtime-leader-stale-ms requires a positive integer".to_string()
+                    })?;
+            }
+            "--reward-runtime-no-failover" => {
+                options.reward_runtime_failover_enabled = false;
             }
             "--reward-runtime-report-dir" => {
                 let dir = iter
@@ -526,6 +559,15 @@ pub(super) fn print_help() {
         "  --reward-runtime-auto-redeem Auto redeem minted credits to node-mapped runtime agent"
     );
     println!("  --reward-runtime-signer <node_id> Settlement signer node id (default: --node-id)");
+    println!(
+        "  --reward-runtime-leader-node <node_id> Settlement publisher leader node id (default: inferred sequencer id)"
+    );
+    println!(
+        "  --reward-runtime-leader-stale-ms <n> Leader commit staleness window before failover publish (default: 3000)"
+    );
+    println!(
+        "  --reward-runtime-no-failover Disable settlement publish failover when leader is stale"
+    );
     println!("  --reward-runtime-report-dir <path> Reward runtime report directory (default: output/node-reward-runtime)");
     println!(
         "  --reward-runtime-min-observer-traces <n> Minimum unique observer traces per epoch before settlement (default: 1)"
