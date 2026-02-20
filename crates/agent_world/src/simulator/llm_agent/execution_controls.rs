@@ -472,6 +472,57 @@ fn action_signature(action: &Action) -> String {
         } => format!(
             "declare_social_edge:{declarer:?}:{schema_id}:{relation_kind}:{from:?}:{to:?}:{weight_bps}:{backing_fact_ids:?}:{ttl_ticks:?}"
         ),
+        Action::FormAlliance {
+            proposer_agent_id,
+            alliance_id,
+            members,
+            charter,
+        } => format!(
+            "form_alliance:{proposer_agent_id}:{alliance_id}:{members:?}:{charter}"
+        ),
+        Action::DeclareWar {
+            initiator_agent_id,
+            war_id,
+            aggressor_alliance_id,
+            defender_alliance_id,
+            objective,
+            intensity,
+        } => format!(
+            "declare_war:{initiator_agent_id}:{war_id}:{aggressor_alliance_id}:{defender_alliance_id}:{objective}:{intensity}"
+        ),
+        Action::OpenGovernanceProposal {
+            proposer_agent_id,
+            proposal_key,
+            title,
+            description,
+            options,
+            voting_window_ticks,
+            quorum_weight,
+            pass_threshold_bps,
+        } => format!(
+            "open_governance_proposal:{proposer_agent_id}:{proposal_key}:{title}:{description}:{options:?}:{voting_window_ticks}:{quorum_weight}:{pass_threshold_bps}"
+        ),
+        Action::CastGovernanceVote {
+            voter_agent_id,
+            proposal_key,
+            option,
+            weight,
+        } => format!("cast_governance_vote:{voter_agent_id}:{proposal_key}:{option}:{weight}"),
+        Action::ResolveCrisis {
+            resolver_agent_id,
+            crisis_id,
+            strategy,
+            success,
+        } => format!("resolve_crisis:{resolver_agent_id}:{crisis_id}:{strategy}:{success}"),
+        Action::GrantMetaProgress {
+            operator_agent_id,
+            target_agent_id,
+            track,
+            points,
+            achievement_id,
+        } => format!(
+            "grant_meta_progress:{operator_agent_id}:{target_agent_id}:{track}:{points}:{achievement_id:?}"
+        ),
         other => format!("other:{other:?}"),
     }
 }
@@ -816,6 +867,107 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 && left_relation_kind == right_relation_kind
                 && left_from == right_from
                 && left_to == right_to
+        }
+        (
+            Action::FormAlliance {
+                proposer_agent_id: left_proposer,
+                alliance_id: left_alliance_id,
+                members: left_members,
+                ..
+            },
+            Action::FormAlliance {
+                proposer_agent_id: right_proposer,
+                alliance_id: right_alliance_id,
+                members: right_members,
+                ..
+            },
+        ) => {
+            left_proposer == right_proposer
+                && left_alliance_id == right_alliance_id
+                && left_members == right_members
+        }
+        (
+            Action::DeclareWar {
+                initiator_agent_id: left_initiator,
+                war_id: left_war_id,
+                aggressor_alliance_id: left_aggressor,
+                defender_alliance_id: left_defender,
+                ..
+            },
+            Action::DeclareWar {
+                initiator_agent_id: right_initiator,
+                war_id: right_war_id,
+                aggressor_alliance_id: right_aggressor,
+                defender_alliance_id: right_defender,
+                ..
+            },
+        ) => {
+            left_initiator == right_initiator
+                && left_war_id == right_war_id
+                && left_aggressor == right_aggressor
+                && left_defender == right_defender
+        }
+        (
+            Action::OpenGovernanceProposal {
+                proposer_agent_id: left_proposer,
+                proposal_key: left_key,
+                ..
+            },
+            Action::OpenGovernanceProposal {
+                proposer_agent_id: right_proposer,
+                proposal_key: right_key,
+                ..
+            },
+        ) => left_proposer == right_proposer && left_key == right_key,
+        (
+            Action::CastGovernanceVote {
+                voter_agent_id: left_voter,
+                proposal_key: left_key,
+                option: left_option,
+                ..
+            },
+            Action::CastGovernanceVote {
+                voter_agent_id: right_voter,
+                proposal_key: right_key,
+                option: right_option,
+                ..
+            },
+        ) => left_voter == right_voter && left_key == right_key && left_option == right_option,
+        (
+            Action::ResolveCrisis {
+                resolver_agent_id: left_resolver,
+                crisis_id: left_crisis_id,
+                strategy: left_strategy,
+                ..
+            },
+            Action::ResolveCrisis {
+                resolver_agent_id: right_resolver,
+                crisis_id: right_crisis_id,
+                strategy: right_strategy,
+                ..
+            },
+        ) => {
+            left_resolver == right_resolver
+                && left_crisis_id == right_crisis_id
+                && left_strategy == right_strategy
+        }
+        (
+            Action::GrantMetaProgress {
+                operator_agent_id: left_operator,
+                target_agent_id: left_target,
+                track: left_track,
+                ..
+            },
+            Action::GrantMetaProgress {
+                operator_agent_id: right_operator,
+                target_agent_id: right_target,
+                track: right_track,
+                ..
+            },
+        ) => {
+            left_operator == right_operator
+                && left_target == right_target
+                && left_track == right_track
         }
         _ => false,
     }

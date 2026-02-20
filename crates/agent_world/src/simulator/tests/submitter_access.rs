@@ -87,3 +87,31 @@ fn agent_submitter_rejects_non_agent_owner_actions() {
         other => panic!("unexpected event: {other:?}"),
     }
 }
+
+#[test]
+fn agent_submitter_rejects_mismatched_gameplay_actor() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action_from_agent(
+        "agent-1",
+        Action::CastGovernanceVote {
+            voter_agent_id: "agent-2".to_string(),
+            proposal_key: "proposal.alpha".to_string(),
+            option: "approve".to_string(),
+            weight: 1,
+        },
+    );
+    let event = kernel.step().expect("event");
+    match event.kind {
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+        } => {
+            assert!(
+                notes
+                    .iter()
+                    .any(|note| note.contains("voter_agent_id must be the submitter agent")),
+                "missing gameplay actor rejection note: {notes:?}"
+            );
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}

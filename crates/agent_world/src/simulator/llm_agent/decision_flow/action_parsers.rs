@@ -3,7 +3,13 @@ use super::super::super::types::{
     Action, ModuleInstallTarget, PowerOrderSide, ResourceOwner, PPM_BASE,
 };
 use super::{parse_owner_spec, parse_resource_kind, LlmDecisionPayload, LlmSocialStakePayload};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+
+const GOVERNANCE_MIN_VOTING_WINDOW_TICKS: u64 = 1;
+const GOVERNANCE_MAX_VOTING_WINDOW_TICKS: u64 = 1_440;
+const GOVERNANCE_MIN_PASS_THRESHOLD_BPS: u16 = 5_000;
+const GOVERNANCE_MAX_PASS_THRESHOLD_BPS: u16 = 10_000;
+const WAR_MAX_INTENSITY: u32 = 10;
 
 pub(super) fn parse_market_or_social_action(
     decision: &str,
@@ -38,6 +44,12 @@ pub(super) fn parse_market_or_social_action(
         "adjudicate_social_fact" => Some(parse_adjudicate_social_fact(parsed, agent_id)),
         "revoke_social_fact" => Some(parse_revoke_social_fact(parsed, agent_id)),
         "declare_social_edge" => Some(parse_declare_social_edge(parsed, agent_id)),
+        "form_alliance" => Some(parse_form_alliance(parsed, agent_id)),
+        "declare_war" => Some(parse_declare_war(parsed, agent_id)),
+        "open_governance_proposal" => Some(parse_open_governance_proposal(parsed, agent_id)),
+        "cast_governance_vote" => Some(parse_cast_governance_vote(parsed, agent_id)),
+        "resolve_crisis" => Some(parse_resolve_crisis(parsed, agent_id)),
+        "grant_meta_progress" => Some(parse_grant_meta_progress(parsed, agent_id)),
         _ => None,
     }
 }
@@ -593,6 +605,237 @@ fn parse_declare_social_edge(
     })
 }
 
+fn parse_form_alliance(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let proposer_agent_id = parse_agent_identity_or_self(
+        parsed.proposer_agent_id.as_deref(),
+        "form_alliance",
+        "proposer_agent_id",
+        agent_id,
+    )?;
+    let alliance_id = parse_required_text(
+        parsed.alliance_id.as_deref(),
+        "form_alliance",
+        "alliance_id",
+    )?;
+    let charter = parse_required_text(parsed.charter.as_deref(), "form_alliance", "charter")?;
+    let members = parse_required_agent_identity_list(
+        parsed.members.as_deref(),
+        "form_alliance",
+        "members",
+        agent_id,
+    )?;
+
+    let mut normalized_members = BTreeSet::new();
+    normalized_members.insert(proposer_agent_id.clone());
+    normalized_members.extend(members);
+    if normalized_members.len() < 2 {
+        return Err("form_alliance requires at least 2 unique members".to_string());
+    }
+
+    Ok(Action::FormAlliance {
+        proposer_agent_id,
+        alliance_id,
+        members: normalized_members.into_iter().collect(),
+        charter,
+    })
+}
+
+fn parse_declare_war(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let initiator_agent_id = parse_agent_identity_or_self(
+        parsed.initiator_agent_id.as_deref(),
+        "declare_war",
+        "initiator_agent_id",
+        agent_id,
+    )?;
+    let war_id = parse_required_text(parsed.war_id.as_deref(), "declare_war", "war_id")?;
+    let aggressor_alliance_id = parse_required_text(
+        parsed.aggressor_alliance_id.as_deref(),
+        "declare_war",
+        "aggressor_alliance_id",
+    )?;
+    let defender_alliance_id = parse_required_text(
+        parsed.defender_alliance_id.as_deref(),
+        "declare_war",
+        "defender_alliance_id",
+    )?;
+    let objective = parse_required_text(parsed.objective.as_deref(), "declare_war", "objective")?;
+    let intensity = parsed.intensity.unwrap_or(1);
+    if intensity == 0 {
+        return Err("declare_war intensity must be > 0".to_string());
+    }
+    if intensity > WAR_MAX_INTENSITY {
+        return Err(format!(
+            "declare_war intensity exceeds max {}",
+            WAR_MAX_INTENSITY
+        ));
+    }
+
+    Ok(Action::DeclareWar {
+        initiator_agent_id,
+        war_id,
+        aggressor_alliance_id,
+        defender_alliance_id,
+        objective,
+        intensity,
+    })
+}
+
+fn parse_open_governance_proposal(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let proposer_agent_id = parse_agent_identity_or_self(
+        parsed.proposer_agent_id.as_deref(),
+        "open_governance_proposal",
+        "proposer_agent_id",
+        agent_id,
+    )?;
+    let proposal_key = parse_required_text(
+        parsed.proposal_key.as_deref(),
+        "open_governance_proposal",
+        "proposal_key",
+    )?;
+    let title = parse_required_text(parsed.title.as_deref(), "open_governance_proposal", "title")?;
+    let description = parse_required_text(
+        parsed.description.as_deref(),
+        "open_governance_proposal",
+        "description",
+    )?;
+    let options = parse_required_text_list(
+        parsed.options.as_deref(),
+        "open_governance_proposal",
+        "options",
+    )?;
+    let voting_window_ticks = parsed.voting_window_ticks.unwrap_or(32);
+    if !(GOVERNANCE_MIN_VOTING_WINDOW_TICKS..=GOVERNANCE_MAX_VOTING_WINDOW_TICKS)
+        .contains(&voting_window_ticks)
+    {
+        return Err(format!(
+            "open_governance_proposal voting_window_ticks must be within {}..={}",
+            GOVERNANCE_MIN_VOTING_WINDOW_TICKS, GOVERNANCE_MAX_VOTING_WINDOW_TICKS
+        ));
+    }
+    let quorum_weight = parsed.quorum_weight.unwrap_or(1);
+    if quorum_weight == 0 {
+        return Err("open_governance_proposal quorum_weight must be > 0".to_string());
+    }
+    let pass_threshold_bps = parsed.pass_threshold_bps.unwrap_or(6_000);
+    if !(GOVERNANCE_MIN_PASS_THRESHOLD_BPS..=GOVERNANCE_MAX_PASS_THRESHOLD_BPS)
+        .contains(&pass_threshold_bps)
+    {
+        return Err(format!(
+            "open_governance_proposal pass_threshold_bps must be within {}..={}",
+            GOVERNANCE_MIN_PASS_THRESHOLD_BPS, GOVERNANCE_MAX_PASS_THRESHOLD_BPS
+        ));
+    }
+
+    let mut unique_options = BTreeSet::new();
+    for option in options {
+        unique_options.insert(option);
+    }
+    if unique_options.len() < 2 {
+        return Err("open_governance_proposal requires at least 2 unique options".to_string());
+    }
+
+    Ok(Action::OpenGovernanceProposal {
+        proposer_agent_id,
+        proposal_key,
+        title,
+        description,
+        options: unique_options.into_iter().collect(),
+        voting_window_ticks,
+        quorum_weight,
+        pass_threshold_bps,
+    })
+}
+
+fn parse_cast_governance_vote(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let voter_agent_id = parse_agent_identity_or_self(
+        parsed.voter_agent_id.as_deref(),
+        "cast_governance_vote",
+        "voter_agent_id",
+        agent_id,
+    )?;
+    let proposal_key = parse_required_text(
+        parsed.proposal_key.as_deref(),
+        "cast_governance_vote",
+        "proposal_key",
+    )?;
+    let option = parse_required_text(parsed.option.as_deref(), "cast_governance_vote", "option")?;
+    let weight = parsed.weight.unwrap_or(1);
+    if weight == 0 {
+        return Err("cast_governance_vote weight must be > 0".to_string());
+    }
+
+    Ok(Action::CastGovernanceVote {
+        voter_agent_id,
+        proposal_key,
+        option,
+        weight,
+    })
+}
+
+fn parse_resolve_crisis(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let resolver_agent_id = parse_agent_identity_or_self(
+        parsed.resolver_agent_id.as_deref(),
+        "resolve_crisis",
+        "resolver_agent_id",
+        agent_id,
+    )?;
+    let crisis_id =
+        parse_required_text(parsed.crisis_id.as_deref(), "resolve_crisis", "crisis_id")?;
+    let strategy = parse_required_text(parsed.strategy.as_deref(), "resolve_crisis", "strategy")?;
+    let success = parsed.success.unwrap_or(true);
+
+    Ok(Action::ResolveCrisis {
+        resolver_agent_id,
+        crisis_id,
+        strategy,
+        success,
+    })
+}
+
+fn parse_grant_meta_progress(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let operator_agent_id = parse_agent_identity_or_self(
+        parsed.operator_agent_id.as_deref(),
+        "grant_meta_progress",
+        "operator_agent_id",
+        agent_id,
+    )?;
+    let target_agent_id = parse_agent_identity_or_self(
+        parsed.target_agent_id.as_deref(),
+        "grant_meta_progress",
+        "target_agent_id",
+        agent_id,
+    )?;
+    let track = parse_required_text(parsed.track.as_deref(), "grant_meta_progress", "track")?;
+    let points = parsed
+        .points
+        .ok_or_else(|| "grant_meta_progress missing `points`".to_string())?;
+    if points == 0 {
+        return Err("grant_meta_progress points must be non-zero".to_string());
+    }
+    let achievement_id = parse_optional_non_empty_text(
+        parsed.achievement_id.as_deref(),
+        "grant_meta_progress",
+        "achievement_id",
+    )?;
+
+    Ok(Action::GrantMetaProgress {
+        operator_agent_id,
+        target_agent_id,
+        track,
+        points,
+        achievement_id,
+    })
+}
+
 fn parse_required_owner(
     raw: Option<&str>,
     decision: &str,
@@ -742,6 +985,60 @@ fn parse_optional_positive_u64(
         return Err(format!("{decision} `{field_name}` must be >= 1"));
     }
     Ok(Some(value))
+}
+
+fn parse_required_text_list(
+    value: Option<&[String]>,
+    decision: &str,
+    field_name: &str,
+) -> Result<Vec<String>, String> {
+    let value = value.ok_or_else(|| format!("{decision} missing `{field_name}`"))?;
+    if value.is_empty() {
+        return Err(format!("{decision} `{field_name}` cannot be empty"));
+    }
+    let mut out = Vec::with_capacity(value.len());
+    for item in value {
+        let normalized = item.trim();
+        if normalized.is_empty() {
+            return Err(format!("{decision} `{field_name}` contains empty item"));
+        }
+        out.push(normalized.to_string());
+    }
+    Ok(out)
+}
+
+fn parse_required_agent_identity_list(
+    value: Option<&[String]>,
+    decision: &str,
+    field_name: &str,
+    agent_id: &str,
+) -> Result<Vec<String>, String> {
+    let value = value.ok_or_else(|| format!("{decision} missing `{field_name}`"))?;
+    if value.is_empty() {
+        return Err(format!("{decision} `{field_name}` cannot be empty"));
+    }
+    let mut out = Vec::with_capacity(value.len());
+    for item in value {
+        let member =
+            parse_agent_identity_or_self(Some(item.as_str()), decision, field_name, agent_id)?;
+        out.push(member);
+    }
+    Ok(out)
+}
+
+fn parse_optional_non_empty_text(
+    raw: Option<&str>,
+    decision: &str,
+    field_name: &str,
+) -> Result<Option<String>, String> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+    let normalized = raw.trim();
+    if normalized.is_empty() {
+        return Err(format!("{decision} `{field_name}` cannot be empty"));
+    }
+    Ok(Some(normalized.to_string()))
 }
 
 fn parse_social_stake(

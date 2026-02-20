@@ -249,6 +249,52 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("social actor must be the submitter agent")
             }
         }
+        Action::FormAlliance {
+            proposer_agent_id, ..
+        }
+        | Action::OpenGovernanceProposal {
+            proposer_agent_id, ..
+        } => {
+            if proposer_agent_id == agent_id {
+                None
+            } else {
+                denied("proposer_agent_id must be the submitter agent")
+            }
+        }
+        Action::DeclareWar {
+            initiator_agent_id, ..
+        } => {
+            if initiator_agent_id == agent_id {
+                None
+            } else {
+                denied("initiator_agent_id must be the submitter agent")
+            }
+        }
+        Action::CastGovernanceVote { voter_agent_id, .. } => {
+            if voter_agent_id == agent_id {
+                None
+            } else {
+                denied("voter_agent_id must be the submitter agent")
+            }
+        }
+        Action::ResolveCrisis {
+            resolver_agent_id, ..
+        } => {
+            if resolver_agent_id == agent_id {
+                None
+            } else {
+                denied("resolver_agent_id must be the submitter agent")
+            }
+        }
+        Action::GrantMetaProgress {
+            operator_agent_id, ..
+        } => {
+            if operator_agent_id == agent_id {
+                None
+            } else {
+                denied("operator_agent_id must be the submitter agent")
+            }
+        }
         Action::TransferResource { from, .. } => {
             if resource_owner_is_agent(from, agent_id) {
                 None

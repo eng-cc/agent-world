@@ -1164,6 +1164,16 @@ impl WorldKernel {
                 backing_fact_ids,
                 ttl_ticks,
             ),
+            Action::FormAlliance { .. }
+            | Action::DeclareWar { .. }
+            | Action::OpenGovernanceProposal { .. }
+            | Action::CastGovernanceVote { .. }
+            | Action::ResolveCrisis { .. }
+            | Action::GrantMetaProgress { .. } => WorldEventKind::ActionRejected {
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["gameplay action is runtime-only in simulator kernel".to_string()],
+                },
+            },
         }
     }
 

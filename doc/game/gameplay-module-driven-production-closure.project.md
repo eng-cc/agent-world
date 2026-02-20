@@ -21,10 +21,10 @@
 - [x] 增加 required-tier 模块驱动生命周期测试
 
 ### T3 LLM/Simulator 动作协议补齐（对应问题 3）
-- [ ] 扩展 OpenAI decision schema 枚举与字段
-- [ ] 扩展 decision parser 到 gameplay actions
-- [ ] 更新 prompt action labels / execution controls 的新动作支持
-- [ ] 增加 required-tier 解析与动作流测试
+- [x] 扩展 OpenAI decision schema 枚举与字段
+- [x] 扩展 decision parser 到 gameplay actions
+- [x] 更新 prompt action labels / execution controls 的新动作支持
+- [x] 增加 required-tier 解析与动作流测试
 
 ### T4 文档与顶层任务收口（对应问题 5）
 - [ ] 回写 `doc/game/gameplay-top-level-design.project.md` 未完成项
@@ -40,6 +40,6 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 已完成：T0、T1、T2、T3
+- 进行中：T4
 - 阻塞项：无

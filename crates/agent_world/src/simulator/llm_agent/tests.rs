@@ -1046,6 +1046,12 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(decision_enum.contains(&"adjudicate_social_fact"));
     assert!(decision_enum.contains(&"revoke_social_fact"));
     assert!(decision_enum.contains(&"declare_social_edge"));
+    assert!(decision_enum.contains(&"form_alliance"));
+    assert!(decision_enum.contains(&"declare_war"));
+    assert!(decision_enum.contains(&"open_governance_proposal"));
+    assert!(decision_enum.contains(&"cast_governance_vote"));
+    assert!(decision_enum.contains(&"resolve_crisis"));
+    assert!(decision_enum.contains(&"grant_meta_progress"));
 
     let properties = parameters
         .get("properties")
@@ -1056,6 +1062,15 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(properties.contains_key("confidence_ppm"));
     assert!(properties.contains_key("adjudication"));
     assert!(properties.contains_key("backing_fact_ids"));
+    assert!(properties.contains_key("alliance_id"));
+    assert!(properties.contains_key("members"));
+    assert!(properties.contains_key("war_id"));
+    assert!(properties.contains_key("proposal_key"));
+    assert!(properties.contains_key("voting_window_ticks"));
+    assert!(properties.contains_key("pass_threshold_bps"));
+    assert!(properties.contains_key("crisis_id"));
+    assert!(properties.contains_key("target_agent_id"));
+    assert!(properties.contains_key("points"));
 }
 
 #[test]
@@ -1407,6 +1422,97 @@ fn llm_agent_parse_adjudicate_social_fact_action() {
             notes: "证据充分".to_string(),
         })
     );
+}
+
+#[test]
+fn llm_agent_parse_form_alliance_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"form_alliance\",\"proposer_agent_id\":\"self\",\"alliance_id\":\"alliance.alpha\",\"members\":[\"self\",\"agent:agent-2\"],\"charter\":\"mutual defense\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::FormAlliance {
+            proposer_agent_id: "agent-1".to_string(),
+            alliance_id: "alliance.alpha".to_string(),
+            members: vec!["agent-1".to_string(), "agent-2".to_string()],
+            charter: "mutual defense".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_open_governance_proposal_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"open_governance_proposal\",\"proposer_agent_id\":\"self\",\"proposal_key\":\"proposal.power.tax\",\"title\":\"Power Tax\",\"description\":\"Apply power tax\",\"options\":[\"approve\",\"reject\"],\"voting_window_ticks\":36,\"quorum_weight\":2,\"pass_threshold_bps\":6500}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::OpenGovernanceProposal {
+            proposer_agent_id: "agent-1".to_string(),
+            proposal_key: "proposal.power.tax".to_string(),
+            title: "Power Tax".to_string(),
+            description: "Apply power tax".to_string(),
+            options: vec!["approve".to_string(), "reject".to_string()],
+            voting_window_ticks: 36,
+            quorum_weight: 2,
+            pass_threshold_bps: 6_500,
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_grant_meta_progress_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"grant_meta_progress\",\"operator_agent_id\":\"self\",\"target_agent_id\":\"agent:agent-2\",\"track\":\"campaign.alpha\",\"points\":12,\"achievement_id\":\"ach.first_blood\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::GrantMetaProgress {
+            operator_agent_id: "agent-1".to_string(),
+            target_agent_id: "agent-2".to_string(),
+            track: "campaign.alpha".to_string(),
+            points: 12,
+            achievement_id: Some("ach.first_blood".to_string()),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_grant_meta_progress_zero_points() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"grant_meta_progress\",\"operator_agent_id\":\"self\",\"target_agent_id\":\"self\",\"track\":\"campaign.alpha\",\"points\":0}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("points must be non-zero"));
 }
 
 #[test]

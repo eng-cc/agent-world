@@ -196,6 +196,12 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::AdjudicateSocialFact { .. } => "adjudicate_social_fact",
             Action::RevokeSocialFact { .. } => "revoke_social_fact",
             Action::DeclareSocialEdge { .. } => "declare_social_edge",
+            Action::FormAlliance { .. } => "form_alliance",
+            Action::DeclareWar { .. } => "declare_war",
+            Action::OpenGovernanceProposal { .. } => "open_governance_proposal",
+            Action::CastGovernanceVote { .. } => "cast_governance_vote",
+            Action::ResolveCrisis { .. } => "resolve_crisis",
+            Action::GrantMetaProgress { .. } => "grant_meta_progress",
         }
     }
 

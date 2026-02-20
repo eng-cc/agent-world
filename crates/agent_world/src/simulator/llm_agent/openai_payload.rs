@@ -34,6 +34,12 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
         "adjudicate_social_fact",
         "revoke_social_fact",
         "declare_social_edge",
+        "form_alliance",
+        "declare_war",
+        "open_governance_proposal",
+        "cast_governance_vote",
+        "resolve_crisis",
+        "grant_meta_progress",
         "execute_until"
       ]
     },
@@ -111,6 +117,41 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
       "type": "array",
       "items": { "type": "integer", "minimum": 1 }
     },
+    "proposer_agent_id": { "type": "string" },
+    "alliance_id": { "type": "string" },
+    "members": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "charter": { "type": "string" },
+    "initiator_agent_id": { "type": "string" },
+    "war_id": { "type": "string" },
+    "aggressor_alliance_id": { "type": "string" },
+    "defender_alliance_id": { "type": "string" },
+    "objective": { "type": "string" },
+    "intensity": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "proposal_key": { "type": "string" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "options": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "voting_window_ticks": { "type": "integer", "minimum": 1, "maximum": 1440 },
+    "quorum_weight": { "type": "integer", "minimum": 1 },
+    "pass_threshold_bps": { "type": "integer", "minimum": 5000, "maximum": 10000 },
+    "voter_agent_id": { "type": "string" },
+    "option": { "type": "string" },
+    "weight": { "type": "integer", "minimum": 1 },
+    "resolver_agent_id": { "type": "string" },
+    "crisis_id": { "type": "string" },
+    "strategy": { "type": "string" },
+    "success": { "type": "boolean" },
+    "operator_agent_id": { "type": "string" },
+    "target_agent_id": { "type": "string" },
+    "track": { "type": "string" },
+    "points": { "type": "integer" },
+    "achievement_id": { "type": "string" },
     "action": {
       "type": "object",
       "additionalProperties": true
