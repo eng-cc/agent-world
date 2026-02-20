@@ -119,6 +119,7 @@ pub(super) fn module_role_label(role: &ModuleRole) -> &'static str {
     match role {
         ModuleRole::Rule => "rule",
         ModuleRole::Domain => "domain",
+        ModuleRole::Gameplay => "gameplay",
         ModuleRole::Body => "body",
         ModuleRole::AgentInternal => "agent_internal",
     }

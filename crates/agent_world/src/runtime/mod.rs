@@ -15,6 +15,7 @@ mod builtin_wasm_materializer;
 mod effect;
 mod error;
 mod events;
+mod gameplay;
 mod governance;
 mod m1_builtin_wasm_artifact;
 mod m4_builtin_wasm_artifact;
@@ -77,14 +78,18 @@ pub use manifest::{
 };
 
 // Modules
+pub use gameplay::{
+    ActiveGameplayModule, GameplayKindCoverage, GameplayModeReadiness, GAMEPLAY_BASELINE_KINDS,
+};
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,
-    FactoryModuleSpec, MaterialStack, ModuleAbiContract, ModuleActivation, ModuleArtifact,
-    ModuleArtifactIdentity, ModuleCache, ModuleChangeSet, ModuleDeactivation, ModuleEvent,
-    ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest, ModuleRecord, ModuleRegistry,
-    ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ModuleUpgrade, ProductModuleApi,
-    ProductModuleSpec, ProductValidationDecision, ProductValidationRequest, RecipeExecutionPlan,
-    RecipeExecutionRequest, RecipeModuleApi, RecipeModuleSpec,
+    FactoryModuleSpec, GameplayContract, GameplayModuleKind, MaterialStack, ModuleAbiContract,
+    ModuleActivation, ModuleArtifact, ModuleArtifactIdentity, ModuleCache, ModuleChangeSet,
+    ModuleDeactivation, ModuleEvent, ModuleEventKind, ModuleKind, ModuleLimits, ModuleManifest,
+    ModuleRecord, ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage,
+    ModuleUpgrade, ProductModuleApi, ProductModuleSpec, ProductValidationDecision,
+    ProductValidationRequest, RecipeExecutionPlan, RecipeExecutionRequest, RecipeModuleApi,
+    RecipeModuleSpec,
 };
 
 // Node points

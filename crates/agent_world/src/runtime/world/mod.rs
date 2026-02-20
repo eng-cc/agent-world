@@ -8,6 +8,7 @@ mod bootstrap_power;
 mod economy;
 mod effects;
 mod event_processing;
+mod gameplay;
 mod governance;
 mod logistics;
 mod module_actions;

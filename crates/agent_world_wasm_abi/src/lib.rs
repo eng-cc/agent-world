@@ -231,6 +231,7 @@ impl Default for ModuleSubscriptionStage {
 pub enum ModuleRole {
     Rule,
     Domain,
+    Gameplay,
     Body,
     AgentInternal,
 }
@@ -238,6 +239,57 @@ pub enum ModuleRole {
 impl Default for ModuleRole {
     fn default() -> Self {
         ModuleRole::Domain
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum GameplayModuleKind {
+    #[default]
+    War,
+    Governance,
+    Crisis,
+    Economic,
+    Meta,
+}
+
+impl GameplayModuleKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            GameplayModuleKind::War => "war",
+            GameplayModuleKind::Governance => "governance",
+            GameplayModuleKind::Crisis => "crisis",
+            GameplayModuleKind::Economic => "economic",
+            GameplayModuleKind::Meta => "meta",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameplayContract {
+    pub kind: GameplayModuleKind,
+    #[serde(default)]
+    pub game_modes: Vec<String>,
+    #[serde(default = "default_gameplay_min_players")]
+    pub min_players: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_players: Option<u16>,
+}
+
+fn default_gameplay_min_players() -> u16 {
+    1
+}
+
+impl Default for GameplayContract {
+    fn default() -> Self {
+        Self {
+            kind: GameplayModuleKind::War,
+            game_modes: Vec::new(),
+            min_players: default_gameplay_min_players(),
+            max_players: None,
+        }
     }
 }
 
@@ -277,6 +329,8 @@ pub struct ModuleAbiContract {
     pub cap_slots: BTreeMap<String, String>,
     #[serde(default)]
     pub policy_hooks: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gameplay: Option<GameplayContract>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

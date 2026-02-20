@@ -17,6 +17,7 @@ mod economy;
 mod economy_bootstrap;
 mod economy_module_requests;
 mod effects;
+mod gameplay;
 mod governance;
 mod module_action_loop;
 mod module_runtime_metering;

@@ -549,6 +549,7 @@ impl World {
             module_role: Some(match manifest.role {
                 super::super::ModuleRole::Rule => "rule".to_string(),
                 super::super::ModuleRole::Domain => "domain".to_string(),
+                super::super::ModuleRole::Gameplay => "gameplay".to_string(),
                 super::super::ModuleRole::Body => "body".to_string(),
                 super::super::ModuleRole::AgentInternal => "agent_internal".to_string(),
             }),

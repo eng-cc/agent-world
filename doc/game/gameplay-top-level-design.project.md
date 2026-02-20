@@ -17,6 +17,7 @@
 - [ ] 对战争与政治机制补充最小可行数值基线（成本/收益/冷却约束）
 
 ### T3 工程落地拆解（下阶段）
+- [x] 落地 Gameplay Runtime 治理闭环首个生产切片（`doc/game/gameplay-runtime-governance-closure.md`）：ABI gameplay 元数据、Runtime 校验、mode+kind 槽位冲突检测、就绪度报告与测试
 - [ ] 拆解 WASM Gameplay Kernel API 的实现任务（读取/提案/事件总线）
 - [ ] 拆解 War/Governance/Crisis/Economic/Meta 模块 MVP 任务
 - [ ] 为每个模块定义 `test_tier_required` 与 `test_tier_full` 测试矩阵
