@@ -699,6 +699,7 @@ const OPENAI_TOOL_AGENT_MODULES_LIST: &str = "agent_modules_list";
 const OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION: &str = "environment_current_observation";
 const OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT: &str = "memory_short_term_recent";
 const OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH: &str = "memory_long_term_search";
+const OPENAI_TOOL_MODULE_LIFECYCLE_STATUS: &str = "module_lifecycle_status";
 const OPENAI_TOOL_AGENT_SUBMIT_DECISION: &str = "agent_submit_decision";
 const OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE: &str = "agent_debug_grant_resource";
 

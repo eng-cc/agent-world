@@ -677,7 +677,7 @@ fn openai_client_enables_timeout_retry_when_timeout_below_default() {
 #[test]
 fn responses_tools_register_expected_function_names() {
     let tools = responses_tools();
-    assert_eq!(tools.len(), 5);
+    assert_eq!(tools.len(), 6);
 
     let names = tools
         .into_iter()
@@ -694,6 +694,7 @@ fn responses_tools_register_expected_function_names() {
             OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION.to_string(),
             OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT.to_string(),
             OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH.to_string(),
+            OPENAI_TOOL_MODULE_LIFECYCLE_STATUS.to_string(),
             OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
         ]
     );
@@ -702,7 +703,7 @@ fn responses_tools_register_expected_function_names() {
 #[test]
 fn responses_tools_register_debug_grant_tool_in_debug_mode_only() {
     let normal = responses_tools_with_debug_mode(false);
-    assert_eq!(normal.len(), 5);
+    assert_eq!(normal.len(), 6);
     let normal_names = normal
         .into_iter()
         .filter_map(|tool| match tool {
@@ -713,7 +714,7 @@ fn responses_tools_register_debug_grant_tool_in_debug_mode_only() {
     assert!(!normal_names.contains(&OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE.to_string()));
 
     let debug = responses_tools_with_debug_mode(true);
-    assert_eq!(debug.len(), 6);
+    assert_eq!(debug.len(), 7);
     let debug_names = debug
         .into_iter()
         .filter_map(|tool| match tool {
@@ -739,6 +740,26 @@ fn response_function_call_maps_to_typed_module_call_turn() {
         LlmCompletionTurn::ModuleCall { module, args } => {
             assert_eq!(module, "memory.short_term.recent");
             assert_eq!(args.get("limit").and_then(|v| v.as_i64()), Some(5));
+        }
+        other => panic!("expected module_call turn, got {other:?}"),
+    }
+}
+
+#[test]
+fn response_function_call_maps_module_lifecycle_status_tool_name() {
+    let output_item = OutputItem::FunctionCall(async_openai::types::responses::FunctionToolCall {
+        arguments: "{}".to_string(),
+        call_id: "call_lifecycle".to_string(),
+        name: OPENAI_TOOL_MODULE_LIFECYCLE_STATUS.to_string(),
+        id: None,
+        status: None,
+    });
+
+    let turn = output_item_to_completion_turn(&output_item).expect("module_call turn");
+    match turn {
+        LlmCompletionTurn::ModuleCall { module, args } => {
+            assert_eq!(module, "module.lifecycle.status");
+            assert_eq!(args, serde_json::json!({}));
         }
         other => panic!("expected module_call turn, got {other:?}"),
     }

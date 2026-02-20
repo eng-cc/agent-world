@@ -202,6 +202,16 @@ pub(super) fn responses_tools_with_debug_mode(debug_mode: bool) -> Vec<Tool> {
             strict: None,
         }),
         Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_MODULE_LIFECYCLE_STATUS.to_string(),
+            description: Some("读取模块生命周期状态（artifact 与 installed）。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
             name: OPENAI_TOOL_AGENT_SUBMIT_DECISION.to_string(),
             description: Some(
                 "提交最终决策；所有世界动作必须通过该 tool call，而不是输出文本 JSON。".to_string(),
@@ -240,6 +250,7 @@ pub(super) fn module_name_from_tool_name(name: &str) -> &str {
         OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION => "environment.current_observation",
         OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT => "memory.short_term.recent",
         OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH => "memory.long_term.search",
+        OPENAI_TOOL_MODULE_LIFECYCLE_STATUS => "module.lifecycle.status",
         other => other,
     }
 }
