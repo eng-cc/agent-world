@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
 
-use agent_world_proto::distributed_pos::{
-    decide_pos_status, required_supermajority_stake, PosDecisionStatus,
-};
+use agent_world_proto::distributed_pos::required_supermajority_stake;
 
-use crate::{NodeError, NodePosConfig, PosConsensusStatus};
+use crate::{NodeError, NodePosConfig};
 
 pub(crate) fn validate_pos_config(pos_config: &NodePosConfig) -> Result<(), NodeError> {
     let _ = validated_pos_state(pos_config)?;
@@ -167,19 +165,6 @@ pub(crate) fn validated_pos_state(
         total_stake,
         required_stake,
     ))
-}
-
-pub(crate) fn decide_status(
-    total_stake: u64,
-    required_stake: u64,
-    approved_stake: u64,
-    rejected_stake: u64,
-) -> PosConsensusStatus {
-    match decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake) {
-        PosDecisionStatus::Pending => PosConsensusStatus::Pending,
-        PosDecisionStatus::Committed => PosConsensusStatus::Committed,
-        PosDecisionStatus::Rejected => PosConsensusStatus::Rejected,
-    }
 }
 
 pub(crate) fn normalize_consensus_public_key_hex(

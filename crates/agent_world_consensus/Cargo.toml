@@ -7,7 +7,6 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-agent_world_net = { path = "../agent_world_net", default-features = false }
 agent_world_proto = { path = "../agent_world_proto" }
 blake3 = "1"
 serde = { version = "1", features = ["derive"] }

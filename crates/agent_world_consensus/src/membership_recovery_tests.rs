@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_world_net::{DistributedNetwork, InMemoryNetwork};
+use crate::distributed_net::{DistributedNetwork, InMemoryNetwork};
 
 use crate::{
     error::WorldError, FileMembershipRevocationAlertDeadLetterStore,

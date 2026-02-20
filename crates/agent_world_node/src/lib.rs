@@ -4,6 +4,11 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
+use agent_world_consensus::node_pos::{
+    advance_pending_attestations as core_advance_pending_attestations,
+    insert_attestation as core_insert_attestation, propose_next_head as core_propose_next_head,
+    NodePosDecision, NodePosError, NodePosPendingProposal, NodePosStatusAdapter,
+};
 use agent_world_distfs::blake3_hex;
 use agent_world_proto::distributed::DistributedErrorCode;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
@@ -63,7 +68,7 @@ pub use types::{
 use network_bridge::{ConsensusNetworkEndpoint, ReplicationNetworkEndpoint};
 use node_runtime_core::RuntimeState;
 use pos_state_store::PosNodeStateStore;
-use pos_validation::{decide_status, normalize_consensus_public_key_hex, validated_pos_state};
+use pos_validation::{normalize_consensus_public_key_hex, validated_pos_state};
 use replication::{
     load_blob_from_root, load_commit_message_from_root, FetchBlobRequest, FetchBlobResponse,
     FetchCommitRequest, FetchCommitResponse, ReplicationRuntime, REPLICATION_FETCH_BLOB_PROTOCOL,
@@ -80,6 +85,24 @@ fn required_network_blob_matches(sample_count: usize) -> usize {
     sample_count
         .min(STORAGE_GATE_NETWORK_MIN_MATCHES_CAP)
         .max(1)
+}
+
+impl NodePosStatusAdapter for PosConsensusStatus {
+    fn pending() -> Self {
+        PosConsensusStatus::Pending
+    }
+
+    fn committed() -> Self {
+        PosConsensusStatus::Committed
+    }
+
+    fn rejected() -> Self {
+        PosConsensusStatus::Rejected
+    }
+}
+
+fn node_pos_error(err: NodePosError) -> NodeError {
+    NodeError::Consensus { reason: err.reason }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -482,45 +505,8 @@ struct PosNodeEngine {
     pending_consensus_actions: BTreeMap<u64, NodeConsensusAction>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PosAttestation {
-    validator_id: String,
-    approve: bool,
-    source_epoch: u64,
-    target_epoch: u64,
-    voted_at_ms: i64,
-    reason: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PendingProposal {
-    height: u64,
-    slot: u64,
-    epoch: u64,
-    proposer_id: String,
-    block_hash: String,
-    action_root: String,
-    committed_actions: Vec<NodeConsensusAction>,
-    attestations: BTreeMap<String, PosAttestation>,
-    approved_stake: u64,
-    rejected_stake: u64,
-    status: PosConsensusStatus,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PosDecision {
-    height: u64,
-    slot: u64,
-    epoch: u64,
-    status: PosConsensusStatus,
-    block_hash: String,
-    action_root: String,
-    committed_actions: Vec<NodeConsensusAction>,
-    approved_stake: u64,
-    rejected_stake: u64,
-    required_stake: u64,
-    total_stake: u64,
-}
+type PendingProposal = NodePosPendingProposal<NodeConsensusAction, PosConsensusStatus>;
+type PosDecision = NodePosDecision<NodeConsensusAction, PosConsensusStatus>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PeerCommittedHead {
@@ -766,85 +752,35 @@ impl PosNodeEngine {
             action_root.as_str(),
         )?;
 
-        let mut proposal = PendingProposal {
-            height: self.next_height,
-            slot,
-            epoch,
-            proposer_id: proposer_id.clone(),
-            block_hash: block_hash.clone(),
-            action_root: action_root.clone(),
+        core_propose_next_head(
+            &self.validators,
+            self.total_stake,
+            self.required_stake,
+            self.epoch_length_slots,
+            &mut self.next_height,
+            &mut self.next_slot,
+            &mut self.pending,
+            proposer_id,
+            block_hash,
+            action_root,
             committed_actions,
-            attestations: BTreeMap::new(),
-            approved_stake: 0,
-            rejected_stake: 0,
-            status: PosConsensusStatus::Pending,
-        };
-
-        self.insert_attestation(
-            &mut proposal,
-            &proposer_id,
-            true,
+            node_id,
             now_ms,
-            epoch.saturating_sub(1),
-            epoch,
-            Some(format!("proposal accepted by {node_id}")),
-        )?;
-
-        self.next_slot = self.next_slot.saturating_add(1);
-        let decision = self.decision_from_proposal(&proposal);
-        self.pending = Some(proposal);
-        Ok(decision)
+        )
+        .map_err(node_pos_error)
     }
 
     fn advance_pending_attestations(&mut self, now_ms: i64) -> Result<PosDecision, NodeError> {
-        let mut proposal = self.pending.clone().ok_or_else(|| NodeError::Consensus {
-            reason: "missing pending proposal".to_string(),
-        })?;
-
-        if self.auto_attest_all_validators {
-            for validator_id in self.validators.keys() {
-                if proposal.attestations.contains_key(validator_id.as_str()) {
-                    continue;
-                }
-                let epoch = proposal.epoch;
-                self.insert_attestation(
-                    &mut proposal,
-                    validator_id,
-                    true,
-                    now_ms,
-                    epoch.saturating_sub(1),
-                    epoch,
-                    Some("node mainloop auto attestation".to_string()),
-                )?;
-                if matches!(
-                    proposal.status,
-                    PosConsensusStatus::Committed | PosConsensusStatus::Rejected
-                ) {
-                    break;
-                }
-            }
-        } else if self
-            .validators
-            .contains_key(self.local_validator_id.as_str())
-            && !proposal
-                .attestations
-                .contains_key(self.local_validator_id.as_str())
-        {
-            let epoch = proposal.epoch;
-            self.insert_attestation(
-                &mut proposal,
-                self.local_validator_id.as_str(),
-                true,
-                now_ms,
-                epoch.saturating_sub(1),
-                epoch,
-                Some("node local validator attestation".to_string()),
-            )?;
-        }
-
-        let decision = self.decision_from_proposal(&proposal);
-        self.pending = Some(proposal);
-        Ok(decision)
+        core_advance_pending_attestations(
+            &self.validators,
+            self.total_stake,
+            self.required_stake,
+            self.local_validator_id.as_str(),
+            self.auto_attest_all_validators,
+            &mut self.pending,
+            now_ms,
+        )
+        .map_err(node_pos_error)
     }
 
     fn insert_attestation(
@@ -857,56 +793,19 @@ impl PosNodeEngine {
         target_epoch: u64,
         reason: Option<String>,
     ) -> Result<(), NodeError> {
-        let stake =
-            self.validators
-                .get(validator_id)
-                .copied()
-                .ok_or_else(|| NodeError::Consensus {
-                    reason: format!("validator not found: {}", validator_id),
-                })?;
-        if proposal.attestations.contains_key(validator_id) {
-            return Ok(());
-        }
-
-        proposal.attestations.insert(
-            validator_id.to_string(),
-            PosAttestation {
-                validator_id: validator_id.to_string(),
-                approve,
-                source_epoch,
-                target_epoch,
-                voted_at_ms,
-                reason,
-            },
-        );
-        if approve {
-            proposal.approved_stake = proposal.approved_stake.saturating_add(stake);
-        } else {
-            proposal.rejected_stake = proposal.rejected_stake.saturating_add(stake);
-        }
-        proposal.status = decide_status(
+        core_insert_attestation(
+            &self.validators,
             self.total_stake,
             self.required_stake,
-            proposal.approved_stake,
-            proposal.rejected_stake,
-        );
-        Ok(())
-    }
-
-    fn decision_from_proposal(&self, proposal: &PendingProposal) -> PosDecision {
-        PosDecision {
-            height: proposal.height,
-            slot: proposal.slot,
-            epoch: proposal.epoch,
-            status: proposal.status,
-            block_hash: proposal.block_hash.clone(),
-            action_root: proposal.action_root.clone(),
-            committed_actions: proposal.committed_actions.clone(),
-            approved_stake: proposal.approved_stake,
-            rejected_stake: proposal.rejected_stake,
-            required_stake: self.required_stake,
-            total_stake: self.total_stake,
-        }
+            proposal,
+            validator_id,
+            approve,
+            voted_at_ms,
+            source_epoch,
+            target_epoch,
+            reason,
+        )
+        .map_err(node_pos_error)
     }
 
     fn apply_decision(&mut self, decision: &PosDecision) {

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use agent_world_net::{DistributedNetwork, InMemoryDht, InMemoryNetwork};
 use agent_world_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use ed25519_dalek::SigningKey;
 
+use crate::distributed_dht::InMemoryDht;
+use crate::distributed_net::{DistributedNetwork, InMemoryNetwork};
 use crate::error::WorldError;
 use crate::membership::{
     MembershipDirectorySigner, MembershipDirectorySignerKeyring, MembershipKeyRevocationAnnounce,

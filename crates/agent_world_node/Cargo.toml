@@ -7,6 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+agent_world_consensus = { path = "../agent_world_consensus" }
 agent_world_distfs = { path = "../agent_world_distfs" }
 agent_world_proto = { path = "../agent_world_proto" }
 async-std = "1"

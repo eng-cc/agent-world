@@ -40,6 +40,10 @@
 - 本地同构结构替换为 `agent_world_consensus::node_pos` 类型别名。
 - 错误映射统一为 `NodeError::Consensus { reason }`。
 
+### 3) 依赖分层修正（避免循环依赖）
+- 为支持 `agent_world_node -> agent_world_consensus` 单向依赖，`agent_world_consensus` 内聚 `distributed_dht` / `distributed_net` 抽象与内存实现，不再反向依赖 `agent_world_net`。
+- 该调整不改变 PoS/成员治理语义，仅收敛 crate 边界，确保后续共识代码可持续集中在 `agent_world_consensus`。
+
 ## 里程碑
 - CCG-0：设计与项目文档建档。
 - CCG-1：抽取 PoS 核心状态机到 `agent_world_consensus::node_pos` 并接线 `agent_world_node`。

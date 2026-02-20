@@ -1,5 +1,6 @@
 //! Consensus-focused facade for distributed runtime capabilities.
 
+mod dht;
 mod ed25519_signer_policy;
 mod lease;
 mod membership;
@@ -7,6 +8,9 @@ mod membership_logic;
 mod membership_reconciliation;
 mod membership_recovery;
 mod mempool;
+mod network;
+#[path = "node_pos.rs"]
+mod node_pos_core;
 mod pos;
 mod quorum;
 mod sequencer_mainloop;
@@ -17,11 +21,11 @@ pub mod distributed {
 }
 
 pub mod distributed_dht {
-    pub use agent_world_net::{DistributedDht, InMemoryDht, MembershipDirectorySnapshot};
+    pub use super::dht::{DistributedDht, InMemoryDht, MembershipDirectorySnapshot};
 }
 
 pub mod distributed_net {
-    pub use agent_world_net::{DistributedNetwork, NetworkSubscription};
+    pub use super::network::{DistributedNetwork, InMemoryNetwork, NetworkSubscription};
 }
 
 pub mod distributed_consensus {
@@ -37,6 +41,10 @@ pub mod distributed_pos_consensus {
         PosConsensus, PosConsensusConfig, PosConsensusDecision, PosConsensusStatus, PosHeadRecord,
         PosValidator, POS_CONSENSUS_SNAPSHOT_VERSION,
     };
+}
+
+pub mod node_pos {
+    pub use super::node_pos_core::*;
 }
 
 pub mod distributed_lease {
