@@ -14,10 +14,12 @@
 - 运行命令：`./scripts/pre-commit.sh`
 - 执行内容：
   - 先格式化已暂存的 Rust 文件：`env -u RUSTC_WRAPPER rustfmt --edition 2021 <staged .rs files>`，并自动 `git add` 回暂存区。
-  - 再执行 builtin wasm 校验与 DistFS 落盘：
+  - 调用统一测试清单脚本：`./scripts/ci-tests.sh required`，其中 required 会执行：
+    - `cargo fmt --check`
     - `./scripts/sync-m1-builtin-wasm-artifacts.sh --check`
     - `./scripts/sync-m4-builtin-wasm-artifacts.sh --check`
-  - 调用统一测试清单脚本：`CI_SKIP_BUILTIN_WASM_CHECKS=1 ./scripts/ci-tests.sh required`（避免重复执行同一校验）。
+    - `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`
+    - `cargo test -p agent_world --tests --features test_tier_required`
   - 执行 viewer wasm 编译门禁：`env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`。
 - 用例分级标签：
   - `test_tier_required`：本地提交与 PR 必跑 case。

@@ -57,6 +57,8 @@
 - `required`：
   - `cargo fmt --check`
   - `sync-m1-builtin-wasm-artifacts --check`
+  - `sync-m4-builtin-wasm-artifacts --check`
+  - `sync-m5-builtin-wasm-artifacts --check`
   - `cargo test -p agent_world --tests --features test_tier_required`
 - `full`：
   - `required` 全部
@@ -109,11 +111,9 @@
 ```bash
 env -u RUSTC_WRAPPER cargo fmt --all -- --check
 ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
-env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
-```
-- 当改动涉及 M4 内置模块工件时，追加：
-```bash
 ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
+./scripts/sync-m5-builtin-wasm-artifacts.sh --check
+env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
 ```
 
 ### S1：核心 required 套件（L1）

@@ -53,6 +53,8 @@ run_agent_world_full_tier_tests() {
 
 run_required_builtin_wasm_checks() {
   run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
+  run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
+  run ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
 }
 
 run_required_gate_checks() {
