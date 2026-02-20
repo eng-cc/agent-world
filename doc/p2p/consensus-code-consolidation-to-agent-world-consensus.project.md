@@ -6,7 +6,7 @@
 - [x] CCG-2：补齐/回归测试并回写文档与 devlog。
 - [x] CCG-3：扩展设计/项目文档，定义第二阶段全收口任务。
 - [x] CCG-4：将 `agent_world_node` 残留共识纯逻辑（action/signature/message）迁移到 `agent_world_consensus` 并接线。
-- [ ] CCG-5：完成 PoS 单链路收敛（`pos` 复用 `node_pos` 推进核心）、定向回归和文档/devlog 收口。
+- [x] CCG-5：完成 PoS 单链路收敛（`pos` 复用 `node_pos` 推进核心）、定向回归和文档/devlog 收口。
 
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/consensus-code-consolidation-to-agent-world-consensus.md`
@@ -23,6 +23,6 @@
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/node_runtime_core.rs`
 
 ## 状态
-- 当前阶段：CCG-4 完成，CCG-5 进行中。
+- 当前阶段：CCG-0~CCG-5 全部完成。
 - 阻塞项：无。
 - 最近更新：2026-02-20。

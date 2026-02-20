@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -14,6 +14,11 @@ use agent_world_proto::distributed_pos::{
 use super::distributed::WorldHeadAnnounce;
 use super::distributed_dht::DistributedDht;
 use super::error::WorldError;
+use super::node_pos_core::{
+    decision_from_proposal as node_decision_from_proposal,
+    insert_attestation as node_insert_attestation, NodePosAttestation, NodePosError,
+    NodePosPendingProposal, NodePosStatusAdapter,
+};
 use super::util::{read_json_from_path, write_json_to_path};
 
 pub const POS_CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
@@ -118,6 +123,22 @@ pub struct PosConsensus {
     epoch_length_slots: u64,
     records: BTreeMap<(String, u64), PosHeadRecord>,
     attestation_history: BTreeMap<String, Vec<EpochAttestationRef>>,
+}
+
+type PosProgressProposal = NodePosPendingProposal<(), PosConsensusStatus>;
+
+impl NodePosStatusAdapter for PosConsensusStatus {
+    fn pending() -> Self {
+        PosConsensusStatus::Pending
+    }
+
+    fn committed() -> Self {
+        PosConsensusStatus::Committed
+    }
+
+    fn rejected() -> Self {
+        PosConsensusStatus::Rejected
+    }
 }
 
 impl PosConsensus {
@@ -417,7 +438,6 @@ impl PosConsensus {
 
         let total_stake = self.total_stake;
         let required_stake = self.required_stake;
-        let validator_stake = self.validators.clone();
         let decision = {
             let record = self.records.get_mut(&key).expect("record exists");
             if let Some(existing) = record.attestations.get(validator_id) {
@@ -434,25 +454,21 @@ impl PosConsensus {
                     ),
                 });
             }
-            record.attestations.insert(
-                validator_id.to_string(),
-                PosAttestation {
-                    validator_id: validator_id.to_string(),
-                    approve,
-                    source_epoch,
-                    target_epoch,
-                    voted_at_ms,
-                    reason,
-                },
-            );
-
-            let (approved_stake, rejected_stake) =
-                stake_totals(&validator_stake, &record.attestations)?;
-            record.approved_stake = approved_stake;
-            record.rejected_stake = rejected_stake;
+            let mut proposal = progress_proposal_from_record(record);
+            insert_pos_attestation(
+                &self.validators,
+                total_stake,
+                required_stake,
+                &mut proposal,
+                validator_id,
+                approve,
+                voted_at_ms,
+                source_epoch,
+                target_epoch,
+                reason,
+            )?;
+            apply_progress_proposal_to_record(record, proposal);
             record.required_stake = required_stake;
-            record.status =
-                decide_status(total_stake, required_stake, approved_stake, rejected_stake);
             decision_from_record(record, total_stake)
         };
 
@@ -537,17 +553,24 @@ impl PosConsensus {
                 }
             }
 
-            let (approved_stake, rejected_stake) =
-                stake_totals(&self.validators, &record.attestations)?;
-            record.approved_stake = approved_stake;
-            record.rejected_stake = rejected_stake;
+            let mut proposal = empty_progress_proposal(&record);
+            for attestation in record.attestations.values() {
+                insert_pos_attestation(
+                    &self.validators,
+                    self.total_stake,
+                    self.required_stake,
+                    &mut proposal,
+                    attestation.validator_id.as_str(),
+                    attestation.approve,
+                    attestation.voted_at_ms,
+                    attestation.source_epoch,
+                    attestation.target_epoch,
+                    attestation.reason.clone(),
+                )?;
+            }
+
+            apply_progress_proposal_to_record(&mut record, proposal);
             record.required_stake = self.required_stake;
-            record.status = decide_status(
-                self.total_stake,
-                self.required_stake,
-                approved_stake,
-                rejected_stake,
-            );
 
             let key = (record.head.world_id.clone(), record.head.height);
             if restored.insert(key, record).is_some() {
@@ -748,41 +771,6 @@ fn required_supermajority_stake(
     })
 }
 
-fn stake_totals(
-    validators: &BTreeMap<String, u64>,
-    attestations: &BTreeMap<String, PosAttestation>,
-) -> Result<(u64, u64), WorldError> {
-    let mut approved_stake = 0u64;
-    let mut rejected_stake = 0u64;
-    let mut seen = BTreeSet::new();
-    for (validator_id, attestation) in attestations {
-        if !seen.insert(validator_id.clone()) {
-            return Err(WorldError::DistributedValidationFailed {
-                reason: format!("duplicate attestation from {}", validator_id),
-            });
-        }
-        let stake = validators.get(validator_id).ok_or_else(|| {
-            WorldError::DistributedValidationFailed {
-                reason: format!("unknown validator in attestation: {}", validator_id),
-            }
-        })?;
-        if attestation.approve {
-            approved_stake = approved_stake.checked_add(*stake).ok_or_else(|| {
-                WorldError::DistributedValidationFailed {
-                    reason: "approved stake overflow".to_string(),
-                }
-            })?;
-        } else {
-            rejected_stake = rejected_stake.checked_add(*stake).ok_or_else(|| {
-                WorldError::DistributedValidationFailed {
-                    reason: "rejected stake overflow".to_string(),
-                }
-            })?;
-        }
-    }
-    Ok((approved_stake, rejected_stake))
-}
-
 pub fn decide_pos_status(
     total_stake: u64,
     required_stake: u64,
@@ -796,28 +784,116 @@ pub fn decide_pos_status(
     }
 }
 
-fn decide_status(
-    total_stake: u64,
-    required_stake: u64,
-    approved_stake: u64,
-    rejected_stake: u64,
-) -> PosConsensusStatus {
-    decide_pos_status(total_stake, required_stake, approved_stake, rejected_stake)
-}
-
 fn decision_from_record(record: &PosHeadRecord, total_stake: u64) -> PosConsensusDecision {
+    let proposal = progress_proposal_from_record(record);
+    let decision = node_decision_from_proposal(&proposal, record.required_stake, total_stake);
     PosConsensusDecision {
         world_id: record.head.world_id.clone(),
+        height: decision.height,
+        block_hash: decision.block_hash,
+        slot: decision.slot,
+        epoch: decision.epoch,
+        status: decision.status,
+        approved_stake: decision.approved_stake,
+        rejected_stake: decision.rejected_stake,
+        total_stake: decision.total_stake,
+        required_stake: decision.required_stake,
+    }
+}
+
+fn node_pos_error(err: NodePosError) -> WorldError {
+    WorldError::DistributedValidationFailed { reason: err.reason }
+}
+
+fn progress_proposal_from_record(record: &PosHeadRecord) -> PosProgressProposal {
+    let mut attestations = BTreeMap::new();
+    for (validator_id, attestation) in &record.attestations {
+        attestations.insert(
+            validator_id.clone(),
+            NodePosAttestation {
+                validator_id: attestation.validator_id.clone(),
+                approve: attestation.approve,
+                source_epoch: attestation.source_epoch,
+                target_epoch: attestation.target_epoch,
+                voted_at_ms: attestation.voted_at_ms,
+                reason: attestation.reason.clone(),
+            },
+        );
+    }
+    PosProgressProposal {
         height: record.head.height,
-        block_hash: record.head.block_hash.clone(),
         slot: record.slot,
         epoch: record.epoch,
-        status: record.status,
+        proposer_id: record.proposer_id.clone(),
+        block_hash: record.head.block_hash.clone(),
+        action_root: record.head.state_root.clone(),
+        committed_actions: Vec::new(),
+        attestations,
         approved_stake: record.approved_stake,
         rejected_stake: record.rejected_stake,
-        total_stake,
-        required_stake: record.required_stake,
+        status: record.status,
     }
+}
+
+fn empty_progress_proposal(record: &PosHeadRecord) -> PosProgressProposal {
+    PosProgressProposal {
+        approved_stake: 0,
+        rejected_stake: 0,
+        status: PosConsensusStatus::Pending,
+        attestations: BTreeMap::new(),
+        ..progress_proposal_from_record(record)
+    }
+}
+
+fn apply_progress_proposal_to_record(record: &mut PosHeadRecord, proposal: PosProgressProposal) {
+    record.attestations = proposal
+        .attestations
+        .into_values()
+        .map(|attestation| {
+            (
+                attestation.validator_id.clone(),
+                PosAttestation {
+                    validator_id: attestation.validator_id,
+                    approve: attestation.approve,
+                    source_epoch: attestation.source_epoch,
+                    target_epoch: attestation.target_epoch,
+                    voted_at_ms: attestation.voted_at_ms,
+                    reason: attestation.reason,
+                },
+            )
+        })
+        .collect();
+    record.approved_stake = proposal.approved_stake;
+    record.rejected_stake = proposal.rejected_stake;
+    record.status = proposal.status;
+}
+
+#[allow(clippy::too_many_arguments)]
+fn insert_pos_attestation(
+    validators: &BTreeMap<String, u64>,
+    total_stake: u64,
+    required_stake: u64,
+    proposal: &mut PosProgressProposal,
+    validator_id: &str,
+    approve: bool,
+    voted_at_ms: i64,
+    source_epoch: u64,
+    target_epoch: u64,
+    reason: Option<String>,
+) -> Result<(), WorldError> {
+    node_insert_attestation(
+        validators,
+        total_stake,
+        required_stake,
+        proposal,
+        validator_id,
+        approve,
+        voted_at_ms,
+        source_epoch,
+        target_epoch,
+        reason,
+    )
+    .map_err(node_pos_error)
 }
 
 fn write_json_atomic<T: Serialize>(value: &T, path: &Path) -> Result<(), WorldError> {
