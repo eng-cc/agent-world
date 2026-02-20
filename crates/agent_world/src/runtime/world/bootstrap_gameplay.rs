@@ -171,12 +171,20 @@ fn m5_gameplay_manifest(
             }),
         },
         exports: vec!["reduce".to_string()],
-        subscriptions: vec![ModuleSubscription {
-            event_kinds: vec!["domain.*".to_string()],
-            action_kinds: Vec::new(),
-            stage: Some(ModuleSubscriptionStage::PostEvent),
-            filters: None,
-        }],
+        subscriptions: vec![
+            ModuleSubscription {
+                event_kinds: Vec::new(),
+                action_kinds: Vec::new(),
+                stage: Some(ModuleSubscriptionStage::Tick),
+                filters: None,
+            },
+            ModuleSubscription {
+                event_kinds: vec!["domain.*".to_string()],
+                action_kinds: Vec::new(),
+                stage: Some(ModuleSubscriptionStage::PostEvent),
+                filters: None,
+            },
+        ],
         required_caps: Vec::new(),
         limits: ModuleLimits {
             max_mem_bytes: M5_BOOTSTRAP_WASM_MAX_MEM_BYTES,

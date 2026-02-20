@@ -119,10 +119,9 @@ impl World {
         for event in self.process_due_material_transits()? {
             self.route_event_to_modules(&event, sandbox)?;
         }
-        for event in self.process_gameplay_cycles()? {
+        for event in self.process_gameplay_cycles_with_modules(sandbox)? {
             self.route_event_to_modules(&event, sandbox)?;
         }
-        let _ = self.route_tick_to_modules(sandbox)?;
         Ok(())
     }
 }

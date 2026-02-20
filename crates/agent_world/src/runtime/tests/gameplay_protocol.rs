@@ -1,5 +1,51 @@
 use super::super::*;
 use super::pos;
+use agent_world_wasm_abi::{
+    ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput, ModuleSandbox,
+    ModuleTickLifecycleDirective,
+};
+
+struct GameplayDirectiveSandbox {
+    governance_directives: Vec<serde_json::Value>,
+}
+
+impl GameplayDirectiveSandbox {
+    fn empty() -> Self {
+        Self {
+            governance_directives: Vec::new(),
+        }
+    }
+
+    fn with_governance_directive(payload: serde_json::Value) -> Self {
+        Self {
+            governance_directives: vec![payload],
+        }
+    }
+}
+
+impl ModuleSandbox for GameplayDirectiveSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let mut emits = Vec::new();
+        if request.module_id == M5_GAMEPLAY_GOVERNANCE_MODULE_ID
+            && (request.trace_id.starts_with("tick-")
+                || request.trace_id.starts_with("infra-tick-"))
+        {
+            if let Some(payload) = self.governance_directives.pop() {
+                emits.push(ModuleEmit {
+                    kind: "gameplay.lifecycle.directives".to_string(),
+                    payload,
+                });
+            }
+        }
+        Ok(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits,
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::WakeAfterTicks { ticks: 1 }),
+            output_bytes: 512,
+        })
+    }
+}
 
 fn register_agents(world: &mut World, agent_ids: &[&str]) {
     for (index, agent_id) in agent_ids.iter().enumerate() {
@@ -417,4 +463,65 @@ fn meta_progress_unlocks_track_tiers() {
         .achievements
         .iter()
         .any(|value| value == "tier.campaign.gold"));
+}
+
+#[test]
+fn step_with_modules_uses_gameplay_tick_modules_without_fallback() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .install_m5_gameplay_bootstrap_modules("bootstrap")
+        .expect("install gameplay modules");
+
+    open_governance_proposal(&mut world, "proposal.module_only", 1, 1, 5_000);
+
+    let mut sandbox = GameplayDirectiveSandbox::empty();
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("module-driven gameplay tick");
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get("proposal.module_only")
+        .expect("proposal should still exist");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Open);
+}
+
+#[test]
+fn step_with_modules_applies_gameplay_directive_emits_to_domain_events() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .install_m5_gameplay_bootstrap_modules("bootstrap")
+        .expect("install gameplay modules");
+
+    open_governance_proposal(&mut world, "proposal.directive", 8, 1, 5_000);
+
+    let payload = serde_json::json!({
+        "directives": [
+            {
+                "type": "governance_finalize",
+                "proposal_key": "proposal.directive",
+                "winning_option": "approve",
+                "winning_weight": 3,
+                "total_weight": 3,
+                "passed": true
+            }
+        ]
+    });
+    let mut sandbox = GameplayDirectiveSandbox::with_governance_directive(payload);
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("module-driven directive tick");
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get("proposal.directive")
+        .expect("proposal finalized by directive");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
+    assert_eq!(proposal.winning_option.as_deref(), Some("approve"));
+    assert_eq!(proposal.winning_weight, 3);
+    assert_eq!(proposal.total_weight_at_finalize, 3);
 }

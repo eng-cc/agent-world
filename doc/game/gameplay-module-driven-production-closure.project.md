@@ -15,10 +15,10 @@
 - [x] 同步 m5 内建 wasm artifacts/hash manifest
 
 ### T2 Runtime 模块驱动闭环（对应问题 2）
-- [ ] 在 `step_with_modules` 中切换 gameplay tick 到模块驱动路径
-- [ ] 新增 gameplay module emit 消费器（directive -> DomainEvent）
-- [ ] 保留无 gameplay tick module 时的 runtime fallback
-- [ ] 增加 required-tier 模块驱动生命周期测试
+- [x] 在 `step_with_modules` 中切换 gameplay tick 到模块驱动路径
+- [x] 新增 gameplay module emit 消费器（directive -> DomainEvent）
+- [x] 保留无 gameplay tick module 时的 runtime fallback
+- [x] 增加 required-tier 模块驱动生命周期测试
 
 ### T3 LLM/Simulator 动作协议补齐（对应问题 3）
 - [ ] 扩展 OpenAI decision schema 枚举与字段
@@ -40,6 +40,6 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
+- 已完成：T0、T1、T2
+- 进行中：T3
 - 阻塞项：无
