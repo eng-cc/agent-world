@@ -103,6 +103,18 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ### 资产层（Geometry/Shell）
 - `AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER=debug|balanced|cinematic`
 - `AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED=1|0`
+- 外部 mesh 覆盖（可选，未配置时回退到内置基础几何）：
+  - `AGENT_WORLD_VIEWER_AGENT_MESH_ASSET=<path#label>`
+  - `AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET=<path#label>`
+  - `AGENT_WORLD_VIEWER_ASSET_MESH_ASSET=<path#label>`
+  - `AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET=<path#label>`
+  - `AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET=<path#label>`
+- 示例：
+```bash
+AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET=models/world/location.glb#Mesh0/Primitive0 \
+AGENT_WORLD_VIEWER_AGENT_MESH_ASSET=models/agents/worker.glb#Mesh0/Primitive0 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
 
 ### 材质层（PBR/Fragment）
 - `AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY=readability|fidelity`

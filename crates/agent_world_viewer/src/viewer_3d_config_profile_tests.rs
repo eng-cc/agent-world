@@ -9,6 +9,26 @@ fn load_viewer_3d_config_applies_env_overrides() {
         ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
         ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
         ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
+        (
+            "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET",
+            "models/agents/worker.glb#Mesh0/Primitive0",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET",
+            "models/world/location.glb#Mesh0/Primitive0",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET",
+            "models/world/asset.glb#Mesh0/Primitive0",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET",
+            "models/facility/power_plant.glb#Mesh0/Primitive0",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
+            "models/facility/power_storage.glb#Mesh0/Primitive0",
+        ),
         ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
         ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
         ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
@@ -104,6 +124,29 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert!((config.physical.luminous_efficacy_lm_per_w - 130.0).abs() < f32::EPSILON);
     assert!((config.physical.exposure_ev100 - 12.8).abs() < f32::EPSILON);
     assert!((config.physical.reference_radiation_area_m2 - 1.2).abs() < f32::EPSILON);
+
+    let external_mesh =
+        load_viewer_external_mesh_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(
+        external_mesh.agent_mesh_asset.as_deref(),
+        Some("models/agents/worker.glb#Mesh0/Primitive0")
+    );
+    assert_eq!(
+        external_mesh.location_mesh_asset.as_deref(),
+        Some("models/world/location.glb#Mesh0/Primitive0")
+    );
+    assert_eq!(
+        external_mesh.asset_mesh_asset.as_deref(),
+        Some("models/world/asset.glb#Mesh0/Primitive0")
+    );
+    assert_eq!(
+        external_mesh.power_plant_mesh_asset.as_deref(),
+        Some("models/facility/power_plant.glb#Mesh0/Primitive0")
+    );
+    assert_eq!(
+        external_mesh.power_storage_mesh_asset.as_deref(),
+        Some("models/facility/power_storage.glb#Mesh0/Primitive0")
+    );
 }
 
 #[test]
@@ -294,4 +337,27 @@ fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
         ViewerTonemappingMode::BlenderFilmic
     );
     assert!(!cinematic_config.post_process.bloom_enabled);
+}
+
+#[test]
+fn load_viewer_external_mesh_config_ignores_empty_values() {
+    let env = HashMap::from([
+        ("AGENT_WORLD_VIEWER_AGENT_MESH_ASSET", "  "),
+        ("AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET", ""),
+        (
+            "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET",
+            " models/world/asset.glb#Mesh0/Primitive0 ",
+        ),
+    ]);
+
+    let external_mesh =
+        load_viewer_external_mesh_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(external_mesh.agent_mesh_asset, None);
+    assert_eq!(external_mesh.location_mesh_asset, None);
+    assert_eq!(
+        external_mesh.asset_mesh_asset.as_deref(),
+        Some("models/world/asset.glb#Mesh0/Primitive0")
+    );
+    assert_eq!(external_mesh.power_plant_mesh_asset, None);
+    assert_eq!(external_mesh.power_storage_mesh_asset, None);
 }

@@ -151,7 +151,8 @@ use ui_locale_text::{
 use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{
-    resolve_viewer_3d_config, Viewer3dConfig, ViewerGeometryTier, ViewerTonemappingMode,
+    resolve_viewer_3d_config, resolve_viewer_external_mesh_config, Viewer3dConfig,
+    ViewerExternalMeshConfig, ViewerGeometryTier, ViewerTonemappingMode,
 };
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
@@ -598,6 +599,22 @@ fn power_storage_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
     }
 }
 
+fn resolve_mesh_handle<F>(
+    asset_server: &AssetServer,
+    meshes: &mut Assets<Mesh>,
+    override_path: Option<&str>,
+    fallback: F,
+) -> Handle<Mesh>
+where
+    F: FnOnce() -> Mesh,
+{
+    if let Some(path) = override_path {
+        asset_server.load(path.to_string())
+    } else {
+        meshes.add(fallback())
+    }
+}
+
 fn lighting_illuminance_triplet(config: &Viewer3dConfig) -> (f32, f32, f32) {
     let key = config.physical.exposed_illuminance_lux();
     let fill = (key * config.lighting.fill_light_ratio.max(0.0)).max(800.0);
@@ -922,6 +939,7 @@ fn send_request(
 fn setup_3d_scene(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
+    external_mesh: Res<ViewerExternalMeshConfig>,
     camera_mode: Res<ViewerCameraMode>,
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -940,15 +958,37 @@ fn setup_3d_scene(
     scene.root_entity = Some(root_entity);
 
     let label_font = asset_server.load("fonts/ms-yahei.ttf");
-    let agent_mesh = meshes.add(Capsule3d::new(
-        AGENT_BODY_MESH_RADIUS,
-        AGENT_BODY_MESH_LENGTH,
-    ));
+    let agent_mesh = resolve_mesh_handle(
+        &asset_server,
+        &mut meshes,
+        external_mesh.agent_mesh_asset.as_deref(),
+        || Capsule3d::new(AGENT_BODY_MESH_RADIUS, AGENT_BODY_MESH_LENGTH).into(),
+    );
     let agent_module_marker_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let location_mesh = meshes.add(location_mesh_for_geometry_tier(geometry_tier));
-    let asset_mesh = meshes.add(asset_mesh_for_geometry_tier(geometry_tier));
-    let power_plant_mesh = meshes.add(power_plant_mesh_for_geometry_tier(geometry_tier));
-    let power_storage_mesh = meshes.add(power_storage_mesh_for_geometry_tier(geometry_tier));
+    let location_mesh = resolve_mesh_handle(
+        &asset_server,
+        &mut meshes,
+        external_mesh.location_mesh_asset.as_deref(),
+        || location_mesh_for_geometry_tier(geometry_tier),
+    );
+    let asset_mesh = resolve_mesh_handle(
+        &asset_server,
+        &mut meshes,
+        external_mesh.asset_mesh_asset.as_deref(),
+        || asset_mesh_for_geometry_tier(geometry_tier),
+    );
+    let power_plant_mesh = resolve_mesh_handle(
+        &asset_server,
+        &mut meshes,
+        external_mesh.power_plant_mesh_asset.as_deref(),
+        || power_plant_mesh_for_geometry_tier(geometry_tier),
+    );
+    let power_storage_mesh = resolve_mesh_handle(
+        &asset_server,
+        &mut meshes,
+        external_mesh.power_storage_mesh_asset.as_deref(),
+        || power_storage_mesh_for_geometry_tier(geometry_tier),
+    );
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let agent_material = materials.add(StandardMaterial {
         base_color: Color::srgb(1.0, 0.42, 0.22),

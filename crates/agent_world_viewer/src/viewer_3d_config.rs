@@ -197,6 +197,15 @@ impl Default for ViewerAssetConfig {
     }
 }
 
+#[derive(Clone, Debug, Default, Resource)]
+pub(super) struct ViewerExternalMeshConfig {
+    pub agent_mesh_asset: Option<String>,
+    pub location_mesh_asset: Option<String>,
+    pub asset_mesh_asset: Option<String>,
+    pub power_plant_mesh_asset: Option<String>,
+    pub power_storage_mesh_asset: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ViewerFragmentMaterialStrategy {
     Readability,
@@ -427,6 +436,32 @@ impl Default for ViewerPhysicalRenderConfig {
 
 pub(super) fn resolve_viewer_3d_config() -> Viewer3dConfig {
     load_viewer_3d_config_from(|key| std::env::var(key).ok())
+}
+
+pub(super) fn resolve_viewer_external_mesh_config() -> ViewerExternalMeshConfig {
+    load_viewer_external_mesh_config_from(|key| std::env::var(key).ok())
+}
+
+fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExternalMeshConfig
+where
+    F: Fn(&str) -> Option<String>,
+{
+    ViewerExternalMeshConfig {
+        agent_mesh_asset: parse_non_empty_string(&lookup, "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET"),
+        location_mesh_asset: parse_non_empty_string(
+            &lookup,
+            "AGENT_WORLD_VIEWER_LOCATION_MESH_ASSET",
+        ),
+        asset_mesh_asset: parse_non_empty_string(&lookup, "AGENT_WORLD_VIEWER_ASSET_MESH_ASSET"),
+        power_plant_mesh_asset: parse_non_empty_string(
+            &lookup,
+            "AGENT_WORLD_VIEWER_POWER_PLANT_MESH_ASSET",
+        ),
+        power_storage_mesh_asset: parse_non_empty_string(
+            &lookup,
+            "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
+        ),
+    }
 }
 
 fn load_viewer_3d_config_from<F>(lookup: F) -> Viewer3dConfig
@@ -764,6 +799,20 @@ where
     F: Fn(&str) -> Option<String>,
 {
     lookup(key).and_then(|raw| raw.trim().parse::<f64>().ok())
+}
+
+fn parse_non_empty_string<F>(lookup: &F, key: &str) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
 }
 
 fn parse_usize<F>(lookup: &F, key: &str) -> Option<usize>
