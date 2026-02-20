@@ -1,20 +1,19 @@
 use super::super::{
-    m4_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleAbiContract, ModuleActivation,
-    ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleRole, ProposalDecision, WorldError, M4_ECONOMY_MODULE_VERSION,
-    M4_FACTORY_ASSEMBLER_MODULE_ID, M4_FACTORY_MINER_MODULE_ID, M4_FACTORY_SMELTER_MODULE_ID,
-    M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_IRON_INGOT_MODULE_ID,
-    M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID,
-    M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID, M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID,
-    M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID, M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID,
-    M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID, M4_RECIPE_SMELT_IRON_MODULE_ID,
+    m4_builtin_module_artifact_identity, m4_builtin_wasm_module_artifact_bytes, util, Manifest,
+    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ProposalDecision, WorldError,
+    M4_ECONOMY_MODULE_VERSION, M4_FACTORY_ASSEMBLER_MODULE_ID, M4_FACTORY_MINER_MODULE_ID,
+    M4_FACTORY_SMELTER_MODULE_ID, M4_PRODUCT_CONTROL_CHIP_MODULE_ID,
+    M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
+    M4_PRODUCT_MOTOR_MODULE_ID, M4_RECIPE_ASSEMBLE_CONTROL_CHIP_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_DRONE_MODULE_ID, M4_RECIPE_ASSEMBLE_GEAR_MODULE_ID,
+    M4_RECIPE_ASSEMBLE_MOTOR_MODULE_ID, M4_RECIPE_SMELT_COPPER_WIRE_MODULE_ID,
+    M4_RECIPE_SMELT_IRON_MODULE_ID,
 };
 use super::World;
 
 const M4_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M4_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
-const M4_BOOTSTRAP_BUILD_MANIFEST: &str =
-    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm_modules";
 
 impl World {
     pub fn install_m4_economy_bootstrap_modules(
@@ -157,9 +156,12 @@ fn m4_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, World
 }
 
 fn m4_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
-    let source_hash = util::sha256_hex(format!("builtin-source:{module_id}").as_bytes());
-    let build_manifest_hash = util::sha256_hex(M4_BOOTSTRAP_BUILD_MANIFEST.as_bytes());
-    ModuleArtifactIdentity::unsigned(wasm_hash, source_hash, build_manifest_hash)
+    m4_builtin_module_artifact_identity(module_id, wasm_hash).unwrap_or_else(|error| {
+        panic!(
+            "builtin m4 identity invariant failed module_id={} wasm_hash={} err={:?}",
+            module_id, wasm_hash, error
+        )
+    })
 }
 
 fn ensure_bootstrap_module(

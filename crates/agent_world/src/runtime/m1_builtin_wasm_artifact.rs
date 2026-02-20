@@ -2,9 +2,11 @@ use std::path::{Path, PathBuf};
 
 #[cfg(all(test, feature = "wasmtime"))]
 use super::world::World;
-use super::{load_builtin_wasm_with_fetch_fallback, WorldError};
+use super::{load_builtin_wasm_with_fetch_fallback, ModuleArtifactIdentity, WorldError};
 
 const M1_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m1_builtin_modules.sha256");
+const M1_BUILTIN_IDENTITY_MANIFEST: &str =
+    include_str!("world/artifacts/m1_builtin_modules.identity.json");
 const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 #[cfg(all(test, feature = "wasmtime"))]
@@ -82,6 +84,18 @@ pub(crate) fn m1_builtin_wasm_module_artifact_bytes(
         })?;
 
     Ok(wasm_bytes)
+}
+
+pub(crate) fn m1_builtin_module_artifact_identity(
+    module_id: &str,
+    wasm_hash: &str,
+) -> Result<ModuleArtifactIdentity, WorldError> {
+    super::builtin_wasm_identity_manifest::module_artifact_identity_from_manifest(
+        M1_BUILTIN_IDENTITY_MANIFEST,
+        "m1_builtin_modules.identity.json",
+        module_id,
+        wasm_hash,
+    )
 }
 
 #[cfg(all(test, feature = "wasmtime"))]

@@ -1,17 +1,16 @@
 use super::super::{
-    m1_builtin_wasm_module_artifact_bytes, util, Manifest, ModuleAbiContract, ModuleActivation,
-    ModuleArtifactIdentity, ModuleChangeSet, ModuleKind, ModuleLimits, ModuleManifest,
-    ModuleRegistry, ModuleRole, ModuleSubscription, ModuleSubscriptionStage, ProposalDecision,
-    WorldError, M1_AGENT_DEFAULT_MODULE_VERSION, M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID,
-    M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION, M1_RADIATION_POWER_MODULE_ID,
-    M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID, M1_STORAGE_POWER_MODULE_ID,
+    m1_builtin_module_artifact_identity, m1_builtin_wasm_module_artifact_bytes, util, Manifest,
+    ModuleAbiContract, ModuleActivation, ModuleArtifactIdentity, ModuleChangeSet, ModuleKind,
+    ModuleLimits, ModuleManifest, ModuleRegistry, ModuleRole, ModuleSubscription,
+    ModuleSubscriptionStage, ProposalDecision, WorldError, M1_AGENT_DEFAULT_MODULE_VERSION,
+    M1_MEMORY_MAX_ENTRIES, M1_MEMORY_MODULE_ID, M1_MOBILITY_MODULE_ID, M1_POWER_MODULE_VERSION,
+    M1_RADIATION_POWER_MODULE_ID, M1_SENSOR_MODULE_ID, M1_STORAGE_CARGO_MODULE_ID,
+    M1_STORAGE_POWER_MODULE_ID,
 };
 use super::World;
 
 const M1_BOOTSTRAP_WASM_MAX_MEM_BYTES: u64 = 64 * 1024 * 1024;
 const M1_BOOTSTRAP_WASM_MAX_GAS: u64 = 2_000_000;
-const M1_BOOTSTRAP_BUILD_MANIFEST: &str =
-    "toolchain=1.92.0;target=wasm32-unknown-unknown;profile=release;crate=agent_world_builtin_wasm_modules";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct M1ScenarioBootstrapConfig {
@@ -163,9 +162,12 @@ fn m1_builtin_wasm_artifact_for_module(module_id: &str) -> Result<Vec<u8>, World
 }
 
 fn m1_bootstrap_artifact_identity(module_id: &str, wasm_hash: &str) -> ModuleArtifactIdentity {
-    let source_hash = util::sha256_hex(format!("builtin-source:{module_id}").as_bytes());
-    let build_manifest_hash = util::sha256_hex(M1_BOOTSTRAP_BUILD_MANIFEST.as_bytes());
-    ModuleArtifactIdentity::unsigned(wasm_hash, source_hash, build_manifest_hash)
+    m1_builtin_module_artifact_identity(module_id, wasm_hash).unwrap_or_else(|error| {
+        panic!(
+            "builtin m1 identity invariant failed module_id={} wasm_hash={} err={:?}",
+            module_id, wasm_hash, error
+        )
+    })
 }
 
 fn ensure_bootstrap_module(

@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use super::{load_builtin_wasm_with_fetch_fallback, WorldError};
+use super::{load_builtin_wasm_with_fetch_fallback, ModuleArtifactIdentity, WorldError};
 
 const M5_BUILTIN_HASH_MANIFEST: &str = include_str!("world/artifacts/m5_builtin_modules.sha256");
+const M5_BUILTIN_IDENTITY_MANIFEST: &str =
+    include_str!("world/artifacts/m5_builtin_modules.identity.json");
 const BUILTIN_WASM_DISTFS_ROOT_ENV: &str = "AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT";
 
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
@@ -82,4 +84,16 @@ pub(crate) fn m5_builtin_wasm_module_artifact_bytes(
         )?;
 
     Ok(wasm_bytes)
+}
+
+pub(crate) fn m5_builtin_module_artifact_identity(
+    module_id: &str,
+    wasm_hash: &str,
+) -> Result<ModuleArtifactIdentity, WorldError> {
+    super::builtin_wasm_identity_manifest::module_artifact_identity_from_manifest(
+        M5_BUILTIN_IDENTITY_MANIFEST,
+        "m5_builtin_modules.identity.json",
+        module_id,
+        wasm_hash,
+    )
 }

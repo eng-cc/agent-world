@@ -5,9 +5,9 @@
 - [x] BWI-2 项目管理文档落地（本文件）
 - [x] BWI-3 扩展 `scripts/sync-m1-builtin-wasm-artifacts.sh`：生成/校验 identity manifest
 - [x] BWI-4 扩展 `scripts/sync-m4-builtin-wasm-artifacts.sh` 与 `scripts/sync-m5-builtin-wasm-artifacts.sh` 复用 identity 生成/校验
-- [ ] BWI-5 runtime 接入 identity manifest（m1/m4/m5 builtin artifact loader）
-- [ ] BWI-6 bootstrap 流程改造：`bootstrap_power/economy/gameplay` 使用 identity manifest 生成 `artifact_identity`
-- [ ] BWI-7 测试补齐：identity 解析/校验单测与 runtime 闭环测试
+- [x] BWI-5 runtime 接入 identity manifest（m1/m4/m5 builtin artifact loader）
+- [x] BWI-6 bootstrap 流程改造：`bootstrap_power/economy/gameplay` 使用 identity manifest 生成 `artifact_identity`
+- [x] BWI-7 测试补齐：identity 解析/校验单测与 runtime 闭环测试
 - [ ] BWI-8 执行回归（required 相关命令）并更新文档/任务日志
 
 ## 依赖
@@ -22,5 +22,5 @@
 - `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
-- 当前阶段：执行中（BWI-5）
-- 最近更新：BWI-3/BWI-4 完成（2026-02-20）
+- 当前阶段：执行中（BWI-8）
+- 最近更新：BWI-5/BWI-6/BWI-7 完成（2026-02-20）
