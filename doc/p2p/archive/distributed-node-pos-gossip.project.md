@@ -1,3 +1,7 @@
+> [!WARNING]
+> 该文档已过期，仅供历史追溯，不再作为当前实现依据。
+> 归档日期：2026-02-20
+
 # Agent World Runtime：Node PoS Gossip 协同（项目管理文档）
 
 ## 任务拆解
@@ -9,7 +13,7 @@
 ## 依赖
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world_node/src/lib.rs`
 - `/Users/scc/.codex/worktrees/ee97/agent-world/crates/agent_world/src/bin/world_viewer_live.rs`
-- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/distributed-node-pos-mainloop.md`
+- `/Users/scc/.codex/worktrees/ee97/agent-world/doc/p2p/archive/distributed-node-pos-mainloop.md`
 
 ## 状态
 - 当前阶段：NPG-4 完成，Node PoS gossip 协同已收口。
