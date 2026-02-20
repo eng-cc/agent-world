@@ -646,6 +646,145 @@ fn pos_engine_ingests_commit_execution_hashes() {
 }
 
 #[test]
+fn pos_engine_rejects_commit_without_execution_hashes_when_required() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let config = NodeConfig::new("node-b", "world-commit-exec-required", NodeRole::Observer)
+        .expect("config")
+        .with_pos_validators(vec![
+            PosValidator {
+                validator_id: "node-a".to_string(),
+                stake: 60,
+            },
+            PosValidator {
+                validator_id: "node-b".to_string(),
+                stake: 40,
+            },
+        ])
+        .expect("validators")
+        .with_require_peer_execution_hashes(true)
+        .with_gossip_optional(addr_b, vec![addr_a]);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: vec![addr_b],
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: config.world_id.clone(),
+            node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
+            height: 4,
+            slot: 4,
+            epoch: 0,
+            block_hash: "block-4".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 4_000,
+            execution_block_hash: None,
+            execution_state_root: None,
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast commit");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .expect("ingest");
+    assert!(
+        !engine.peer_heads.contains_key("node-a"),
+        "peer head with missing execution hashes must be rejected"
+    );
+}
+
+#[test]
+fn pos_engine_rejects_commit_when_execution_binding_mismatches_local() {
+    let socket_a = UdpSocket::bind("127.0.0.1:0").expect("bind a");
+    let socket_b = UdpSocket::bind("127.0.0.1:0").expect("bind b");
+    let addr_a = socket_a.local_addr().expect("addr a");
+    let addr_b = socket_b.local_addr().expect("addr b");
+    drop(socket_a);
+    drop(socket_b);
+
+    let config = NodeConfig::new("node-b", "world-commit-exec-mismatch", NodeRole::Observer)
+        .expect("config")
+        .with_require_peer_execution_hashes(true)
+        .with_gossip_optional(addr_b, vec![addr_a]);
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_a,
+        peers: vec![addr_b],
+    })
+    .expect("endpoint a");
+    let endpoint_b = GossipEndpoint::bind(&NodeGossipConfig {
+        bind_addr: addr_b,
+        peers: vec![addr_a],
+    })
+    .expect("endpoint b");
+
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let mut hook = RecordingExecutionHook::new(calls);
+    let tick = engine
+        .tick(
+            &config.node_id,
+            &config.world_id,
+            1_000,
+            None,
+            None,
+            None,
+            None,
+            Vec::new(),
+            Some(&mut hook),
+        )
+        .expect("tick");
+    assert_eq!(tick.consensus_snapshot.committed_height, 1);
+    assert_eq!(engine.last_execution_height, 1);
+
+    endpoint_a
+        .broadcast_commit(&GossipCommitMessage {
+            version: 1,
+            world_id: config.world_id.clone(),
+            node_id: "node-a".to_string(),
+            player_id: "node-a".to_string(),
+            height: 1,
+            slot: 1,
+            epoch: 0,
+            block_hash: "block-peer-1".to_string(),
+            action_root: empty_action_root(),
+            actions: Vec::new(),
+            committed_at_ms: 1_100,
+            execution_block_hash: Some("exec-block-mismatch".to_string()),
+            execution_state_root: Some("exec-state-mismatch".to_string()),
+            public_key_hex: None,
+            signature_hex: None,
+        })
+        .expect("broadcast commit");
+    thread::sleep(Duration::from_millis(20));
+
+    engine
+        .ingest_peer_messages(&endpoint_b, &config.node_id, &config.world_id, None)
+        .expect("ingest");
+    assert!(
+        !engine.peer_heads.contains_key("node-a"),
+        "peer head with mismatched execution binding must be rejected"
+    );
+}
+
+#[test]
 fn replication_commit_payload_includes_execution_hashes() {
     let dir = temp_dir("replication-payload-exec");
     let config = NodeReplicationConfig::new(dir.clone()).expect("replication config");

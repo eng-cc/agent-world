@@ -21,6 +21,106 @@ fn temp_dir(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
 }
 
+fn failover_test_snapshot(
+    local_node_id: &str,
+    local_height: u64,
+    local_committed_at_ms: Option<i64>,
+    peer_heads: Vec<agent_world_node::NodePeerCommittedHead>,
+) -> agent_world_node::NodeSnapshot {
+    let mut consensus = agent_world_node::NodeConsensusSnapshot::default();
+    consensus.committed_height = local_height;
+    consensus.last_committed_at_ms = local_committed_at_ms;
+    consensus.known_peer_heads = peer_heads.len();
+    consensus.peer_heads = peer_heads;
+    agent_world_node::NodeSnapshot {
+        node_id: local_node_id.to_string(),
+        player_id: local_node_id.to_string(),
+        world_id: "world-failover-test".to_string(),
+        role: NodeRole::Observer,
+        running: true,
+        tick_count: local_height,
+        last_tick_unix_ms: local_committed_at_ms,
+        consensus,
+        last_error: None,
+    }
+}
+
+#[test]
+fn infer_default_reward_runtime_leader_node_id_maps_triad_roles() {
+    assert_eq!(
+        infer_default_reward_runtime_leader_node_id("room-1-sequencer"),
+        "room-1-sequencer"
+    );
+    assert_eq!(
+        infer_default_reward_runtime_leader_node_id("room-1-storage"),
+        "room-1-sequencer"
+    );
+    assert_eq!(
+        infer_default_reward_runtime_leader_node_id("room-1-observer"),
+        "room-1-sequencer"
+    );
+    assert_eq!(
+        infer_default_reward_runtime_leader_node_id("single-node"),
+        "single-node"
+    );
+}
+
+#[test]
+fn select_failover_publisher_node_id_prefers_height_then_time_then_node_id() {
+    let snapshot = failover_test_snapshot(
+        "room-1-storage",
+        9,
+        Some(9_000),
+        vec![
+            agent_world_node::NodePeerCommittedHead {
+                node_id: "room-1-sequencer".to_string(),
+                height: 10,
+                block_hash: "leader-block-10".to_string(),
+                committed_at_ms: 10_000,
+                execution_block_hash: Some("exec-leader-10".to_string()),
+                execution_state_root: Some("state-leader-10".to_string()),
+            },
+            agent_world_node::NodePeerCommittedHead {
+                node_id: "room-1-observer".to_string(),
+                height: 10,
+                block_hash: "observer-block-10".to_string(),
+                committed_at_ms: 11_000,
+                execution_block_hash: Some("exec-observer-10".to_string()),
+                execution_state_root: Some("state-observer-10".to_string()),
+            },
+            agent_world_node::NodePeerCommittedHead {
+                node_id: "room-1-archiver".to_string(),
+                height: 10,
+                block_hash: "archiver-block-10".to_string(),
+                committed_at_ms: 11_000,
+                execution_block_hash: Some("exec-archiver-10".to_string()),
+                execution_state_root: Some("state-archiver-10".to_string()),
+            },
+        ],
+    );
+    let selected = select_failover_publisher_node_id(&snapshot, "room-1-sequencer");
+    assert_eq!(selected.as_deref(), Some("room-1-archiver"));
+}
+
+#[test]
+fn select_failover_publisher_node_id_returns_local_when_leader_excluded() {
+    let snapshot = failover_test_snapshot(
+        "room-2-storage",
+        12,
+        Some(12_000),
+        vec![agent_world_node::NodePeerCommittedHead {
+            node_id: "room-2-sequencer".to_string(),
+            height: 13,
+            block_hash: "leader-block-13".to_string(),
+            committed_at_ms: 13_000,
+            execution_block_hash: Some("exec-leader-13".to_string()),
+            execution_state_root: Some("state-leader-13".to_string()),
+        }],
+    );
+    let selected = select_failover_publisher_node_id(&snapshot, "room-2-sequencer");
+    assert_eq!(selected.as_deref(), Some("room-2-storage"));
+}
+
 #[test]
 fn parse_options_defaults() {
     let options = parse_options([].into_iter()).expect("defaults");
@@ -49,6 +149,9 @@ fn parse_options_defaults() {
     assert!(!options.reward_runtime_enabled);
     assert!(!options.reward_runtime_auto_redeem);
     assert!(options.reward_runtime_signer_node_id.is_none());
+    assert!(options.reward_runtime_leader_node_id.is_none());
+    assert_eq!(options.reward_runtime_leader_stale_ms, 3_000);
+    assert!(options.reward_runtime_failover_enabled);
     assert_eq!(
         options.reward_runtime_report_dir,
         DEFAULT_REWARD_RUNTIME_REPORT_DIR
@@ -136,6 +239,11 @@ fn parse_options_reads_custom_values() {
             "--reward-runtime-auto-redeem",
             "--reward-runtime-signer",
             "reward-signer-1",
+            "--reward-runtime-leader-node",
+            "reward-leader-1",
+            "--reward-runtime-leader-stale-ms",
+            "4500",
+            "--reward-runtime-no-failover",
             "--reward-runtime-report-dir",
             "output/reward-custom",
             "--reward-runtime-min-observer-traces",
@@ -223,6 +331,12 @@ fn parse_options_reads_custom_values() {
         options.reward_runtime_signer_node_id.as_deref(),
         Some("reward-signer-1")
     );
+    assert_eq!(
+        options.reward_runtime_leader_node_id.as_deref(),
+        Some("reward-leader-1")
+    );
+    assert_eq!(options.reward_runtime_leader_stale_ms, 4500);
+    assert!(!options.reward_runtime_failover_enabled);
     assert_eq!(options.reward_runtime_report_dir, "output/reward-custom");
     assert_eq!(options.reward_runtime_min_observer_traces, 3);
     assert_eq!(options.reward_points_per_credit, 7);
@@ -506,6 +620,13 @@ fn parse_options_rejects_zero_reward_runtime_min_observer_traces() {
     let err = parse_options(["--reward-runtime-min-observer-traces", "0"].into_iter())
         .expect_err("reject zero min observer traces");
     assert!(err.contains("--reward-runtime-min-observer-traces"));
+}
+
+#[test]
+fn parse_options_rejects_zero_reward_runtime_leader_stale_ms() {
+    let err = parse_options(["--reward-runtime-leader-stale-ms", "0"].into_iter())
+        .expect_err("reject zero leader stale");
+    assert!(err.contains("--reward-runtime-leader-stale-ms"));
 }
 
 #[test]

@@ -2,6 +2,7 @@
 
 ## 目标
 - 收口执行一致性缺口：将节点对等 commit 的执行绑定从“仅透传/记录”提升为“可校验、可拒绝、可在补洞路径重放验证”。
+- 收口执行一致性缺口：将节点对等 commit 的执行绑定从“仅透传/记录”提升为“可校验、可拒绝、可在补洞路径执行一致性验证”。
 - 收口奖励结算编排缺口：为 reward runtime 引入显式 leader/failover 策略，避免“隐式只有 sequencer 发布”导致的运行不可观测和不可配置。
 - 在不依赖完整玩法模块完工的前提下，先把 P2P 基础设施升级为生产语义。
 
@@ -18,7 +19,7 @@
   - replication gap-sync 主路径增强：
     - 补洞时解析完整 commit payload（含 actions）。
     - 校验 `action_root` 与 actions 一致。
-    - 在可用 execution hook 下重放执行并校验与 payload 的 execution hash/state root 一致。
+    - 校验 payload 的 execution hash/state root 与本地已知执行绑定策略一致（含必填与一致性约束）。
   - `NodeConsensusSnapshot` 增强可观测字段：
     - `last_committed_at_ms`
     - `peer_heads`（包含 node_id/height/committed_at_ms/execution hashes）
@@ -82,7 +83,7 @@ CliOptions {
 
 ## 里程碑
 - M0：设计与项目管理文档冻结。
-- M1：`agent_world_node` 执行校验策略与补洞重放校验落地。
+- M1：`agent_world_node` 执行校验策略与补洞执行一致性校验落地。
 - M2：`world_viewer_live` leader/failover 策略与运行默认语义收口。
 - M3：测试回归（required-tier 定向）与文档/devlog 收口。
 
