@@ -41,8 +41,17 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
             DomainEvent::AllianceFormed { .. } => "domain.gameplay.alliance_formed",
             DomainEvent::WarDeclared { .. } => "domain.gameplay.war_declared",
+            DomainEvent::WarConcluded { .. } => "domain.gameplay.war_concluded",
+            DomainEvent::GovernanceProposalOpened { .. } => {
+                "domain.gameplay.governance_proposal_opened"
+            }
             DomainEvent::GovernanceVoteCast { .. } => "domain.gameplay.governance_vote_cast",
+            DomainEvent::GovernanceProposalFinalized { .. } => {
+                "domain.gameplay.governance_proposal_finalized"
+            }
+            DomainEvent::CrisisSpawned { .. } => "domain.gameplay.crisis_spawned",
             DomainEvent::CrisisResolved { .. } => "domain.gameplay.crisis_resolved",
+            DomainEvent::CrisisTimedOut { .. } => "domain.gameplay.crisis_timed_out",
             DomainEvent::MetaProgressGranted { .. } => "domain.gameplay.meta_progress_granted",
             DomainEvent::ProductValidated { .. } => "domain.economy.product_validated",
         },
@@ -96,6 +105,7 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
         Action::DeclareWar { .. } => "action.gameplay.declare_war",
+        Action::OpenGovernanceProposal { .. } => "action.gameplay.open_governance_proposal",
         Action::CastGovernanceVote { .. } => "action.gameplay.cast_governance_vote",
         Action::ResolveCrisis { .. } => "action.gameplay.resolve_crisis",
         Action::GrantMetaProgress { .. } => "action.gameplay.grant_meta_progress",

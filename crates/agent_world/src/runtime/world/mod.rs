@@ -11,6 +11,7 @@ mod economy;
 mod effects;
 mod event_processing;
 mod gameplay_layer;
+mod gameplay_loop;
 mod governance;
 mod logistics;
 mod module_actions;

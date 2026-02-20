@@ -23,6 +23,7 @@ impl World {
         }
         let _ = self.process_due_economy_jobs()?;
         let _ = self.process_due_material_transits()?;
+        let _ = self.process_gameplay_cycles()?;
         Ok(())
     }
 
@@ -116,6 +117,9 @@ impl World {
             self.route_event_to_modules(&event, sandbox)?;
         }
         for event in self.process_due_material_transits()? {
+            self.route_event_to_modules(&event, sandbox)?;
+        }
+        for event in self.process_gameplay_cycles()? {
             self.route_event_to_modules(&event, sandbox)?;
         }
         let _ = self.route_tick_to_modules(sandbox)?;
