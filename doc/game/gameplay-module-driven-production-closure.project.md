@@ -7,12 +7,12 @@
 - [x] 新建项目管理文档：`doc/game/gameplay-module-driven-production-closure.project.md`
 
 ### T1 m5 WASM 模块生产实现（对应问题 1）
-- [ ] `m5_gameplay_war_core`：战争生命周期状态跟踪 + 自动结算 directive
-- [ ] `m5_gameplay_governance_council`：提案/投票状态跟踪 + 自动结算 directive
-- [ ] `m5_gameplay_crisis_cycle`：危机生成/超时 lifecycle directive
-- [ ] `m5_gameplay_economic_overlay`：经济叠加规则（基于 gameplay 事件触发奖励/惩罚）
-- [ ] `m5_gameplay_meta_progression`：元进度规则与 bonus grant directive
-- [ ] 同步 m5 内建 wasm artifacts/hash manifest
+- [x] `m5_gameplay_war_core`：战争生命周期状态跟踪 + 自动结算 directive
+- [x] `m5_gameplay_governance_council`：提案/投票状态跟踪 + 自动结算 directive
+- [x] `m5_gameplay_crisis_cycle`：危机生成/超时 lifecycle directive
+- [x] `m5_gameplay_economic_overlay`：经济叠加规则（基于 gameplay 事件触发奖励/惩罚）
+- [x] `m5_gameplay_meta_progression`：元进度规则与 bonus grant directive
+- [x] 同步 m5 内建 wasm artifacts/hash manifest
 
 ### T2 Runtime 模块驱动闭环（对应问题 2）
 - [ ] 在 `step_with_modules` 中切换 gameplay tick 到模块驱动路径
@@ -40,6 +40,6 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
+- 已完成：T0、T1
+- 进行中：T2
 - 阻塞项：无
