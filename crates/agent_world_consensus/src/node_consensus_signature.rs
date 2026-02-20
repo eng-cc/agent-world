@@ -1,20 +1,26 @@
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::Serialize;
 
-use crate::gossip_udp::{GossipAttestationMessage, GossipCommitMessage, GossipProposalMessage};
-use crate::{NodeConsensusAction, NodeError};
+use super::node_consensus_action::NodeConsensusAction;
+use super::node_consensus_error::NodeConsensusError;
+use super::node_consensus_message::{
+    NodeGossipAttestationMessage, NodeGossipCommitMessage, NodeGossipProposalMessage,
+};
 
 #[derive(Debug, Clone)]
-pub(crate) struct ConsensusMessageSigner {
+pub struct NodeConsensusMessageSigner {
     signing_key: SigningKey,
     public_key_hex: String,
 }
 
-impl ConsensusMessageSigner {
-    pub(crate) fn new(signing_key: SigningKey, public_key_hex: String) -> Result<Self, NodeError> {
+impl NodeConsensusMessageSigner {
+    pub fn new(
+        signing_key: SigningKey,
+        public_key_hex: String,
+    ) -> Result<Self, NodeConsensusError> {
         let expected = hex::encode(signing_key.verifying_key().to_bytes());
         if expected != public_key_hex {
-            return Err(NodeError::InvalidConfig {
+            return Err(NodeConsensusError {
                 reason: "consensus signing public key does not match private key".to_string(),
             });
         }
@@ -25,10 +31,10 @@ impl ConsensusMessageSigner {
     }
 }
 
-pub(crate) fn sign_commit_message(
-    message: &mut GossipCommitMessage,
-    signer: &ConsensusMessageSigner,
-) -> Result<(), NodeError> {
+pub fn sign_commit_message(
+    message: &mut NodeGossipCommitMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeConsensusError> {
     message.public_key_hex = Some(signer.public_key_hex.clone());
     let payload = commit_signing_bytes(message)?;
     let signature: Signature = signer.signing_key.sign(&payload);
@@ -36,10 +42,10 @@ pub(crate) fn sign_commit_message(
     Ok(())
 }
 
-pub(crate) fn sign_proposal_message(
-    message: &mut GossipProposalMessage,
-    signer: &ConsensusMessageSigner,
-) -> Result<(), NodeError> {
+pub fn sign_proposal_message(
+    message: &mut NodeGossipProposalMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeConsensusError> {
     message.public_key_hex = Some(signer.public_key_hex.clone());
     let payload = proposal_signing_bytes(message)?;
     let signature: Signature = signer.signing_key.sign(&payload);
@@ -47,10 +53,10 @@ pub(crate) fn sign_proposal_message(
     Ok(())
 }
 
-pub(crate) fn sign_attestation_message(
-    message: &mut GossipAttestationMessage,
-    signer: &ConsensusMessageSigner,
-) -> Result<(), NodeError> {
+pub fn sign_attestation_message(
+    message: &mut NodeGossipAttestationMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeConsensusError> {
     message.public_key_hex = Some(signer.public_key_hex.clone());
     let payload = attestation_signing_bytes(message)?;
     let signature: Signature = signer.signing_key.sign(&payload);
@@ -58,10 +64,10 @@ pub(crate) fn sign_attestation_message(
     Ok(())
 }
 
-pub(crate) fn verify_commit_message_signature(
-    message: &GossipCommitMessage,
+pub fn verify_commit_message_signature(
+    message: &NodeGossipCommitMessage,
     enforce: bool,
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     verify_message_signature(
         message.public_key_hex.as_deref(),
         message.signature_hex.as_deref(),
@@ -71,10 +77,10 @@ pub(crate) fn verify_commit_message_signature(
     )
 }
 
-pub(crate) fn verify_proposal_message_signature(
-    message: &GossipProposalMessage,
+pub fn verify_proposal_message_signature(
+    message: &NodeGossipProposalMessage,
     enforce: bool,
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     verify_message_signature(
         message.public_key_hex.as_deref(),
         message.signature_hex.as_deref(),
@@ -84,10 +90,10 @@ pub(crate) fn verify_proposal_message_signature(
     )
 }
 
-pub(crate) fn verify_attestation_message_signature(
-    message: &GossipAttestationMessage,
+pub fn verify_attestation_message_signature(
+    message: &NodeGossipAttestationMessage,
     enforce: bool,
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     verify_message_signature(
         message.public_key_hex.as_deref(),
         message.signature_hex.as_deref(),
@@ -151,7 +157,7 @@ struct AttestationSigningPayload<'a> {
     public_key_hex: Option<&'a str>,
 }
 
-fn commit_signing_bytes(message: &GossipCommitMessage) -> Result<Vec<u8>, NodeError> {
+fn commit_signing_bytes(message: &NodeGossipCommitMessage) -> Result<Vec<u8>, NodeConsensusError> {
     to_canonical_cbor(&CommitSigningPayload {
         version: message.version,
         world_id: &message.world_id,
@@ -170,7 +176,9 @@ fn commit_signing_bytes(message: &GossipCommitMessage) -> Result<Vec<u8>, NodeEr
     })
 }
 
-fn proposal_signing_bytes(message: &GossipProposalMessage) -> Result<Vec<u8>, NodeError> {
+fn proposal_signing_bytes(
+    message: &NodeGossipProposalMessage,
+) -> Result<Vec<u8>, NodeConsensusError> {
     to_canonical_cbor(&ProposalSigningPayload {
         version: message.version,
         world_id: &message.world_id,
@@ -188,7 +196,9 @@ fn proposal_signing_bytes(message: &GossipProposalMessage) -> Result<Vec<u8>, No
     })
 }
 
-fn attestation_signing_bytes(message: &GossipAttestationMessage) -> Result<Vec<u8>, NodeError> {
+fn attestation_signing_bytes(
+    message: &NodeGossipAttestationMessage,
+) -> Result<Vec<u8>, NodeConsensusError> {
     to_canonical_cbor(&AttestationSigningPayload {
         version: message.version,
         world_id: &message.world_id,
@@ -214,10 +224,10 @@ fn verify_message_signature(
     payload: Vec<u8>,
     enforce: bool,
     label: &str,
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     let (Some(public_key_hex), Some(signature_hex)) = (public_key_hex, signature_hex) else {
         if enforce {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: format!("{label} signature missing"),
             });
         }
@@ -227,28 +237,28 @@ fn verify_message_signature(
     let public_key_bytes = decode_hex_array::<32>(public_key_hex, "consensus public key")?;
     let signature_bytes = decode_hex_array::<64>(signature_hex, "consensus signature")?;
     let verifying_key =
-        VerifyingKey::from_bytes(&public_key_bytes).map_err(|err| NodeError::Consensus {
+        VerifyingKey::from_bytes(&public_key_bytes).map_err(|err| NodeConsensusError {
             reason: format!("parse consensus public key failed: {err}"),
         })?;
     let signature = Signature::from_bytes(&signature_bytes);
     verifying_key
         .verify(&payload, &signature)
-        .map_err(|err| NodeError::Consensus {
+        .map_err(|err| NodeConsensusError {
             reason: format!("verify {label} signature failed: {err}"),
         })
 }
 
-fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, NodeError> {
-    serde_cbor::to_vec(value).map_err(|err| NodeError::Consensus {
+fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, NodeConsensusError> {
+    serde_cbor::to_vec(value).map_err(|err| NodeConsensusError {
         reason: format!("serialize consensus signing payload failed: {err}"),
     })
 }
 
-fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], NodeError> {
-    let bytes = hex::decode(raw).map_err(|_| NodeError::Consensus {
+fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], NodeConsensusError> {
+    let bytes = hex::decode(raw).map_err(|_| NodeConsensusError {
         reason: format!("{label} must be valid hex"),
     })?;
-    bytes.try_into().map_err(|_| NodeError::Consensus {
+    bytes.try_into().map_err(|_| NodeConsensusError {
         reason: format!("{label} must be {N}-byte hex"),
     })
 }

@@ -9,6 +9,10 @@ mod membership_reconciliation;
 mod membership_recovery;
 mod mempool;
 mod network;
+pub mod node_consensus_action;
+pub mod node_consensus_error;
+pub mod node_consensus_message;
+pub mod node_consensus_signature;
 #[path = "node_pos.rs"]
 mod node_pos_core;
 mod pos;

@@ -4,6 +4,23 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
+pub use agent_world_consensus::node_consensus_action::NodeConsensusAction;
+use agent_world_consensus::node_consensus_action::{
+    compute_consensus_action_root as core_compute_consensus_action_root,
+    drain_ordered_consensus_actions as core_drain_ordered_consensus_actions,
+    merge_pending_consensus_actions as core_merge_pending_consensus_actions,
+    validate_consensus_action_root as core_validate_consensus_action_root,
+};
+use agent_world_consensus::node_consensus_error::NodeConsensusError;
+use agent_world_consensus::node_consensus_signature::{
+    sign_attestation_message as core_sign_attestation_message,
+    sign_commit_message as core_sign_commit_message,
+    sign_proposal_message as core_sign_proposal_message,
+    verify_attestation_message_signature as core_verify_attestation_message_signature,
+    verify_commit_message_signature as core_verify_commit_message_signature,
+    verify_proposal_message_signature as core_verify_proposal_message_signature,
+    NodeConsensusMessageSigner,
+};
 use agent_world_consensus::node_pos::{
     advance_pending_attestations as core_advance_pending_attestations,
     insert_attestation as core_insert_attestation, propose_next_head as core_propose_next_head,
@@ -14,8 +31,6 @@ use agent_world_proto::distributed::DistributedErrorCode;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
 use serde::Deserialize;
 
-mod consensus_action;
-mod consensus_signature;
 mod error;
 mod execution_hook;
 mod gossip_udp;
@@ -33,16 +48,6 @@ mod replication;
 mod runtime_util;
 mod types;
 
-pub use consensus_action::{compute_consensus_action_root, NodeConsensusAction};
-use consensus_action::{
-    drain_ordered_consensus_actions, merge_pending_consensus_actions,
-    validate_consensus_action_root,
-};
-use consensus_signature::{
-    sign_attestation_message, sign_commit_message, sign_proposal_message,
-    verify_attestation_message_signature, verify_commit_message_signature,
-    verify_proposal_message_signature, ConsensusMessageSigner,
-};
 pub use error::NodeError;
 pub use execution_hook::{
     NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook,
@@ -103,6 +108,76 @@ impl NodePosStatusAdapter for PosConsensusStatus {
 
 fn node_pos_error(err: NodePosError) -> NodeError {
     NodeError::Consensus { reason: err.reason }
+}
+
+fn node_consensus_error(err: NodeConsensusError) -> NodeError {
+    NodeError::Consensus { reason: err.reason }
+}
+
+pub fn compute_consensus_action_root(actions: &[NodeConsensusAction]) -> Result<String, NodeError> {
+    core_compute_consensus_action_root(actions).map_err(node_consensus_error)
+}
+
+fn merge_pending_consensus_actions(
+    pending: &mut BTreeMap<u64, NodeConsensusAction>,
+    incoming: Vec<NodeConsensusAction>,
+) -> Result<(), NodeError> {
+    core_merge_pending_consensus_actions(pending, incoming).map_err(node_consensus_error)
+}
+
+fn drain_ordered_consensus_actions(
+    pending: &mut BTreeMap<u64, NodeConsensusAction>,
+) -> Vec<NodeConsensusAction> {
+    core_drain_ordered_consensus_actions(pending)
+}
+
+fn validate_consensus_action_root(
+    action_root: &str,
+    actions: &[NodeConsensusAction],
+) -> Result<(), NodeError> {
+    core_validate_consensus_action_root(action_root, actions).map_err(node_consensus_error)
+}
+
+fn sign_commit_message(
+    message: &mut GossipCommitMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeError> {
+    core_sign_commit_message(message, signer).map_err(node_consensus_error)
+}
+
+fn sign_proposal_message(
+    message: &mut GossipProposalMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeError> {
+    core_sign_proposal_message(message, signer).map_err(node_consensus_error)
+}
+
+fn sign_attestation_message(
+    message: &mut GossipAttestationMessage,
+    signer: &NodeConsensusMessageSigner,
+) -> Result<(), NodeError> {
+    core_sign_attestation_message(message, signer).map_err(node_consensus_error)
+}
+
+fn verify_commit_message_signature(
+    message: &GossipCommitMessage,
+    enforce: bool,
+) -> Result<(), NodeError> {
+    core_verify_commit_message_signature(message, enforce).map_err(node_consensus_error)
+}
+
+fn verify_proposal_message_signature(
+    message: &GossipProposalMessage,
+    enforce: bool,
+) -> Result<(), NodeError> {
+    core_verify_proposal_message_signature(message, enforce).map_err(node_consensus_error)
+}
+
+fn verify_attestation_message_signature(
+    message: &GossipAttestationMessage,
+    enforce: bool,
+) -> Result<(), NodeError> {
+    core_verify_attestation_message_signature(message, enforce).map_err(node_consensus_error)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -493,7 +568,7 @@ struct PosNodeEngine {
     last_broadcast_committed_height: u64,
     replicate_local_commits: bool,
     require_peer_execution_hashes: bool,
-    consensus_signer: Option<ConsensusMessageSigner>,
+    consensus_signer: Option<NodeConsensusMessageSigner>,
     enforce_consensus_signature: bool,
     peer_heads: BTreeMap<String, PeerCommittedHead>,
     last_committed_at_ms: Option<i64>,
@@ -558,9 +633,10 @@ impl PosNodeEngine {
                 let signer = replication
                     .consensus_signer()?
                     .map(|(signing_key, public_key_hex)| {
-                        ConsensusMessageSigner::new(signing_key, public_key_hex)
+                        NodeConsensusMessageSigner::new(signing_key, public_key_hex)
                     })
-                    .transpose()?;
+                    .transpose()
+                    .map_err(node_consensus_error)?;
                 (signer, replication.enforce_consensus_signature())
             } else {
                 (None, false)

@@ -1,9 +1,9 @@
-use super::consensus_signature::{
-    sign_attestation_message, sign_commit_message, sign_proposal_message,
-    verify_commit_message_signature, ConsensusMessageSigner,
-};
 use super::gossip_udp::{GossipCommitMessage, GossipEndpoint, GossipMessage};
 use super::*;
+use agent_world_consensus::node_consensus_signature::{
+    sign_attestation_message, sign_commit_message, sign_proposal_message,
+    verify_commit_message_signature, NodeConsensusMessageSigner as ConsensusMessageSigner,
+};
 use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationGuard};
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
@@ -568,13 +568,13 @@ fn commit_signature_covers_execution_hashes() {
     let mut tampered = commit.clone();
     tampered.execution_state_root = Some("exec-state-tampered".to_string());
     let err = verify_commit_message_signature(&tampered, true).expect_err("tamper must fail");
-    assert!(matches!(err, NodeError::Consensus { .. }));
+    assert!(err.reason.contains("verify commit signature failed"));
 
     let mut tampered_action_root = commit.clone();
     tampered_action_root.action_root = "tampered-action-root".to_string();
     let err =
         verify_commit_message_signature(&tampered_action_root, true).expect_err("tamper must fail");
-    assert!(matches!(err, NodeError::Consensus { .. }));
+    assert!(err.reason.contains("verify commit signature failed"));
 }
 
 #[test]

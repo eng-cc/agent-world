@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
-use agent_world_distfs::blake3_hex;
 use serde::{Deserialize, Serialize};
 
-use crate::NodeError;
+use super::node_consensus_error::NodeConsensusError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NodeConsensusAction {
@@ -19,16 +18,16 @@ impl NodeConsensusAction {
         action_id: u64,
         submitter_player_id: impl Into<String>,
         payload_cbor: Vec<u8>,
-    ) -> Result<Self, NodeError> {
+    ) -> Result<Self, NodeConsensusError> {
         if action_id == 0 {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: "consensus action_id must be > 0".to_string(),
             });
         }
         let submitter_player_id = submitter_player_id.into();
         let submitter_player_id = submitter_player_id.trim();
         if submitter_player_id.is_empty() {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: "consensus action submitter_player_id cannot be empty".to_string(),
             });
         }
@@ -41,14 +40,14 @@ impl NodeConsensusAction {
         })
     }
 
-    pub fn validate(&self) -> Result<(), NodeError> {
+    pub fn validate(&self) -> Result<(), NodeConsensusError> {
         if self.action_id == 0 {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: "consensus action_id must be > 0".to_string(),
             });
         }
         if self.submitter_player_id.trim().is_empty() {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: format!(
                     "consensus action submitter_player_id is empty action_id={}",
                     self.action_id
@@ -57,7 +56,7 @@ impl NodeConsensusAction {
         }
         let expected_hash = blake3_hex(self.payload_cbor.as_slice());
         if expected_hash != self.payload_hash {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: format!(
                     "consensus action payload hash mismatch action_id={} expected={} actual={}",
                     self.action_id, expected_hash, self.payload_hash
@@ -97,15 +96,15 @@ struct ActionRootLegacyEntry<'a> {
     payload_hash: &'a str,
 }
 
-pub(crate) fn merge_pending_consensus_actions(
+pub fn merge_pending_consensus_actions(
     pending: &mut BTreeMap<u64, NodeConsensusAction>,
     incoming: Vec<NodeConsensusAction>,
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     for action in incoming {
         action.validate()?;
         match pending.get(&action.action_id) {
             Some(existing) if existing.payload_hash != action.payload_hash => {
-                return Err(NodeError::Consensus {
+                return Err(NodeConsensusError {
                     reason: format!(
                         "conflicting consensus action payload for action_id={}",
                         action.action_id
@@ -113,7 +112,7 @@ pub(crate) fn merge_pending_consensus_actions(
                 });
             }
             Some(existing) if existing.submitter_player_id != action.submitter_player_id => {
-                return Err(NodeError::Consensus {
+                return Err(NodeConsensusError {
                     reason: format!(
                         "conflicting consensus action submitter for action_id={}",
                         action.action_id
@@ -129,7 +128,7 @@ pub(crate) fn merge_pending_consensus_actions(
     Ok(())
 }
 
-pub(crate) fn drain_ordered_consensus_actions(
+pub fn drain_ordered_consensus_actions(
     pending: &mut BTreeMap<u64, NodeConsensusAction>,
 ) -> Vec<NodeConsensusAction> {
     let mut drained = Vec::with_capacity(pending.len());
@@ -140,17 +139,21 @@ pub(crate) fn drain_ordered_consensus_actions(
     drained
 }
 
-pub fn compute_consensus_action_root(actions: &[NodeConsensusAction]) -> Result<String, NodeError> {
+pub fn compute_consensus_action_root(
+    actions: &[NodeConsensusAction],
+) -> Result<String, NodeConsensusError> {
     compute_consensus_action_root_v2(actions)
 }
 
-fn compute_consensus_action_root_v2(actions: &[NodeConsensusAction]) -> Result<String, NodeError> {
+fn compute_consensus_action_root_v2(
+    actions: &[NodeConsensusAction],
+) -> Result<String, NodeConsensusError> {
     let mut last_action_id = 0_u64;
     let mut entries = Vec::with_capacity(actions.len());
     for action in actions {
         action.validate()?;
         if action.action_id <= last_action_id {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: format!(
                     "consensus actions must be strictly ordered action_id={} last_action_id={}",
                     action.action_id, last_action_id
@@ -169,7 +172,7 @@ fn compute_consensus_action_root_v2(actions: &[NodeConsensusAction]) -> Result<S
         version: 2,
         actions: entries,
     };
-    let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeError::Consensus {
+    let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeConsensusError {
         reason: format!("encode consensus action root payload failed: {err}"),
     })?;
     Ok(blake3_hex(bytes.as_slice()))
@@ -177,13 +180,13 @@ fn compute_consensus_action_root_v2(actions: &[NodeConsensusAction]) -> Result<S
 
 fn compute_consensus_action_root_v1_legacy(
     actions: &[NodeConsensusAction],
-) -> Result<String, NodeError> {
+) -> Result<String, NodeConsensusError> {
     let mut last_action_id = 0_u64;
     let mut entries = Vec::with_capacity(actions.len());
     for action in actions {
         action.validate()?;
         if action.action_id <= last_action_id {
-            return Err(NodeError::Consensus {
+            return Err(NodeConsensusError {
                 reason: format!(
                     "consensus actions must be strictly ordered action_id={} last_action_id={}",
                     action.action_id, last_action_id
@@ -201,18 +204,18 @@ fn compute_consensus_action_root_v1_legacy(
         version: 1,
         actions: entries,
     };
-    let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeError::Consensus {
+    let bytes = serde_cbor::to_vec(&payload).map_err(|err| NodeConsensusError {
         reason: format!("encode legacy consensus action root payload failed: {err}"),
     })?;
     Ok(blake3_hex(bytes.as_slice()))
 }
 
-pub(crate) fn validate_consensus_action_root(
+pub fn validate_consensus_action_root(
     action_root: &str,
     actions: &[NodeConsensusAction],
-) -> Result<(), NodeError> {
+) -> Result<(), NodeConsensusError> {
     if action_root.trim().is_empty() {
-        return Err(NodeError::Consensus {
+        return Err(NodeConsensusError {
             reason: "consensus action_root is empty".to_string(),
         });
     }
@@ -224,10 +227,14 @@ pub(crate) fn validate_consensus_action_root(
     if computed_v1 == action_root {
         return Ok(());
     }
-    Err(NodeError::Consensus {
+    Err(NodeConsensusError {
         reason: format!(
             "consensus action_root mismatch expected_v2={} expected_v1={} actual={}",
             computed_v2, computed_v1, action_root
         ),
     })
+}
+
+fn blake3_hex(bytes: &[u8]) -> String {
+    blake3::hash(bytes).to_hex().to_string()
 }

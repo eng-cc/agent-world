@@ -1,6 +1,8 @@
-use super::consensus_signature::{sign_proposal_message, ConsensusMessageSigner};
 use super::gossip_udp::{GossipEndpoint, GossipProposalMessage};
 use super::*;
+use agent_world_consensus::node_consensus_signature::{
+    sign_proposal_message, NodeConsensusMessageSigner as ConsensusMessageSigner,
+};
 use agent_world_distfs::{blake3_hex, FileReplicationRecord};
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;

@@ -109,7 +109,8 @@ impl NodeRuntime {
             action_id,
             self.config.player_id.clone(),
             payload_cbor,
-        )?;
+        )
+        .map_err(|err| NodeError::Consensus { reason: err.reason })?;
         let mut pending = self
             .pending_consensus_actions
             .lock()
