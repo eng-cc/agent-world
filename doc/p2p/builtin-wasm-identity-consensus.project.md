@@ -13,7 +13,7 @@
 - [x] BWI-10 runtime materializer 生产化改造：补齐 m5 module-id 清单、支持非 canonical 平台回退编译缓存复用
 - [x] BWI-11 门禁与流程改造：`scripts/ci-tests.sh required` 覆盖 `m1/m4/m5 --check`，文档与测试手册同步
 - [x] BWI-12 过时方案归档：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
-- [ ] BWI-13 回归收口：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
+- [x] BWI-13 回归收口：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
 
 ## 依赖
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
@@ -31,5 +31,5 @@
 - `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
-- 当前阶段：进行中（BWI-13）
-- 最近更新：BWI-12 完成，进入回归收口阶段（2026-02-20）
+- 当前阶段：已完成（BWI-13）
+- 最近更新：BWI-13 完成，项目收口（2026-02-20）
