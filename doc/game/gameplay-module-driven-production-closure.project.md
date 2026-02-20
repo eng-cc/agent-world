@@ -27,9 +27,9 @@
 - [x] 增加 required-tier 解析与动作流测试
 
 ### T4 文档与顶层任务收口（对应问题 5）
-- [ ] 回写 `doc/game/gameplay-top-level-design.project.md` 未完成项
-- [ ] 固化 Gameplay 模块 `test_tier_required` 与 `test_tier_full` 测试矩阵引用
-- [ ] 回写 `doc/devlog/2026-02-20.md`
+- [x] 回写 `doc/game/gameplay-top-level-design.project.md` 未完成项
+- [x] 固化 Gameplay 模块 `test_tier_required` 与 `test_tier_full` 测试矩阵引用
+- [x] 回写 `doc/devlog/2026-02-20.md`
 
 ## 依赖
 - `doc/game/gameplay-top-level-design.md`
@@ -39,7 +39,7 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3
-- 进行中：T4
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3、T4
+- 进行中：无
 - 阻塞项：无

@@ -18,9 +18,9 @@
 
 ### T3 工程落地拆解（下阶段）
 - [x] 落地 Gameplay Runtime 治理闭环首个生产切片（`doc/game/gameplay-runtime-governance-closure.md`）：ABI gameplay 元数据、Runtime 校验、mode+kind 槽位冲突检测、就绪度报告与测试
-- [ ] 拆解 WASM Gameplay Kernel API 的实现任务（读取/提案/事件总线）
-- [ ] 拆解 War/Governance/Crisis/Economic/Meta 模块 MVP 任务
-- [ ] 为每个模块定义 `test_tier_required` 与 `test_tier_full` 测试矩阵
+- [x] 拆解 WASM Gameplay Kernel API 的实现任务（读取/提案/事件总线），并落地生命周期规则切片（`doc/game/gameplay-layer-lifecycle-rules-closure.md`）
+- [x] 拆解 War/Governance/Crisis/Economic/Meta 模块 MVP 任务，并完成协议与模块生产实现（`doc/game/gameplay-layer-war-governance-crisis-meta-closure.md`、`doc/game/gameplay-module-driven-production-closure.md`）
+- [x] 为每个模块定义 `test_tier_required` 与 `test_tier_full` 测试矩阵（见下文“Gameplay 模块测试矩阵引用”）
 
 ## 依赖
 
@@ -28,9 +28,19 @@
 - 测试流程与分层矩阵：`testing-manual.md`
 - 世界规则与边界约束：`world-rule.md`
 
+## Gameplay 模块测试矩阵引用
+
+- `test_tier_required` 基线：`./scripts/ci-tests.sh required`（来源：`testing-manual.md` S1）
+- `test_tier_full` 基线：`./scripts/ci-tests.sh full`（来源：`testing-manual.md` S2）
+- Gameplay Runtime 协议定向：`env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture`（来源：`testing-manual.md` S3）
+- Gameplay LLM/Simulator 协议定向：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::llm_agent::tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::tests::submitter_access:: -- --nocapture`
+- 场景回归入口：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture`（来源：`testing-manual.md` S7）
+
 ## 状态
 
-- 当前状态：`进行中（设计阶段）`
-- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复
-- 未完成：设计评审、量化指标固化、代码与测试任务拆解
+- 当前状态：`进行中（实现收口阶段）`
+- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化
+- 未完成：设计评审、量化指标固化、战争与政治机制数值基线评审
 - 阻塞项：暂无硬阻塞，待进入实现阶段后按模块优先级推进
