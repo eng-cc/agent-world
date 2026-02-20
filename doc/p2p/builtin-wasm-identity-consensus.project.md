@@ -12,7 +12,7 @@
 - [x] BWI-9 扩展设计范围：纳入 CI/pre-commit/runtime fallback 全系统改造与旧方案归档
 - [x] BWI-10 runtime materializer 生产化改造：补齐 m5 module-id 清单、支持非 canonical 平台回退编译缓存复用
 - [x] BWI-11 门禁与流程改造：`scripts/ci-tests.sh required` 覆盖 `m1/m4/m5 --check`，文档与测试手册同步
-- [ ] BWI-12 过时方案归档：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
+- [x] BWI-12 过时方案归档：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
 - [ ] BWI-13 回归收口：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
 
 ## 依赖
@@ -31,5 +31,5 @@
 - `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
-- 当前阶段：进行中（BWI-12）
-- 最近更新：BWI-11 完成，进入旧方案归档阶段（2026-02-20）
+- 当前阶段：进行中（BWI-13）
+- 最近更新：BWI-12 完成，进入回归收口阶段（2026-02-20）

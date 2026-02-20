@@ -1,5 +1,7 @@
 # Agent World: Builtin Wasm 平台 Canonical Hash 清单（项目管理文档）
 
+> 归档说明（2026-02-20）：该任务已由 `doc/p2p/builtin-wasm-identity-consensus.md` / `.project.md` 覆盖并替代。
+
 ## 任务拆解
 - [x] T1 设计文档：`doc/testing/wasm-platform-canonical-hash-manifest.md`
 - [x] T1 项目管理文档：`doc/testing/wasm-platform-canonical-hash-manifest.project.md`

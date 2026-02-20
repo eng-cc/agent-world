@@ -1,5 +1,7 @@
 # Agent World: Required Tier 接入 M1 Builtin Wasm Hash 校验（设计文档）
 
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+
 ## 目标
 - 将 `m1` builtin wasm hash manifest 校验纳入 `required` 级别门禁，避免 PR 合入后才暴露清单漂移问题。
 - 保持现有分级测试结构不变，仅在 required 的“前置检查”阶段增加一条确定性校验。

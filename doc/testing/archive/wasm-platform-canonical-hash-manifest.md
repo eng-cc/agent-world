@@ -1,5 +1,7 @@
 # Agent World: Builtin Wasm 清单收敛为“每平台 1 个 Canonical Hash”（设计文档）
 
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+
 ## 目标
 - 将 builtin wasm hash 清单策略从“任意机器 hash 可累积”收敛为“每个受支持平台仅 1 个 canonical hash”。
 - 在保持跨平台运行时可加载能力的同时，避免清单持续膨胀与来源不明 hash 混入。

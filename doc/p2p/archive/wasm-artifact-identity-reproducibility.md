@@ -1,5 +1,7 @@
 # World Runtime: Wasm 构建一致性与模块身份升级（设计文档）
 
+> 归档说明（2026-02-20）：该方案已被 `doc/p2p/builtin-wasm-identity-consensus.md` 取代，不再作为现行实现依据。
+
 ## 目标
 - 固定 Rust toolchain，降低不同机器（本地/CI/节点）构建结果漂移风险。
 - 将模块身份从“仅 `wasm_hash`”升级为“`wasm_hash + source_hash + build_manifest_hash + artifact_signature`”的可验证组合。

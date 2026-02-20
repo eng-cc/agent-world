@@ -1,5 +1,7 @@
 # World Runtime: Wasm 构建一致性与模块身份升级（项目管理文档）
 
+> 归档说明（2026-02-20）：该任务已由 `doc/p2p/builtin-wasm-identity-consensus.md` / `.project.md` 覆盖并替代。
+
 ## 任务拆解
 - [x] WIR-1 设计文档落地（`doc/p2p/wasm-artifact-identity-reproducibility.md`）
 - [x] WIR-1 项目管理文档落地（本文件）
