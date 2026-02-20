@@ -428,6 +428,44 @@
 
 ---
 
+# 第九部分：爽点曲线量化指标映射
+
+## 9.1 指标设计原则
+
+- 指标必须可由运行时事件直接计算，不依赖人工主观打分。
+- 指标必须按“微循环/中循环/长循环”分层，避免只看单一留存。
+- 指标必须能对应玩法动作（联盟、战争、治理、危机、元进度），用于定位失真环节。
+
+---
+
+## 9.2 核心指标矩阵（v1）
+
+| 维度 | 指标 ID | 计算口径 | 事件数据源 | 目标区间（首轮） |
+|---|---|---|---|---|
+| 留存 | `retention_d1` | D+1 回访玩家数 / 当日新增玩家数 | 会话日志 + 玩家活跃快照 | `>= 35%` |
+| 留存 | `retention_d7` | D+7 回访玩家数 / 当日新增玩家数 | 会话日志 + 玩家活跃快照 | `>= 15%` |
+| 冲突频次 | `conflict_freq_100ticks` | `(WarDeclared + CrisisSpawned)` / 100 ticks | `DomainEvent::WarDeclared`、`DomainEvent::CrisisSpawned` | `2 ~ 8` |
+| 冲突结局质量 | `war_resolution_rate` | 已结算战争数 / 已宣战数 | `DomainEvent::WarDeclared`、`DomainEvent::WarConcluded` | `>= 80%` |
+| 联盟活跃度 | `alliance_active_rate_24h` | 24h 内发生治理投票或战争动作的联盟数 / 联盟总数 | `DomainEvent::AllianceFormed`、`DomainEvent::GovernanceVoteCast`、`DomainEvent::WarDeclared` | `>= 45%` |
+| 治理参与度 | `governance_participation_24h` | 24h 内治理唯一投票者数 / 24h 活跃玩家数 | `DomainEvent::GovernanceVoteCast` | `>= 40%` |
+| 危机参与质量 | `crisis_resolve_success_rate` | `CrisisResolved(success=true)` / `(CrisisResolved + CrisisTimedOut)` | `DomainEvent::CrisisResolved`、`DomainEvent::CrisisTimedOut` | `45% ~ 75%` |
+| 长期成长 | `meta_progress_velocity_24h` | 24h 内人均元进度积分增长 | `DomainEvent::MetaProgressGranted` | `>= 8` |
+
+说明：
+- `conflict_freq_100ticks` 低于下限通常意味着世界过静态；高于上限通常意味着玩家被持续打断，形成疲劳。
+- `alliance_active_rate_24h` 是“社交政治是否真实发生”的主观测替代指标。
+- `crisis_resolve_success_rate` 目标区间设为中间态，避免“永远成功”或“永远失败”。
+
+---
+
+## 9.3 指标回看节奏与告警
+
+- 日看板：`retention_d1`、`conflict_freq_100ticks`、`alliance_active_rate_24h`。
+- 周评审：`retention_d7`、`war_resolution_rate`、`governance_participation_24h`、`meta_progress_velocity_24h`。
+- 连续 3 天低于目标下限触发玩法回归分析，并要求给出修正动作与回归测试清单。
+
+---
+
 # 终章
 
 这是一个：
