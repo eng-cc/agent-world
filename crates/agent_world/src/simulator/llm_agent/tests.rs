@@ -989,7 +989,7 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
         .get("tools")
         .and_then(|v| v.as_array())
         .expect("tools array");
-    assert_eq!(tools.len(), 5);
+    assert_eq!(tools.len(), responses_tools().len());
 
     let function_names = tools
         .iter()
@@ -1002,6 +1002,10 @@ fn build_responses_request_payload_includes_tools_and_required_choice() {
             OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
             OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
             OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
+            OPENAI_TOOL_MODULE_LIFECYCLE_STATUS,
+            OPENAI_TOOL_POWER_ORDER_BOOK_STATUS,
+            OPENAI_TOOL_MODULE_MARKET_STATUS,
+            OPENAI_TOOL_SOCIAL_STATE_STATUS,
             OPENAI_TOOL_AGENT_SUBMIT_DECISION,
         ]
     );
@@ -1070,11 +1074,24 @@ fn build_responses_request_payload_includes_debug_tool_when_enabled() {
         .and_then(|v| v.as_array())
         .expect("tools array");
 
-    assert_eq!(tools.len(), 6);
+    assert_eq!(tools.len(), responses_tools_with_debug_mode(true).len());
     let function_names = tools
         .iter()
         .filter_map(|tool| tool.get("name").and_then(|v| v.as_str()))
         .collect::<Vec<_>>();
+    for base_name in [
+        OPENAI_TOOL_AGENT_MODULES_LIST,
+        OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION,
+        OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT,
+        OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH,
+        OPENAI_TOOL_MODULE_LIFECYCLE_STATUS,
+        OPENAI_TOOL_POWER_ORDER_BOOK_STATUS,
+        OPENAI_TOOL_MODULE_MARKET_STATUS,
+        OPENAI_TOOL_SOCIAL_STATE_STATUS,
+        OPENAI_TOOL_AGENT_SUBMIT_DECISION,
+    ] {
+        assert!(function_names.contains(&base_name));
+    }
     assert!(function_names.contains(&OPENAI_TOOL_AGENT_DEBUG_GRANT_RESOURCE));
 }
 

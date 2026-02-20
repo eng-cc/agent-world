@@ -76,6 +76,7 @@
 - [x] MMD12.3 在线复验 #1：验证协议修复效果并定位剩余 location 别名失败模式
 - [x] MMD12.4 修复 `build_factory` location 推断兜底（当前位置优先、最近可见回退、不可推断保守回退）+ 单测
 - [x] MMD12.5 在线复验 #2 + 文档/devlog 收口
+- [x] MMD12.6 修复 llm_agent required-tier 历史失败用例 4 项并补全回归验证
 
 ### MMD4 结果摘要（2026-02-17）
 - 运行 #1（100 tick，基线强化 prompt）：
@@ -293,6 +294,20 @@
     - `action_success: 88 -> 97`
   - 结论：TODO-28/TODO-29 在当前口径样本下已收口。
 
+### MMD12.6 历史失败用例修复摘要（2026-02-20）
+- 背景：
+  - 在 MMD12 完成后，`llm_agent` required-tier 仍有 4 个与本轮 P0 修复无关的历史失败用例，需判断“删除还是保留并修复”。
+- 处理决策：
+  - 保留并修复，不删除。原因：4 个用例覆盖的仍是有效契约（prompt budget 历史截断、responses tools payload、memory digest 组装链路可观测性）。
+- 修复点：
+  - `prompt_budget_truncates_history_before_drop`：调整测试输入规模与预算，稳定触发“先截断再保留”路径。
+  - `build_responses_request_payload_includes_tools_and_required_choice`：改为按当前 `responses_tools()` 动态断言工具数量，并补齐新增 tool 名称断言。
+  - `build_responses_request_payload_includes_debug_tool_when_enabled`：改为按 `responses_tools_with_debug_mode(true)` 动态断言数量，并同时断言基础 tools + debug tool。
+  - `llm_agent_user_prompt_contains_memory_digest_section`：改为先检查 `section_trace` 中 Memory section 的可观测性；仅在 section 被纳入 prompt 时断言 digest 文本存在。
+- 验证：
+  - 4 个目标用例定向执行均通过。
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required llm_agent -- --nocapture`：`159 passed; 0 failed`。
+
 ## 依赖
 - `crates/agent_world/src/simulator/types.rs`
 - `crates/agent_world/src/simulator/world_model.rs`
@@ -308,9 +323,9 @@
 - `crates/agent_world/scenarios/llm_bootstrap.json`
 
 ## 状态
-- 当前阶段：MMD12.1~MMD12.5 已执行完成（含两轮在线复验与修复收口）。
+- 当前阶段：MMD12.1~MMD12.6 已执行完成（含两轮在线复验、历史失败用例修复与回归收口）。
 - 下一阶段：TODO-28/TODO-29 已关闭；后续优先评估 `facility_already_exists` 高频拒绝是否需要策略优化。
-- 最近更新：2026-02-20（完成 P0 再验证与闭环修复回写）。
+- 最近更新：2026-02-20（完成 MMD12.6 历史失败用例修复与回归回写）。
 
 ## 遗留 TODO（产品优化）
 - TODO-10~TODO-13：已完成（MMD5），并在 120 tick 在线抽样中验证三配方全覆盖。

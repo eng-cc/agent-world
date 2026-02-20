@@ -747,7 +747,7 @@ mod tests {
 
     #[test]
     fn prompt_budget_truncates_history_before_drop() {
-        let history = "x".repeat(10_000);
+        let history = "x".repeat(50_000);
         let input = PromptAssemblyInput {
             agent_id: "agent-1",
             base_system_prompt: "base prompt",
@@ -765,7 +765,7 @@ mod tests {
             },
             harvest_max_amount_cap: 100,
             prompt_budget: PromptBudget {
-                context_window_tokens: 3_584,
+                context_window_tokens: 8_192,
                 reserved_output_tokens: 256,
                 safety_margin_tokens: 128,
             },

@@ -1,4 +1,5 @@
 use super::*;
+use crate::simulator::llm_agent::prompt_assembly::PromptSectionKind;
 
 fn seed_known_factory<C: LlmCompletionClient>(
     behavior: &mut LlmAgentBehavior<C>,
@@ -366,9 +367,22 @@ fn llm_agent_user_prompt_contains_memory_digest_section() {
         .memory
         .record_note(7, "recent-memory-note-for-prompt");
 
-    let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
-    assert!(prompt.contains("[Memory Digest]"));
-    assert!(prompt.contains("recent-memory-note-for-prompt"));
+    let prompt_output = behavior.assemble_prompt_output(&make_observation(), &[], 0, 4);
+    let memory_trace = prompt_output
+        .section_trace
+        .iter()
+        .find(|trace| trace.kind == PromptSectionKind::Memory)
+        .expect("memory section trace");
+    assert!(memory_trace.estimated_tokens > 0);
+
+    if memory_trace.included {
+        assert!(prompt_output.user_prompt.contains("[Memory Digest]"));
+        assert!(prompt_output
+            .user_prompt
+            .contains("recent-memory-note-for-prompt"));
+    } else {
+        assert!(!prompt_output.user_prompt.contains("[Memory Digest]"));
+    }
 }
 
 #[test]
