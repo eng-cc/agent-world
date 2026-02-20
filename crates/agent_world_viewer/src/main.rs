@@ -498,6 +498,13 @@ struct WorldFloorSurface;
 struct WorldBoundsSurface;
 
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerLightRigRole {
+    Key,
+    Fill,
+    Rim,
+}
+
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridLineKind {
     World,
     Chunk,
@@ -584,6 +591,13 @@ fn power_storage_mesh_for_geometry_tier(tier: ViewerGeometryTier) -> Mesh {
         ViewerGeometryTier::Balanced => Cuboid::new(0.7, 1.0, 0.7).into(),
         ViewerGeometryTier::Cinematic => Cuboid::new(0.78, 1.08, 0.78).into(),
     }
+}
+
+fn lighting_illuminance_triplet(config: &Viewer3dConfig) -> (f32, f32, f32) {
+    let key = config.physical.exposed_illuminance_lux();
+    let fill = (key * config.lighting.fill_light_ratio.max(0.0)).max(800.0);
+    let rim = (key * config.lighting.rim_light_ratio.max(0.0)).max(450.0);
+    (key, fill, rim)
 }
 
 #[derive(Component, Copy, Clone)]
@@ -1058,25 +1072,39 @@ fn setup_3d_scene(
         affects_lightmapped_meshes: true,
     });
 
-    let illuminance = config.physical.exposed_illuminance_lux();
+    let (key_illuminance, fill_illuminance, rim_illuminance) =
+        lighting_illuminance_triplet(&config);
 
     commands.spawn((
         DirectionalLight {
-            illuminance,
+            illuminance: key_illuminance,
             shadows_enabled: config.lighting.shadows_enabled,
             ..default()
         },
         Transform::from_xyz(24.0, 36.0, 22.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ViewerLightRigRole::Key,
     ));
 
     commands.spawn((
         DirectionalLight {
-            illuminance: (illuminance * config.lighting.fill_light_ratio.max(0.0)).max(800.0),
+            illuminance: fill_illuminance,
             color: Color::srgb(0.74, 0.82, 0.92),
             shadows_enabled: false,
             ..default()
         },
         Transform::from_xyz(-18.0, 20.0, -28.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ViewerLightRigRole::Fill,
+    ));
+
+    commands.spawn((
+        DirectionalLight {
+            illuminance: rim_illuminance,
+            color: Color::srgb(0.96, 0.88, 0.78),
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(28.0, 16.0, -24.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ViewerLightRigRole::Rim,
     ));
 }
 

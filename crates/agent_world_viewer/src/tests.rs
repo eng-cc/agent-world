@@ -742,6 +742,38 @@ fn ray_point_distance_returns_expected_distance() {
     assert!(ray_point_distance(ray, Vec3::new(-1.0, 0.0, 0.0)).is_none());
 }
 
+#[test]
+fn lighting_illuminance_triplet_tracks_key_fill_rim_ratios() {
+    let mut config = Viewer3dConfig::default();
+    config.physical.enabled = true;
+    config.physical.stellar_distance_au = 2.5;
+    config.physical.luminous_efficacy_lm_per_w = 120.0;
+    config.physical.exposure_ev100 = 13.5;
+    config.lighting.fill_light_ratio = 0.30;
+    config.lighting.rim_light_ratio = 0.10;
+
+    let (key, fill, rim) = lighting_illuminance_triplet(&config);
+    assert!(key > fill);
+    assert!(fill > rim);
+    assert!(((fill / key) - 0.30).abs() < 0.01);
+    assert!(((rim / key) - 0.10).abs() < 0.01);
+}
+
+#[test]
+fn lighting_illuminance_triplet_clamps_low_fill_and_rim() {
+    let mut config = Viewer3dConfig::default();
+    config.physical.enabled = true;
+    config.physical.stellar_distance_au = 2.5;
+    config.physical.luminous_efficacy_lm_per_w = 120.0;
+    config.physical.exposure_ev100 = 13.5;
+    config.lighting.fill_light_ratio = 0.0;
+    config.lighting.rim_light_ratio = 0.0;
+
+    let (_key, fill, rim) = lighting_illuminance_triplet(&config);
+    assert!((fill - 800.0).abs() < f32::EPSILON);
+    assert!((rim - 450.0).abs() < f32::EPSILON);
+}
+
 #[path = "tests_scene_entities.rs"]
 mod tests_scene_entities;
 

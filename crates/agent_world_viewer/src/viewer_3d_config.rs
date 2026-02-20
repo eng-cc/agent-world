@@ -17,6 +17,7 @@ const MAX_LIGHT_ILLUMINANCE_LUX: f32 = 120_000.0;
 const DEFAULT_SHADOWS_ENABLED: bool = false;
 const DEFAULT_AMBIENT_BRIGHTNESS: f32 = 110.0;
 const DEFAULT_FILL_LIGHT_RATIO: f32 = 0.28;
+const DEFAULT_RIM_LIGHT_RATIO: f32 = 0.14;
 const DEFAULT_LABEL_FADE_START_DISTANCE: f32 = 55.0;
 const DEFAULT_LABEL_FADE_END_DISTANCE: f32 = 140.0;
 const DEFAULT_MAX_VISIBLE_LABELS: usize = 48;
@@ -96,6 +97,10 @@ impl Viewer3dConfig {
                 self.materials.fragment.unlit = true;
                 self.materials.fragment.alpha = 0.95;
                 self.materials.fragment.emissive_boost = 0.34;
+                self.lighting.shadows_enabled = false;
+                self.lighting.ambient_brightness = 120.0;
+                self.lighting.fill_light_ratio = 0.34;
+                self.lighting.rim_light_ratio = 0.06;
             }
             ViewerRenderProfile::Balanced => {
                 self.assets.geometry_tier = ViewerGeometryTier::Balanced;
@@ -104,6 +109,10 @@ impl Viewer3dConfig {
                 self.materials.fragment.unlit = true;
                 self.materials.fragment.alpha = DEFAULT_FRAGMENT_ALPHA;
                 self.materials.fragment.emissive_boost = DEFAULT_FRAGMENT_EMISSIVE_BOOST;
+                self.lighting.shadows_enabled = DEFAULT_SHADOWS_ENABLED;
+                self.lighting.ambient_brightness = DEFAULT_AMBIENT_BRIGHTNESS;
+                self.lighting.fill_light_ratio = DEFAULT_FILL_LIGHT_RATIO;
+                self.lighting.rim_light_ratio = DEFAULT_RIM_LIGHT_RATIO;
             }
             ViewerRenderProfile::Cinematic => {
                 self.assets.geometry_tier = ViewerGeometryTier::Cinematic;
@@ -112,6 +121,10 @@ impl Viewer3dConfig {
                 self.materials.fragment.unlit = false;
                 self.materials.fragment.alpha = 0.82;
                 self.materials.fragment.emissive_boost = 0.12;
+                self.lighting.shadows_enabled = true;
+                self.lighting.ambient_brightness = 96.0;
+                self.lighting.fill_light_ratio = 0.22;
+                self.lighting.rim_light_ratio = 0.18;
             }
         }
     }
@@ -282,6 +295,7 @@ pub(super) struct ViewerLightingConfig {
     pub shadows_enabled: bool,
     pub ambient_brightness: f32,
     pub fill_light_ratio: f32,
+    pub rim_light_ratio: f32,
 }
 
 impl Default for ViewerLightingConfig {
@@ -290,6 +304,7 @@ impl Default for ViewerLightingConfig {
             shadows_enabled: DEFAULT_SHADOWS_ENABLED,
             ambient_brightness: DEFAULT_AMBIENT_BRIGHTNESS,
             fill_light_ratio: DEFAULT_FILL_LIGHT_RATIO,
+            rim_light_ratio: DEFAULT_RIM_LIGHT_RATIO,
         }
     }
 }
@@ -499,6 +514,11 @@ where
             config.lighting.fill_light_ratio = value;
         }
     }
+    if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO") {
+        if value.is_finite() && value >= 0.0 {
+            config.lighting.rim_light_ratio = value;
+        }
+    }
 
     let mut physical = ViewerPhysicalRenderConfig::default();
     if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED") {
@@ -704,6 +724,7 @@ mod tests {
         assert!(!config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 110.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.28).abs() < f32::EPSILON);
+        assert!((config.lighting.rim_light_ratio - DEFAULT_RIM_LIGHT_RATIO).abs() < f32::EPSILON);
         assert!(!config.physical.enabled);
         assert!((config.physical.meters_per_unit - 1.0).abs() < f32::EPSILON);
         assert!((config.physical.floating_origin_step_m - 1000.0).abs() < f64::EPSILON);
@@ -747,6 +768,7 @@ mod tests {
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "1"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "145"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "0.42"),
+            ("AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO", "0.20"),
             ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "true"),
             ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "2.5"),
             ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "1500"),
@@ -792,6 +814,7 @@ mod tests {
         assert!(config.lighting.shadows_enabled);
         assert!((config.lighting.ambient_brightness - 145.0).abs() < f32::EPSILON);
         assert!((config.lighting.fill_light_ratio - 0.42).abs() < f32::EPSILON);
+        assert!((config.lighting.rim_light_ratio - 0.20).abs() < f32::EPSILON);
         assert!(config.physical.enabled);
         assert!((config.physical.meters_per_unit - 2.5).abs() < f32::EPSILON);
         assert!((config.physical.floating_origin_step_m - 1500.0).abs() < f64::EPSILON);
@@ -829,6 +852,7 @@ mod tests {
             ("AGENT_WORLD_VIEWER_SHADOWS_ENABLED", "invalid"),
             ("AGENT_WORLD_VIEWER_AMBIENT_BRIGHTNESS", "0"),
             ("AGENT_WORLD_VIEWER_FILL_LIGHT_RATIO", "-1"),
+            ("AGENT_WORLD_VIEWER_RIM_LIGHT_RATIO", "-1"),
             ("AGENT_WORLD_VIEWER_PHYSICAL_RENDER_ENABLED", "1"),
             ("AGENT_WORLD_VIEWER_METERS_PER_UNIT", "-1"),
             ("AGENT_WORLD_VIEWER_FLOATING_ORIGIN_STEP_M", "nan"),
@@ -904,6 +928,7 @@ mod tests {
             (config.lighting.ambient_brightness - DEFAULT_AMBIENT_BRIGHTNESS).abs() < f32::EPSILON
         );
         assert!((config.lighting.fill_light_ratio - DEFAULT_FILL_LIGHT_RATIO).abs() < f32::EPSILON);
+        assert!((config.lighting.rim_light_ratio - DEFAULT_RIM_LIGHT_RATIO).abs() < f32::EPSILON);
         assert!(config.physical.enabled);
         assert!((config.physical.meters_per_unit - DEFAULT_METERS_PER_UNIT).abs() < f32::EPSILON);
         assert!(config.physical.floating_origin_step_m.is_finite());
@@ -936,6 +961,7 @@ mod tests {
             ViewerFragmentMaterialStrategy::Readability
         );
         assert!(debug_config.materials.fragment.unlit);
+        assert!(!debug_config.lighting.shadows_enabled);
 
         let cinematic_with_override_env = HashMap::from([
             ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "cinematic"),
@@ -958,6 +984,7 @@ mod tests {
             ViewerFragmentMaterialStrategy::Fidelity
         );
         assert!(!cinematic_config.materials.fragment.unlit);
+        assert!(cinematic_config.lighting.shadows_enabled);
     }
 
     #[test]
