@@ -1,0 +1,1009 @@
+use super::*;
+
+impl WorldState {
+    pub(super) fn apply_domain_event_core(
+        &mut self,
+        event: &DomainEvent,
+        now: WorldTime,
+    ) -> Result<(), WorldError> {
+        match event {
+            DomainEvent::AgentRegistered { agent_id, pos } => {
+                let state = AgentState::new(agent_id, *pos);
+                self.agents
+                    .insert(agent_id.clone(), AgentCell::new(state, now));
+            }
+            DomainEvent::AgentMoved { agent_id, to, .. } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.state.pos = *to;
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ActionRejected { .. } => {}
+            DomainEvent::Observation { .. } => {}
+            DomainEvent::BodyAttributesUpdated { agent_id, view, .. } => {
+                let cell =
+                    self.agents
+                        .get_mut(agent_id)
+                        .ok_or_else(|| WorldError::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
+                cell.state.body_view = view.clone();
+                cell.last_active = now;
+            }
+            DomainEvent::BodyAttributesRejected { agent_id, .. } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::BodyInterfaceExpanded {
+                agent_id,
+                slot_capacity,
+                expansion_level,
+                consumed_item_id,
+                new_slot_id,
+                slot_type,
+                ..
+            } => {
+                let cell =
+                    self.agents
+                        .get_mut(agent_id)
+                        .ok_or_else(|| WorldError::AgentNotFound {
+                            agent_id: agent_id.clone(),
+                        })?;
+                cell.state
+                    .body_state
+                    .consume_interface_module_item(consumed_item_id)
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "consume interface module item failed for {agent_id}: {reason}"
+                        ),
+                    })?;
+                cell.state.body_state.slot_capacity = *slot_capacity;
+                cell.state.body_state.expansion_level = *expansion_level;
+                if !cell
+                    .state
+                    .body_state
+                    .slots
+                    .iter()
+                    .any(|slot| slot.slot_id == *new_slot_id)
+                {
+                    cell.state
+                        .body_state
+                        .slots
+                        .push(crate::models::BodyModuleSlot {
+                            slot_id: new_slot_id.clone(),
+                            slot_type: *slot_type,
+                            installed_module: None,
+                            locked: false,
+                        });
+                }
+                cell.last_active = now;
+            }
+            DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => {
+                if let Some(cell) = self.agents.get_mut(agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::ModuleArtifactDeployed {
+                publisher_agent_id,
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+                ..
+            } => {
+                self.settle_module_action_fee(
+                    publisher_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_owners
+                    .insert(wasm_hash.clone(), publisher_agent_id.clone());
+                self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
+            }
+            DomainEvent::ModuleInstalled {
+                installer_agent_id,
+                instance_id,
+                module_id,
+                install_target,
+                module_version,
+                wasm_hash,
+                active,
+                fee_kind,
+                fee_amount,
+                ..
+            } => {
+                self.settle_module_action_fee(
+                    installer_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                let resolved_instance_id = if instance_id.trim().is_empty() {
+                    module_id.clone()
+                } else {
+                    instance_id.trim().to_string()
+                };
+                self.module_instances.insert(
+                    resolved_instance_id.clone(),
+                    ModuleInstanceState {
+                        instance_id: resolved_instance_id,
+                        module_id: module_id.clone(),
+                        module_version: module_version.clone(),
+                        wasm_hash: wasm_hash.clone(),
+                        owner_agent_id: installer_agent_id.clone(),
+                        install_target: install_target.clone(),
+                        active: *active,
+                        installed_at: now,
+                    },
+                );
+                self.next_module_instance_id = self.next_module_instance_id.saturating_add(1);
+                self.installed_module_targets
+                    .insert(module_id.clone(), install_target.clone());
+            }
+            DomainEvent::ModuleUpgraded {
+                upgrader_agent_id,
+                instance_id,
+                module_id,
+                from_module_version,
+                to_module_version,
+                wasm_hash,
+                install_target,
+                active,
+                fee_kind,
+                fee_amount,
+                ..
+            } => {
+                self.settle_module_action_fee(
+                    upgrader_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                let instance = self.module_instances.get_mut(instance_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("module instance missing for upgrade {instance_id}"),
+                    }
+                })?;
+                if instance.owner_agent_id != *upgrader_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance owner mismatch for upgrade: instance={} owner={} upgrader={}",
+                            instance_id, instance.owner_agent_id, upgrader_agent_id
+                        ),
+                    });
+                }
+                if instance.module_id != *module_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance module_id mismatch for upgrade: instance={} state_module_id={} event_module_id={}",
+                            instance_id, instance.module_id, module_id
+                        ),
+                    });
+                }
+                if instance.module_version != *from_module_version {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module instance from_version mismatch for upgrade: instance={} state_version={} event_from={}",
+                            instance_id, instance.module_version, from_module_version
+                        ),
+                    });
+                }
+                instance.module_version = to_module_version.clone();
+                instance.wasm_hash = wasm_hash.clone();
+                instance.install_target = install_target.clone();
+                instance.active = *active;
+                self.installed_module_targets
+                    .insert(module_id.clone(), install_target.clone());
+            }
+            DomainEvent::ModuleArtifactListed {
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+                order_id,
+                fee_kind,
+                fee_amount,
+            } => {
+                if *price_amount <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact listing price must be > 0, got {}",
+                            price_amount
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for listing hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact listing seller mismatch: hash={} owner={} seller={}",
+                            wasm_hash, owner, seller_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    seller_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_listings.insert(
+                    wasm_hash.clone(),
+                    ModuleArtifactListingState {
+                        order_id: *order_id,
+                        seller_agent_id: seller_agent_id.clone(),
+                        price_kind: *price_kind,
+                        price_amount: *price_amount,
+                        listed_at: now,
+                    },
+                );
+                if *order_id > 0 {
+                    self.next_module_market_order_id = self
+                        .next_module_market_order_id
+                        .max(order_id.saturating_add(1));
+                }
+            }
+            DomainEvent::ModuleArtifactDelisted {
+                seller_agent_id,
+                wasm_hash,
+                order_id,
+                fee_kind,
+                fee_amount,
+            } => {
+                let listing = self
+                    .module_artifact_listings
+                    .get(wasm_hash)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact listing missing for hash {}", wasm_hash),
+                    })?;
+                if listing.seller_agent_id != *seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller mismatch: hash={} listing_seller={} event_seller={}",
+                            wasm_hash, listing.seller_agent_id, seller_agent_id
+                        ),
+                    });
+                }
+                if let Some(expected_order_id) = order_id {
+                    if listing.order_id != *expected_order_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact delist order mismatch: hash={} listing_order_id={} event_order_id={}",
+                                wasm_hash, listing.order_id, expected_order_id
+                            ),
+                        });
+                    }
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for delist hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller is not owner: hash={} owner={} seller={}",
+                            wasm_hash, owner, seller_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    seller_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_listings.remove(wasm_hash);
+            }
+            DomainEvent::ModuleArtifactDestroyed {
+                owner_agent_id,
+                wasm_hash,
+                reason,
+                fee_kind,
+                fee_amount,
+            } => {
+                if reason.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy reason cannot be empty for hash {}",
+                            wasm_hash
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for destroy hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != owner_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy owner mismatch: hash={} owner={} event_owner={}",
+                            wasm_hash, owner, owner_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    owner_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_owners.remove(wasm_hash);
+                self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
+            }
+            DomainEvent::ModuleArtifactBidPlaced {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                price_kind,
+                price_amount,
+            } => {
+                if *order_id == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact bid order_id must be > 0 for hash {}",
+                            wasm_hash
+                        ),
+                    });
+                }
+                if *price_amount <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact bid price must be > 0, got {}",
+                            price_amount
+                        ),
+                    });
+                }
+                if !self.agents.contains_key(bidder_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: bidder_agent_id.clone(),
+                    });
+                }
+                self.next_module_market_order_id = self
+                    .next_module_market_order_id
+                    .max(order_id.saturating_add(1));
+                self.module_artifact_bids
+                    .entry(wasm_hash.clone())
+                    .or_default()
+                    .push(ModuleArtifactBidState {
+                        order_id: *order_id,
+                        bidder_agent_id: bidder_agent_id.clone(),
+                        price_kind: *price_kind,
+                        price_amount: *price_amount,
+                        bid_at: now,
+                    });
+                if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ModuleArtifactBidCancelled {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                ..
+            } => {
+                let remove_empty_entry = {
+                    let bids = self
+                        .module_artifact_bids
+                        .get_mut(wasm_hash)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("module artifact bids missing for hash {}", wasm_hash),
+                        })?;
+                    let before = bids.len();
+                    bids.retain(|entry| {
+                        !(entry.order_id == *order_id && entry.bidder_agent_id == *bidder_agent_id)
+                    });
+                    if before == bids.len() {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact bid cancel target not found: hash={} order_id={} bidder={}",
+                                wasm_hash, order_id, bidder_agent_id
+                            ),
+                        });
+                    }
+                    bids.is_empty()
+                };
+                if remove_empty_entry {
+                    self.module_artifact_bids.remove(wasm_hash);
+                }
+                if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ModuleArtifactSaleCompleted {
+                buyer_agent_id,
+                seller_agent_id,
+                wasm_hash,
+                price_kind,
+                price_amount,
+                sale_id,
+                listing_order_id,
+                bid_order_id,
+            } => {
+                if buyer_agent_id == seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact buyer and seller cannot be the same: {}",
+                            buyer_agent_id
+                        ),
+                    });
+                }
+                if *price_amount <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact sale price must be > 0, got {}",
+                            price_amount
+                        ),
+                    });
+                }
+
+                let listing = self
+                    .module_artifact_listings
+                    .get(wasm_hash)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact listing missing for hash {}", wasm_hash),
+                    })?;
+                if listing.seller_agent_id != *seller_agent_id
+                    || listing.price_kind != *price_kind
+                    || listing.price_amount != *price_amount
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact listing mismatch for hash {}", wasm_hash),
+                    });
+                }
+                if let Some(expected_listing_order_id) = listing_order_id {
+                    if listing.order_id != *expected_listing_order_id {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact sale listing order mismatch: hash={} listing_order_id={} event_order_id={}",
+                                wasm_hash, listing.order_id, expected_listing_order_id
+                            ),
+                        });
+                    }
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for sale hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact sale seller is not owner: hash={} owner={} seller={}",
+                            wasm_hash, owner, seller_agent_id
+                        ),
+                    });
+                }
+
+                let mut seller = self.agents.remove(seller_agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
+                        agent_id: seller_agent_id.clone(),
+                    }
+                })?;
+                let mut buyer = self.agents.remove(buyer_agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
+                        agent_id: buyer_agent_id.clone(),
+                    }
+                })?;
+
+                buyer
+                    .state
+                    .resources
+                    .remove(*price_kind, *price_amount)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact sale buyer debit failed: {err:?}"),
+                    })?;
+                seller
+                    .state
+                    .resources
+                    .add(*price_kind, *price_amount)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact sale seller credit failed: {err:?}"),
+                    })?;
+                seller.last_active = now;
+                buyer.last_active = now;
+
+                self.agents.insert(seller_agent_id.clone(), seller);
+                self.agents.insert(buyer_agent_id.clone(), buyer);
+                self.module_artifact_owners
+                    .insert(wasm_hash.clone(), buyer_agent_id.clone());
+                self.module_artifact_listings.remove(wasm_hash);
+                if let Some(expected_bid_order_id) = bid_order_id {
+                    let remove_empty_entry = {
+                        let bids =
+                            self.module_artifact_bids
+                                .get_mut(wasm_hash)
+                                .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                    reason: format!(
+                                        "module artifact sale bid missing for hash {} order_id {}",
+                                        wasm_hash, expected_bid_order_id
+                                    ),
+                                })?;
+                        let before = bids.len();
+                        bids.retain(|entry| {
+                            !(entry.order_id == *expected_bid_order_id
+                                && entry.bidder_agent_id == *buyer_agent_id)
+                        });
+                        if before == bids.len() {
+                            return Err(WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "module artifact sale bid not found: hash={} order_id={} buyer={}",
+                                    wasm_hash, expected_bid_order_id, buyer_agent_id
+                                ),
+                            });
+                        }
+                        bids.is_empty()
+                    };
+                    if remove_empty_entry {
+                        self.module_artifact_bids.remove(wasm_hash);
+                    }
+                }
+                if *sale_id > 0 {
+                    self.next_module_market_sale_id = self
+                        .next_module_market_sale_id
+                        .max(sale_id.saturating_add(1));
+                }
+            }
+            DomainEvent::ResourceTransferred {
+                from_agent_id,
+                to_agent_id,
+                kind,
+                amount,
+            } => {
+                if from_agent_id == to_agent_id {
+                    let cell = self.agents.get_mut(from_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        }
+                    })?;
+                    cell.last_active = now;
+                } else {
+                    let mut from = self.agents.remove(from_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: from_agent_id.clone(),
+                        }
+                    })?;
+                    let mut to = self.agents.remove(to_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: to_agent_id.clone(),
+                        }
+                    })?;
+
+                    from.state.resources.remove(*kind, *amount).map_err(|err| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!("transfer remove failed: {err:?}"),
+                        }
+                    })?;
+                    to.state.resources.add(*kind, *amount).map_err(|err| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!("transfer add failed: {err:?}"),
+                        }
+                    })?;
+                    from.last_active = now;
+                    to.last_active = now;
+
+                    self.agents.insert(from_agent_id.clone(), from);
+                    self.agents.insert(to_agent_id.clone(), to);
+                }
+            }
+            DomainEvent::PowerRedeemed {
+                node_id,
+                target_agent_id,
+                burned_credits,
+                granted_power_units,
+                reserve_remaining,
+                nonce,
+                ..
+            } => {
+                if *burned_credits == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "burned_credits must be > 0".to_string(),
+                    });
+                }
+                if *granted_power_units <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "granted_power_units must be > 0, got {}",
+                            granted_power_units
+                        ),
+                    });
+                }
+                let min_redeem_power_unit = self.reward_asset_config.min_redeem_power_unit;
+                if min_redeem_power_unit <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "min_redeem_power_unit must be positive".to_string(),
+                    });
+                }
+                if *granted_power_units < min_redeem_power_unit {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "granted_power_units below minimum: granted={} min={}",
+                            granted_power_units, min_redeem_power_unit
+                        ),
+                    });
+                }
+                if *nonce == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "nonce must be > 0".to_string(),
+                    });
+                }
+                if let Some(last_nonce) = self.node_redeem_nonces.get(node_id) {
+                    if *nonce <= *last_nonce {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "nonce replay detected: node_id={} nonce={} last_nonce={}",
+                                node_id, nonce, last_nonce
+                            ),
+                        });
+                    }
+                }
+                remove_node_power_credits(
+                    &mut self.node_asset_balances,
+                    node_id.as_str(),
+                    *burned_credits,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("power redeem burn failed: {reason}"),
+                })?;
+
+                if self.protocol_power_reserve.available_power_units < *granted_power_units {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "insufficient protocol power reserve: available={} requested={}",
+                            self.protocol_power_reserve.available_power_units, granted_power_units
+                        ),
+                    });
+                }
+                let next_reserve =
+                    self.protocol_power_reserve.available_power_units - *granted_power_units;
+                if next_reserve != *reserve_remaining {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "reserve remaining mismatch: computed={} event={}",
+                            next_reserve, reserve_remaining
+                        ),
+                    });
+                }
+                let max_redeem_power_per_epoch =
+                    self.reward_asset_config.max_redeem_power_per_epoch;
+                if max_redeem_power_per_epoch <= 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "max_redeem_power_per_epoch must be positive".to_string(),
+                    });
+                }
+                let next_redeemed = self
+                    .protocol_power_reserve
+                    .redeemed_power_units
+                    .checked_add(*granted_power_units)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: "redeemed_power_units overflow".to_string(),
+                    })?;
+                if next_redeemed > max_redeem_power_per_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "epoch redeem cap exceeded: next={} cap={}",
+                            next_redeemed, max_redeem_power_per_epoch
+                        ),
+                    });
+                }
+                self.protocol_power_reserve.available_power_units = next_reserve;
+                self.protocol_power_reserve.redeemed_power_units = next_redeemed;
+                self.node_redeem_nonces.insert(node_id.clone(), *nonce);
+
+                let target = self.agents.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    }
+                })?;
+                target
+                    .state
+                    .resources
+                    .add(ResourceKind::Electricity, *granted_power_units)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!("power redeem add electricity failed: {err:?}"),
+                    })?;
+                target.last_active = now;
+                if let Some(cell) = self.agents.get_mut(node_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::PowerRedeemRejected {
+                node_id,
+                target_agent_id,
+                ..
+            } => {
+                if let Some(cell) = self.agents.get_mut(node_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(target_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::NodePointsSettlementApplied {
+                report,
+                signer_node_id,
+                settlement_hash,
+                minted_records,
+            } => {
+                apply_node_points_settlement_event(
+                    self,
+                    report,
+                    signer_node_id.as_str(),
+                    settlement_hash.as_str(),
+                    minted_records.as_slice(),
+                )?;
+            }
+            DomainEvent::MaterialTransferred {
+                requester_agent_id,
+                from_ledger,
+                to_ledger,
+                kind,
+                amount,
+                ..
+            } => {
+                remove_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    from_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transfer remove failed: {reason}"),
+                })?;
+                add_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    to_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transfer add failed: {reason}"),
+                })?;
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::MaterialTransitStarted {
+                job_id,
+                requester_agent_id,
+                from_ledger,
+                to_ledger,
+                kind,
+                amount,
+                distance_km,
+                loss_bps,
+                ready_at,
+            } => {
+                remove_material_balance_for_ledger(
+                    &mut self.material_ledgers,
+                    from_ledger,
+                    kind.as_str(),
+                    *amount,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("material transit reserve failed: {reason}"),
+                })?;
+                self.pending_material_transits.insert(
+                    *job_id,
+                    MaterialTransitJobState {
+                        job_id: *job_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        from_ledger: from_ledger.clone(),
+                        to_ledger: to_ledger.clone(),
+                        kind: kind.clone(),
+                        amount: *amount,
+                        distance_km: *distance_km,
+                        loss_bps: *loss_bps,
+                        ready_at: *ready_at,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::MaterialTransitCompleted {
+                job_id,
+                requester_agent_id,
+                to_ledger,
+                kind,
+                received_amount,
+                ..
+            } => {
+                self.pending_material_transits.remove(job_id);
+                if *received_amount > 0 {
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        to_ledger,
+                        kind.as_str(),
+                        *received_amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("material transit completion failed: {reason}"),
+                    })?;
+                }
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryBuildStarted {
+                job_id,
+                builder_agent_id,
+                site_id,
+                spec,
+                consume_ledger,
+                ready_at,
+            } => {
+                for stack in &spec.build_cost {
+                    remove_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        consume_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("factory build consume failed: {reason}"),
+                    })?;
+                }
+                self.pending_factory_builds.insert(
+                    *job_id,
+                    FactoryBuildJobState {
+                        job_id: *job_id,
+                        builder_agent_id: builder_agent_id.clone(),
+                        site_id: site_id.clone(),
+                        spec: spec.clone(),
+                        consume_ledger: consume_ledger.clone(),
+                        ready_at: *ready_at,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(builder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::FactoryBuilt {
+                job_id,
+                builder_agent_id,
+                site_id,
+                spec,
+            } => {
+                self.pending_factory_builds.remove(job_id);
+                let site_ledger = MaterialLedgerId::site(site_id.clone());
+                self.factories.insert(
+                    spec.factory_id.clone(),
+                    FactoryState {
+                        factory_id: spec.factory_id.clone(),
+                        site_id: site_id.clone(),
+                        builder_agent_id: builder_agent_id.clone(),
+                        spec: spec.clone(),
+                        input_ledger: site_ledger.clone(),
+                        output_ledger: site_ledger,
+                        built_at: now,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(builder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::RecipeStarted {
+                job_id,
+                requester_agent_id,
+                factory_id,
+                recipe_id,
+                accepted_batches,
+                consume,
+                produce,
+                byproducts,
+                power_required,
+                duration_ticks,
+                consume_ledger,
+                output_ledger,
+                ready_at,
+            } => {
+                for stack in consume {
+                    remove_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        consume_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe consume failed: {reason}"),
+                    })?;
+                }
+                remove_resource_balance(
+                    &mut self.resources,
+                    ResourceKind::Electricity,
+                    *power_required,
+                )
+                .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                    reason: format!("recipe power consume failed: {reason}"),
+                })?;
+                self.pending_recipe_jobs.insert(
+                    *job_id,
+                    RecipeJobState {
+                        job_id: *job_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        factory_id: factory_id.clone(),
+                        recipe_id: recipe_id.clone(),
+                        accepted_batches: *accepted_batches,
+                        consume: consume.clone(),
+                        produce: produce.clone(),
+                        byproducts: byproducts.clone(),
+                        power_required: *power_required,
+                        duration_ticks: *duration_ticks,
+                        consume_ledger: consume_ledger.clone(),
+                        output_ledger: output_ledger.clone(),
+                        ready_at: *ready_at,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::RecipeCompleted {
+                job_id,
+                requester_agent_id,
+                produce,
+                byproducts,
+                output_ledger,
+                ..
+            } => {
+                self.pending_recipe_jobs.remove(job_id);
+                for stack in produce {
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        output_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe produce failed: {reason}"),
+                    })?;
+                }
+                for stack in byproducts {
+                    add_material_balance_for_ledger(
+                        &mut self.material_ledgers,
+                        output_ledger,
+                        stack.kind.as_str(),
+                        stack.amount,
+                    )
+                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!("recipe byproduct failed: {reason}"),
+                    })?;
+                }
+                if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            _ => unreachable!("apply_domain_event_core received unsupported event variant"),
+        }
+        Ok(())
+    }
+}
