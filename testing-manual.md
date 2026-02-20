@@ -232,8 +232,29 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240
 ```
+- LLM 玩法覆盖门禁（按场景声明关键动作）：
+```bash
+./scripts/llm-longrun-stress.sh \
+  --scenario llm_bootstrap \
+  --ticks 240 \
+  --min-action-kinds 5 \
+  --require-action-kind harvest_radiation:1 \
+  --require-action-kind mine_compound:1 \
+  --require-action-kind refine_compound:1 \
+  --require-action-kind build_factory:1 \
+  --require-action-kind schedule_recipe:1
+```
+- LLM 发行口径（启用默认覆盖门禁）：
+```bash
+./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate
+```
 - 说明：
   - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时对 `llm_bootstrap` 会退化为 script_fallback；
+  - `llm-longrun-stress.sh` 新增覆盖参数：
+    - `--min-action-kinds <n>`：断言动作种类数下限；
+    - `--require-action-kind <kind>:<min_count>`：断言关键动作计数下限（可重复）；
+    - `--release-gate`：启用发行默认口径（`min-action-kinds=5` + `harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe` 各 `>=1`）。
+  - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 压测结果需保留 CSV/summary/log 产物。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

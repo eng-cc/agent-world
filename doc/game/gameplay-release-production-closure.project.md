@@ -13,9 +13,9 @@
 - [x] 补充 runtime 协议测试（主路径 + 拒绝路径）
 
 ### T2 压测玩法门禁工程化（对应需求 3）
-- [ ] 扩展 `scripts/llm-longrun-stress.sh` 支持玩法覆盖阈值参数
-- [ ] 新增 `--release-gate` 发行口径开关与失败提示
-- [ ] 更新 `testing-manual.md` 的 S8 使用口径与示例
+- [x] 扩展 `scripts/llm-longrun-stress.sh` 支持玩法覆盖阈值参数
+- [x] 新增 `--release-gate` 发行口径开关与失败提示
+- [x] 更新 `testing-manual.md` 的 S8 使用口径与示例
 
 ### T3 联盟生命周期与战争约束（对应需求 4）
 - [ ] 扩展 Runtime Action/DomainEvent：`join/leave/dissolve` 与战争后果字段
@@ -35,5 +35,5 @@
 - 测试口径手册：`testing-manual.md`
 
 ## 状态
-- 当前阶段：T2（进行中）
+- 当前阶段：T3（进行中）
 - 阻塞项：无

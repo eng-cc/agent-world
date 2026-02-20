@@ -21,6 +21,9 @@ Options:
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
   --min-active-ticks <n>       Fail if active_ticks < n (default: ticks)
+  --min-action-kinds <n>       Fail if distinct action kinds < n (default: 0)
+  --require-action-kind <k:n>  Require action kind k count >= n (repeatable)
+  --release-gate               Enable release defaults (min kinds + core actions)
   --no-llm-io                  Disable LLM input/output logging in run.log
   --llm-io-max-chars <n>       Truncate each LLM input/output block to n chars
   --keep-out-dir               Keep existing out dir content
@@ -33,6 +36,9 @@ Notes:
   - Multi-scenario mode writes per-scenario outputs to:
       <out-dir>/scenarios/<scenario>/{report.json,run.log,summary.txt}
     and writes aggregate outputs to report-json/log-file/summary-file.
+  - --release-gate applies default gameplay coverage:
+      min-action-kinds=5
+      require-action-kind={harvest_radiation,mine_compound,refine_compound,build_factory,schedule_recipe}:1
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
@@ -82,6 +88,77 @@ append_scenarios_from_csv() {
   done
 }
 
+upsert_required_action_kind() {
+  local kind=$1
+  local min_count=$2
+  local idx
+
+  for idx in "${!required_action_kinds[@]}"; do
+    if [[ "${required_action_kinds[$idx]}" == "$kind" ]]; then
+      if (( min_count > required_action_min_counts[$idx] )); then
+        required_action_min_counts[$idx]=$min_count
+      fi
+      return 0
+    fi
+  done
+
+  required_action_kinds+=("$kind")
+  required_action_min_counts+=("$min_count")
+}
+
+append_required_action_kind() {
+  local raw=$1
+  local value
+  local kind
+  local min_count
+
+  value=$(trim_whitespace "$raw")
+  if [[ -z "$value" || "$value" != *:* ]]; then
+    echo "invalid --require-action-kind value: $raw (expected <kind>:<min_count>)" >&2
+    exit 2
+  fi
+  kind=$(trim_whitespace "${value%%:*}")
+  min_count=$(trim_whitespace "${value##*:}")
+  if [[ -z "$kind" ]]; then
+    echo "invalid --require-action-kind kind: $raw" >&2
+    exit 2
+  fi
+  ensure_positive_int "--require-action-kind min_count" "$min_count"
+  upsert_required_action_kind "$kind" "$min_count"
+}
+
+format_required_action_kind_requirements() {
+  if (( ${#required_action_kinds[@]} == 0 )); then
+    echo "none"
+    return 0
+  fi
+
+  local idx
+  local out=""
+  for idx in "${!required_action_kinds[@]}"; do
+    if [[ -n "$out" ]]; then
+      out+=","
+    fi
+    out+="${required_action_kinds[$idx]}:${required_action_min_counts[$idx]}"
+  done
+  echo "$out"
+}
+
+apply_release_gate_defaults() {
+  if (( release_gate == 0 )); then
+    return 0
+  fi
+
+  if (( min_action_kinds < 5 )); then
+    min_action_kinds=5
+  fi
+  upsert_required_action_kind "harvest_radiation" 1
+  upsert_required_action_kind "mine_compound" 1
+  upsert_required_action_kind "refine_compound" 1
+  upsert_required_action_kind "build_factory" 1
+  upsert_required_action_kind "schedule_recipe" 1
+}
+
 extract_metric_from_log() {
   local key=$1
   local log_path=$2
@@ -112,6 +189,9 @@ decision_act=0
 module_call_count=0
 plan_count=0
 execute_until_continue_count=0
+action_kinds_total=0
+action_kind_pairs=""
+action_kind_counts_inline="none"
 
 load_metrics_from_report() {
   local report_path=$1
@@ -242,6 +322,83 @@ __PYJSON__
   fi
 }
 
+extract_action_kind_pairs_from_log() {
+  local log_path=$1
+  grep -E '^action_kind_[^:]+: [0-9]+$' "$log_path" \
+    | sed -E 's/^action_kind_([^:]+): ([0-9]+)$/\1\t\2/' || true
+}
+
+load_action_kind_counts() {
+  local report_path=$1
+  local log_path=$2
+  local parsed_pairs=""
+
+  action_kinds_total=0
+  action_kind_pairs=""
+  action_kind_counts_inline="none"
+
+  if command -v jq >/dev/null 2>&1; then
+    parsed_pairs=$(jq -r '.action_kind_counts // {} | to_entries[]? | "\(.key)\t\(.value)"' "$report_path")
+  elif command -v python3 >/dev/null 2>&1; then
+    parsed_pairs=$(python3 - "$report_path" <<'__PYACTIONKIND__'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as fh:
+    report = json.load(fh)
+
+counts = report.get("action_kind_counts") or {}
+for kind in sorted(counts.keys()):
+    print(f"{kind}\t{int(counts[kind] or 0)}")
+__PYACTIONKIND__
+)
+  else
+    parsed_pairs=$(extract_action_kind_pairs_from_log "$log_path")
+  fi
+
+  if [[ -z "$parsed_pairs" ]]; then
+    return 0
+  fi
+
+  action_kind_pairs=$(printf '%s\n' "$parsed_pairs" | sed '/^[[:space:]]*$/d')
+  if [[ -z "$action_kind_pairs" ]]; then
+    return 0
+  fi
+
+  action_kinds_total=$(printf '%s\n' "$action_kind_pairs" | wc -l | tr -d ' ')
+  action_kind_counts_inline=$(printf '%s\n' "$action_kind_pairs" | awk -F'\t' '
+    BEGIN { sep="" }
+    NF >= 2 {
+      printf "%s%s:%s", sep, $1, $2
+      sep=","
+    }
+  ')
+  if [[ -z "$action_kind_counts_inline" ]]; then
+    action_kind_counts_inline="none"
+  fi
+}
+
+action_kind_count_for() {
+  local target_kind=$1
+  local kind
+  local count
+
+  if [[ -z "$action_kind_pairs" ]]; then
+    echo 0
+    return 0
+  fi
+
+  while IFS=$'\t' read -r kind count; do
+    if [[ "$kind" == "$target_kind" ]]; then
+      echo "${count:-0}"
+      return 0
+    fi
+  done <<<"$action_kind_pairs"
+
+  echo 0
+}
+
 write_summary_file() {
   local summary_path=$1
   local scenario_name=$2
@@ -267,6 +424,11 @@ write_summary_file() {
     echo "module_call=$module_call_count"
     echo "plan=$plan_count"
     echo "execute_until_continue=$execute_until_continue_count"
+    echo "release_gate=$release_gate"
+    echo "min_action_kinds=$min_action_kinds"
+    echo "required_action_kinds=$required_action_kinds_config"
+    echo "action_kinds_total=$action_kinds_total"
+    echo "action_kind_counts=$action_kind_counts_inline"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "report_json=$scenario_report_json"
@@ -331,6 +493,38 @@ wait_parallel_head_job() {
   fi
 }
 
+validate_gameplay_coverage_for_scenario() {
+  local scenario_name=$1
+
+  if (( action_kinds_total < min_action_kinds )); then
+    echo "failed: scenario=$scenario_name action_kinds_total($action_kinds_total) < min_action_kinds($min_action_kinds); action_kind_counts=$action_kind_counts_inline" >&2
+    exit 14
+  fi
+
+  if (( ${#required_action_kinds[@]} == 0 )); then
+    return 0
+  fi
+
+  local idx
+  local kind
+  local required_count
+  local actual_count
+  local -a unmet=()
+  for idx in "${!required_action_kinds[@]}"; do
+    kind=${required_action_kinds[$idx]}
+    required_count=${required_action_min_counts[$idx]}
+    actual_count=$(action_kind_count_for "$kind")
+    if (( actual_count < required_count )); then
+      unmet+=("${kind}:${actual_count}/${required_count}")
+    fi
+  done
+
+  if (( ${#unmet[@]} > 0 )); then
+    echo "failed: scenario=$scenario_name gameplay coverage unmet [${unmet[*]}]; action_kind_counts=$action_kind_counts_inline" >&2
+    exit 15
+  fi
+}
+
 declare -a scenario_inputs=()
 ticks="240"
 out_dir=".tmp/llm_stress"
@@ -341,10 +535,15 @@ max_llm_errors="0"
 max_parse_errors="0"
 max_repair_rounds_max="2"
 min_active_ticks=""
+min_action_kinds="0"
 print_llm_io=1
 llm_io_max_chars=""
 keep_out_dir=0
 jobs="1"
+release_gate=0
+declare -a required_action_kinds=()
+declare -a required_action_min_counts=()
+required_action_kinds_config="none"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -395,6 +594,18 @@ while [[ $# -gt 0 ]]; do
     --min-active-ticks)
       min_active_ticks=${2:-}
       shift 2
+      ;;
+    --min-action-kinds)
+      min_action_kinds=${2:-}
+      shift 2
+      ;;
+    --require-action-kind)
+      append_required_action_kind "${2:-}"
+      shift 2
+      ;;
+    --release-gate)
+      release_gate=1
+      shift
       ;;
     --no-llm-io)
       print_llm_io=0
@@ -456,6 +667,7 @@ ensure_positive_int "--jobs" "$jobs"
 ensure_positive_int "--max-llm-errors" "$max_llm_errors"
 ensure_positive_int "--max-parse-errors" "$max_parse_errors"
 ensure_positive_int "--max-repair-rounds-max" "$max_repair_rounds_max"
+ensure_positive_int "--min-action-kinds" "$min_action_kinds"
 if [[ -n "$llm_io_max_chars" ]]; then
   ensure_positive_int "--llm-io-max-chars" "$llm_io_max_chars"
 fi
@@ -463,6 +675,11 @@ if [[ -z "$min_active_ticks" ]]; then
   min_active_ticks="$ticks"
 fi
 ensure_positive_int "--min-active-ticks" "$min_active_ticks"
+apply_release_gate_defaults
+required_action_kinds_config=$(format_required_action_kind_requirements)
+if (( release_gate == 1 )) || (( min_action_kinds > 0 )) || (( ${#required_action_kinds[@]} > 0 )); then
+  echo "gameplay coverage gate: release_gate=$release_gate min_action_kinds=$min_action_kinds required_action_kinds=$required_action_kinds_config"
+fi
 
 if [[ -z "$report_json" ]]; then
   report_json="$out_dir/report.json"
@@ -490,8 +707,9 @@ if [[ $multi_mode -eq 1 ]]; then
     printf '%s\t' llm_errors parse_errors repair_rounds_total repair_rounds_max
     printf '%s\t' llm_input_chars_total llm_input_chars_avg llm_input_chars_max
     printf '%s\t' prompt_section_clipped decision_wait decision_wait_ticks decision_act
-    printf '%s\t' module_call plan execute_until_continue
-    printf '%s\n' llm_io_logged
+    printf '%s\t' module_call plan execute_until_continue action_kinds_total
+    printf '%s\t' llm_io_logged
+    printf '%s\n' action_kind_counts
   } >"$metrics_tsv"
 fi
 
@@ -554,6 +772,8 @@ agg_decision_act=0
 agg_module_call=0
 agg_plan=0
 agg_execute_until_continue=0
+agg_action_kinds_total=0
+agg_action_kinds_peak=0
 
 for scenario in "${scenarios[@]}"; do
   if [[ $multi_mode -eq 1 ]]; then
@@ -611,6 +831,7 @@ for scenario in "${scenarios[@]}"; do
   fi
 
   load_metrics_from_report "$scenario_report_json" "$scenario_log_file"
+  load_action_kind_counts "$scenario_report_json" "$scenario_log_file"
   write_summary_file "$scenario_summary_file" "$scenario"
 
   echo "pressure summary [$scenario]:"
@@ -632,6 +853,7 @@ for scenario in "${scenarios[@]}"; do
     echo "failed: scenario=$scenario repair_rounds_max($repair_rounds_max) > max_repair_rounds_max($max_repair_rounds_max)" >&2
     exit 13
   fi
+  validate_gameplay_coverage_for_scenario "$scenario"
 
   agg_active_ticks=$((agg_active_ticks + active_ticks))
   agg_total_decisions=$((agg_total_decisions + total_decisions))
@@ -650,11 +872,15 @@ for scenario in "${scenarios[@]}"; do
   agg_module_call=$((agg_module_call + module_call_count))
   agg_plan=$((agg_plan + plan_count))
   agg_execute_until_continue=$((agg_execute_until_continue + execute_until_continue_count))
+  agg_action_kinds_total=$((agg_action_kinds_total + action_kinds_total))
   if (( repair_rounds_max > agg_repair_rounds_max_peak )); then
     agg_repair_rounds_max_peak=$repair_rounds_max
   fi
   if (( llm_input_chars_max > agg_llm_input_chars_max_peak )); then
     agg_llm_input_chars_max_peak=$llm_input_chars_max
+  fi
+  if (( action_kinds_total > agg_action_kinds_peak )); then
+    agg_action_kinds_peak=$action_kinds_total
   fi
 
   if [[ $multi_mode -eq 1 ]]; then
@@ -665,8 +891,9 @@ for scenario in "${scenarios[@]}"; do
       printf '%s\t' "$llm_errors" "$parse_errors" "$repair_rounds_total" "$repair_rounds_max"
       printf '%s\t' "$llm_input_chars_total" "$llm_input_chars_avg" "$llm_input_chars_max"
       printf '%s\t' "$clipped_sections" "$decision_wait" "$decision_wait_ticks" "$decision_act"
-      printf '%s\t' "$module_call_count" "$plan_count" "$execute_until_continue_count"
-      printf '%s\n' "$print_llm_io"
+      printf '%s\t' "$module_call_count" "$plan_count" "$execute_until_continue_count" "$action_kinds_total"
+      printf '%s\t' "$print_llm_io"
+      printf '%s\n' "$action_kind_counts_inline"
     } >>"$metrics_tsv"
   fi
 done
@@ -699,6 +926,11 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "module_call_total=$agg_module_call"
     echo "plan_total=$agg_plan"
     echo "execute_until_continue_total=$agg_execute_until_continue"
+    echo "action_kinds_total=$agg_action_kinds_total"
+    echo "action_kinds_peak=$agg_action_kinds_peak"
+    echo "release_gate=$release_gate"
+    echo "min_action_kinds=$min_action_kinds"
+    echo "required_action_kinds=$required_action_kinds_config"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "report_json=$report_json"
@@ -707,12 +939,23 @@ if [[ $multi_mode -eq 1 ]]; then
   } >"$summary_file"
 
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$metrics_tsv" "$report_json" "$ticks" "$scenario_count" "$jobs" "$print_llm_io" "${llm_io_max_chars:-}" <<'__PYAGG__'
+    python3 - "$metrics_tsv" "$report_json" "$ticks" "$scenario_count" "$jobs" "$print_llm_io" "${llm_io_max_chars:-}" "$release_gate" "$min_action_kinds" "$required_action_kinds_config" <<'__PYAGG__'
 import csv
 import json
 import sys
 
-metrics_tsv, output_path, ticks, scenario_count, jobs, llm_io_logged, llm_io_max_chars = sys.argv[1:]
+(
+    metrics_tsv,
+    output_path,
+    ticks,
+    scenario_count,
+    jobs,
+    llm_io_logged,
+    llm_io_max_chars,
+    release_gate,
+    min_action_kinds,
+    required_action_kinds,
+) = sys.argv[1:]
 
 int_fields = [
     "active_ticks",
@@ -734,6 +977,7 @@ int_fields = [
     "module_call",
     "plan",
     "execute_until_continue",
+    "action_kinds_total",
     "llm_io_logged",
 ]
 
@@ -763,6 +1007,11 @@ report = {
     "scenarios": scenario_names,
     "llm_io_logged": int(llm_io_logged),
     "llm_io_max_chars": llm_io_max_chars or "none",
+    "coverage_gate": {
+        "release_gate": int(release_gate),
+        "min_action_kinds": int(min_action_kinds),
+        "required_action_kinds": required_action_kinds or "none",
+    },
     "totals": {
         "active_ticks": sum_of("active_ticks"),
         "total_decisions": sum_of("total_decisions"),
@@ -780,10 +1029,12 @@ report = {
         "module_call": sum_of("module_call"),
         "plan": sum_of("plan"),
         "execute_until_continue": sum_of("execute_until_continue"),
+        "action_kinds_total": sum_of("action_kinds_total"),
     },
     "peaks": {
         "repair_rounds_max": peak_of("repair_rounds_max"),
         "llm_input_chars_max": peak_of("llm_input_chars_max"),
+        "action_kinds_total": peak_of("action_kinds_total"),
     },
     "means": {
         "llm_input_chars_avg": avg_mean,
@@ -800,7 +1051,12 @@ __PYAGG__
   "mode": "multi_scenario",
   "ticks_requested": $ticks,
   "scenario_count": $scenario_count,
-  "jobs": $jobs
+  "jobs": $jobs,
+  "coverage_gate": {
+    "release_gate": $release_gate,
+    "min_action_kinds": $min_action_kinds,
+    "required_action_kinds": "$required_action_kinds_config"
+  }
 }
 EOF
   fi
