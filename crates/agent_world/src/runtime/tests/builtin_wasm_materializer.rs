@@ -68,6 +68,42 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     let _ = fs::remove_dir_all(&temp_root);
 }
 
+#[test]
+fn materializer_reuses_cached_module_hash_when_manifest_hashes_do_not_match() {
+    let _env_guard = ENV_LOCK.lock().expect("lock env");
+    let temp_root = temp_dir("builtin-materializer-cache");
+    fs::create_dir_all(&temp_root).expect("create temp root");
+
+    let distfs_root = temp_root.join("distfs");
+    fs::create_dir_all(distfs_root.join("blobs")).expect("create distfs blobs");
+
+    let module_id = "m9.experimental.cross_platform";
+    let wasm_bytes = b"\0asmcached-cross-platform".to_vec();
+    let cached_hash = util::sha256_hex(&wasm_bytes);
+    let stale_manifest_hash =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string();
+
+    let store = LocalCasStore::new_with_hash_algorithm(&distfs_root, HashAlgorithm::Sha256);
+    store
+        .put(&cached_hash, &wasm_bytes)
+        .expect("store cached wasm");
+    fs::write(
+        distfs_root.join("module_hash_index.txt"),
+        format!("{module_id} {cached_hash}\n"),
+    )
+    .expect("write module hash index");
+
+    let expected_hashes = vec![stale_manifest_hash];
+    let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
+    let loaded =
+        load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash_refs, &distfs_root)
+            .expect("load cached wasm by module hash index");
+
+    assert_eq!(loaded, wasm_bytes);
+
+    let _ = fs::remove_dir_all(&temp_root);
+}
+
 fn write_fetcher_script(script_path: &Path, fetch_log: &Path) {
     let script = format!(
         "#!/usr/bin/env bash\nset -euo pipefail\necho \"$1 $2\" >> \"{}\"\nexit 1\n",

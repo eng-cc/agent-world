@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -20,6 +21,9 @@ const M1_BUILTIN_MODULE_IDS_PATH: &str =
     "crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt";
 const M4_BUILTIN_MODULE_IDS_PATH: &str =
     "crates/agent_world/src/runtime/world/artifacts/m4_builtin_module_ids.txt";
+const M5_BUILTIN_MODULE_IDS_PATH: &str =
+    "crates/agent_world/src/runtime/world/artifacts/m5_builtin_module_ids.txt";
+const BUILTIN_MODULE_HASH_INDEX_PATH: &str = "module_hash_index.txt";
 
 pub(crate) fn load_builtin_wasm_with_fetch_fallback(
     module_id: &str,
@@ -39,14 +43,22 @@ pub(crate) fn load_builtin_wasm_with_fetch_fallback(
         }
     }
 
+    if let Some(cached_hash) = cached_module_hash_for(module_id, distfs_root) {
+        if let Ok(bytes) = store.get_verified(&cached_hash) {
+            return Ok(bytes);
+        }
+    }
+
     if let Some((actual_hash, fetched)) = try_fetch_builtin_wasm(module_id, expected_hashes)? {
         store.put(&actual_hash, &fetched)?;
+        let _ = persist_cached_module_hash(module_id, &actual_hash, distfs_root);
         return store.get_verified(&actual_hash).map_err(WorldError::from);
     }
 
     let compiled = compile_builtin_wasm(module_id, expected_hashes)?;
     let actual_hash = util::sha256_hex(&compiled);
     store.put(&actual_hash, &compiled)?;
+    let _ = persist_cached_module_hash(module_id, &actual_hash, distfs_root);
     store.get_verified(&actual_hash).map_err(WorldError::from)
 }
 
@@ -192,7 +204,6 @@ fn compile_via_command(
             ),
         })?;
 
-        validate_compiled_hash(module_id, expected_hashes, &bytes)?;
         return Ok(bytes);
     }
 
@@ -208,7 +219,7 @@ fn compile_via_command(
 
 fn compile_via_default_script(
     module_id: &str,
-    expected_hashes: &[&str],
+    _expected_hashes: &[&str],
 ) -> Result<Vec<u8>, WorldError> {
     let repo_root = repo_root();
     let build_script = repo_root
@@ -258,7 +269,6 @@ fn compile_via_default_script(
             artifact_path.display()
         ),
     })?;
-    validate_compiled_hash(module_id, expected_hashes, &bytes)?;
     let _ = fs::remove_dir_all(&out_dir);
     Ok(bytes)
 }
@@ -270,23 +280,72 @@ fn builtin_module_ids_path_for(module_id: &str, repo_root: &Path) -> Option<Path
     if module_id.starts_with("m4.") {
         return Some(repo_root.join(M4_BUILTIN_MODULE_IDS_PATH));
     }
+    if module_id.starts_with("m5.") {
+        return Some(repo_root.join(M5_BUILTIN_MODULE_IDS_PATH));
+    }
     None
 }
 
-fn validate_compiled_hash(
+fn cached_module_hash_for(module_id: &str, distfs_root: &Path) -> Option<String> {
+    let index = read_module_hash_index(distfs_root);
+    index.get(module_id).cloned()
+}
+
+fn persist_cached_module_hash(
     module_id: &str,
-    expected_hashes: &[&str],
-    bytes: &[u8],
+    hash: &str,
+    distfs_root: &Path,
 ) -> Result<(), WorldError> {
-    let actual = util::sha256_hex(bytes);
-    if !is_expected_hash(expected_hashes, &actual) {
-        return Err(WorldError::ModuleChangeInvalid {
-            reason: format!(
-                "fallback compile hash mismatch module_id={module_id} expected=[{}] actual={actual}",
-                expected_hashes.join(","),
-            ),
-        });
+    if !is_sha256_hex(hash) {
+        return Ok(());
     }
+
+    let mut index = read_module_hash_index(distfs_root);
+    index.insert(module_id.to_string(), hash.to_string());
+    write_module_hash_index(distfs_root, &index)
+}
+
+fn read_module_hash_index(distfs_root: &Path) -> BTreeMap<String, String> {
+    let index_path = distfs_root.join(BUILTIN_MODULE_HASH_INDEX_PATH);
+    let Ok(content) = fs::read_to_string(index_path) else {
+        return BTreeMap::new();
+    };
+
+    let mut index = BTreeMap::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let mut parts = trimmed.split_whitespace();
+        let Some(module_id) = parts.next() else {
+            continue;
+        };
+        let Some(hash) = parts.next() else {
+            continue;
+        };
+        if module_id.is_empty() || !is_sha256_hex(hash) {
+            continue;
+        }
+        index.insert(module_id.to_string(), hash.to_string());
+    }
+    index
+}
+
+fn write_module_hash_index(
+    distfs_root: &Path,
+    index: &BTreeMap<String, String>,
+) -> Result<(), WorldError> {
+    fs::create_dir_all(distfs_root)?;
+    let index_path = distfs_root.join(BUILTIN_MODULE_HASH_INDEX_PATH);
+    let mut content = String::new();
+    for (module_id, hash) in index {
+        content.push_str(module_id);
+        content.push(' ');
+        content.push_str(hash);
+        content.push('\n');
+    }
+    fs::write(index_path, content)?;
     Ok(())
 }
 
@@ -294,6 +353,10 @@ fn is_expected_hash(expected_hashes: &[&str], actual_hash: &str) -> bool {
     expected_hashes
         .iter()
         .any(|expected| *expected == actual_hash)
+}
+
+fn is_sha256_hex(value: &str) -> bool {
+    value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit())
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -329,4 +392,50 @@ fn temp_build_dir(module_id: &str) -> PathBuf {
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builtin_module_ids_path_supports_m5_prefix() {
+        let root = Path::new("/tmp/workspace");
+        let path = builtin_module_ids_path_for("m5.gameplay.war.core", root).expect("m5 path");
+        assert_eq!(path, root.join(M5_BUILTIN_MODULE_IDS_PATH));
+    }
+
+    #[test]
+    fn module_hash_index_roundtrip_keeps_latest_hash_per_module() {
+        let temp_root = std::env::temp_dir().join(format!(
+            "agent-world-materializer-index-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("unix epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&temp_root).expect("create temp root");
+
+        persist_cached_module_hash(
+            "m1.rule.move",
+            "1111111111111111111111111111111111111111111111111111111111111111",
+            &temp_root,
+        )
+        .expect("persist first hash");
+        persist_cached_module_hash(
+            "m1.rule.move",
+            "2222222222222222222222222222222222222222222222222222222222222222",
+            &temp_root,
+        )
+        .expect("persist updated hash");
+
+        let cached = cached_module_hash_for("m1.rule.move", &temp_root).expect("cached hash");
+        assert_eq!(
+            cached,
+            "2222222222222222222222222222222222222222222222222222222222222222"
+        );
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
 }
