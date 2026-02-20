@@ -2,7 +2,7 @@
 
 ## 复核范围
 - 全量文档：`doc/**/*.md`
-- 覆盖数量：`529`（`active=394`、`archive=117`、`devlog=18`）
+- 覆盖数量：`530`（`active=391`、`archive=121`、`devlog=18`）
 - 关联实现核对目录：
   - `crates/`
   - `scripts/`
