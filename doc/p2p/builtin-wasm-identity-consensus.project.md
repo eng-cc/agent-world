@@ -9,11 +9,20 @@
 - [x] BWI-6 bootstrap 流程改造：`bootstrap_power/economy/gameplay` 使用 identity manifest 生成 `artifact_identity`
 - [x] BWI-7 测试补齐：identity 解析/校验单测与 runtime 闭环测试
 - [x] BWI-8 执行回归（required 相关命令）并更新文档/任务日志
+- [x] BWI-9 扩展设计范围：纳入 CI/pre-commit/runtime fallback 全系统改造与旧方案归档
+- [ ] BWI-10 runtime materializer 生产化改造：补齐 m5 module-id 清单、支持非 canonical 平台回退编译缓存复用
+- [ ] BWI-11 门禁与流程改造：`scripts/ci-tests.sh required` 覆盖 `m1/m4/m5 --check`，文档与测试手册同步
+- [ ] BWI-12 过时方案归档：将 hash-only 旧设计文档迁移到 `archive/` 并修复活跃引用
+- [ ] BWI-13 回归收口：required tier + 定向 materializer 测试 + 清单校验 + 文档状态更新
 
 ## 依赖
 - `scripts/sync-m1-builtin-wasm-artifacts.sh`
 - `scripts/sync-m4-builtin-wasm-artifacts.sh`
 - `scripts/sync-m5-builtin-wasm-artifacts.sh`
+- `scripts/ci-tests.sh`
+- `scripts/pre-commit.sh`
+- `testing-manual.md`
+- `crates/agent_world/src/runtime/builtin_wasm_materializer.rs`
 - `crates/agent_world/src/runtime/m1_builtin_wasm_artifact.rs`
 - `crates/agent_world/src/runtime/m4_builtin_wasm_artifact.rs`
 - `crates/agent_world/src/runtime/m5_builtin_wasm_artifact.rs`
@@ -22,5 +31,5 @@
 - `crates/agent_world/src/runtime/world/bootstrap_gameplay.rs`
 
 ## 状态
-- 当前阶段：已完成
-- 最近更新：BWI-8 完成（2026-02-20）
+- 当前阶段：进行中（BWI-10）
+- 最近更新：BWI-9 完成，进入全系统改造阶段（2026-02-20）
