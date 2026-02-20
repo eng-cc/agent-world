@@ -53,7 +53,7 @@
 ## CI 现状与缺口（事实口径）
 
 ### 当前 CI/脚本已覆盖
-- 入口：`scripts/ci-tests.sh`
+- 入口 A：`scripts/ci-tests.sh`（主流程）
 - `required`：
   - `cargo fmt --check`
   - `sync-m1-builtin-wasm-artifacts --check`
@@ -65,6 +65,10 @@
   - `cargo test -p agent_world --tests --features test_tier_full,wasmtime,viewer_live_integration`
   - `cargo test -p agent_world --features wasmtime --lib --bins`
   - `cargo test -p agent_world_net --features libp2p --lib`
+- 入口 B：`.github/workflows/builtin-wasm-m1-multi-runner.yml`（构建 hash 链路独立 gate）
+  - runner 矩阵：`ubuntu-24.04 (linux-x86_64)` + `macos-14 (darwin-arm64)`
+  - 每个 runner 仅执行：`./scripts/ci-m1-wasm-summary.sh --runner-label ... --out ...`
+  - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
 
 ### 当前 CI 未直接覆盖（需手册补齐）
 - `agent_world_node` 独立测试集。
@@ -72,9 +76,11 @@
 - `agent_world_distfs` 独立测试集。
 - `agent_world_viewer` 独立测试集（当前 pre-commit 仅做 wasm check，不跑 viewer 单测）。
 - Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
+- `m4/m5` builtin wasm 的跨 runner hash 对账（当前独立 gate 仅覆盖 `m1`）。
 
 结论：
 - `required/full` 是“核心链路测试层”的主入口；
+- `builtin-wasm-m1-multi-runner` 提供“跨 runner 构建 hash 链路健康”独立可观测性；
 - 若目标是“整应用充分测试”，必须在其上叠加分布式子系统与 UI 闭环层。
 
 ## 分层模型（针对当前仓库）
@@ -243,6 +249,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 |
 | `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8（若影响长稳） |
 | `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + S2 | S4 + S6（抽样） |
+| `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 
 ## Human/AI 共用执行剧本
