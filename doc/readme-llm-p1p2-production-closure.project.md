@@ -6,7 +6,7 @@
 - [x] T1：LLM tool 协议收口（补齐 tool 注册/映射/提示词一致性）
 - [x] T2：Observation 快照扩展 + LLM 查询面扩展（module/power/social）
 - [x] T3：execution bridge 支持 `SimulatorAction` 执行与审计记录
-- [ ] T4：required-tier 回归、文档与 devlog 收口
+- [x] T4：required-tier 回归、文档与 devlog 收口
 
 ## 依赖
 - T2 依赖 T1 的 tool 名称和模块名规范冻结。
@@ -14,6 +14,6 @@
 - T4 依赖 T1/T2/T3 完成后统一执行。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3 完成，T4 开始）。
+- 当前阶段：已完成（T0~T4 全部完成）。
 - 阻塞项：无。
-- 下一步：执行 T4（required-tier 回归、文档与 devlog 收口）。 
+- 下一步：无。 
