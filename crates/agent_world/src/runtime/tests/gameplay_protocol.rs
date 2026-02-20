@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use crate::simulator::ResourceKind;
 use agent_world_wasm_abi::{
     ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput, ModuleSandbox,
     ModuleTickLifecycleDirective,
@@ -463,6 +464,206 @@ fn meta_progress_unlocks_track_tiers() {
         .achievements
         .iter()
         .any(|value| value == "tier.campaign.gold"));
+}
+
+#[test]
+fn economic_contract_settlement_applies_tax_and_reputation() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    world
+        .set_agent_resource_balance("a", ResourceKind::Data, 100)
+        .expect("seed creator data");
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 1_000,
+        max_open_contracts_per_agent: 4,
+        blocked_agents: Vec::new(),
+    });
+    world.step().expect("update gameplay policy");
+
+    let expires_at = world.state().time.saturating_add(10);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.data.1".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 30,
+        reputation_stake: 8,
+        expires_at,
+        description: "data labeling batch".to_string(),
+    });
+    world.step().expect("open economic contract");
+
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.data.1".to_string(),
+    });
+    world.step().expect("accept economic contract");
+
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.data.1".to_string(),
+        success: true,
+        notes: "delivered on time".to_string(),
+    });
+    world.step().expect("settle economic contract");
+
+    let contract = world
+        .state()
+        .economic_contracts
+        .get("contract.data.1")
+        .expect("settled contract");
+    assert_eq!(contract.status, EconomicContractStatus::Settled);
+    assert_eq!(contract.transfer_amount, 30);
+    assert_eq!(contract.tax_amount, 3);
+    assert_eq!(contract.settlement_success, Some(true));
+
+    let creator_data = world
+        .state()
+        .agents
+        .get("a")
+        .expect("creator agent")
+        .state
+        .resources
+        .get(ResourceKind::Data);
+    let counterparty_data = world
+        .state()
+        .agents
+        .get("b")
+        .expect("counterparty agent")
+        .state
+        .resources
+        .get(ResourceKind::Data);
+    assert_eq!(creator_data, 67);
+    assert_eq!(counterparty_data, 30);
+    assert_eq!(
+        world.state().resources.get(&ResourceKind::Data).copied(),
+        Some(3)
+    );
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&8));
+    assert_eq!(world.state().reputation_scores.get("b"), Some(&8));
+    assert!(matches!(
+        last_domain_event(&world),
+        DomainEvent::EconomicContractSettled { .. }
+    ));
+}
+
+#[test]
+fn economic_contract_respects_policy_quota_and_block_list() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c"]);
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 0,
+        max_open_contracts_per_agent: 1,
+        blocked_agents: vec!["b".to_string()],
+    });
+    world.step().expect("update gameplay policy");
+
+    let expires_at = world.state().time.saturating_add(8);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.ok".to_string(),
+        counterparty_agent_id: "c".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 10,
+        reputation_stake: 4,
+        expires_at,
+        description: "power shipment".to_string(),
+    });
+    world.step().expect("open first contract");
+
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.quota".to_string(),
+        counterparty_agent_id: "c".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 10,
+        reputation_stake: 4,
+        expires_at,
+        description: "second contract".to_string(),
+    });
+    world.step().expect("reject quota overflow");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("quota exceeded for creator")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.blocked".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 10,
+        reputation_stake: 4,
+        expires_at,
+        description: "blocked counterparty".to_string(),
+    });
+    world.step().expect("reject blocked counterparty");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("blocked by gameplay policy")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn economic_contract_expires_and_penalizes_reputation() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    let expires_at = world.state().time.saturating_add(2);
+
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.expire".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Electricity,
+        settlement_amount: 5,
+        reputation_stake: 6,
+        expires_at,
+        description: "expiring contract".to_string(),
+    });
+    world.step().expect("open contract");
+
+    while world.state().time <= expires_at {
+        world.submit_action(Action::QueryObservation {
+            agent_id: "a".to_string(),
+        });
+        world.step().expect("advance tick for expiry");
+    }
+
+    let contract = world
+        .state()
+        .economic_contracts
+        .get("contract.expire")
+        .expect("expired contract");
+    assert_eq!(contract.status, EconomicContractStatus::Expired);
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&-6));
+    assert_eq!(world.state().reputation_scores.get("b"), None);
+    let has_expired_event = world.journal().events.iter().any(|event| {
+        matches!(
+            event.body,
+            WorldEventBody::Domain(DomainEvent::EconomicContractExpired { .. })
+        )
+    });
+    assert!(has_expired_event, "expected EconomicContractExpired event");
 }
 
 #[test]

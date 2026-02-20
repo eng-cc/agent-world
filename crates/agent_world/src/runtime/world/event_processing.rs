@@ -1,8 +1,8 @@
 use super::super::{
     util::hash_json, Action, ActionEnvelope, ActionId, CausedBy, CrisisStatus, DomainEvent,
-    EpochSettlementReport, GovernanceProposalStatus, MaterialLedgerId, MaterialStack,
-    NodeRewardMintRecord, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldEventId,
-    WorldTime,
+    EconomicContractStatus, EpochSettlementReport, GovernanceProposalStatus, MaterialLedgerId,
+    MaterialStack, NodeRewardMintRecord, RejectReason, WorldError, WorldEvent, WorldEventBody,
+    WorldEventId, WorldTime,
 };
 use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
 use super::logistics::{
@@ -20,6 +20,10 @@ const GOVERNANCE_MIN_PASS_THRESHOLD_BPS: u16 = 5_000;
 const GOVERNANCE_MAX_PASS_THRESHOLD_BPS: u16 = 10_000;
 const WAR_MAX_INTENSITY: u32 = 10;
 const CRISIS_BASE_IMPACT_PER_SEVERITY: i64 = 10;
+const GAMEPLAY_POLICY_MAX_TAX_BPS: u16 = 10_000;
+const GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA: u16 = 1;
+const GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA: u16 = 64;
+const ECONOMIC_CONTRACT_MAX_REPUTATION_STAKE: i64 = 10_000;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -977,6 +981,411 @@ impl World {
                     points: *points,
                     achievement_id: normalized_achievement.map(str::to_string),
                 }))
+            }
+            Action::UpdateGameplayPolicy {
+                operator_agent_id,
+                electricity_tax_bps,
+                data_tax_bps,
+                max_open_contracts_per_agent,
+                blocked_agents,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                if *electricity_tax_bps > GAMEPLAY_POLICY_MAX_TAX_BPS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "electricity_tax_bps must be <= {}",
+                                GAMEPLAY_POLICY_MAX_TAX_BPS
+                            )],
+                        },
+                    }));
+                }
+                if *data_tax_bps > GAMEPLAY_POLICY_MAX_TAX_BPS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "data_tax_bps must be <= {}",
+                                GAMEPLAY_POLICY_MAX_TAX_BPS
+                            )],
+                        },
+                    }));
+                }
+                if *max_open_contracts_per_agent < GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA
+                    || *max_open_contracts_per_agent > GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "max_open_contracts_per_agent must be within {}..={}",
+                                GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA,
+                                GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA
+                            )],
+                        },
+                    }));
+                }
+                let mut normalized_blocked_agents = BTreeSet::new();
+                for value in blocked_agents {
+                    let candidate = value.trim();
+                    if candidate.is_empty() {
+                        continue;
+                    }
+                    if !self.state.agents.contains_key(candidate) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::AgentNotFound {
+                                agent_id: candidate.to_string(),
+                            },
+                        }));
+                    }
+                    normalized_blocked_agents.insert(candidate.to_string());
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::GameplayPolicyUpdated {
+                    operator_agent_id: operator_agent_id.clone(),
+                    electricity_tax_bps: *electricity_tax_bps,
+                    data_tax_bps: *data_tax_bps,
+                    max_open_contracts_per_agent: *max_open_contracts_per_agent,
+                    blocked_agents: normalized_blocked_agents.into_iter().collect(),
+                }))
+            }
+            Action::OpenEconomicContract {
+                creator_agent_id,
+                contract_id,
+                counterparty_agent_id,
+                settlement_kind,
+                settlement_amount,
+                reputation_stake,
+                expires_at,
+                description,
+            } => {
+                if !self.state.agents.contains_key(creator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: creator_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(counterparty_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: counterparty_agent_id.clone(),
+                        },
+                    }));
+                }
+                if creator_agent_id == counterparty_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["economic contract requires distinct parties".to_string()],
+                        },
+                    }));
+                }
+                let contract_id = contract_id.trim();
+                if contract_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["contract_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self.state.economic_contracts.contains_key(contract_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("economic contract already exists: {contract_id}")],
+                        },
+                    }));
+                }
+                if *settlement_amount <= 0 {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InvalidAmount {
+                            amount: *settlement_amount,
+                        },
+                    }));
+                }
+                if *reputation_stake <= 0
+                    || *reputation_stake > ECONOMIC_CONTRACT_MAX_REPUTATION_STAKE
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "reputation_stake must be within 1..={}",
+                                ECONOMIC_CONTRACT_MAX_REPUTATION_STAKE
+                            )],
+                        },
+                    }));
+                }
+                if *expires_at <= self.state.time {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "expires_at must be greater than current world time".to_string()
+                            ],
+                        },
+                    }));
+                }
+                let description = description.trim();
+                if description.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["economic contract description cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                if self
+                    .state
+                    .gameplay_policy
+                    .blocked_agents
+                    .iter()
+                    .any(|value| value == creator_agent_id || value == counterparty_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["economic contract blocked by gameplay policy".to_string()],
+                        },
+                    }));
+                }
+                let active_contract_count = self
+                    .state
+                    .economic_contracts
+                    .values()
+                    .filter(|contract| {
+                        contract.creator_agent_id == *creator_agent_id
+                            && matches!(
+                                contract.status,
+                                EconomicContractStatus::Open | EconomicContractStatus::Accepted
+                            )
+                    })
+                    .count();
+                if active_contract_count
+                    >= usize::from(self.state.gameplay_policy.max_open_contracts_per_agent)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "economic contract quota exceeded for creator {}",
+                                creator_agent_id
+                            )],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(
+                    DomainEvent::EconomicContractOpened {
+                        creator_agent_id: creator_agent_id.clone(),
+                        contract_id: contract_id.to_string(),
+                        counterparty_agent_id: counterparty_agent_id.clone(),
+                        settlement_kind: *settlement_kind,
+                        settlement_amount: *settlement_amount,
+                        reputation_stake: *reputation_stake,
+                        expires_at: *expires_at,
+                        description: description.to_string(),
+                    },
+                ))
+            }
+            Action::AcceptEconomicContract {
+                accepter_agent_id,
+                contract_id,
+            } => {
+                if !self.state.agents.contains_key(accepter_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: accepter_agent_id.clone(),
+                        },
+                    }));
+                }
+                let contract_id = contract_id.trim();
+                if contract_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["contract_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let Some(contract) = self.state.economic_contracts.get(contract_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("economic contract not found: {contract_id}")],
+                        },
+                    }));
+                };
+                if contract.status != EconomicContractStatus::Open {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("economic contract is not open: {}", contract_id)],
+                        },
+                    }));
+                }
+                if contract.counterparty_agent_id != *accepter_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "contract accepter mismatch expected {}",
+                                contract.counterparty_agent_id
+                            )],
+                        },
+                    }));
+                }
+                if self.state.time > contract.expires_at {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "economic contract has expired at {}",
+                                contract.expires_at
+                            )],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(
+                    DomainEvent::EconomicContractAccepted {
+                        accepter_agent_id: accepter_agent_id.clone(),
+                        contract_id: contract_id.to_string(),
+                    },
+                ))
+            }
+            Action::SettleEconomicContract {
+                operator_agent_id,
+                contract_id,
+                success,
+                notes,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                let contract_id = contract_id.trim();
+                if contract_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["contract_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let Some(contract) = self.state.economic_contracts.get(contract_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("economic contract not found: {contract_id}")],
+                        },
+                    }));
+                };
+                if contract.status != EconomicContractStatus::Accepted {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "economic contract status is not accepted: {}",
+                                contract_id
+                            )],
+                        },
+                    }));
+                }
+                if contract.creator_agent_id != *operator_agent_id
+                    && contract.counterparty_agent_id != *operator_agent_id
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "settlement operator must belong to contract parties".to_string()
+                            ],
+                        },
+                    }));
+                }
+                let notes = notes.trim();
+                if notes.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "economic contract settlement notes cannot be empty".to_string()
+                            ],
+                        },
+                    }));
+                }
+
+                let (
+                    transfer_amount,
+                    tax_amount,
+                    creator_reputation_delta,
+                    counterparty_reputation_delta,
+                ) = if *success {
+                    let tax_bps = match contract.settlement_kind {
+                        ResourceKind::Electricity => self.state.gameplay_policy.electricity_tax_bps,
+                        ResourceKind::Data => self.state.gameplay_policy.data_tax_bps,
+                    };
+                    let tax_amount = contract
+                        .settlement_amount
+                        .saturating_mul(i64::from(tax_bps))
+                        .saturating_div(10_000);
+                    let total_required = contract.settlement_amount.saturating_add(tax_amount);
+                    let available = self
+                        .state
+                        .agents
+                        .get(&contract.creator_agent_id)
+                        .map(|cell| cell.state.resources.get(contract.settlement_kind))
+                        .unwrap_or(0);
+                    if available < total_required {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::InsufficientResource {
+                                agent_id: contract.creator_agent_id.clone(),
+                                kind: contract.settlement_kind,
+                                requested: total_required,
+                                available,
+                            },
+                        }));
+                    }
+                    (
+                        contract.settlement_amount,
+                        tax_amount,
+                        contract.reputation_stake,
+                        contract.reputation_stake,
+                    )
+                } else {
+                    (0, 0, -contract.reputation_stake, 0)
+                };
+
+                Ok(WorldEventBody::Domain(
+                    DomainEvent::EconomicContractSettled {
+                        operator_agent_id: operator_agent_id.clone(),
+                        contract_id: contract_id.to_string(),
+                        success: *success,
+                        transfer_amount,
+                        tax_amount,
+                        notes: notes.to_string(),
+                        creator_reputation_delta,
+                        counterparty_reputation_delta,
+                    },
+                ))
             }
             Action::EmitResourceTransfer {
                 from_agent_id,

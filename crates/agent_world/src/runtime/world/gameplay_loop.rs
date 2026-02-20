@@ -5,8 +5,8 @@ use serde::Deserialize;
 use std::cmp::Ordering;
 
 use super::super::{
-    CrisisStatus, DomainEvent, GovernanceProposalStatus, ModuleRole, WorldError, WorldEvent,
-    WorldEventBody,
+    CrisisStatus, DomainEvent, EconomicContractStatus, GovernanceProposalStatus, ModuleRole,
+    WorldError, WorldEvent, WorldEventBody,
 };
 use super::World;
 
@@ -14,6 +14,7 @@ const CRISIS_AUTO_INTERVAL_TICKS: u64 = 8;
 const CRISIS_DEFAULT_DURATION_TICKS: u64 = 6;
 const CRISIS_TIMEOUT_PENALTY_PER_SEVERITY: i64 = 10;
 const WAR_SCORE_PER_MEMBER: i64 = 10;
+const CONTRACT_EXPIRY_COUNTERPARTY_PENALTY_DIVISOR: i64 = 2;
 const GAMEPLAY_LIFECYCLE_EMIT_KIND: &str = "gameplay.lifecycle.directives";
 
 #[derive(Debug, Deserialize)]
@@ -255,10 +256,65 @@ impl World {
 
     pub(super) fn process_gameplay_cycles(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
         let mut emitted = Vec::new();
+        self.process_economic_contract_lifecycle(&mut emitted)?;
         self.finalize_due_governance_proposals(&mut emitted)?;
         self.process_crisis_lifecycle(&mut emitted)?;
         self.process_war_lifecycle(&mut emitted)?;
         Ok(emitted)
+    }
+
+    fn process_economic_contract_lifecycle(
+        &mut self,
+        emitted: &mut Vec<WorldEvent>,
+    ) -> Result<(), WorldError> {
+        let now = self.state.time;
+        let mut due_contracts = self
+            .state
+            .economic_contracts
+            .values()
+            .filter(|contract| {
+                matches!(
+                    contract.status,
+                    EconomicContractStatus::Open | EconomicContractStatus::Accepted
+                ) && contract.expires_at <= now
+            })
+            .map(|contract| {
+                (
+                    contract.contract_id.clone(),
+                    contract.creator_agent_id.clone(),
+                    contract.counterparty_agent_id.clone(),
+                    contract.status,
+                    contract.reputation_stake.max(1),
+                )
+            })
+            .collect::<Vec<_>>();
+        due_contracts.sort_by(|left, right| left.0.cmp(&right.0));
+
+        for (contract_id, creator_agent_id, counterparty_agent_id, status, reputation_stake) in
+            due_contracts
+        {
+            let (creator_reputation_delta, counterparty_reputation_delta) = match status {
+                EconomicContractStatus::Open => (-reputation_stake, 0),
+                EconomicContractStatus::Accepted => (
+                    -reputation_stake,
+                    -reputation_stake
+                        .saturating_div(CONTRACT_EXPIRY_COUNTERPARTY_PENALTY_DIVISOR)
+                        .max(1),
+                ),
+                EconomicContractStatus::Settled | EconomicContractStatus::Expired => (0, 0),
+            };
+            self.append_gameplay_domain_event(
+                DomainEvent::EconomicContractExpired {
+                    contract_id,
+                    creator_agent_id,
+                    counterparty_agent_id,
+                    creator_reputation_delta,
+                    counterparty_reputation_delta,
+                },
+                emitted,
+            )?;
+        }
+        Ok(())
     }
 
     fn finalize_due_governance_proposals(

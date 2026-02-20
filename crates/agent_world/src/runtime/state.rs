@@ -10,7 +10,8 @@ use super::agent_cell::AgentCell;
 use super::error::WorldError;
 use super::events::DomainEvent;
 use super::gameplay_state::{
-    AllianceState, CrisisState, CrisisStatus, GovernanceProposalState, GovernanceProposalStatus,
+    AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
+    GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
     GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarState,
 };
 use super::node_points::EpochSettlementReport;
@@ -164,6 +165,12 @@ pub struct WorldState {
     #[serde(default)]
     pub alliances: BTreeMap<String, AllianceState>,
     #[serde(default)]
+    pub gameplay_policy: GameplayPolicyState,
+    #[serde(default)]
+    pub economic_contracts: BTreeMap<String, EconomicContractState>,
+    #[serde(default)]
+    pub reputation_scores: BTreeMap<String, i64>,
+    #[serde(default)]
     pub wars: BTreeMap<String, WarState>,
     #[serde(default)]
     pub governance_votes: BTreeMap<String, GovernanceVoteState>,
@@ -222,6 +229,9 @@ impl Default for WorldState {
             pending_recipe_jobs: BTreeMap::new(),
             pending_material_transits: BTreeMap::new(),
             alliances: BTreeMap::new(),
+            gameplay_policy: GameplayPolicyState::default(),
+            economic_contracts: BTreeMap::new(),
+            reputation_scores: BTreeMap::new(),
             wars: BTreeMap::new(),
             governance_votes: BTreeMap::new(),
             governance_proposals: BTreeMap::new(),
@@ -1302,6 +1312,296 @@ impl WorldState {
                     })?;
                 }
                 if let Some(cell) = self.agents.get_mut(requester_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::GameplayPolicyUpdated {
+                operator_agent_id,
+                electricity_tax_bps,
+                data_tax_bps,
+                max_open_contracts_per_agent,
+                blocked_agents,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                let mut normalized_blocked_agents = blocked_agents
+                    .iter()
+                    .filter_map(|value| {
+                        let normalized = value.trim();
+                        if normalized.is_empty() {
+                            None
+                        } else {
+                            Some(normalized.to_string())
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                normalized_blocked_agents.sort();
+                normalized_blocked_agents.dedup();
+                self.gameplay_policy = GameplayPolicyState {
+                    electricity_tax_bps: *electricity_tax_bps,
+                    data_tax_bps: *data_tax_bps,
+                    max_open_contracts_per_agent: *max_open_contracts_per_agent,
+                    blocked_agents: normalized_blocked_agents,
+                    updated_at: now,
+                };
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::EconomicContractOpened {
+                creator_agent_id,
+                contract_id,
+                counterparty_agent_id,
+                settlement_kind,
+                settlement_amount,
+                reputation_stake,
+                expires_at,
+                description,
+            } => {
+                if !self.agents.contains_key(creator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: creator_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(counterparty_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: counterparty_agent_id.clone(),
+                    });
+                }
+                self.economic_contracts.insert(
+                    contract_id.clone(),
+                    EconomicContractState {
+                        contract_id: contract_id.clone(),
+                        creator_agent_id: creator_agent_id.clone(),
+                        counterparty_agent_id: counterparty_agent_id.clone(),
+                        settlement_kind: *settlement_kind,
+                        settlement_amount: *settlement_amount,
+                        reputation_stake: *reputation_stake,
+                        expires_at: *expires_at,
+                        description: description.clone(),
+                        status: EconomicContractStatus::Open,
+                        accepted_at: None,
+                        settled_at: None,
+                        settlement_success: None,
+                        transfer_amount: 0,
+                        tax_amount: 0,
+                        settlement_notes: None,
+                    },
+                );
+                if let Some(cell) = self.agents.get_mut(creator_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::EconomicContractAccepted {
+                accepter_agent_id,
+                contract_id,
+            } => {
+                let contract = self
+                    .economic_contracts
+                    .get_mut(contract_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("economic contract not found: {contract_id}"),
+                    })?;
+                if contract.status != EconomicContractStatus::Open {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "economic contract status invalid for acceptance: {:?}",
+                            contract.status
+                        ),
+                    });
+                }
+                if contract.counterparty_agent_id != *accepter_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "economic contract accepter mismatch expected={} actual={}",
+                            contract.counterparty_agent_id, accepter_agent_id
+                        ),
+                    });
+                }
+                contract.status = EconomicContractStatus::Accepted;
+                contract.accepted_at = Some(now);
+                if let Some(cell) = self.agents.get_mut(accepter_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: accepter_agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::EconomicContractSettled {
+                operator_agent_id,
+                contract_id,
+                success,
+                transfer_amount,
+                tax_amount,
+                notes,
+                creator_reputation_delta,
+                counterparty_reputation_delta,
+            } => {
+                let (creator_agent_id, counterparty_agent_id, settlement_kind, status) = {
+                    let contract = self.economic_contracts.get(contract_id).ok_or_else(|| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!("economic contract not found: {contract_id}"),
+                        }
+                    })?;
+                    (
+                        contract.creator_agent_id.clone(),
+                        contract.counterparty_agent_id.clone(),
+                        contract.settlement_kind,
+                        contract.status,
+                    )
+                };
+                if status != EconomicContractStatus::Accepted {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "economic contract status invalid for settlement: {:?}",
+                            status
+                        ),
+                    });
+                }
+                if *success {
+                    if *transfer_amount <= 0 {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "economic contract settlement transfer must be > 0, got {}",
+                                transfer_amount
+                            ),
+                        });
+                    }
+                    if *tax_amount < 0 {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "economic contract settlement tax must be >= 0, got {}",
+                                tax_amount
+                            ),
+                        });
+                    }
+                    let debit_total = transfer_amount.saturating_add(*tax_amount);
+                    let creator_cell = self.agents.get_mut(&creator_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: creator_agent_id.clone(),
+                        }
+                    })?;
+                    creator_cell
+                        .state
+                        .resources
+                        .remove(settlement_kind, debit_total)
+                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "economic contract settlement debit failed agent={} kind={:?} amount={} err={:?}",
+                                creator_agent_id, settlement_kind, debit_total, err
+                            ),
+                        })?;
+
+                    let counterparty_cell = self
+                        .agents
+                        .get_mut(&counterparty_agent_id)
+                        .ok_or_else(|| WorldError::AgentNotFound {
+                            agent_id: counterparty_agent_id.clone(),
+                        })?;
+                    counterparty_cell
+                        .state
+                        .resources
+                        .add(settlement_kind, *transfer_amount)
+                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "economic contract settlement credit failed agent={} kind={:?} amount={} err={:?}",
+                                counterparty_agent_id, settlement_kind, transfer_amount, err
+                            ),
+                        })?;
+                    let treasury = self.resources.entry(settlement_kind).or_insert(0);
+                    *treasury = treasury.saturating_add(*tax_amount);
+                }
+
+                if *creator_reputation_delta != 0 {
+                    let score = self
+                        .reputation_scores
+                        .entry(creator_agent_id.clone())
+                        .or_insert(0);
+                    *score = score.saturating_add(*creator_reputation_delta);
+                }
+                if *counterparty_reputation_delta != 0 {
+                    let score = self
+                        .reputation_scores
+                        .entry(counterparty_agent_id.clone())
+                        .or_insert(0);
+                    *score = score.saturating_add(*counterparty_reputation_delta);
+                }
+
+                let contract = self
+                    .economic_contracts
+                    .get_mut(contract_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("economic contract not found: {contract_id}"),
+                    })?;
+                contract.status = EconomicContractStatus::Settled;
+                contract.settled_at = Some(now);
+                contract.settlement_success = Some(*success);
+                contract.transfer_amount = *transfer_amount;
+                contract.tax_amount = *tax_amount;
+                contract.settlement_notes = Some(notes.clone());
+
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+            }
+            DomainEvent::EconomicContractExpired {
+                contract_id,
+                creator_agent_id,
+                counterparty_agent_id,
+                creator_reputation_delta,
+                counterparty_reputation_delta,
+            } => {
+                let contract = self
+                    .economic_contracts
+                    .get_mut(contract_id)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("economic contract not found: {contract_id}"),
+                    })?;
+                match contract.status {
+                    EconomicContractStatus::Open | EconomicContractStatus::Accepted => {
+                        contract.status = EconomicContractStatus::Expired;
+                        contract.settled_at = Some(now);
+                        contract.settlement_success = Some(false);
+                        contract.transfer_amount = 0;
+                        contract.tax_amount = 0;
+                        contract.settlement_notes =
+                            Some("auto expired by gameplay lifecycle".to_string());
+                    }
+                    EconomicContractStatus::Settled | EconomicContractStatus::Expired => {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "economic contract already finalized before expiry: {}",
+                                contract_id
+                            ),
+                        });
+                    }
+                }
+                if *creator_reputation_delta != 0 {
+                    let score = self
+                        .reputation_scores
+                        .entry(creator_agent_id.clone())
+                        .or_insert(0);
+                    *score = score.saturating_add(*creator_reputation_delta);
+                }
+                if *counterparty_reputation_delta != 0 {
+                    let score = self
+                        .reputation_scores
+                        .entry(counterparty_agent_id.clone())
+                        .or_insert(0);
+                    *score = score.saturating_add(*counterparty_reputation_delta);
+                }
+                if let Some(cell) = self.agents.get_mut(creator_agent_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(counterparty_agent_id) {
                     cell.last_active = now;
                 }
             }

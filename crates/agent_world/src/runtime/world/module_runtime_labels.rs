@@ -39,6 +39,19 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::FactoryBuilt { .. } => "domain.economy.factory_built",
             DomainEvent::RecipeStarted { .. } => "domain.economy.recipe_started",
             DomainEvent::RecipeCompleted { .. } => "domain.economy.recipe_completed",
+            DomainEvent::GameplayPolicyUpdated { .. } => "domain.gameplay.policy_updated",
+            DomainEvent::EconomicContractOpened { .. } => {
+                "domain.gameplay.economic_contract_opened"
+            }
+            DomainEvent::EconomicContractAccepted { .. } => {
+                "domain.gameplay.economic_contract_accepted"
+            }
+            DomainEvent::EconomicContractSettled { .. } => {
+                "domain.gameplay.economic_contract_settled"
+            }
+            DomainEvent::EconomicContractExpired { .. } => {
+                "domain.gameplay.economic_contract_expired"
+            }
             DomainEvent::AllianceFormed { .. } => "domain.gameplay.alliance_formed",
             DomainEvent::WarDeclared { .. } => "domain.gameplay.war_declared",
             DomainEvent::WarConcluded { .. } => "domain.gameplay.war_concluded",
@@ -109,6 +122,10 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::CastGovernanceVote { .. } => "action.gameplay.cast_governance_vote",
         Action::ResolveCrisis { .. } => "action.gameplay.resolve_crisis",
         Action::GrantMetaProgress { .. } => "action.gameplay.grant_meta_progress",
+        Action::UpdateGameplayPolicy { .. } => "action.gameplay.update_policy",
+        Action::OpenEconomicContract { .. } => "action.gameplay.open_economic_contract",
+        Action::AcceptEconomicContract { .. } => "action.gameplay.accept_economic_contract",
+        Action::SettleEconomicContract { .. } => "action.gameplay.settle_economic_contract",
         Action::EmitResourceTransfer { .. } => "action.emit_resource_transfer",
         Action::BuildFactory { .. } => "action.economy.build_factory",
         Action::BuildFactoryWithModule { .. } => "action.economy.build_factory_with_module",

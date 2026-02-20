@@ -223,6 +223,34 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         achievement_id: Option<String>,
     },
+    UpdateGameplayPolicy {
+        operator_agent_id: String,
+        electricity_tax_bps: u16,
+        data_tax_bps: u16,
+        max_open_contracts_per_agent: u16,
+        #[serde(default)]
+        blocked_agents: Vec<String>,
+    },
+    OpenEconomicContract {
+        creator_agent_id: String,
+        contract_id: String,
+        counterparty_agent_id: String,
+        settlement_kind: ResourceKind,
+        settlement_amount: i64,
+        reputation_stake: i64,
+        expires_at: WorldTime,
+        description: String,
+    },
+    AcceptEconomicContract {
+        accepter_agent_id: String,
+        contract_id: String,
+    },
+    SettleEconomicContract {
+        operator_agent_id: String,
+        contract_id: String,
+        success: bool,
+        notes: String,
+    },
     EmitResourceTransfer {
         from_agent_id: String,
         to_agent_id: String,
@@ -511,6 +539,44 @@ pub enum DomainEvent {
         #[serde(default = "default_world_material_ledger")]
         output_ledger: MaterialLedgerId,
     },
+    GameplayPolicyUpdated {
+        operator_agent_id: String,
+        electricity_tax_bps: u16,
+        data_tax_bps: u16,
+        max_open_contracts_per_agent: u16,
+        blocked_agents: Vec<String>,
+    },
+    EconomicContractOpened {
+        creator_agent_id: String,
+        contract_id: String,
+        counterparty_agent_id: String,
+        settlement_kind: ResourceKind,
+        settlement_amount: i64,
+        reputation_stake: i64,
+        expires_at: WorldTime,
+        description: String,
+    },
+    EconomicContractAccepted {
+        accepter_agent_id: String,
+        contract_id: String,
+    },
+    EconomicContractSettled {
+        operator_agent_id: String,
+        contract_id: String,
+        success: bool,
+        transfer_amount: i64,
+        tax_amount: i64,
+        notes: String,
+        creator_reputation_delta: i64,
+        counterparty_reputation_delta: i64,
+    },
+    EconomicContractExpired {
+        contract_id: String,
+        creator_agent_id: String,
+        counterparty_agent_id: String,
+        creator_reputation_delta: i64,
+        counterparty_reputation_delta: i64,
+    },
     AllianceFormed {
         proposer_agent_id: String,
         alliance_id: String,
@@ -660,6 +726,21 @@ impl DomainEvent {
             DomainEvent::RecipeCompleted {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),
+            DomainEvent::GameplayPolicyUpdated {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::EconomicContractOpened {
+                creator_agent_id, ..
+            } => Some(creator_agent_id.as_str()),
+            DomainEvent::EconomicContractAccepted {
+                accepter_agent_id, ..
+            } => Some(accepter_agent_id.as_str()),
+            DomainEvent::EconomicContractSettled {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::EconomicContractExpired {
+                creator_agent_id, ..
+            } => Some(creator_agent_id.as_str()),
             DomainEvent::AllianceFormed {
                 proposer_agent_id, ..
             } => Some(proposer_agent_id.as_str()),

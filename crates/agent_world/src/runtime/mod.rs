@@ -85,7 +85,8 @@ pub use gameplay::{
     ActiveGameplayModule, GameplayKindCoverage, GameplayModeReadiness, GAMEPLAY_BASELINE_KINDS,
 };
 pub use gameplay_state::{
-    AllianceState, CrisisState, CrisisStatus, GovernanceProposalState, GovernanceProposalStatus,
+    AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
+    GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
     GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarState,
 };
 pub use modules::{

@@ -7,10 +7,10 @@
 - [x] 新建项目管理文档：`doc/game/gameplay-release-production-closure.project.md`
 
 ### T1 社会经济治理最小闭环（对应需求 2）
-- [ ] 扩展 Runtime Action/DomainEvent：经济合约与治理规则动作
-- [ ] 扩展 Runtime State：经济合约状态、声誉账本、治理参数
-- [ ] 实现生命周期：合约创建/签约/结算/过期与声誉奖惩
-- [ ] 补充 runtime 协议测试（主路径 + 拒绝路径）
+- [x] 扩展 Runtime Action/DomainEvent：经济合约与治理规则动作
+- [x] 扩展 Runtime State：经济合约状态、声誉账本、治理参数
+- [x] 实现生命周期：合约创建/签约/结算/过期与声誉奖惩
+- [x] 补充 runtime 协议测试（主路径 + 拒绝路径）
 
 ### T2 压测玩法门禁工程化（对应需求 3）
 - [ ] 扩展 `scripts/llm-longrun-stress.sh` 支持玩法覆盖阈值参数
@@ -35,5 +35,5 @@
 - 测试口径手册：`testing-manual.md`
 
 ## 状态
-- 当前阶段：T1（进行中）
+- 当前阶段：T2（进行中）
 - 阻塞项：无

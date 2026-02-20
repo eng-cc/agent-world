@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use crate::simulator::ResourceKind;
+
 use super::types::WorldTime;
 
 /// Persisted alliance relationship.
@@ -159,4 +161,78 @@ pub struct MetaProgressState {
     #[serde(default)]
     pub unlocked_tiers: BTreeMap<String, Vec<String>>,
     pub last_granted_at: WorldTime,
+}
+
+/// Lifecycle state for one economic contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EconomicContractStatus {
+    Open,
+    Accepted,
+    Settled,
+    Expired,
+}
+
+impl Default for EconomicContractStatus {
+    fn default() -> Self {
+        Self::Open
+    }
+}
+
+/// Persisted economic contract state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EconomicContractState {
+    pub contract_id: String,
+    pub creator_agent_id: String,
+    pub counterparty_agent_id: String,
+    pub settlement_kind: ResourceKind,
+    pub settlement_amount: i64,
+    pub reputation_stake: i64,
+    pub expires_at: WorldTime,
+    pub description: String,
+    #[serde(default)]
+    pub status: EconomicContractStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accepted_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settled_at: Option<WorldTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settlement_success: Option<bool>,
+    #[serde(default)]
+    pub transfer_amount: i64,
+    #[serde(default)]
+    pub tax_amount: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settlement_notes: Option<String>,
+}
+
+fn default_policy_max_open_contracts_per_agent() -> u16 {
+    4
+}
+
+/// Minimal governance policy knobs for gameplay economy.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameplayPolicyState {
+    #[serde(default)]
+    pub electricity_tax_bps: u16,
+    #[serde(default)]
+    pub data_tax_bps: u16,
+    #[serde(default = "default_policy_max_open_contracts_per_agent")]
+    pub max_open_contracts_per_agent: u16,
+    #[serde(default)]
+    pub blocked_agents: Vec<String>,
+    #[serde(default)]
+    pub updated_at: WorldTime,
+}
+
+impl Default for GameplayPolicyState {
+    fn default() -> Self {
+        Self {
+            electricity_tax_bps: 200,
+            data_tax_bps: 300,
+            max_open_contracts_per_agent: default_policy_max_open_contracts_per_agent(),
+            blocked_agents: Vec::new(),
+            updated_at: 0,
+        }
+    }
 }
