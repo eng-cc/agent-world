@@ -44,12 +44,21 @@
 - 为支持 `agent_world_node -> agent_world_consensus` 单向依赖，`agent_world_consensus` 内聚 `distributed_dht` / `distributed_net` 抽象与内存实现，不再反向依赖 `agent_world_net`。
 - 该调整不改变 PoS/成员治理语义，仅收敛 crate 边界，确保后续共识代码可持续集中在 `agent_world_consensus`。
 
+### 4) 第二阶段（尽量一步到位）收口目标
+- 将 `agent_world_node` 中残留的共识纯逻辑（action root 计算/校验、共识消息签名验签、共识消息结构定义）迁移到 `agent_world_consensus`，`agent_world_node` 仅保留运行时接线与错误映射。
+- 对 `agent_world_consensus` 内部 PoS 双实现关系进行收敛：`node_pos` 作为 node 主链路推进核心，`pos` 复用同一推进核心，避免两套独立推进逻辑长期漂移。
+- 保持 `agent_world_node` 外部接口和现有闭环测试口径不回退。
+
 ## 里程碑
 - CCG-0：设计与项目文档建档。
 - CCG-1：抽取 PoS 核心状态机到 `agent_world_consensus::node_pos` 并接线 `agent_world_node`。
 - CCG-2：回归测试（node + viewer live 定向）与文档/devlog 收口。
+- CCG-3：扩展文档，定义第二阶段“共识代码全收口 + PoS 单链路化”任务。
+- CCG-4：迁移 `agent_world_node` 残留共识纯逻辑到 `agent_world_consensus` 并完成接线。
+- CCG-5：完成 PoS 内部单链路收敛、定向回归与文档/devlog 终态收口。
 
 ## 风险
 - 泛型化抽取若边界定义不清，可能导致类型复杂度上升，影响可读性。
 - 抽取过程中若状态更新顺序变化，可能引发边界行为回归（如 pending -> committed 时机）。
 - 后续若不继续推进网络层抽取，仍会存在“规则已统一、接线分散”的中间状态，需要后续阶段继续收口。
+- 第二阶段若迁移边界过大，可能导致 `agent_world_node` 与 `agent_world_consensus` 接口短期震荡，需通过分层回归测试兜底。
