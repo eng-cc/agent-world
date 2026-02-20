@@ -2,13 +2,14 @@
 
 mod actions;
 mod audit;
+mod base_layer;
 mod body;
 mod bootstrap_economy;
 mod bootstrap_power;
 mod economy;
 mod effects;
 mod event_processing;
-mod gameplay;
+mod gameplay_layer;
 mod governance;
 mod logistics;
 mod module_actions;

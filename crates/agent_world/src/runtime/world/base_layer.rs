@@ -1,0 +1,381 @@
+use std::collections::BTreeSet;
+
+use agent_world_wasm_router::{validate_subscription_filters, validate_subscription_stage};
+
+use super::super::{ModuleLimits, ModuleManifest, ModuleRegistry, WorldError};
+use super::World;
+
+impl World {
+    pub(super) fn validate_module_changes(
+        &self,
+        changes: &super::super::ModuleChangeSet,
+    ) -> Result<(), WorldError> {
+        let mut register_ids = BTreeSet::new();
+        let mut activate_ids = BTreeSet::new();
+        let mut deactivate_ids = BTreeSet::new();
+        let mut upgrade_ids = BTreeSet::new();
+
+        for module in &changes.register {
+            if !register_ids.insert(module.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate register module_id {}", module.module_id),
+                });
+            }
+        }
+
+        for activation in &changes.activate {
+            if !activate_ids.insert(activation.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate activate module_id {}", activation.module_id),
+                });
+            }
+        }
+
+        for deactivation in &changes.deactivate {
+            if !deactivate_ids.insert(deactivation.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate deactivate module_id {}", deactivation.module_id),
+                });
+            }
+        }
+
+        for upgrade in &changes.upgrade {
+            if !upgrade_ids.insert(upgrade.module_id.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("duplicate upgrade module_id {}", upgrade.module_id),
+                });
+            }
+            if upgrade.manifest.module_id != upgrade.module_id {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("upgrade manifest module_id mismatch {}", upgrade.module_id),
+                });
+            }
+        }
+
+        let mut planned_records = BTreeSet::new();
+        for module in &changes.register {
+            let key = ModuleRegistry::record_key(&module.module_id, &module.version);
+            if self.module_registry.records.contains_key(&key)
+                || !planned_records.insert(key.clone())
+            {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module version already registered {key}"),
+                });
+            }
+        }
+
+        for upgrade in &changes.upgrade {
+            let to_key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.to_version);
+            if self.module_registry.records.contains_key(&to_key) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module version already registered {to_key}"),
+                });
+            }
+            if !planned_records.insert(to_key.clone()) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module version already registered {to_key}"),
+                });
+            }
+
+            let from_key = ModuleRegistry::record_key(&upgrade.module_id, &upgrade.from_version);
+            if !self.module_registry.records.contains_key(&from_key) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("upgrade source missing {from_key}"),
+                });
+            }
+
+            if let Some(active_version) = self.module_registry.active.get(&upgrade.module_id) {
+                if active_version != &upgrade.from_version {
+                    return Err(WorldError::ModuleChangeInvalid {
+                        reason: format!(
+                            "upgrade source version mismatch for {} (active {})",
+                            upgrade.module_id, active_version
+                        ),
+                    });
+                }
+            }
+        }
+
+        for activation in &changes.activate {
+            let key = ModuleRegistry::record_key(&activation.module_id, &activation.version);
+            let exists =
+                self.module_registry.records.contains_key(&key) || planned_records.contains(&key);
+            if !exists {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("activate target missing {key}"),
+                });
+            }
+        }
+
+        let mut will_activate = BTreeSet::new();
+        for activation in &changes.activate {
+            will_activate.insert(activation.module_id.clone());
+        }
+        for deactivation in &changes.deactivate {
+            let has_active = self
+                .module_registry
+                .active
+                .contains_key(&deactivation.module_id);
+            if !has_active && !will_activate.contains(&deactivation.module_id) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("deactivate target not active {}", deactivation.module_id),
+                });
+            }
+        }
+
+        self.validate_gameplay_activation_conflicts(changes)?;
+
+        Ok(())
+    }
+
+    pub(super) fn shadow_validate_module_changes(
+        &self,
+        changes: &super::super::ModuleChangeSet,
+    ) -> Result<(), WorldError> {
+        for module in &changes.register {
+            self.validate_module_manifest(module)?;
+        }
+        for upgrade in &changes.upgrade {
+            self.validate_module_manifest(&upgrade.manifest)?;
+        }
+        Ok(())
+    }
+
+    fn validate_module_manifest(&self, module: &ModuleManifest) -> Result<(), WorldError> {
+        if module.module_id.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: "module_id is empty".to_string(),
+            });
+        }
+        if module.version.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module version missing for {}", module.module_id),
+            });
+        }
+        if module.wasm_hash.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module wasm_hash missing for {}", module.module_id),
+            });
+        }
+        if module.interface_version.trim().is_empty() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module interface_version missing for {}", module.module_id),
+            });
+        }
+        if !self.module_artifacts.contains(&module.wasm_hash) {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module artifact missing {}", module.wasm_hash),
+            });
+        }
+
+        if let Some(identity) = &module.artifact_identity {
+            if !identity.is_complete() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity is incomplete for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if !identity.matches_unsigned_signature(&module.wasm_hash) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module artifact_identity signature mismatch for {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
+
+        if module.interface_version != "wasm-1" {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module interface_version unsupported {}",
+                    module.interface_version
+                ),
+            });
+        }
+        self.validate_module_abi_contract(module)?;
+
+        let expected_export = module.kind.entrypoint();
+        if !module.exports.iter().any(|name| name == expected_export) {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module exports missing {} for {}",
+                    expected_export, module.module_id
+                ),
+            });
+        }
+
+        for subscription in &module.subscriptions {
+            validate_subscription_stage(subscription, &module.module_id)
+                .map_err(|reason| WorldError::ModuleChangeInvalid { reason })?;
+            validate_subscription_filters(&subscription.filters, &module.module_id)
+                .map_err(|reason| WorldError::ModuleChangeInvalid { reason })?;
+        }
+
+        self.validate_module_limits(&module.module_id, &module.limits)?;
+
+        for cap in &module.required_caps {
+            let grant =
+                self.capabilities
+                    .get(cap)
+                    .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                        reason: format!("module cap missing {cap}"),
+                    })?;
+            if grant.is_expired(self.state.time) {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module cap expired {cap}"),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_module_abi_contract(&self, module: &ModuleManifest) -> Result<(), WorldError> {
+        let contract = &module.abi_contract;
+        if let Some(version) = contract.abi_version {
+            if version != 1 {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_version unsupported {} for {}",
+                        version, module.module_id
+                    ),
+                });
+            }
+        }
+
+        if let Some(schema) = &contract.input_schema {
+            if schema.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module input_schema is empty for {}", module.module_id),
+                });
+            }
+        }
+        if let Some(schema) = &contract.output_schema {
+            if schema.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!("module output_schema is empty for {}", module.module_id),
+                });
+            }
+        }
+        if contract.input_schema.is_some() ^ contract.output_schema.is_some() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "module abi_contract requires input_schema/output_schema pair for {}",
+                    module.module_id
+                ),
+            });
+        }
+        for (slot, cap_ref) in &contract.cap_slots {
+            if slot.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot is empty for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if cap_ref.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot {slot} has empty cap_ref for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if !module
+                .required_caps
+                .iter()
+                .any(|required| required == cap_ref)
+            {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract cap slot {slot} binds unknown cap_ref {cap_ref} for {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
+        for policy_hook in &contract.policy_hooks {
+            if policy_hook.trim().is_empty() {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract policy hook is empty for {}",
+                        module.module_id
+                    ),
+                });
+            }
+            if policy_hook == &module.module_id {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: format!(
+                        "module abi_contract policy hook self-reference {}",
+                        module.module_id
+                    ),
+                });
+            }
+        }
+
+        self.validate_gameplay_contract_for_manifest(module)?;
+
+        Ok(())
+    }
+
+    fn validate_module_limits(
+        &self,
+        module_id: &str,
+        limits: &ModuleLimits,
+    ) -> Result<(), WorldError> {
+        let max = &self.module_limits_max;
+        if limits.max_mem_bytes > max.max_mem_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_mem_bytes exceeded for {module_id}"),
+            });
+        }
+        if limits.max_gas > max.max_gas {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_gas exceeded for {module_id}"),
+            });
+        }
+        if limits.max_call_rate > max.max_call_rate {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_call_rate exceeded for {module_id}"),
+            });
+        }
+        if limits.max_output_bytes > max.max_output_bytes {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_output_bytes exceeded for {module_id}"),
+            });
+        }
+        if limits.max_effects > max.max_effects {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_effects exceeded for {module_id}"),
+            });
+        }
+        if limits.max_emits > max.max_emits {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!("module limits max_emits exceeded for {module_id}"),
+            });
+        }
+        Ok(())
+    }
+
+    pub(super) fn active_module_manifest(
+        &self,
+        module_id: &str,
+    ) -> Result<&ModuleManifest, WorldError> {
+        let version = self.module_registry.active.get(module_id).ok_or_else(|| {
+            WorldError::ModuleChangeInvalid {
+                reason: format!("module not active {module_id}"),
+            }
+        })?;
+        let key = ModuleRegistry::record_key(module_id, version);
+        let record = self.module_registry.records.get(&key).ok_or_else(|| {
+            WorldError::ModuleChangeInvalid {
+                reason: format!("module record missing {key}"),
+            }
+        })?;
+        Ok(&record.manifest)
+    }
+}
