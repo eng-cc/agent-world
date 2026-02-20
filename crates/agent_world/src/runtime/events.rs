@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
+use super::gameplay_state::WarParticipantOutcome;
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::NodeRewardMintRecord;
 use super::types::{ActionId, MaterialLedgerId, ProposalId, WorldTime};
@@ -183,6 +184,21 @@ pub enum Action {
         #[serde(default)]
         members: Vec<String>,
         charter: String,
+    },
+    JoinAlliance {
+        operator_agent_id: String,
+        alliance_id: String,
+        member_agent_id: String,
+    },
+    LeaveAlliance {
+        operator_agent_id: String,
+        alliance_id: String,
+        member_agent_id: String,
+    },
+    DissolveAlliance {
+        operator_agent_id: String,
+        alliance_id: String,
+        reason: String,
     },
     DeclareWar {
         initiator_agent_id: String,
@@ -583,6 +599,23 @@ pub enum DomainEvent {
         members: Vec<String>,
         charter: String,
     },
+    AllianceJoined {
+        operator_agent_id: String,
+        alliance_id: String,
+        member_agent_id: String,
+    },
+    AllianceLeft {
+        operator_agent_id: String,
+        alliance_id: String,
+        member_agent_id: String,
+    },
+    AllianceDissolved {
+        operator_agent_id: String,
+        alliance_id: String,
+        reason: String,
+        #[serde(default)]
+        former_members: Vec<String>,
+    },
     WarDeclared {
         initiator_agent_id: String,
         war_id: String,
@@ -590,13 +623,21 @@ pub enum DomainEvent {
         defender_alliance_id: String,
         objective: String,
         intensity: u32,
+        #[serde(default)]
+        mobilization_electricity_cost: i64,
+        #[serde(default)]
+        mobilization_data_cost: i64,
     },
     WarConcluded {
         war_id: String,
         winner_alliance_id: String,
+        #[serde(default)]
+        loser_alliance_id: String,
         aggressor_score: i64,
         defender_score: i64,
         summary: String,
+        #[serde(default)]
+        participant_outcomes: Vec<WarParticipantOutcome>,
     },
     GovernanceProposalOpened {
         proposer_agent_id: String,
@@ -744,6 +785,15 @@ impl DomainEvent {
             DomainEvent::AllianceFormed {
                 proposer_agent_id, ..
             } => Some(proposer_agent_id.as_str()),
+            DomainEvent::AllianceJoined {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::AllianceLeft {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
+            DomainEvent::AllianceDissolved {
+                operator_agent_id, ..
+            } => Some(operator_agent_id.as_str()),
             DomainEvent::WarDeclared {
                 initiator_agent_id, ..
             } => Some(initiator_agent_id.as_str()),

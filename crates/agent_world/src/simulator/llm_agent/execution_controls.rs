@@ -480,6 +480,21 @@ fn action_signature(action: &Action) -> String {
         } => format!(
             "form_alliance:{proposer_agent_id}:{alliance_id}:{members:?}:{charter}"
         ),
+        Action::JoinAlliance {
+            operator_agent_id,
+            alliance_id,
+            member_agent_id,
+        } => format!("join_alliance:{operator_agent_id}:{alliance_id}:{member_agent_id}"),
+        Action::LeaveAlliance {
+            operator_agent_id,
+            alliance_id,
+            member_agent_id,
+        } => format!("leave_alliance:{operator_agent_id}:{alliance_id}:{member_agent_id}"),
+        Action::DissolveAlliance {
+            operator_agent_id,
+            alliance_id,
+            reason,
+        } => format!("dissolve_alliance:{operator_agent_id}:{alliance_id}:{reason}"),
         Action::DeclareWar {
             initiator_agent_id,
             war_id,
@@ -886,6 +901,50 @@ fn actions_same(left: &Action, right: &Action) -> bool {
                 && left_alliance_id == right_alliance_id
                 && left_members == right_members
         }
+        (
+            Action::JoinAlliance {
+                operator_agent_id: left_operator,
+                alliance_id: left_alliance_id,
+                member_agent_id: left_member,
+            },
+            Action::JoinAlliance {
+                operator_agent_id: right_operator,
+                alliance_id: right_alliance_id,
+                member_agent_id: right_member,
+            },
+        ) => {
+            left_operator == right_operator
+                && left_alliance_id == right_alliance_id
+                && left_member == right_member
+        }
+        (
+            Action::LeaveAlliance {
+                operator_agent_id: left_operator,
+                alliance_id: left_alliance_id,
+                member_agent_id: left_member,
+            },
+            Action::LeaveAlliance {
+                operator_agent_id: right_operator,
+                alliance_id: right_alliance_id,
+                member_agent_id: right_member,
+            },
+        ) => {
+            left_operator == right_operator
+                && left_alliance_id == right_alliance_id
+                && left_member == right_member
+        }
+        (
+            Action::DissolveAlliance {
+                operator_agent_id: left_operator,
+                alliance_id: left_alliance_id,
+                ..
+            },
+            Action::DissolveAlliance {
+                operator_agent_id: right_operator,
+                alliance_id: right_alliance_id,
+                ..
+            },
+        ) => left_operator == right_operator && left_alliance_id == right_alliance_id,
         (
             Action::DeclareWar {
                 initiator_agent_id: left_initiator,

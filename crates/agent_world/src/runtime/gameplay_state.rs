@@ -17,6 +17,18 @@ pub struct AllianceState {
     pub formed_at: WorldTime,
 }
 
+/// Per-agent consequence payload persisted on war conclusion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct WarParticipantOutcome {
+    pub agent_id: String,
+    #[serde(default)]
+    pub electricity_delta: i64,
+    #[serde(default)]
+    pub data_delta: i64,
+    #[serde(default)]
+    pub reputation_delta: i64,
+}
+
 /// Persisted war declaration state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WarState {
@@ -29,6 +41,10 @@ pub struct WarState {
     #[serde(default)]
     pub active: bool,
     #[serde(default)]
+    pub declared_mobilization_electricity_cost: i64,
+    #[serde(default)]
+    pub declared_mobilization_data_cost: i64,
+    #[serde(default)]
     pub max_duration_ticks: u64,
     #[serde(default)]
     pub aggressor_score: i64,
@@ -39,7 +55,11 @@ pub struct WarState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub winner_alliance_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loser_alliance_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settlement_summary: Option<String>,
+    #[serde(default)]
+    pub participant_outcomes: Vec<WarParticipantOutcome>,
     pub declared_at: WorldTime,
 }
 

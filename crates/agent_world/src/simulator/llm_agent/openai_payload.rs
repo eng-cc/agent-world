@@ -35,6 +35,9 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
         "revoke_social_fact",
         "declare_social_edge",
         "form_alliance",
+        "join_alliance",
+        "leave_alliance",
+        "dissolve_alliance",
         "declare_war",
         "open_governance_proposal",
         "cast_governance_vote",
@@ -123,6 +126,7 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
       "type": "array",
       "items": { "type": "string" }
     },
+    "member_agent_id": { "type": "string" },
     "charter": { "type": "string" },
     "initiator_agent_id": { "type": "string" },
     "war_id": { "type": "string" },

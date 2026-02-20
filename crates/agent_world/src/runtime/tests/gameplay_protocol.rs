@@ -58,6 +58,21 @@ fn register_agents(world: &mut World, agent_ids: &[&str]) {
     world.step().expect("register agents");
 }
 
+fn set_agent_resources(world: &mut World, agent_id: &str, electricity: i64, data: i64) {
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Electricity, electricity)
+        .expect("set electricity");
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Data, data)
+        .expect("set data");
+}
+
+fn seed_war_ready_resources(world: &mut World, agent_ids: &[&str]) {
+    for agent_id in agent_ids {
+        set_agent_resources(world, agent_id, 120, 120);
+    }
+}
+
 fn last_domain_event(world: &World) -> &DomainEvent {
     let event = world.journal().events.last().expect("domain event");
     let WorldEventBody::Domain(domain_event) = &event.body else {
@@ -121,6 +136,7 @@ fn gameplay_protocol_actions_drive_persisted_state() {
         charter: "logistics pact".to_string(),
     });
     world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["a"]);
 
     world.submit_action(Action::DeclareWar {
         initiator_agent_id: "a".to_string(),
@@ -226,6 +242,7 @@ fn declare_war_rejects_initiator_outside_aggressor_alliance() {
         charter: "charter.blue".to_string(),
     });
     world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["c"]);
 
     world.submit_action(Action::DeclareWar {
         initiator_agent_id: "c".to_string(),
@@ -385,6 +402,7 @@ fn war_auto_concludes_after_duration() {
         charter: "charter.blue".to_string(),
     });
     world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["a", "b", "c", "d"]);
 
     world.submit_action(Action::DeclareWar {
         initiator_agent_id: "a".to_string(),
@@ -403,12 +421,203 @@ fn war_auto_concludes_after_duration() {
     let war = world.state().wars.get("war.auto").expect("war state");
     assert!(!war.active);
     assert_eq!(war.winner_alliance_id.as_deref(), Some("alliance.red"));
+    assert_eq!(war.loser_alliance_id.as_deref(), Some("alliance.blue"));
+    assert!(!war.participant_outcomes.is_empty());
     assert!(war.concluded_at.is_some());
     assert!(war
         .settlement_summary
         .as_deref()
         .unwrap_or_default()
         .contains("auto settlement"));
+}
+
+#[test]
+fn alliance_join_leave_dissolve_lifecycle_updates_state() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        members: vec!["b".to_string()],
+        charter: "alpha charter".to_string(),
+    });
+    world.step().expect("form alliance");
+
+    world.submit_action(Action::JoinAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        member_agent_id: "c".to_string(),
+    });
+    world.step().expect("join alliance");
+    let alliance = world
+        .state()
+        .alliances
+        .get("alliance.alpha")
+        .expect("alliance after join");
+    assert_eq!(
+        alliance.members,
+        vec!["a".to_string(), "b".to_string(), "c".to_string()]
+    );
+
+    world.submit_action(Action::LeaveAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        member_agent_id: "c".to_string(),
+    });
+    world.step().expect("leave alliance");
+    let alliance = world
+        .state()
+        .alliances
+        .get("alliance.alpha")
+        .expect("alliance after leave");
+    assert_eq!(alliance.members, vec!["a".to_string(), "b".to_string()]);
+
+    world.submit_action(Action::DissolveAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        reason: "merge into coalition".to_string(),
+    });
+    world.step().expect("dissolve alliance");
+    assert!(!world.state().alliances.contains_key("alliance.alpha"));
+    assert!(matches!(
+        last_domain_event(&world),
+        DomainEvent::AllianceDissolved { .. }
+    ));
+}
+
+#[test]
+fn war_declaration_requires_mobilization_resources_and_conclusion_applies_outcomes() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d", "e"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "charter.red".to_string(),
+    });
+    world.step().expect("form red alliance");
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "charter.blue".to_string(),
+    });
+    world.step().expect("form blue alliance");
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.reject.cost".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "no budget".to_string(),
+        intensity: 3,
+    });
+    world
+        .step()
+        .expect("reject war for insufficient mobilization");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason:
+                RejectReason::InsufficientResource {
+                    kind: ResourceKind::Electricity,
+                    ..
+                },
+            ..
+        } => {}
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    set_agent_resources(&mut world, "a", 120, 120);
+    set_agent_resources(&mut world, "b", 80, 60);
+    set_agent_resources(&mut world, "c", 90, 70);
+    set_agent_resources(&mut world, "d", 60, 50);
+    let before_a_electricity = world
+        .agent_resource_balance("a", ResourceKind::Electricity)
+        .expect("a electricity before war");
+    let before_a_data = world
+        .agent_resource_balance("a", ResourceKind::Data)
+        .expect("a data before war");
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.outcome".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "hold belt".to_string(),
+        intensity: 3,
+    });
+    world.step().expect("declare war with mobilization");
+    let war = world.state().wars.get("war.outcome").expect("war state");
+    assert_eq!(war.declared_mobilization_electricity_cost, 24);
+    assert_eq!(war.declared_mobilization_data_cost, 17);
+    let after_a_electricity = world
+        .agent_resource_balance("a", ResourceKind::Electricity)
+        .expect("a electricity after declare");
+    let after_a_data = world
+        .agent_resource_balance("a", ResourceKind::Data)
+        .expect("a data after declare");
+    assert_eq!(
+        before_a_electricity - after_a_electricity,
+        war.declared_mobilization_electricity_cost
+    );
+    assert_eq!(
+        before_a_data - after_a_data,
+        war.declared_mobilization_data_cost
+    );
+
+    world.submit_action(Action::JoinAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        member_agent_id: "e".to_string(),
+    });
+    world.step().expect("join during active war rejected");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("cannot change members")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    for _ in 0..12 {
+        world.step().expect("advance war lifecycle");
+    }
+    let war = world
+        .state()
+        .wars
+        .get("war.outcome")
+        .expect("war after conclude");
+    assert!(!war.active);
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.electricity_delta < 0));
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.electricity_delta > 0));
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.reputation_delta != 0));
+    let total_electricity_delta: i64 = war
+        .participant_outcomes
+        .iter()
+        .map(|item| item.electricity_delta)
+        .sum();
+    let total_data_delta: i64 = war
+        .participant_outcomes
+        .iter()
+        .map(|item| item.data_delta)
+        .sum();
+    assert_eq!(total_electricity_delta, 0);
+    assert_eq!(total_data_delta, 0);
 }
 
 #[test]

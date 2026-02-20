@@ -1047,6 +1047,9 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(decision_enum.contains(&"revoke_social_fact"));
     assert!(decision_enum.contains(&"declare_social_edge"));
     assert!(decision_enum.contains(&"form_alliance"));
+    assert!(decision_enum.contains(&"join_alliance"));
+    assert!(decision_enum.contains(&"leave_alliance"));
+    assert!(decision_enum.contains(&"dissolve_alliance"));
     assert!(decision_enum.contains(&"declare_war"));
     assert!(decision_enum.contains(&"open_governance_proposal"));
     assert!(decision_enum.contains(&"cast_governance_vote"));
@@ -1064,6 +1067,7 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(properties.contains_key("backing_fact_ids"));
     assert!(properties.contains_key("alliance_id"));
     assert!(properties.contains_key("members"));
+    assert!(properties.contains_key("member_agent_id"));
     assert!(properties.contains_key("war_id"));
     assert!(properties.contains_key("proposal_key"));
     assert!(properties.contains_key("voting_window_ticks"));
@@ -1442,6 +1446,69 @@ fn llm_agent_parse_form_alliance_action() {
             alliance_id: "alliance.alpha".to_string(),
             members: vec!["agent-1".to_string(), "agent-2".to_string()],
             charter: "mutual defense".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_join_alliance_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"join_alliance\",\"operator_agent_id\":\"self\",\"alliance_id\":\"alliance.alpha\",\"member_agent_id\":\"agent:agent-2\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::JoinAlliance {
+            operator_agent_id: "agent-1".to_string(),
+            alliance_id: "alliance.alpha".to_string(),
+            member_agent_id: "agent-2".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_leave_alliance_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"leave_alliance\",\"operator_agent_id\":\"self\",\"alliance_id\":\"alliance.alpha\",\"member_agent_id\":\"self\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::LeaveAlliance {
+            operator_agent_id: "agent-1".to_string(),
+            alliance_id: "alliance.alpha".to_string(),
+            member_agent_id: "agent-1".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_dissolve_alliance_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"dissolve_alliance\",\"operator_agent_id\":\"self\",\"alliance_id\":\"alliance.alpha\",\"reason\":\"merge\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::DissolveAlliance {
+            operator_agent_id: "agent-1".to_string(),
+            alliance_id: "alliance.alpha".to_string(),
+            reason: "merge".to_string(),
         })
     );
 }

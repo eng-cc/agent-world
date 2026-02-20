@@ -261,6 +261,21 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("proposer_agent_id must be the submitter agent")
             }
         }
+        Action::JoinAlliance {
+            operator_agent_id, ..
+        }
+        | Action::LeaveAlliance {
+            operator_agent_id, ..
+        }
+        | Action::DissolveAlliance {
+            operator_agent_id, ..
+        } => {
+            if operator_agent_id == agent_id {
+                None
+            } else {
+                denied("operator_agent_id must be the submitter agent")
+            }
+        }
         Action::DeclareWar {
             initiator_agent_id, ..
         } => {

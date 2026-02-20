@@ -87,7 +87,8 @@ pub use gameplay::{
 pub use gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
     GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
-    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarState,
+    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarParticipantOutcome,
+    WarState,
 };
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,

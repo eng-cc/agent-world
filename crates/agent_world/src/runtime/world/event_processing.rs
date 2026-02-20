@@ -19,6 +19,12 @@ const GOVERNANCE_MAX_VOTING_WINDOW_TICKS: u64 = 1_440;
 const GOVERNANCE_MIN_PASS_THRESHOLD_BPS: u16 = 5_000;
 const GOVERNANCE_MAX_PASS_THRESHOLD_BPS: u16 = 10_000;
 const WAR_MAX_INTENSITY: u32 = 10;
+const WAR_MIN_ALLIANCE_MEMBERS: usize = 2;
+const WAR_MAX_ALLIANCE_MEMBERS: usize = 16;
+const WAR_DECLARE_BASE_ELECTRICITY_COST: i64 = 12;
+const WAR_DECLARE_ELECTRICITY_COST_PER_INTENSITY: i64 = 4;
+const WAR_DECLARE_BASE_DATA_COST: i64 = 8;
+const WAR_DECLARE_DATA_COST_PER_INTENSITY: i64 = 3;
 const CRISIS_BASE_IMPACT_PER_SEVERITY: i64 = 10;
 const GAMEPLAY_POLICY_MAX_TAX_BPS: u16 = 10_000;
 const GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA: u16 = 1;
@@ -29,6 +35,31 @@ impl World {
     // ---------------------------------------------------------------------
     // Internal helpers
     // ---------------------------------------------------------------------
+
+    fn agent_alliance_id(&self, agent_id: &str) -> Option<&str> {
+        self.state
+            .alliances
+            .iter()
+            .find(|(_, alliance)| alliance.members.iter().any(|member| member == agent_id))
+            .map(|(alliance_id, _)| alliance_id.as_str())
+    }
+
+    fn alliance_has_active_war(&self, alliance_id: &str) -> bool {
+        self.state.wars.values().any(|war| {
+            war.active
+                && (war.aggressor_alliance_id == alliance_id
+                    || war.defender_alliance_id == alliance_id)
+        })
+    }
+
+    fn war_mobilization_costs(intensity: u32) -> (i64, i64) {
+        let intensity = i64::from(intensity.max(1));
+        let electricity = WAR_DECLARE_BASE_ELECTRICITY_COST
+            .saturating_add(intensity.saturating_mul(WAR_DECLARE_ELECTRICITY_COST_PER_INTENSITY));
+        let data = WAR_DECLARE_BASE_DATA_COST
+            .saturating_add(intensity.saturating_mul(WAR_DECLARE_DATA_COST_PER_INTENSITY));
+        (electricity, data)
+    }
 
     pub(super) fn replay_from(&mut self, start_index: usize) -> Result<(), WorldError> {
         let events: Vec<WorldEvent> = self.journal.events[start_index..].to_vec();
@@ -489,6 +520,16 @@ impl World {
                     }));
                 }
                 let normalized_members: Vec<String> = member_set.into_iter().collect();
+                if normalized_members.len() > WAR_MAX_ALLIANCE_MEMBERS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance members exceed max {WAR_MAX_ALLIANCE_MEMBERS}"
+                            )],
+                        },
+                    }));
+                }
                 for member in &normalized_members {
                     if !self.state.agents.contains_key(member) {
                         return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -498,12 +539,296 @@ impl World {
                             },
                         }));
                     }
+                    if let Some(current_alliance_id) = self.agent_alliance_id(member.as_str()) {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!(
+                                    "member {} already belongs to alliance {}",
+                                    member, current_alliance_id
+                                )],
+                            },
+                        }));
+                    }
                 }
                 Ok(WorldEventBody::Domain(DomainEvent::AllianceFormed {
                     proposer_agent_id: proposer_agent_id.clone(),
                     alliance_id: alliance_id.to_string(),
                     members: normalized_members,
                     charter: charter.to_string(),
+                }))
+            }
+            Action::JoinAlliance {
+                operator_agent_id,
+                alliance_id,
+                member_agent_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(member_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: member_agent_id.clone(),
+                        },
+                    }));
+                }
+                let alliance_id = alliance_id.trim();
+                if alliance_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let Some(alliance) = self.state.alliances.get(alliance_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("alliance not found: {alliance_id}")],
+                        },
+                    }));
+                };
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "operator {} is not a member of alliance {}",
+                                operator_agent_id, alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if alliance
+                    .members
+                    .iter()
+                    .any(|member| member == member_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "member {} already in alliance {}",
+                                member_agent_id, alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if let Some(current_alliance_id) = self.agent_alliance_id(member_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "member {} already belongs to alliance {}",
+                                member_agent_id, current_alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if self.alliance_has_active_war(alliance_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance {} has active war and cannot change members",
+                                alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if alliance.members.len().saturating_add(1) > WAR_MAX_ALLIANCE_MEMBERS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance members exceed max {WAR_MAX_ALLIANCE_MEMBERS}"
+                            )],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::AllianceJoined {
+                    operator_agent_id: operator_agent_id.clone(),
+                    alliance_id: alliance_id.to_string(),
+                    member_agent_id: member_agent_id.clone(),
+                }))
+            }
+            Action::LeaveAlliance {
+                operator_agent_id,
+                alliance_id,
+                member_agent_id,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(member_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: member_agent_id.clone(),
+                        },
+                    }));
+                }
+                let alliance_id = alliance_id.trim();
+                if alliance_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let Some(alliance) = self.state.alliances.get(alliance_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("alliance not found: {alliance_id}")],
+                        },
+                    }));
+                };
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "operator {} is not a member of alliance {}",
+                                operator_agent_id, alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == member_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "member {} is not in alliance {}",
+                                member_agent_id, alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if self.alliance_has_active_war(alliance_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance {} has active war and cannot change members",
+                                alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if alliance.members.len() <= WAR_MIN_ALLIANCE_MEMBERS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance must keep at least {WAR_MIN_ALLIANCE_MEMBERS} members; use dissolve_alliance instead"
+                            )],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::AllianceLeft {
+                    operator_agent_id: operator_agent_id.clone(),
+                    alliance_id: alliance_id.to_string(),
+                    member_agent_id: member_agent_id.clone(),
+                }))
+            }
+            Action::DissolveAlliance {
+                operator_agent_id,
+                alliance_id,
+                reason,
+            } => {
+                if !self.state.agents.contains_key(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: operator_agent_id.clone(),
+                        },
+                    }));
+                }
+                let alliance_id = alliance_id.trim();
+                if alliance_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["alliance_id cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                let Some(alliance) = self.state.alliances.get(alliance_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("alliance not found: {alliance_id}")],
+                        },
+                    }));
+                };
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "operator {} is not a member of alliance {}",
+                                operator_agent_id, alliance_id
+                            )],
+                        },
+                    }));
+                }
+                if self.alliance_has_active_war(alliance_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "alliance {} has active war and cannot dissolve",
+                                alliance_id
+                            )],
+                        },
+                    }));
+                }
+                let reason = reason.trim();
+                if reason.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec!["dissolve reason cannot be empty".to_string()],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(DomainEvent::AllianceDissolved {
+                    operator_agent_id: operator_agent_id.clone(),
+                    alliance_id: alliance_id.to_string(),
+                    reason: reason.to_string(),
+                    former_members: alliance.members.clone(),
                 }))
             }
             Action::DeclareWar {
@@ -539,6 +864,19 @@ impl World {
                         },
                     }));
                 }
+                let aggressor_alliance_id = aggressor_alliance_id.trim();
+                let defender_alliance_id = defender_alliance_id.trim();
+                if aggressor_alliance_id.is_empty() || defender_alliance_id.is_empty() {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "aggressor_alliance_id and defender_alliance_id cannot be empty"
+                                    .to_string(),
+                            ],
+                        },
+                    }));
+                }
                 if aggressor_alliance_id == defender_alliance_id {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,
@@ -561,6 +899,16 @@ impl World {
                         },
                     }));
                 };
+                if aggressor.members.len() < WAR_MIN_ALLIANCE_MEMBERS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "aggressor alliance requires at least {WAR_MIN_ALLIANCE_MEMBERS} members"
+                            )],
+                        },
+                    }));
+                }
                 if !aggressor
                     .members
                     .iter()
@@ -576,11 +924,7 @@ impl World {
                         },
                     }));
                 }
-                if !self
-                    .state
-                    .alliances
-                    .contains_key(defender_alliance_id.as_str())
-                {
+                let Some(defender) = self.state.alliances.get(defender_alliance_id) else {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,
                         reason: RejectReason::RuleDenied {
@@ -588,6 +932,32 @@ impl World {
                                 "defender alliance not found: {}",
                                 defender_alliance_id
                             )],
+                        },
+                    }));
+                };
+                if defender.members.len() < WAR_MIN_ALLIANCE_MEMBERS {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "defender alliance requires at least {WAR_MIN_ALLIANCE_MEMBERS} members"
+                            )],
+                        },
+                    }));
+                }
+                let aggressor_member_set: BTreeSet<&str> =
+                    aggressor.members.iter().map(String::as_str).collect();
+                let has_member_overlap = defender
+                    .members
+                    .iter()
+                    .any(|member| aggressor_member_set.contains(member.as_str()));
+                if has_member_overlap {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![
+                                "aggressor and defender alliances cannot share members".to_string()
+                            ],
                         },
                     }));
                 }
@@ -620,26 +990,65 @@ impl World {
                     if !war.active {
                         return false;
                     }
-                    (war.aggressor_alliance_id == *aggressor_alliance_id
-                        && war.defender_alliance_id == *defender_alliance_id)
-                        || (war.aggressor_alliance_id == *defender_alliance_id
-                            && war.defender_alliance_id == *aggressor_alliance_id)
+                    war.aggressor_alliance_id == aggressor_alliance_id
+                        || war.defender_alliance_id == aggressor_alliance_id
+                        || war.aggressor_alliance_id == defender_alliance_id
+                        || war.defender_alliance_id == defender_alliance_id
                 });
                 if has_active_conflict {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,
                         reason: RejectReason::RuleDenied {
-                            notes: vec!["active war already exists for alliance pair".to_string()],
+                            notes: vec!["aggressor or defender alliance already has an active war"
+                                .to_string()],
+                        },
+                    }));
+                }
+                let (mobilization_electricity_cost, mobilization_data_cost) =
+                    Self::war_mobilization_costs(*intensity);
+                let initiator_electricity = self
+                    .state
+                    .agents
+                    .get(initiator_agent_id)
+                    .map(|cell| cell.state.resources.get(ResourceKind::Electricity))
+                    .unwrap_or(0);
+                if initiator_electricity < mobilization_electricity_cost {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientResource {
+                            agent_id: initiator_agent_id.clone(),
+                            kind: ResourceKind::Electricity,
+                            requested: mobilization_electricity_cost,
+                            available: initiator_electricity,
+                        },
+                    }));
+                }
+                let initiator_data = self
+                    .state
+                    .agents
+                    .get(initiator_agent_id)
+                    .map(|cell| cell.state.resources.get(ResourceKind::Data))
+                    .unwrap_or(0);
+                if initiator_data < mobilization_data_cost {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::InsufficientResource {
+                            agent_id: initiator_agent_id.clone(),
+                            kind: ResourceKind::Data,
+                            requested: mobilization_data_cost,
+                            available: initiator_data,
                         },
                     }));
                 }
                 Ok(WorldEventBody::Domain(DomainEvent::WarDeclared {
                     initiator_agent_id: initiator_agent_id.clone(),
                     war_id: war_id.to_string(),
-                    aggressor_alliance_id: aggressor_alliance_id.clone(),
-                    defender_alliance_id: defender_alliance_id.clone(),
+                    aggressor_alliance_id: aggressor_alliance_id.to_string(),
+                    defender_alliance_id: defender_alliance_id.to_string(),
                     objective: objective.to_string(),
                     intensity: *intensity,
+                    mobilization_electricity_cost,
+                    mobilization_data_cost,
                 }))
             }
             Action::OpenGovernanceProposal {

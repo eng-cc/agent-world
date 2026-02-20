@@ -606,6 +606,21 @@ pub enum Action {
         members: Vec<AgentId>,
         charter: String,
     },
+    JoinAlliance {
+        operator_agent_id: AgentId,
+        alliance_id: String,
+        member_agent_id: AgentId,
+    },
+    LeaveAlliance {
+        operator_agent_id: AgentId,
+        alliance_id: String,
+        member_agent_id: AgentId,
+    },
+    DissolveAlliance {
+        operator_agent_id: AgentId,
+        alliance_id: String,
+        reason: String,
+    },
     DeclareWar {
         initiator_agent_id: AgentId,
         war_id: String,

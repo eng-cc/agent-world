@@ -1165,6 +1165,9 @@ impl WorldKernel {
                 ttl_ticks,
             ),
             Action::FormAlliance { .. }
+            | Action::JoinAlliance { .. }
+            | Action::LeaveAlliance { .. }
+            | Action::DissolveAlliance { .. }
             | Action::DeclareWar { .. }
             | Action::OpenGovernanceProposal { .. }
             | Action::CastGovernanceVote { .. }

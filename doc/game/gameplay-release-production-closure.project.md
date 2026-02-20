@@ -18,10 +18,10 @@
 - [x] 更新 `testing-manual.md` 的 S8 使用口径与示例
 
 ### T3 联盟生命周期与战争约束（对应需求 4）
-- [ ] 扩展 Runtime Action/DomainEvent：`join/leave/dissolve` 与战争后果字段
-- [ ] 扩展 Runtime 规则：联盟生命周期约束、战争成本与结算后果
-- [ ] 扩展 LLM 决策 schema/parser/execution controls 支持新动作
-- [ ] 补充 runtime + llm_agent 定向测试
+- [x] 扩展 Runtime Action/DomainEvent：`join/leave/dissolve` 与战争后果字段
+- [x] 扩展 Runtime 规则：联盟生命周期约束、战争成本与结算后果
+- [x] 扩展 LLM 决策 schema/parser/execution controls 支持新动作
+- [x] 补充 runtime + llm_agent 定向测试
 
 ### T4 收口与回写
 - [ ] 回写本项目文档状态
@@ -35,5 +35,5 @@
 - 测试口径手册：`testing-manual.md`
 
 ## 状态
-- 当前阶段：T3（进行中）
+- 当前阶段：T4（进行中）
 - 阻塞项：无

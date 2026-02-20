@@ -126,6 +126,7 @@ struct LlmDecisionPayload {
     proposer_agent_id: Option<String>,
     alliance_id: Option<String>,
     members: Option<Vec<String>>,
+    member_agent_id: Option<String>,
     charter: Option<String>,
     initiator_agent_id: Option<String>,
     war_id: Option<String>,

@@ -12,7 +12,8 @@ use super::events::DomainEvent;
 use super::gameplay_state::{
     AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
     GameplayPolicyState, GovernanceProposalState, GovernanceProposalStatus,
-    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarState,
+    GovernanceVoteBallotState, GovernanceVoteState, MetaProgressState, WarParticipantOutcome,
+    WarState,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{
@@ -44,6 +45,8 @@ fn default_module_market_sale_id() -> u64 {
 fn default_next_module_instance_id() -> u64 {
     1
 }
+
+const ALLIANCE_MIN_MEMBER_COUNT: usize = 2;
 
 /// Persisted factory instance state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1641,6 +1644,187 @@ impl WorldState {
                     }
                 }
             }
+            DomainEvent::AllianceJoined {
+                operator_agent_id,
+                alliance_id,
+                member_agent_id,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(member_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: member_agent_id.clone(),
+                    });
+                }
+                if self.alliances.iter().any(|(id, alliance)| {
+                    id != alliance_id
+                        && alliance
+                            .members
+                            .iter()
+                            .any(|member| member == member_agent_id)
+                }) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "member {} already belongs to another alliance",
+                            member_agent_id
+                        ),
+                    });
+                }
+                let alliance = self.alliances.get_mut(alliance_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("alliance not found: {alliance_id}"),
+                    }
+                })?;
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "operator {} is not a member of alliance {}",
+                            operator_agent_id, alliance_id
+                        ),
+                    });
+                }
+                if alliance
+                    .members
+                    .iter()
+                    .any(|member| member == member_agent_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "member {} already exists in alliance {}",
+                            member_agent_id, alliance_id
+                        ),
+                    });
+                }
+                alliance.members.push(member_agent_id.clone());
+                alliance.members.sort();
+                alliance.members.dedup();
+
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(member_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::AllianceLeft {
+                operator_agent_id,
+                alliance_id,
+                member_agent_id,
+            } => {
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if !self.agents.contains_key(member_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: member_agent_id.clone(),
+                    });
+                }
+                let alliance = self.alliances.get_mut(alliance_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("alliance not found: {alliance_id}"),
+                    }
+                })?;
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "operator {} is not a member of alliance {}",
+                            operator_agent_id, alliance_id
+                        ),
+                    });
+                }
+                let before_len = alliance.members.len();
+                alliance.members.retain(|member| member != member_agent_id);
+                if alliance.members.len() == before_len {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "member {} not found in alliance {}",
+                            member_agent_id, alliance_id
+                        ),
+                    });
+                }
+                if alliance.members.len() < ALLIANCE_MIN_MEMBER_COUNT {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "alliance {} member count below minimum {}",
+                            alliance_id, ALLIANCE_MIN_MEMBER_COUNT
+                        ),
+                    });
+                }
+
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                }
+                if let Some(cell) = self.agents.get_mut(member_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::AllianceDissolved {
+                operator_agent_id,
+                alliance_id,
+                reason: _,
+                former_members,
+            } => {
+                let has_active_war = self.wars.values().any(|war| {
+                    war.active
+                        && (war.aggressor_alliance_id == *alliance_id
+                            || war.defender_alliance_id == *alliance_id)
+                });
+                if has_active_war {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "cannot dissolve alliance {} while active war exists",
+                            alliance_id
+                        ),
+                    });
+                }
+                let Some(alliance) = self.alliances.remove(alliance_id) else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("alliance not found: {alliance_id}"),
+                    });
+                };
+                if !alliance
+                    .members
+                    .iter()
+                    .any(|member| member == operator_agent_id)
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "operator {} is not a member of alliance {}",
+                            operator_agent_id, alliance_id
+                        ),
+                    });
+                }
+                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
+                    cell.last_active = now;
+                } else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                let members_for_touch = if former_members.is_empty() {
+                    alliance.members
+                } else {
+                    former_members.clone()
+                };
+                for member in members_for_touch {
+                    if let Some(cell) = self.agents.get_mut(member.as_str()) {
+                        cell.last_active = now;
+                    }
+                }
+            }
             DomainEvent::WarDeclared {
                 initiator_agent_id,
                 war_id,
@@ -1648,6 +1832,8 @@ impl WorldState {
                 defender_alliance_id,
                 objective,
                 intensity,
+                mobilization_electricity_cost,
+                mobilization_data_cost,
             } => {
                 if !self.alliances.contains_key(aggressor_alliance_id) {
                     return Err(WorldError::ResourceBalanceInvalid {
@@ -1665,6 +1851,31 @@ impl WorldState {
                         ),
                     });
                 }
+                let Some(initiator) = self.agents.get_mut(initiator_agent_id) else {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: initiator_agent_id.clone(),
+                    });
+                };
+                initiator
+                    .state
+                    .resources
+                    .remove(ResourceKind::Electricity, *mobilization_electricity_cost)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "war mobilization electricity debit failed for {}: {:?}",
+                            initiator_agent_id, err
+                        ),
+                    })?;
+                initiator
+                    .state
+                    .resources
+                    .remove(ResourceKind::Data, *mobilization_data_cost)
+                    .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "war mobilization data debit failed for {}: {:?}",
+                            initiator_agent_id, err
+                        ),
+                    })?;
                 self.wars.insert(
                     war_id.clone(),
                     WarState {
@@ -1675,29 +1886,31 @@ impl WorldState {
                         objective: objective.clone(),
                         intensity: *intensity,
                         active: true,
+                        declared_mobilization_electricity_cost: *mobilization_electricity_cost,
+                        declared_mobilization_data_cost: *mobilization_data_cost,
                         max_duration_ticks: 6_u64.saturating_add(u64::from(*intensity) * 2),
                         aggressor_score: 0,
                         defender_score: 0,
                         concluded_at: None,
                         winner_alliance_id: None,
+                        loser_alliance_id: None,
                         settlement_summary: None,
+                        participant_outcomes: Vec::new(),
                         declared_at: now,
                     },
                 );
                 if let Some(cell) = self.agents.get_mut(initiator_agent_id) {
                     cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: initiator_agent_id.clone(),
-                    });
                 }
             }
             DomainEvent::WarConcluded {
                 war_id,
                 winner_alliance_id,
+                loser_alliance_id,
                 aggressor_score,
                 defender_score,
                 summary,
+                participant_outcomes,
             } => {
                 let Some(state) = self.wars.get_mut(war_id) else {
                     return Err(WorldError::ResourceBalanceInvalid {
@@ -1709,7 +1922,25 @@ impl WorldState {
                 state.defender_score = *defender_score;
                 state.concluded_at = Some(now);
                 state.winner_alliance_id = Some(winner_alliance_id.clone());
+                let resolved_loser_alliance_id = if loser_alliance_id.is_empty() {
+                    if state.aggressor_alliance_id == *winner_alliance_id {
+                        state.defender_alliance_id.clone()
+                    } else {
+                        state.aggressor_alliance_id.clone()
+                    }
+                } else {
+                    loser_alliance_id.clone()
+                };
+                state.loser_alliance_id = Some(resolved_loser_alliance_id);
                 state.settlement_summary = Some(summary.clone());
+                state.participant_outcomes = participant_outcomes.clone();
+
+                apply_war_participant_outcomes(
+                    &mut self.agents,
+                    &mut self.reputation_scores,
+                    participant_outcomes,
+                    now,
+                )?;
             }
             DomainEvent::GovernanceProposalOpened {
                 proposer_agent_id,
@@ -2344,6 +2575,70 @@ fn sync_legacy_world_materials(
         .cloned()
         .unwrap_or_default();
     *legacy_world_materials = world_materials;
+}
+
+fn apply_war_participant_outcomes(
+    agents: &mut BTreeMap<String, AgentCell>,
+    reputation_scores: &mut BTreeMap<String, i64>,
+    outcomes: &[WarParticipantOutcome],
+    now: WorldTime,
+) -> Result<(), WorldError> {
+    for outcome in outcomes {
+        let Some(cell) = agents.get_mut(outcome.agent_id.as_str()) else {
+            return Err(WorldError::AgentNotFound {
+                agent_id: outcome.agent_id.clone(),
+            });
+        };
+
+        apply_agent_resource_delta(
+            cell,
+            ResourceKind::Electricity,
+            outcome.electricity_delta,
+            outcome.agent_id.as_str(),
+            "war electricity outcome",
+        )?;
+        apply_agent_resource_delta(
+            cell,
+            ResourceKind::Data,
+            outcome.data_delta,
+            outcome.agent_id.as_str(),
+            "war data outcome",
+        )?;
+        cell.last_active = now;
+
+        if outcome.reputation_delta != 0 {
+            let score = reputation_scores
+                .entry(outcome.agent_id.clone())
+                .or_insert(0);
+            *score = score.saturating_add(outcome.reputation_delta);
+        }
+    }
+    Ok(())
+}
+
+fn apply_agent_resource_delta(
+    cell: &mut AgentCell,
+    kind: ResourceKind,
+    delta: i64,
+    agent_id: &str,
+    context: &str,
+) -> Result<(), WorldError> {
+    if delta == 0 {
+        return Ok(());
+    }
+    if delta > 0 {
+        return cell.state.resources.add(kind, delta).map_err(|err| {
+            WorldError::ResourceBalanceInvalid {
+                reason: format!("{context} apply failed for {agent_id}: {err:?}"),
+            }
+        });
+    }
+    cell.state
+        .resources
+        .remove(kind, delta.saturating_abs())
+        .map_err(|err| WorldError::ResourceBalanceInvalid {
+            reason: format!("{context} apply failed for {agent_id}: {err:?}"),
+        })
 }
 
 fn remove_resource_balance(

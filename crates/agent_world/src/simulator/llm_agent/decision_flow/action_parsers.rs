@@ -45,6 +45,9 @@ pub(super) fn parse_market_or_social_action(
         "revoke_social_fact" => Some(parse_revoke_social_fact(parsed, agent_id)),
         "declare_social_edge" => Some(parse_declare_social_edge(parsed, agent_id)),
         "form_alliance" => Some(parse_form_alliance(parsed, agent_id)),
+        "join_alliance" => Some(parse_join_alliance(parsed, agent_id)),
+        "leave_alliance" => Some(parse_leave_alliance(parsed, agent_id)),
+        "dissolve_alliance" => Some(parse_dissolve_alliance(parsed, agent_id)),
         "declare_war" => Some(parse_declare_war(parsed, agent_id)),
         "open_governance_proposal" => Some(parse_open_governance_proposal(parsed, agent_id)),
         "cast_governance_vote" => Some(parse_cast_governance_vote(parsed, agent_id)),
@@ -637,6 +640,84 @@ fn parse_form_alliance(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Ac
         alliance_id,
         members: normalized_members.into_iter().collect(),
         charter,
+    })
+}
+
+fn parse_join_alliance(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let operator_agent_id = parse_agent_identity_or_self(
+        parsed.operator_agent_id.as_deref(),
+        "join_alliance",
+        "operator_agent_id",
+        agent_id,
+    )?;
+    let alliance_id = parse_required_text(
+        parsed.alliance_id.as_deref(),
+        "join_alliance",
+        "alliance_id",
+    )?;
+    let member_agent_id = parse_agent_identity_or_self(
+        parsed
+            .member_agent_id
+            .as_deref()
+            .or(parsed.operator_agent_id.as_deref()),
+        "join_alliance",
+        "member_agent_id",
+        agent_id,
+    )?;
+
+    Ok(Action::JoinAlliance {
+        operator_agent_id,
+        alliance_id,
+        member_agent_id,
+    })
+}
+
+fn parse_leave_alliance(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let operator_agent_id = parse_agent_identity_or_self(
+        parsed.operator_agent_id.as_deref(),
+        "leave_alliance",
+        "operator_agent_id",
+        agent_id,
+    )?;
+    let alliance_id = parse_required_text(
+        parsed.alliance_id.as_deref(),
+        "leave_alliance",
+        "alliance_id",
+    )?;
+    let member_agent_id = parse_agent_identity_or_self(
+        parsed
+            .member_agent_id
+            .as_deref()
+            .or(parsed.operator_agent_id.as_deref()),
+        "leave_alliance",
+        "member_agent_id",
+        agent_id,
+    )?;
+
+    Ok(Action::LeaveAlliance {
+        operator_agent_id,
+        alliance_id,
+        member_agent_id,
+    })
+}
+
+fn parse_dissolve_alliance(parsed: &LlmDecisionPayload, agent_id: &str) -> Result<Action, String> {
+    let operator_agent_id = parse_agent_identity_or_self(
+        parsed.operator_agent_id.as_deref(),
+        "dissolve_alliance",
+        "operator_agent_id",
+        agent_id,
+    )?;
+    let alliance_id = parse_required_text(
+        parsed.alliance_id.as_deref(),
+        "dissolve_alliance",
+        "alliance_id",
+    )?;
+    let reason = parse_required_text(parsed.reason.as_deref(), "dissolve_alliance", "reason")?;
+    Ok(Action::DissolveAlliance {
+        operator_agent_id,
+        alliance_id,
+        reason,
     })
 }
 

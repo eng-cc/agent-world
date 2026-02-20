@@ -6,14 +6,20 @@ use std::cmp::Ordering;
 
 use super::super::{
     CrisisStatus, DomainEvent, EconomicContractStatus, GovernanceProposalStatus, ModuleRole,
-    WorldError, WorldEvent, WorldEventBody,
+    WarParticipantOutcome, WorldError, WorldEvent, WorldEventBody,
 };
 use super::World;
+use crate::simulator::ResourceKind;
 
 const CRISIS_AUTO_INTERVAL_TICKS: u64 = 8;
 const CRISIS_DEFAULT_DURATION_TICKS: u64 = 6;
 const CRISIS_TIMEOUT_PENALTY_PER_SEVERITY: i64 = 10;
 const WAR_SCORE_PER_MEMBER: i64 = 10;
+const WAR_SCORE_REPUTATION_DIVISOR: i64 = 10;
+const WAR_WINNER_REPUTATION_PER_INTENSITY: i64 = 2;
+const WAR_LOSER_REPUTATION_PER_INTENSITY: i64 = 3;
+const WAR_LOSER_ELECTRICITY_PENALTY_PER_INTENSITY: i64 = 6;
+const WAR_LOSER_DATA_PENALTY_PER_INTENSITY: i64 = 4;
 const CONTRACT_EXPIRY_COUNTERPARTY_PENALTY_DIVISOR: i64 = 2;
 const GAMEPLAY_LIFECYCLE_EMIT_KIND: &str = "gameplay.lifecycle.directives";
 
@@ -47,9 +53,13 @@ enum GameplayLifecycleDirective {
     WarConclude {
         war_id: String,
         winner_alliance_id: String,
+        #[serde(default)]
+        loser_alliance_id: Option<String>,
         aggressor_score: i64,
         defender_score: i64,
         summary: String,
+        #[serde(default)]
+        participant_outcomes: Vec<WarParticipantOutcome>,
     },
     MetaGrant {
         operator_agent_id: String,
@@ -195,16 +205,32 @@ impl World {
             GameplayLifecycleDirective::WarConclude {
                 war_id,
                 winner_alliance_id,
+                loser_alliance_id,
                 aggressor_score,
                 defender_score,
                 summary,
+                participant_outcomes,
             } => self.append_gameplay_domain_event(
                 DomainEvent::WarConcluded {
+                    loser_alliance_id: loser_alliance_id.unwrap_or_else(|| {
+                        self.state
+                            .wars
+                            .get(war_id.as_str())
+                            .map(|war| {
+                                if war.aggressor_alliance_id == winner_alliance_id {
+                                    war.defender_alliance_id.clone()
+                                } else {
+                                    war.aggressor_alliance_id.clone()
+                                }
+                            })
+                            .unwrap_or_default()
+                    }),
                     war_id,
                     winner_alliance_id,
                     aggressor_score,
                     defender_score,
                     summary,
+                    participant_outcomes,
                 },
                 emitted,
             ),
@@ -460,30 +486,170 @@ impl World {
                 .get(&war.defender_alliance_id)
                 .map(|alliance| alliance.members.len() as i64)
                 .unwrap_or(0);
+            let aggressor_reputation =
+                self.alliance_reputation_total(war.aggressor_alliance_id.as_str());
+            let defender_reputation =
+                self.alliance_reputation_total(war.defender_alliance_id.as_str());
             let aggressor_score = aggressor_members
                 .saturating_mul(WAR_SCORE_PER_MEMBER)
-                .saturating_add(i64::from(war.intensity));
-            let defender_score = defender_members.saturating_mul(WAR_SCORE_PER_MEMBER);
-            let winner_alliance_id = match aggressor_score.cmp(&defender_score) {
-                Ordering::Greater | Ordering::Equal => war.aggressor_alliance_id.clone(),
-                Ordering::Less => war.defender_alliance_id.clone(),
+                .saturating_add(i64::from(war.intensity))
+                .saturating_add(aggressor_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
+            let defender_score = defender_members
+                .saturating_mul(WAR_SCORE_PER_MEMBER)
+                .saturating_add(defender_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
+            let (winner_alliance_id, loser_alliance_id) = match aggressor_score.cmp(&defender_score)
+            {
+                Ordering::Greater | Ordering::Equal => (
+                    war.aggressor_alliance_id.clone(),
+                    war.defender_alliance_id.clone(),
+                ),
+                Ordering::Less => (
+                    war.defender_alliance_id.clone(),
+                    war.aggressor_alliance_id.clone(),
+                ),
             };
+            let participant_outcomes = self.build_war_participant_outcomes(
+                winner_alliance_id.as_str(),
+                loser_alliance_id.as_str(),
+                war.intensity,
+            );
             let summary = format!(
-                "auto settlement: aggressor_score={} defender_score={}",
-                aggressor_score, defender_score
+                "auto settlement: aggressor_score={} defender_score={} aggressor_reputation={} defender_reputation={} outcome_count={}",
+                aggressor_score,
+                defender_score,
+                aggressor_reputation,
+                defender_reputation,
+                participant_outcomes.len()
             );
             self.append_gameplay_domain_event(
                 DomainEvent::WarConcluded {
                     war_id: war.war_id,
                     winner_alliance_id,
+                    loser_alliance_id,
                     aggressor_score,
                     defender_score,
                     summary,
+                    participant_outcomes,
                 },
                 emitted,
             )?;
         }
         Ok(())
+    }
+
+    fn alliance_reputation_total(&self, alliance_id: &str) -> i64 {
+        self.state
+            .alliances
+            .get(alliance_id)
+            .map(|alliance| {
+                alliance
+                    .members
+                    .iter()
+                    .map(|member| {
+                        self.state
+                            .reputation_scores
+                            .get(member)
+                            .copied()
+                            .unwrap_or(0)
+                    })
+                    .sum()
+            })
+            .unwrap_or(0)
+    }
+
+    fn alliance_members_sorted(&self, alliance_id: &str) -> Vec<String> {
+        let mut members = self
+            .state
+            .alliances
+            .get(alliance_id)
+            .map(|alliance| alliance.members.clone())
+            .unwrap_or_default();
+        members.sort();
+        members
+    }
+
+    fn build_war_participant_outcomes(
+        &self,
+        winner_alliance_id: &str,
+        loser_alliance_id: &str,
+        intensity: u32,
+    ) -> Vec<WarParticipantOutcome> {
+        let intensity = i64::from(intensity.max(1));
+        let loser_electricity_penalty = intensity
+            .saturating_mul(WAR_LOSER_ELECTRICITY_PENALTY_PER_INTENSITY)
+            .max(1);
+        let loser_data_penalty = intensity
+            .saturating_mul(WAR_LOSER_DATA_PENALTY_PER_INTENSITY)
+            .max(1);
+        let loser_reputation_delta = intensity
+            .saturating_mul(WAR_LOSER_REPUTATION_PER_INTENSITY)
+            .saturating_neg();
+        let winner_reputation_delta = intensity.saturating_mul(WAR_WINNER_REPUTATION_PER_INTENSITY);
+
+        let loser_members = self.alliance_members_sorted(loser_alliance_id);
+        let winner_members = self.alliance_members_sorted(winner_alliance_id);
+        let mut outcomes = Vec::new();
+        let mut total_electricity_spoils = 0_i64;
+        let mut total_data_spoils = 0_i64;
+
+        for member in loser_members {
+            let available_electricity = self
+                .state
+                .agents
+                .get(member.as_str())
+                .map(|cell| cell.state.resources.get(ResourceKind::Electricity))
+                .unwrap_or(0)
+                .max(0);
+            let available_data = self
+                .state
+                .agents
+                .get(member.as_str())
+                .map(|cell| cell.state.resources.get(ResourceKind::Data))
+                .unwrap_or(0)
+                .max(0);
+            let electricity_loss = available_electricity.min(loser_electricity_penalty);
+            let data_loss = available_data.min(loser_data_penalty);
+            total_electricity_spoils = total_electricity_spoils.saturating_add(electricity_loss);
+            total_data_spoils = total_data_spoils.saturating_add(data_loss);
+            outcomes.push(WarParticipantOutcome {
+                agent_id: member,
+                electricity_delta: electricity_loss.saturating_neg(),
+                data_delta: data_loss.saturating_neg(),
+                reputation_delta: loser_reputation_delta,
+            });
+        }
+
+        if !winner_members.is_empty() {
+            let winner_count = i64::try_from(winner_members.len()).unwrap_or(1).max(1);
+            let base_electricity_gain = total_electricity_spoils.saturating_div(winner_count);
+            let base_data_gain = total_data_spoils.saturating_div(winner_count);
+            let mut electricity_remainder = total_electricity_spoils
+                .saturating_sub(base_electricity_gain.saturating_mul(winner_count));
+            let mut data_remainder =
+                total_data_spoils.saturating_sub(base_data_gain.saturating_mul(winner_count));
+
+            for member in winner_members {
+                let mut electricity_gain = base_electricity_gain;
+                let mut data_gain = base_data_gain;
+                if electricity_remainder > 0 {
+                    electricity_gain = electricity_gain.saturating_add(1);
+                    electricity_remainder = electricity_remainder.saturating_sub(1);
+                }
+                if data_remainder > 0 {
+                    data_gain = data_gain.saturating_add(1);
+                    data_remainder = data_remainder.saturating_sub(1);
+                }
+                outcomes.push(WarParticipantOutcome {
+                    agent_id: member,
+                    electricity_delta: electricity_gain,
+                    data_delta: data_gain,
+                    reputation_delta: winner_reputation_delta,
+                });
+            }
+        }
+
+        outcomes.sort_by(|left, right| left.agent_id.cmp(&right.agent_id));
+        outcomes
     }
 
     fn append_gameplay_domain_event(

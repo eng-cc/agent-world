@@ -53,6 +53,9 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
                 "domain.gameplay.economic_contract_expired"
             }
             DomainEvent::AllianceFormed { .. } => "domain.gameplay.alliance_formed",
+            DomainEvent::AllianceJoined { .. } => "domain.gameplay.alliance_joined",
+            DomainEvent::AllianceLeft { .. } => "domain.gameplay.alliance_left",
+            DomainEvent::AllianceDissolved { .. } => "domain.gameplay.alliance_dissolved",
             DomainEvent::WarDeclared { .. } => "domain.gameplay.war_declared",
             DomainEvent::WarConcluded { .. } => "domain.gameplay.war_concluded",
             DomainEvent::GovernanceProposalOpened { .. } => {
@@ -117,6 +120,9 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         }
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
+        Action::JoinAlliance { .. } => "action.gameplay.join_alliance",
+        Action::LeaveAlliance { .. } => "action.gameplay.leave_alliance",
+        Action::DissolveAlliance { .. } => "action.gameplay.dissolve_alliance",
         Action::DeclareWar { .. } => "action.gameplay.declare_war",
         Action::OpenGovernanceProposal { .. } => "action.gameplay.open_governance_proposal",
         Action::CastGovernanceVote { .. } => "action.gameplay.cast_governance_vote",
