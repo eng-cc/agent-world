@@ -6,7 +6,9 @@ OUT_DIR="$ROOT_DIR/.tmp/builtin-wasm-sync-modules"
 PROFILE="release"
 CHECK_ONLY=0
 MODULE_IDS_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_module_ids.txt"
+MODULE_MANIFEST_MAP_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/builtin_module_manifest_map.txt"
 HASH_MANIFEST_PATH="$ROOT_DIR/crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256"
+IDENTITY_MANIFEST_PATH=""
 DISTFS_ROOT="$ROOT_DIR/.distfs/builtin_wasm"
 DISTFS_BLOBS_DIR="$DISTFS_ROOT/blobs"
 CANONICAL_PLATFORMS_CSV="${AGENT_WORLD_WASM_CANONICAL_PLATFORMS:-darwin-arm64,linux-x86_64}"
@@ -26,7 +28,12 @@ Options:
   --profile <name>        Cargo profile forwarded to wasm build suite (default: release)
   --out-dir <dir>         Build output directory (default: .tmp/builtin-wasm-sync-modules)
   --module-ids-path <p>   Module id manifest path (default: crates/.../m1_builtin_module_ids.txt)
+  --module-manifest-map-path <p>
+                          Module id -> Cargo.toml map path
+                          (default: crates/.../builtin_module_manifest_map.txt)
   --hash-path <p>         Hash manifest path tracked by git (default: crates/.../m1_builtin_modules.sha256)
+  --identity-path <p>     Identity manifest path tracked by git
+                          (default: <hash-path with .sha256 replaced by .identity.json>)
   --distfs-root <p>       DistFS builtin wasm root (default: .distfs/builtin_wasm)
   --artifact-dir <p>      Deprecated alias of DistFS blobs dir (default: <distfs-root>/blobs)
   -h, --help              Show this help
@@ -188,6 +195,29 @@ hydrate_distfs_blobs() {
     --built-dir "$OUT_DIR"
 }
 
+sync_identity_manifest() {
+  local mode="$1"
+  local canonical_platforms_joined
+  canonical_platforms_joined="$(IFS=, ; echo "${CANONICAL_PLATFORMS[*]}")"
+
+  cmd=(
+    env -u RUSTC_WRAPPER cargo run --quiet -p agent_world_distfs --bin sync_builtin_wasm_identity --
+    --module-ids-path "$MODULE_IDS_PATH"
+    --module-manifest-map-path "$MODULE_MANIFEST_MAP_PATH"
+    --hash-manifest-path "$HASH_MANIFEST_PATH"
+    --identity-manifest-path "$IDENTITY_MANIFEST_PATH"
+    --metadata-dir "$OUT_DIR"
+    --workspace-root "$ROOT_DIR"
+    --profile "$PROFILE"
+    --canonical-platforms "$canonical_platforms_joined"
+  )
+  if [[ "$mode" == "check" ]]; then
+    cmd+=(--check)
+  fi
+
+  "${cmd[@]}"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --check)
@@ -209,9 +239,19 @@ while [[ $# -gt 0 ]]; do
       MODULE_IDS_PATH="$2"
       shift 2
       ;;
+    --module-manifest-map-path)
+      [[ $# -ge 2 ]] || { echo "error: --module-manifest-map-path requires a value" >&2; exit 2; }
+      MODULE_MANIFEST_MAP_PATH="$2"
+      shift 2
+      ;;
     --hash-path)
       [[ $# -ge 2 ]] || { echo "error: --hash-path requires a value" >&2; exit 2; }
       HASH_MANIFEST_PATH="$2"
+      shift 2
+      ;;
+    --identity-path)
+      [[ $# -ge 2 ]] || { echo "error: --identity-path requires a value" >&2; exit 2; }
+      IDENTITY_MANIFEST_PATH="$2"
       shift 2
       ;;
     --distfs-root)
@@ -237,6 +277,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "$IDENTITY_MANIFEST_PATH" ]]; then
+  if [[ "$HASH_MANIFEST_PATH" == *.sha256 ]]; then
+    IDENTITY_MANIFEST_PATH="${HASH_MANIFEST_PATH%.sha256}.identity.json"
+  else
+    IDENTITY_MANIFEST_PATH="${HASH_MANIFEST_PATH}.identity.json"
+  fi
+fi
 
 CURRENT_PLATFORM="$(detect_current_platform)"
 read_canonical_platforms
@@ -362,6 +410,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     fi
   done
 
+  sync_identity_manifest check
   hydrate_distfs_blobs
 
   echo "check ok: hash manifest is in sync with built wasm"
@@ -369,6 +418,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
   echo "  current_platform=$CURRENT_PLATFORM"
   echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
   echo "  hash_manifest=$HASH_MANIFEST_PATH"
+  echo "  identity_manifest=$IDENTITY_MANIFEST_PATH"
   echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"
   exit 0
 fi
@@ -468,11 +518,13 @@ mkdir -p "$(dirname "$HASH_MANIFEST_PATH")"
 mv "$tmp_manifest" "$HASH_MANIFEST_PATH"
 trap - EXIT
 
+sync_identity_manifest sync
 hydrate_distfs_blobs
 
-echo "synced builtin wasm hash manifest + DistFS blobs"
+echo "synced builtin wasm hash/identity manifest + DistFS blobs"
 echo "  module_count=${#MODULE_IDS[@]}"
 echo "  current_platform=$CURRENT_PLATFORM"
 echo "  canonical_platforms=${CANONICAL_PLATFORMS[*]}"
 echo "  hash_manifest=$HASH_MANIFEST_PATH"
+echo "  identity_manifest=$IDENTITY_MANIFEST_PATH"
 echo "  distfs_blobs_dir=$DISTFS_BLOBS_DIR"
