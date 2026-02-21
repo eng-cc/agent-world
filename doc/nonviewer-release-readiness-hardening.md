@@ -49,3 +49,10 @@
   - 缓解：协议字段保持可选，保留 legacy 兼容路径并补充错误码提示。
 - 历史快照/日志兼容风险。
   - 缓解：新增字段全部 `serde(default)`，补 replay/roundtrip 测试。
+
+## 当前状态
+- 状态：已完成（2026-02-21）
+- 完成项：
+  - CI `required/full` 分层口径更新并落地到脚本与测试手册。
+  - Agent 控制绑定升级为 `player_id + public_key`（含 legacy 升级与兼容）。
+  - 协议、live 控制链路、persist/replay 路径测试通过。
