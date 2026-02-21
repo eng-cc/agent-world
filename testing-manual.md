@@ -196,14 +196,20 @@ nvm use 24
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 mkdir -p output/playwright/viewer
-bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011"
+bash "$PWCLI" open "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011&test_api=1"
 bash "$PWCLI" snapshot
+bash "$PWCLI" eval '() => typeof window.__AW_TEST__ === "object"'
+bash "$PWCLI" eval '() => window.__AW_TEST__.runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")'
+bash "$PWCLI" eval '() => window.__AW_TEST__.sendControl("pause")'
+bash "$PWCLI" eval '() => window.__AW_TEST__.getState()'
+bash "$PWCLI" eval '() => { const s = window.__AW_TEST__.getState(); return !!s && typeof s.tick === "number" && typeof s.connectionStatus === "string"; }'
 bash "$PWCLI" console
 bash "$PWCLI" screenshot --filename output/playwright/viewer/viewer-web.png
 bash "$PWCLI" close
 ```
 4) 最小通过标准：
 - `snapshot` 可见 `canvas`
+- `window.__AW_TEST__` 可用，且 `getState()` 返回 `tick/connectionStatus`
 - `console error = 0`
 - 至少 1 张截图在 `output/playwright/viewer/`
 
@@ -216,6 +222,7 @@ bash "$PWCLI" close
   - 该链路定位为历史兼容/应急，不作为默认闭环流程。
 - 推荐约定：
   - Web 闭环产物统一放在 `output/playwright/`。
+  - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
   - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
   - 若页面首帧空白，优先排查：
     - `trunk` 是否完成首轮编译。

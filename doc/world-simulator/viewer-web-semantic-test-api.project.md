@@ -7,6 +7,7 @@
 - [x] WTA-3 `app_bootstrap` 接入命令消费/状态发布系统
 - [x] WTA-4 回归测试与编译验证（`agent_world_viewer`）
 - [x] WTA-5 状态回写与 devlog 收口
+- [x] WTA-6 `testing-manual.md` S6 Playwright 示例切换到 `window.__AW_TEST__`
 
 ## 依赖
 - `crates/agent_world_viewer/src/viewer_automation.rs`
@@ -16,5 +17,5 @@
 
 ## 状态
 - 当前阶段：WTA 全部完成
-- 下一步：在 Playwright 闭环脚本中切换到 `window.__AW_TEST__` 语义调用，替代坐标点击
-- 最近更新：2026-02-21（WTA-5 完成，功能与测试收口）
+- 下一步：可选将 `window.__AW_TEST__` 常用序列封装成脚本级 helper，进一步减少重复命令
+- 最近更新：2026-02-21（WTA-6 完成，S6 手册示例迁移）
