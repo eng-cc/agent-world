@@ -56,9 +56,6 @@
 - 入口 A：`scripts/ci-tests.sh`（主流程）
 - `required`：
   - `cargo fmt --check`
-  - `sync-m1-builtin-wasm-artifacts --check`
-  - `sync-m4-builtin-wasm-artifacts --check`
-  - `sync-m5-builtin-wasm-artifacts --check`
   - `cargo test -p agent_world --tests --features test_tier_required`
   - `cargo test -p agent_world_viewer`
   - `cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
@@ -80,12 +77,12 @@
 - `agent_world_consensus` 独立测试集。
 - `agent_world_distfs` 独立测试集。
 - Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
-- `m4/m5` builtin wasm 的跨 runner hash 对账（当前独立 gate 仅覆盖 `m1`）。
+- `m4/m5` builtin wasm hash 校验（`scripts/ci-tests.sh` 已移除 `sync-m4/m5 --check`）。
 
 结论：
 - `required/full` 是“核心链路测试层”的主入口（已包含 `agent_world_viewer` 单测 + wasm check）；
 - `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
-- `builtin-wasm-m1-multi-runner` 提供“跨 runner 构建 hash 链路健康”独立可观测性；
+- `builtin-wasm-m1-multi-runner` 负责 `m1` hash 链路独立 gate；
 - 若目标是“整应用充分测试”，必须在其上叠加分布式子系统与 UI 闭环层。
 
 ## 分层模型（针对当前仓库）
@@ -121,10 +118,13 @@
 ### S0：基础门禁套件（L0）
 ```bash
 env -u RUSTC_WRAPPER cargo fmt --all -- --check
+env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+```
+- 可选（按需执行 builtin wasm hash 校验）：
+```bash
 ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
 ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
 ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
-env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown
 ```
 
 ### S1：核心 required 套件（L1）

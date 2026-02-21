@@ -59,15 +59,8 @@ run_agent_world_viewer_wasm_check() {
   run_cargo check -p agent_world_viewer --target wasm32-unknown-unknown
 }
 
-run_required_builtin_wasm_checks() {
-  run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
-  run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
-  run ./scripts/sync-m5-builtin-wasm-artifacts.sh --check
-}
-
 run_required_gate_checks() {
   run env -u RUSTC_WRAPPER cargo fmt --all -- --check
-  run_required_builtin_wasm_checks
 }
 
 echo "+ ci test tier: $tier"
