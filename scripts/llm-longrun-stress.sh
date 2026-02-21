@@ -28,6 +28,8 @@ Options:
   --prompt-switches-json <json>      Multi-stage switch plan JSON (array of {"tick":n,"llm_*":...})
   --runtime-gameplay-bridge          Enable runtime gameplay bridge in demo (default: on)
   --no-runtime-gameplay-bridge       Disable runtime gameplay bridge in demo
+  --load-state-dir <path>            Load simulator state dir before run (snapshot/journal)
+  --save-state-dir <path>            Save simulator state dir after run (snapshot/journal)
   --max-llm-errors <n>         Fail if llm_errors > n (default: 0)
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
@@ -59,6 +61,7 @@ Notes:
       resilience_drill             -> crisis/economic contract pressure test
   - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
   - runtime gameplay bridge 默认开启：将 simulator 的 runtime-only gameplay/economic 动作接入 runtime World，降低非预期拒绝
+  - state dir 参数仅支持单场景模式（便于构建/复用同一阶段基线）
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
@@ -645,6 +648,8 @@ write_summary_file() {
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
+    echo "load_state_dir=${load_state_dir:-none}"
+    echo "save_state_dir=${save_state_dir:-none}"
     echo "prompt_pack=${prompt_pack:-none}"
     echo "llm_system_prompt_set=$llm_system_prompt_set"
     echo "llm_short_goal_set=$llm_short_goal_set"
@@ -673,6 +678,12 @@ run_scenario_to_log() {
     cmd+=(--runtime-gameplay-bridge)
   else
     cmd+=(--no-runtime-gameplay-bridge)
+  fi
+  if [[ -n "$load_state_dir" ]]; then
+    cmd+=(--load-state-dir "$load_state_dir")
+  fi
+  if [[ -n "$save_state_dir" ]]; then
+    cmd+=(--save-state-dir "$save_state_dir")
   fi
   if [[ $print_llm_io -eq 1 ]]; then
     cmd+=(--print-llm-io)
@@ -804,6 +815,8 @@ switch_llm_short_goal=""
 switch_llm_long_goal=""
 prompt_switches_json=""
 runtime_gameplay_bridge=1
+load_state_dir=""
+save_state_dir=""
 declare -a required_action_kinds=()
 declare -a required_action_min_counts=()
 required_action_kinds_config="none"
@@ -885,6 +898,14 @@ while [[ $# -gt 0 ]]; do
     --no-runtime-gameplay-bridge)
       runtime_gameplay_bridge=0
       shift
+      ;;
+    --load-state-dir)
+      load_state_dir=${2:-}
+      shift 2
+      ;;
+    --save-state-dir)
+      save_state_dir=${2:-}
+      shift 2
       ;;
     --max-llm-errors)
       max_llm_errors=${2:-}
@@ -971,6 +992,11 @@ if (( multi_mode == 0 )); then
   jobs=1
 elif (( jobs > scenario_count )); then
   jobs=$scenario_count
+fi
+
+if (( multi_mode == 1 )) && { [[ -n "$load_state_dir" ]] || [[ -n "$save_state_dir" ]]; }; then
+  echo "--load-state-dir/--save-state-dir only support single-scenario mode" >&2
+  exit 2
 fi
 
 ensure_positive_int "--ticks" "$ticks"
@@ -1131,6 +1157,12 @@ for scenario in "${scenarios[@]}"; do
       cmd+=(--runtime-gameplay-bridge)
     else
       cmd+=(--no-runtime-gameplay-bridge)
+    fi
+    if [[ -n "$load_state_dir" ]]; then
+      cmd+=(--load-state-dir "$load_state_dir")
+    fi
+    if [[ -n "$save_state_dir" ]]; then
+      cmd+=(--save-state-dir "$save_state_dir")
     fi
     if [[ $print_llm_io -eq 1 ]]; then
       cmd+=(--print-llm-io)
@@ -1295,6 +1327,8 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
+    echo "load_state_dir=${load_state_dir:-none}"
+    echo "save_state_dir=${save_state_dir:-none}"
     echo "report_json=$report_json"
     echo "run_log=$log_file"
     echo "per_scenario_dir=$out_dir/scenarios"

@@ -599,6 +599,13 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                         }
                     },
                     {
+                        "name": "world.rules.guide",
+                        "description": "读取世界玩法规则、阶段目标与失败恢复建议。",
+                        "args": {
+                            "topic": "string, optional, enum=quickstart|resources|industry|governance|economic|social|recovery|all"
+                        }
+                    },
+                    {
                         "name": "module.lifecycle.status",
                         "description": "读取模块生命周期快照（artifact 与 installed）。",
                         "args": {
@@ -678,6 +685,127 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
 
                 serde_json::to_value(entries)
                     .map_err(|err| format!("serialize long-term memory failed: {err}"))
+            }
+            "world.rules.guide" => {
+                let topic = request
+                    .args
+                    .get("topic")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .unwrap_or("quickstart")
+                    .to_ascii_lowercase();
+                let topic_ref = topic.as_str();
+                let topic = match topic_ref {
+                    "quickstart" | "resources" | "industry" | "governance" | "economic"
+                    | "social" | "recovery" | "all" => topic_ref,
+                    _ => "quickstart",
+                };
+
+                let guide = match topic {
+                    "resources" => serde_json::json!({
+                        "goal": "稳定基础资源，避免停摆",
+                        "steps": [
+                            "先读 observation.last_action 与 resources，识别瓶颈是 electricity 还是 data。",
+                            "electricity 紧缺优先 harvest_radiation；data 紧缺优先 mine_compound。",
+                            "当 compound_mass 与 data 足够时再 refine_compound，避免空转。"
+                        ],
+                        "key_checks": [
+                            "last_action.reject_reason",
+                            "self_resources.electricity",
+                            "self_resources.data"
+                        ]
+                    }),
+                    "industry" => serde_json::json!({
+                        "goal": "形成工业闭环（采矿 -> 精炼 -> 建厂 -> 排产）",
+                        "steps": [
+                            "mine_compound 获取可精炼原料。",
+                            "refine_compound 产出 hardware/data。",
+                            "build_factory(factory.assembler.mk1) 建立生产节点。",
+                            "schedule_recipe 覆盖 control_chip/motor/logistics_drone。"
+                        ],
+                        "success_signals": [
+                            "action_kind_build_factory >= 1",
+                            "action_kind_schedule_recipe >= 1"
+                        ]
+                    }),
+                    "governance" => serde_json::json!({
+                        "goal": "把文明推进到可治理状态",
+                        "steps": [
+                            "先 open_governance_proposal 建立公共议题。",
+                            "再 cast_governance_vote 推进共识。",
+                            "根据局势切换 resolve_crisis 或 grant_meta_progress 收敛事件。"
+                        ],
+                        "anti_pattern": "避免 open/cast 无限循环。"
+                    }),
+                    "economic" => serde_json::json!({
+                        "goal": "验证经济协作可闭环",
+                        "steps": [
+                            "open_economic_contract 发起契约。",
+                            "accept_economic_contract 建立对手方关系。",
+                            "settle_economic_contract 完成结算并记录结果。"
+                        ]
+                    }),
+                    "social" => serde_json::json!({
+                        "goal": "构建可追踪社会关系",
+                        "steps": [
+                            "publish_social_fact 提交可验证事实。",
+                            "declare_social_edge 建立关系边并维护权重。",
+                            "必要时 challenge/adjudicate/revoke 管理争议事实。"
+                        ]
+                    }),
+                    "recovery" => serde_json::json!({
+                        "goal": "遇到拒绝时快速回到可执行路径",
+                        "by_reject_reason": {
+                            "insufficient_resource.data": "优先 mine_compound 补 data 前置，再 refine_compound。",
+                            "insufficient_resource.electricity": "先 harvest_radiation，必要时 transfer_resource(kind=electricity)。",
+                            "factory_not_found": "先 build_factory，再 schedule_recipe。",
+                            "location_not_found": "仅使用 visible_locations 中的 location_id。",
+                            "agent_already_at_location": "不要重复 move_agent，改为生产/采集动作。"
+                        }
+                    }),
+                    "all" => serde_json::json!({
+                        "phases": [
+                            "resources",
+                            "industry",
+                            "governance",
+                            "economic",
+                            "social",
+                            "recovery"
+                        ],
+                        "note": "建议按阶段读取 topic，避免一次加载过多规则后丢失执行重点。"
+                    }),
+                    _ => serde_json::json!({
+                        "goal": "开局用最少步数建立可持续推进",
+                        "steps": [
+                            "第 1 步：调用 environment.current_observation 识别当前瓶颈。",
+                            "第 2 步：调用 world.rules.guide(topic=resources|industry) 确认下一阶段动作链。",
+                            "第 3 步：只提交一个最关键动作，观察结果后再推进下一步。"
+                        ],
+                        "decision_loop": [
+                            "观察",
+                            "识别瓶颈",
+                            "补前置",
+                            "推进主线",
+                            "复盘 reject_reason"
+                        ]
+                    }),
+                };
+
+                Ok(serde_json::json!({
+                    "topic": topic,
+                    "available_topics": [
+                        "quickstart",
+                        "resources",
+                        "industry",
+                        "governance",
+                        "economic",
+                        "social",
+                        "recovery",
+                        "all"
+                    ],
+                    "guide": guide,
+                }))
             }
             "module.lifecycle.status" => {
                 let module_id_filter = request

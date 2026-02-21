@@ -958,6 +958,9 @@ pub(super) fn normalize_prompt_module_name(value: &str) -> String {
         | "memory_long_term_search"
         | "memory-long-term-search"
         | "memory.long.term.search" => Some("memory.long_term.search"),
+        "world.rules.guide" | "world_rules_guide" | "world-rules-guide" | "world.rules_guide" => {
+            Some("world.rules.guide")
+        }
         "module.lifecycle.status"
         | "module_lifecycle_status"
         | "module-lifecycle-status"

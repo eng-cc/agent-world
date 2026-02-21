@@ -178,11 +178,12 @@ impl PromptAssembler {
                 priority: PromptSectionPriority::High,
                 content: r#"[Tool Protocol]
 - 本代理采用 tool-only 协议：每轮必须调用 tool，禁止输出 JSON 文本或自然语言正文
-- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search / module.lifecycle.status / power.order_book.status / module.market.status / social.state.status
+- 查询工具：agent_modules_list / environment_current_observation / memory_short_term_recent / memory_long_term_search / world_rules_guide / module.lifecycle.status / power.order_book.status / module.market.status / social.state.status
 - 最终决策工具：agent_submit_decision
-- 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search，module_lifecycle_status -> module.lifecycle.status，power_order_book_status -> power.order_book.status，module_market_status -> module.market.status，social_state_status -> social.state.status
+- 常见别名会自动纠正：agent_modules_list -> agent.modules.list，environment_current_observation -> environment.current_observation，memory_short_term_recent -> memory.short_term.recent，memory_long_term_search -> memory.long_term.search，world_rules_guide -> world.rules.guide，module_lifecycle_status -> module.lifecycle.status，power_order_book_status -> power.order_book.status，module_market_status -> module.market.status，social_state_status -> social.state.status
 - 每轮只允许调用一个 tool；不要在同一回复混用查询工具与最终决策工具
 - 若需要对玩家说明意图，请在 `agent_submit_decision` 参数中使用可选字段 `message_to_user`
+- 开局或阶段切换时若不确定前置条件，先调用 `world.rules.guide`（topic=quickstart/resources/industry/governance）
 - 当连续动作触发反重复门控时，优先查询新证据或输出 execute_until，不要复读同一终局动作"#.to_string(),
             },
             true,
@@ -318,7 +319,7 @@ impl PromptAssembler {
 - 当 observation.recipe_coverage.missing 非空且你准备重复 observation.recipe_coverage.completed 中的 recipe 时，必须先切换到 missing 列表中的配方（优先 missing[0]）
 - 默认经济参数下（refine_hardware_yield_ppm={}），refine_compound 需 compound_mass_g >= {} 才会产出 >=1 hardware；低于阈值会因产出为 0 被拒绝
 - [Failure Recovery Policy] 当 observation.last_action.success=false 时，必须优先按 reject_reason 切换下一动作：
-  - insufficient_resource.data -> refine_compound（owner=self, compound_mass_g>=1000）或 transfer_resource(kind=data)
+  - insufficient_resource.data -> mine_compound（owner=self, location_id 使用可见 location, compound_mass_g>=1000）补足 data 前置；若 compound 已充足再 refine_compound，或 transfer_resource(kind=data)
   - insufficient_resource.electricity -> harvest_radiation 或 transfer_resource(kind=electricity)
   - factory_not_found -> build_factory（先建厂再 schedule_recipe）
   - location_not_found -> 仅使用 observation.visible_locations 中可见 location_id；未知 location 回退当前 location
@@ -1040,7 +1041,7 @@ mod tests {
         assert!(output.user_prompt.contains("[Failure Recovery Policy]"));
         assert!(output
             .user_prompt
-            .contains("insufficient_resource.data -> refine_compound"));
+            .contains("insufficient_resource.data -> mine_compound"));
         assert!(output
             .user_prompt
             .contains("insufficient_resource.electricity -> harvest_radiation"));

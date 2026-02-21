@@ -21,6 +21,15 @@ fn temp_dir(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("agent-world-{prefix}-{unique}"))
 }
 
+fn unique_triad_gossip_base_port() -> u16 {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_nanos() as u64;
+    let port = 20_000 + (unique % 40_000) as u16;
+    port.min(65_533)
+}
+
 fn failover_test_snapshot(
     local_node_id: &str,
     local_height: u64,
@@ -750,7 +759,9 @@ fn start_live_node_rejects_gossip_peers_without_bind() {
 
 #[test]
 fn start_live_node_starts_triad_topology_by_default() {
-    let options = parse_options([].into_iter()).expect("default options");
+    let base_port = unique_triad_gossip_base_port().to_string();
+    let args = vec!["--triad-gossip-base-port", base_port.as_str()];
+    let options = parse_options(args.into_iter()).expect("default options");
     let runtime = start_live_node(&options)
         .expect("start triad")
         .expect("runtime exists");

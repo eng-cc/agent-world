@@ -218,7 +218,7 @@ fn llm_agent_user_prompt_contains_failure_recovery_policy() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let prompt = behavior.user_prompt(&make_observation(), &[], 0, 4);
     assert!(prompt.contains("[Failure Recovery Policy]"));
-    assert!(prompt.contains("insufficient_resource.data -> refine_compound"));
+    assert!(prompt.contains("insufficient_resource.data -> mine_compound"));
     assert!(prompt.contains("insufficient_resource.electricity -> harvest_radiation"));
     assert!(prompt.contains("factory_not_found -> build_factory"));
     assert!(prompt.contains("location_not_found -> 仅使用 observation.visible_locations"));

@@ -379,6 +379,43 @@ fn llm_agent_prompt_mentions_module_lifecycle_decisions() {
 }
 
 #[test]
+fn llm_agent_world_rules_guide_module_returns_stage_playbook() {
+    let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
+    let observation = make_observation();
+
+    let result = behavior.run_prompt_module(
+        &LlmModuleCallRequest {
+            module: "world.rules.guide".to_string(),
+            args: serde_json::json!({ "topic": "industry" }),
+        },
+        &observation,
+    );
+
+    assert_eq!(
+        result.get("ok").and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    let guide = result
+        .get("result")
+        .and_then(|value| value.get("guide"))
+        .expect("world rules guide result");
+    assert_eq!(
+        result
+            .get("result")
+            .and_then(|value| value.get("topic"))
+            .and_then(|value| value.as_str()),
+        Some("industry")
+    );
+    assert_eq!(
+        guide
+            .get("goal")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default(),
+        "形成工业闭环（采矿 -> 精炼 -> 建厂 -> 排产）"
+    );
+}
+
+#[test]
 fn llm_agent_power_order_book_status_module_reads_snapshot_with_limit() {
     let behavior = LlmAgentBehavior::new("agent-1", base_config(), MockClient::default());
     let mut observation = make_observation();

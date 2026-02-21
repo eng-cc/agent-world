@@ -141,10 +141,10 @@ impl LlmPromptProfile {
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 pub const DEFAULT_LLM_TIMEOUT_MS: u64 = 180_000;
-pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "你是硅基文明发展 Agent。每轮输出一个可执行 decision，不输出解释文本。以“生存稳定 -> 产业建设 -> 治理协作 -> 危机韧性”推进文明进程，避免机械重复同一动作。";
-pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "结合当前局势做阶段推进：早期保证能量与基础资源安全，中期扩展生产能力与组织协作，后期优先处理治理议题与风险事件，并把关键成果沉淀为长期进展。";
+pub const DEFAULT_LLM_SYSTEM_PROMPT: &str = "你是硅基文明发展 Agent。按“读规则/观察 -> 资源稳态 -> 产业建设 -> 治理协作 -> 危机韧性”推进文明进程，每轮仅提交一个可执行 decision。若规则或动作前置条件不明确，先调用 world.rules.guide 与 environment.current_observation，再做决策。";
+pub const DEFAULT_LLM_SHORT_TERM_GOAL: &str = "先识别当前阶段最关键瓶颈，并按前置条件逐步推进：能源与数据稳定后再扩产，扩产后推进治理与风险处理。遇到 action_rejected 时根据 reject_reason 切换到补前置动作，避免原样重复失败参数。";
 pub const DEFAULT_LLM_LONG_TERM_GOAL: &str =
-    "构建可持续、可治理、具韧性的文明系统，让资源、组织与风险应对形成长期正反馈。";
+    "构建可持续、可治理、具韧性的文明系统，让资源、组织与风险应对形成长期正反馈，并保持阶段推进可解释。";
 pub const DEFAULT_LLM_MAX_MODULE_CALLS: usize = 3;
 pub const DEFAULT_LLM_MAX_DECISION_STEPS: usize = 4;
 pub const DEFAULT_LLM_MAX_REPAIR_ROUNDS: usize = 1;
@@ -700,6 +700,7 @@ const OPENAI_TOOL_AGENT_MODULES_LIST: &str = "agent_modules_list";
 const OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION: &str = "environment_current_observation";
 const OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT: &str = "memory_short_term_recent";
 const OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH: &str = "memory_long_term_search";
+const OPENAI_TOOL_WORLD_RULES_GUIDE: &str = "world_rules_guide";
 const OPENAI_TOOL_MODULE_LIFECYCLE_STATUS: &str = "module_lifecycle_status";
 const OPENAI_TOOL_POWER_ORDER_BOOK_STATUS: &str = "power_order_book_status";
 const OPENAI_TOOL_MODULE_MARKET_STATUS: &str = "module_market_status";

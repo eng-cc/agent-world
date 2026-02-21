@@ -290,6 +290,27 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced --no-runtime-gameplay-bridge
 ```
+- 两阶段基线闭环（推荐：工业建基线 -> 治理压测）：
+```bash
+# 阶段 A：先构建工业基线并落盘
+./scripts/llm-longrun-stress.sh \
+  --scenario llm_bootstrap \
+  --ticks 1200 \
+  --prompt-pack frontier_builder \
+  --release-gate --release-gate-profile industrial \
+  --save-state-dir .tmp/llm_baseline/industrial_1200 \
+  --no-llm-io
+
+# 阶段 B：从同一基线加载，专测治理/危机链路
+./scripts/llm-longrun-stress.sh \
+  --scenario llm_bootstrap \
+  --ticks 240 \
+  --prompt-pack civic_operator \
+  --release-gate --release-gate-profile gameplay \
+  --load-state-dir .tmp/llm_baseline/industrial_1200 \
+  --runtime-gameplay-bridge \
+  --no-llm-io
+```
 - LLM 游戏发展测试 prompt（非强制动作链）：
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced
@@ -305,6 +326,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 - 说明：
   - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时对 `llm_bootstrap` 会退化为 script_fallback；
   - `llm_bootstrap` 当前默认 5 Agent（多 Agent 提案/投票/协作回路基线）；
+  - LLM 查询工具新增 `world.rules.guide`，可按 `topic`（`quickstart/resources/industry/governance/economic/social/recovery/all`）读取玩法规则与阶段建议；
+  - 默认 prompt 失败恢复策略已修正：`insufficient_resource.data` 优先回切 `mine_compound`（不再默认重复 `refine_compound`）；
   - `llm-longrun-stress.sh` 新增覆盖参数：
     - `--min-action-kinds <n>`：断言动作种类数下限；
     - `--require-action-kind <kind>:<min_count>`：断言关键动作计数下限（可重复）；
@@ -322,6 +345,9 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
     - `--runtime-gameplay-bridge` / `--no-runtime-gameplay-bridge`：
       - 默认开启 bridge，将 simulator 的 runtime-only gameplay/economic 动作接入 runtime `World`，用于降低“非预期拒绝”噪声。
       - 建议保留默认开启；仅在对照排障时关闭。
+    - `--load-state-dir <path>` / `--save-state-dir <path>`：
+      - 支持基线状态落盘与续跑（`snapshot.json` + `journal.json`）。
+      - 当前仅支持单场景模式，便于构建“同一起点”对照。
   - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时再引入“预设世界事件”方案。

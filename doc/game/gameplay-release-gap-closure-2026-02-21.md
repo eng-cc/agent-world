@@ -17,6 +17,7 @@
 - 扩展 `scripts/llm-longrun-stress.sh` gate 口径：新增 gameplay 覆盖 profile，并与 release gate 对齐。
 - 扩展 `llm_bootstrap` 为多 Agent（5 Agent）场景，提升提案/投票/合约交互触发面。
 - 在 `world_llm_agent_demo` 引入 runtime gameplay bridge：对 simulator 中 runtime-only 的 gameplay/economic 动作，接入 runtime `World` 执行路径，减少“非预期拒绝”并形成更闭环的压测链路。
+- 增加“阶段基线世界”状态落盘/加载能力：支持先跑工业建基线，再从同一状态继续治理/危机测试，降低随机起步噪声。
 - 补齐 LLM 经济治理动作 schema + parser + 测试：
   - `open_economic_contract`
   - `accept_economic_contract`
@@ -46,6 +47,24 @@
   - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`
   - `AGENT_WORLD_LLM_LONG_TERM_GOAL`
+- 默认起步 prompt 增强：
+  - 明确“规则/观察 -> 资源稳态 -> 工业闭环 -> 治理协作”阶段推进。
+  - 若前置条件不明确，优先调用规则查询工具再决策。
+
+### 世界规则查询工具（新增）
+- 新增查询工具：`world.rules.guide`
+  - OpenAI tool 名称：`world_rules_guide`
+  - prompt module 名称：`world.rules.guide`
+  - 支持 `topic`：
+    - `quickstart`
+    - `resources`
+    - `industry`
+    - `governance`
+    - `economic`
+    - `social`
+    - `recovery`
+    - `all`
+- 目标：让 Agent 在开局/切阶段时可主动读取“玩法规则 + 前置动作链 + 拒绝恢复策略”，减少盲目重试与动作循环。
 
 ### LLM 决策协议扩展
 - 在 `agent.submit_decision` schema 中新增：
@@ -64,6 +83,14 @@
   - 保持 simulator 观察链路不变，避免对既有工业动作闭环造成破坏。
 - `scripts/llm-longrun-stress.sh` 增加对应透传参数与默认策略，确保长稳测试可复现实战化交互。
 
+### Baseline State IO（demo/stress）
+- `world_llm_agent_demo` 支持：
+  - `--save-state-dir <path>`：将当前 simulator kernel 状态落盘（`snapshot.json` + `journal.json`）。
+  - `--load-state-dir <path>`：从已落盘状态加载并继续运行 LLM 闭环。
+- `scripts/llm-longrun-stress.sh` 支持 state dir 透传，形成两阶段脚本链路：
+  - 阶段 A：工业建基线并保存。
+  - 阶段 B：从基线加载，重点验证治理/危机/元进度动作覆盖。
+
 ### m5 模块规则增强
 - `m5_gameplay_war_core`：增强结算输出（更丰富 participant outcomes 语义）。
 - `m5_gameplay_crisis_cycle`：危机生成/超时规则加入动态性（非固定模板）。
@@ -77,6 +104,7 @@
 - M4：m5 规则增强 + runtime/模块测试回归通过。
 - M5：长周期（>=1000 ticks）多阶段 prompt 切换能力落地并通过脚本/解析回归。
 - M6：`llm_bootstrap` 5 Agent + runtime gameplay bridge 落地，完成非 viewer 的 gameplay 交互闭环回归。
+- M7：阶段基线世界（落盘/加载）闭环落地，支持“同一起点多玩法口径”对比测试。
 
 ## 当前回归结论（T7）
 - bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。
@@ -94,3 +122,5 @@
   - 缓解：CLI 显式互斥校验，脚本默认仅选择一种切换路径。
 - runtime bridge 与 simulator 状态可能出现观测偏差（双状态源）。
   - 缓解：bridge 仅接管 runtime-only gameplay/economic 动作，工业动作保持 simulator 执行；同时输出 bridge 指标用于诊断。
+- 5 Agent 长程工业预演中，`build_factory/schedule_recipe` 触发率仍可能偏低，基线产出时间存在波动。
+  - 缓解：先落地规则查询工具与失败恢复策略修正，再基于阶段性工业 prompt 做定向 baseline 生成。

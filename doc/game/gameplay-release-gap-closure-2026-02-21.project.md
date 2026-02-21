@@ -47,6 +47,19 @@
 - [x] 补齐 demo/bin 测试与脚本回归，验证 gameplay 动作拒绝率下降
 - [x] 更新 `testing-manual.md` 闭环测试建议（5 Agent + bridge）
 
+### T8 阶段基线世界（落盘/加载）闭环（新增）
+- [x] `world_llm_agent_demo` 增加 baseline 状态落盘/加载参数（state dir）
+- [x] `llm-longrun-stress.sh` 增加 state dir 参数透传与 summary 输出
+- [x] 更新 `testing-manual.md` 两阶段测试剧本（工业建基线 -> 治理压测）
+- [ ] 产出一份“可复用工业基线”状态（建议 1000+ tick）
+- [ ] 记录基线质量指标（factory/recipe/action_kind 分布）并回写 devlog
+
+### T9 起步规则可查询 + 工业前置恢复（新增）
+- [x] 新增 `world.rules.guide` 查询工具（OpenAI tool + module 路由 + alias 归一化）
+- [x] 优化默认起步 prompt（加入规则查询与“按前置条件推进”约束）
+- [x] 修正失败恢复策略：`insufficient_resource.data` 优先 `mine_compound`，避免 `refine` 死循环
+- [x] 补齐并通过工具注册/模块执行/prompt 断言回归测试
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -55,7 +68,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7
-- 本轮增量：`llm_bootstrap` 升级为 5 Agent，并在 demo/stress 路径接入 runtime gameplay bridge，消除 runtime-only gameplay/economic 动作在 simulator 路径上的非预期拒绝。
-- 进行中：基于 5 Agent + bridge 的玩法覆盖稳定性调优（以预设世界事件/阶段目标作为下一轮候选）。
-- 阻塞项：无
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T9；T8 完成参数/文档侧，待产出工业基线产物
+- 本轮增量：补齐 `world.rules.guide` 规则查询工具链路，并修正 `insufficient_resource.data` 恢复路径，降低“采集/精炼失败循环”概率。
+- 进行中：T8（可复用工业基线产物与质量指标沉淀）。
+- 阻塞项：多轮 5 Agent 预演中工业链可达 `mine/refine`，但 `build_factory/schedule_recipe` 触发率仍偏低，导致工业基线产出耗时高、稳定性不足。

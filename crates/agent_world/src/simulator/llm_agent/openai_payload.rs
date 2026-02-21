@@ -258,6 +258,30 @@ pub(super) fn responses_tools_with_debug_mode(debug_mode: bool) -> Vec<Tool> {
             strict: None,
         }),
         Tool::Function(FunctionTool {
+            name: OPENAI_TOOL_WORLD_RULES_GUIDE.to_string(),
+            description: Some("读取世界玩法规则与阶段推进建议。".to_string()),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": [
+                            "quickstart",
+                            "resources",
+                            "industry",
+                            "governance",
+                            "economic",
+                            "social",
+                            "recovery",
+                            "all"
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+            })),
+            strict: None,
+        }),
+        Tool::Function(FunctionTool {
             name: OPENAI_TOOL_MODULE_LIFECYCLE_STATUS.to_string(),
             description: Some("读取模块生命周期状态（artifact 与 installed）。".to_string()),
             parameters: Some(serde_json::json!({
@@ -380,6 +404,7 @@ pub(super) fn module_name_from_tool_name(name: &str) -> &str {
         OPENAI_TOOL_ENVIRONMENT_CURRENT_OBSERVATION => "environment.current_observation",
         OPENAI_TOOL_MEMORY_SHORT_TERM_RECENT => "memory.short_term.recent",
         OPENAI_TOOL_MEMORY_LONG_TERM_SEARCH => "memory.long_term.search",
+        OPENAI_TOOL_WORLD_RULES_GUIDE => "world.rules.guide",
         OPENAI_TOOL_MODULE_LIFECYCLE_STATUS => "module.lifecycle.status",
         OPENAI_TOOL_POWER_ORDER_BOOK_STATUS => "power.order_book.status",
         OPENAI_TOOL_MODULE_MARKET_STATUS => "module.market.status",
