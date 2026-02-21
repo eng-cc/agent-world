@@ -18,6 +18,7 @@ fn parse_options_defaults() {
     assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
     assert_eq!(options.ticks, 20);
     assert!(options.runtime_gameplay_bridge);
+    assert_eq!(options.runtime_gameplay_preset, RuntimeGameplayPreset::None);
     assert_eq!(options.load_state_dir, None);
     assert_eq!(options.save_state_dir, None);
     assert!(!options.print_llm_io);
@@ -80,6 +81,37 @@ fn parse_options_disables_runtime_gameplay_bridge() {
     let options =
         parse_options(["--no-runtime-gameplay-bridge"].into_iter()).expect("disable bridge");
     assert!(!options.runtime_gameplay_bridge);
+}
+
+#[test]
+fn parse_options_accepts_runtime_gameplay_preset() {
+    let options = parse_options(["--runtime-gameplay-preset", "civic_hotspot_v1"].into_iter())
+        .expect("runtime gameplay preset");
+    assert_eq!(
+        options.runtime_gameplay_preset,
+        RuntimeGameplayPreset::CivicHotspotV1
+    );
+}
+
+#[test]
+fn parse_options_rejects_invalid_runtime_gameplay_preset() {
+    let err = parse_options(["--runtime-gameplay-preset", "invalid"].into_iter())
+        .expect_err("invalid runtime gameplay preset");
+    assert!(err.contains("invalid --runtime-gameplay-preset"));
+}
+
+#[test]
+fn parse_options_rejects_runtime_gameplay_preset_when_bridge_disabled() {
+    let err = parse_options(
+        [
+            "--no-runtime-gameplay-bridge",
+            "--runtime-gameplay-preset",
+            "civic_hotspot_v1",
+        ]
+        .into_iter(),
+    )
+    .expect_err("runtime gameplay preset requires bridge");
+    assert!(err.contains("requires --runtime-gameplay-bridge"));
 }
 
 #[test]
@@ -575,4 +607,49 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
     assert!(contract.settled_at.is_some());
 
     advance_kernel_time_with_noop_move(&mut kernel, proposer.as_str());
+}
+
+#[cfg(feature = "test_tier_full")]
+#[test]
+fn runtime_bridge_civic_hotspot_preset_seeds_followup_handles() {
+    let fixture_dir = tracked_baseline_fixture_dir();
+    let kernel = agent_world::simulator::WorldKernel::load_from_dir(&fixture_dir)
+        .expect("load tracked baseline fixture");
+    let mut runtime_bridge =
+        RuntimeGameplayBridge::from_kernel(&kernel).expect("bootstrap runtime gameplay bridge");
+
+    let handles = runtime_bridge
+        .apply_preset(RuntimeGameplayPreset::CivicHotspotV1)
+        .expect("seed runtime gameplay preset");
+
+    assert_eq!(
+        handles.governance_proposal_key.as_deref(),
+        Some("preset.governance.civic_hotspot_v1")
+    );
+    assert_eq!(handles.governance_vote_option.as_deref(), Some("approve"));
+    assert_eq!(handles.crisis_id.as_deref(), Some("crisis.auto.8"));
+    assert_eq!(
+        handles.economic_contract_id.as_deref(),
+        Some("preset.contract.civic_hotspot_v1")
+    );
+
+    let state = runtime_bridge.state();
+    assert!(
+        state
+            .governance_proposals
+            .contains_key("preset.governance.civic_hotspot_v1"),
+        "preset governance proposal should exist"
+    );
+    assert!(
+        state
+            .economic_contracts
+            .contains_key("preset.contract.civic_hotspot_v1"),
+        "preset economic contract should exist"
+    );
+    assert!(
+        state
+            .crises
+            .contains_key(handles.crisis_id.as_deref().unwrap_or("")),
+        "preset crisis id should exist"
+    );
 }

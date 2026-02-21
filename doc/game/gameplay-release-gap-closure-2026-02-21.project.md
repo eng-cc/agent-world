@@ -78,6 +78,12 @@
 - [x] 覆盖提案/投票/元进度/合约结算关键状态字段（含增量断言）
 - [x] 回归 `scripts/llm-baseline-fixture-smoke.sh` 并回写设计/测试文档与 devlog
 
+### T13 runtime 预设世界事件 fixture profile（新增）
+- [x] `world_llm_agent_demo` 增加 `--runtime-gameplay-preset`（`none|civic_hotspot_v1`）并在 runtime bridge 内实现预设事件注入
+- [x] `llm-longrun-stress.sh` 增加 preset 参数透传，并为 `civic_operator/resilience_drill` 默认启用 `civic_hotspot_v1`
+- [x] 扩展 full-tier smoke：新增 `runtime_bridge_civic_hotspot_preset_seeds_followup_handles`
+- [x] 更新设计/测试文档与 devlog
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -87,7 +93,7 @@
 
 ## 状态
 - 当前状态：`已完成`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10、T11、T12
-- 本轮增量：将已入库基线离线治理续跑 smoke 升级为状态结果断言（proposal/vote/meta_progress/economic_contract），从“动作可执行”收口到“关键玩法状态已落库且符合预期”。
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10、T11、T12、T13
+- 本轮增量：新增 runtime 预设世界事件 profile `civic_hotspot_v1`（待投票提案 + 活跃危机 + 待结算合约），并接入 demo/stress/full-tier smoke，用于稳定触发 gameplay 闭环动作链。
 - 进行中：无
 - 阻塞项：无（若后续需要“超长世界年龄”基线，可在当前 state 基础上继续按 100 tick 分段追加）。

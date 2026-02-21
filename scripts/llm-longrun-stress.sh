@@ -29,6 +29,7 @@ Options:
   --llm-execute-until-auto-reenter-ticks <n>  Override AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
   --runtime-gameplay-bridge          Enable runtime gameplay bridge in demo (default: on)
   --no-runtime-gameplay-bridge       Disable runtime gameplay bridge in demo
+  --runtime-gameplay-preset <name>   Seed runtime gameplay events before loop (none|civic_hotspot_v1)
   --load-state-dir <path>            Load simulator state dir before run (snapshot/journal)
   --save-state-dir <path>            Save simulator state dir after run (snapshot/journal)
   --max-llm-errors <n>         Fail if llm_errors > n (default: 0)
@@ -64,6 +65,7 @@ Notes:
   - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
   - industrial_baseline 默认设置 AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24（可通过参数覆盖）
   - runtime gameplay bridge 默认开启：将 simulator 的 runtime-only gameplay/economic 动作接入 runtime World，降低非预期拒绝
+  - runtime gameplay preset 可注入可续跑的治理事件句柄（待投票提案/活跃危机/待结算合约）
   - state dir 参数仅支持单场景模式（便于构建/复用同一阶段基线）
 
 Output:
@@ -268,22 +270,28 @@ apply_prompt_pack_defaults() {
       fi
       ;;
     civic_operator)
+      if [[ -z "$runtime_gameplay_preset" ]]; then
+        runtime_gameplay_preset="civic_hotspot_v1"
+      fi
       if [[ -z "$llm_system_prompt" ]]; then
         llm_system_prompt="你是文明治理运营代理。通过提案、投票、协作与秩序维护推动系统长期稳定，而非只追求短期资源增量。"
       fi
       if [[ -z "$llm_short_goal" ]]; then
-        llm_short_goal="在保障基本运转的前提下，优先推进治理议题、协调行为冲突并减少无效重复决策。"
+        llm_short_goal="在保障基本运转的前提下，优先推进治理议题、协调行为冲突并减少无效重复决策。若已注入 preset 句柄，优先围绕 preset.governance.civic_hotspot_v1、crisis.auto.8、preset.contract.civic_hotspot_v1 推进治理闭环。"
       fi
       if [[ -z "$llm_long_goal" ]]; then
         llm_long_goal="形成可迭代的治理机制，使文明在扩张中保持可协调与可持续。"
       fi
       ;;
     resilience_drill)
+      if [[ -z "$runtime_gameplay_preset" ]]; then
+        runtime_gameplay_preset="civic_hotspot_v1"
+      fi
       if [[ -z "$llm_system_prompt" ]]; then
         llm_system_prompt="你是韧性演练代理。关注危机感知、恢复路径、经济协作与失败后重构能力，优先验证文明抗压上限。"
       fi
       if [[ -z "$llm_short_goal" ]]; then
-        llm_short_goal="主动寻找并处理系统脆弱点，结合治理与经济协作策略降低风险扩散，避免单一操作循环。"
+        llm_short_goal="主动寻找并处理系统脆弱点，结合治理与经济协作策略降低风险扩散，避免单一操作循环。若已注入 preset 句柄，优先围绕 crisis.auto.8 与 preset.contract.civic_hotspot_v1 完成一次危机与协作闭环。"
       fi
       if [[ -z "$llm_long_goal" ]]; then
         llm_long_goal="建立可恢复、可再平衡的文明机制，使危机后能快速重回发展轨道。"
@@ -666,6 +674,7 @@ write_summary_file() {
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "llm_execute_until_auto_reenter_ticks=${llm_execute_until_auto_reenter_ticks:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
+    echo "runtime_gameplay_preset=${runtime_gameplay_preset:-none}"
     echo "load_state_dir=${load_state_dir:-none}"
     echo "save_state_dir=${save_state_dir:-none}"
     echo "prompt_pack=${prompt_pack:-none}"
@@ -702,6 +711,9 @@ run_scenario_to_log() {
     cmd+=(--runtime-gameplay-bridge)
   else
     cmd+=(--no-runtime-gameplay-bridge)
+  fi
+  if [[ -n "$runtime_gameplay_preset" ]]; then
+    cmd+=(--runtime-gameplay-preset "$runtime_gameplay_preset")
   fi
   if [[ -n "$load_state_dir" ]]; then
     cmd+=(--load-state-dir "$load_state_dir")
@@ -840,6 +852,7 @@ switch_llm_long_goal=""
 prompt_switches_json=""
 llm_execute_until_auto_reenter_ticks=""
 runtime_gameplay_bridge=1
+runtime_gameplay_preset=""
 load_state_dir=""
 save_state_dir=""
 declare -a required_action_kinds=()
@@ -927,6 +940,10 @@ while [[ $# -gt 0 ]]; do
     --no-runtime-gameplay-bridge)
       runtime_gameplay_bridge=0
       shift
+      ;;
+    --runtime-gameplay-preset)
+      runtime_gameplay_preset=${2:-}
+      shift 2
       ;;
     --load-state-dir)
       load_state_dir=${2:-}
@@ -1045,6 +1062,24 @@ if [[ -z "$min_active_ticks" ]]; then
 fi
 ensure_positive_int "--min-active-ticks" "$min_active_ticks"
 apply_prompt_pack_defaults
+if [[ -n "$runtime_gameplay_preset" ]]; then
+  runtime_gameplay_preset=$(printf '%s' "$runtime_gameplay_preset" | tr '[:upper:]' '[:lower:]' | tr '-' '_')
+  case "$runtime_gameplay_preset" in
+    none)
+      runtime_gameplay_preset=""
+      ;;
+    civic_hotspot_v1)
+      ;;
+    *)
+      echo "invalid --runtime-gameplay-preset: $runtime_gameplay_preset (expected none|civic_hotspot_v1)" >&2
+      exit 2
+      ;;
+  esac
+fi
+if [[ $runtime_gameplay_bridge -eq 0 && -n "$runtime_gameplay_preset" ]]; then
+  echo "--runtime-gameplay-preset requires runtime gameplay bridge to be enabled" >&2
+  exit 2
+fi
 if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
   ensure_positive_int "--llm-execute-until-auto-reenter-ticks" "$llm_execute_until_auto_reenter_ticks"
 fi
@@ -1195,6 +1230,9 @@ for scenario in "${scenarios[@]}"; do
       cmd+=(--runtime-gameplay-bridge)
     else
       cmd+=(--no-runtime-gameplay-bridge)
+    fi
+    if [[ -n "$runtime_gameplay_preset" ]]; then
+      cmd+=(--runtime-gameplay-preset "$runtime_gameplay_preset")
     fi
     if [[ -n "$load_state_dir" ]]; then
       cmd+=(--load-state-dir "$load_state_dir")

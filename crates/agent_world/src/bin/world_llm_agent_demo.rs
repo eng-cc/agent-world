@@ -20,7 +20,7 @@ use llm_io::print_llm_io_trace;
 use llm_io::truncate_for_llm_io_log;
 use runtime_bridge::{
     advance_kernel_time_with_noop_move, execute_action_in_kernel, is_bridgeable_action,
-    RuntimeGameplayBridge,
+    RuntimeGameplayBridge, RuntimeGameplayPreset, RuntimeGameplayPresetHandles,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,6 +47,7 @@ struct CliOptions {
     scenario: WorldScenario,
     ticks: u64,
     runtime_gameplay_bridge: bool,
+    runtime_gameplay_preset: RuntimeGameplayPreset,
     load_state_dir: Option<String>,
     save_state_dir: Option<String>,
     report_json: Option<String>,
@@ -69,6 +70,7 @@ impl Default for CliOptions {
             scenario: WorldScenario::LlmBootstrap,
             ticks: 20,
             runtime_gameplay_bridge: true,
+            runtime_gameplay_preset: RuntimeGameplayPreset::None,
             load_state_dir: None,
             save_state_dir: None,
             report_json: None,
@@ -401,6 +403,10 @@ fn main() {
             0
         }
     );
+    println!(
+        "runtime_gameplay_preset: {}",
+        options.runtime_gameplay_preset.as_str()
+    );
 
     let mut runtime_gameplay_bridge = if options.runtime_gameplay_bridge {
         match RuntimeGameplayBridge::from_kernel(&kernel) {
@@ -413,6 +419,48 @@ fn main() {
     } else {
         None
     };
+    let runtime_gameplay_preset_handles = if let Some(bridge) = runtime_gameplay_bridge.as_mut() {
+        match bridge.apply_preset(options.runtime_gameplay_preset) {
+            Ok(handles) => handles,
+            Err(err) => {
+                eprintln!(
+                    "failed to apply runtime gameplay preset {}: {}",
+                    options.runtime_gameplay_preset.as_str(),
+                    err
+                );
+                process::exit(1);
+            }
+        }
+    } else {
+        RuntimeGameplayPresetHandles::default()
+    };
+    if let Some(proposal_key) = runtime_gameplay_preset_handles
+        .governance_proposal_key
+        .as_ref()
+    {
+        println!("runtime_gameplay_preset_proposal_key: {proposal_key}");
+    }
+    if let Some(vote_option) = runtime_gameplay_preset_handles
+        .governance_vote_option
+        .as_ref()
+    {
+        println!("runtime_gameplay_preset_vote_option: {vote_option}");
+    }
+    if let Some(crisis_id) = runtime_gameplay_preset_handles.crisis_id.as_ref() {
+        println!("runtime_gameplay_preset_crisis_id: {crisis_id}");
+    }
+    if let Some(contract_id) = runtime_gameplay_preset_handles
+        .economic_contract_id
+        .as_ref()
+    {
+        println!("runtime_gameplay_preset_contract_id: {contract_id}");
+    }
+    if let Some(counterparty) = runtime_gameplay_preset_handles
+        .economic_contract_counterparty
+        .as_ref()
+    {
+        println!("runtime_gameplay_preset_counterparty: {counterparty}");
+    }
 
     let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
     let mut next_prompt_switch_idx = 0usize;
@@ -717,6 +765,19 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--no-runtime-gameplay-bridge" => {
                 options.runtime_gameplay_bridge = false;
             }
+            "--runtime-gameplay-preset" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| "--runtime-gameplay-preset requires a preset name".to_string())?
+                    .to_string();
+                options.runtime_gameplay_preset = RuntimeGameplayPreset::parse(raw.as_str())
+                    .ok_or_else(|| {
+                        format!(
+                            "invalid --runtime-gameplay-preset: {} (expected none|civic_hotspot_v1)",
+                            raw
+                        )
+                    })?;
+            }
             "--load-state-dir" => {
                 options.load_state_dir = Some(
                     iter.next()
@@ -869,6 +930,15 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
         }
     }
 
+    if !options.runtime_gameplay_bridge
+        && options.runtime_gameplay_preset != RuntimeGameplayPreset::None
+    {
+        return Err(
+            "--runtime-gameplay-preset requires --runtime-gameplay-bridge to be enabled"
+                .to_string(),
+        );
+    }
+
     Ok(options)
 }
 
@@ -884,6 +954,9 @@ fn print_help() {
     println!("  --save-state-dir <path>  Save simulator state to directory after run");
     println!(
         "  --runtime-gameplay-bridge / --no-runtime-gameplay-bridge  Enable or disable runtime bridge for gameplay/economic actions (default: enabled)"
+    );
+    println!(
+        "  --runtime-gameplay-preset <name>  Seed runtime gameplay events before loop (none|civic_hotspot_v1)"
     );
     println!("  --print-llm-io     Print LLM input/output to stdout for each tick");
     println!("  --llm-io-max-chars <n>  Truncate each LLM input/output block to n chars");

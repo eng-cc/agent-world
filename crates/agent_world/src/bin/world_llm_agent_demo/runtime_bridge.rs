@@ -1,5 +1,5 @@
 use agent_world::runtime::{
-    Action as RuntimeAction, DomainEvent as RuntimeDomainEvent,
+    Action as RuntimeAction, CrisisStatus, DomainEvent as RuntimeDomainEvent,
     RejectReason as RuntimeRejectReason, World as RuntimeWorld,
     WorldEventBody as RuntimeWorldEventBody,
 };
@@ -253,6 +253,39 @@ pub(crate) fn advance_kernel_time_with_noop_move(kernel: &mut WorldKernel, agent
     let _ = kernel.step();
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeGameplayPreset {
+    None,
+    CivicHotspotV1,
+}
+
+impl RuntimeGameplayPreset {
+    pub(crate) fn parse(raw: &str) -> Option<Self> {
+        let normalized = raw.trim().to_ascii_lowercase().replace('-', "_");
+        match normalized.as_str() {
+            "" | "none" | "off" => Some(Self::None),
+            "civic_hotspot_v1" => Some(Self::CivicHotspotV1),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::CivicHotspotV1 => "civic_hotspot_v1",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct RuntimeGameplayPresetHandles {
+    pub governance_proposal_key: Option<String>,
+    pub governance_vote_option: Option<String>,
+    pub crisis_id: Option<String>,
+    pub economic_contract_id: Option<String>,
+    pub economic_contract_counterparty: Option<String>,
+}
+
 #[derive(Debug)]
 pub(crate) struct RuntimeGameplayBridge {
     world: RuntimeWorld,
@@ -260,6 +293,131 @@ pub(crate) struct RuntimeGameplayBridge {
 }
 
 impl RuntimeGameplayBridge {
+    const CIVIC_HOTSPOT_PROPOSAL_KEY: &str = "preset.governance.civic_hotspot_v1";
+    const CIVIC_HOTSPOT_CONTRACT_ID: &str = "preset.contract.civic_hotspot_v1";
+    const CIVIC_HOTSPOT_VOTE_OPTION: &str = "approve";
+
+    fn rejection_from_events(
+        &self,
+        journal_start: usize,
+        action_id: u64,
+    ) -> Option<RuntimeRejectReason> {
+        for event in self.world.journal().events.iter().skip(journal_start) {
+            if let RuntimeWorldEventBody::Domain(RuntimeDomainEvent::ActionRejected {
+                action_id: rejected_action_id,
+                reason,
+            }) = &event.body
+            {
+                if *rejected_action_id == action_id {
+                    return Some(reason.clone());
+                }
+            }
+        }
+        None
+    }
+
+    fn submit_preset_action(&mut self, action: RuntimeAction, label: &str) -> Result<(), String> {
+        let action_id = self.world.submit_action(action);
+        let journal_start = self.world.journal().events.len();
+        self.world
+            .step()
+            .map_err(|err| format!("{label} step failed: {err:?}"))?;
+        if let Some(reason) = self.rejection_from_events(journal_start, action_id) {
+            return Err(format!("{label} rejected: {reason:?}"));
+        }
+        Ok(())
+    }
+
+    fn seed_civic_hotspot_v1(&mut self) -> Result<RuntimeGameplayPresetHandles, String> {
+        let mut agent_ids: Vec<String> = self.world.state().agents.keys().cloned().collect();
+        agent_ids.sort();
+        if agent_ids.len() < 2 {
+            return Err(
+                "runtime gameplay preset civic_hotspot_v1 requires at least 2 agents".to_string(),
+            );
+        }
+        let proposer = agent_ids[0].clone();
+        let counterparty = agent_ids[1].clone();
+
+        self.submit_preset_action(
+            RuntimeAction::OpenGovernanceProposal {
+                proposer_agent_id: proposer.clone(),
+                proposal_key: Self::CIVIC_HOTSPOT_PROPOSAL_KEY.to_string(),
+                title: "civic hotspot governance proposal".to_string(),
+                description: "seeded proposal for gameplay continuation tests".to_string(),
+                options: vec![
+                    Self::CIVIC_HOTSPOT_VOTE_OPTION.to_string(),
+                    "reject".to_string(),
+                ],
+                voting_window_ticks: 96,
+                quorum_weight: 1,
+                pass_threshold_bps: 5_000,
+            },
+            "seed civic_hotspot_v1 open_governance_proposal",
+        )?;
+
+        let expires_at = self.world.state().time.saturating_add(64);
+        self.submit_preset_action(
+            RuntimeAction::OpenEconomicContract {
+                creator_agent_id: proposer.clone(),
+                contract_id: Self::CIVIC_HOTSPOT_CONTRACT_ID.to_string(),
+                counterparty_agent_id: counterparty.clone(),
+                settlement_kind: ResourceKind::Data,
+                settlement_amount: 10,
+                reputation_stake: 3,
+                expires_at,
+                description: "seeded contract for gameplay continuation tests".to_string(),
+            },
+            "seed civic_hotspot_v1 open_economic_contract",
+        )?;
+        self.submit_preset_action(
+            RuntimeAction::AcceptEconomicContract {
+                accepter_agent_id: counterparty.clone(),
+                contract_id: Self::CIVIC_HOTSPOT_CONTRACT_ID.to_string(),
+            },
+            "seed civic_hotspot_v1 accept_economic_contract",
+        )?;
+
+        for _ in 0..8 {
+            if self
+                .world
+                .state()
+                .crises
+                .values()
+                .any(|crisis| crisis.status == CrisisStatus::Active)
+            {
+                break;
+            }
+            self.world
+                .step()
+                .map_err(|err| format!("seed civic_hotspot_v1 crisis advance failed: {err:?}"))?;
+        }
+        let crisis_id = self
+            .world
+            .state()
+            .crises
+            .iter()
+            .find_map(|(crisis_id, crisis)| {
+                if crisis.status == CrisisStatus::Active {
+                    Some(crisis_id.clone())
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| {
+                "seed civic_hotspot_v1 failed to spawn active crisis within expected steps"
+                    .to_string()
+            })?;
+
+        Ok(RuntimeGameplayPresetHandles {
+            governance_proposal_key: Some(Self::CIVIC_HOTSPOT_PROPOSAL_KEY.to_string()),
+            governance_vote_option: Some(Self::CIVIC_HOTSPOT_VOTE_OPTION.to_string()),
+            crisis_id: Some(crisis_id),
+            economic_contract_id: Some(Self::CIVIC_HOTSPOT_CONTRACT_ID.to_string()),
+            economic_contract_counterparty: Some(counterparty),
+        })
+    }
+
     pub(crate) fn from_kernel(kernel: &WorldKernel) -> Result<Self, String> {
         let mut world = RuntimeWorld::new();
         let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
@@ -286,6 +444,16 @@ impl RuntimeGameplayBridge {
         })
     }
 
+    pub(crate) fn apply_preset(
+        &mut self,
+        preset: RuntimeGameplayPreset,
+    ) -> Result<RuntimeGameplayPresetHandles, String> {
+        match preset {
+            RuntimeGameplayPreset::None => Ok(RuntimeGameplayPresetHandles::default()),
+            RuntimeGameplayPreset::CivicHotspotV1 => self.seed_civic_hotspot_v1(),
+        }
+    }
+
     pub(crate) fn execute(
         &mut self,
         tick: u64,
@@ -298,32 +466,13 @@ impl RuntimeGameplayBridge {
 
         let runtime_action_id = self.world.submit_action(runtime_action);
         let previous_journal_len = self.world.journal().events.len();
-        let mut rejection: Option<RuntimeRejectReason> = None;
-
-        if let Err(err) = self.world.step() {
-            rejection = Some(RuntimeRejectReason::RuleDenied {
+        let rejection = if let Err(err) = self.world.step() {
+            Some(RuntimeRejectReason::RuleDenied {
                 notes: vec![format!("runtime world step failed: {err:?}")],
-            });
+            })
         } else {
-            for event in self
-                .world
-                .journal()
-                .events
-                .iter()
-                .skip(previous_journal_len)
-            {
-                if let RuntimeWorldEventBody::Domain(RuntimeDomainEvent::ActionRejected {
-                    action_id,
-                    reason,
-                }) = &event.body
-                {
-                    if *action_id == runtime_action_id {
-                        rejection = Some(reason.clone());
-                        break;
-                    }
-                }
-            }
-        }
+            self.rejection_from_events(previous_journal_len, runtime_action_id)
+        };
 
         let simulator_event = if let Some(reason) = rejection.as_ref() {
             WorldEvent {
@@ -359,7 +508,7 @@ impl RuntimeGameplayBridge {
         })
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test_tier_full"))]
     pub(crate) fn state(&self) -> &agent_world::runtime::WorldState {
         self.world.state()
     }

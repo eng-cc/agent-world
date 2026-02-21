@@ -84,6 +84,17 @@
   - 保持 simulator 观察链路不变，避免对既有工业动作闭环造成破坏。
 - `scripts/llm-longrun-stress.sh` 增加对应透传参数与默认策略，确保长稳测试可复现实战化交互。
 
+### Runtime Gameplay Preset Fixture Profile（新增）
+- `world_llm_agent_demo` 新增 `--runtime-gameplay-preset <none|civic_hotspot_v1>`：
+  - `none`：不注入预设事件（默认）。
+  - `civic_hotspot_v1`：在 runtime bridge 启动后注入一组可续跑的 gameplay 事件句柄：
+    - 待投票治理提案：`preset.governance.civic_hotspot_v1`；
+    - 活跃危机：`crisis.auto.8`；
+    - 已接受待结算合约：`preset.contract.civic_hotspot_v1`。
+- `scripts/llm-longrun-stress.sh` 增加 `--runtime-gameplay-preset` 透传：
+  - `civic_operator` / `resilience_drill` prompt pack 默认启用 `civic_hotspot_v1`，降低 `cast_governance_vote` / `resolve_crisis` / `settle_economic_contract` 触发噪声。
+- 目标：将“预设世界事件”标准化为可复用 profile，在保持工业基线不变的前提下，为治理/韧性测试提供稳定入口。
+
 ### Baseline State IO（demo/stress）
 - `world_llm_agent_demo` 支持：
   - `--save-state-dir <path>`：将当前 simulator kernel 状态落盘（`snapshot.json` + `journal.json`）。
@@ -123,6 +134,7 @@
 - M8：基线 fixture 入库并接入 full-tier smoke，确保状态工件可持续复用。
 - M9：补齐基线加载后的离线治理续跑 smoke，降低在线 LLM 依赖对门禁稳定性的影响。
 - M10：离线治理续跑 smoke 升级为状态结果断言，确保 gameplay 关键状态可验证。
+- M11：runtime 预设世界事件 profile 落地并接入 full-tier smoke，稳定触发治理/危机/合约续跑链路。
 
 ## 当前回归结论（T7）
 - bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。
