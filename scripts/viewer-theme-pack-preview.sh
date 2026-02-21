@@ -10,6 +10,7 @@ Usage: ./scripts/viewer-theme-pack-preview.sh [options]
 
 Options:
   --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
+  --theme-pack <name>      theme pack: industrial_v2,industrial_v1 (default: industrial_v2)
   --base-port <port>       starting port for per-variant capture (default: 5423)
   --tick-ms <ms>           live tick interval (default: 300)
   --viewer-wait <sec>      viewer wait before capture (default: 10)
@@ -56,6 +57,7 @@ resolve_variants() {
 }
 
 scenario="llm_bootstrap"
+theme_pack="industrial_v2"
 base_port=5423
 tick_ms=300
 viewer_wait=10
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --scenario)
       scenario=${2:-}
+      shift 2
+      ;;
+    --theme-pack)
+      theme_pack=${2:-}
       shift 2
       ;;
     --base-port)
@@ -118,7 +124,22 @@ fi
 variants=($(resolve_variants "$variants_raw"))
 mkdir -p "$out_dir"
 
-preset_dir="crates/agent_world_viewer/assets/themes/industrial_v1/presets"
+case "$theme_pack" in
+  industrial_v2)
+    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v2/presets"
+    preset_prefix="industrial_v2"
+    ;;
+  industrial_v1)
+    preset_dir="crates/agent_world_viewer/assets/themes/industrial_v1/presets"
+    preset_prefix="industrial"
+    ;;
+  *)
+    echo "invalid --theme-pack: $theme_pack" >&2
+    echo "supported theme packs: industrial_v2,industrial_v1" >&2
+    exit 2
+    ;;
+esac
+
 # Keep a deterministic composition that consistently includes visible location geometry.
 automation_steps="mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
 
@@ -127,7 +148,7 @@ for variant in "${variants[@]}"; do
   port=$((base_port + index))
   variant_dir="$out_dir/$variant"
   mkdir -p "$variant_dir"
-  preset_file="$preset_dir/industrial_${variant}.env"
+  preset_file="$preset_dir/${preset_prefix}_${variant}.env"
   if [[ ! -f "$preset_file" ]]; then
     echo "missing preset: $preset_file" >&2
     exit 1
@@ -160,6 +181,7 @@ variant=$variant
 port=$port
 tick_ms=$tick_ms
 viewer_wait=$viewer_wait
+theme_pack=$theme_pack
 preset_file=$preset_file
 META
 

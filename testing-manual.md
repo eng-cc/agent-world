@@ -227,6 +227,25 @@ bash "$PWCLI" close
   - 多缩放贴图观感门禁通过（near/mid/far 三档截图 + 相机半径语义断言 + 截图像素差异指标）；
   - console dump 扫描 Bevy `%cERROR%c`/`[ERROR]`（避免仅依赖浏览器原生 error 计数漏报）。
 
+6) 一键全覆盖发行验收（可用性 + 视觉 + 玩法环节）：
+```bash
+./scripts/viewer-release-full-coverage.sh
+```
+- 覆盖范围：
+  - Web 可用性门禁（`viewer-release-qa-loop.sh`）；
+  - 主题包校验 + 主题变体截图 + 纹理通道矩阵截图；
+  - 关键玩法链路门禁：
+    - 工业：`harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe`
+    - 治理危机：`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`
+    - 经济：`open/accept/settle_economic_contract`
+- 产物：
+  - `output/playwright/viewer/release_full/<timestamp>/release-full-summary-*.md`
+  - 子目录：`web_qa/`、`theme_preview/`、`texture_inspector/`、`gameplay_industrial/`、`gameplay_governance/`
+- 快速冒烟：
+```bash
+./scripts/viewer-release-full-coverage.sh --quick
+```
+
 #### S6 补充约定（迁移自 `AGENTS.md`）
 - 默认链路：
   - Web 闭环为默认，不以 native 抓图链路替代。

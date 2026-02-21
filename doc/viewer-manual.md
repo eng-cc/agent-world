@@ -288,6 +288,7 @@ python3 scripts/validate-viewer-theme-pack.py \
 ```bash
 ./scripts/viewer-theme-pack-preview.sh \
   --scenario llm_bootstrap \
+  --theme-pack industrial_v2 \
   --variants all \
   --base-port 5423
 ```
@@ -297,6 +298,10 @@ python3 scripts/validate-viewer-theme-pack.py \
 - `output/theme_preview/<timestamp>/matte/viewer.png`
 - `output/theme_preview/<timestamp>/glossy/viewer.png`
 - 每个变体目录附带 `live_server.log`、`viewer.log`、`meta.txt`
+- `meta.txt` 记录 `theme_pack` 与实际 `preset_file`
+
+常用参数：
+- `--theme-pack <industrial_v2|industrial_v1>`：选择主题包（默认 `industrial_v2`，推荐）。
 
 ### 资产重生成
 ```bash
