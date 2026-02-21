@@ -109,7 +109,7 @@ use camera_controls::{
     sync_2d_zoom_projection, sync_camera_mode, sync_world_background_visibility,
     update_grid_line_lod_visibility, OrbitDragState, TwoDZoomTier,
 };
-use copyable_text::CopyableTextPanelState;
+use copyable_text::{load_embedded_cjk_font, CopyableTextPanelState};
 use diagnosis::{spawn_diagnosis_panel, update_diagnosis_panel, DiagnosisState};
 use egui_right_panel::render_right_side_panel_egui;
 use event_click_list::{
@@ -1158,6 +1158,7 @@ fn setup_3d_scene(
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut fonts: ResMut<Assets<Font>>,
     asset_server: Res<AssetServer>,
 ) {
     let geometry_tier = config.assets.geometry_tier;
@@ -1171,7 +1172,7 @@ fn setup_3d_scene(
         .id();
     scene.root_entity = Some(root_entity);
 
-    let label_font = asset_server.load("fonts/ms-yahei.ttf");
+    let label_font = load_embedded_cjk_font(&mut fonts);
     let agent_mesh = resolve_mesh_handle(
         &asset_server,
         &mut meshes,
@@ -1548,10 +1549,11 @@ fn setup_3d_scene(
 #[allow(dead_code)]
 fn setup_ui(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    mut fonts: ResMut<Assets<Font>>,
+    _asset_server: Res<AssetServer>,
     copyable_panel_state: Option<Res<CopyableTextPanelState>>,
 ) {
-    let font = asset_server.load("fonts/ms-yahei.ttf");
+    let font = load_embedded_cjk_font(&mut fonts);
     let i18n = UiI18n::default();
     let locale = i18n.locale;
     let copyable_panel_visible = copyable_panel_state

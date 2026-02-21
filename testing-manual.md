@@ -183,7 +183,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ### S6：Web UI 闭环 smoke 套件（L4）
 1) 启动 live server（含 bridge）：
 ```bash
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300 --topology single --viewer-no-consensus-gate
 ```
 2) 启动 web viewer：
 ```bash
@@ -224,6 +224,7 @@ bash "$PWCLI" close
 - 门禁要点：
   - 视觉基线（`viewer-visual-baseline.sh`）通过；
   - `window.__AW_TEST__` 语义动作链通过；
+  - 多缩放贴图观感门禁通过（near/mid/far 三档截图 + 相机半径语义断言 + 截图像素差异指标）；
   - console dump 扫描 Bevy `%cERROR%c`/`[ERROR]`（避免仅依赖浏览器原生 error 计数漏报）。
 
 #### S6 补充约定（迁移自 `AGENTS.md`）

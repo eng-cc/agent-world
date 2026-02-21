@@ -6,6 +6,7 @@ use crate::viewer_automation::{
 };
 #[cfg(target_arch = "wasm32")]
 use crate::{ConnectionStatus, SelectionKind};
+use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
 use crate::{ViewerAutomationState, ViewerClient, ViewerSelection, ViewerState};
 #[cfg(target_arch = "wasm32")]
 use agent_world::viewer::{ViewerControl, ViewerRequest};
@@ -46,6 +47,9 @@ struct WebTestApiStateSnapshot {
     last_error: Option<String>,
     event_count: usize,
     trace_count: usize,
+    camera_mode: &'static str,
+    camera_radius: f64,
+    camera_ortho_scale: f64,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -60,6 +64,9 @@ impl Default for WebTestApiStateSnapshot {
             last_error: None,
             event_count: 0,
             trace_count: 0,
+            camera_mode: "3d",
+            camera_radius: 0.0,
+            camera_ortho_scale: 0.0,
         }
     }
 }
@@ -194,6 +201,21 @@ fn build_state_js_value(snapshot: &WebTestApiStateSnapshot) -> JsValue {
         &object,
         &JsValue::from_str("traceCount"),
         &JsValue::from_f64(snapshot.trace_count as f64),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("cameraMode"),
+        &JsValue::from_str(snapshot.camera_mode),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("cameraRadius"),
+        &JsValue::from_f64(snapshot.camera_radius),
+    );
+    let _ = JsReflect::set(
+        &object,
+        &JsValue::from_str("cameraOrthoScale"),
+        &JsValue::from_f64(snapshot.camera_ortho_scale),
     );
     JsValue::from(object)
 }
@@ -341,10 +363,12 @@ pub(super) fn consume_web_test_api_commands(
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(super) fn publish_web_test_api_state(state: Res<ViewerState>, selection: Res<ViewerSelection>) {
-    if !state.is_changed() && !selection.is_changed() {
-        return;
-    }
+pub(super) fn publish_web_test_api_state(
+    state: Res<ViewerState>,
+    selection: Res<ViewerSelection>,
+    camera_mode: Res<ViewerCameraMode>,
+    cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
+) {
     WEB_TEST_API_STATE_SNAPSHOT.with(|slot| {
         let mut snapshot = slot.borrow_mut();
         snapshot.connection_status = match &state.status {
@@ -386,6 +410,22 @@ pub(super) fn publish_web_test_api_state(state: Res<ViewerState>, selection: Res
                 snapshot.last_error = None;
             }
         }
+
+        snapshot.camera_mode = match *camera_mode {
+            ViewerCameraMode::TwoD => "2d",
+            ViewerCameraMode::ThreeD => "3d",
+        };
+
+        if let Ok((orbit, projection)) = cameras.single() {
+            snapshot.camera_radius = orbit.radius as f64;
+            snapshot.camera_ortho_scale = match projection {
+                Projection::Orthographic(ortho) => ortho.scale as f64,
+                _ => 0.0,
+            };
+        } else {
+            snapshot.camera_radius = 0.0;
+            snapshot.camera_ortho_scale = 0.0;
+        }
     });
 }
 
@@ -393,5 +433,7 @@ pub(super) fn publish_web_test_api_state(state: Res<ViewerState>, selection: Res
 pub(super) fn publish_web_test_api_state(
     _state: Res<ViewerState>,
     _selection: Res<ViewerSelection>,
+    _camera_mode: Res<ViewerCameraMode>,
+    _cameras: Query<(&OrbitCamera, &Projection), With<Viewer3dCamera>>,
 ) {
 }

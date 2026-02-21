@@ -20,6 +20,7 @@
   - 连接状态
   - 当前 tick
   - 当前选中对象
+  - 相机状态（`cameraMode` / `cameraRadius` / `cameraOrthoScale`）
   - 错误计数与最近错误
   - 事件/trace 计数
 - 接入 `app_bootstrap` 生命周期（startup 注册、update 消费与状态发布）。
@@ -50,6 +51,7 @@
   - `connection_status`
   - `tick`
   - `selected_kind` / `selected_id`
+  - `camera_mode` / `camera_radius` / `camera_ortho_scale`
   - `error_count` / `last_error`
   - `event_count` / `trace_count`
 
@@ -60,6 +62,8 @@
 - WTA-3：`app_bootstrap` 接入命令消费与状态发布系统。
 - WTA-4：单测与回归验证（`agent_world_viewer`）。
 - WTA-5：文档状态与 devlog 收口。
+- WTA-6：`testing-manual.md` S6 示例迁移到语义 API。
+- WTA-7：`getState()` 扩展相机语义字段，支撑 zoom 可验证门禁。
 
 ## 风险
 - Web 线程与 Bevy 主线程并发风险：

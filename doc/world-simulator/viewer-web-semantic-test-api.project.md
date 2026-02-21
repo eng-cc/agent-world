@@ -8,6 +8,7 @@
 - [x] WTA-4 回归测试与编译验证（`agent_world_viewer`）
 - [x] WTA-5 状态回写与 devlog 收口
 - [x] WTA-6 `testing-manual.md` S6 Playwright 示例切换到 `window.__AW_TEST__`
+- [x] WTA-7 `getState()` 增补相机语义字段（`cameraMode/cameraRadius/cameraOrthoScale`）
 
 ## 依赖
 - `crates/agent_world_viewer/src/viewer_automation.rs`
@@ -18,4 +19,4 @@
 ## 状态
 - 当前阶段：WTA 全部完成
 - 下一步：可选将 `window.__AW_TEST__` 常用序列封装成脚本级 helper，进一步减少重复命令
-- 最近更新：2026-02-21（WTA-6 完成，S6 手册示例迁移）
+- 最近更新：2026-02-21（WTA-7 完成，`getState()` 相机语义状态发布）

@@ -5,6 +5,9 @@
 - [x] VRQ-1 基线执行：跑现有套件并输出首次完成度/视觉结论
 - [x] VRQ-2 套件优化：实现一键化 Web 语义闭环验收脚本
 - [x] VRQ-3 复验收口：重跑并输出报告，更新手册与状态
+- [x] VRQ-4 缺口修复：稳定语义 gate（连接抖动收敛）并消除字体资产错误日志
+- [x] VRQ-5 缩放验收升级：三档截图像素指标 + 相机半径语义断言 + zoom 差异度门禁
+- [ ] VRQ-6 发行缺口收敛：修复“zoom 生效但画面近远差异过小”问题并达成全 PASS
 
 ## 依赖
 - `testing-manual.md`
@@ -14,6 +17,6 @@
 - `/Users/scc/.codex/skills/playwright/scripts/playwright_cli.sh`
 
 ## 状态
-- 当前阶段：VRQ 全部完成
-- 下一步：基于 QA 报告修复已暴露缺口（`sendControl` 后连接进入 error；字体资产 `ms-yahei.ttf` 加载失败）
-- 最近更新：2026-02-21（VRQ-3 完成，一键验收流程接入手册并复验）
+- 当前阶段：VRQ-6 进行中
+- 下一步：定位并修复 near/far zoom 视觉差异不足（当前脚本已稳定复现 `zoom visual delta too small`）
+- 最近更新：2026-02-21（完成 VRQ-4/VRQ-5，新增 zoom 视觉差异硬门禁）

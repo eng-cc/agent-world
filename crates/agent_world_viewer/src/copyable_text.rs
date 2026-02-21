@@ -43,6 +43,12 @@ pub(super) fn ensure_egui_cjk_font(context: &egui::Context, initialized: &mut bo
     *initialized = true;
 }
 
+pub(super) fn load_embedded_cjk_font(font_assets: &mut Assets<Font>) -> Handle<Font> {
+    let font = Font::try_from_bytes(EGUI_CJK_FONT_BYTES.to_vec())
+        .expect("embedded CJK font bytes must be valid");
+    font_assets.add(font)
+}
+
 fn install_cjk_font(fonts: &mut egui::FontDefinitions) {
     fonts.font_data.insert(
         EGUI_CJK_FONT_NAME.to_string(),

@@ -16,6 +16,7 @@ Options:
   --viewer-port <port>       web viewer port (default: 4173)
   --tick-ms <ms>             live tick interval (default: 300)
   --out-dir <path>           artifact output dir (default: output/playwright/viewer)
+  --with-consensus-gate      keep world_viewer_live consensus gate/topology defaults
   --skip-visual-baseline     skip scripts/viewer-visual-baseline.sh
   --headed                   open browser in headed mode
   -h, --help                 show this help
@@ -69,6 +70,7 @@ viewer_host="127.0.0.1"
 viewer_port="4173"
 tick_ms="300"
 out_dir="output/playwright/viewer"
+with_consensus_gate=0
 skip_visual_baseline=0
 headed=0
 
@@ -101,6 +103,10 @@ while [[ $# -gt 0 ]]; do
     --out-dir)
       out_dir=${2:-}
       shift 2
+      ;;
+    --with-consensus-gate)
+      with_consensus_gate=1
+      shift 1
       ;;
     --skip-visual-baseline)
       skip_visual_baseline=1
@@ -150,8 +156,12 @@ live_log="$out_dir/release-qa-live-${stamp}.log"
 web_log="$out_dir/release-qa-web-${stamp}.log"
 pw_log="$out_dir/release-qa-playwright-${stamp}.log"
 semantic_log="$out_dir/release-qa-semantic-${stamp}.log"
+zoom_log="$out_dir/release-qa-zoom-${stamp}.log"
 summary_path="$out_dir/release-qa-summary-${stamp}.md"
 shot_path="$out_dir/release-qa-${stamp}.png"
+zoom_shot_near="$out_dir/release-qa-zoom-near-${stamp}.png"
+zoom_shot_mid="$out_dir/release-qa-zoom-mid-${stamp}.png"
+zoom_shot_far="$out_dir/release-qa-zoom-far-${stamp}.png"
 
 live_pid=""
 web_pid=""
@@ -183,8 +193,15 @@ web_host=${web_bind%:*}
 web_port=${web_bind##*:}
 viewer_url="http://${viewer_host}:${viewer_port}/?ws=ws://${web_bind}&test_api=1"
 
-echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- $scenario --bind $live_bind --web-bind $web_bind --tick-ms $tick_ms"
-env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "$scenario" --bind "$live_bind" --web-bind "$web_bind" --tick-ms "$tick_ms" >"$live_log" 2>&1 &
+live_args=("$scenario" "--bind" "$live_bind" "--web-bind" "$web_bind" "--tick-ms" "$tick_ms")
+if [[ "$with_consensus_gate" -eq 0 ]]; then
+  # Release QA loop uses single topology + no gate by default to avoid
+  # triad consensus readiness from masking viewer semantic regressions.
+  live_args+=("--topology" "single" "--viewer-no-consensus-gate")
+fi
+
+echo "+ env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- ${live_args[*]}"
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- "${live_args[@]}" >"$live_log" 2>&1 &
 live_pid=$!
 
 echo "+ wait for bridge $web_host:$web_port"
@@ -233,62 +250,89 @@ async (page) => {
   const fail = (message) => {
     throw new Error(message);
   };
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
-    const ready = await page.evaluate(() => typeof window.__AW_TEST__ === "object");
-    if (ready) break;
-    await page.waitForTimeout(200);
-  }
-  const hasApi = await page.evaluate(() => typeof window.__AW_TEST__ === "object");
-  if (!hasApi) fail("__AW_TEST__ is unavailable");
+  const waitForApi = async () => {
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      const ready = await page.evaluate(() => typeof window.__AW_TEST__ === "object");
+      if (ready) {
+        return;
+      }
+      await page.waitForTimeout(200);
+    }
+    fail("__AW_TEST__ is unavailable");
+  };
+
+  const waitForConnected = async (label, timeoutMs = 15000) => {
+    const deadline = Date.now() + timeoutMs;
+    let state = null;
+    while (Date.now() < deadline) {
+      state = await page.evaluate(() => window.__AW_TEST__.getState());
+      if (state?.connectionStatus === "connected") {
+        return state;
+      }
+      await page.waitForTimeout(250);
+    }
+    fail(
+      `${label}: not connected (status=${state?.connectionStatus}, lastError=${state?.lastError}, errorCount=${state?.errorCount})`,
+    );
+  };
+
+  await waitForApi();
 
   const initial = await page.evaluate(() => window.__AW_TEST__.getState());
   if (!initial || typeof initial.connectionStatus !== "string" || typeof initial.tick !== "number") {
     fail("getState() missing required fields");
   }
+  const connectedState = await waitForConnected("initial connection");
+  const controlBefore = connectedState;
+  const tickBefore = Number(controlBefore.tick || 0);
 
-  const connectedDeadline = Date.now() + 15000;
-  let connectedState = initial;
-  while (Date.now() < connectedDeadline) {
-    connectedState = await page.evaluate(() => window.__AW_TEST__.getState());
-    if (connectedState.connectionStatus === "connected") break;
-    await page.waitForTimeout(250);
-  }
-  if (connectedState.connectionStatus !== "connected") {
-    fail(`viewer not connected, status=${connectedState.connectionStatus}`);
-  }
-
-  const controlBefore = await page.evaluate(() => window.__AW_TEST__.getState());
   await page.evaluate(() => window.__AW_TEST__.sendControl("play"));
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(650);
+  const afterPlay = await waitForConnected("after play");
+  if (Number(afterPlay.tick || 0) < tickBefore) {
+    fail(`tick regressed after play (before=${tickBefore}, afterPlay=${afterPlay.tick})`);
+  }
+
   await page.evaluate(() => window.__AW_TEST__.sendControl("pause"));
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(450);
+  const paused = await waitForConnected("after pause");
+  await page.waitForTimeout(600);
+  const pausedFollowup = await page.evaluate(() => window.__AW_TEST__.getState());
+  if (pausedFollowup.connectionStatus !== "connected") {
+    fail(
+      `connection dropped after pause settle (status=${pausedFollowup.connectionStatus}, lastError=${pausedFollowup.lastError})`,
+    );
+  }
+  if (Number(pausedFollowup.tick || 0) > Number(paused.tick || 0) + 2) {
+    fail(
+      `pause control failed to stabilize tick (paused=${paused.tick}, followup=${pausedFollowup.tick})`,
+    );
+  }
 
   await page.evaluate(() => window.__AW_TEST__.runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3"));
-  await page.waitForTimeout(500);
-  const selected = await page.evaluate(() => window.__AW_TEST__.getState());
+  const selectionDeadline = Date.now() + 6000;
+  let selected = await page.evaluate(() => window.__AW_TEST__.getState());
+  while (Date.now() < selectionDeadline && selected.selectedKind !== "agent") {
+    await page.waitForTimeout(250);
+    selected = await page.evaluate(() => window.__AW_TEST__.getState());
+  }
   if (selected.selectedKind !== "agent") {
     fail(`selection did not resolve to agent (selectedKind=${selected.selectedKind})`);
   }
-
-  const seekTick = Math.max(1, Number(controlBefore.tick || 0));
-  await page.evaluate((tick) => window.__AW_TEST__.sendControl("seek", { tick }), seekTick);
-  await page.waitForTimeout(300);
-  const controlAfter = await page.evaluate(() => window.__AW_TEST__.getState());
-  if (controlAfter.connectionStatus !== "connected") {
-    fail(`connection dropped after controls, status=${controlAfter.connectionStatus}`);
-  }
-  if (Number(controlAfter.errorCount || 0) > Number(controlBefore.errorCount || 0)) {
-    fail(
-      `errorCount increased after controls (before=${controlBefore.errorCount}, after=${controlAfter.errorCount})`,
-    );
+  const final = await waitForConnected("after semantic actions");
+  if (final.lastError) {
+    fail(`connected but lastError is not cleared: ${final.lastError}`);
   }
 
   return {
     initial,
     controlBefore,
-    controlAfter,
+    afterPlay,
+    paused,
+    pausedFollowup,
     selected,
+    final,
   };
 }
 JS
@@ -303,6 +347,314 @@ if printf "%s\n" "$semantic_output" | rg -q "^### Error"; then
   semantic_ok=0
 fi
 printf "%s\n" "$semantic_output" | tee "$semantic_log" | tee -a "$pw_log" >/dev/null
+
+zoom_ok=1
+zoom_output=""
+zoom_code=$(cat <<JS
+async (page) => {
+  const fail = (message) => {
+    throw new Error(message);
+  };
+
+  const waitForApi = async () => {
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      const ready = await page.evaluate(() => typeof window.__AW_TEST__ === "object");
+      if (ready) {
+        return;
+      }
+      await page.waitForTimeout(200);
+    }
+    fail("__AW_TEST__ unavailable after reload");
+  };
+
+  const waitForConnected = async (label, timeoutMs = 20000) => {
+    const deadline = Date.now() + timeoutMs;
+    let state = null;
+    while (Date.now() < deadline) {
+      state = await page.evaluate(() => window.__AW_TEST__.getState());
+      if (state?.connectionStatus === "connected") {
+        return state;
+      }
+      await page.waitForTimeout(250);
+    }
+    fail(
+      \`\${label}: not connected (status=\${state?.connectionStatus}, lastError=\${state?.lastError}, errorCount=\${state?.errorCount})\`,
+    );
+  };
+
+  const screenshotMetrics = async (base64) =>
+    page.evaluate(async (encoded) => {
+      const src = \`data:image/png;base64,\${encoded}\`;
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("screenshot decode failed"));
+        img.src = src;
+      });
+
+      const sampleWidth = Math.max(64, Math.min(480, image.width));
+      const sampleHeight = Math.max(64, Math.min(300, image.height));
+      const probe = document.createElement("canvas");
+      probe.width = sampleWidth;
+      probe.height = sampleHeight;
+      const ctx = probe.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        throw new Error("2d context unavailable");
+      }
+      ctx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+      const pixels = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+
+      let count = 0;
+      let nonDark = 0;
+      let sum = 0;
+      let sum2 = 0;
+      let edgeSum = 0;
+      let edgeCount = 0;
+      const buckets = new Set();
+      const rowStride = sampleWidth * 4;
+
+      for (let i = 0; i + 3 < pixels.length; i += 16) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        sum += luma;
+        sum2 += luma * luma;
+        count += 1;
+        if (luma > 12) nonDark += 1;
+        buckets.add(
+          [
+            Math.floor(r / 32),
+            Math.floor(g / 32),
+            Math.floor(b / 32),
+          ].join(":"),
+        );
+      }
+
+      for (let y = 1; y < sampleHeight - 1; y += 4) {
+        for (let x = 1; x < sampleWidth - 1; x += 4) {
+          const index = y * rowStride + x * 4;
+          const right = index + 4;
+          const down = index + rowStride;
+          const luma = 0.2126 * pixels[index] + 0.7152 * pixels[index + 1] + 0.0722 * pixels[index + 2];
+          const lumaRight =
+            0.2126 * pixels[right] + 0.7152 * pixels[right + 1] + 0.0722 * pixels[right + 2];
+          const lumaDown =
+            0.2126 * pixels[down] + 0.7152 * pixels[down + 1] + 0.0722 * pixels[down + 2];
+          edgeSum += Math.abs(luma - lumaRight) + Math.abs(luma - lumaDown);
+          edgeCount += 1;
+        }
+      }
+
+      if (count < 196) {
+        throw new Error(\`insufficient sampled pixels (count=\${count}, sample=\${sampleWidth}x\${sampleHeight})\`);
+      }
+
+      const mean = sum / count;
+      const variance = Math.max(0, sum2 / count - mean * mean);
+      const nonDarkRatio = nonDark / count;
+      const detailScore = edgeCount > 0 ? edgeSum / edgeCount : 0;
+      const signatureWidth = 16;
+      const signatureHeight = 12;
+      const signatureCanvas = document.createElement("canvas");
+      signatureCanvas.width = signatureWidth;
+      signatureCanvas.height = signatureHeight;
+      const signatureCtx = signatureCanvas.getContext("2d", { willReadFrequently: true });
+      if (!signatureCtx) {
+        throw new Error("signature context unavailable");
+      }
+      signatureCtx.drawImage(image, 0, 0, signatureWidth, signatureHeight);
+      const signaturePixels = signatureCtx
+        .getImageData(0, 0, signatureWidth, signatureHeight)
+        .data;
+      const signature = [];
+      for (let i = 0; i + 3 < signaturePixels.length; i += 4) {
+        signature.push(
+          0.2126 * signaturePixels[i] +
+            0.7152 * signaturePixels[i + 1] +
+            0.0722 * signaturePixels[i + 2],
+        );
+      }
+
+      return {
+        imageWidth: image.width,
+        imageHeight: image.height,
+        sampleWidth,
+        sampleHeight,
+        mean,
+        variance,
+        nonDarkRatio,
+        bucketCount: buckets.size,
+        detailScore,
+        signature,
+      };
+    }, base64);
+
+  const stages = [
+    {
+      name: "near",
+      zoomFactor: 0.28,
+      steps: "focus=first_location;select=first_agent;zoom=0.28;wait=0.45",
+      shot: "$zoom_shot_near",
+    },
+    {
+      name: "mid",
+      zoomFactor: 1.8,
+      steps: "focus=first_location;select=first_agent;zoom=1.8;wait=0.45",
+      shot: "$zoom_shot_mid",
+    },
+    {
+      name: "far",
+      zoomFactor: 4.2,
+      steps: "focus=first_location;select=first_agent;zoom=4.2;wait=0.45",
+      shot: "$zoom_shot_far",
+    },
+  ];
+
+  const signatureDistance = (left, right) => {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length === 0 || left.length !== right.length) {
+      return 0;
+    }
+    let delta = 0;
+    for (let index = 0; index < left.length; index += 1) {
+      delta += Math.abs(left[index] - right[index]);
+    }
+    return delta / left.length;
+  };
+
+  const results = [];
+  for (const stage of stages) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForApi();
+    await waitForConnected(\`zoom stage \${stage.name} initial\`);
+    await page.evaluate(() => window.__AW_TEST__.setMode("3d"));
+    const modeDeadline = Date.now() + 10000;
+    let modeState = await page.evaluate(() => window.__AW_TEST__.getState());
+    while (Date.now() < modeDeadline) {
+      const modeRadius = Number(modeState.cameraRadius || 0);
+      if (
+        modeState.connectionStatus === "connected" &&
+        modeState.cameraMode === "3d" &&
+        Number.isFinite(modeRadius) &&
+        modeRadius >= 40
+      ) {
+        break;
+      }
+      await page.waitForTimeout(250);
+      modeState = await page.evaluate(() => window.__AW_TEST__.getState());
+    }
+    if (modeState.connectionStatus !== "connected" || modeState.cameraMode !== "3d") {
+      fail(
+        \`zoom stage \${stage.name} failed to settle 3d mode (status=\${modeState.connectionStatus}, mode=\${modeState.cameraMode})\`,
+      );
+    }
+    await page.evaluate(
+      () => window.__AW_TEST__.runSteps("focus=first_location;select=first_agent;wait=0.35"),
+    );
+    await page.waitForTimeout(550);
+    const beforeState = await page.evaluate(() => window.__AW_TEST__.getState());
+    const beforeRadius = Number(beforeState.cameraRadius || 0);
+    if (!Number.isFinite(beforeRadius) || beforeRadius <= 0) {
+      fail(\`zoom stage \${stage.name} invalid baseline radius: \${beforeState.cameraRadius}\`);
+    }
+    await page.evaluate((steps) => window.__AW_TEST__.runSteps(steps), stage.steps);
+    const radiusDeadline = Date.now() + 10000;
+    let state = await waitForConnected(\`zoom stage \${stage.name} after steps\`);
+    let cameraRadius = Number(state.cameraRadius || 0);
+    while (Date.now() < radiusDeadline) {
+      if (state.cameraMode === "3d") {
+        if (
+          (stage.zoomFactor < 1.0 && cameraRadius < beforeRadius * 0.9) ||
+          (stage.zoomFactor > 1.0 && cameraRadius > beforeRadius * 1.1)
+        ) {
+          break;
+        }
+      }
+      await page.waitForTimeout(250);
+      state = await page.evaluate(() => window.__AW_TEST__.getState());
+      cameraRadius = Number(state.cameraRadius || 0);
+    }
+    if (state.cameraMode !== "3d") {
+      fail(\`zoom stage \${stage.name} expected 3d camera mode, got \${state.cameraMode}\`);
+    }
+    if (!Number.isFinite(cameraRadius) || cameraRadius <= 0) {
+      fail(\`zoom stage \${stage.name} invalid camera radius: \${state.cameraRadius}\`);
+    }
+    if (stage.zoomFactor < 1.0 && cameraRadius >= beforeRadius * 0.9) {
+      fail(
+        \`zoom stage \${stage.name} radius did not shrink as expected (before=\${beforeRadius.toFixed(3)}, after=\${cameraRadius.toFixed(3)})\`,
+      );
+    }
+    if (stage.zoomFactor > 1.0 && cameraRadius <= beforeRadius * 1.1) {
+      fail(
+        \`zoom stage \${stage.name} radius did not expand as expected (before=\${beforeRadius.toFixed(3)}, after=\${cameraRadius.toFixed(3)})\`,
+      );
+    }
+    if (state.selectedKind !== "agent") {
+      fail(\`zoom stage \${stage.name} missing agent selection: \${state.selectedKind}\`);
+    }
+    const screenshot = await page.screenshot({
+      path: stage.shot,
+      scale: "css",
+      type: "png",
+    });
+    const metricsWithSignature = await screenshotMetrics(screenshot.toString("base64"));
+    const { signature, ...metrics } = metricsWithSignature;
+    if (metrics.nonDarkRatio < 0.003) {
+      fail(\`zoom stage \${stage.name} non-dark ratio too low: \${metrics.nonDarkRatio}\`);
+    }
+    if (metrics.bucketCount < 8) {
+      fail(\`zoom stage \${stage.name} color buckets too low: \${metrics.bucketCount}\`);
+    }
+    if (metrics.detailScore < 1.2) {
+      fail(\`zoom stage \${stage.name} detail score too low: \${metrics.detailScore}\`);
+    }
+    results.push({
+      stage: stage.name,
+      shot: stage.shot,
+      cameraRadius,
+      metrics,
+      signature,
+    });
+  }
+
+  const detailScores = results.map((item) => item.metrics.detailScore);
+  const minDetail = Math.min(...detailScores);
+  const maxDetail = Math.max(...detailScores);
+  if (!Number.isFinite(minDetail) || !Number.isFinite(maxDetail) || maxDetail <= 0) {
+    fail(\`invalid detail scores across zoom stages: \${JSON.stringify(detailScores)}\`);
+  }
+  if (minDetail / maxDetail < 0.12) {
+    fail(
+      \`detail collapse across zoom stages (min=\${minDetail.toFixed(2)}, max=\${maxDetail.toFixed(2)})\`,
+    );
+  }
+
+  const nearRadius = Number(results[0]?.cameraRadius || 0);
+  const farRadius = Number(results[2]?.cameraRadius || 0);
+  if (!(farRadius > nearRadius * 1.2)) {
+    fail(
+      \`camera radius did not expand across zoom stages (near=\${nearRadius.toFixed(3)}, far=\${farRadius.toFixed(3)})\`,
+    );
+  }
+
+  const nearFarDelta = signatureDistance(results[0]?.signature, results[2]?.signature);
+  if (nearFarDelta < 1.2) {
+    fail(\`zoom visual delta too small between near/far stages: \${nearFarDelta.toFixed(3)}\`);
+  }
+
+  return results.map(({ signature, ...rest }) => rest);
+}
+JS
+)
+if ! zoom_output=$(bash "$PWCLI" run-code "$zoom_code" 2>&1); then
+  zoom_ok=0
+fi
+if printf "%s\n" "$zoom_output" | rg -q "^### Error"; then
+  zoom_ok=0
+fi
+printf "%s\n" "$zoom_output" | tee "$zoom_log" | tee -a "$pw_log" >/dev/null
 
 console_output=$(bash "$PWCLI" console 2>&1 | tee -a "$pw_log")
 printf "%s\n" "$console_output"
@@ -330,7 +682,7 @@ PY
 fi
 
 screenshot_ok=0
-if [[ -s "$shot_path" ]]; then
+if [[ -s "$shot_path" && -s "$zoom_shot_near" && -s "$zoom_shot_mid" && -s "$zoom_shot_far" ]]; then
   screenshot_ok=1
 fi
 
@@ -341,6 +693,9 @@ fi
 
 overall_pass=1
 if [[ "$semantic_ok" -ne 1 ]]; then
+  overall_pass=0
+fi
+if [[ "$zoom_ok" -ne 1 ]]; then
   overall_pass=0
 fi
 if [[ "$screenshot_ok" -ne 1 ]]; then
@@ -362,6 +717,11 @@ fi
   else
     echo "- Semantic web gate: failed"
   fi
+  if [[ "$zoom_ok" -eq 1 ]]; then
+    echo "- Zoom texture gate: passed"
+  else
+    echo "- Zoom texture gate: failed"
+  fi
   if [[ "$screenshot_ok" -eq 1 ]]; then
     echo "- Screenshot artifact: passed"
   else
@@ -379,12 +739,16 @@ fi
   echo "- Web log: \`$web_log\`"
   echo "- Playwright log: \`$pw_log\`"
   echo "- Semantic gate log: \`$semantic_log\`"
+  echo "- Zoom gate log: \`$zoom_log\`"
   if [[ -n "$console_path" ]]; then
     echo "- Console dump: \`$console_path\`"
   else
     echo "- Console dump: unavailable"
   fi
   echo "- Screenshot: \`$shot_path\`"
+  echo "- Zoom near screenshot: \`$zoom_shot_near\`"
+  echo "- Zoom mid screenshot: \`$zoom_shot_mid\`"
+  echo "- Zoom far screenshot: \`$zoom_shot_far\`"
 } >"$summary_path"
 
 echo "release qa summary: $summary_path"

@@ -39,6 +39,15 @@
   - `runSteps("mode=3d;focus=first_location;zoom=0.85;select=first_agent;wait=0.3")`
   - `sendControl("pause")`
   - `sendControl("play")`
+- `getState()` 补充相机语义字段用于视觉验证：
+  - `cameraMode`、`cameraRadius`、`cameraOrthoScale`
+
+### 多缩放视觉门禁（Web）
+- near/mid/far 三档语义化缩放动作均可执行并产出截图。
+- 每档截图满足最小像素质量指标（非暗像素比例、颜色桶数量、细节分数）。
+- near 与 far 档必须满足：
+  - 相机半径语义差异（`cameraRadius` 变化）；
+  - 截图签名差异（视觉 delta）大于阈值，避免“缩放命令生效但画面无变化”漏检。
 
 ### 产物
 - 截图：`output/playwright/viewer/*.png`
@@ -50,11 +59,16 @@
 - VRQ-1：执行现有套件基线，确认完成度与视觉门禁现状
 - VRQ-2：实现一键化 QA 脚本并补齐语义断言
 - VRQ-3：重跑验证，输出结论并更新手册/项目状态
+- VRQ-4：缺口修复（语义 gate 稳定性 + 字体错误收敛）
+- VRQ-5：缩放视觉门禁升级（相机语义 + 截图像素差异）
+- VRQ-6：收敛残余发行缺口（zoom 视觉差异不足）
 
 ## 风险
 - 浏览器启动与端口占用风险：
   - 缓解：脚本内统一拉起/清理进程，显式端口参数化。
 - Web 状态异步波动导致误判：
   - 缓解：加入轮询等待与超时机制，不用瞬时状态判定通过。
+- WebGL canvas 直接读回可能出现黑帧（与浏览器缓冲策略相关）：
+  - 缓解：改为对 Playwright 截图进行像素分析，避免直接 `drawImage(canvas)` 误判。
 - Playwright/Node 环境差异风险：
   - 缓解：复用仓库既有 `playwright_cli.sh` 包装层，保持 Node 版本前置检查。
