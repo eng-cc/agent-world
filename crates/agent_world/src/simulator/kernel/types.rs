@@ -290,6 +290,8 @@ pub enum WorldEventKind {
     AgentPlayerBound {
         agent_id: AgentId,
         player_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        public_key: Option<String>,
     },
     SocialFactPublished {
         fact: SocialFactState,

@@ -58,6 +58,7 @@ fn live_server_accepts_client_and_emits_snapshot_and_event() {
                 request: PromptControlApplyRequest {
                     agent_id: "agent-0".to_string(),
                     player_id: "integration-player".to_string(),
+                    public_key: None,
                     expected_version: Some(0),
                     updated_by: Some("integration-test".to_string()),
                     system_prompt_override: Some(Some("system".to_string())),

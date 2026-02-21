@@ -698,7 +698,7 @@ fn replay_from_snapshot_applies_agent_player_bound_event() {
     let snapshot = kernel.snapshot();
 
     let bind_event = kernel
-        .bind_agent_player("agent-0", "player-a")
+        .bind_agent_player("agent-0", "player-a", Some("pubkey-a"))
         .expect("bind agent to player");
     assert!(bind_event.is_some());
 
@@ -710,5 +710,42 @@ fn replay_from_snapshot_applies_agent_player_bound_event() {
     assert_eq!(
         replayed.model().agent_player_bindings.get("agent-0"),
         Some(&"player-a".to_string())
+    );
+    assert_eq!(
+        replayed
+            .model()
+            .agent_player_public_key_bindings
+            .get("agent-0"),
+        Some(&"pubkey-a".to_string())
+    );
+}
+
+#[test]
+fn replay_from_snapshot_applies_legacy_agent_player_bound_event_without_public_key() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init kernel");
+    let snapshot = kernel.snapshot();
+
+    let bind_event = kernel
+        .bind_agent_player("agent-0", "player-a", None)
+        .expect("bind agent to player");
+    assert!(bind_event.is_some());
+
+    let journal = kernel.journal_snapshot();
+    let replayed =
+        WorldKernel::replay_from_snapshot(snapshot, journal).expect("replay with player binding");
+
+    assert_eq!(replayed.model(), kernel.model());
+    assert_eq!(
+        replayed.model().agent_player_bindings.get("agent-0"),
+        Some(&"player-a".to_string())
+    );
+    assert_eq!(
+        replayed
+            .model()
+            .agent_player_public_key_bindings
+            .get("agent-0"),
+        None
     );
 }

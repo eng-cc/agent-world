@@ -191,6 +191,8 @@ pub struct WorldModel {
     #[serde(default)]
     pub agent_player_bindings: BTreeMap<AgentId, String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub agent_player_public_key_bindings: BTreeMap<AgentId, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub agent_long_term_memories: BTreeMap<AgentId, Vec<LongTermMemoryEntry>>,
     pub locations: BTreeMap<LocationId, Location>,
     pub assets: BTreeMap<AssetId, Asset>,

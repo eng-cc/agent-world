@@ -337,10 +337,18 @@ impl WorldKernel {
             .map(String::as_str)
     }
 
+    pub fn public_key_binding_for_agent(&self, agent_id: &str) -> Option<&str> {
+        self.model
+            .agent_player_public_key_bindings
+            .get(agent_id)
+            .map(String::as_str)
+    }
+
     pub fn bind_agent_player(
         &mut self,
         agent_id: &str,
         player_id: &str,
+        public_key: Option<&str>,
     ) -> Result<Option<WorldEvent>, String> {
         if !self.model.agents.contains_key(agent_id) {
             return Err(format!("agent not found: {agent_id}"));
@@ -349,15 +357,49 @@ impl WorldKernel {
         if player_id.is_empty() {
             return Err("player_id cannot be empty".to_string());
         }
-        if self.player_binding_for_agent(agent_id) == Some(player_id) {
+        let requested_public_key = public_key
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned);
+
+        let current_player = self
+            .player_binding_for_agent(agent_id)
+            .map(ToOwned::to_owned);
+        let current_public_key = self
+            .public_key_binding_for_agent(agent_id)
+            .map(ToOwned::to_owned);
+
+        // Keep existing key binding on no-key requests when player stays unchanged,
+        // so legacy clients do not downgrade key-bound agents.
+        let target_public_key = if current_player.as_deref() == Some(player_id) {
+            requested_public_key
+                .clone()
+                .or_else(|| current_public_key.clone())
+        } else {
+            requested_public_key.clone()
+        };
+
+        if current_player.as_deref() == Some(player_id) && current_public_key == target_public_key {
             return Ok(None);
         }
+
         self.model
             .agent_player_bindings
             .insert(agent_id.to_string(), player_id.to_string());
+        match target_public_key.clone() {
+            Some(value) => {
+                self.model
+                    .agent_player_public_key_bindings
+                    .insert(agent_id.to_string(), value);
+            }
+            None => {
+                self.model.agent_player_public_key_bindings.remove(agent_id);
+            }
+        }
         Ok(Some(self.record_event(WorldEventKind::AgentPlayerBound {
             agent_id: agent_id.to_string(),
             player_id: player_id.to_string(),
+            public_key: target_public_key,
         })))
     }
 

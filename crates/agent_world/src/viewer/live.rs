@@ -394,7 +394,13 @@ impl LiveWorld {
     ) -> Result<PromptControlAck, PromptControlError> {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
-        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
+        let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        ensure_agent_player_access(
+            self.kernel(),
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
@@ -429,7 +435,13 @@ impl LiveWorld {
     ) -> Result<PromptControlAck, PromptControlError> {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
-        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
+        let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        ensure_agent_player_access(
+            self.kernel(),
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
@@ -465,7 +477,11 @@ impl LiveWorld {
         candidate.updated_by = player_id.clone();
 
         self.apply_prompt_profile_to_driver(&candidate)?;
-        self.bind_agent_player_access(request.agent_id.as_str(), player_id.as_str())?;
+        self.bind_agent_player_access(
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let digest = prompt_profile_digest(&candidate);
         self.kernel.apply_agent_prompt_profile_update(
             candidate.clone(),
@@ -493,7 +509,13 @@ impl LiveWorld {
     ) -> Result<PromptControlAck, PromptControlError> {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
-        ensure_agent_player_access(self.kernel(), request.agent_id.as_str(), player_id.as_str())?;
+        let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        ensure_agent_player_access(
+            self.kernel(),
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let current = self.current_prompt_profile(request.agent_id.as_str())?;
         ensure_expected_prompt_version(
             request.agent_id.as_str(),
@@ -543,7 +565,11 @@ impl LiveWorld {
         candidate.updated_by = player_id.clone();
 
         self.apply_prompt_profile_to_driver(&candidate)?;
-        self.bind_agent_player_access(request.agent_id.as_str(), player_id.as_str())?;
+        self.bind_agent_player_access(
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let digest = prompt_profile_digest(&candidate);
         self.kernel.apply_agent_prompt_profile_update(
             candidate.clone(),
@@ -579,6 +605,7 @@ impl LiveWorld {
                 agent_id: Some(request.agent_id),
             });
         };
+        let public_key = normalize_optional_public_key(request.public_key.as_deref());
         let message = request.message.trim().to_string();
         if message.is_empty() {
             return Err(AgentChatError {
@@ -596,7 +623,11 @@ impl LiveWorld {
             });
         }
 
-        self.bind_agent_player_access_for_chat(request.agent_id.as_str(), player_id.as_str())?;
+        self.bind_agent_player_access_for_chat(
+            request.agent_id.as_str(),
+            player_id.as_str(),
+            public_key.as_deref(),
+        )?;
         let runner = match &mut self.driver {
             LiveDriver::Llm(runner) => runner,
             LiveDriver::Script(_) => unreachable!("script mode handled above"),
@@ -717,11 +748,15 @@ impl LiveWorld {
         &mut self,
         agent_id: &str,
         player_id: &str,
+        public_key: Option<&str>,
     ) -> Result<(), PromptControlError> {
-        ensure_agent_player_access(self.kernel(), agent_id, player_id)?;
-        if self.kernel.player_binding_for_agent(agent_id).is_none() {
+        ensure_agent_player_access(self.kernel(), agent_id, player_id, public_key)?;
+        let needs_bind = self.kernel.player_binding_for_agent(agent_id).is_none()
+            || (public_key.is_some()
+                && self.kernel.public_key_binding_for_agent(agent_id).is_none());
+        if needs_bind {
             self.kernel
-                .bind_agent_player(agent_id, player_id)
+                .bind_agent_player(agent_id, player_id, public_key)
                 .map_err(|message| PromptControlError {
                     code: "player_bind_failed".to_string(),
                     message,
@@ -741,19 +776,21 @@ impl LiveWorld {
         &mut self,
         agent_id: &str,
         player_id: &str,
+        public_key: Option<&str>,
     ) -> Result<(), AgentChatError> {
-        let mapped =
-            ensure_agent_player_access(self.kernel(), agent_id, player_id).map_err(|err| {
-                AgentChatError {
-                    code: "agent_control_forbidden".to_string(),
-                    message: err.message,
-                    agent_id: err.agent_id,
-                }
+        let mapped = ensure_agent_player_access(self.kernel(), agent_id, player_id, public_key)
+            .map_err(|err| AgentChatError {
+                code: "agent_control_forbidden".to_string(),
+                message: err.message,
+                agent_id: err.agent_id,
             });
         mapped?;
-        if self.kernel.player_binding_for_agent(agent_id).is_none() {
+        let needs_bind = self.kernel.player_binding_for_agent(agent_id).is_none()
+            || (public_key.is_some()
+                && self.kernel.public_key_binding_for_agent(agent_id).is_none());
+        if needs_bind {
             self.kernel
-                .bind_agent_player(agent_id, player_id)
+                .bind_agent_player(agent_id, player_id, public_key)
                 .map_err(|message| AgentChatError {
                     code: "player_bind_failed".to_string(),
                     message,

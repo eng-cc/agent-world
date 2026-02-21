@@ -12,11 +12,11 @@
 - [x] 跑一轮 required 回归并记录结果
 
 ### T2 Agent/PublicKey 绑定
-- [ ] 扩展 viewer 协议请求：支持传入可选 `public_key`
-- [ ] 扩展 world model + kernel 绑定存储与查询（player_id + public_key）
-- [ ] 扩展 `AgentPlayerBound` 事件与 replay 兼容处理
-- [ ] 在 live 控制链路增加 public_key 一致性校验与错误提示
-- [ ] 补齐单测/集成测试
+- [x] 扩展 viewer 协议请求：支持传入可选 `public_key`
+- [x] 扩展 world model + kernel 绑定存储与查询（player_id + public_key）
+- [x] 扩展 `AgentPlayerBound` 事件与 replay 兼容处理
+- [x] 在 live 控制链路增加 public_key 一致性校验与错误提示
+- [x] 补齐单测/集成测试
 
 ### T3 收口
 - [ ] 回写设计/项目文档状态
@@ -32,7 +32,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

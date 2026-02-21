@@ -188,6 +188,7 @@ fn prompt_control_preview_reports_fields_and_next_version() {
         .prompt_control_preview(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
+            public_key: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("系统提示".to_string())),
@@ -216,6 +217,7 @@ fn prompt_control_apply_requires_llm_mode() {
         .prompt_control_apply(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
+            public_key: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -269,6 +271,7 @@ fn prompt_control_preview_requires_non_empty_player_id() {
         .prompt_control_preview(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
             player_id: "   ".to_string(),
+            public_key: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -288,7 +291,7 @@ fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
 
     let bind_event = world
         .kernel
-        .bind_agent_player("agent-0", "player-a")
+        .bind_agent_player("agent-0", "player-a", None)
         .expect("bind ok");
     assert!(bind_event.is_some());
 
@@ -296,6 +299,7 @@ fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
         .prompt_control_preview(PromptControlApplyRequest {
             agent_id: "agent-0".to_string(),
             player_id: "player-b".to_string(),
+            public_key: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -312,6 +316,61 @@ fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
 }
 
 #[test]
+fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+    let bind_event = world
+        .kernel
+        .bind_agent_player("agent-0", "player-a", Some("pubkey-a"))
+        .expect("bind ok");
+    assert!(bind_event.is_some());
+
+    let missing_key = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect_err("missing public key should be rejected");
+    assert_eq!(missing_key.code, "agent_control_forbidden");
+
+    let wrong_key = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some("pubkey-b".to_string()),
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect_err("mismatched public key should be rejected");
+    assert_eq!(wrong_key.code, "agent_control_forbidden");
+
+    let ack = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some("pubkey-a".to_string()),
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect("matching public key should pass");
+    assert!(ack.preview);
+}
+
+#[test]
 fn agent_chat_requires_player_id() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
@@ -322,10 +381,41 @@ fn agent_chat_requires_player_id() {
             agent_id: "agent-0".to_string(),
             message: "hello".to_string(),
             player_id: None,
+            public_key: None,
         })
         .expect_err("missing player_id should be rejected");
 
     assert_eq!(err.code, "player_id_required");
+}
+
+#[test]
+fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+
+    let bind_event = world
+        .kernel
+        .bind_agent_player("agent-0", "player-a", None)
+        .expect("legacy bind ok");
+    assert!(bind_event.is_some());
+    assert_eq!(world.kernel.public_key_binding_for_agent("agent-0"), None);
+
+    let ack = world
+        .agent_chat(AgentChatRequest {
+            agent_id: "agent-0".to_string(),
+            message: "hello".to_string(),
+            player_id: Some("player-a".to_string()),
+            public_key: Some("pubkey-a".to_string()),
+        })
+        .expect("chat should be accepted");
+
+    assert_eq!(ack.player_id.as_deref(), Some("player-a"));
+    assert_eq!(
+        world.kernel.public_key_binding_for_agent("agent-0"),
+        Some("pubkey-a")
+    );
 }
 
 #[test]

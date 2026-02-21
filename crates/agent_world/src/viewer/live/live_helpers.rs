@@ -20,6 +20,13 @@ pub(super) fn normalize_required_player_id(
     Ok(normalized.to_string())
 }
 
+pub(super) fn normalize_optional_public_key(public_key: Option<&str>) -> Option<String> {
+    public_key
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
 pub(super) fn ensure_updated_by_matches_player(
     updated_by: Option<&str>,
     player_id: &str,
@@ -46,6 +53,7 @@ pub(super) fn ensure_agent_player_access(
     kernel: &WorldKernel,
     agent_id: &str,
     player_id: &str,
+    public_key: Option<&str>,
 ) -> Result<(), PromptControlError> {
     if !kernel.model().agents.contains_key(agent_id) {
         return Err(PromptControlError {
@@ -59,7 +67,34 @@ pub(super) fn ensure_agent_player_access(
         return Ok(());
     };
     if bound_player_id == player_id {
-        return Ok(());
+        let Some(bound_public_key) = kernel.public_key_binding_for_agent(agent_id) else {
+            return Ok(());
+        };
+        let requested_public_key = normalize_optional_public_key(public_key);
+        if requested_public_key.as_deref() == Some(bound_public_key) {
+            return Ok(());
+        }
+        let message = if requested_public_key.is_none() {
+            format!(
+                "agent {} is bound to player {} with public_key {}, public_key is required",
+                agent_id, bound_player_id, bound_public_key
+            )
+        } else {
+            format!(
+                "agent {} is bound to player {} with different public_key",
+                agent_id, bound_player_id
+            )
+        };
+        return Err(PromptControlError {
+            code: "agent_control_forbidden".to_string(),
+            message,
+            agent_id: Some(agent_id.to_string()),
+            current_version: kernel
+                .model()
+                .agent_prompt_profiles
+                .get(agent_id)
+                .map(|profile| profile.version),
+        });
     }
     Err(PromptControlError {
         code: "agent_control_forbidden".to_string(),

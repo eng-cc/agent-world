@@ -45,6 +45,8 @@ pub struct PromptControlApplyRequest {
     pub agent_id: String,
     pub player_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_by: Option<String>,
@@ -80,6 +82,8 @@ where
 pub struct PromptControlRollbackRequest {
     pub agent_id: String,
     pub player_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
     pub to_version: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
@@ -93,6 +97,8 @@ pub struct AgentChatRequest {
     pub message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -242,6 +248,7 @@ mod tests {
                 request: PromptControlApplyRequest {
                     agent_id: "agent-0".to_string(),
                     player_id: "player-1".to_string(),
+                    public_key: Some("pk-1".to_string()),
                     expected_version: Some(3),
                     updated_by: Some("tester".to_string()),
                     system_prompt_override: Some(Some("system".to_string())),
@@ -262,11 +269,34 @@ mod tests {
                 agent_id: "agent-0".to_string(),
                 message: "go to loc-2".to_string(),
                 player_id: Some("player-1".to_string()),
+                public_key: Some("pk-1".to_string()),
             },
         };
         let json = serde_json::to_string(&request).expect("serialize request");
         let parsed: ViewerRequest = serde_json::from_str(&json).expect("deserialize request");
         assert_eq!(parsed, request);
+    }
+
+    #[test]
+    fn viewer_prompt_control_request_legacy_without_public_key_is_accepted() {
+        let json = r#"{
+            "type":"prompt_control",
+            "command":{
+                "mode":"apply",
+                "request":{
+                    "agent_id":"agent-0",
+                    "player_id":"player-1"
+                }
+            }
+        }"#;
+        let parsed: ViewerRequest = serde_json::from_str(json).expect("deserialize legacy request");
+        let ViewerRequest::PromptControl { command } = parsed else {
+            panic!("expected prompt_control request");
+        };
+        let PromptControlCommand::Apply { request } = command else {
+            panic!("expected apply command");
+        };
+        assert_eq!(request.public_key, None);
     }
 
     #[test]

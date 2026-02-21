@@ -506,6 +506,7 @@ impl WorldKernel {
             WorldEventKind::AgentPlayerBound {
                 agent_id,
                 player_id,
+                public_key,
             } => {
                 if !self.model.agents.contains_key(agent_id) {
                     return Err(PersistError::ReplayConflict {
@@ -517,9 +518,29 @@ impl WorldKernel {
                         message: format!("empty player_id for agent binding: {}", agent_id),
                     });
                 }
+                let normalized_public_key = public_key
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned);
+                if public_key.is_some() && normalized_public_key.is_none() {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("empty public_key for agent binding: {}", agent_id),
+                    });
+                }
                 self.model
                     .agent_player_bindings
                     .insert(agent_id.clone(), player_id.clone());
+                match normalized_public_key {
+                    Some(value) => {
+                        self.model
+                            .agent_player_public_key_bindings
+                            .insert(agent_id.clone(), value);
+                    }
+                    None => {
+                        self.model.agent_player_public_key_bindings.remove(agent_id);
+                    }
+                }
             }
             WorldEventKind::SocialFactPublished { fact } => {
                 self.replay_social_fact_published(fact)
