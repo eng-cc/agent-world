@@ -152,8 +152,9 @@ use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{
     resolve_viewer_3d_config, resolve_viewer_external_material_config,
-    resolve_viewer_external_mesh_config, Viewer3dConfig, ViewerExternalMeshConfig,
-    ViewerGeometryTier, ViewerTonemappingMode,
+    resolve_viewer_external_mesh_config, Viewer3dConfig, ViewerExternalMaterialConfig,
+    ViewerExternalMaterialSlotConfig, ViewerExternalMeshConfig, ViewerGeometryTier,
+    ViewerTonemappingMode,
 };
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
@@ -184,6 +185,7 @@ const WORLD_GRID_LINE_THICKNESS_2D: f32 = 0.008;
 const WORLD_GRID_LINE_THICKNESS_3D: f32 = 0.014;
 const CHUNK_GRID_LINE_THICKNESS_2D: f32 = 0.012;
 const CHUNK_GRID_LINE_THICKNESS_3D: f32 = 0.022;
+const MAX_EMISSIVE_COLOR_COMPONENT: f32 = 4.0;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
@@ -442,6 +444,10 @@ struct Viewer3dAssets {
     power_plant_material: Handle<StandardMaterial>,
     power_storage_mesh: Handle<Mesh>,
     power_storage_material: Handle<StandardMaterial>,
+    location_core_silicate_material: Handle<StandardMaterial>,
+    location_core_metal_material: Handle<StandardMaterial>,
+    location_core_ice_material: Handle<StandardMaterial>,
+    location_halo_material: Handle<StandardMaterial>,
     chunk_unexplored_material: Handle<StandardMaterial>,
     chunk_generated_material: Handle<StandardMaterial>,
     chunk_exhausted_material: Handle<StandardMaterial>,
@@ -614,6 +620,31 @@ where
     } else {
         meshes.add(fallback())
     }
+}
+
+fn resolve_srgb_slot_color(default: [f32; 3], override_color: Option<[f32; 3]>) -> [f32; 3] {
+    override_color.unwrap_or(default)
+}
+
+fn color_from_srgb(rgb: [f32; 3]) -> Color {
+    Color::srgb(rgb[0], rgb[1], rgb[2])
+}
+
+fn color_from_srgb_with_alpha(rgb: [f32; 3], alpha: f32) -> Color {
+    Color::srgba(rgb[0], rgb[1], rgb[2], alpha)
+}
+
+fn emissive_from_srgb_with_boost(rgb: [f32; 3], boost: f32) -> LinearRgba {
+    Color::srgb(
+        (rgb[0] * boost).clamp(0.0, MAX_EMISSIVE_COLOR_COMPONENT),
+        (rgb[1] * boost).clamp(0.0, MAX_EMISSIVE_COLOR_COMPONENT),
+        (rgb[2] * boost).clamp(0.0, MAX_EMISSIVE_COLOR_COMPONENT),
+    )
+    .into()
+}
+
+fn location_material_override_enabled(slot: ViewerExternalMaterialSlotConfig) -> bool {
+    slot.base_color_srgb.is_some() || slot.emissive_color_srgb.is_some()
 }
 
 fn lighting_illuminance_triplet(config: &Viewer3dConfig) -> (f32, f32, f32) {
@@ -941,6 +972,7 @@ fn setup_3d_scene(
     mut commands: Commands,
     config: Res<Viewer3dConfig>,
     external_mesh: Res<ViewerExternalMeshConfig>,
+    external_material: Res<ViewerExternalMaterialConfig>,
     camera_mode: Res<ViewerCameraMode>,
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -991,16 +1023,20 @@ fn setup_3d_scene(
         || power_storage_mesh_for_geometry_tier(geometry_tier),
     );
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let agent_base_color =
+        resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
+    let agent_emissive_color = resolve_srgb_slot_color(
+        [0.90, 0.38, 0.20],
+        external_material.agent.emissive_color_srgb,
+    );
     let agent_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.42, 0.22),
+        base_color: color_from_srgb(agent_base_color),
         perceptual_roughness: config.materials.agent.roughness,
         metallic: config.materials.agent.metallic,
-        emissive: Color::srgb(
-            (0.90 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
-            (0.38 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
-            (0.20 * config.materials.agent.emissive_boost).clamp(0.0, 4.0),
-        )
-        .into(),
+        emissive: emissive_from_srgb_with_boost(
+            agent_emissive_color,
+            config.materials.agent.emissive_boost,
+        ),
         ..default()
     });
     let agent_module_marker_material = materials.add(StandardMaterial {
@@ -1010,40 +1046,56 @@ fn setup_3d_scene(
     });
     let fragment_element_material_library =
         build_fragment_element_material_handles(&mut materials, config.materials.fragment);
+    let asset_base_color =
+        resolve_srgb_slot_color([0.82, 0.76, 0.34], external_material.asset.base_color_srgb);
+    let asset_emissive_color = resolve_srgb_slot_color(
+        [0.82, 0.76, 0.34],
+        external_material.asset.emissive_color_srgb,
+    );
     let asset_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.82, 0.76, 0.34),
+        base_color: color_from_srgb(asset_base_color),
         perceptual_roughness: config.materials.asset.roughness,
         metallic: config.materials.asset.metallic,
-        emissive: Color::srgb(
-            (0.82 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
-            (0.76 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
-            (0.34 * config.materials.asset.emissive_boost).clamp(0.0, 4.0),
-        )
-        .into(),
+        emissive: emissive_from_srgb_with_boost(
+            asset_emissive_color,
+            config.materials.asset.emissive_boost,
+        ),
         ..default()
     });
+    let power_plant_base_color = resolve_srgb_slot_color(
+        [0.95, 0.42, 0.20],
+        external_material.power_plant.base_color_srgb,
+    );
+    let power_plant_emissive_color = resolve_srgb_slot_color(
+        [0.95, 0.42, 0.20],
+        external_material.power_plant.emissive_color_srgb,
+    );
     let power_plant_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.95, 0.42, 0.2),
+        base_color: color_from_srgb(power_plant_base_color),
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
-        emissive: Color::srgb(
-            (0.95 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-            (0.42 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-            (0.20 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-        )
-        .into(),
+        emissive: emissive_from_srgb_with_boost(
+            power_plant_emissive_color,
+            config.materials.facility.emissive_boost,
+        ),
         ..default()
     });
+    let power_storage_base_color = resolve_srgb_slot_color(
+        [0.20, 0.86, 0.48],
+        external_material.power_storage.base_color_srgb,
+    );
+    let power_storage_emissive_color = resolve_srgb_slot_color(
+        [0.20, 0.86, 0.48],
+        external_material.power_storage.emissive_color_srgb,
+    );
     let power_storage_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.2, 0.86, 0.48),
+        base_color: color_from_srgb(power_storage_base_color),
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
-        emissive: Color::srgb(
-            (0.20 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-            (0.86 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-            (0.48 * config.materials.facility.emissive_boost).clamp(0.0, 4.0),
-        )
-        .into(),
+        emissive: emissive_from_srgb_with_boost(
+            power_storage_emissive_color,
+            config.materials.facility.emissive_boost,
+        ),
         ..default()
     });
     let chunk_unexplored_material = materials.add(StandardMaterial {
@@ -1075,6 +1127,48 @@ fn setup_3d_scene(
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
+    let (
+        location_core_silicate_material,
+        location_core_metal_material,
+        location_core_ice_material,
+        location_halo_material,
+    ) = if location_material_override_enabled(external_material.location) {
+        let location_base_color = resolve_srgb_slot_color(
+            [0.30, 0.42, 0.66],
+            external_material.location.base_color_srgb,
+        );
+        let location_emissive_color = resolve_srgb_slot_color(
+            location_base_color,
+            external_material.location.emissive_color_srgb,
+        );
+        let location_core_material = |alpha: f32| StandardMaterial {
+            base_color: color_from_srgb_with_alpha(location_base_color, alpha),
+            perceptual_roughness: config.materials.facility.roughness,
+            metallic: config.materials.facility.metallic,
+            emissive: color_from_srgb(location_emissive_color).into(),
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        };
+
+        (
+            materials.add(location_core_material(0.22)),
+            materials.add(location_core_material(0.30)),
+            materials.add(location_core_material(0.30)),
+            materials.add(StandardMaterial {
+                base_color: color_from_srgb_with_alpha(location_base_color, 0.10),
+                emissive: color_from_srgb(location_emissive_color).into(),
+                alpha_mode: AlphaMode::Blend,
+                ..default()
+            }),
+        )
+    } else {
+        (
+            chunk_unexplored_material.clone(),
+            chunk_generated_material.clone(),
+            chunk_exhausted_material.clone(),
+            world_bounds_material.clone(),
+        )
+    };
     let world_grid_material = materials.add(StandardMaterial {
         base_color: Color::srgba(0.29, 0.36, 0.48, 0.42),
         unlit: true,
@@ -1125,6 +1219,10 @@ fn setup_3d_scene(
         power_plant_material,
         power_storage_mesh,
         power_storage_material,
+        location_core_silicate_material,
+        location_core_metal_material,
+        location_core_ice_material,
+        location_halo_material,
         chunk_unexplored_material,
         chunk_generated_material,
         chunk_exhausted_material,

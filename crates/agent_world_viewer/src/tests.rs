@@ -5,7 +5,9 @@ use crate::timeline_controls::{
     normalized_x_to_tick, TimelineAdjustButton, TimelineBar, TimelineBarFill,
     TimelineSeekSubmitButton, TimelineStatusText,
 };
-use crate::viewer_3d_config::{Viewer3dConfig, ViewerTonemappingMode};
+use crate::viewer_3d_config::{
+    Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerTonemappingMode,
+};
 use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 
@@ -808,6 +810,41 @@ fn camera_post_process_components_disable_bloom_and_deband() {
     assert!((grading.global.exposure + 0.35).abs() < f32::EPSILON);
     assert!((grading.global.post_saturation - 0.82).abs() < f32::EPSILON);
     assert!(bloom.is_none());
+}
+
+#[test]
+fn resolve_srgb_slot_color_prefers_override() {
+    let resolved = resolve_srgb_slot_color([0.11, 0.22, 0.33], Some([0.44, 0.55, 0.66]));
+    assert!((resolved[0] - 0.44).abs() < f32::EPSILON);
+    assert!((resolved[1] - 0.55).abs() < f32::EPSILON);
+    assert!((resolved[2] - 0.66).abs() < f32::EPSILON);
+}
+
+#[test]
+fn emissive_from_srgb_with_boost_clamps_components() {
+    let clamped = emissive_from_srgb_with_boost([1.0, 1.0, 1.0], 6.0);
+    let clamped_more = emissive_from_srgb_with_boost([1.0, 1.0, 1.0], 100.0);
+    assert!((clamped.red - clamped_more.red).abs() < f32::EPSILON);
+    assert!((clamped.green - clamped_more.green).abs() < f32::EPSILON);
+    assert!((clamped.blue - clamped_more.blue).abs() < f32::EPSILON);
+}
+
+#[test]
+fn location_material_override_enabled_detects_any_slot_override() {
+    let empty = ViewerExternalMaterialSlotConfig::default();
+    assert!(!location_material_override_enabled(empty));
+
+    let base_only = ViewerExternalMaterialSlotConfig {
+        base_color_srgb: Some([0.2, 0.3, 0.4]),
+        emissive_color_srgb: None,
+    };
+    assert!(location_material_override_enabled(base_only));
+
+    let emissive_only = ViewerExternalMaterialSlotConfig {
+        base_color_srgb: None,
+        emissive_color_srgb: Some([0.6, 0.7, 0.8]),
+    };
+    assert!(location_material_override_enabled(emissive_only));
 }
 
 #[path = "tests_scene_entities.rs"]

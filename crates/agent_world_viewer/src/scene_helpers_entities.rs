@@ -144,11 +144,11 @@ fn location_core_material(
     material: MaterialKind,
 ) -> Handle<StandardMaterial> {
     match material {
-        MaterialKind::Silicate => assets.chunk_unexplored_material.clone(),
-        MaterialKind::Metal => assets.chunk_generated_material.clone(),
-        MaterialKind::Ice => assets.chunk_exhausted_material.clone(),
-        MaterialKind::Carbon => assets.chunk_generated_material.clone(),
-        MaterialKind::Composite => assets.chunk_unexplored_material.clone(),
+        MaterialKind::Silicate => assets.location_core_silicate_material.clone(),
+        MaterialKind::Metal => assets.location_core_metal_material.clone(),
+        MaterialKind::Ice => assets.location_core_ice_material.clone(),
+        MaterialKind::Carbon => assets.location_core_metal_material.clone(),
+        MaterialKind::Composite => assets.location_core_silicate_material.clone(),
     }
 }
 
@@ -193,7 +193,7 @@ pub(super) fn spawn_location_shell_details(
             let halo_scale = Vec3::splat(1.24 + halo_idx as f32 * 0.18);
             parent.spawn((
                 Mesh3d(assets.location_mesh.clone()),
-                MeshMaterial3d(assets.world_bounds_material.clone()),
+                MeshMaterial3d(assets.location_halo_material.clone()),
                 Transform::from_scale(halo_scale),
                 BaseScale(halo_scale),
                 Name::new(format!("location:detail:halo:{location_id}:{halo_idx}")),
