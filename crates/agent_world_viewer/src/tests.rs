@@ -849,15 +849,35 @@ fn location_material_override_enabled_detects_any_slot_override() {
 }
 
 #[test]
-fn texture_slot_override_enabled_detects_base_texture_override() {
+fn texture_slot_override_enabled_detects_any_texture_channel_override() {
     let empty = ViewerExternalTextureSlotConfig::default();
     assert!(!texture_slot_override_enabled(&empty));
 
-    let texture_override = ViewerExternalTextureSlotConfig {
+    let base_override = ViewerExternalTextureSlotConfig {
         base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
         ..ViewerExternalTextureSlotConfig::default()
     };
-    assert!(texture_slot_override_enabled(&texture_override));
+    assert!(texture_slot_override_enabled(&base_override));
+
+    let normal_override = ViewerExternalTextureSlotConfig {
+        normal_texture_asset: Some("textures/world/location_normal.png".to_string()),
+        ..ViewerExternalTextureSlotConfig::default()
+    };
+    assert!(texture_slot_override_enabled(&normal_override));
+
+    let metal_rough_override = ViewerExternalTextureSlotConfig {
+        metallic_roughness_texture_asset: Some(
+            "textures/world/location_metal_rough.png".to_string(),
+        ),
+        ..ViewerExternalTextureSlotConfig::default()
+    };
+    assert!(texture_slot_override_enabled(&metal_rough_override));
+
+    let emissive_override = ViewerExternalTextureSlotConfig {
+        emissive_texture_asset: Some("textures/world/location_emissive.png".to_string()),
+        ..ViewerExternalTextureSlotConfig::default()
+    };
+    assert!(texture_slot_override_enabled(&emissive_override));
 }
 
 #[test]
@@ -879,7 +899,7 @@ fn location_style_override_enabled_detects_material_or_texture_override() {
     ));
 
     let texture_only = ViewerExternalTextureSlotConfig {
-        base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
+        normal_texture_asset: Some("textures/world/location_normal.png".to_string()),
         ..ViewerExternalTextureSlotConfig::default()
     };
     assert!(location_style_override_enabled(

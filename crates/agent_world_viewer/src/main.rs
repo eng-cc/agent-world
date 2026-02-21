@@ -627,17 +627,43 @@ fn resolve_srgb_slot_color(default: [f32; 3], override_color: Option<[f32; 3]>) 
     override_color.unwrap_or(default)
 }
 
-fn resolve_base_texture_slot(
+#[derive(Clone, Debug, Default)]
+struct ResolvedTextureSlot {
+    base_color_texture: Option<Handle<Image>>,
+    normal_map_texture: Option<Handle<Image>>,
+    metallic_roughness_texture: Option<Handle<Image>>,
+    emissive_texture: Option<Handle<Image>>,
+}
+
+fn resolve_texture_slot(
     asset_server: &AssetServer,
     slot: &ViewerExternalTextureSlotConfig,
-) -> Option<Handle<Image>> {
-    slot.base_texture_asset
-        .as_ref()
-        .map(|path| asset_server.load(path.to_string()))
+) -> ResolvedTextureSlot {
+    ResolvedTextureSlot {
+        base_color_texture: slot
+            .base_texture_asset
+            .as_ref()
+            .map(|path| asset_server.load(path.to_string())),
+        normal_map_texture: slot
+            .normal_texture_asset
+            .as_ref()
+            .map(|path| asset_server.load(path.to_string())),
+        metallic_roughness_texture: slot
+            .metallic_roughness_texture_asset
+            .as_ref()
+            .map(|path| asset_server.load(path.to_string())),
+        emissive_texture: slot
+            .emissive_texture_asset
+            .as_ref()
+            .map(|path| asset_server.load(path.to_string())),
+    }
 }
 
 fn texture_slot_override_enabled(slot: &ViewerExternalTextureSlotConfig) -> bool {
     slot.base_texture_asset.is_some()
+        || slot.normal_texture_asset.is_some()
+        || slot.metallic_roughness_texture_asset.is_some()
+        || slot.emissive_texture_asset.is_some()
 }
 
 fn color_from_srgb(rgb: [f32; 3]) -> Color {
@@ -1045,14 +1071,12 @@ fn setup_3d_scene(
         || power_storage_mesh_for_geometry_tier(geometry_tier),
     );
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let agent_base_texture = resolve_base_texture_slot(&asset_server, &external_texture.agent);
-    let location_base_texture =
-        resolve_base_texture_slot(&asset_server, &external_texture.location);
-    let asset_base_texture = resolve_base_texture_slot(&asset_server, &external_texture.asset);
-    let power_plant_base_texture =
-        resolve_base_texture_slot(&asset_server, &external_texture.power_plant);
-    let power_storage_base_texture =
-        resolve_base_texture_slot(&asset_server, &external_texture.power_storage);
+    let agent_texture = resolve_texture_slot(&asset_server, &external_texture.agent);
+    let location_texture = resolve_texture_slot(&asset_server, &external_texture.location);
+    let asset_texture = resolve_texture_slot(&asset_server, &external_texture.asset);
+    let power_plant_texture = resolve_texture_slot(&asset_server, &external_texture.power_plant);
+    let power_storage_texture =
+        resolve_texture_slot(&asset_server, &external_texture.power_storage);
     let agent_base_color =
         resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
     let agent_emissive_color = resolve_srgb_slot_color(
@@ -1061,7 +1085,10 @@ fn setup_3d_scene(
     );
     let agent_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(agent_base_color),
-        base_color_texture: agent_base_texture,
+        base_color_texture: agent_texture.base_color_texture,
+        normal_map_texture: agent_texture.normal_map_texture,
+        metallic_roughness_texture: agent_texture.metallic_roughness_texture,
+        emissive_texture: agent_texture.emissive_texture,
         perceptual_roughness: config.materials.agent.roughness,
         metallic: config.materials.agent.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1085,7 +1112,10 @@ fn setup_3d_scene(
     );
     let asset_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(asset_base_color),
-        base_color_texture: asset_base_texture,
+        base_color_texture: asset_texture.base_color_texture,
+        normal_map_texture: asset_texture.normal_map_texture,
+        metallic_roughness_texture: asset_texture.metallic_roughness_texture,
+        emissive_texture: asset_texture.emissive_texture,
         perceptual_roughness: config.materials.asset.roughness,
         metallic: config.materials.asset.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1104,7 +1134,10 @@ fn setup_3d_scene(
     );
     let power_plant_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(power_plant_base_color),
-        base_color_texture: power_plant_base_texture,
+        base_color_texture: power_plant_texture.base_color_texture,
+        normal_map_texture: power_plant_texture.normal_map_texture,
+        metallic_roughness_texture: power_plant_texture.metallic_roughness_texture,
+        emissive_texture: power_plant_texture.emissive_texture,
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1123,7 +1156,10 @@ fn setup_3d_scene(
     );
     let power_storage_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(power_storage_base_color),
-        base_color_texture: power_storage_base_texture,
+        base_color_texture: power_storage_texture.base_color_texture,
+        normal_map_texture: power_storage_texture.normal_map_texture,
+        metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
+        emissive_texture: power_storage_texture.emissive_texture,
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1175,10 +1211,13 @@ fn setup_3d_scene(
             location_base_color,
             external_material.location.emissive_color_srgb,
         );
-        let location_base_texture = location_base_texture.clone();
+        let location_texture = location_texture.clone();
         let location_core_material = |alpha: f32| StandardMaterial {
             base_color: color_from_srgb_with_alpha(location_base_color, alpha),
-            base_color_texture: location_base_texture.clone(),
+            base_color_texture: location_texture.base_color_texture.clone(),
+            normal_map_texture: location_texture.normal_map_texture.clone(),
+            metallic_roughness_texture: location_texture.metallic_roughness_texture.clone(),
+            emissive_texture: location_texture.emissive_texture.clone(),
             perceptual_roughness: config.materials.facility.roughness,
             metallic: config.materials.facility.metallic,
             emissive: color_from_srgb(location_emissive_color).into(),
@@ -1192,7 +1231,10 @@ fn setup_3d_scene(
             materials.add(location_core_material(0.30)),
             materials.add(StandardMaterial {
                 base_color: color_from_srgb_with_alpha(location_base_color, 0.10),
-                base_color_texture: location_base_texture,
+                base_color_texture: location_texture.base_color_texture,
+                normal_map_texture: location_texture.normal_map_texture,
+                metallic_roughness_texture: location_texture.metallic_roughness_texture,
+                emissive_texture: location_texture.emissive_texture,
                 emissive: color_from_srgb(location_emissive_color).into(),
                 alpha_mode: AlphaMode::Blend,
                 ..default()
