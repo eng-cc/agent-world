@@ -318,6 +318,10 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack civic_operator
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 1200 --prompt-pack story_balanced --release-gate --release-gate-profile gameplay
 ```
+- git 跟踪基线 fixture smoke（`test_tier_full`）：
+```bash
+./scripts/llm-baseline-fixture-smoke.sh
+```
 - Prompt 切换前后覆盖对比（用于 T1 定向验证）：
 ```bash
 ./scripts/llm-switch-coverage-diff.sh \
@@ -357,6 +361,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时再引入“预设世界事件”方案。
   - 1000+ tick 长程 run 受 LLM 往返延迟影响，wall-clock 可能显著拉长；建议在后台会话（tmux/screen）执行并保留 `summary.txt` 作为验收依据。
+  - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`，用于保证 git 跟踪基线可加载。
   - 压测结果需保留 CSV/summary/log 产物。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）
@@ -371,7 +376,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 |
 | `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 |
 | `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8（若影响长稳） |
-| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + `./scripts/viewer-visual-baseline.sh` | S2 + S4 + S6（抽样） |
+| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + `./scripts/viewer-visual-baseline.sh` + （full）`./scripts/llm-baseline-fixture-smoke.sh` | S2 + S4 + S6（抽样） |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 

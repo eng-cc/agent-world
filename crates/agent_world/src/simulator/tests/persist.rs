@@ -133,6 +133,45 @@ fn kernel_persist_and_restore() {
     fs::remove_dir_all(&tmp_dir).unwrap();
 }
 
+#[cfg(feature = "test_tier_full")]
+#[test]
+fn kernel_loads_tracked_llm_baseline_fixture_state() {
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let fixture_dir = repo_root.join("fixtures/llm_baseline/state_01");
+    let snapshot_path = fixture_dir.join("snapshot.json");
+    let journal_path = fixture_dir.join("journal.json");
+
+    assert!(
+        snapshot_path.is_file(),
+        "missing tracked baseline snapshot fixture: {}",
+        snapshot_path.display()
+    );
+    assert!(
+        journal_path.is_file(),
+        "missing tracked baseline journal fixture: {}",
+        journal_path.display()
+    );
+
+    let kernel = WorldKernel::load_from_dir(&fixture_dir).expect("load tracked baseline fixture");
+    assert!(
+        kernel.time() >= 80,
+        "baseline world age should already pass industrial bootstrap stage"
+    );
+    assert_eq!(kernel.model().agents.len(), 5);
+    assert!(
+        kernel.model().locations.len() >= 10,
+        "baseline should contain multiple generated locations"
+    );
+    assert!(
+        kernel.model().factories.len() >= 1,
+        "baseline should already contain at least one factory"
+    );
+    assert!(
+        kernel.journal().len() >= 90,
+        "baseline journal should contain rich bootstrapping events"
+    );
+}
+
 #[test]
 fn restore_rejects_mismatched_journal_len() {
     let mut kernel = WorldKernel::new();

@@ -51,6 +51,10 @@ run_agent_world_full_tier_tests() {
   run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration"
 }
 
+run_agent_world_llm_baseline_fixture_smoke() {
+  run ./scripts/llm-baseline-fixture-smoke.sh
+}
+
 run_agent_world_viewer_tests() {
   run_cargo test -p agent_world_viewer
 }
@@ -71,6 +75,7 @@ if [[ "$tier" == "required" ]]; then
   run_agent_world_viewer_wasm_check
 else
   run_agent_world_full_tier_tests
+  run_agent_world_llm_baseline_fixture_smoke
   run_agent_world_viewer_tests
   run_agent_world_viewer_wasm_check
   run_cargo test -p agent_world --features wasmtime --lib --bins

@@ -95,6 +95,14 @@
   - 映射环境变量 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，用于长周期中减少重复动作的 LLM 往返。
   - `industrial_baseline` 默认设置 `24`，可显式覆盖。
 
+### Tracked Baseline Fixture Smoke（full tier）
+- 基线状态从临时目录转存到 git 跟踪路径：
+  - `fixtures/llm_baseline/state_01/snapshot.json`
+  - `fixtures/llm_baseline/state_01/journal.json`
+- 新增 smoke 脚本：`scripts/llm-baseline-fixture-smoke.sh`
+  - 先校验 fixture 文件存在，再执行 `test_tier_full` 定向回归，验证基线可加载且结构完整。
+- `scripts/ci-tests.sh full` 接入该脚本，形成“可追踪基线 + 可重复加载校验”的发布前基础保障。
+
 ### m5 模块规则增强
 - `m5_gameplay_war_core`：增强结算输出（更丰富 participant outcomes 语义）。
 - `m5_gameplay_crisis_cycle`：危机生成/超时规则加入动态性（非固定模板）。
@@ -109,6 +117,7 @@
 - M5：长周期（>=1000 ticks）多阶段 prompt 切换能力落地并通过脚本/解析回归。
 - M6：`llm_bootstrap` 5 Agent + runtime gameplay bridge 落地，完成非 viewer 的 gameplay 交互闭环回归。
 - M7：阶段基线世界（落盘/加载）闭环落地，支持“同一起点多玩法口径”对比测试。
+- M8：基线 fixture 入库并接入 full-tier smoke，确保状态工件可持续复用。
 
 ## 当前回归结论（T7）
 - bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。

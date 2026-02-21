@@ -62,15 +62,22 @@
 - [x] 修正失败恢复策略：`insufficient_resource.data` 优先 `mine_compound`，避免 `refine` 死循环
 - [x] 补齐并通过工具注册/模块执行/prompt 断言回归测试
 
+### T10 基线 fixture smoke + full tier 接入（新增）
+- [x] 新增 `test_tier_full` 定向回归：加载 git 跟踪基线 fixture 并校验关键状态结构
+- [x] 新增脚本 `scripts/llm-baseline-fixture-smoke.sh`（fixture 存在性 + 定向回归）
+- [x] `scripts/ci-tests.sh full` 接入 baseline fixture smoke
+- [x] 更新 `testing-manual.md` 与 `doc/devlog/2026-02-21.md`
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
 - `testing-manual.md`
 - `scripts/llm-longrun-stress.sh`
+- `scripts/ci-tests.sh`
 
 ## 状态
 - 当前状态：`已完成`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9
-- 本轮增量：产出可复用工业基线 state（源目录：`/Users/scc/.codex/worktrees/ee97/agent-world/.tmp/llm_baseline/chunked_1200/state_01`），并复制到 git 跟踪目录（`/Users/scc/.codex/worktrees/ee97/agent-world/fixtures/llm_baseline/state_01`）；同时基于该 state 跑通治理 gate（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress` 四类动作均覆盖）。
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10
+- 本轮增量：在已入库基线（`/Users/scc/.codex/worktrees/ee97/agent-world/fixtures/llm_baseline/state_01`）基础上新增 full-tier smoke（`scripts/llm-baseline-fixture-smoke.sh`）并接入 `scripts/ci-tests.sh full`，确保基线状态可持续加载复用。
 - 进行中：无
 - 阻塞项：无（若后续需要“超长世界年龄”基线，可在当前 state 基础上继续按 100 tick 分段追加）。
