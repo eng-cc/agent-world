@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate industrial v1 theme meshes and PBR textures for agent_world_viewer.
+"""Generate industrial viewer theme meshes and PBR textures.
 
 The script uses only Python standard library so it can run in CI/dev environments
 without extra image or geometry tooling.
@@ -26,6 +26,19 @@ Vec3 = Tuple[float, float, float]
 class MeshData:
     vertices: List[Vec3]
     indices: List[int]
+
+
+@dataclass(frozen=True)
+class QualityProfile:
+    quality: str
+    mesh_file_suffix: str
+    texture_size: int
+
+
+def resolve_quality_profile(quality: str) -> QualityProfile:
+    if quality == "v2":
+        return QualityProfile(quality="v2", mesh_file_suffix="_v2", texture_size=512)
+    return QualityProfile(quality="v1", mesh_file_suffix="", texture_size=256)
 
 
 def clamp01(value: float) -> float:
@@ -406,80 +419,270 @@ def write_gltf(path: Path, mesh_name: str, vertices: Sequence[Vec3], indices: Se
     path.write_text(json.dumps(gltf, indent=2) + "\n", encoding="utf-8")
 
 
-def generate_meshes(mesh_dir: Path) -> None:
-    agent = merge_meshes(
-        [
-            build_octahedron(0.56),
-            transform_mesh(build_prism(0.16, 0.55, 6), translate=(0.0, 0.54, 0.0)),
-        ]
-    )
-    location = build_uv_sphere(1.05, 24, 16)
-    asset = merge_meshes(
-        [
-            build_box((0.95, 0.6, 0.95)),
-            transform_mesh(build_box((0.78, 0.22, 0.78)), translate=(0.0, 0.41, 0.0)),
-        ]
-    )
-    power_plant = merge_meshes(
-        [
-            build_prism(0.56, 1.22, 8),
-            transform_mesh(build_prism(0.22, 0.72, 8), translate=(0.0, 0.74, 0.0)),
-        ]
-    )
-    power_storage = merge_meshes(
-        [
-            build_prism(0.46, 1.3, 18),
-            transform_mesh(build_uv_sphere(0.43, 16, 10), scale=(1.0, 0.44, 1.0), translate=(0.0, 0.65, 0.0)),
-            transform_mesh(build_uv_sphere(0.43, 16, 10), scale=(1.0, 0.44, 1.0), translate=(0.0, -0.65, 0.0)),
-        ]
-    )
-
-    write_gltf(mesh_dir / "agent_industrial.gltf", "AgentIndustrialMesh", agent.vertices, agent.indices)
-    write_gltf(mesh_dir / "location_industrial.gltf", "LocationIndustrialMesh", location.vertices, location.indices)
-    write_gltf(mesh_dir / "asset_industrial.gltf", "AssetIndustrialMesh", asset.vertices, asset.indices)
-    write_gltf(mesh_dir / "power_plant_industrial.gltf", "PowerPlantIndustrialMesh", power_plant.vertices, power_plant.indices)
-    write_gltf(mesh_dir / "power_storage_industrial.gltf", "PowerStorageIndustrialMesh", power_storage.vertices, power_storage.indices)
+def _mesh_file_name(entity: str, profile: QualityProfile) -> str:
+    return f"{entity}_industrial{profile.mesh_file_suffix}.gltf"
 
 
-def generate_textures(texture_dir: Path) -> None:
-    palette = {
-        "agent": {"base_a": (84, 118, 138), "base_b": (173, 209, 228), "emissive": (72, 182, 255), "metallic": 0.58, "roughness": 0.46, "seed": 11},
-        "location": {"base_a": (54, 70, 80), "base_b": (124, 149, 162), "emissive": (44, 132, 184), "metallic": 0.34, "roughness": 0.69, "seed": 23},
-        "asset": {"base_a": (86, 92, 84), "base_b": (166, 156, 118), "emissive": (198, 142, 52), "metallic": 0.72, "roughness": 0.41, "seed": 31},
-        "power_plant": {"base_a": (96, 74, 66), "base_b": (183, 127, 97), "emissive": (255, 122, 64), "metallic": 0.63, "roughness": 0.39, "seed": 47},
-        "power_storage": {"base_a": (53, 68, 91), "base_b": (117, 142, 182), "emissive": (84, 152, 255), "metallic": 0.52, "roughness": 0.36, "seed": 59},
-    }
+def generate_meshes(mesh_dir: Path, profile: QualityProfile) -> None:
+    if profile.quality == "v2":
+        agent = merge_meshes(
+            [
+                build_octahedron(0.52),
+                transform_mesh(build_prism(0.14, 0.58, 10), translate=(0.0, 0.56, 0.0)),
+                transform_mesh(build_box((0.34, 0.18, 0.22)), translate=(0.0, 0.16, -0.26)),
+                transform_mesh(build_box((0.11, 0.42, 0.11)), translate=(0.26, 0.12, 0.0)),
+                transform_mesh(build_box((0.11, 0.42, 0.11)), translate=(-0.26, 0.12, 0.0)),
+            ]
+        )
+        location = merge_meshes(
+            [
+                build_uv_sphere(1.06, 42, 28),
+                transform_mesh(build_prism(1.13, 0.1, 36), scale=(1.0, 0.28, 1.0)),
+                transform_mesh(build_uv_sphere(0.18, 14, 10), translate=(0.0, 1.0, 0.0)),
+                transform_mesh(build_uv_sphere(0.18, 14, 10), translate=(0.0, -1.0, 0.0)),
+            ]
+        )
+        asset = merge_meshes(
+            [
+                build_box((0.98, 0.54, 0.98)),
+                transform_mesh(build_box((0.82, 0.18, 0.82)), translate=(0.0, 0.38, 0.0)),
+                transform_mesh(build_box((0.58, 0.14, 0.58)), translate=(0.0, 0.52, 0.0)),
+                transform_mesh(build_prism(0.09, 0.9, 8), translate=(0.38, 0.0, 0.38)),
+                transform_mesh(build_prism(0.09, 0.9, 8), translate=(-0.38, 0.0, 0.38)),
+                transform_mesh(build_prism(0.09, 0.9, 8), translate=(0.38, 0.0, -0.38)),
+                transform_mesh(build_prism(0.09, 0.9, 8), translate=(-0.38, 0.0, -0.38)),
+            ]
+        )
+        power_plant = merge_meshes(
+            [
+                build_prism(0.58, 1.18, 12),
+                transform_mesh(build_prism(0.25, 0.92, 16), translate=(0.0, 0.78, 0.0)),
+                transform_mesh(build_prism(0.16, 0.66, 12), translate=(0.0, 1.46, 0.0)),
+                transform_mesh(build_box((0.98, 0.09, 0.18)), translate=(0.0, 0.28, 0.0)),
+                transform_mesh(build_box((0.18, 0.09, 0.98)), translate=(0.0, 0.28, 0.0)),
+            ]
+        )
+        power_storage = merge_meshes(
+            [
+                build_prism(0.46, 1.32, 28),
+                transform_mesh(build_uv_sphere(0.44, 24, 14), scale=(1.0, 0.44, 1.0), translate=(0.0, 0.67, 0.0)),
+                transform_mesh(build_uv_sphere(0.44, 24, 14), scale=(1.0, 0.44, 1.0), translate=(0.0, -0.67, 0.0)),
+                transform_mesh(build_prism(0.53, 0.08, 28), translate=(0.0, 0.24, 0.0)),
+                transform_mesh(build_prism(0.53, 0.08, 28), translate=(0.0, -0.24, 0.0)),
+            ]
+        )
+    else:
+        agent = merge_meshes(
+            [
+                build_octahedron(0.56),
+                transform_mesh(build_prism(0.16, 0.55, 6), translate=(0.0, 0.54, 0.0)),
+            ]
+        )
+        location = build_uv_sphere(1.05, 24, 16)
+        asset = merge_meshes(
+            [
+                build_box((0.95, 0.6, 0.95)),
+                transform_mesh(build_box((0.78, 0.22, 0.78)), translate=(0.0, 0.41, 0.0)),
+            ]
+        )
+        power_plant = merge_meshes(
+            [
+                build_prism(0.56, 1.22, 8),
+                transform_mesh(build_prism(0.22, 0.72, 8), translate=(0.0, 0.74, 0.0)),
+            ]
+        )
+        power_storage = merge_meshes(
+            [
+                build_prism(0.46, 1.3, 18),
+                transform_mesh(
+                    build_uv_sphere(0.43, 16, 10),
+                    scale=(1.0, 0.44, 1.0),
+                    translate=(0.0, 0.65, 0.0),
+                ),
+                transform_mesh(
+                    build_uv_sphere(0.43, 16, 10),
+                    scale=(1.0, 0.44, 1.0),
+                    translate=(0.0, -0.65, 0.0),
+                ),
+            ]
+        )
+
+    write_gltf(
+        mesh_dir / _mesh_file_name("agent", profile),
+        f"AgentIndustrial{profile.quality.upper()}Mesh",
+        agent.vertices,
+        agent.indices,
+    )
+    write_gltf(
+        mesh_dir / _mesh_file_name("location", profile),
+        f"LocationIndustrial{profile.quality.upper()}Mesh",
+        location.vertices,
+        location.indices,
+    )
+    write_gltf(
+        mesh_dir / _mesh_file_name("asset", profile),
+        f"AssetIndustrial{profile.quality.upper()}Mesh",
+        asset.vertices,
+        asset.indices,
+    )
+    write_gltf(
+        mesh_dir / _mesh_file_name("power_plant", profile),
+        f"PowerPlantIndustrial{profile.quality.upper()}Mesh",
+        power_plant.vertices,
+        power_plant.indices,
+    )
+    write_gltf(
+        mesh_dir / _mesh_file_name("power_storage", profile),
+        f"PowerStorageIndustrial{profile.quality.upper()}Mesh",
+        power_storage.vertices,
+        power_storage.indices,
+    )
+
+
+def generate_textures(texture_dir: Path, profile: QualityProfile) -> None:
+    if profile.quality == "v2":
+        palette = {
+            "agent": {
+                "base_a": (72, 98, 126),
+                "base_b": (184, 224, 246),
+                "emissive": (96, 206, 255),
+                "metallic": 0.64,
+                "roughness": 0.38,
+                "seed": 111,
+            },
+            "location": {
+                "base_a": (44, 58, 70),
+                "base_b": (136, 168, 188),
+                "emissive": (68, 176, 214),
+                "metallic": 0.42,
+                "roughness": 0.58,
+                "seed": 123,
+            },
+            "asset": {
+                "base_a": (96, 104, 88),
+                "base_b": (190, 178, 126),
+                "emissive": (226, 168, 66),
+                "metallic": 0.78,
+                "roughness": 0.33,
+                "seed": 131,
+            },
+            "power_plant": {
+                "base_a": (98, 68, 60),
+                "base_b": (206, 136, 94),
+                "emissive": (255, 142, 72),
+                "metallic": 0.72,
+                "roughness": 0.28,
+                "seed": 147,
+            },
+            "power_storage": {
+                "base_a": (44, 62, 88),
+                "base_b": (124, 158, 204),
+                "emissive": (112, 192, 255),
+                "metallic": 0.62,
+                "roughness": 0.31,
+                "seed": 159,
+            },
+        }
+    else:
+        palette = {
+            "agent": {
+                "base_a": (84, 118, 138),
+                "base_b": (173, 209, 228),
+                "emissive": (72, 182, 255),
+                "metallic": 0.58,
+                "roughness": 0.46,
+                "seed": 11,
+            },
+            "location": {
+                "base_a": (54, 70, 80),
+                "base_b": (124, 149, 162),
+                "emissive": (44, 132, 184),
+                "metallic": 0.34,
+                "roughness": 0.69,
+                "seed": 23,
+            },
+            "asset": {
+                "base_a": (86, 92, 84),
+                "base_b": (166, 156, 118),
+                "emissive": (198, 142, 52),
+                "metallic": 0.72,
+                "roughness": 0.41,
+                "seed": 31,
+            },
+            "power_plant": {
+                "base_a": (96, 74, 66),
+                "base_b": (183, 127, 97),
+                "emissive": (255, 122, 64),
+                "metallic": 0.63,
+                "roughness": 0.39,
+                "seed": 47,
+            },
+            "power_storage": {
+                "base_a": (53, 68, 91),
+                "base_b": (117, 142, 182),
+                "emissive": (84, 152, 255),
+                "metallic": 0.52,
+                "roughness": 0.36,
+                "seed": 59,
+            },
+        }
 
     for entity, config in palette.items():
-        make_base_texture(texture_dir / f"{entity}_base.png", config["base_a"], config["base_b"], config["seed"])
-        make_normal_texture(texture_dir / f"{entity}_normal.png", config["seed"] + 5)
+        make_base_texture(
+            texture_dir / f"{entity}_base.png",
+            config["base_a"],
+            config["base_b"],
+            config["seed"],
+            size=profile.texture_size,
+        )
+        make_normal_texture(
+            texture_dir / f"{entity}_normal.png",
+            config["seed"] + 5,
+            size=profile.texture_size,
+        )
         make_mr_texture(
             texture_dir / f"{entity}_metallic_roughness.png",
             config["metallic"],
             config["roughness"],
             config["seed"] + 9,
+            size=profile.texture_size,
         )
-        make_emissive_texture(texture_dir / f"{entity}_emissive.png", config["emissive"], config["seed"] + 13)
+        make_emissive_texture(
+            texture_dir / f"{entity}_emissive.png",
+            config["emissive"],
+            config["seed"] + 13,
+            size=profile.texture_size,
+        )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate industrial v1 viewer theme assets.")
+    parser = argparse.ArgumentParser(description="Generate industrial viewer theme assets.")
+    parser.add_argument(
+        "--quality",
+        choices=("v1", "v2"),
+        default="v1",
+        help="Theme quality profile to generate.",
+    )
     parser.add_argument(
         "--out-dir",
-        default="crates/agent_world_viewer/assets/themes/industrial_v1",
+        default=None,
         help="Output directory for generated theme assets.",
     )
     args = parser.parse_args()
+    profile = resolve_quality_profile(args.quality)
 
-    out_dir = Path(args.out_dir)
+    if args.out_dir is None:
+        out_dir = Path(f"crates/agent_world_viewer/assets/themes/industrial_{profile.quality}")
+    else:
+        out_dir = Path(args.out_dir)
     mesh_dir = out_dir / "meshes"
     texture_dir = out_dir / "textures"
     mesh_dir.mkdir(parents=True, exist_ok=True)
     texture_dir.mkdir(parents=True, exist_ok=True)
 
-    generate_meshes(mesh_dir)
-    generate_textures(texture_dir)
-    print(f"generated industrial_v1 assets under: {out_dir}")
+    generate_meshes(mesh_dir, profile)
+    generate_textures(texture_dir, profile)
+    print(f"generated industrial_{profile.quality} assets under: {out_dir}")
     return 0
 
 
