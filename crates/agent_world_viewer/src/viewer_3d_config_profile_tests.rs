@@ -36,6 +36,26 @@ fn load_viewer_3d_config_applies_env_overrides() {
             "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
             "models/facility/power_storage.glb#Mesh0/Primitive0",
         ),
+        (
+            "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
+            "textures/agents/worker_albedo.png",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            "textures/world/location_albedo.png",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET",
+            "textures/world/asset_albedo.png",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
+            "textures/facility/power_plant_albedo.png",
+        ),
+        (
+            "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET",
+            "textures/facility/power_storage_albedo.png",
+        ),
         ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#FF6A38"),
         ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#E66230"),
         ("AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR", "#4B88D9"),
@@ -163,6 +183,29 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert_eq!(
         external_mesh.power_storage_mesh_asset.as_deref(),
         Some("models/facility/power_storage.glb#Mesh0/Primitive0")
+    );
+
+    let external_texture =
+        load_viewer_external_texture_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(
+        external_texture.agent.base_texture_asset.as_deref(),
+        Some("textures/agents/worker_albedo.png")
+    );
+    assert_eq!(
+        external_texture.location.base_texture_asset.as_deref(),
+        Some("textures/world/location_albedo.png")
+    );
+    assert_eq!(
+        external_texture.asset.base_texture_asset.as_deref(),
+        Some("textures/world/asset_albedo.png")
+    );
+    assert_eq!(
+        external_texture.power_plant.base_texture_asset.as_deref(),
+        Some("textures/facility/power_plant_albedo.png")
+    );
+    assert_eq!(
+        external_texture.power_storage.base_texture_asset.as_deref(),
+        Some("textures/facility/power_storage_albedo.png")
     );
 
     let external_material =
@@ -353,6 +396,10 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         load_viewer_external_material_config_from(|key| env.get(key).map(|v| v.to_string()));
     assert_eq!(external_material.agent.base_color_srgb, None);
     assert_eq!(external_material.agent.emissive_color_srgb, None);
+
+    let external_texture =
+        load_viewer_external_texture_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(external_texture.agent.base_texture_asset, None);
 }
 
 #[test]
@@ -452,4 +499,27 @@ fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
     );
     assert_eq!(external_material.location.base_color_srgb, None);
     assert_eq!(external_material.power_plant.base_color_srgb, None);
+}
+
+#[test]
+fn load_viewer_external_texture_config_ignores_empty_values() {
+    let env = HashMap::from([
+        ("AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET", " "),
+        (
+            "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            " textures/world/location_albedo.png ",
+        ),
+        ("AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET", ""),
+    ]);
+
+    let external_texture =
+        load_viewer_external_texture_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(external_texture.agent.base_texture_asset, None);
+    assert_eq!(
+        external_texture.location.base_texture_asset.as_deref(),
+        Some("textures/world/location_albedo.png")
+    );
+    assert_eq!(external_texture.asset.base_texture_asset, None);
+    assert_eq!(external_texture.power_plant.base_texture_asset, None);
+    assert_eq!(external_texture.power_storage.base_texture_asset, None);
 }

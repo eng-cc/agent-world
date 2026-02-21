@@ -221,6 +221,20 @@ pub(super) struct ViewerExternalMaterialConfig {
     pub power_storage: ViewerExternalMaterialSlotConfig,
 }
 
+#[derive(Clone, Debug, Default)]
+pub(super) struct ViewerExternalTextureSlotConfig {
+    pub base_texture_asset: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, Resource)]
+pub(super) struct ViewerExternalTextureConfig {
+    pub agent: ViewerExternalTextureSlotConfig,
+    pub location: ViewerExternalTextureSlotConfig,
+    pub asset: ViewerExternalTextureSlotConfig,
+    pub power_plant: ViewerExternalTextureSlotConfig,
+    pub power_storage: ViewerExternalTextureSlotConfig,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ViewerFragmentMaterialStrategy {
     Readability,
@@ -461,6 +475,10 @@ pub(super) fn resolve_viewer_external_material_config() -> ViewerExternalMateria
     load_viewer_external_material_config_from(|key| std::env::var(key).ok())
 }
 
+pub(super) fn resolve_viewer_external_texture_config() -> ViewerExternalTextureConfig {
+    load_viewer_external_texture_config_from(|key| std::env::var(key).ok())
+}
+
 fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExternalMeshConfig
 where
     F: Fn(&str) -> Option<String>,
@@ -530,6 +548,44 @@ where
             emissive_color_srgb: parse_hex_srgb_color(
                 &lookup,
                 "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR",
+            ),
+        },
+    }
+}
+
+fn load_viewer_external_texture_config_from<F>(lookup: F) -> ViewerExternalTextureConfig
+where
+    F: Fn(&str) -> Option<String>,
+{
+    ViewerExternalTextureConfig {
+        agent: ViewerExternalTextureSlotConfig {
+            base_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
+            ),
+        },
+        location: ViewerExternalTextureSlotConfig {
+            base_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            ),
+        },
+        asset: ViewerExternalTextureSlotConfig {
+            base_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET",
+            ),
+        },
+        power_plant: ViewerExternalTextureSlotConfig {
+            base_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
+            ),
+        },
+        power_storage: ViewerExternalTextureSlotConfig {
+            base_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET",
             ),
         },
     }
