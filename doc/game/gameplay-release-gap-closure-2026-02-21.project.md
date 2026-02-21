@@ -51,6 +51,7 @@
 - [x] `world_llm_agent_demo` 增加 baseline 状态落盘/加载参数（state dir）
 - [x] `llm-longrun-stress.sh` 增加 state dir 参数透传与 summary 输出
 - [x] 更新 `testing-manual.md` 两阶段测试剧本（工业建基线 -> 治理压测）
+- [x] 新增 `industrial_baseline` prompt pack 与 `--llm-execute-until-auto-reenter-ticks` 参数透传（长程基线专用）
 - [ ] 产出一份“可复用工业基线”状态（建议 1000+ tick）
 - [ ] 记录基线质量指标（factory/recipe/action_kind 分布）并回写 devlog
 
@@ -69,6 +70,6 @@
 ## 状态
 - 当前状态：`进行中`
 - 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T9；T8 完成参数/文档侧，待产出工业基线产物
-- 本轮增量：补齐 `world.rules.guide` 规则查询工具链路，并修正 `insufficient_resource.data` 恢复路径，降低“采集/精炼失败循环”概率。
+- 本轮增量：补齐工业基线专用 `prompt-pack` 与 execute-until 参数透传，降低长程基线测试配置成本。
 - 进行中：T8（可复用工业基线产物与质量指标沉淀）。
-- 阻塞项：多轮 5 Agent 预演中工业链可达 `mine/refine`，但 `build_factory/schedule_recipe` 触发率仍偏低，导致工业基线产出耗时高、稳定性不足。
+- 阻塞项：工业动作链在中短程已可稳定触发，但 1000+ tick run 受 LLM 往返延迟影响，wall-clock 耗时过长；需要后台长跑产出最终基线工件。

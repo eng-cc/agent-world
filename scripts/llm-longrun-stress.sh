@@ -26,6 +26,7 @@ Options:
   --switch-llm-short-goal <text>     Switch short-term goal after --prompt-switch-tick
   --switch-llm-long-goal <text>      Switch long-term goal after --prompt-switch-tick
   --prompt-switches-json <json>      Multi-stage switch plan JSON (array of {"tick":n,"llm_*":...})
+  --llm-execute-until-auto-reenter-ticks <n>  Override AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS
   --runtime-gameplay-bridge          Enable runtime gameplay bridge in demo (default: on)
   --no-runtime-gameplay-bridge       Disable runtime gameplay bridge in demo
   --load-state-dir <path>            Load simulator state dir before run (snapshot/journal)
@@ -57,9 +58,11 @@ Notes:
   - --prompt-pack options:
       story_balanced (recommended) -> staged growth (stability -> production -> governance/resilience)
       frontier_builder             -> exploration + production expansion
+      industrial_baseline          -> industrial-first baseline build (rules -> mine/refine -> factory/schedule)
       civic_operator               -> governance + collaboration cadence
       resilience_drill             -> crisis/economic contract pressure test
   - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
+  - industrial_baseline 默认设置 AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24（可通过参数覆盖）
   - runtime gameplay bridge 默认开启：将 simulator 的 runtime-only gameplay/economic 动作接入 runtime World，降低非预期拒绝
   - state dir 参数仅支持单场景模式（便于构建/复用同一阶段基线）
 
@@ -250,6 +253,20 @@ apply_prompt_pack_defaults() {
         llm_long_goal="构建高可扩展的生产与迁移网络，为后续治理和风险对抗提供冗余。"
       fi
       ;;
+    industrial_baseline)
+      if [[ -z "$llm_system_prompt" ]]; then
+        llm_system_prompt="你是硅基文明的总务官。你的职责是让文明像真实游戏进程一样推进：先掌握规则和地形，再建立最小工业闭环，然后才进入治理扩展。每回合只提交一个合法 decision JSON。遇到规则不清或动作失败，先查 world.rules.guide 与 environment.current_observation，再调整前置条件。"
+      fi
+      if [[ -z "$llm_short_goal" ]]; then
+        llm_short_goal="当前章节目标是工业建基线：先完成一次可持续资源链（mine_compound -> refine_compound），再在合适地点建造 assembler 工厂并至少安排一次配方生产。动作要自然衔接，不重复空转。"
+      fi
+      if [[ -z "$llm_long_goal" ]]; then
+        llm_long_goal="在同一局内形成可复用的工业起点：能源稳定、资源转换可持续、工厂可生产，为后续治理和社会事件留下空间。"
+      fi
+      if [[ -z "$llm_execute_until_auto_reenter_ticks" ]]; then
+        llm_execute_until_auto_reenter_ticks="24"
+      fi
+      ;;
     civic_operator)
       if [[ -z "$llm_system_prompt" ]]; then
         llm_system_prompt="你是文明治理运营代理。通过提案、投票、协作与秩序维护推动系统长期稳定，而非只追求短期资源增量。"
@@ -273,7 +290,7 @@ apply_prompt_pack_defaults() {
       fi
       ;;
     *)
-      echo "invalid --prompt-pack: $prompt_pack (expected story_balanced|frontier_builder|civic_operator|resilience_drill)" >&2
+      echo "invalid --prompt-pack: $prompt_pack (expected story_balanced|frontier_builder|industrial_baseline|civic_operator|resilience_drill)" >&2
       exit 2
       ;;
   esac
@@ -647,6 +664,7 @@ write_summary_file() {
     echo "action_kind_counts=$action_kind_counts_inline"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
+    echo "llm_execute_until_auto_reenter_ticks=${llm_execute_until_auto_reenter_ticks:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
     echo "load_state_dir=${load_state_dir:-none}"
     echo "save_state_dir=${save_state_dir:-none}"
@@ -669,7 +687,13 @@ run_scenario_to_log() {
   local scenario_report_path=$2
   local scenario_run_log_path=$3
   local -a cmd=(
-    env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo --
+    env -u RUSTC_WRAPPER
+  )
+  if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
+    cmd+=("AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
+  fi
+  cmd+=(
+    cargo run -p agent_world --bin world_llm_agent_demo --
     "$scenario_name"
     --ticks "$ticks"
     --report-json "$scenario_report_path"
@@ -814,6 +838,7 @@ switch_llm_system_prompt=""
 switch_llm_short_goal=""
 switch_llm_long_goal=""
 prompt_switches_json=""
+llm_execute_until_auto_reenter_ticks=""
 runtime_gameplay_bridge=1
 load_state_dir=""
 save_state_dir=""
@@ -889,6 +914,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --prompt-switches-json)
       prompt_switches_json=${2:-}
+      shift 2
+      ;;
+    --llm-execute-until-auto-reenter-ticks)
+      llm_execute_until_auto_reenter_ticks=${2:-}
       shift 2
       ;;
     --runtime-gameplay-bridge)
@@ -1016,6 +1045,9 @@ if [[ -z "$min_active_ticks" ]]; then
 fi
 ensure_positive_int "--min-active-ticks" "$min_active_ticks"
 apply_prompt_pack_defaults
+if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
+  ensure_positive_int "--llm-execute-until-auto-reenter-ticks" "$llm_execute_until_auto_reenter_ticks"
+fi
 if [[ -n "$prompt_switches_json" ]]; then
   if [[ -n "$prompt_switch_tick" || -n "$switch_llm_system_prompt" || -n "$switch_llm_short_goal" || -n "$switch_llm_long_goal" ]]; then
     echo "--prompt-switches-json cannot be mixed with --prompt-switch-tick/--switch-llm-*" >&2
@@ -1148,7 +1180,13 @@ for scenario in "${scenarios[@]}"; do
 
   if (( parallel_mode == 0 )); then
     cmd=(
-      env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo --
+      env -u RUSTC_WRAPPER
+    )
+    if [[ -n "$llm_execute_until_auto_reenter_ticks" ]]; then
+      cmd+=("AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
+    fi
+    cmd+=(
+      cargo run -p agent_world --bin world_llm_agent_demo --
       "$scenario"
       --ticks "$ticks"
       --report-json "$scenario_report_json"

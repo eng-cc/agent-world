@@ -296,7 +296,8 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ./scripts/llm-longrun-stress.sh \
   --scenario llm_bootstrap \
   --ticks 1200 \
-  --prompt-pack frontier_builder \
+  --prompt-pack industrial_baseline \
+  --llm-execute-until-auto-reenter-ticks 24 \
   --release-gate --release-gate-profile industrial \
   --save-state-dir .tmp/llm_baseline/industrial_1200 \
   --no-llm-io
@@ -336,9 +337,10 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
       - `industrial`：工业闭环 5 动作（`harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe`）。
       - `gameplay`：玩法闭环 4 动作（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`）。
       - `hybrid`（默认）：工业 + gameplay 全覆盖（9 动作）。
-    - `--prompt-pack <story_balanced|frontier_builder|civic_operator|resilience_drill>`：
+    - `--prompt-pack <story_balanced|frontier_builder|industrial_baseline|civic_operator|resilience_drill>`：
       - `story_balanced`：默认推荐，按“稳定 -> 生产 -> 治理/韧性”阶段推进；短程自动单次切换，长程（中长/超长）自动多阶段切换（`--prompt-switches-json`）以避免后半程策略僵化。
       - `frontier_builder`：偏探索与基础设施扩张。
+      - `industrial_baseline`：偏工业建基线（规则读取 -> 采矿/精炼 -> 建厂/排产），默认设置 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=24` 以减少长程重复动作的 LLM 往返。
       - `civic_operator`：偏治理协同与组织秩序。
       - `resilience_drill`：偏危机恢复与经济协作抗压。
     - `--prompt-switches-json <json>`：多阶段切换计划（数组项包含 `tick` 与至少一个 `llm_*` 覆盖字段），与 `--prompt-switch-tick/--switch-llm-*` 互斥。
@@ -348,9 +350,13 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
     - `--load-state-dir <path>` / `--save-state-dir <path>`：
       - 支持基线状态落盘与续跑（`snapshot.json` + `journal.json`）。
       - 当前仅支持单场景模式，便于构建“同一起点”对照。
+    - `--llm-execute-until-auto-reenter-ticks <n>`：
+      - 透传为 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=<n>`，用于控制自动续跑窗口。
+      - 建议在 1000+ tick 场景使用 12~24，以降低 wall-clock 耗时。
   - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时再引入“预设世界事件”方案。
+  - 1000+ tick 长程 run 受 LLM 往返延迟影响，wall-clock 可能显著拉长；建议在后台会话（tmux/screen）执行并保留 `summary.txt` 作为验收依据。
   - 压测结果需保留 CSV/summary/log 产物。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

@@ -41,6 +41,7 @@
 - 新增游戏发展测试 prompt 套件（stress 脚本内置 `--prompt-pack`）：
   - `story_balanced`（默认推荐）
   - `frontier_builder`
+  - `industrial_baseline`（工业建基线专用）
   - `civic_operator`
   - `resilience_drill`
 - 保持已有环境变量兼容：
@@ -90,6 +91,9 @@
 - `scripts/llm-longrun-stress.sh` 支持 state dir 透传，形成两阶段脚本链路：
   - 阶段 A：工业建基线并保存。
   - 阶段 B：从基线加载，重点验证治理/危机/元进度动作覆盖。
+- 新增 `--llm-execute-until-auto-reenter-ticks <n>` 参数透传：
+  - 映射环境变量 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，用于长周期中减少重复动作的 LLM 往返。
+  - `industrial_baseline` 默认设置 `24`，可显式覆盖。
 
 ### m5 模块规则增强
 - `m5_gameplay_war_core`：增强结算输出（更丰富 participant outcomes 语义）。
@@ -122,5 +126,5 @@
   - 缓解：CLI 显式互斥校验，脚本默认仅选择一种切换路径。
 - runtime bridge 与 simulator 状态可能出现观测偏差（双状态源）。
   - 缓解：bridge 仅接管 runtime-only gameplay/economic 动作，工业动作保持 simulator 执行；同时输出 bridge 指标用于诊断。
-- 5 Agent 长程工业预演中，`build_factory/schedule_recipe` 触发率仍可能偏低，基线产出时间存在波动。
-  - 缓解：先落地规则查询工具与失败恢复策略修正，再基于阶段性工业 prompt 做定向 baseline 生成。
+- 1000+ tick 长程工业基线对 LLM 往返延迟敏感，wall-clock 成本高，影响当次任务内产出速度。
+  - 缓解：提供 `industrial_baseline` 专用 prompt pack 与 `--llm-execute-until-auto-reenter-ticks` 透传；推荐后台长跑并沉淀可复用 state dir。
