@@ -217,27 +217,70 @@ AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=1.08 \
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 
-## 工业风主题包（industrial_v1）
+## 工业风主题包（industrial_v2，推荐）
 
 ### 资产内容
-- 路径：`crates/agent_world_viewer/assets/themes/industrial_v1/`
+- 路径：`crates/agent_world_viewer/assets/themes/industrial_v2/`
 - 包含：
-  - 5 类实体 mesh（`*.gltf + *.bin`）
-  - 5 类实体 PBR 贴图（`base/normal/metallic_roughness/emissive`）
-  - 预设文件：`presets/industrial_default.env`、`presets/industrial_matte.env`、`presets/industrial_glossy.env`
+  - 5 类实体 mesh（`*_industrial_v2.gltf + *.bin`）
+  - 5 类实体 PBR 贴图（`base/normal/metallic_roughness/emissive`，默认 512x512）
+  - 预设文件：`industrial_v2_default.env`、`industrial_v2_matte.env`、`industrial_v2_glossy.env`
 
-### 一键应用主题包
+### 一键应用（启动前）
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env
+source crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_default.env
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 
-切换变体（仅替换最后一行）：
+切换变体（仅替换 preset）：
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_matte.env
+source crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_matte.env
 ```
 ```bash
-source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_glossy.env
+source crates/agent_world_viewer/assets/themes/industrial_v2/presets/industrial_v2_glossy.env
+```
+
+### 运行中主题切换（右侧 Theme Runtime）
+- 在右侧面板 `控制` 区域可看到 `Theme Runtime`：
+  - `Preset`：`Off / industrial_v2 default / matte / glossy / Custom file`
+  - `Apply Theme`：立即应用当前 preset
+  - `Auto Hot Reload`：打开后自动检测 preset 文件变更并重载
+- 适用场景：美术调参与脚本生成资产后实时复验，无需重启 viewer。
+
+### 运行中主题切换（环境变量）
+- `AGENT_WORLD_VIEWER_THEME_PRESET=none|industrial_v2_default|industrial_v2_matte|industrial_v2_glossy|custom`
+- `AGENT_WORLD_VIEWER_THEME_PRESET_FILE=<path/to/preset.env>`（设置后优先按文件路径加载）
+- `AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1|0`
+
+示例：
+```bash
+AGENT_WORLD_VIEWER_THEME_PRESET=industrial_v2_default \
+AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+
+自定义 preset 示例：
+```bash
+AGENT_WORLD_VIEWER_THEME_PRESET_FILE=.tmp/custom_theme.env \
+AGENT_WORLD_VIEWER_THEME_HOT_RELOAD=1 \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+
+### 主题包校验（提交前）
+```bash
+python3 scripts/validate-viewer-theme-pack.py \
+  --theme-dir crates/agent_world_viewer/assets/themes/industrial_v2 \
+  --profile v2
+```
+
+## 工业风主题包（industrial_v1，兼容）
+- 路径：`crates/agent_world_viewer/assets/themes/industrial_v1/`
+- 预设：`industrial_default.env`、`industrial_matte.env`、`industrial_glossy.env`
+- 校验：
+```bash
+python3 scripts/validate-viewer-theme-pack.py \
+  --theme-dir crates/agent_world_viewer/assets/themes/industrial_v1 \
+  --profile v1
 ```
 
 ### 批量预览（default/matte/glossy）
@@ -256,7 +299,10 @@ source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_
 
 ### 资产重生成
 ```bash
-python3 scripts/generate-viewer-industrial-theme-assets.py
+python3 scripts/generate-viewer-industrial-theme-assets.py --quality v2 --out-dir crates/agent_world_viewer/assets/themes/industrial_v2
+```
+```bash
+python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-dir crates/agent_world_viewer/assets/themes/industrial_v1
 ```
 
 ## 贴图查看器（可截图）

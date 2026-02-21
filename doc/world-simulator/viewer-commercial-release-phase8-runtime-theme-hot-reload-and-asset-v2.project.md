@@ -6,7 +6,7 @@
 - [x] VCR8-2 右侧面板主题控制区与热重载流程（含测试）
 - [x] VCR8-3 `industrial_v2` 资产包与预设落地
 - [x] VCR8-4 主题资产校验脚本与 smoke 验证
-- [ ] VCR8-5 手册、状态回写、devlog 与测试收口
+- [x] VCR8-5 手册、状态回写、devlog 与测试收口
 
 ## 依赖
 - `crates/agent_world_viewer/src/app_bootstrap.rs`
@@ -16,6 +16,6 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：VCR8-4 已完成，VCR8-5 进行中。
-- 下一步：更新 viewer 手册并完成 Phase 8 状态/devlog/测试收口。
-- 最近更新：2026-02-21（VCR8-4 完成并进入 VCR8-5）。
+- 当前阶段：Phase 8 全部完成。
+- 下一步：进入下一阶段商业发行缺口（UI polish/动效/发行验收）任务拆解。
+- 最近更新：2026-02-21（VCR8-5 完成，Phase 8 收口）。
