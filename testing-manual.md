@@ -60,12 +60,17 @@
   - `sync-m4-builtin-wasm-artifacts --check`
   - `sync-m5-builtin-wasm-artifacts --check`
   - `cargo test -p agent_world --tests --features test_tier_required`
+  - `cargo test -p agent_world_viewer`
+  - `cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
 - `full`：
   - `required` 全部
   - `cargo test -p agent_world --tests --features test_tier_full,wasmtime,viewer_live_integration`
   - `cargo test -p agent_world --features wasmtime --lib --bins`
   - `cargo test -p agent_world_net --features libp2p --lib`
-- 入口 B：`.github/workflows/builtin-wasm-m1-multi-runner.yml`（构建 hash 链路独立 gate）
+- 入口 B：`.github/workflows/rust.yml`（required-gate）
+  - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
+  - `./scripts/viewer-visual-baseline.sh`
+- 入口 C：`.github/workflows/builtin-wasm-m1-multi-runner.yml`（构建 hash 链路独立 gate）
   - runner 矩阵：`ubuntu-24.04 (linux-x86_64)` + `macos-14 (darwin-arm64)`
   - 每个 runner 仅执行：`./scripts/ci-m1-wasm-summary.sh --runner-label ... --out ...`
   - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
@@ -74,12 +79,12 @@
 - `agent_world_node` 独立测试集。
 - `agent_world_consensus` 独立测试集。
 - `agent_world_distfs` 独立测试集。
-- `agent_world_viewer` 独立测试集（当前 pre-commit 仅做 wasm check，不跑 viewer 单测）。
 - Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
 - `m4/m5` builtin wasm 的跨 runner hash 对账（当前独立 gate 仅覆盖 `m1`）。
 
 结论：
-- `required/full` 是“核心链路测试层”的主入口；
+- `required/full` 是“核心链路测试层”的主入口（已包含 `agent_world_viewer` 单测 + wasm check）；
+- `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
 - `builtin-wasm-m1-multi-runner` 提供“跨 runner 构建 hash 链路健康”独立可观测性；
 - 若目标是“整应用充分测试”，必须在其上叠加分布式子系统与 UI 闭环层。
 
@@ -130,6 +135,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - runtime/simulator 大量单元与集成测试
   - `world_viewer_live` 二进制测试
   - viewer offline integration
+  - `agent_world_viewer` 全量单测 + wasm 编译检查
 
 ### S2：核心 full 套件（L1 + L2）
 ```bash
@@ -171,7 +177,8 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
 ```
 - 说明：
   - `agent_world_viewer` 内已有大量 UI/相机/交互逻辑测试；
-  - 这是 UI 闭环前的稳定性筛网。
+  - 这是 UI 闭环前的稳定性筛网；
+  - 该套件已并入 `S1/S2` 的默认 gate。
 
 ### S6：Web UI 闭环 smoke 套件（L4）
 1) 启动 live server（含 bridge）：
@@ -269,7 +276,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 | `crates/agent_world_net/**` | S0 + S4（net） | S2 + runtime_bridge 变体 |
 | `crates/agent_world_consensus/**` | S0 + S4（consensus） | S2 |
 | `crates/agent_world_distfs/**` | S0 + S4（distfs） | S2 + S8（若影响长稳） |
-| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + S2 | S4 + S6（抽样） |
+| `scripts/ci-tests.sh` / `.github/workflows/rust.yml` | S0 + S1 + `./scripts/viewer-visual-baseline.sh` | S2 + S4 + S6（抽样） |
 | `scripts/ci-m1-wasm-summary.sh` / `scripts/ci-verify-m1-wasm-summaries.py` / `.github/workflows/builtin-wasm-m1-multi-runner.yml` | `S0` + `./scripts/ci-m1-wasm-summary.sh --runner-label darwin-arm64 --out output/ci/m1-wasm-summary/darwin-arm64.json` + `./scripts/ci-verify-m1-wasm-summaries.py --summary-dir output/ci/m1-wasm-summary --expected-runners darwin-arm64` | `workflow_dispatch` 触发双 runner（`linux-x86_64,darwin-arm64`）对账 |
 | `scripts/run-viewer-web.sh` / `scripts/capture-viewer-frame.sh` | S0 + S6 | S5 + S8 |
 
@@ -347,10 +354,9 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - 动作：将 S7 中 `world_init_demo_runs_` 的执行档位调整为 `test_tier_full`（或在文档中明确 required/full 的期望命中数差异与适用场景）。
   - 验收：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full world_init_demo_runs_ -- --nocapture` 命中多场景用例（非 1 条）。
 
-- [ ] TODO-2：修复 S5 `agent_world_viewer` 测试编译阻塞。
-  - 问题：`PowerEvent::PowerTransferred` 字段已扩展，`agent_world_viewer` 侧若干测试初始化缺少 `quoted_price_per_pu` 与 `settlement_amount`，导致 `cargo test -p agent_world_viewer` 编译失败。
-  - 动作：补齐 `crates/agent_world_viewer/src/ui_text_economy.rs`、`crates/agent_world_viewer/src/ui_text_industrial.rs`、`crates/agent_world_viewer/src/world_overlay.rs` 中相关测试事件构造字段。
-  - 验收：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 可通过。
+- [x] TODO-2：修复 S5 `agent_world_viewer` 测试编译阻塞。
+  - 处理结果（2026-02-21）：`agent_world_viewer` 测试集已恢复可编译可执行，并已纳入 `scripts/ci-tests.sh` 的 `required/full` 默认 gate。
+  - 验收记录：`env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过，且 `required-gate` 增加 `./scripts/viewer-visual-baseline.sh`。
 
 ## 风险
 - 风险 1：把 `required/full` 当作整应用全覆盖。
