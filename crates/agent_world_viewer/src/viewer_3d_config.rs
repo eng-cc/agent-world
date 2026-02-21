@@ -206,6 +206,21 @@ pub(super) struct ViewerExternalMeshConfig {
     pub power_storage_mesh_asset: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct ViewerExternalMaterialSlotConfig {
+    pub base_color_srgb: Option<[f32; 3]>,
+    pub emissive_color_srgb: Option<[f32; 3]>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Resource)]
+pub(super) struct ViewerExternalMaterialConfig {
+    pub agent: ViewerExternalMaterialSlotConfig,
+    pub location: ViewerExternalMaterialSlotConfig,
+    pub asset: ViewerExternalMaterialSlotConfig,
+    pub power_plant: ViewerExternalMaterialSlotConfig,
+    pub power_storage: ViewerExternalMaterialSlotConfig,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ViewerFragmentMaterialStrategy {
     Readability,
@@ -442,6 +457,10 @@ pub(super) fn resolve_viewer_external_mesh_config() -> ViewerExternalMeshConfig 
     load_viewer_external_mesh_config_from(|key| std::env::var(key).ok())
 }
 
+pub(super) fn resolve_viewer_external_material_config() -> ViewerExternalMaterialConfig {
+    load_viewer_external_material_config_from(|key| std::env::var(key).ok())
+}
+
 fn load_viewer_external_mesh_config_from<F>(lookup: F) -> ViewerExternalMeshConfig
 where
     F: Fn(&str) -> Option<String>,
@@ -461,6 +480,58 @@ where
             &lookup,
             "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
         ),
+    }
+}
+
+fn load_viewer_external_material_config_from<F>(lookup: F) -> ViewerExternalMaterialConfig
+where
+    F: Fn(&str) -> Option<String>,
+{
+    ViewerExternalMaterialConfig {
+        agent: ViewerExternalMaterialSlotConfig {
+            base_color_srgb: parse_hex_srgb_color(&lookup, "AGENT_WORLD_VIEWER_AGENT_BASE_COLOR"),
+            emissive_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR",
+            ),
+        },
+        location: ViewerExternalMaterialSlotConfig {
+            base_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR",
+            ),
+            emissive_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR",
+            ),
+        },
+        asset: ViewerExternalMaterialSlotConfig {
+            base_color_srgb: parse_hex_srgb_color(&lookup, "AGENT_WORLD_VIEWER_ASSET_BASE_COLOR"),
+            emissive_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR",
+            ),
+        },
+        power_plant: ViewerExternalMaterialSlotConfig {
+            base_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR",
+            ),
+            emissive_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR",
+            ),
+        },
+        power_storage: ViewerExternalMaterialSlotConfig {
+            base_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR",
+            ),
+            emissive_color_srgb: parse_hex_srgb_color(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR",
+            ),
+        },
     }
 }
 
@@ -813,6 +884,22 @@ where
             Some(trimmed.to_string())
         }
     })
+}
+
+fn parse_hex_srgb_color<F>(lookup: &F, key: &str) -> Option<[f32; 3]>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let raw = lookup(key)?;
+    let hex = raw.trim();
+    let color_hex = hex.strip_prefix('#')?;
+    if color_hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&color_hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&color_hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&color_hex[4..6], 16).ok()?;
+    Some([r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0])
 }
 
 fn parse_usize<F>(lookup: &F, key: &str) -> Option<usize>

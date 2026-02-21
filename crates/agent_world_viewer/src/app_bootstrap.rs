@@ -6,6 +6,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let viewer_external_mesh_config = resolve_viewer_external_mesh_config();
+    let viewer_external_material_config = resolve_viewer_external_material_config();
     let auto_degrade_config = auto_degrade_config_from_env();
     let perf_probe_config = perf_probe::perf_probe_config_from_env();
     let auto_focus_config = auto_focus_config_from_env();
@@ -34,6 +35,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         })
         .insert_resource(viewer_3d_config)
         .insert_resource(viewer_external_mesh_config)
+        .insert_resource(viewer_external_material_config)
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerCameraMode::default())
         .insert_resource(panel_mode)

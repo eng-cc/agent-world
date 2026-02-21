@@ -151,8 +151,9 @@ use ui_locale_text::{
 use ui_state_types::*;
 use ui_text::{agent_activity_summary, events_summary, selection_details_summary, world_summary};
 use viewer_3d_config::{
-    resolve_viewer_3d_config, resolve_viewer_external_mesh_config, Viewer3dConfig,
-    ViewerExternalMeshConfig, ViewerGeometryTier, ViewerTonemappingMode,
+    resolve_viewer_3d_config, resolve_viewer_external_material_config,
+    resolve_viewer_external_mesh_config, Viewer3dConfig, ViewerExternalMeshConfig,
+    ViewerGeometryTier, ViewerTonemappingMode,
 };
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,

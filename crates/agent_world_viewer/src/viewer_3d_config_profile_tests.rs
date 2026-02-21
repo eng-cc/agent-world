@@ -1,6 +1,13 @@
 use super::*;
 use std::collections::HashMap;
 
+fn assert_rgb_approx_eq(actual: Option<[f32; 3]>, expected: [f32; 3]) {
+    let actual = actual.expect("expected rgb color to be present");
+    assert!((actual[0] - expected[0]).abs() < 1e-6);
+    assert!((actual[1] - expected[1]).abs() < 1e-6);
+    assert!((actual[2] - expected[2]).abs() < 1e-6);
+}
+
 #[test]
 fn load_viewer_3d_config_applies_env_overrides() {
     let env = HashMap::from([
@@ -29,6 +36,16 @@ fn load_viewer_3d_config_applies_env_overrides() {
             "AGENT_WORLD_VIEWER_POWER_STORAGE_MESH_ASSET",
             "models/facility/power_storage.glb#Mesh0/Primitive0",
         ),
+        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#FF6A38"),
+        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#E66230"),
+        ("AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR", "#4B88D9"),
+        ("AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR", "#B8D8FF"),
+        ("AGENT_WORLD_VIEWER_ASSET_BASE_COLOR", "#D1C35A"),
+        ("AGENT_WORLD_VIEWER_ASSET_EMISSIVE_COLOR", "#FFD45A"),
+        ("AGENT_WORLD_VIEWER_POWER_PLANT_BASE_COLOR", "#F36934"),
+        ("AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_COLOR", "#FF7F4A"),
+        ("AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_COLOR", "#37CC77"),
+        ("AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR", "#6CFFD1"),
         ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "cinematic"),
         ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "true"),
         ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "fidelity"),
@@ -147,6 +164,49 @@ fn load_viewer_3d_config_applies_env_overrides() {
         external_mesh.power_storage_mesh_asset.as_deref(),
         Some("models/facility/power_storage.glb#Mesh0/Primitive0")
     );
+
+    let external_material =
+        load_viewer_external_material_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_rgb_approx_eq(
+        external_material.agent.base_color_srgb,
+        [1.0, 0.41568628, 0.21960784],
+    );
+    assert_rgb_approx_eq(
+        external_material.agent.emissive_color_srgb,
+        [0.9019608, 0.38431373, 0.1882353],
+    );
+    assert_rgb_approx_eq(
+        external_material.location.base_color_srgb,
+        [0.29411766, 0.53333336, 0.8509804],
+    );
+    assert_rgb_approx_eq(
+        external_material.location.emissive_color_srgb,
+        [0.72156864, 0.84705883, 1.0],
+    );
+    assert_rgb_approx_eq(
+        external_material.asset.base_color_srgb,
+        [0.81960785, 0.7647059, 0.3529412],
+    );
+    assert_rgb_approx_eq(
+        external_material.asset.emissive_color_srgb,
+        [1.0, 0.83137256, 0.3529412],
+    );
+    assert_rgb_approx_eq(
+        external_material.power_plant.base_color_srgb,
+        [0.9529412, 0.4117647, 0.20392157],
+    );
+    assert_rgb_approx_eq(
+        external_material.power_plant.emissive_color_srgb,
+        [1.0, 0.49803922, 0.2901961],
+    );
+    assert_rgb_approx_eq(
+        external_material.power_storage.base_color_srgb,
+        [0.21568628, 0.8, 0.46666667],
+    );
+    assert_rgb_approx_eq(
+        external_material.power_storage.emissive_color_srgb,
+        [0.42352942, 1.0, 0.81960785],
+    );
 }
 
 #[test]
@@ -155,6 +215,8 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
         ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "invalid"),
         ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
+        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#12345"),
+        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "123456"),
         ("AGENT_WORLD_VIEWER_ASSET_GEOMETRY_TIER", "ultra"),
         ("AGENT_WORLD_VIEWER_LOCATION_SHELL_ENABLED", "maybe"),
         ("AGENT_WORLD_VIEWER_FRAGMENT_MATERIAL_STRATEGY", "hyper"),
@@ -286,6 +348,11 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         (config.physical.reference_radiation_area_m2 - DEFAULT_REFERENCE_RADIATION_AREA_M2).abs()
             < f32::EPSILON
     );
+
+    let external_material =
+        load_viewer_external_material_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(external_material.agent.base_color_srgb, None);
+    assert_eq!(external_material.agent.emissive_color_srgb, None);
 }
 
 #[test]
@@ -360,4 +427,29 @@ fn load_viewer_external_mesh_config_ignores_empty_values() {
     );
     assert_eq!(external_mesh.power_plant_mesh_asset, None);
     assert_eq!(external_mesh.power_storage_mesh_asset, None);
+}
+
+#[test]
+fn load_viewer_external_material_config_ignores_empty_or_invalid_values() {
+    let env = HashMap::from([
+        ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "   "),
+        ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "#GG2233"),
+        ("AGENT_WORLD_VIEWER_ASSET_BASE_COLOR", " #D1C35A "),
+        ("AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_COLOR", "#6CFFD1"),
+    ]);
+
+    let external_material =
+        load_viewer_external_material_config_from(|key| env.get(key).map(|v| v.to_string()));
+    assert_eq!(external_material.agent.base_color_srgb, None);
+    assert_eq!(external_material.agent.emissive_color_srgb, None);
+    assert_rgb_approx_eq(
+        external_material.asset.base_color_srgb,
+        [0.81960785, 0.7647059, 0.3529412],
+    );
+    assert_rgb_approx_eq(
+        external_material.power_storage.emissive_color_srgb,
+        [0.42352942, 1.0, 0.81960785],
+    );
+    assert_eq!(external_material.location.base_color_srgb, None);
+    assert_eq!(external_material.power_plant.base_color_srgb, None);
 }
