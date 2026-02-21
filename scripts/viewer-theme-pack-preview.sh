@@ -119,7 +119,8 @@ variants=($(resolve_variants "$variants_raw"))
 mkdir -p "$out_dir"
 
 preset_dir="crates/agent_world_viewer/assets/themes/industrial_v1/presets"
-automation_steps="mode=3d;focus=first_agent;zoom=0.8;select=first_agent"
+# Keep a deterministic composition that consistently includes visible location geometry.
+automation_steps="mode=3d;focus=first_location;pan=0,2,0;zoom=1.2;orbit=10,-25;select=first_location;wait=0.4"
 
 index=0
 for variant in "${variants[@]}"; do
@@ -144,7 +145,7 @@ for variant in "${variants[@]}"; do
       --addr "127.0.0.1:$port" \
       --tick-ms "$tick_ms" \
       --viewer-wait "$viewer_wait" \
-      --auto-focus-target first_agent \
+      --auto-focus-target first_location \
       --automation-steps "$automation_steps" \
       --keep-tmp \
       ${no_prewarm_arg:+$no_prewarm_arg}
