@@ -154,7 +154,8 @@ use viewer_3d_config::{
     resolve_viewer_3d_config, resolve_viewer_external_material_config,
     resolve_viewer_external_mesh_config, resolve_viewer_external_texture_config, Viewer3dConfig,
     ViewerExternalMaterialConfig, ViewerExternalMaterialSlotConfig, ViewerExternalMeshConfig,
-    ViewerGeometryTier, ViewerTonemappingMode,
+    ViewerExternalTextureConfig, ViewerExternalTextureSlotConfig, ViewerGeometryTier,
+    ViewerTonemappingMode,
 };
 use viewer_automation::{
     run_viewer_automation, viewer_automation_config_from_env, ViewerAutomationState,
@@ -626,6 +627,19 @@ fn resolve_srgb_slot_color(default: [f32; 3], override_color: Option<[f32; 3]>) 
     override_color.unwrap_or(default)
 }
 
+fn resolve_base_texture_slot(
+    asset_server: &AssetServer,
+    slot: &ViewerExternalTextureSlotConfig,
+) -> Option<Handle<Image>> {
+    slot.base_texture_asset
+        .as_ref()
+        .map(|path| asset_server.load(path.to_string()))
+}
+
+fn texture_slot_override_enabled(slot: &ViewerExternalTextureSlotConfig) -> bool {
+    slot.base_texture_asset.is_some()
+}
+
 fn color_from_srgb(rgb: [f32; 3]) -> Color {
     Color::srgb(rgb[0], rgb[1], rgb[2])
 }
@@ -645,6 +659,13 @@ fn emissive_from_srgb_with_boost(rgb: [f32; 3], boost: f32) -> LinearRgba {
 
 fn location_material_override_enabled(slot: ViewerExternalMaterialSlotConfig) -> bool {
     slot.base_color_srgb.is_some() || slot.emissive_color_srgb.is_some()
+}
+
+fn location_style_override_enabled(
+    material_slot: ViewerExternalMaterialSlotConfig,
+    texture_slot: &ViewerExternalTextureSlotConfig,
+) -> bool {
+    location_material_override_enabled(material_slot) || texture_slot_override_enabled(texture_slot)
 }
 
 fn lighting_illuminance_triplet(config: &Viewer3dConfig) -> (f32, f32, f32) {
@@ -973,6 +994,7 @@ fn setup_3d_scene(
     config: Res<Viewer3dConfig>,
     external_mesh: Res<ViewerExternalMeshConfig>,
     external_material: Res<ViewerExternalMaterialConfig>,
+    external_texture: Res<ViewerExternalTextureConfig>,
     camera_mode: Res<ViewerCameraMode>,
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -1023,6 +1045,14 @@ fn setup_3d_scene(
         || power_storage_mesh_for_geometry_tier(geometry_tier),
     );
     let world_box_mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let agent_base_texture = resolve_base_texture_slot(&asset_server, &external_texture.agent);
+    let location_base_texture =
+        resolve_base_texture_slot(&asset_server, &external_texture.location);
+    let asset_base_texture = resolve_base_texture_slot(&asset_server, &external_texture.asset);
+    let power_plant_base_texture =
+        resolve_base_texture_slot(&asset_server, &external_texture.power_plant);
+    let power_storage_base_texture =
+        resolve_base_texture_slot(&asset_server, &external_texture.power_storage);
     let agent_base_color =
         resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
     let agent_emissive_color = resolve_srgb_slot_color(
@@ -1031,6 +1061,7 @@ fn setup_3d_scene(
     );
     let agent_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(agent_base_color),
+        base_color_texture: agent_base_texture,
         perceptual_roughness: config.materials.agent.roughness,
         metallic: config.materials.agent.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1054,6 +1085,7 @@ fn setup_3d_scene(
     );
     let asset_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(asset_base_color),
+        base_color_texture: asset_base_texture,
         perceptual_roughness: config.materials.asset.roughness,
         metallic: config.materials.asset.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1072,6 +1104,7 @@ fn setup_3d_scene(
     );
     let power_plant_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(power_plant_base_color),
+        base_color_texture: power_plant_base_texture,
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1090,6 +1123,7 @@ fn setup_3d_scene(
     );
     let power_storage_material = materials.add(StandardMaterial {
         base_color: color_from_srgb(power_storage_base_color),
+        base_color_texture: power_storage_base_texture,
         perceptual_roughness: config.materials.facility.roughness,
         metallic: config.materials.facility.metallic,
         emissive: emissive_from_srgb_with_boost(
@@ -1132,7 +1166,7 @@ fn setup_3d_scene(
         location_core_metal_material,
         location_core_ice_material,
         location_halo_material,
-    ) = if location_material_override_enabled(external_material.location) {
+    ) = if location_style_override_enabled(external_material.location, &external_texture.location) {
         let location_base_color = resolve_srgb_slot_color(
             [0.30, 0.42, 0.66],
             external_material.location.base_color_srgb,
@@ -1141,8 +1175,10 @@ fn setup_3d_scene(
             location_base_color,
             external_material.location.emissive_color_srgb,
         );
+        let location_base_texture = location_base_texture.clone();
         let location_core_material = |alpha: f32| StandardMaterial {
             base_color: color_from_srgb_with_alpha(location_base_color, alpha),
+            base_color_texture: location_base_texture.clone(),
             perceptual_roughness: config.materials.facility.roughness,
             metallic: config.materials.facility.metallic,
             emissive: color_from_srgb(location_emissive_color).into(),
@@ -1156,6 +1192,7 @@ fn setup_3d_scene(
             materials.add(location_core_material(0.30)),
             materials.add(StandardMaterial {
                 base_color: color_from_srgb_with_alpha(location_base_color, 0.10),
+                base_color_texture: location_base_texture,
                 emissive: color_from_srgb(location_emissive_color).into(),
                 alpha_mode: AlphaMode::Blend,
                 ..default()

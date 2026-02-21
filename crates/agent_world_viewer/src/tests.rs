@@ -6,7 +6,8 @@ use crate::timeline_controls::{
     TimelineSeekSubmitButton, TimelineStatusText,
 };
 use crate::viewer_3d_config::{
-    Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerTonemappingMode,
+    Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerExternalTextureSlotConfig,
+    ViewerTonemappingMode,
 };
 use agent_world::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
@@ -845,6 +846,44 @@ fn location_material_override_enabled_detects_any_slot_override() {
         emissive_color_srgb: Some([0.6, 0.7, 0.8]),
     };
     assert!(location_material_override_enabled(emissive_only));
+}
+
+#[test]
+fn texture_slot_override_enabled_detects_base_texture_override() {
+    let empty = ViewerExternalTextureSlotConfig::default();
+    assert!(!texture_slot_override_enabled(&empty));
+
+    let texture_override = ViewerExternalTextureSlotConfig {
+        base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
+    };
+    assert!(texture_slot_override_enabled(&texture_override));
+}
+
+#[test]
+fn location_style_override_enabled_detects_material_or_texture_override() {
+    let material_empty = ViewerExternalMaterialSlotConfig::default();
+    let texture_empty = ViewerExternalTextureSlotConfig::default();
+    assert!(!location_style_override_enabled(
+        material_empty,
+        &texture_empty
+    ));
+
+    let material_only = ViewerExternalMaterialSlotConfig {
+        base_color_srgb: Some([0.3, 0.5, 0.7]),
+        emissive_color_srgb: None,
+    };
+    assert!(location_style_override_enabled(
+        material_only,
+        &texture_empty
+    ));
+
+    let texture_only = ViewerExternalTextureSlotConfig {
+        base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
+    };
+    assert!(location_style_override_enabled(
+        material_empty,
+        &texture_only
+    ));
 }
 
 #[path = "tests_scene_entities.rs"]
