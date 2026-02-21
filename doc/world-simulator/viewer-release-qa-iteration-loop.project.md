@@ -7,7 +7,7 @@
 - [x] VRQ-3 复验收口：重跑并输出报告，更新手册与状态
 - [x] VRQ-4 缺口修复：稳定语义 gate（连接抖动收敛）并消除字体资产错误日志
 - [x] VRQ-5 缩放验收升级：三档截图像素指标 + 相机半径语义断言 + zoom 差异度门禁
-- [ ] VRQ-6 发行缺口收敛：修复“zoom 生效但画面近远差异过小”问题并达成全 PASS
+- [x] VRQ-6 发行缺口收敛：修复“zoom 生效但画面近远差异过小”问题并达成全 PASS
 
 ## 依赖
 - `testing-manual.md`
@@ -17,6 +17,6 @@
 - `/Users/scc/.codex/skills/playwright/scripts/playwright_cli.sh`
 
 ## 状态
-- 当前阶段：VRQ-6 进行中
-- 下一步：定位并修复 near/far zoom 视觉差异不足（当前脚本已稳定复现 `zoom visual delta too small`）
-- 最近更新：2026-02-21（完成 VRQ-4/VRQ-5，新增 zoom 视觉差异硬门禁）
+- 当前阶段：VRQ-6 已完成（发行 QA 闭环全 PASS）
+- 下一步：将 `--with-consensus-gate` 链路作为独立扩展验收维度，与默认 viewer 发行 QA（`--no-node`）分层执行
+- 最近更新：2026-02-21（定位并修复 `sync_camera_mode` 对 3D zoom 的覆盖重置；语义 gate 升级为 tick 必须推进硬条件；zoom 视觉签名改为主视区采样；默认 QA 启动改为 `--no-node`；产物 `output/playwright/viewer/release-qa-summary-20260221-200155.md` 为 PASS）

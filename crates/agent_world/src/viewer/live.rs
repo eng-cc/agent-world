@@ -263,13 +263,14 @@ impl ViewerLiveServer {
                             return Err(err);
                         }
                     }
-                    session.update_metrics_from_kernel(self.world.kernel());
-                    if let Err(err) = session.emit_metrics(&mut writer) {
-                        if err.is_disconnect() {
-                            break;
-                        }
-                        return Err(err);
+                }
+
+                session.update_metrics_from_kernel(self.world.kernel());
+                if let Err(err) = session.emit_metrics(&mut writer) {
+                    if err.is_disconnect() {
+                        break;
                     }
+                    return Err(err);
                 }
 
                 last_tick = Instant::now();
@@ -1021,9 +1022,10 @@ impl ViewerLiveSession {
                                     },
                                 )?;
                             }
-                            self.update_metrics_from_kernel(world.kernel());
-                            self.emit_metrics(writer)?;
                         }
+
+                        self.update_metrics_from_kernel(world.kernel());
+                        self.emit_metrics(writer)?;
                     }
                     self.playing = false;
                 }

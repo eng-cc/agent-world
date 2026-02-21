@@ -166,6 +166,19 @@ fn live_world_seek_reports_stall_when_world_cannot_advance() {
 }
 
 #[test]
+fn live_world_llm_bootstrap_script_mode_advances_tick() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::LlmBootstrap, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+
+    for _ in 0..24 {
+        let _ = world.step().expect("step");
+    }
+
+    assert!(world.kernel.time() > 0);
+}
+
+#[test]
 fn prompt_control_preview_reports_fields_and_next_version() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);

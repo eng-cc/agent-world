@@ -442,6 +442,15 @@ pub(super) fn sync_camera_mode(
         return;
     };
 
+    let projection_matches_mode = match (*camera_mode, &*projection) {
+        (ViewerCameraMode::TwoD, Projection::Orthographic(_)) => true,
+        (ViewerCameraMode::ThreeD, Projection::Perspective(_)) => true,
+        _ => false,
+    };
+    if projection_matches_mode {
+        return;
+    }
+
     let next_orbit = camera_orbit_preset(
         *camera_mode,
         Some(orbit.focus),
@@ -928,6 +937,41 @@ mod tests {
         };
         let expected = two_d_ortho_scale_for_radius(orbit.radius, config.effective_cm_to_unit());
         assert!((ortho.scale - expected).abs() < 1e-6);
+    }
+
+    #[test]
+    fn sync_camera_mode_ignores_redundant_three_d_assignment() {
+        let mut app = App::new();
+        app.add_systems(Update, sync_camera_mode);
+        app.insert_resource(Viewer3dConfig::default());
+        app.insert_resource(ViewerCameraMode::ThreeD);
+        app.insert_resource(AutoFocusState::default());
+
+        let config = *app.world().resource::<Viewer3dConfig>();
+        let custom_radius = 13.44;
+        let mut transform = Transform::default();
+        let orbit = OrbitCamera {
+            focus: Vec3::new(10.0, 2.0, -8.0),
+            radius: custom_radius,
+            yaw: 0.35,
+            pitch: -0.8,
+        };
+        orbit.apply_to_transform(&mut transform);
+        app.world_mut().spawn((
+            Viewer3dCamera,
+            orbit,
+            transform,
+            camera_projection_for_mode(ViewerCameraMode::ThreeD, &config),
+        ));
+
+        app.world_mut().insert_resource(ViewerCameraMode::ThreeD);
+        app.update();
+
+        let mut query = app.world_mut().query::<&OrbitCamera>();
+        let orbit = query
+            .single(app.world())
+            .expect("camera query should contain one entity");
+        assert!((orbit.radius - custom_radius).abs() < 1e-6);
     }
 
     #[test]
