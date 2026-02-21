@@ -259,6 +259,32 @@ source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_
 python3 scripts/generate-viewer-industrial-theme-assets.py
 ```
 
+## 贴图查看器（可截图）
+
+用途：
+- 在统一构图下快速检查贴图观感（base/normal/metallic_roughness/emissive）。
+- 支持批量实体来源与材质变体，输出可留痕截图目录。
+
+### 基础调用
+```bash
+./scripts/viewer-texture-inspector.sh \
+  --inspect all \
+  --variants all \
+  --scenario llm_bootstrap
+```
+
+### 常用参数
+- `--preset-file <path>`：指定主题预设 env 文件（默认 `industrial_default.env`）。
+- `--inspect <list>`：贴图来源实体（`agent,location,asset,power_plant,power_storage,all`）。
+- `--variants <list>`：`default,matte,glossy,all`。
+- `--base-texture/--normal-texture/--mr-texture/--emissive-texture`：临时覆盖贴图路径。
+- `--use-source-mesh`：把“来源实体 mesh”作为预览载体（默认关闭，默认使用 location 载体保证构图稳定）。
+- `--out-dir <dir>`：输出目录（默认 `output/texture_inspector/<timestamp>`）。
+
+### 输出目录
+- `output/texture_inspector/<timestamp>/<entity>/<variant>/viewer.png`
+- 同目录附带：`live_server.log`、`viewer.log`、`meta.txt`
+
 ## Web 闭环（默认，推荐调试/回归）
 
 说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
