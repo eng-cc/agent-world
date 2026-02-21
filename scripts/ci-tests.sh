@@ -51,6 +51,26 @@ run_agent_world_full_tier_tests() {
   run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration"
 }
 
+run_agent_world_consensus_tests() {
+  run_cargo test -p agent_world_consensus --lib
+}
+
+run_agent_world_distfs_tests() {
+  run_cargo test -p agent_world_distfs --lib
+}
+
+run_agent_world_node_tests() {
+  run_cargo test -p agent_world_node --lib
+}
+
+run_agent_world_net_tests() {
+  run_cargo test -p agent_world_net --lib
+}
+
+run_agent_world_net_libp2p_tests() {
+  run_cargo test -p agent_world_net --features libp2p --lib
+}
+
 run_agent_world_llm_baseline_fixture_smoke() {
   run ./scripts/llm-baseline-fixture-smoke.sh
 }
@@ -71,13 +91,19 @@ echo "+ ci test tier: $tier"
 run_required_gate_checks
 if [[ "$tier" == "required" ]]; then
   run_agent_world_required_tier_tests
+  run_agent_world_consensus_tests
+  run_agent_world_distfs_tests
   run_agent_world_viewer_tests
   run_agent_world_viewer_wasm_check
 else
   run_agent_world_full_tier_tests
+  run_agent_world_consensus_tests
+  run_agent_world_distfs_tests
+  run_agent_world_node_tests
+  run_agent_world_net_tests
+  run_agent_world_net_libp2p_tests
   run_agent_world_llm_baseline_fixture_smoke
   run_agent_world_viewer_tests
   run_agent_world_viewer_wasm_check
   run_cargo test -p agent_world --features wasmtime --lib --bins
-  run_cargo test -p agent_world_net --features libp2p --lib
 fi

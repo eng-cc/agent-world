@@ -57,13 +57,18 @@
 - `required`：
   - `cargo fmt --check`
   - `cargo test -p agent_world --tests --features test_tier_required`
+  - `cargo test -p agent_world_consensus --lib`
+  - `cargo test -p agent_world_distfs --lib`
   - `cargo test -p agent_world_viewer`
   - `cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
 - `full`：
   - `required` 全部
   - `cargo test -p agent_world --tests --features test_tier_full,wasmtime,viewer_live_integration`
-  - `cargo test -p agent_world --features wasmtime --lib --bins`
+  - `cargo test -p agent_world_node --lib`
+  - `cargo test -p agent_world_net --lib`
   - `cargo test -p agent_world_net --features libp2p --lib`
+  - `./scripts/llm-baseline-fixture-smoke.sh`
+  - `cargo test -p agent_world --features wasmtime --lib --bins`
 - 入口 B：`.github/workflows/rust.yml`（required-gate）
   - `CI_VERBOSE=1 ./scripts/ci-tests.sh required`
   - `./scripts/viewer-visual-baseline.sh`
@@ -73,17 +78,14 @@
   - 汇总 job 对账：`./scripts/ci-verify-m1-wasm-summaries.py --summary-dir ... --expected-runners linux-x86_64,darwin-arm64`
 
 ### 当前 CI 未直接覆盖（需手册补齐）
-- `agent_world_node` 独立测试集。
-- `agent_world_consensus` 独立测试集。
-- `agent_world_distfs` 独立测试集。
 - Web UI Playwright 闭环（现为手动/agent 流程，不在 CI 默认路径中）。
 - `m4/m5` builtin wasm hash 校验（`scripts/ci-tests.sh` 已移除 `sync-m4/m5 --check`）。
 
 结论：
-- `required/full` 是“核心链路测试层”的主入口（已包含 `agent_world_viewer` 单测 + wasm check）；
+- `required/full` 是“核心链路测试层”的主入口（required 含 `agent_world + consensus + distfs + viewer`，full 追加 `node + net/libp2p`）；
 - `required-gate` 已补充 viewer 视觉基线脚本（snapshot 基线 + 定向测试）；
 - `builtin-wasm-m1-multi-runner` 负责 `m1` hash 链路独立 gate；
-- 若目标是“整应用充分测试”，必须在其上叠加分布式子系统与 UI 闭环层。
+- 若目标是“整应用充分测试”，仍需在此基础上叠加 UI 闭环层（S6）与压力层（S8）。
 
 ## 分层模型（针对当前仓库）
 
@@ -135,6 +137,7 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - runtime/simulator 大量单元与集成测试
   - `world_viewer_live` 二进制测试
   - viewer offline integration
+  - 分布式基础子系统（轻量）：`agent_world_consensus`、`agent_world_distfs`
   - `agent_world_viewer` 全量单测 + wasm 编译检查
 
 ### S2：核心 full 套件（L1 + L2）
@@ -145,7 +148,9 @@ env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-u
   - `test_tier_full`
   - `wasmtime` 路径
   - `viewer_live_integration`
+  - `agent_world_node --lib`、`agent_world_net --lib`
   - `agent_world_net` 的 `libp2p` 路径
+  - `llm-baseline-fixture-smoke`（基线加载与离线治理续跑断言）
 
 ### S3：应用主链定向套件（L1 + L2）
 ```bash

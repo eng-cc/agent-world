@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/nonviewer-release-readiness-hardening.project.md`
 
 ### T1 测试覆盖补齐
-- [ ] 更新 `scripts/ci-tests.sh`，补齐 `node/consensus/distfs/net` 的 non-viewer 测试门禁覆盖
-- [ ] 更新 `testing-manual.md` 的 CI 覆盖事实口径
-- [ ] 跑一轮 required 回归并记录结果
+- [x] 更新 `scripts/ci-tests.sh`，补齐 `node/consensus/distfs/net` 的 non-viewer 测试门禁覆盖
+- [x] 更新 `testing-manual.md` 的 CI 覆盖事实口径
+- [x] 跑一轮 required 回归并记录结果
 
 ### T2 Agent/PublicKey 绑定
 - [ ] 扩展 viewer 协议请求：支持传入可选 `public_key`
@@ -32,7 +32,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
