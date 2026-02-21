@@ -399,6 +399,8 @@ total_decisions=0
 total_actions=0
 action_success=0
 action_failure=0
+llm_skipped_ticks=0
+llm_skipped_tick_ratio_ppm=0
 llm_errors=0
 parse_errors=0
 repair_rounds_total=0
@@ -427,6 +429,8 @@ load_metrics_from_report() {
     total_actions=$(jq -r '.total_actions // 0' "$report_path")
     action_success=$(jq -r '.action_success // 0' "$report_path")
     action_failure=$(jq -r '.action_failure // 0' "$report_path")
+    llm_skipped_ticks=$(jq -r '.trace_counts.llm_skipped_ticks // 0' "$report_path")
+    llm_skipped_tick_ratio_ppm=$(jq -r '.trace_counts.llm_skipped_tick_ratio_ppm // 0' "$report_path")
     llm_errors=$(jq -r '.trace_counts.llm_errors // 0' "$report_path")
     parse_errors=$(jq -r '.trace_counts.parse_errors // 0' "$report_path")
     repair_rounds_total=$(jq -r '.trace_counts.repair_rounds_total // 0' "$report_path")
@@ -466,6 +470,8 @@ keys = [
     "total_actions",
     "action_success",
     "action_failure",
+    "trace_counts.llm_skipped_ticks",
+    "trace_counts.llm_skipped_tick_ratio_ppm",
     "trace_counts.llm_errors",
     "trace_counts.parse_errors",
     "trace_counts.repair_rounds_total",
@@ -490,25 +496,29 @@ __PYJSON__
     total_actions=$(printf '%s\n' "$report_metrics" | sed -n '3p')
     action_success=$(printf '%s\n' "$report_metrics" | sed -n '4p')
     action_failure=$(printf '%s\n' "$report_metrics" | sed -n '5p')
-    llm_errors=$(printf '%s\n' "$report_metrics" | sed -n '6p')
-    parse_errors=$(printf '%s\n' "$report_metrics" | sed -n '7p')
-    repair_rounds_total=$(printf '%s\n' "$report_metrics" | sed -n '8p')
-    repair_rounds_max=$(printf '%s\n' "$report_metrics" | sed -n '9p')
-    llm_input_chars_total=$(printf '%s\n' "$report_metrics" | sed -n '10p')
-    llm_input_chars_avg=$(printf '%s\n' "$report_metrics" | sed -n '11p')
-    llm_input_chars_max=$(printf '%s\n' "$report_metrics" | sed -n '12p')
-    clipped_sections=$(printf '%s\n' "$report_metrics" | sed -n '13p')
-    decision_wait=$(printf '%s\n' "$report_metrics" | sed -n '14p')
-    decision_wait_ticks=$(printf '%s\n' "$report_metrics" | sed -n '15p')
-    decision_act=$(printf '%s\n' "$report_metrics" | sed -n '16p')
-    module_call_count=$(printf '%s\n' "$report_metrics" | sed -n '17p')
-    plan_count=$(printf '%s\n' "$report_metrics" | sed -n '18p')
-    execute_until_continue_count=$(printf '%s\n' "$report_metrics" | sed -n '19p')
+    llm_skipped_ticks=$(printf '%s\n' "$report_metrics" | sed -n '6p')
+    llm_skipped_tick_ratio_ppm=$(printf '%s\n' "$report_metrics" | sed -n '7p')
+    llm_errors=$(printf '%s\n' "$report_metrics" | sed -n '8p')
+    parse_errors=$(printf '%s\n' "$report_metrics" | sed -n '9p')
+    repair_rounds_total=$(printf '%s\n' "$report_metrics" | sed -n '10p')
+    repair_rounds_max=$(printf '%s\n' "$report_metrics" | sed -n '11p')
+    llm_input_chars_total=$(printf '%s\n' "$report_metrics" | sed -n '12p')
+    llm_input_chars_avg=$(printf '%s\n' "$report_metrics" | sed -n '13p')
+    llm_input_chars_max=$(printf '%s\n' "$report_metrics" | sed -n '14p')
+    clipped_sections=$(printf '%s\n' "$report_metrics" | sed -n '15p')
+    decision_wait=$(printf '%s\n' "$report_metrics" | sed -n '16p')
+    decision_wait_ticks=$(printf '%s\n' "$report_metrics" | sed -n '17p')
+    decision_act=$(printf '%s\n' "$report_metrics" | sed -n '18p')
+    module_call_count=$(printf '%s\n' "$report_metrics" | sed -n '19p')
+    plan_count=$(printf '%s\n' "$report_metrics" | sed -n '20p')
+    execute_until_continue_count=$(printf '%s\n' "$report_metrics" | sed -n '21p')
     active_ticks=${active_ticks:-0}
     total_decisions=${total_decisions:-0}
     total_actions=${total_actions:-0}
     action_success=${action_success:-0}
     action_failure=${action_failure:-0}
+    llm_skipped_ticks=${llm_skipped_ticks:-0}
+    llm_skipped_tick_ratio_ppm=${llm_skipped_tick_ratio_ppm:-0}
     llm_errors=${llm_errors:-0}
     parse_errors=${parse_errors:-0}
     repair_rounds_total=${repair_rounds_total:-0}
@@ -529,6 +539,8 @@ __PYJSON__
     total_actions=$(extract_metric_from_log "total_actions" "$log_path" || echo 0)
     action_success=$(extract_metric_from_log "action_success" "$log_path" || echo 0)
     action_failure=$(extract_metric_from_log "action_failure" "$log_path" || echo 0)
+    llm_skipped_ticks=$(extract_metric_from_log "llm_skipped_ticks" "$log_path" || echo 0)
+    llm_skipped_tick_ratio_ppm=$(extract_metric_from_log "llm_skipped_tick_ratio_ppm" "$log_path" || echo 0)
     llm_errors=$(extract_metric_from_log "llm_errors" "$log_path" || echo 0)
     parse_errors=$(extract_metric_from_log "parse_errors" "$log_path" || echo 0)
     repair_rounds_total=$(extract_metric_from_log "repair_rounds_total" "$log_path" || echo 0)
@@ -650,6 +662,8 @@ write_summary_file() {
     echo "total_actions=$total_actions"
     echo "action_success=$action_success"
     echo "action_failure=$action_failure"
+    echo "llm_skipped_ticks=$llm_skipped_ticks"
+    echo "llm_skipped_tick_ratio_ppm=$llm_skipped_tick_ratio_ppm"
     echo "llm_errors=$llm_errors"
     echo "parse_errors=$parse_errors"
     echo "repair_rounds_total=$repair_rounds_total"
@@ -1129,6 +1143,7 @@ if [[ $multi_mode -eq 1 ]]; then
     printf '%s\t' scenario
     printf '%s\t' report_json run_log summary_file
     printf '%s\t' active_ticks total_decisions total_actions action_success action_failure
+    printf '%s\t' llm_skipped_ticks llm_skipped_tick_ratio_ppm
     printf '%s\t' llm_errors parse_errors repair_rounds_total repair_rounds_max
     printf '%s\t' llm_input_chars_total llm_input_chars_avg llm_input_chars_max
     printf '%s\t' prompt_section_clipped decision_wait decision_wait_ticks decision_act
@@ -1183,6 +1198,7 @@ agg_total_decisions=0
 agg_total_actions=0
 agg_action_success=0
 agg_action_failure=0
+agg_llm_skipped_ticks=0
 agg_llm_errors=0
 agg_parse_errors=0
 agg_repair_rounds_total=0
@@ -1329,6 +1345,7 @@ for scenario in "${scenarios[@]}"; do
   agg_total_actions=$((agg_total_actions + total_actions))
   agg_action_success=$((agg_action_success + action_success))
   agg_action_failure=$((agg_action_failure + action_failure))
+  agg_llm_skipped_ticks=$((agg_llm_skipped_ticks + llm_skipped_ticks))
   agg_llm_errors=$((agg_llm_errors + llm_errors))
   agg_parse_errors=$((agg_parse_errors + parse_errors))
   agg_repair_rounds_total=$((agg_repair_rounds_total + repair_rounds_total))
@@ -1357,6 +1374,7 @@ for scenario in "${scenarios[@]}"; do
       printf '%s\t' "$scenario"
       printf '%s\t' "$scenario_report_json" "$scenario_log_file" "$scenario_summary_file"
       printf '%s\t' "$active_ticks" "$total_decisions" "$total_actions" "$action_success" "$action_failure"
+      printf '%s\t' "$llm_skipped_ticks" "$llm_skipped_tick_ratio_ppm"
       printf '%s\t' "$llm_errors" "$parse_errors" "$repair_rounds_total" "$repair_rounds_max"
       printf '%s\t' "$llm_input_chars_total" "$llm_input_chars_avg" "$llm_input_chars_max"
       printf '%s\t' "$clipped_sections" "$decision_wait" "$decision_wait_ticks" "$decision_act"
@@ -1369,6 +1387,10 @@ done
 
 if [[ $multi_mode -eq 1 ]]; then
   agg_llm_input_chars_avg_mean=$((agg_llm_input_chars_avg_sum / scenario_count))
+  agg_llm_skipped_tick_ratio_ppm=0
+  if (( agg_active_ticks > 0 )); then
+    agg_llm_skipped_tick_ratio_ppm=$((agg_llm_skipped_ticks * 1000000 / agg_active_ticks))
+  fi
   scenarios_csv=$(IFS=,; echo "${scenarios[*]}")
   {
     echo "mode=multi_scenario"
@@ -1381,6 +1403,8 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "total_actions_total=$agg_total_actions"
     echo "action_success_total=$agg_action_success"
     echo "action_failure_total=$agg_action_failure"
+    echo "llm_skipped_ticks_total=$agg_llm_skipped_ticks"
+    echo "llm_skipped_tick_ratio_ppm=$agg_llm_skipped_tick_ratio_ppm"
     echo "llm_errors_total=$agg_llm_errors"
     echo "parse_errors_total=$agg_parse_errors"
     echo "repair_rounds_total=$agg_repair_rounds_total"
@@ -1435,6 +1459,8 @@ int_fields = [
     "total_actions",
     "action_success",
     "action_failure",
+    "llm_skipped_ticks",
+    "llm_skipped_tick_ratio_ppm",
     "llm_errors",
     "parse_errors",
     "repair_rounds_total",
@@ -1490,6 +1516,10 @@ report = {
         "total_actions": sum_of("total_actions"),
         "action_success": sum_of("action_success"),
         "action_failure": sum_of("action_failure"),
+        "llm_skipped_ticks": sum_of("llm_skipped_ticks"),
+        "llm_skipped_tick_ratio_ppm": int(
+            (sum_of("llm_skipped_ticks") * 1_000_000) / max(sum_of("active_ticks"), 1)
+        ),
         "llm_errors": sum_of("llm_errors"),
         "parse_errors": sum_of("parse_errors"),
         "repair_rounds_total": sum_of("repair_rounds_total"),

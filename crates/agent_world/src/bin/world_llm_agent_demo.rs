@@ -113,6 +113,8 @@ struct DecisionCounts {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
 struct TraceCounts {
     traces: u64,
+    llm_skipped_ticks: u64,
+    llm_skipped_tick_ratio_ppm: u64,
     llm_errors: u64,
     parse_errors: u64,
     repair_rounds_total: u64,
@@ -190,6 +192,9 @@ impl DemoRunReport {
 
     fn observe_trace(&mut self, trace: &AgentDecisionTrace) {
         self.trace_counts.traces += 1;
+        if trace_skipped_llm_tick(trace) {
+            self.trace_counts.llm_skipped_ticks += 1;
+        }
 
         if trace.llm_error.is_some() {
             self.trace_counts.llm_errors += 1;
@@ -274,7 +279,22 @@ impl DemoRunReport {
             self.trace_counts.llm_input_chars_avg =
                 self.trace_counts.llm_input_chars_total / self.trace_counts.traces;
         }
+        if self.active_ticks > 0 {
+            self.trace_counts.llm_skipped_tick_ratio_ppm = self
+                .trace_counts
+                .llm_skipped_ticks
+                .saturating_mul(1_000_000)
+                / self.active_ticks;
+        }
     }
+}
+
+fn trace_skipped_llm_tick(trace: &AgentDecisionTrace) -> bool {
+    trace.llm_input.is_none()
+        || trace.llm_step_trace.iter().any(|step| {
+            step.input_summary == "skip_llm_with_active_execute_until"
+                || step.step_type == "execute_until_continue"
+        })
 }
 
 fn reject_reason_metric_key(reason: &RejectReason) -> String {
@@ -633,6 +653,14 @@ fn main() {
     );
     println!("decision_act: {}", run_report.decision_counts.act);
     println!("trace_count: {}", run_report.trace_counts.traces);
+    println!(
+        "llm_skipped_ticks: {}",
+        run_report.trace_counts.llm_skipped_ticks
+    );
+    println!(
+        "llm_skipped_tick_ratio_ppm: {}",
+        run_report.trace_counts.llm_skipped_tick_ratio_ppm
+    );
     println!("llm_errors: {}", run_report.trace_counts.llm_errors);
     println!("parse_errors: {}", run_report.trace_counts.parse_errors);
     println!(

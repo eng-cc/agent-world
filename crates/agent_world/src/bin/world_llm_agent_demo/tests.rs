@@ -3,13 +3,59 @@ use super::*;
 use agent_world::runtime::{EconomicContractStatus, GovernanceProposalStatus};
 #[cfg(feature = "test_tier_full")]
 use agent_world::simulator::ResourceKind;
-use agent_world::simulator::{Action, WorldEvent, WorldEventKind};
+use agent_world::simulator::{
+    Action, AgentDecision, AgentDecisionTrace, LlmStepTrace, WorldEvent, WorldEventKind,
+};
 
 #[cfg(feature = "test_tier_full")]
 fn tracked_baseline_fixture_dir() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join("fixtures/llm_baseline/state_01")
+}
+
+fn make_trace(llm_input: Option<&str>, step_type: &str, input_summary: &str) -> AgentDecisionTrace {
+    AgentDecisionTrace {
+        agent_id: "agent-0".to_string(),
+        time: 1,
+        decision: AgentDecision::Wait,
+        llm_input: llm_input.map(ToString::to_string),
+        llm_output: Some("out".to_string()),
+        llm_error: None,
+        parse_error: None,
+        llm_diagnostics: None,
+        llm_effect_intents: vec![],
+        llm_effect_receipts: vec![],
+        llm_step_trace: vec![LlmStepTrace {
+            step_index: 0,
+            step_type: step_type.to_string(),
+            input_summary: input_summary.to_string(),
+            output_summary: "ok".to_string(),
+            status: "ok".to_string(),
+        }],
+        llm_prompt_section_trace: vec![],
+        llm_chat_messages: vec![],
+    }
+}
+
+#[test]
+fn observe_trace_counts_llm_skipped_tick_ratio() {
+    let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 4);
+    report.active_ticks = 4;
+
+    let skipped = make_trace(
+        None,
+        "execute_until_continue",
+        "skip_llm_with_active_execute_until",
+    );
+    let normal = make_trace(Some("prompt"), "dialogue_turn", "turn=0");
+
+    report.observe_trace(&skipped);
+    report.observe_trace(&normal);
+    report.finalize();
+
+    assert_eq!(report.trace_counts.llm_skipped_ticks, 1);
+    assert_eq!(report.trace_counts.llm_skipped_tick_ratio_ppm, 250_000);
 }
 
 #[test]
