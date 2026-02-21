@@ -855,6 +855,7 @@ fn texture_slot_override_enabled_detects_base_texture_override() {
 
     let texture_override = ViewerExternalTextureSlotConfig {
         base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
+        ..ViewerExternalTextureSlotConfig::default()
     };
     assert!(texture_slot_override_enabled(&texture_override));
 }
@@ -879,6 +880,7 @@ fn location_style_override_enabled_detects_material_or_texture_override() {
 
     let texture_only = ViewerExternalTextureSlotConfig {
         base_texture_asset: Some("textures/world/location_albedo.png".to_string()),
+        ..ViewerExternalTextureSlotConfig::default()
     };
     assert!(location_style_override_enabled(
         material_empty,

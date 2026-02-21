@@ -224,6 +224,9 @@ pub(super) struct ViewerExternalMaterialConfig {
 #[derive(Clone, Debug, Default)]
 pub(super) struct ViewerExternalTextureSlotConfig {
     pub base_texture_asset: Option<String>,
+    pub normal_texture_asset: Option<String>,
+    pub metallic_roughness_texture_asset: Option<String>,
+    pub emissive_texture_asset: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Resource)]
@@ -563,11 +566,35 @@ where
                 &lookup,
                 "AGENT_WORLD_VIEWER_AGENT_BASE_TEXTURE_ASSET",
             ),
+            normal_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET",
+            ),
+            metallic_roughness_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_AGENT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            ),
+            emissive_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_AGENT_EMISSIVE_TEXTURE_ASSET",
+            ),
         },
         location: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
                 "AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET",
+            ),
+            normal_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET",
+            ),
+            metallic_roughness_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            ),
+            emissive_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET",
             ),
         },
         asset: ViewerExternalTextureSlotConfig {
@@ -575,17 +602,53 @@ where
                 &lookup,
                 "AGENT_WORLD_VIEWER_ASSET_BASE_TEXTURE_ASSET",
             ),
+            normal_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_ASSET_NORMAL_TEXTURE_ASSET",
+            ),
+            metallic_roughness_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_ASSET_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            ),
+            emissive_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_ASSET_EMISSIVE_TEXTURE_ASSET",
+            ),
         },
         power_plant: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
                 "AGENT_WORLD_VIEWER_POWER_PLANT_BASE_TEXTURE_ASSET",
             ),
+            normal_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_NORMAL_TEXTURE_ASSET",
+            ),
+            metallic_roughness_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            ),
+            emissive_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_PLANT_EMISSIVE_TEXTURE_ASSET",
+            ),
         },
         power_storage: ViewerExternalTextureSlotConfig {
             base_texture_asset: parse_non_empty_string(
                 &lookup,
                 "AGENT_WORLD_VIEWER_POWER_STORAGE_BASE_TEXTURE_ASSET",
+            ),
+            normal_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_NORMAL_TEXTURE_ASSET",
+            ),
+            metallic_roughness_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_METALLIC_ROUGHNESS_TEXTURE_ASSET",
+            ),
+            emissive_texture_asset: parse_non_empty_string(
+                &lookup,
+                "AGENT_WORLD_VIEWER_POWER_STORAGE_EMISSIVE_TEXTURE_ASSET",
             ),
         },
     }
