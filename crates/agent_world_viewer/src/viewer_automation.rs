@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use std::collections::VecDeque;
 
 use super::camera_controls::orbit_min_radius;
 use super::selection_linking::apply_selection;
@@ -25,9 +26,9 @@ impl Default for ViewerAutomationConfig {
 
 #[derive(Resource, Default, Clone, Debug)]
 pub(super) struct ViewerAutomationState {
-    step_index: usize,
+    startup_step_index: usize,
     wait_until_secs: Option<f64>,
-    completed: bool,
+    runtime_steps: VecDeque<ViewerAutomationStep>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,6 +56,12 @@ enum StepResult {
     Pending,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StepSource {
+    StartupConfig,
+    RuntimeQueue,
+}
+
 pub(super) fn viewer_automation_config_from_env() -> ViewerAutomationConfig {
     config_from_values(
         std::env::var(AUTO_SELECT_ENV).ok(),
@@ -78,10 +85,6 @@ pub(super) fn run_viewer_automation(
     )>,
     mut location_markers: Query<&LocationMarker>,
 ) {
-    if !config.enabled || state.completed {
-        return;
-    }
-
     let now = time.elapsed_secs_f64();
     if let Some(wait_until_secs) = state.wait_until_secs {
         if now < wait_until_secs {
@@ -91,8 +94,7 @@ pub(super) fn run_viewer_automation(
     }
 
     loop {
-        let Some(step) = config.steps.get(state.step_index).cloned() else {
-            state.completed = true;
+        let Some((source, step)) = next_step(&config, &state) else {
             return;
         };
 
@@ -109,16 +111,67 @@ pub(super) fn run_viewer_automation(
         );
         match result {
             StepResult::Applied => {
-                state.step_index += 1;
+                advance_step(&mut state, source);
                 continue;
             }
             StepResult::AppliedYield => {
-                state.step_index += 1;
+                advance_step(&mut state, source);
                 return;
             }
             StepResult::Pending => return,
         }
     }
+}
+
+fn next_step(
+    config: &ViewerAutomationConfig,
+    state: &ViewerAutomationState,
+) -> Option<(StepSource, ViewerAutomationStep)> {
+    if let Some(step) = state.runtime_steps.front().cloned() {
+        return Some((StepSource::RuntimeQueue, step));
+    }
+    if !config.enabled {
+        return None;
+    }
+    config
+        .steps
+        .get(state.startup_step_index)
+        .cloned()
+        .map(|step| (StepSource::StartupConfig, step))
+}
+
+fn advance_step(state: &mut ViewerAutomationState, source: StepSource) {
+    match source {
+        StepSource::StartupConfig => {
+            state.startup_step_index += 1;
+        }
+        StepSource::RuntimeQueue => {
+            let _ = state.runtime_steps.pop_front();
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn enqueue_runtime_steps(
+    state: &mut ViewerAutomationState,
+    steps: impl IntoIterator<Item = ViewerAutomationStep>,
+) {
+    state.runtime_steps.extend(steps);
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn parse_automation_steps(raw: &str) -> Vec<ViewerAutomationStep> {
+    parse_steps(Some(raw))
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn parse_automation_mode(raw: &str) -> Option<ViewerCameraMode> {
+    parse_mode(raw)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) fn parse_automation_target(raw: &str) -> Option<ViewerAutomationTarget> {
+    parse_target(raw)
 }
 
 fn apply_step(

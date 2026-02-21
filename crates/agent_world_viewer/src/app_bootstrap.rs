@@ -1,3 +1,6 @@
+use super::web_test_api::{
+    consume_web_test_api_commands, publish_web_test_api_state, setup_web_test_api,
+};
 use super::*;
 #[cfg(target_arch = "wasm32")]
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
@@ -93,9 +96,14 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 setup_startup_state,
                 setup_3d_scene,
                 setup_wasm_egui_input_bridge,
+                setup_web_test_api,
             ),
         )
         .add_systems(Update, pump_wasm_egui_input_bridge_events)
+        .add_systems(
+            Update,
+            consume_web_test_api_commands.before(run_viewer_automation),
+        )
         .add_systems(
             Update,
             (
@@ -178,6 +186,12 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 sync_wasm_egui_input_bridge_focus,
             )
                 .chain(),
+        )
+        .add_systems(
+            Update,
+            publish_web_test_api_state
+                .after(poll_viewer_messages)
+                .after(run_viewer_automation),
         )
         .run();
 }

@@ -92,6 +92,7 @@ mod viewer_3d_config;
 mod viewer_automation;
 #[cfg(target_arch = "wasm32")]
 mod wasm_egui_input_bridge;
+mod web_test_api;
 mod world_overlay;
 
 use app_bootstrap::run_ui;
