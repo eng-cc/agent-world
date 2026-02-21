@@ -213,6 +213,19 @@ bash "$PWCLI" close
 - `console error = 0`
 - 至少 1 张截图在 `output/playwright/viewer/`
 
+5) 一键发行验收（推荐，覆盖视觉基线 + 语义门禁）：
+```bash
+./scripts/viewer-release-qa-loop.sh
+```
+- 产物：
+  - `output/playwright/viewer/release-qa-summary-*.md`
+  - `output/playwright/viewer/release-qa-*.png`
+  - `output/playwright/viewer/release-qa-*.log`
+- 门禁要点：
+  - 视觉基线（`viewer-visual-baseline.sh`）通过；
+  - `window.__AW_TEST__` 语义动作链通过；
+  - console dump 扫描 Bevy `%cERROR%c`/`[ERROR]`（避免仅依赖浏览器原生 error 计数漏报）。
+
 #### S6 补充约定（迁移自 `AGENTS.md`）
 - 默认链路：
   - Web 闭环为默认，不以 native 抓图链路替代。
@@ -223,6 +236,7 @@ bash "$PWCLI" close
 - 推荐约定：
   - Web 闭环产物统一放在 `output/playwright/`。
   - Playwright 优先通过 `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）做语义化操作，避免坐标点击脆弱性。
+  - 发布验收优先使用 `./scripts/viewer-release-qa-loop.sh` 固化流程，人工命令作为排障补充。
   - 每次调试结束清理 `run-viewer-web.sh` 后台进程，避免端口冲突。
   - 若页面首帧空白，优先排查：
     - `trunk` 是否完成首轮编译。
