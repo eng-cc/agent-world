@@ -7,8 +7,9 @@
 - [x] 新建项目管理文档：`doc/game/gameplay-release-gap-closure-2026-02-21.project.md`
 
 ### T1 Prompt 触发优化（对应问题 1）
-- [ ] 优化默认 LLM `system_prompt` / `short_term_goal` / `long_term_goal`
-- [ ] 增加中途切换 prompt 能力（demo + stress 透传）
+- [x] 优化默认 LLM `system_prompt` / `short_term_goal` / `long_term_goal`（改为游戏发展导向，去除强制动作链）
+- [x] 增加中途切换 prompt 能力（demo + stress 透传）
+- [x] 增加游戏发展测试 prompt 套件（`--prompt-pack`：`story_balanced/frontier_builder/civic_operator/resilience_drill`）
 - [ ] 增加定向测试，验证切换前后动作覆盖变化
 
 ### T2 Gate 覆盖补齐与复验（对应问题 2/3）
@@ -41,5 +42,5 @@
 ## 状态
 - 当前状态：`进行中`
 - 已完成：T0
-- 进行中：T1
+- 进行中：T1（覆盖复验中）
 - 阻塞项：无

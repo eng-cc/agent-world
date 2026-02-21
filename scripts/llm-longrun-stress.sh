@@ -17,6 +17,14 @@ Options:
   --report-json <path>         Report json path (default: <out-dir>/report.json)
   --log-file <path>            Raw command log path (default: <out-dir>/run.log)
   --summary-file <path>        Summary text path (default: <out-dir>/summary.txt)
+  --llm-system-prompt <text>   Override LLM system prompt for this run
+  --llm-short-goal <text>      Override LLM short-term goal for this run
+  --llm-long-goal <text>       Override LLM long-term goal for this run
+  --prompt-pack <name>         Apply built-in gameplay development test prompt pack
+  --prompt-switch-tick <n>     Apply switch prompt overrides at tick n (1-based)
+  --switch-llm-system-prompt <text>  Switch system prompt after --prompt-switch-tick
+  --switch-llm-short-goal <text>     Switch short-term goal after --prompt-switch-tick
+  --switch-llm-long-goal <text>      Switch long-term goal after --prompt-switch-tick
   --max-llm-errors <n>         Fail if llm_errors > n (default: 0)
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
@@ -24,6 +32,7 @@ Options:
   --min-action-kinds <n>       Fail if distinct action kinds < n (default: 0)
   --require-action-kind <k:n>  Require action kind k count >= n (repeatable)
   --release-gate               Enable release defaults (min kinds + core actions)
+  --release-gate-profile <p>   Release gate profile: industrial | gameplay | hybrid (default: hybrid)
   --no-llm-io                  Disable LLM input/output logging in run.log
   --llm-io-max-chars <n>       Truncate each LLM input/output block to n chars
   --keep-out-dir               Keep existing out dir content
@@ -36,9 +45,15 @@ Notes:
   - Multi-scenario mode writes per-scenario outputs to:
       <out-dir>/scenarios/<scenario>/{report.json,run.log,summary.txt}
     and writes aggregate outputs to report-json/log-file/summary-file.
-  - --release-gate applies default gameplay coverage:
-      min-action-kinds=5
-      require-action-kind={harvest_radiation,mine_compound,refine_compound,build_factory,schedule_recipe}:1
+  - --release-gate applies profile-based gameplay coverage:
+      industrial -> harvest_radiation,mine_compound,refine_compound,build_factory,schedule_recipe
+      gameplay   -> open_governance_proposal,cast_governance_vote,resolve_crisis,grant_meta_progress
+      hybrid     -> industrial + gameplay
+  - --prompt-pack options:
+      story_balanced (recommended) -> staged growth (stability -> production -> governance/resilience)
+      frontier_builder             -> exploration + production expansion
+      civic_operator               -> governance + collaboration cadence
+      resilience_drill             -> crisis/economic contract pressure test
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
@@ -149,14 +164,119 @@ apply_release_gate_defaults() {
     return 0
   fi
 
-  if (( min_action_kinds < 5 )); then
-    min_action_kinds=5
+  local profile
+  profile=$(printf '%s' "$release_gate_profile" | tr '[:upper:]' '[:lower:]')
+  case "$profile" in
+    industrial)
+      if (( min_action_kinds < 5 )); then
+        min_action_kinds=5
+      fi
+      upsert_required_action_kind "harvest_radiation" 1
+      upsert_required_action_kind "mine_compound" 1
+      upsert_required_action_kind "refine_compound" 1
+      upsert_required_action_kind "build_factory" 1
+      upsert_required_action_kind "schedule_recipe" 1
+      ;;
+    gameplay)
+      if (( min_action_kinds < 4 )); then
+        min_action_kinds=4
+      fi
+      upsert_required_action_kind "open_governance_proposal" 1
+      upsert_required_action_kind "cast_governance_vote" 1
+      upsert_required_action_kind "resolve_crisis" 1
+      upsert_required_action_kind "grant_meta_progress" 1
+      ;;
+    hybrid)
+      if (( min_action_kinds < 9 )); then
+        min_action_kinds=9
+      fi
+      upsert_required_action_kind "harvest_radiation" 1
+      upsert_required_action_kind "mine_compound" 1
+      upsert_required_action_kind "refine_compound" 1
+      upsert_required_action_kind "build_factory" 1
+      upsert_required_action_kind "schedule_recipe" 1
+      upsert_required_action_kind "open_governance_proposal" 1
+      upsert_required_action_kind "cast_governance_vote" 1
+      upsert_required_action_kind "resolve_crisis" 1
+      upsert_required_action_kind "grant_meta_progress" 1
+      ;;
+    *)
+      echo "invalid --release-gate-profile: $release_gate_profile (expected industrial|gameplay|hybrid)" >&2
+      exit 2
+      ;;
+  esac
+
+  release_gate_profile="$profile"
+}
+
+apply_prompt_pack_defaults() {
+  if [[ -z "$prompt_pack" ]]; then
+    return 0
   fi
-  upsert_required_action_kind "harvest_radiation" 1
-  upsert_required_action_kind "mine_compound" 1
-  upsert_required_action_kind "refine_compound" 1
-  upsert_required_action_kind "build_factory" 1
-  upsert_required_action_kind "schedule_recipe" 1
+
+  local pack
+  pack=$(printf '%s' "$prompt_pack" | tr '[:upper:]' '[:lower:]')
+  case "$pack" in
+    story_balanced)
+      if [[ -z "$llm_system_prompt" ]]; then
+        llm_system_prompt="你是硅基文明发展代理。以生存稳定、产业成长、治理协同、危机韧性四阶段推进世界演化，避免机械重复同一动作。"
+      fi
+      if [[ -z "$llm_short_goal" ]]; then
+        llm_short_goal="先确保资源与位置安全，再逐步建立可持续生产；当基础稳定后优先推进治理协商、风险处理与阶段性成长。"
+      fi
+      if [[ -z "$llm_long_goal" ]]; then
+        llm_long_goal="形成可持续的文明闭环：资源可用、组织可治理、风险可恢复。"
+      fi
+      if [[ -z "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
+        local auto_switch_tick
+        auto_switch_tick=$(( ticks / 2 ))
+        if (( auto_switch_tick < 12 )); then
+          auto_switch_tick=12
+        fi
+        prompt_switch_tick="$auto_switch_tick"
+        switch_llm_short_goal="进入中后期阶段：降低重复采集倾向，优先推进治理协作、危机响应与成果沉淀。"
+      fi
+      ;;
+    frontier_builder)
+      if [[ -z "$llm_system_prompt" ]]; then
+        llm_system_prompt="你是边疆建设型文明代理。重视探索、定居与生产链扩展，目标是在不失稳的前提下持续开疆与建设。"
+      fi
+      if [[ -z "$llm_short_goal" ]]; then
+        llm_short_goal="优先处理当前瓶颈并扩展基础设施，保持探索与建设节奏，避免在单一动作上过度停留。"
+      fi
+      if [[ -z "$llm_long_goal" ]]; then
+        llm_long_goal="构建高可扩展的生产与迁移网络，为后续治理和风险对抗提供冗余。"
+      fi
+      ;;
+    civic_operator)
+      if [[ -z "$llm_system_prompt" ]]; then
+        llm_system_prompt="你是文明治理运营代理。通过提案、投票、协作与秩序维护推动系统长期稳定，而非只追求短期资源增量。"
+      fi
+      if [[ -z "$llm_short_goal" ]]; then
+        llm_short_goal="在保障基本运转的前提下，优先推进治理议题、协调行为冲突并减少无效重复决策。"
+      fi
+      if [[ -z "$llm_long_goal" ]]; then
+        llm_long_goal="形成可迭代的治理机制，使文明在扩张中保持可协调与可持续。"
+      fi
+      ;;
+    resilience_drill)
+      if [[ -z "$llm_system_prompt" ]]; then
+        llm_system_prompt="你是韧性演练代理。关注危机感知、恢复路径、经济协作与失败后重构能力，优先验证文明抗压上限。"
+      fi
+      if [[ -z "$llm_short_goal" ]]; then
+        llm_short_goal="主动寻找并处理系统脆弱点，结合治理与经济协作策略降低风险扩散，避免单一操作循环。"
+      fi
+      if [[ -z "$llm_long_goal" ]]; then
+        llm_long_goal="建立可恢复、可再平衡的文明机制，使危机后能快速重回发展轨道。"
+      fi
+      ;;
+    *)
+      echo "invalid --prompt-pack: $prompt_pack (expected story_balanced|frontier_builder|civic_operator|resilience_drill)" >&2
+      exit 2
+      ;;
+  esac
+
+  prompt_pack="$pack"
 }
 
 extract_metric_from_log() {
@@ -402,6 +522,20 @@ action_kind_count_for() {
 write_summary_file() {
   local summary_path=$1
   local scenario_name=$2
+  local llm_system_prompt_set=0
+  local llm_short_goal_set=0
+  local llm_long_goal_set=0
+  local switch_llm_system_prompt_set=0
+  local switch_llm_short_goal_set=0
+  local switch_llm_long_goal_set=0
+
+  [[ -n "$llm_system_prompt" ]] && llm_system_prompt_set=1
+  [[ -n "$llm_short_goal" ]] && llm_short_goal_set=1
+  [[ -n "$llm_long_goal" ]] && llm_long_goal_set=1
+  [[ -n "$switch_llm_system_prompt" ]] && switch_llm_system_prompt_set=1
+  [[ -n "$switch_llm_short_goal" ]] && switch_llm_short_goal_set=1
+  [[ -n "$switch_llm_long_goal" ]] && switch_llm_long_goal_set=1
+
   {
     echo "scenario=$scenario_name"
     echo "ticks=$ticks"
@@ -425,12 +559,21 @@ write_summary_file() {
     echo "plan=$plan_count"
     echo "execute_until_continue=$execute_until_continue_count"
     echo "release_gate=$release_gate"
+    echo "release_gate_profile=$release_gate_profile"
     echo "min_action_kinds=$min_action_kinds"
     echo "required_action_kinds=$required_action_kinds_config"
     echo "action_kinds_total=$action_kinds_total"
     echo "action_kind_counts=$action_kind_counts_inline"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
+    echo "prompt_pack=${prompt_pack:-none}"
+    echo "llm_system_prompt_set=$llm_system_prompt_set"
+    echo "llm_short_goal_set=$llm_short_goal_set"
+    echo "llm_long_goal_set=$llm_long_goal_set"
+    echo "prompt_switch_tick=${prompt_switch_tick:-none}"
+    echo "switch_llm_system_prompt_set=$switch_llm_system_prompt_set"
+    echo "switch_llm_short_goal_set=$switch_llm_short_goal_set"
+    echo "switch_llm_long_goal_set=$switch_llm_long_goal_set"
     echo "report_json=$scenario_report_json"
     echo "run_log=$scenario_log_file"
   } >"$summary_path"
@@ -451,6 +594,27 @@ run_scenario_to_log() {
     if [[ -n "$llm_io_max_chars" ]]; then
       cmd+=(--llm-io-max-chars "$llm_io_max_chars")
     fi
+  fi
+  if [[ -n "$llm_system_prompt" ]]; then
+    cmd+=(--llm-system-prompt "$llm_system_prompt")
+  fi
+  if [[ -n "$llm_short_goal" ]]; then
+    cmd+=(--llm-short-term-goal "$llm_short_goal")
+  fi
+  if [[ -n "$llm_long_goal" ]]; then
+    cmd+=(--llm-long-term-goal "$llm_long_goal")
+  fi
+  if [[ -n "$prompt_switch_tick" ]]; then
+    cmd+=(--prompt-switch-tick "$prompt_switch_tick")
+  fi
+  if [[ -n "$switch_llm_system_prompt" ]]; then
+    cmd+=(--switch-llm-system-prompt "$switch_llm_system_prompt")
+  fi
+  if [[ -n "$switch_llm_short_goal" ]]; then
+    cmd+=(--switch-llm-short-term-goal "$switch_llm_short_goal")
+  fi
+  if [[ -n "$switch_llm_long_goal" ]]; then
+    cmd+=(--switch-llm-long-term-goal "$switch_llm_long_goal")
   fi
 
   {
@@ -541,6 +705,15 @@ llm_io_max_chars=""
 keep_out_dir=0
 jobs="1"
 release_gate=0
+release_gate_profile="hybrid"
+llm_system_prompt=""
+llm_short_goal=""
+llm_long_goal=""
+prompt_pack=""
+prompt_switch_tick=""
+switch_llm_system_prompt=""
+switch_llm_short_goal=""
+switch_llm_long_goal=""
 declare -a required_action_kinds=()
 declare -a required_action_min_counts=()
 required_action_kinds_config="none"
@@ -579,6 +752,38 @@ while [[ $# -gt 0 ]]; do
       summary_file=${2:-}
       shift 2
       ;;
+    --llm-system-prompt)
+      llm_system_prompt=${2:-}
+      shift 2
+      ;;
+    --llm-short-goal)
+      llm_short_goal=${2:-}
+      shift 2
+      ;;
+    --llm-long-goal)
+      llm_long_goal=${2:-}
+      shift 2
+      ;;
+    --prompt-pack)
+      prompt_pack=${2:-}
+      shift 2
+      ;;
+    --prompt-switch-tick)
+      prompt_switch_tick=${2:-}
+      shift 2
+      ;;
+    --switch-llm-system-prompt)
+      switch_llm_system_prompt=${2:-}
+      shift 2
+      ;;
+    --switch-llm-short-goal)
+      switch_llm_short_goal=${2:-}
+      shift 2
+      ;;
+    --switch-llm-long-goal)
+      switch_llm_long_goal=${2:-}
+      shift 2
+      ;;
     --max-llm-errors)
       max_llm_errors=${2:-}
       shift 2
@@ -606,6 +811,10 @@ while [[ $# -gt 0 ]]; do
     --release-gate)
       release_gate=1
       shift
+      ;;
+    --release-gate-profile)
+      release_gate_profile=${2:-}
+      shift 2
       ;;
     --no-llm-io)
       print_llm_io=0
@@ -671,14 +880,28 @@ ensure_positive_int "--min-action-kinds" "$min_action_kinds"
 if [[ -n "$llm_io_max_chars" ]]; then
   ensure_positive_int "--llm-io-max-chars" "$llm_io_max_chars"
 fi
+if [[ -n "$prompt_switch_tick" ]]; then
+  ensure_positive_int "--prompt-switch-tick" "$prompt_switch_tick"
+fi
 if [[ -z "$min_active_ticks" ]]; then
   min_active_ticks="$ticks"
 fi
 ensure_positive_int "--min-active-ticks" "$min_active_ticks"
+apply_prompt_pack_defaults
+if [[ -n "$switch_llm_system_prompt" || -n "$switch_llm_short_goal" || -n "$switch_llm_long_goal" ]]; then
+  if [[ -z "$prompt_switch_tick" ]]; then
+    echo "--prompt-switch-tick is required when any --switch-llm-* option is set" >&2
+    exit 2
+  fi
+fi
+if [[ -n "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
+  echo "--prompt-switch-tick requires at least one --switch-llm-* option" >&2
+  exit 2
+fi
 apply_release_gate_defaults
 required_action_kinds_config=$(format_required_action_kind_requirements)
 if (( release_gate == 1 )) || (( min_action_kinds > 0 )) || (( ${#required_action_kinds[@]} > 0 )); then
-  echo "gameplay coverage gate: release_gate=$release_gate min_action_kinds=$min_action_kinds required_action_kinds=$required_action_kinds_config"
+  echo "gameplay coverage gate: release_gate=$release_gate profile=$release_gate_profile min_action_kinds=$min_action_kinds required_action_kinds=$required_action_kinds_config"
 fi
 
 if [[ -z "$report_json" ]]; then
@@ -800,6 +1023,27 @@ for scenario in "${scenarios[@]}"; do
       if [[ -n "$llm_io_max_chars" ]]; then
         cmd+=(--llm-io-max-chars "$llm_io_max_chars")
       fi
+    fi
+    if [[ -n "$llm_system_prompt" ]]; then
+      cmd+=(--llm-system-prompt "$llm_system_prompt")
+    fi
+    if [[ -n "$llm_short_goal" ]]; then
+      cmd+=(--llm-short-term-goal "$llm_short_goal")
+    fi
+    if [[ -n "$llm_long_goal" ]]; then
+      cmd+=(--llm-long-term-goal "$llm_long_goal")
+    fi
+    if [[ -n "$prompt_switch_tick" ]]; then
+      cmd+=(--prompt-switch-tick "$prompt_switch_tick")
+    fi
+    if [[ -n "$switch_llm_system_prompt" ]]; then
+      cmd+=(--switch-llm-system-prompt "$switch_llm_system_prompt")
+    fi
+    if [[ -n "$switch_llm_short_goal" ]]; then
+      cmd+=(--switch-llm-short-term-goal "$switch_llm_short_goal")
+    fi
+    if [[ -n "$switch_llm_long_goal" ]]; then
+      cmd+=(--switch-llm-long-term-goal "$switch_llm_long_goal")
     fi
 
     if [[ $multi_mode -eq 1 ]]; then

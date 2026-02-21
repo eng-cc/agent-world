@@ -32,6 +32,11 @@
 - 新增运行期 prompt 切换输入（world_llm_agent_demo / stress 脚本透传）：
   - 切换触发 tick。
   - 切换后的 `system_prompt` / `short_term_goal` / `long_term_goal`。
+- 新增游戏发展测试 prompt 套件（stress 脚本内置 `--prompt-pack`）：
+  - `story_balanced`（默认推荐）
+  - `frontier_builder`
+  - `civic_operator`
+  - `resilience_drill`
 - 保持已有环境变量兼容：
   - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
   - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`
