@@ -5,10 +5,23 @@ use std::path::Path;
 use std::process;
 
 use agent_world::simulator::{
-    initialize_kernel, ActionResult, AgentDecision, AgentDecisionTrace, AgentRunner,
-    LlmAgentBehavior, RejectReason, WorldConfig, WorldInitConfig, WorldScenario,
+    initialize_kernel, Action as SimulatorAction, ActionResult, AgentDecision, AgentDecisionTrace,
+    AgentRunner, LlmAgentBehavior, RejectReason, WorldConfig, WorldInitConfig, WorldScenario,
 };
 use serde::{Deserialize, Serialize};
+
+#[path = "world_llm_agent_demo/llm_io.rs"]
+mod llm_io;
+#[path = "world_llm_agent_demo/runtime_bridge.rs"]
+mod runtime_bridge;
+
+use llm_io::print_llm_io_trace;
+#[cfg(test)]
+use llm_io::truncate_for_llm_io_log;
+use runtime_bridge::{
+    advance_kernel_time_with_noop_move, execute_action_in_kernel, is_bridgeable_action,
+    RuntimeGameplayBridge,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct PromptSwitchSpec {
@@ -33,6 +46,7 @@ impl PromptSwitchSpec {
 struct CliOptions {
     scenario: WorldScenario,
     ticks: u64,
+    runtime_gameplay_bridge: bool,
     report_json: Option<String>,
     print_llm_io: bool,
     llm_io_max_chars: Option<usize>,
@@ -52,6 +66,7 @@ impl Default for CliOptions {
         Self {
             scenario: WorldScenario::LlmBootstrap,
             ticks: 20,
+            runtime_gameplay_bridge: true,
             report_json: None,
             print_llm_io: false,
             llm_io_max_chars: None,
@@ -110,6 +125,9 @@ struct DemoRunReport {
     scenario: String,
     ticks_requested: u64,
     active_ticks: u64,
+    runtime_bridge_actions: u64,
+    runtime_bridge_action_success: u64,
+    runtime_bridge_action_failure: u64,
     total_actions: u64,
     total_decisions: u64,
     action_success: u64,
@@ -131,6 +149,9 @@ impl DemoRunReport {
             scenario,
             ticks_requested,
             active_ticks: 0,
+            runtime_bridge_actions: 0,
+            runtime_bridge_action_success: 0,
+            runtime_bridge_action_failure: 0,
             total_actions: 0,
             total_decisions: 0,
             action_success: 0,
@@ -233,75 +254,21 @@ impl DemoRunReport {
         }
     }
 
+    fn observe_runtime_bridge_result(&mut self, action_result: &ActionResult) {
+        self.runtime_bridge_actions += 1;
+        if action_result.success {
+            self.runtime_bridge_action_success += 1;
+        } else {
+            self.runtime_bridge_action_failure += 1;
+        }
+    }
+
     fn finalize(&mut self) {
         if self.trace_counts.traces > 0 {
             self.trace_counts.llm_input_chars_avg =
                 self.trace_counts.llm_input_chars_total / self.trace_counts.traces;
         }
     }
-}
-
-fn truncate_for_llm_io_log(text: &str, max_chars: Option<usize>) -> String {
-    let Some(max_chars) = max_chars else {
-        return text.to_string();
-    };
-    if max_chars == 0 {
-        return text.to_string();
-    }
-
-    let total_chars = text.chars().count();
-    if total_chars <= max_chars {
-        return text.to_string();
-    }
-
-    let mut truncated = String::new();
-    for (index, ch) in text.chars().enumerate() {
-        if index >= max_chars {
-            break;
-        }
-        truncated.push(ch);
-    }
-    truncated.push_str(&format!(
-        "\n...(truncated, total_chars={total_chars}, max_chars={max_chars})"
-    ));
-    truncated
-}
-
-fn print_llm_io_trace(
-    tick: u64,
-    agent_id: &str,
-    trace: &AgentDecisionTrace,
-    llm_io_max_chars: Option<usize>,
-) {
-    println!("tick={} agent={} llm_io_begin", tick, agent_id);
-
-    if let Some(input) = trace.llm_input.as_ref() {
-        println!("tick={} agent={} llm_input_begin", tick, agent_id);
-        println!("{}", truncate_for_llm_io_log(input, llm_io_max_chars));
-        println!("tick={} agent={} llm_input_end", tick, agent_id);
-    } else {
-        println!("tick={} agent={} llm_input=<none>", tick, agent_id);
-    }
-
-    if let Some(output) = trace.llm_output.as_ref() {
-        println!("tick={} agent={} llm_output_begin", tick, agent_id);
-        println!("{}", truncate_for_llm_io_log(output, llm_io_max_chars));
-        println!("tick={} agent={} llm_output_end", tick, agent_id);
-    } else {
-        println!("tick={} agent={} llm_output=<none>", tick, agent_id);
-    }
-
-    if let Some(error) = trace.llm_error.as_ref() {
-        println!("tick={} agent={} llm_error={}", tick, agent_id, error);
-    }
-    if let Some(parse_error) = trace.parse_error.as_ref() {
-        println!(
-            "tick={} agent={} parse_error={}",
-            tick, agent_id, parse_error
-        );
-    }
-
-    println!("tick={} agent={} llm_io_end", tick, agent_id);
 }
 
 fn reject_reason_metric_key(reason: &RejectReason) -> String {
@@ -316,7 +283,7 @@ fn reject_reason_metric_key(reason: &RejectReason) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn action_metric_key(action: &agent_world::simulator::Action) -> String {
+fn action_metric_key(action: &SimulatorAction) -> String {
     serde_json::to_value(action)
         .ok()
         .and_then(|value| {
@@ -409,6 +376,26 @@ fn main() {
     println!("seed: {}", report.seed);
     println!("agents: {}", report.agents);
     println!("ticks: {}", options.ticks);
+    println!(
+        "runtime_gameplay_bridge: {}",
+        if options.runtime_gameplay_bridge {
+            1
+        } else {
+            0
+        }
+    );
+
+    let mut runtime_gameplay_bridge = if options.runtime_gameplay_bridge {
+        match RuntimeGameplayBridge::from_kernel(&kernel) {
+            Ok(bridge) => Some(bridge),
+            Err(err) => {
+                eprintln!("failed to initialize runtime gameplay bridge: {err}");
+                process::exit(1);
+            }
+        }
+    } else {
+        None
+    };
 
     let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
     let mut next_prompt_switch_idx = 0usize;
@@ -441,7 +428,7 @@ fn main() {
             next_prompt_switch_idx += 1;
         }
 
-        match runner.tick(&mut kernel) {
+        match runner.tick_decide_only(&mut kernel) {
             Some(result) => {
                 run_report.active_ticks += 1;
                 run_report.observe_decision(&result.decision);
@@ -458,7 +445,53 @@ fn main() {
                     }
                 }
 
-                if let Some(action_result) = result.action_result.as_ref() {
+                let action_result = if let AgentDecision::Act(action) = &result.decision {
+                    let mut used_runtime_bridge = false;
+                    let executed = if let Some(bridge) = runtime_gameplay_bridge.as_mut() {
+                        if is_bridgeable_action(action) {
+                            match bridge.execute(tick, result.agent_id.as_str(), action.clone()) {
+                                Ok(bridged) => {
+                                    used_runtime_bridge = true;
+                                    run_report.observe_runtime_bridge_result(&bridged);
+                                    bridged
+                                }
+                                Err(err) => {
+                                    eprintln!(
+                                        "runtime gameplay bridge execute failed at tick {} agent {}: {}",
+                                        tick, result.agent_id, err
+                                    );
+                                    execute_action_in_kernel(
+                                        &mut kernel,
+                                        result.agent_id.as_str(),
+                                        action.clone(),
+                                    )
+                                }
+                            }
+                        } else {
+                            execute_action_in_kernel(
+                                &mut kernel,
+                                result.agent_id.as_str(),
+                                action.clone(),
+                            )
+                        }
+                    } else {
+                        execute_action_in_kernel(
+                            &mut kernel,
+                            result.agent_id.as_str(),
+                            action.clone(),
+                        )
+                    };
+
+                    let _ = runner.notify_action_result(result.agent_id.as_str(), &executed);
+                    if used_runtime_bridge {
+                        advance_kernel_time_with_noop_move(&mut kernel, result.agent_id.as_str());
+                    }
+                    Some(executed)
+                } else {
+                    None
+                };
+
+                if let Some(action_result) = action_result.as_ref() {
                     run_report.observe_action_result(idx + 1, action_result);
                     println!(
                         "tick={} agent={} success={} action={:?}",
@@ -545,6 +578,18 @@ fn main() {
     println!(
         "llm_input_chars_max: {}",
         run_report.trace_counts.llm_input_chars_max
+    );
+    println!(
+        "runtime_bridge_actions: {}",
+        run_report.runtime_bridge_actions
+    );
+    println!(
+        "runtime_bridge_action_success: {}",
+        run_report.runtime_bridge_action_success
+    );
+    println!(
+        "runtime_bridge_action_failure: {}",
+        run_report.runtime_bridge_action_failure
     );
 }
 
@@ -641,6 +686,12 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         .ok_or_else(|| "--report-json requires a file path".to_string())?
                         .to_string(),
                 );
+            }
+            "--runtime-gameplay-bridge" => {
+                options.runtime_gameplay_bridge = true;
+            }
+            "--no-runtime-gameplay-bridge" => {
+                options.runtime_gameplay_bridge = false;
             }
             "--print-llm-io" => {
                 options.print_llm_io = true;
@@ -791,6 +842,9 @@ fn print_help() {
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
     println!("  --ticks <n>        Max runner ticks (default: 20)");
     println!("  --report-json <path>  Persist run summary as JSON report");
+    println!(
+        "  --runtime-gameplay-bridge / --no-runtime-gameplay-bridge  Enable or disable runtime bridge for gameplay/economic actions (default: enabled)"
+    );
     println!("  --print-llm-io     Print LLM input/output to stdout for each tick");
     println!("  --llm-io-max-chars <n>  Truncate each LLM input/output block to n chars");
     println!("  --llm-system-prompt <text>  Override default system prompt for this run");
@@ -823,6 +877,7 @@ mod tests {
         let options = parse_options([].into_iter()).expect("defaults");
         assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
         assert_eq!(options.ticks, 20);
+        assert!(options.runtime_gameplay_bridge);
         assert!(!options.print_llm_io);
         assert_eq!(options.llm_io_max_chars, None);
         assert_eq!(options.llm_system_prompt, None);
@@ -853,6 +908,13 @@ mod tests {
         let options = parse_options(["--report-json", ".tmp/report.json"].into_iter())
             .expect("report json path");
         assert_eq!(options.report_json.as_deref(), Some(".tmp/report.json"));
+    }
+
+    #[test]
+    fn parse_options_disables_runtime_gameplay_bridge() {
+        let options =
+            parse_options(["--no-runtime-gameplay-bridge"].into_iter()).expect("disable bridge");
+        assert!(!options.runtime_gameplay_bridge);
     }
 
     #[test]

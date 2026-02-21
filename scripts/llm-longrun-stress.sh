@@ -26,6 +26,8 @@ Options:
   --switch-llm-short-goal <text>     Switch short-term goal after --prompt-switch-tick
   --switch-llm-long-goal <text>      Switch long-term goal after --prompt-switch-tick
   --prompt-switches-json <json>      Multi-stage switch plan JSON (array of {"tick":n,"llm_*":...})
+  --runtime-gameplay-bridge          Enable runtime gameplay bridge in demo (default: on)
+  --no-runtime-gameplay-bridge       Disable runtime gameplay bridge in demo
   --max-llm-errors <n>         Fail if llm_errors > n (default: 0)
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
@@ -56,6 +58,7 @@ Notes:
       civic_operator               -> governance + collaboration cadence
       resilience_drill             -> crisis/economic contract pressure test
   - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
+  - runtime gameplay bridge 默认开启：将 simulator 的 runtime-only gameplay/economic 动作接入 runtime World，降低非预期拒绝
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
@@ -641,6 +644,7 @@ write_summary_file() {
     echo "action_kind_counts=$action_kind_counts_inline"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
+    echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
     echo "prompt_pack=${prompt_pack:-none}"
     echo "llm_system_prompt_set=$llm_system_prompt_set"
     echo "llm_short_goal_set=$llm_short_goal_set"
@@ -665,6 +669,11 @@ run_scenario_to_log() {
     --ticks "$ticks"
     --report-json "$scenario_report_path"
   )
+  if [[ $runtime_gameplay_bridge -eq 1 ]]; then
+    cmd+=(--runtime-gameplay-bridge)
+  else
+    cmd+=(--no-runtime-gameplay-bridge)
+  fi
   if [[ $print_llm_io -eq 1 ]]; then
     cmd+=(--print-llm-io)
     if [[ -n "$llm_io_max_chars" ]]; then
@@ -794,6 +803,7 @@ switch_llm_system_prompt=""
 switch_llm_short_goal=""
 switch_llm_long_goal=""
 prompt_switches_json=""
+runtime_gameplay_bridge=1
 declare -a required_action_kinds=()
 declare -a required_action_min_counts=()
 required_action_kinds_config="none"
@@ -867,6 +877,14 @@ while [[ $# -gt 0 ]]; do
     --prompt-switches-json)
       prompt_switches_json=${2:-}
       shift 2
+      ;;
+    --runtime-gameplay-bridge)
+      runtime_gameplay_bridge=1
+      shift
+      ;;
+    --no-runtime-gameplay-bridge)
+      runtime_gameplay_bridge=0
+      shift
       ;;
     --max-llm-errors)
       max_llm_errors=${2:-}
@@ -1109,6 +1127,11 @@ for scenario in "${scenarios[@]}"; do
       --ticks "$ticks"
       --report-json "$scenario_report_json"
     )
+    if [[ $runtime_gameplay_bridge -eq 1 ]]; then
+      cmd+=(--runtime-gameplay-bridge)
+    else
+      cmd+=(--no-runtime-gameplay-bridge)
+    fi
     if [[ $print_llm_io -eq 1 ]]; then
       cmd+=(--print-llm-io)
       if [[ -n "$llm_io_max_chars" ]]; then
@@ -1271,6 +1294,7 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "required_action_kinds=$required_action_kinds_config"
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
+    echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
     echo "report_json=$report_json"
     echo "run_log=$log_file"
     echo "per_scenario_dir=$out_dir/scenarios"

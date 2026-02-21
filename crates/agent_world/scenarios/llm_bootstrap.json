@@ -7,7 +7,7 @@
     "resources": { "amounts": { "data": 16 } }
   },
   "agents": {
-    "count": 1,
+    "count": 5,
     "resources": { "amounts": { "electricity": 24, "data": 8 } }
   },
   "location_generator": { "count": 2, "id_prefix": "llm-site-", "name_prefix": "LLM Site" }

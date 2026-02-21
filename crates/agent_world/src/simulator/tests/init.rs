@@ -575,7 +575,7 @@ fn scenarios_are_stable() {
         },
         ScenarioExpectation {
             scenario: WorldScenario::LlmBootstrap,
-            expected_agents: 1,
+            expected_agents: 5,
             expect_origin: true,
             required_locations: &["origin", "llm-site-0", "llm-site-1"],
             required_plants: &[],

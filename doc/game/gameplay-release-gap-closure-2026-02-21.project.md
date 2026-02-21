@@ -40,6 +40,13 @@
 - [x] 更新 `testing-manual.md` 长周期示例与参数说明
 - [x] 运行解析/脚本回归并记录日志
 
+### T7 llm_bootstrap 多 Agent + runtime gameplay bridge（新增）
+- [x] `llm_bootstrap` 场景从 1 Agent 扩展到 5 Agent（新增 4 个 Agent）
+- [x] `world_llm_agent_demo` 增加 runtime gameplay bridge（接管 runtime-only gameplay/economic 动作）
+- [x] `llm-longrun-stress.sh` 增加 bridge 参数透传与默认策略
+- [x] 补齐 demo/bin 测试与脚本回归，验证 gameplay 动作拒绝率下降
+- [x] 更新 `testing-manual.md` 闭环测试建议（5 Agent + bridge）
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -48,7 +55,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3、T4、T5、T6
-- 本轮增量：千 tick 长周期下支持多阶段 prompt 切换计划，`story_balanced` 可自动按阶段演进。
-- 进行中：后续 gameplay gate 稳定性优化（以多轮稳定性口径持续迭代）
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7
+- 本轮增量：`llm_bootstrap` 升级为 5 Agent，并在 demo/stress 路径接入 runtime gameplay bridge，消除 runtime-only gameplay/economic 动作在 simulator 路径上的非预期拒绝。
+- 进行中：基于 5 Agent + bridge 的玩法覆盖稳定性调优（以预设世界事件/阶段目标作为下一轮候选）。
 - 阻塞项：无

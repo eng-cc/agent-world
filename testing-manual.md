@@ -260,6 +260,14 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate --release-gate-profile industrial
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --release-gate --release-gate-profile gameplay
 ```
+- LLM gameplay 闭环基线（推荐：5 Agent + runtime bridge）：
+```bash
+./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced --runtime-gameplay-bridge
+```
+- LLM gameplay bridge 对照（定位 runtime-only 拒绝问题）：
+```bash
+./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced --no-runtime-gameplay-bridge
+```
 - LLM 游戏发展测试 prompt（非强制动作链）：
 ```bash
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced
@@ -274,6 +282,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ```
 - 说明：
   - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时对 `llm_bootstrap` 会退化为 script_fallback；
+  - `llm_bootstrap` 当前默认 5 Agent（多 Agent 提案/投票/协作回路基线）；
   - `llm-longrun-stress.sh` 新增覆盖参数：
     - `--min-action-kinds <n>`：断言动作种类数下限；
     - `--require-action-kind <kind>:<min_count>`：断言关键动作计数下限（可重复）；
@@ -288,8 +297,12 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
       - `civic_operator`：偏治理协同与组织秩序。
       - `resilience_drill`：偏危机恢复与经济协作抗压。
     - `--prompt-switches-json <json>`：多阶段切换计划（数组项包含 `tick` 与至少一个 `llm_*` 覆盖字段），与 `--prompt-switch-tick/--switch-llm-*` 互斥。
+    - `--runtime-gameplay-bridge` / `--no-runtime-gameplay-bridge`：
+      - 默认开启 bridge，将 simulator 的 runtime-only gameplay/economic 动作接入 runtime `World`，用于降低“非预期拒绝”噪声。
+      - 建议保留默认开启；仅在对照排障时关闭。
   - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
+  - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时再引入“预设世界事件”方案。
   - 压测结果需保留 CSV/summary/log 产物。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

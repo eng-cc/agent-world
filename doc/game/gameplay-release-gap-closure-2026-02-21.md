@@ -15,6 +15,8 @@
 - LLM 默认 prompt 优化：提高在 `llm_bootstrap` 下的动作覆盖与玩法事件触发概率。
 - 增加“中途切换 prompt”能力：支持 long-run 场景下阶段性目标收敛。
 - 扩展 `scripts/llm-longrun-stress.sh` gate 口径：新增 gameplay 覆盖 profile，并与 release gate 对齐。
+- 扩展 `llm_bootstrap` 为多 Agent（5 Agent）场景，提升提案/投票/合约交互触发面。
+- 在 `world_llm_agent_demo` 引入 runtime gameplay bridge：对 simulator 中 runtime-only 的 gameplay/economic 动作，接入 runtime `World` 执行路径，减少“非预期拒绝”并形成更闭环的压测链路。
 - 补齐 LLM 经济治理动作 schema + parser + 测试：
   - `open_economic_contract`
   - `accept_economic_contract`
@@ -56,6 +58,12 @@
 - 在 `llm-longrun-stress.sh` 增加 release gate profile（工业 / gameplay / 混合）选择。
 - gate 输出中明确 profile 与缺失动作统计。
 
+### Runtime Gameplay Bridge（demo/stress）
+- `world_llm_agent_demo` 支持启用 runtime gameplay bridge：
+  - 当动作属于 gameplay/economic 且 simulator 内核为 runtime-only 拒绝域时，通过 runtime `World` 执行并回传结果到 LLM 行为循环。
+  - 保持 simulator 观察链路不变，避免对既有工业动作闭环造成破坏。
+- `scripts/llm-longrun-stress.sh` 增加对应透传参数与默认策略，确保长稳测试可复现实战化交互。
+
 ### m5 模块规则增强
 - `m5_gameplay_war_core`：增强结算输出（更丰富 participant outcomes 语义）。
 - `m5_gameplay_crisis_cycle`：危机生成/超时规则加入动态性（非固定模板）。
@@ -68,6 +76,12 @@
 - M3：LLM 经济动作 schema/parser/tests 收口。
 - M4：m5 规则增强 + runtime/模块测试回归通过。
 - M5：长周期（>=1000 ticks）多阶段 prompt 切换能力落地并通过脚本/解析回归。
+- M6：`llm_bootstrap` 5 Agent + runtime gameplay bridge 落地，完成非 viewer 的 gameplay 交互闭环回归。
+
+## 当前回归结论（T7）
+- bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。
+- 场景规模已验证：`llm_bootstrap` 已从 1 Agent 提升至 5 Agent，可形成提案/协作类交互基础。
+- 覆盖稳定性结论：短中程 run 仍可能出现“动作集中于采集/工业尝试”的分布，玩法链路覆盖（vote/crisis/meta）存在波动；后续需通过预设世界事件或阶段目标进一步稳定。
 
 ## 风险
 - Prompt 调整可能引入动作漂移，导致既有工业闭环退化。
@@ -78,3 +92,5 @@
   - 缓解：先补测试再改规则，保持协议字段兼容。
 - 长周期切换配置可能出现参数冲突（单次切换与多次切换混用）。
   - 缓解：CLI 显式互斥校验，脚本默认仅选择一种切换路径。
+- runtime bridge 与 simulator 状态可能出现观测偏差（双状态源）。
+  - 缓解：bridge 仅接管 runtime-only gameplay/economic 动作，工业动作保持 simulator 执行；同时输出 bridge 指标用于诊断。
