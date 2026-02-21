@@ -49,6 +49,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 - `F`：对“当前选中对象”执行聚焦（适合人工巡检细节）。
 - `F8`：循环切换材质变体预设（`default -> matte -> glossy -> default`），用于快速对比 roughness/metallic 观感。
 - 右侧综合面板：查看控制、状态、事件、分块、诊断等模块信息。
+- 右侧综合面板支持 `隐藏面板/显示面板` 总开关：隐藏后右侧面板与 Chat 面板都不渲染，3D 区域最大化。
 - 最右侧 Chat 面板：独立承载 Agent Chat，不与综合面板混排；顶部区域展开时显示，可通过模块可见性中的 `Chat` 开关隐藏。面板内提供可展开的“预设 Prompt”小区域：支持聊天预设编辑并一键填充输入框，同时可编辑 `system prompt`、`短期目标`、`长期目标`，并直接应用到当前目标 Agent。三个字段会直接预填充当前生效值（未设置 override 时为系统默认值），可直接编辑；展开区内容过高时支持内部滚动。
 - Chat 输入：输入框聚焦时，`Enter` 直接发送；`Shift+Enter` 换行。
 
@@ -386,11 +387,17 @@ bash "$PWCLI" close
 
 ## 右侧综合面板与 Chat 面板显隐
 - 综合右侧面板支持按模块单独显示/隐藏：控制、总览、覆盖层、诊断、事件联动、时间轴、状态明细。
+- 综合右侧面板顶部提供总开关：`隐藏面板/显示面板`；隐藏时主面板与 Chat 面板均不占右侧宽度，3D 视口扩展到全宽。
 - Chat 功能已拆分为独立最右侧面板，不再出现在综合右侧面板内容区。
 - `Chat` 可见性开关关闭时，不渲染独立 Chat 面板且不占用右侧宽度。
 - 开关状态会落盘并在重启后恢复。
 - 默认缓存路径：`$HOME/.agent_world_viewer/right_panel_modules.json`
 - 可通过环境变量覆盖：`AGENT_WORLD_VIEWER_MODULE_VISIBILITY_PATH`
+
+## Web 全屏自适应（wasm）
+- Web 端 canvas 跟随浏览器父容器尺寸，默认占满可用视口（非固定 `1200x800` 逻辑窗口体验）。
+- 右侧面板宽度采用“最小宽度 + 动态上限（随可用宽度变化）”，在大屏上不再受固定像素上限限制。
+- 当需要更大观察区域时，优先使用右侧面板总开关收起面板。
 
 ## 选中详情面板
 - 点击对象后会在详情区显示信息，支持：
@@ -451,6 +458,7 @@ bash "$PWCLI" close
 - `doc/world-simulator/viewer-web-closure-testing-policy.md`
 - `doc/world-simulator/viewer-selection-details.md`
 - `doc/world-simulator/viewer-right-panel-module-visibility.md`
+- `doc/world-simulator/viewer-web-fullscreen-panel-toggle.md`
 - `doc/world-simulator/viewer-overview-map-zoom.md`
 - `doc/world-simulator/viewer-agent-quick-locate.md`
 - `doc/world-simulator/viewer-copyable-text.md`

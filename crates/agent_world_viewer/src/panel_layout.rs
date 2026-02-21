@@ -13,6 +13,7 @@ use crate::i18n::{
 #[derive(Resource, Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct RightPanelLayoutState {
     pub top_panel_collapsed: bool,
+    pub panel_hidden: bool,
 }
 
 #[derive(Component)]
@@ -360,6 +361,7 @@ mod tests {
         app.add_systems(Update, handle_language_toggle_button);
         app.world_mut().insert_resource(RightPanelLayoutState {
             top_panel_collapsed: false,
+            panel_hidden: false,
         });
         app.world_mut()
             .insert_resource(CopyableTextPanelState { visible: true });

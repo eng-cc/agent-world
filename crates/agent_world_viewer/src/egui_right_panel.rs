@@ -11,8 +11,8 @@ use crate::event_click_list::{
 };
 use crate::i18n::{
     camera_mode_button_label, camera_mode_section_label, copyable_panel_toggle_label,
-    language_toggle_label, locale_or_default, module_switches_title, top_controls_label,
-    top_panel_toggle_label, UiI18n,
+    language_toggle_label, locale_or_default, module_switches_title, right_panel_toggle_label,
+    top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
@@ -63,10 +63,10 @@ use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
 const MAIN_PANEL_DEFAULT_WIDTH: f32 = 320.0;
 const MAIN_PANEL_MIN_WIDTH: f32 = 240.0;
-const MAIN_PANEL_MAX_WIDTH: f32 = 420.0;
+const MAIN_PANEL_MAX_WIDTH_RATIO: f32 = 0.6;
 const CHAT_PANEL_DEFAULT_WIDTH: f32 = 360.0;
 const CHAT_PANEL_MIN_WIDTH: f32 = 280.0;
-const CHAT_PANEL_MAX_WIDTH: f32 = 480.0;
+const CHAT_PANEL_MAX_WIDTH_RATIO: f32 = 0.65;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
@@ -92,26 +92,36 @@ fn is_product_style_motion_enabled() -> bool {
     env_toggle_enabled(std::env::var(PRODUCT_STYLE_MOTION_ENV).ok().as_deref())
 }
 
-fn adaptive_panel_default_width(available_width: f32) -> f32 {
-    let width = if available_width.is_finite() {
+fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
+    if available_width.is_finite() && available_width > 0.0 {
         available_width
     } else {
-        MAIN_PANEL_DEFAULT_WIDTH
-    };
-    (width * 0.22).clamp(MAIN_PANEL_MIN_WIDTH, MAIN_PANEL_MAX_WIDTH)
+        fallback
+    }
+}
+
+fn adaptive_panel_max_width(available_width: f32) -> f32 {
+    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
+    (width * MAIN_PANEL_MAX_WIDTH_RATIO).max(MAIN_PANEL_MIN_WIDTH)
+}
+
+fn adaptive_panel_default_width(available_width: f32) -> f32 {
+    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
+    (width * 0.22).clamp(MAIN_PANEL_MIN_WIDTH, adaptive_panel_max_width(width))
+}
+
+fn adaptive_chat_panel_max_width(available_width: f32) -> f32 {
+    let width = sanitize_available_width(available_width, CHAT_PANEL_DEFAULT_WIDTH);
+    (width * CHAT_PANEL_MAX_WIDTH_RATIO).max(CHAT_PANEL_MIN_WIDTH)
 }
 
 fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
-    let width = if available_width.is_finite() {
-        available_width
-    } else {
-        CHAT_PANEL_DEFAULT_WIDTH
-    };
-    (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, CHAT_PANEL_MAX_WIDTH)
+    let width = sanitize_available_width(available_width, CHAT_PANEL_DEFAULT_WIDTH);
+    (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, adaptive_chat_panel_max_width(width))
 }
 
 fn should_show_chat_panel(layout_state: &RightPanelLayoutState, show_chat: bool) -> bool {
-    !layout_state.top_panel_collapsed && show_chat
+    !layout_state.top_panel_collapsed && !layout_state.panel_hidden && show_chat
 }
 
 fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 {
@@ -186,15 +196,32 @@ pub(super) fn render_right_side_panel_egui(
     }
     chat_focus_signal.wants_ime_focus = false;
 
+    if layout_state.panel_hidden {
+        panel_width.width_px = 0.0;
+        egui::Area::new(egui::Id::new("viewer-right-panel-show-toggle"))
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 12.0))
+            .movable(false)
+            .interactable(true)
+            .show(context, |ui| {
+                if ui.button(right_panel_toggle_label(false, locale)).clicked() {
+                    layout_state.panel_hidden = false;
+                }
+            });
+        if layout_state.panel_hidden {
+            return;
+        }
+    }
+
+    let available_width = context.available_rect().width();
     let show_chat_panel =
         should_show_chat_panel(layout_state.as_ref(), module_visibility.show_chat);
     let chat_panel_width = if show_chat_panel {
-        let default_chat_width =
-            adaptive_chat_panel_default_width(context.available_rect().width());
+        let default_chat_width = adaptive_chat_panel_default_width(available_width);
+        let chat_max_width = adaptive_chat_panel_max_width(available_width);
         let chat_response = egui::SidePanel::right("viewer-chat-side-panel")
             .resizable(true)
             .default_width(default_chat_width)
-            .width_range(CHAT_PANEL_MIN_WIDTH..=CHAT_PANEL_MAX_WIDTH)
+            .width_range(CHAT_PANEL_MIN_WIDTH..=chat_max_width)
             .show(context, |ui| {
                 ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
                 ui.heading(if locale.is_zh() { "对话" } else { "Chat" });
@@ -206,15 +233,21 @@ pub(super) fn render_right_side_panel_egui(
         0.0
     };
 
-    let default_panel_width = adaptive_panel_default_width(context.available_rect().width());
+    let default_panel_width = adaptive_panel_default_width(available_width);
+    let panel_max_width = adaptive_panel_max_width(available_width);
+    let mut hide_panel_requested = false;
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
         .resizable(true)
         .default_width(default_panel_width)
-        .width_range(MAIN_PANEL_MIN_WIDTH..=MAIN_PANEL_MAX_WIDTH)
+        .width_range(MAIN_PANEL_MIN_WIDTH..=panel_max_width)
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
 
             ui.horizontal_wrapped(|ui| {
+                if ui.button(right_panel_toggle_label(true, locale)).clicked() {
+                    hide_panel_requested = true;
+                }
+
                 if ui
                     .button(top_panel_toggle_label(
                         layout_state.top_panel_collapsed,
@@ -510,6 +543,12 @@ pub(super) fn render_right_side_panel_egui(
                 });
             }
         });
+
+    if hide_panel_requested {
+        layout_state.panel_hidden = true;
+        panel_width.width_px = 0.0;
+        return;
+    }
 
     panel_width.width_px =
         total_right_panel_width(panel_response.response.rect.width(), chat_panel_width);

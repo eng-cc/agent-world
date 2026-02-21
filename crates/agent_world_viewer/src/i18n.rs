@@ -89,6 +89,15 @@ pub(super) fn copyable_panel_toggle_label(visible: bool, locale: UiLocale) -> &'
     }
 }
 
+pub(super) fn right_panel_toggle_label(visible: bool, locale: UiLocale) -> &'static str {
+    match (locale, visible) {
+        (UiLocale::ZhCn, true) => "隐藏面板",
+        (UiLocale::ZhCn, false) => "显示面板",
+        (UiLocale::EnUs, true) => "Hide Panel",
+        (UiLocale::EnUs, false) => "Show Panel",
+    }
+}
+
 pub(super) fn module_switches_title(locale: UiLocale) -> &'static str {
     if locale.is_zh() {
         "模块开关"
@@ -292,6 +301,13 @@ mod tests {
         assert_eq!(
             copyable_panel_toggle_label(false, UiLocale::EnUs),
             "Show Details"
+        );
+        assert_eq!(right_panel_toggle_label(true, UiLocale::ZhCn), "隐藏面板");
+        assert_eq!(right_panel_toggle_label(false, UiLocale::ZhCn), "显示面板");
+        assert_eq!(right_panel_toggle_label(true, UiLocale::EnUs), "Hide Panel");
+        assert_eq!(
+            right_panel_toggle_label(false, UiLocale::EnUs),
+            "Show Panel"
         );
     }
 

@@ -205,6 +205,7 @@ fn primary_window_config() -> Window {
 
     #[cfg(target_arch = "wasm32")]
     let window = Window {
+        fit_canvas_to_parent: true,
         // Preserve browser composition flow so CJK IME can commit into egui TextEdit.
         prevent_default_event_handling: false,
         ..window

@@ -269,9 +269,16 @@ fn sample_viewer_state(
 #[test]
 fn adaptive_panel_width_clamps_to_bounds() {
     assert_eq!(adaptive_panel_default_width(200.0), MAIN_PANEL_MIN_WIDTH);
-    assert_eq!(adaptive_panel_default_width(10_000.0), MAIN_PANEL_MAX_WIDTH);
     assert_eq!(adaptive_panel_default_width(1200.0), 264.0);
     assert_eq!(adaptive_panel_default_width(1500.0), 330.0);
+    assert_eq!(adaptive_panel_default_width(4000.0), 880.0);
+}
+
+#[test]
+fn adaptive_panel_max_width_scales_with_available_width() {
+    assert_eq!(adaptive_panel_max_width(200.0), MAIN_PANEL_MIN_WIDTH);
+    assert_eq!(adaptive_panel_max_width(1200.0), 720.0);
+    assert_eq!(adaptive_panel_max_width(2000.0), 1200.0);
 }
 
 #[test]
@@ -280,26 +287,38 @@ fn adaptive_chat_panel_width_clamps_to_bounds() {
         adaptive_chat_panel_default_width(200.0),
         CHAT_PANEL_MIN_WIDTH
     );
-    assert_eq!(
-        adaptive_chat_panel_default_width(10_000.0),
-        CHAT_PANEL_MAX_WIDTH
-    );
     assert_eq!(adaptive_chat_panel_default_width(1200.0), 300.0);
     assert_eq!(adaptive_chat_panel_default_width(1800.0), 450.0);
+    assert_eq!(adaptive_chat_panel_default_width(4000.0), 1000.0);
+}
+
+#[test]
+fn adaptive_chat_panel_max_width_scales_with_available_width() {
+    assert_eq!(adaptive_chat_panel_max_width(200.0), CHAT_PANEL_MIN_WIDTH);
+    assert_eq!(adaptive_chat_panel_max_width(1200.0), 780.0);
+    assert_eq!(adaptive_chat_panel_max_width(2000.0), 1300.0);
 }
 
 #[test]
 fn show_chat_panel_requires_expanded_top_and_visibility_enabled() {
     let expanded_layout = RightPanelLayoutState {
         top_panel_collapsed: false,
+        panel_hidden: false,
     };
     assert!(should_show_chat_panel(&expanded_layout, true));
     assert!(!should_show_chat_panel(&expanded_layout, false));
 
     let collapsed_layout = RightPanelLayoutState {
         top_panel_collapsed: true,
+        panel_hidden: false,
     };
     assert!(!should_show_chat_panel(&collapsed_layout, true));
+
+    let hidden_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+        panel_hidden: true,
+    };
+    assert!(!should_show_chat_panel(&hidden_layout, true));
 }
 
 #[test]
