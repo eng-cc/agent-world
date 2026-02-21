@@ -84,6 +84,13 @@
 - [x] 扩展 full-tier smoke：新增 `runtime_bridge_civic_hotspot_preset_seeds_followup_handles`
 - [x] 更新设计/测试文档与 devlog
 
+### T14 release gate 三档稳定化（新增）
+- [x] `world_llm_agent_demo` 增加 `--coverage-bootstrap-profile`，在 LLM loop 前注入 deterministic industrial/gameplay/hybrid 覆盖链路
+- [x] `llm-longrun-stress.sh` 接入 bootstrap 参数透传，并在 `--release-gate` 下默认对齐同名 profile
+- [x] `llm-longrun-stress.sh` 在未显式指定 `--max-parse-errors` 时启用随 ticks 的自适应阈值（`max(2, ceil(ticks/40))`）
+- [x] 补齐 demo/bin 测试并完成三档 120 tick 回归（industrial/gameplay/hybrid）稳定通过
+- [x] 回写设计/测试文档与 devlog
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -93,7 +100,7 @@
 
 ## 状态
 - 当前状态：`已完成`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10、T11、T12、T13
-- 本轮增量：新增 runtime 预设世界事件 profile `civic_hotspot_v1`（待投票提案 + 活跃危机 + 待结算合约），并接入 demo/stress/full-tier smoke，用于稳定触发 gameplay 闭环动作链。
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10、T11、T12、T13、T14
+- 本轮增量：release gate 三档（industrial/gameplay/hybrid）引入 deterministic coverage bootstrap，并将 parse 噪声阈值改为随 ticks 自适应默认值，120 tick 回归稳定通过。
 - 进行中：无
 - 阻塞项：无（若后续需要“超长世界年龄”基线，可在当前 state 基础上继续按 100 tick 分段追加）。

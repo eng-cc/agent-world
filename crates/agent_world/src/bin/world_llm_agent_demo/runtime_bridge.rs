@@ -237,6 +237,37 @@ pub(crate) fn execute_action_in_kernel(
     }
 }
 
+pub(crate) fn execute_system_action_in_kernel(
+    kernel: &mut WorldKernel,
+    action: SimulatorAction,
+) -> ActionResult {
+    let action_id = kernel.submit_action_from_system(action.clone());
+    if let Some(event) = kernel.step() {
+        let success = !matches!(event.kind, WorldEventKind::ActionRejected { .. });
+        return ActionResult {
+            action,
+            action_id,
+            success,
+            event,
+        };
+    }
+
+    ActionResult {
+        action,
+        action_id,
+        success: false,
+        event: WorldEvent {
+            id: action_id,
+            time: kernel.time(),
+            kind: WorldEventKind::ActionRejected {
+                reason: RejectReason::RuleDenied {
+                    notes: vec!["kernel.step returned no event".to_string()],
+                },
+            },
+        },
+    }
+}
+
 pub(crate) fn advance_kernel_time_with_noop_move(kernel: &mut WorldKernel, agent_id: &str) {
     let Some(current_location_id) = kernel
         .model()

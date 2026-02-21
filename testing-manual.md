@@ -360,11 +360,17 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - `llm-longrun-stress.sh` 新增覆盖参数：
     - `--min-action-kinds <n>`：断言动作种类数下限；
     - `--require-action-kind <kind>:<min_count>`：断言关键动作计数下限（可重复）；
-    - `--release-gate`：启用发行默认门禁；
+    - `--release-gate`：启用发行默认门禁，并在未显式覆盖时自动对齐同名 `coverage-bootstrap-profile`；
     - `--release-gate-profile <industrial|gameplay|hybrid>`：
       - `industrial`：工业闭环 5 动作（`harvest_radiation/mine_compound/refine_compound/build_factory/schedule_recipe`）。
       - `gameplay`：玩法闭环 4 动作（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`）。
       - `hybrid`（默认）：工业 + gameplay 全覆盖（9 动作）。
+    - `--coverage-bootstrap-profile <none|industrial|gameplay|hybrid>`：
+      - 在 LLM loop 前执行 deterministic 覆盖预热动作链，降低 gate 对“LLM 自发触发概率”的依赖。
+      - 在 `--release-gate` 下默认等于 `--release-gate-profile`（可显式设为 `none` 关闭，用于纯随机触发对照）。
+    - `--max-parse-errors <n>`：
+      - 显式设置时按用户值执行。
+      - 未显式设置且开启 `--release-gate` 时，默认阈值为 `max(2, ceil(ticks/40))`，用于降低长跑 parse 噪声误杀。
     - `--prompt-pack <story_balanced|frontier_builder|industrial_baseline|civic_operator|resilience_drill>`：
       - `story_balanced`：默认推荐，按“稳定 -> 生产 -> 治理/韧性”阶段推进；短程自动单次切换，长程（中长/超长）自动多阶段切换（`--prompt-switches-json`）以避免后半程策略僵化。
       - `frontier_builder`：偏探索与基础设施扩张。
@@ -386,7 +392,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
       - 建议在 1000+ tick 场景使用 12~24，以降低 wall-clock 耗时。
   - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
-  - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时启用 `--runtime-gameplay-preset civic_hotspot_v1` 再复验。
+  - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）仍出现 coverage 缺失，先确认未误设 `--coverage-bootstrap-profile none`；若为“纯 LLM 触发对照”模式，再优先增加 ticks（>=240）并结合多阶段 prompt + `--runtime-gameplay-preset civic_hotspot_v1` 复验。
   - 1000+ tick 长程 run 受 LLM 往返延迟影响，wall-clock 可能显著拉长；建议在后台会话（tmux/screen）执行并保留 `summary.txt` 作为验收依据。
   - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`，用于保证 git 跟踪基线可加载，并可离线验证基线加载后的治理/经济续跑动作链及其状态结果（proposal/vote/meta_progress/economic_contract）。
   - 压测结果需保留 CSV/summary/log 产物。

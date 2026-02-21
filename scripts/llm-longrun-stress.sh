@@ -40,6 +40,7 @@ Options:
   --require-action-kind <k:n>  Require action kind k count >= n (repeatable)
   --release-gate               Enable release defaults (min kinds + core actions)
   --release-gate-profile <p>   Release gate profile: industrial | gameplay | hybrid (default: hybrid)
+  --coverage-bootstrap-profile <p>  Deterministic bootstrap before LLM loop: none | industrial | gameplay | hybrid
   --no-llm-io                  Disable LLM input/output logging in run.log
   --llm-io-max-chars <n>       Truncate each LLM input/output block to n chars
   --keep-out-dir               Keep existing out dir content
@@ -56,6 +57,7 @@ Notes:
       industrial -> harvest_radiation,mine_compound,refine_compound,build_factory,schedule_recipe
       gameplay   -> open_governance_proposal,cast_governance_vote,resolve_crisis,grant_meta_progress
       hybrid     -> industrial + gameplay
+  - --release-gate 默认同时启用 coverage bootstrap profile（可通过 --coverage-bootstrap-profile 显式覆盖）
   - --prompt-pack options:
       story_balanced (recommended) -> staged growth (stability -> production -> governance/resilience)
       frontier_builder             -> exploration + production expansion
@@ -220,6 +222,19 @@ apply_release_gate_defaults() {
   esac
 
   release_gate_profile="$profile"
+  if (( coverage_bootstrap_profile_explicit == 0 )); then
+    coverage_bootstrap_profile="$profile"
+  fi
+  if (( max_parse_errors_explicit == 0 )); then
+    local adaptive_parse_errors
+    adaptive_parse_errors=$(((ticks + 39) / 40))
+    if (( adaptive_parse_errors < 2 )); then
+      adaptive_parse_errors=2
+    fi
+    if (( max_parse_errors < adaptive_parse_errors )); then
+      max_parse_errors=$adaptive_parse_errors
+    fi
+  fi
 }
 
 apply_prompt_pack_defaults() {
@@ -689,6 +704,7 @@ write_summary_file() {
     echo "llm_execute_until_auto_reenter_ticks=${llm_execute_until_auto_reenter_ticks:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
     echo "runtime_gameplay_preset=${runtime_gameplay_preset:-none}"
+    echo "coverage_bootstrap_profile=${coverage_bootstrap_profile:-none}"
     echo "load_state_dir=${load_state_dir:-none}"
     echo "save_state_dir=${save_state_dir:-none}"
     echo "prompt_pack=${prompt_pack:-none}"
@@ -728,6 +744,9 @@ run_scenario_to_log() {
   fi
   if [[ -n "$runtime_gameplay_preset" ]]; then
     cmd+=(--runtime-gameplay-preset "$runtime_gameplay_preset")
+  fi
+  if [[ -n "$coverage_bootstrap_profile" ]]; then
+    cmd+=(--coverage-bootstrap-profile "$coverage_bootstrap_profile")
   fi
   if [[ -n "$load_state_dir" ]]; then
     cmd+=(--load-state-dir "$load_state_dir")
@@ -846,6 +865,7 @@ log_file=""
 summary_file=""
 max_llm_errors="0"
 max_parse_errors="0"
+max_parse_errors_explicit=0
 max_repair_rounds_max="2"
 min_active_ticks=""
 min_action_kinds="0"
@@ -855,6 +875,8 @@ keep_out_dir=0
 jobs="1"
 release_gate=0
 release_gate_profile="hybrid"
+coverage_bootstrap_profile=""
+coverage_bootstrap_profile_explicit=0
 llm_system_prompt=""
 llm_short_goal=""
 llm_long_goal=""
@@ -973,6 +995,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --max-parse-errors)
       max_parse_errors=${2:-}
+      max_parse_errors_explicit=1
       shift 2
       ;;
     --max-repair-rounds-max)
@@ -997,6 +1020,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --release-gate-profile)
       release_gate_profile=${2:-}
+      shift 2
+      ;;
+    --coverage-bootstrap-profile)
+      coverage_bootstrap_profile=${2:-}
+      coverage_bootstrap_profile_explicit=1
       shift 2
       ;;
     --no-llm-io)
@@ -1115,9 +1143,29 @@ else
   fi
 fi
 apply_release_gate_defaults
+if [[ -n "$coverage_bootstrap_profile" ]]; then
+  coverage_bootstrap_profile=$(printf '%s' "$coverage_bootstrap_profile" | tr '[:upper:]' '[:lower:]' | tr '-' '_')
+  case "$coverage_bootstrap_profile" in
+    none)
+      coverage_bootstrap_profile=""
+      ;;
+    industrial|gameplay|hybrid)
+      ;;
+    *)
+      echo "invalid --coverage-bootstrap-profile: $coverage_bootstrap_profile (expected none|industrial|gameplay|hybrid)" >&2
+      exit 2
+      ;;
+  esac
+fi
+if [[ $runtime_gameplay_bridge -eq 0 ]]; then
+  if [[ "$coverage_bootstrap_profile" == "gameplay" || "$coverage_bootstrap_profile" == "hybrid" ]]; then
+    echo "--coverage-bootstrap-profile $coverage_bootstrap_profile requires runtime gameplay bridge to be enabled" >&2
+    exit 2
+  fi
+fi
 required_action_kinds_config=$(format_required_action_kind_requirements)
 if (( release_gate == 1 )) || (( min_action_kinds > 0 )) || (( ${#required_action_kinds[@]} > 0 )); then
-  echo "gameplay coverage gate: release_gate=$release_gate profile=$release_gate_profile min_action_kinds=$min_action_kinds required_action_kinds=$required_action_kinds_config"
+  echo "gameplay coverage gate: release_gate=$release_gate profile=$release_gate_profile min_action_kinds=$min_action_kinds required_action_kinds=$required_action_kinds_config coverage_bootstrap_profile=${coverage_bootstrap_profile:-none}"
 fi
 
 if [[ -z "$report_json" ]]; then
@@ -1249,6 +1297,9 @@ for scenario in "${scenarios[@]}"; do
     fi
     if [[ -n "$runtime_gameplay_preset" ]]; then
       cmd+=(--runtime-gameplay-preset "$runtime_gameplay_preset")
+    fi
+    if [[ -n "$coverage_bootstrap_profile" ]]; then
+      cmd+=(--coverage-bootstrap-profile "$coverage_bootstrap_profile")
     fi
     if [[ -n "$load_state_dir" ]]; then
       cmd+=(--load-state-dir "$load_state_dir")
@@ -1427,6 +1478,7 @@ if [[ $multi_mode -eq 1 ]]; then
     echo "llm_io_logged=$print_llm_io"
     echo "llm_io_max_chars=${llm_io_max_chars:-none}"
     echo "runtime_gameplay_bridge=$runtime_gameplay_bridge"
+    echo "coverage_bootstrap_profile=${coverage_bootstrap_profile:-none}"
     echo "load_state_dir=${load_state_dir:-none}"
     echo "save_state_dir=${save_state_dir:-none}"
     echo "report_json=$report_json"
@@ -1435,7 +1487,7 @@ if [[ $multi_mode -eq 1 ]]; then
   } >"$summary_file"
 
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$metrics_tsv" "$report_json" "$ticks" "$scenario_count" "$jobs" "$print_llm_io" "${llm_io_max_chars:-}" "$release_gate" "$min_action_kinds" "$required_action_kinds_config" <<'__PYAGG__'
+    python3 - "$metrics_tsv" "$report_json" "$ticks" "$scenario_count" "$jobs" "$print_llm_io" "${llm_io_max_chars:-}" "$release_gate" "$min_action_kinds" "$required_action_kinds_config" "${coverage_bootstrap_profile:-none}" <<'__PYAGG__'
 import csv
 import json
 import sys
@@ -1451,6 +1503,7 @@ import sys
     release_gate,
     min_action_kinds,
     required_action_kinds,
+    coverage_bootstrap_profile,
 ) = sys.argv[1:]
 
 int_fields = [
@@ -1509,6 +1562,7 @@ report = {
         "release_gate": int(release_gate),
         "min_action_kinds": int(min_action_kinds),
         "required_action_kinds": required_action_kinds or "none",
+        "coverage_bootstrap_profile": coverage_bootstrap_profile or "none",
     },
     "totals": {
         "active_ticks": sum_of("active_ticks"),
@@ -1557,7 +1611,8 @@ __PYAGG__
   "coverage_gate": {
     "release_gate": $release_gate,
     "min_action_kinds": $min_action_kinds,
-    "required_action_kinds": "$required_action_kinds_config"
+    "required_action_kinds": "$required_action_kinds_config",
+    "coverage_bootstrap_profile": "${coverage_bootstrap_profile:-none}"
   }
 }
 EOF

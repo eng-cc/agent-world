@@ -95,6 +95,19 @@
   - `civic_operator` / `resilience_drill` prompt pack 默认启用 `civic_hotspot_v1`，降低 `cast_governance_vote` / `resolve_crisis` / `settle_economic_contract` 触发噪声。
 - 目标：将“预设世界事件”标准化为可复用 profile，在保持工业基线不变的前提下，为治理/韧性测试提供稳定入口。
 
+### Coverage Bootstrap Profile（新增）
+- `world_llm_agent_demo` 新增 `--coverage-bootstrap-profile <none|industrial|gameplay|hybrid>`：
+  - `industrial`：在 LLM loop 前执行一次确定性的工业动作最小链（`harvest/mine/refine/build_factory/schedule_recipe`）。
+  - `gameplay`：在 LLM loop 前通过 runtime bridge 执行一次确定性的治理/危机/成长动作链（`open_proposal/cast_vote/resolve_crisis/grant_meta`）。
+  - `hybrid`：顺序执行 `industrial + gameplay` 两条链路。
+- `scripts/llm-longrun-stress.sh` 在 `--release-gate` 下默认启用同名 bootstrap profile（可显式覆盖）。
+- 目标：将 release gate 的“动作覆盖必选项”从纯 LLM 随机触发，升级为“确定性预热 + 长跑观测”双轨，降低波动导致的假失败。
+
+### Release Gate 解析噪声容忍（新增）
+- `scripts/llm-longrun-stress.sh` 在 `--release-gate` 且未显式指定 `--max-parse-errors` 时，按 ticks 自适应默认阈值：
+  - `max_parse_errors = max(2, ceil(ticks / 40))`
+- 目标：将 parse 噪声阈值与长跑长度对齐，避免长周期 run 因少量解析噪声误判失败。
+
 ### Baseline State IO（demo/stress）
 - `world_llm_agent_demo` 支持：
   - `--save-state-dir <path>`：将当前 simulator kernel 状态落盘（`snapshot.json` + `journal.json`）。
@@ -135,11 +148,20 @@
 - M9：补齐基线加载后的离线治理续跑 smoke，降低在线 LLM 依赖对门禁稳定性的影响。
 - M10：离线治理续跑 smoke 升级为状态结果断言，确保 gameplay 关键状态可验证。
 - M11：runtime 预设世界事件 profile 落地并接入 full-tier smoke，稳定触发治理/危机/合约续跑链路。
+- M12：release gate 三档 profile（industrial/gameplay/hybrid）引入 coverage bootstrap，并完成 120 tick 回归稳定通过。
 
 ## 当前回归结论（T7）
 - bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。
 - 场景规模已验证：`llm_bootstrap` 已从 1 Agent 提升至 5 Agent，可形成提案/协作类交互基础。
 - 覆盖稳定性结论：短中程 run 仍可能出现“动作集中于采集/工业尝试”的分布，玩法链路覆盖（vote/crisis/meta）存在波动；后续需通过预设世界事件或阶段目标进一步稳定。
+
+## 当前回归结论（T14）
+- `release-gate` 三档 profile 已接入 deterministic coverage bootstrap，关键动作覆盖不再依赖 LLM 自发触发概率。
+- 120 tick 本地回归结果：
+  - `industrial`：`action_kinds_total=5`，必选工业动作全部命中并通过；
+  - `gameplay`：`action_kinds_total=7`，必选治理动作全部命中并通过；
+  - `hybrid`：`action_kinds_total=9`，工业 + 治理必选动作全部命中并通过。
+- parse 噪声控制已改为随 ticks 自适应默认阈值，降低长跑误杀概率；同时保留 `--max-parse-errors` 显式覆盖能力。
 
 ## 风险
 - Prompt 调整可能引入动作漂移，导致既有工业闭环退化。

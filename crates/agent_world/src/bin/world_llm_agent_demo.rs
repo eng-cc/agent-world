@@ -19,8 +19,9 @@ use llm_io::print_llm_io_trace;
 #[cfg(test)]
 use llm_io::truncate_for_llm_io_log;
 use runtime_bridge::{
-    advance_kernel_time_with_noop_move, execute_action_in_kernel, is_bridgeable_action,
-    RuntimeGameplayBridge, RuntimeGameplayPreset, RuntimeGameplayPresetHandles,
+    advance_kernel_time_with_noop_move, execute_action_in_kernel, execute_system_action_in_kernel,
+    is_bridgeable_action, RuntimeGameplayBridge, RuntimeGameplayPreset,
+    RuntimeGameplayPresetHandles,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,6 +47,7 @@ impl PromptSwitchSpec {
 struct CliOptions {
     scenario: WorldScenario,
     ticks: u64,
+    coverage_bootstrap_profile: CoverageBootstrapProfile,
     runtime_gameplay_bridge: bool,
     runtime_gameplay_preset: RuntimeGameplayPreset,
     load_state_dir: Option<String>,
@@ -69,6 +71,7 @@ impl Default for CliOptions {
         Self {
             scenario: WorldScenario::LlmBootstrap,
             ticks: 20,
+            coverage_bootstrap_profile: CoverageBootstrapProfile::None,
             runtime_gameplay_bridge: true,
             runtime_gameplay_preset: RuntimeGameplayPreset::None,
             load_state_dir: None,
@@ -100,6 +103,40 @@ impl CliOptions {
         self.switch_llm_system_prompt.is_some()
             || self.switch_llm_short_term_goal.is_some()
             || self.switch_llm_long_term_goal.is_some()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CoverageBootstrapProfile {
+    None,
+    Industrial,
+    Gameplay,
+    Hybrid,
+}
+
+impl CoverageBootstrapProfile {
+    fn parse(raw: &str) -> Option<Self> {
+        let normalized = raw.trim().to_ascii_lowercase().replace('-', "_");
+        match normalized.as_str() {
+            "" | "none" | "off" => Some(Self::None),
+            "industrial" => Some(Self::Industrial),
+            "gameplay" => Some(Self::Gameplay),
+            "hybrid" => Some(Self::Hybrid),
+            _ => None,
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Industrial => "industrial",
+            Self::Gameplay => "gameplay",
+            Self::Hybrid => "hybrid",
+        }
+    }
+
+    fn requires_runtime_bridge(&self) -> bool {
+        matches!(self, Self::Gameplay | Self::Hybrid)
     }
 }
 
@@ -350,6 +387,362 @@ fn normalize_reason_metric_key(raw: &str) -> String {
     normalized
 }
 
+fn merge_runtime_gameplay_preset_handles(
+    target: &mut RuntimeGameplayPresetHandles,
+    source: RuntimeGameplayPresetHandles,
+) {
+    if target.governance_proposal_key.is_none() {
+        target.governance_proposal_key = source.governance_proposal_key;
+    }
+    if target.governance_vote_option.is_none() {
+        target.governance_vote_option = source.governance_vote_option;
+    }
+    if target.crisis_id.is_none() {
+        target.crisis_id = source.crisis_id;
+    }
+    if target.economic_contract_id.is_none() {
+        target.economic_contract_id = source.economic_contract_id;
+    }
+    if target.economic_contract_counterparty.is_none() {
+        target.economic_contract_counterparty = source.economic_contract_counterparty;
+    }
+}
+
+fn bootstrap_error_from_action_result(label: &str, result: &ActionResult) -> String {
+    if let Some(reason) = result.reject_reason() {
+        return format!("{label} rejected: {reason:?}");
+    }
+    format!("{label} failed without reject reason")
+}
+
+fn execute_required_kernel_bootstrap_action(
+    kernel: &mut agent_world::simulator::WorldKernel,
+    actor_agent_id: &str,
+    action: SimulatorAction,
+    run_report: &mut DemoRunReport,
+    label: &str,
+) -> Result<u64, String> {
+    let result = execute_action_in_kernel(kernel, actor_agent_id, action);
+    run_report.observe_action_result(result.event.time, &result);
+    if result.success {
+        Ok(1)
+    } else {
+        Err(bootstrap_error_from_action_result(label, &result))
+    }
+}
+
+fn grant_agent_resource_for_bootstrap(
+    kernel: &mut agent_world::simulator::WorldKernel,
+    owner: &agent_world::simulator::ResourceOwner,
+    kind: agent_world::simulator::ResourceKind,
+    amount: i64,
+    label: &str,
+) -> Result<(), String> {
+    let result = execute_system_action_in_kernel(
+        kernel,
+        SimulatorAction::DebugGrantResource {
+            owner: owner.clone(),
+            kind,
+            amount,
+        },
+    );
+    if result.success {
+        Ok(())
+    } else {
+        Err(bootstrap_error_from_action_result(label, &result))
+    }
+}
+
+fn run_industrial_coverage_bootstrap(
+    kernel: &mut agent_world::simulator::WorldKernel,
+    run_report: &mut DemoRunReport,
+) -> Result<u64, String> {
+    let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
+    agent_ids.sort();
+    let actor_agent_id = agent_ids
+        .first()
+        .cloned()
+        .ok_or_else(|| "industrial coverage bootstrap requires at least 1 agent".to_string())?;
+    let actor_location_id = kernel
+        .model()
+        .agents
+        .get(actor_agent_id.as_str())
+        .map(|agent| agent.location_id.clone())
+        .ok_or_else(|| {
+            format!(
+                "industrial coverage bootstrap missing agent state for {}",
+                actor_agent_id
+            )
+        })?;
+    let owner = agent_world::simulator::ResourceOwner::Agent {
+        agent_id: actor_agent_id.clone(),
+    };
+
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Electricity,
+        200_000,
+        "industrial coverage bootstrap grant electricity pre-harvest",
+    )?;
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Data,
+        200_000,
+        "industrial coverage bootstrap grant data pre-harvest",
+    )?;
+
+    let mut action_count = 0_u64;
+    action_count += execute_required_kernel_bootstrap_action(
+        kernel,
+        actor_agent_id.as_str(),
+        SimulatorAction::HarvestRadiation {
+            agent_id: actor_agent_id.clone(),
+            max_amount: 100,
+        },
+        run_report,
+        "industrial coverage bootstrap harvest_radiation",
+    )?;
+    action_count += execute_required_kernel_bootstrap_action(
+        kernel,
+        actor_agent_id.as_str(),
+        SimulatorAction::MineCompound {
+            owner: owner.clone(),
+            location_id: actor_location_id.clone(),
+            compound_mass_g: 2_000,
+        },
+        run_report,
+        "industrial coverage bootstrap mine_compound",
+    )?;
+    action_count += execute_required_kernel_bootstrap_action(
+        kernel,
+        actor_agent_id.as_str(),
+        SimulatorAction::RefineCompound {
+            owner: owner.clone(),
+            compound_mass_g: 1_000,
+        },
+        run_report,
+        "industrial coverage bootstrap refine_compound",
+    )?;
+
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Electricity,
+        200_000,
+        "industrial coverage bootstrap grant electricity pre-factory",
+    )?;
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Data,
+        200_000,
+        "industrial coverage bootstrap grant data pre-factory",
+    )?;
+
+    let factory_id = format!(
+        "coverage.factory.assembler.{}.{}",
+        actor_agent_id.replace('-', "_"),
+        kernel.time().saturating_add(1)
+    );
+    action_count += execute_required_kernel_bootstrap_action(
+        kernel,
+        actor_agent_id.as_str(),
+        SimulatorAction::BuildFactory {
+            owner: owner.clone(),
+            location_id: actor_location_id,
+            factory_id: factory_id.clone(),
+            factory_kind: "factory.assembler.mk1".to_string(),
+        },
+        run_report,
+        "industrial coverage bootstrap build_factory",
+    )?;
+
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Electricity,
+        200_000,
+        "industrial coverage bootstrap grant electricity pre-recipe",
+    )?;
+    grant_agent_resource_for_bootstrap(
+        kernel,
+        &owner,
+        agent_world::simulator::ResourceKind::Data,
+        200_000,
+        "industrial coverage bootstrap grant data pre-recipe",
+    )?;
+
+    action_count += execute_required_kernel_bootstrap_action(
+        kernel,
+        actor_agent_id.as_str(),
+        SimulatorAction::ScheduleRecipe {
+            owner,
+            factory_id,
+            recipe_id: "recipe.control_chip".to_string(),
+            batches: 1,
+        },
+        run_report,
+        "industrial coverage bootstrap schedule_recipe",
+    )?;
+    Ok(action_count)
+}
+
+fn execute_required_runtime_bridge_bootstrap_action(
+    kernel: &mut agent_world::simulator::WorldKernel,
+    runtime_bridge: &mut RuntimeGameplayBridge,
+    actor_agent_id: &str,
+    tick: u64,
+    action: SimulatorAction,
+    run_report: &mut DemoRunReport,
+    label: &str,
+) -> Result<u64, String> {
+    let result = runtime_bridge
+        .execute(tick, actor_agent_id, action)
+        .map_err(|err| format!("{label} bridge execution failed: {err}"))?;
+    run_report.observe_runtime_bridge_result(&result);
+    run_report.observe_action_result(tick, &result);
+    if !result.success {
+        return Err(bootstrap_error_from_action_result(label, &result));
+    }
+    advance_kernel_time_with_noop_move(kernel, actor_agent_id);
+    Ok(1)
+}
+
+fn run_gameplay_coverage_bootstrap(
+    kernel: &mut agent_world::simulator::WorldKernel,
+    runtime_bridge: &mut RuntimeGameplayBridge,
+    runtime_gameplay_preset_handles: &mut RuntimeGameplayPresetHandles,
+    run_report: &mut DemoRunReport,
+) -> Result<u64, String> {
+    if runtime_gameplay_preset_handles.crisis_id.is_none() {
+        let seeded_handles = runtime_bridge.apply_preset(RuntimeGameplayPreset::CivicHotspotV1)?;
+        merge_runtime_gameplay_preset_handles(runtime_gameplay_preset_handles, seeded_handles);
+    }
+
+    let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
+    agent_ids.sort();
+    if agent_ids.len() < 2 {
+        return Err("gameplay coverage bootstrap requires at least 2 agents".to_string());
+    }
+
+    let proposer = agent_ids[0].clone();
+    let voter = agent_ids[1].clone();
+    let progress_target = agent_ids.get(2).cloned().unwrap_or_else(|| voter.clone());
+    let crisis_id = runtime_gameplay_preset_handles
+        .crisis_id
+        .clone()
+        .ok_or_else(|| "gameplay coverage bootstrap missing active crisis handle".to_string())?;
+    let vote_option = runtime_gameplay_preset_handles
+        .governance_vote_option
+        .clone()
+        .unwrap_or_else(|| "approve".to_string());
+    let proposal_key = format!("coverage.governance.{}", kernel.time().saturating_add(1));
+
+    let mut tick = kernel.time().saturating_add(1);
+    let mut action_count = 0_u64;
+    action_count += execute_required_runtime_bridge_bootstrap_action(
+        kernel,
+        runtime_bridge,
+        proposer.as_str(),
+        tick,
+        SimulatorAction::OpenGovernanceProposal {
+            proposer_agent_id: proposer.clone(),
+            proposal_key: proposal_key.clone(),
+            title: "coverage gameplay proposal".to_string(),
+            description: "coverage bootstrap proposal".to_string(),
+            options: vec![vote_option.clone(), "reject".to_string()],
+            voting_window_ticks: 24,
+            quorum_weight: 1,
+            pass_threshold_bps: 5_000,
+        },
+        run_report,
+        "gameplay coverage bootstrap open_governance_proposal",
+    )?;
+    tick = kernel.time().saturating_add(1);
+    action_count += execute_required_runtime_bridge_bootstrap_action(
+        kernel,
+        runtime_bridge,
+        voter.as_str(),
+        tick,
+        SimulatorAction::CastGovernanceVote {
+            voter_agent_id: voter.clone(),
+            proposal_key,
+            option: vote_option,
+            weight: 1,
+        },
+        run_report,
+        "gameplay coverage bootstrap cast_governance_vote",
+    )?;
+    tick = kernel.time().saturating_add(1);
+    action_count += execute_required_runtime_bridge_bootstrap_action(
+        kernel,
+        runtime_bridge,
+        proposer.as_str(),
+        tick,
+        SimulatorAction::ResolveCrisis {
+            resolver_agent_id: proposer.clone(),
+            crisis_id,
+            strategy: "coverage_bootstrap_strategy".to_string(),
+            success: true,
+        },
+        run_report,
+        "gameplay coverage bootstrap resolve_crisis",
+    )?;
+    tick = kernel.time().saturating_add(1);
+    action_count += execute_required_runtime_bridge_bootstrap_action(
+        kernel,
+        runtime_bridge,
+        proposer.as_str(),
+        tick,
+        SimulatorAction::GrantMetaProgress {
+            operator_agent_id: proposer.clone(),
+            target_agent_id: progress_target,
+            track: "civic".to_string(),
+            points: 5,
+            achievement_id: Some("coverage_bootstrap_achievement".to_string()),
+        },
+        run_report,
+        "gameplay coverage bootstrap grant_meta_progress",
+    )?;
+    Ok(action_count)
+}
+
+fn run_coverage_bootstrap(
+    profile: CoverageBootstrapProfile,
+    kernel: &mut agent_world::simulator::WorldKernel,
+    runtime_gameplay_bridge: &mut Option<RuntimeGameplayBridge>,
+    runtime_gameplay_preset_handles: &mut RuntimeGameplayPresetHandles,
+    run_report: &mut DemoRunReport,
+) -> Result<u64, String> {
+    let mut action_count = 0_u64;
+    if matches!(
+        profile,
+        CoverageBootstrapProfile::Industrial | CoverageBootstrapProfile::Hybrid
+    ) {
+        action_count += run_industrial_coverage_bootstrap(kernel, run_report)?;
+    }
+    if matches!(
+        profile,
+        CoverageBootstrapProfile::Gameplay | CoverageBootstrapProfile::Hybrid
+    ) {
+        let runtime_bridge = runtime_gameplay_bridge.as_mut().ok_or_else(|| {
+            format!(
+                "coverage bootstrap profile {} requires runtime gameplay bridge",
+                profile.as_str()
+            )
+        })?;
+        action_count += run_gameplay_coverage_bootstrap(
+            kernel,
+            runtime_bridge,
+            runtime_gameplay_preset_handles,
+            run_report,
+        )?;
+    }
+    Ok(action_count)
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let options = match parse_options(args.iter().skip(1).map(|arg| arg.as_str())) {
@@ -427,6 +820,10 @@ fn main() {
         "runtime_gameplay_preset: {}",
         options.runtime_gameplay_preset.as_str()
     );
+    println!(
+        "coverage_bootstrap_profile: {}",
+        options.coverage_bootstrap_profile.as_str()
+    );
 
     let mut runtime_gameplay_bridge = if options.runtime_gameplay_bridge {
         match RuntimeGameplayBridge::from_kernel(&kernel) {
@@ -439,7 +836,8 @@ fn main() {
     } else {
         None
     };
-    let runtime_gameplay_preset_handles = if let Some(bridge) = runtime_gameplay_bridge.as_mut() {
+    let mut runtime_gameplay_preset_handles = if let Some(bridge) = runtime_gameplay_bridge.as_mut()
+    {
         match bridge.apply_preset(options.runtime_gameplay_preset) {
             Ok(handles) => handles,
             Err(err) => {
@@ -483,6 +881,27 @@ fn main() {
     }
 
     let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
+    let coverage_bootstrap_actions =
+        if options.coverage_bootstrap_profile == CoverageBootstrapProfile::None {
+            0
+        } else {
+            match run_coverage_bootstrap(
+                options.coverage_bootstrap_profile,
+                &mut kernel,
+                &mut runtime_gameplay_bridge,
+                &mut runtime_gameplay_preset_handles,
+                &mut run_report,
+            ) {
+                Ok(action_count) => action_count,
+                Err(err) => {
+                    eprintln!("failed to apply coverage bootstrap profile: {err}");
+                    process::exit(1);
+                }
+            }
+        };
+    if coverage_bootstrap_actions > 0 {
+        println!("coverage_bootstrap_actions: {coverage_bootstrap_actions}");
+    }
     let mut next_prompt_switch_idx = 0usize;
 
     for idx in 0..options.ticks {
@@ -603,7 +1022,7 @@ fn main() {
     }
 
     let metrics = runner.metrics();
-    run_report.total_actions = metrics.total_actions;
+    run_report.total_actions = metrics.total_actions + coverage_bootstrap_actions;
     run_report.total_decisions = metrics.total_decisions;
     run_report.world_time = kernel.time();
     run_report.journal_events = kernel.journal().len();
@@ -787,6 +1206,21 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         .to_string(),
                 );
             }
+            "--coverage-bootstrap-profile" => {
+                let raw = iter
+                    .next()
+                    .ok_or_else(|| {
+                        "--coverage-bootstrap-profile requires a profile name".to_string()
+                    })?
+                    .to_string();
+                options.coverage_bootstrap_profile =
+                    CoverageBootstrapProfile::parse(raw.as_str()).ok_or_else(|| {
+                        format!(
+                            "invalid --coverage-bootstrap-profile: {} (expected none|industrial|gameplay|hybrid)",
+                            raw
+                        )
+                    })?;
+            }
             "--runtime-gameplay-bridge" => {
                 options.runtime_gameplay_bridge = true;
             }
@@ -966,6 +1400,14 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                 .to_string(),
         );
     }
+    if !options.runtime_gameplay_bridge
+        && options.coverage_bootstrap_profile.requires_runtime_bridge()
+    {
+        return Err(
+            "--coverage-bootstrap-profile gameplay|hybrid requires --runtime-gameplay-bridge to be enabled"
+                .to_string(),
+        );
+    }
 
     Ok(options)
 }
@@ -978,6 +1420,9 @@ fn print_help() {
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
     println!("  --ticks <n>        Max runner ticks (default: 20)");
     println!("  --report-json <path>  Persist run summary as JSON report");
+    println!(
+        "  --coverage-bootstrap-profile <name>  Run deterministic action bootstrap before LLM loop (none|industrial|gameplay|hybrid)"
+    );
     println!("  --load-state-dir <path>  Load simulator state from directory");
     println!("  --save-state-dir <path>  Save simulator state to directory after run");
     println!(

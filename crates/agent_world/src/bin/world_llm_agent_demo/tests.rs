@@ -63,6 +63,10 @@ fn parse_options_defaults() {
     let options = parse_options([].into_iter()).expect("defaults");
     assert_eq!(options.scenario, WorldScenario::LlmBootstrap);
     assert_eq!(options.ticks, 20);
+    assert_eq!(
+        options.coverage_bootstrap_profile,
+        CoverageBootstrapProfile::None
+    );
     assert!(options.runtime_gameplay_bridge);
     assert_eq!(options.runtime_gameplay_preset, RuntimeGameplayPreset::None);
     assert_eq!(options.load_state_dir, None);
@@ -140,6 +144,23 @@ fn parse_options_accepts_runtime_gameplay_preset() {
 }
 
 #[test]
+fn parse_options_accepts_coverage_bootstrap_profile() {
+    let options = parse_options(["--coverage-bootstrap-profile", "hybrid"].into_iter())
+        .expect("coverage bootstrap profile");
+    assert_eq!(
+        options.coverage_bootstrap_profile,
+        CoverageBootstrapProfile::Hybrid
+    );
+}
+
+#[test]
+fn parse_options_rejects_invalid_coverage_bootstrap_profile() {
+    let err = parse_options(["--coverage-bootstrap-profile", "invalid"].into_iter())
+        .expect_err("invalid coverage bootstrap profile");
+    assert!(err.contains("invalid --coverage-bootstrap-profile"));
+}
+
+#[test]
 fn parse_options_rejects_invalid_runtime_gameplay_preset() {
     let err = parse_options(["--runtime-gameplay-preset", "invalid"].into_iter())
         .expect_err("invalid runtime gameplay preset");
@@ -157,6 +178,20 @@ fn parse_options_rejects_runtime_gameplay_preset_when_bridge_disabled() {
         .into_iter(),
     )
     .expect_err("runtime gameplay preset requires bridge");
+    assert!(err.contains("requires --runtime-gameplay-bridge"));
+}
+
+#[test]
+fn parse_options_rejects_runtime_bridge_dependent_coverage_profile_when_bridge_disabled() {
+    let err = parse_options(
+        [
+            "--no-runtime-gameplay-bridge",
+            "--coverage-bootstrap-profile",
+            "gameplay",
+        ]
+        .into_iter(),
+    )
+    .expect_err("coverage gameplay profile requires bridge");
     assert!(err.contains("requires --runtime-gameplay-bridge"));
 }
 
@@ -433,6 +468,79 @@ fn observe_action_result_counts_success_and_first_tick_per_action_kind() {
     );
     assert_eq!(report.first_action_tick.get("build_factory"), Some(&5));
     assert_eq!(report.first_action_tick.get("schedule_recipe"), Some(&9));
+}
+
+#[test]
+fn industrial_coverage_bootstrap_records_required_action_kinds() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::LlmBootstrap, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("initialize kernel");
+    let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 20);
+
+    let action_count =
+        run_industrial_coverage_bootstrap(&mut kernel, &mut report).expect("industrial bootstrap");
+    assert_eq!(action_count, 5);
+    assert_eq!(
+        report.action_kind_success_counts.get("harvest_radiation"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("mine_compound"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("refine_compound"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("build_factory"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("schedule_recipe"),
+        Some(&1)
+    );
+}
+
+#[test]
+fn gameplay_coverage_bootstrap_records_required_action_kinds() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::LlmBootstrap, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("initialize kernel");
+    let mut report = DemoRunReport::new("llm_bootstrap".to_string(), 20);
+    let mut runtime_bridge =
+        RuntimeGameplayBridge::from_kernel(&kernel).expect("bootstrap runtime gameplay bridge");
+    let mut handles = RuntimeGameplayPresetHandles::default();
+
+    let action_count = run_gameplay_coverage_bootstrap(
+        &mut kernel,
+        &mut runtime_bridge,
+        &mut handles,
+        &mut report,
+    )
+    .expect("gameplay bootstrap");
+    assert_eq!(action_count, 4);
+    assert_eq!(
+        report
+            .action_kind_success_counts
+            .get("open_governance_proposal"),
+        Some(&1)
+    );
+    assert_eq!(
+        report
+            .action_kind_success_counts
+            .get("cast_governance_vote"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("resolve_crisis"),
+        Some(&1)
+    );
+    assert_eq!(
+        report.action_kind_success_counts.get("grant_meta_progress"),
+        Some(&1)
+    );
+    assert!(report.runtime_bridge_actions >= 4);
 }
 
 #[cfg(feature = "test_tier_full")]
