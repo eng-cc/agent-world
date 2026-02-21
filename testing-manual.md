@@ -361,7 +361,7 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 当 `gameplay` profile 在短中程 run（如 24/120 ticks）未覆盖 `cast_governance_vote/resolve_crisis/grant_meta_progress` 时，优先增加 ticks（>=240）并结合多阶段 prompt 复验；仍不稳定时再引入“预设世界事件”方案。
   - 1000+ tick 长程 run 受 LLM 往返延迟影响，wall-clock 可能显著拉长；建议在后台会话（tmux/screen）执行并保留 `summary.txt` 作为验收依据。
-  - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`，用于保证 git 跟踪基线可加载。
+  - `scripts/ci-tests.sh full` 已接入 `./scripts/llm-baseline-fixture-smoke.sh`，用于保证 git 跟踪基线可加载，并可离线验证基线加载后的治理/经济续跑动作链。
   - 压测结果需保留 CSV/summary/log 产物。
 
 ## 改动路径 -> 必跑套件矩阵（针对性执行）

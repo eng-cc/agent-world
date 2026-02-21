@@ -100,7 +100,9 @@
   - `fixtures/llm_baseline/state_01/snapshot.json`
   - `fixtures/llm_baseline/state_01/journal.json`
 - 新增 smoke 脚本：`scripts/llm-baseline-fixture-smoke.sh`
-  - 先校验 fixture 文件存在，再执行 `test_tier_full` 定向回归，验证基线可加载且结构完整。
+  - 先校验 fixture 文件存在，再执行 `test_tier_full` 定向回归：
+    - 验证基线可加载且结构完整；
+    - 验证从基线加载后，通过 runtime gameplay bridge 可离线继续推进治理/经济动作链（提案/投票/元进度/合约）。
 - `scripts/ci-tests.sh full` 接入该脚本，形成“可追踪基线 + 可重复加载校验”的发布前基础保障。
 
 ### m5 模块规则增强
@@ -118,6 +120,7 @@
 - M6：`llm_bootstrap` 5 Agent + runtime gameplay bridge 落地，完成非 viewer 的 gameplay 交互闭环回归。
 - M7：阶段基线世界（落盘/加载）闭环落地，支持“同一起点多玩法口径”对比测试。
 - M8：基线 fixture 入库并接入 full-tier smoke，确保状态工件可持续复用。
+- M9：补齐基线加载后的离线治理续跑 smoke，降低在线 LLM 依赖对门禁稳定性的影响。
 
 ## 当前回归结论（T7）
 - bridge 生效性已验证：在 `llm_bootstrap` 下，`open_governance_proposal` 等 runtime-only gameplay 动作可通过 runtime bridge 成功执行，不再被 simulator 内核直接拒绝。

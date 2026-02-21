@@ -68,6 +68,11 @@
 - [x] `scripts/ci-tests.sh full` 接入 baseline fixture smoke
 - [x] 更新 `testing-manual.md` 与 `doc/devlog/2026-02-21.md`
 
+### T11 基线加载后离线治理续跑 smoke（新增）
+- [x] 在 `world_llm_agent_demo` 测试中新增 runtime bridge 续跑用例（基于 `fixtures/llm_baseline/state_01`）
+- [x] 扩展 `scripts/llm-baseline-fixture-smoke.sh`：新增治理/经济动作链离线 smoke
+- [x] 更新设计/测试文档与 devlog
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -77,7 +82,7 @@
 
 ## 状态
 - 当前状态：`已完成`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10
-- 本轮增量：在已入库基线（`/Users/scc/.codex/worktrees/ee97/agent-world/fixtures/llm_baseline/state_01`）基础上新增 full-tier smoke（`scripts/llm-baseline-fixture-smoke.sh`）并接入 `scripts/ci-tests.sh full`，确保基线状态可持续加载复用。
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9、T10、T11
+- 本轮增量：在已入库基线（`/Users/scc/.codex/worktrees/ee97/agent-world/fixtures/llm_baseline/state_01`）基础上新增离线治理续跑 smoke（runtime bridge 提案/投票/元进度/合约链路），并纳入 `scripts/llm-baseline-fixture-smoke.sh` 供 `full` 档位复用。
 - 进行中：无
 - 阻塞项：无（若后续需要“超长世界年龄”基线，可在当前 state 基础上继续按 100 tick 分段追加）。

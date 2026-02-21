@@ -1,5 +1,12 @@
 use super::*;
-use agent_world::simulator::{Action, WorldEvent, WorldEventKind};
+use agent_world::simulator::{Action, ResourceKind, WorldEvent, WorldEventKind};
+
+#[cfg(feature = "test_tier_full")]
+fn tracked_baseline_fixture_dir() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("fixtures/llm_baseline/state_01")
+}
 
 #[test]
 fn parse_options_defaults() {
@@ -344,4 +351,134 @@ fn observe_action_result_counts_success_and_first_tick_per_action_kind() {
     );
     assert_eq!(report.first_action_tick.get("build_factory"), Some(&5));
     assert_eq!(report.first_action_tick.get("schedule_recipe"), Some(&9));
+}
+
+#[cfg(feature = "test_tier_full")]
+#[test]
+fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
+    let fixture_dir = tracked_baseline_fixture_dir();
+    let mut kernel = agent_world::simulator::WorldKernel::load_from_dir(&fixture_dir)
+        .expect("load tracked baseline fixture");
+    let mut runtime_bridge =
+        RuntimeGameplayBridge::from_kernel(&kernel).expect("bootstrap runtime gameplay bridge");
+
+    let mut agent_ids: Vec<String> = kernel.model().agents.keys().cloned().collect();
+    agent_ids.sort();
+    assert!(
+        agent_ids.len() >= 4,
+        "tracked baseline fixture should contain at least 4 agents"
+    );
+
+    let proposer = agent_ids[0].clone();
+    let voter = agent_ids[1].clone();
+    let progress_target = agent_ids[2].clone();
+    let contract_counterparty = agent_ids[3].clone();
+    let mut tick = kernel.time().saturating_add(1);
+
+    let open_proposal = runtime_bridge
+        .execute(
+            tick,
+            proposer.as_str(),
+            Action::OpenGovernanceProposal {
+                proposer_agent_id: proposer.clone(),
+                proposal_key: "fixture.governance.smoke".to_string(),
+                title: "fixture governance smoke".to_string(),
+                description: "verify governance continuation from tracked baseline".to_string(),
+                options: vec!["approve".to_string(), "reject".to_string()],
+                voting_window_ticks: 8,
+                quorum_weight: 1,
+                pass_threshold_bps: 5_000,
+            },
+        )
+        .expect("runtime bridge open governance proposal");
+    assert!(open_proposal.success, "open proposal should succeed");
+
+    tick = tick.saturating_add(1);
+    let cast_vote = runtime_bridge
+        .execute(
+            tick,
+            voter.as_str(),
+            Action::CastGovernanceVote {
+                voter_agent_id: voter.clone(),
+                proposal_key: "fixture.governance.smoke".to_string(),
+                option: "approve".to_string(),
+                weight: 1,
+            },
+        )
+        .expect("runtime bridge cast governance vote");
+    assert!(cast_vote.success, "cast vote should succeed");
+
+    tick = tick.saturating_add(1);
+    let grant_progress = runtime_bridge
+        .execute(
+            tick,
+            proposer.as_str(),
+            Action::GrantMetaProgress {
+                operator_agent_id: proposer.clone(),
+                target_agent_id: progress_target.clone(),
+                track: "civic".to_string(),
+                points: 5,
+                achievement_id: Some("fixture-governance-smoke".to_string()),
+            },
+        )
+        .expect("runtime bridge grant meta progress");
+    assert!(grant_progress.success, "grant meta progress should succeed");
+
+    tick = tick.saturating_add(1);
+    let open_contract = runtime_bridge
+        .execute(
+            tick,
+            proposer.as_str(),
+            Action::OpenEconomicContract {
+                creator_agent_id: proposer.clone(),
+                contract_id: "fixture.contract.smoke".to_string(),
+                counterparty_agent_id: contract_counterparty.clone(),
+                settlement_kind: ResourceKind::Data,
+                settlement_amount: 10,
+                reputation_stake: 3,
+                expires_at: tick.saturating_add(20),
+                description: "fixture governance continuation contract smoke".to_string(),
+            },
+        )
+        .expect("runtime bridge open economic contract");
+    assert!(
+        open_contract.success,
+        "open economic contract should succeed"
+    );
+
+    tick = tick.saturating_add(1);
+    let accept_contract = runtime_bridge
+        .execute(
+            tick,
+            contract_counterparty.as_str(),
+            Action::AcceptEconomicContract {
+                accepter_agent_id: contract_counterparty.clone(),
+                contract_id: "fixture.contract.smoke".to_string(),
+            },
+        )
+        .expect("runtime bridge accept economic contract");
+    assert!(
+        accept_contract.success,
+        "accept economic contract should succeed"
+    );
+
+    tick = tick.saturating_add(1);
+    let settle_contract = runtime_bridge
+        .execute(
+            tick,
+            proposer.as_str(),
+            Action::SettleEconomicContract {
+                operator_agent_id: proposer.clone(),
+                contract_id: "fixture.contract.smoke".to_string(),
+                success: false,
+                notes: "offline smoke settlement".to_string(),
+            },
+        )
+        .expect("runtime bridge settle economic contract");
+    assert!(
+        settle_contract.success,
+        "settle economic contract should succeed"
+    );
+
+    advance_kernel_time_with_noop_move(&mut kernel, proposer.as_str());
 }

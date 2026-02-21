@@ -21,3 +21,5 @@ fi
 echo "+ baseline fixture: $fixture_dir"
 echo "+ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulator::tests::persist::kernel_loads_tracked_llm_baseline_fixture_state -- --nocapture"
 env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full simulator::tests::persist::kernel_loads_tracked_llm_baseline_fixture_state -- --nocapture
+echo "+ env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_llm_agent_demo --features test_tier_full runtime_bridge_continues_governance_from_tracked_baseline_fixture -- --nocapture"
+env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_llm_agent_demo --features test_tier_full runtime_bridge_continues_governance_from_tracked_baseline_fixture -- --nocapture
