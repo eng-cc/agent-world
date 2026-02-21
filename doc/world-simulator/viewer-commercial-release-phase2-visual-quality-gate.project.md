@@ -2,7 +2,7 @@
 
 ## 任务拆解
 - [x] VCR2-0 文档建档：设计文档 + 项目管理文档
-- [ ] VCR2-1 新增视觉基线脚本（snapshot 基线校验 + 定向测试）
+- [x] VCR2-1 新增视觉基线脚本（snapshot 基线校验 + 定向测试）
 - [ ] VCR2-2 接入 CI：`ci-tests.sh` 与 `rust.yml` 增加 viewer 相关门禁
 - [ ] VCR2-3 更新测试手册与项目状态，补 devlog 收口
 
@@ -13,6 +13,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VCR2-0 完成，VCR2-1 进行中。
-- 下一步：落地视觉基线脚本并完成本地验证。
+- 当前阶段：VCR2-0、VCR2-1 已完成，VCR2-2 进行中。
+- 下一步：将 viewer 单测/wasm gate 与视觉基线脚本接入 CI required gate。
 - 最近更新：2026-02-21。
