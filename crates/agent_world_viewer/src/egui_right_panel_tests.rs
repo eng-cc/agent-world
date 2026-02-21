@@ -1,6 +1,7 @@
 use super::egui_observe_section_card::{section_tone, ObserveSectionTone};
 use super::*;
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
+use crate::ViewerControl;
 use agent_world::simulator::{RejectReason, WorldEvent, WorldEventKind};
 use egui_kittest::{kittest::Queryable as _, Harness};
 use egui_wgpu::wgpu;
@@ -436,6 +437,11 @@ struct ControlButtonsHarnessState {
     control_ui: ControlPanelUiState,
 }
 
+#[derive(Default)]
+struct ThemeRuntimeHarnessState {
+    runtime: crate::app_bootstrap::ThemeRuntimeState,
+}
+
 #[test]
 fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
     let mut harness = Harness::new_ui_state(
@@ -466,6 +472,29 @@ fn egui_kittest_control_buttons_merge_play_pause_and_fold_advanced_debug() {
     assert!(harness.state().control_ui.advanced_debug_expanded);
     harness.get_by_label("单步");
     harness.get_by_label("跳转 0");
+}
+
+#[test]
+fn egui_kittest_theme_runtime_apply_and_hot_reload_controls_work() {
+    let mut harness = Harness::new_ui_state(
+        |ui, state: &mut ThemeRuntimeHarnessState| {
+            super::egui_right_panel_theme_runtime::render_theme_runtime_section(
+                ui,
+                crate::i18n::UiLocale::ZhCn,
+                &mut state.runtime,
+            );
+        },
+        ThemeRuntimeHarnessState::default(),
+    );
+
+    harness.fit_contents();
+    harness.get_by_label("应用主题").click();
+    harness.run();
+    assert!(harness.state().runtime.pending_apply);
+
+    harness.get_by_label("自动热重载").click();
+    harness.run();
+    assert!(harness.state().runtime.hot_reload_enabled);
 }
 
 #[test]

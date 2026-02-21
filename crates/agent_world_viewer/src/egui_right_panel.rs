@@ -3,16 +3,16 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
+use crate::app_bootstrap::ThemeRuntimeState;
+use crate::button_feedback::StepControlLoadingState;
 use crate::copyable_text::{copy_panel_hint, copy_panel_title, ensure_egui_cjk_font};
 use crate::event_click_list::{
     apply_event_click_action, event_row_label, event_window, focus_tick,
 };
 use crate::i18n::{
-    advanced_debug_toggle_label, camera_mode_button_label, camera_mode_section_label,
-    control_button_label, copyable_panel_toggle_label, language_toggle_label, locale_or_default,
-    module_switches_title, module_toggle_label, play_pause_toggle_label, step_button_label,
-    top_controls_label, top_panel_toggle_label, UiI18n,
+    camera_mode_button_label, camera_mode_section_label, copyable_panel_toggle_label,
+    language_toggle_label, locale_or_default, module_switches_title, top_controls_label,
+    top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::selection_linking::{
@@ -39,17 +39,27 @@ use crate::world_overlay::overlay_status_text_public;
 use crate::{
     grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
     GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
-    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerControl,
-    ViewerSelection, ViewerState, WorldOverlayConfig,
+    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerSelection,
+    ViewerState, WorldOverlayConfig,
 };
 
 #[path = "egui_observe_section_card.rs"]
 mod egui_observe_section_card;
 #[path = "egui_right_panel_chat.rs"]
 mod egui_right_panel_chat;
+#[path = "egui_right_panel_controls.rs"]
+mod egui_right_panel_controls;
+#[path = "egui_right_panel_theme_runtime.rs"]
+mod egui_right_panel_theme_runtime;
 
 use egui_observe_section_card::render_observe_section_card;
 use egui_right_panel_chat::{render_chat_section, AgentChatDraftState};
+#[cfg(test)]
+use egui_right_panel_controls::send_control_request;
+use egui_right_panel_controls::{
+    render_control_buttons, render_module_toggle_button, ControlPanelUiState,
+};
+use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
 const MAIN_PANEL_DEFAULT_WIDTH: f32 = 320.0;
 const MAIN_PANEL_MIN_WIDTH: f32 = 240.0;
@@ -63,12 +73,6 @@ const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
-
-#[derive(Default)]
-pub(super) struct ControlPanelUiState {
-    playing: bool,
-    advanced_debug_expanded: bool,
-}
 
 fn env_toggle_enabled(raw: Option<&str>) -> bool {
     raw.map(|value| value.trim().to_ascii_lowercase())
@@ -132,6 +136,7 @@ pub(super) struct RightPanelParams<'w, 's> {
     chat_focus_signal: ResMut<'w, crate::ChatInputFocusSignal>,
     timeline: ResMut<'w, TimelineUiState>,
     timeline_filters: ResMut<'w, TimelineMarkFilterState>,
+    theme_runtime: ResMut<'w, ThemeRuntimeState>,
     diagnosis_state: Res<'w, DiagnosisState>,
     link_state: ResMut<'w, EventObjectLinkState>,
     scene: Res<'w, crate::Viewer3dScene>,
@@ -162,6 +167,7 @@ pub(super) fn render_right_side_panel_egui(
         mut chat_focus_signal,
         mut timeline,
         mut timeline_filters,
+        mut theme_runtime,
         diagnosis_state,
         mut link_state,
         scene,
@@ -324,6 +330,7 @@ pub(super) fn render_right_side_panel_egui(
                     &mut control_panel,
                     client.as_deref(),
                 );
+                render_theme_runtime_section(ui, locale, theme_runtime.as_mut());
             }
 
             if module_visibility.show_overview {
@@ -506,99 +513,6 @@ pub(super) fn render_right_side_panel_egui(
 
     panel_width.width_px =
         total_right_panel_width(panel_response.response.rect.width(), chat_panel_width);
-}
-
-fn render_module_toggle_button(
-    ui: &mut egui::Ui,
-    module_key: &str,
-    visible: &mut bool,
-    locale: crate::i18n::UiLocale,
-) {
-    if ui
-        .button(module_toggle_label(module_key, *visible, locale))
-        .clicked()
-    {
-        *visible = !*visible;
-    }
-}
-
-fn render_control_buttons(
-    ui: &mut egui::Ui,
-    locale: crate::i18n::UiLocale,
-    state: &ViewerState,
-    loading: &mut StepControlLoadingState,
-    control_ui: &mut ControlPanelUiState,
-    client: Option<&ViewerClient>,
-) {
-    ui.horizontal_wrapped(|ui| {
-        let play_pause = if control_ui.playing {
-            ViewerControl::Pause
-        } else {
-            ViewerControl::Play
-        };
-        if ui
-            .button(play_pause_toggle_label(control_ui.playing, locale))
-            .clicked()
-        {
-            send_control_request(play_pause, state, loading, control_ui, client);
-        }
-
-        if ui
-            .button(advanced_debug_toggle_label(
-                control_ui.advanced_debug_expanded,
-                locale,
-            ))
-            .clicked()
-        {
-            control_ui.advanced_debug_expanded = !control_ui.advanced_debug_expanded;
-        }
-    });
-
-    if !control_ui.advanced_debug_expanded {
-        return;
-    }
-
-    ui.horizontal_wrapped(|ui| {
-        let step_control = ViewerControl::Step { count: 1 };
-        if ui
-            .add_enabled(
-                !loading.pending,
-                egui::Button::new(step_button_label(locale, loading.pending)),
-            )
-            .clicked()
-        {
-            send_control_request(step_control, state, loading, control_ui, client);
-        }
-
-        let seek_zero = ViewerControl::Seek { tick: 0 };
-        if ui
-            .button(control_button_label(&seek_zero, locale))
-            .clicked()
-        {
-            send_control_request(seek_zero, state, loading, control_ui, client);
-        }
-    });
-}
-
-fn send_control_request(
-    control: ViewerControl,
-    state: &ViewerState,
-    loading: &mut StepControlLoadingState,
-    control_ui: &mut ControlPanelUiState,
-    client: Option<&ViewerClient>,
-) {
-    mark_step_loading_on_control(&control, state, loading);
-    if let Some(client) = client {
-        let _ = client.tx.send(agent_world::viewer::ViewerRequest::Control {
-            mode: control.clone(),
-        });
-    }
-    match control {
-        ViewerControl::Play => control_ui.playing = true,
-        ViewerControl::Pause | ViewerControl::Step { .. } | ViewerControl::Seek { .. } => {
-            control_ui.playing = false;
-        }
-    }
 }
 
 fn render_overview_section(
