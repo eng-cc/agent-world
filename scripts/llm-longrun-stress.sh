@@ -25,6 +25,7 @@ Options:
   --switch-llm-system-prompt <text>  Switch system prompt after --prompt-switch-tick
   --switch-llm-short-goal <text>     Switch short-term goal after --prompt-switch-tick
   --switch-llm-long-goal <text>      Switch long-term goal after --prompt-switch-tick
+  --prompt-switches-json <json>      Multi-stage switch plan JSON (array of {"tick":n,"llm_*":...})
   --max-llm-errors <n>         Fail if llm_errors > n (default: 0)
   --max-parse-errors <n>       Fail if parse_errors > n (default: 0)
   --max-repair-rounds-max <n>  Fail if repair_rounds_max > n (default: 2)
@@ -54,6 +55,7 @@ Notes:
       frontier_builder             -> exploration + production expansion
       civic_operator               -> governance + collaboration cadence
       resilience_drill             -> crisis/economic contract pressure test
+  - story_balanced 会在 ticks 较长时自动注入多阶段切换计划（通过 --prompt-switches-json 透传）
 
 Output:
   - report json: detailed run metrics emitted by world_llm_agent_demo
@@ -227,16 +229,8 @@ apply_prompt_pack_defaults() {
       if [[ -z "$llm_long_goal" ]]; then
         llm_long_goal="形成可持续文明闭环：资源可用、组织可治理、危机可恢复，让行动呈现阶段递进而不是单一刷动作。"
       fi
-      if [[ -z "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
-        local auto_switch_tick
-        auto_switch_tick=$(( ticks / 2 ))
-        if (( auto_switch_tick < 12 )); then
-          auto_switch_tick=12
-        fi
-        prompt_switch_tick="$auto_switch_tick"
-        switch_llm_system_prompt="你是中后期文明运营代理。让世界从资源扩张转向制度建设与韧性治理：围绕正在发生的议题推进提案、协商、危机处置与成长结算，避免陷入单一采集或单一治理动作循环。决策输出必须严格符合 JSON schema。"
-        switch_llm_short_goal="进入中后期剧情节点：先识别最紧迫的公共议题，再选择最合适的治理或韧性动作推进一格；若同类治理动作连续出现，主动切换到危机处置、成长结算或经济协作。"
-        switch_llm_long_goal="让文明从资源驱动转向制度与韧性驱动，使治理讨论、风险处理与成长反馈形成持续演化。"
+      if [[ -z "$prompt_switches_json" && -z "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
+        prompt_switches_json=$(build_story_balanced_prompt_switches_json "$ticks")
       fi
       ;;
     frontier_builder)
@@ -279,6 +273,83 @@ apply_prompt_pack_defaults() {
   esac
 
   prompt_pack="$pack"
+}
+
+build_story_balanced_prompt_switches_json() {
+  local ticks_value=$1
+  python3 - "$ticks_value" <<'PY'
+import json
+import sys
+
+ticks = max(1, int(sys.argv[1]))
+
+def clamp_tick(value: int) -> int:
+    return max(12, min(ticks, value))
+
+if ticks >= 960:
+    raw_stages = [
+        {
+            "tick": clamp_tick(ticks // 4),
+            "llm_system_prompt": "你是中期文明治理运营代理。重点把生产扩张转化为协作秩序：围绕治理议题、经济合约与危机预防推进叙事，避免无意义重复动作。",
+            "llm_short_term_goal": "进入中期剧情：在保持基础产能的同时，优先推动一次治理协商或经济协作落地，并对潜在危机做前置处置。",
+            "llm_long_term_goal": "让文明从资源扩张过渡到制度化协作，使治理、协作与风险处置形成常态闭环。",
+        },
+        {
+            "tick": clamp_tick(ticks // 2),
+            "llm_system_prompt": "你是中后期文明策略代理。围绕联盟关系、治理投票、经济结算与危机处理进行节奏调度，确保玩法事件持续演进。",
+            "llm_short_term_goal": "进入中后段剧情：根据当前世界状态，优先选择能推进公共秩序与韧性的动作，避免在单一治理动作中循环。",
+            "llm_long_term_goal": "保持制度韧性与资源效率并进，使文明在冲突与协作中持续可恢复。",
+        },
+        {
+            "tick": clamp_tick((ticks * 3) // 4),
+            "llm_system_prompt": "你是晚期文明稳态代理。关注长期平衡与风险回收：持续推进治理收敛、危机恢复与成长沉淀，不追求短期刷动作。",
+            "llm_short_term_goal": "进入晚期剧情：优先处理未闭环的治理议题与风险尾项，并完成阶段性成长反馈。",
+            "llm_long_term_goal": "形成可长期运行的文明稳态：制度可执行、风险可恢复、成长可累积。",
+        },
+    ]
+elif ticks >= 360:
+    raw_stages = [
+        {
+            "tick": clamp_tick(ticks // 3),
+            "llm_system_prompt": "你是中后期文明运营代理。让世界从资源扩张转向制度建设与韧性治理：围绕正在发生的议题推进提案、协商、危机处置与成长结算，避免陷入单一采集或单一治理动作循环。",
+            "llm_short_term_goal": "进入中后期剧情节点：先识别最紧迫的公共议题，再选择最合适的治理或韧性动作推进一格；若同类治理动作连续出现，主动切换到危机处置、成长结算或经济协作。",
+            "llm_long_term_goal": "让文明从资源驱动转向制度与韧性驱动，使治理讨论、风险处理与成长反馈形成持续演化。",
+        },
+        {
+            "tick": clamp_tick((ticks * 2) // 3),
+            "llm_system_prompt": "你是后段文明韧性代理。重点收敛治理与危机尾项，维持系统稳定并推动成长结算，避免动作模式固化。",
+            "llm_short_term_goal": "进入后段剧情：优先完成未闭环议题与风险处置，再推进成长沉淀。",
+            "llm_long_term_goal": "保证文明后半程的治理执行力与恢复力，避免单一动作导致演化停滞。",
+        },
+    ]
+else:
+    raw_stages = [
+        {
+            "tick": clamp_tick(ticks // 2),
+            "llm_system_prompt": "你是中后期文明运营代理。让世界从资源扩张转向制度建设与韧性治理：围绕正在发生的议题推进提案、协商、危机处置与成长结算，避免陷入单一采集或单一治理动作循环。决策输出必须严格符合 JSON schema。",
+            "llm_short_term_goal": "进入中后期剧情节点：先识别最紧迫的公共议题，再选择最合适的治理或韧性动作推进一格；若同类治理动作连续出现，主动切换到危机处置、成长结算或经济协作。",
+            "llm_long_term_goal": "让文明从资源驱动转向制度与韧性驱动，使治理讨论、风险处理与成长反馈形成持续演化。",
+        }
+    ]
+
+stages = []
+last_tick = 0
+for stage in raw_stages:
+    tick = max(stage["tick"], last_tick + 1)
+    tick = min(tick, ticks)
+    if tick <= last_tick:
+        continue
+    normalized = dict(stage)
+    normalized["tick"] = tick
+    stages.append(normalized)
+    last_tick = tick
+
+if not stages:
+    stages = [raw_stages[-1]]
+    stages[0]["tick"] = min(max(1, stages[0]["tick"]), ticks)
+
+print(json.dumps(stages, ensure_ascii=False))
+PY
 }
 
 extract_metric_from_log() {
@@ -530,6 +601,7 @@ write_summary_file() {
   local switch_llm_system_prompt_set=0
   local switch_llm_short_goal_set=0
   local switch_llm_long_goal_set=0
+  local prompt_switches_json_set=0
 
   [[ -n "$llm_system_prompt" ]] && llm_system_prompt_set=1
   [[ -n "$llm_short_goal" ]] && llm_short_goal_set=1
@@ -537,6 +609,7 @@ write_summary_file() {
   [[ -n "$switch_llm_system_prompt" ]] && switch_llm_system_prompt_set=1
   [[ -n "$switch_llm_short_goal" ]] && switch_llm_short_goal_set=1
   [[ -n "$switch_llm_long_goal" ]] && switch_llm_long_goal_set=1
+  [[ -n "$prompt_switches_json" ]] && prompt_switches_json_set=1
 
   {
     echo "scenario=$scenario_name"
@@ -576,6 +649,7 @@ write_summary_file() {
     echo "switch_llm_system_prompt_set=$switch_llm_system_prompt_set"
     echo "switch_llm_short_goal_set=$switch_llm_short_goal_set"
     echo "switch_llm_long_goal_set=$switch_llm_long_goal_set"
+    echo "prompt_switches_json_set=$prompt_switches_json_set"
     echo "report_json=$scenario_report_json"
     echo "run_log=$scenario_log_file"
   } >"$summary_path"
@@ -617,6 +691,9 @@ run_scenario_to_log() {
   fi
   if [[ -n "$switch_llm_long_goal" ]]; then
     cmd+=(--switch-llm-long-term-goal "$switch_llm_long_goal")
+  fi
+  if [[ -n "$prompt_switches_json" ]]; then
+    cmd+=(--prompt-switches-json "$prompt_switches_json")
   fi
 
   {
@@ -716,6 +793,7 @@ prompt_switch_tick=""
 switch_llm_system_prompt=""
 switch_llm_short_goal=""
 switch_llm_long_goal=""
+prompt_switches_json=""
 declare -a required_action_kinds=()
 declare -a required_action_min_counts=()
 required_action_kinds_config="none"
@@ -784,6 +862,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --switch-llm-long-goal)
       switch_llm_long_goal=${2:-}
+      shift 2
+      ;;
+    --prompt-switches-json)
+      prompt_switches_json=${2:-}
       shift 2
       ;;
     --max-llm-errors)
@@ -890,15 +972,22 @@ if [[ -z "$min_active_ticks" ]]; then
 fi
 ensure_positive_int "--min-active-ticks" "$min_active_ticks"
 apply_prompt_pack_defaults
-if [[ -n "$switch_llm_system_prompt" || -n "$switch_llm_short_goal" || -n "$switch_llm_long_goal" ]]; then
-  if [[ -z "$prompt_switch_tick" ]]; then
-    echo "--prompt-switch-tick is required when any --switch-llm-* option is set" >&2
+if [[ -n "$prompt_switches_json" ]]; then
+  if [[ -n "$prompt_switch_tick" || -n "$switch_llm_system_prompt" || -n "$switch_llm_short_goal" || -n "$switch_llm_long_goal" ]]; then
+    echo "--prompt-switches-json cannot be mixed with --prompt-switch-tick/--switch-llm-*" >&2
     exit 2
   fi
-fi
-if [[ -n "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
-  echo "--prompt-switch-tick requires at least one --switch-llm-* option" >&2
-  exit 2
+else
+  if [[ -n "$switch_llm_system_prompt" || -n "$switch_llm_short_goal" || -n "$switch_llm_long_goal" ]]; then
+    if [[ -z "$prompt_switch_tick" ]]; then
+      echo "--prompt-switch-tick is required when any --switch-llm-* option is set" >&2
+      exit 2
+    fi
+  fi
+  if [[ -n "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
+    echo "--prompt-switch-tick requires at least one --switch-llm-* option" >&2
+    exit 2
+  fi
 fi
 apply_release_gate_defaults
 required_action_kinds_config=$(format_required_action_kind_requirements)
@@ -1046,6 +1135,9 @@ for scenario in "${scenarios[@]}"; do
     fi
     if [[ -n "$switch_llm_long_goal" ]]; then
       cmd+=(--switch-llm-long-term-goal "$switch_llm_long_goal")
+    fi
+    if [[ -n "$prompt_switches_json" ]]; then
+      cmd+=(--prompt-switches-json "$prompt_switches_json")
     fi
 
     if [[ $multi_mode -eq 1 ]]; then

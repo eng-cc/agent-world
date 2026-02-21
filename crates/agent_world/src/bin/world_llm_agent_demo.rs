@@ -8,7 +8,26 @@ use agent_world::simulator::{
     initialize_kernel, ActionResult, AgentDecision, AgentDecisionTrace, AgentRunner,
     LlmAgentBehavior, RejectReason, WorldConfig, WorldInitConfig, WorldScenario,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct PromptSwitchSpec {
+    tick: u64,
+    #[serde(default, alias = "system_prompt")]
+    llm_system_prompt: Option<String>,
+    #[serde(default, alias = "short_term_goal")]
+    llm_short_term_goal: Option<String>,
+    #[serde(default, alias = "long_term_goal")]
+    llm_long_term_goal: Option<String>,
+}
+
+impl PromptSwitchSpec {
+    fn has_override(&self) -> bool {
+        self.llm_system_prompt.is_some()
+            || self.llm_short_term_goal.is_some()
+            || self.llm_long_term_goal.is_some()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 struct CliOptions {
@@ -24,6 +43,8 @@ struct CliOptions {
     switch_llm_system_prompt: Option<String>,
     switch_llm_short_term_goal: Option<String>,
     switch_llm_long_term_goal: Option<String>,
+    prompt_switches_json: Option<String>,
+    prompt_switches: Vec<PromptSwitchSpec>,
 }
 
 impl Default for CliOptions {
@@ -41,6 +62,8 @@ impl Default for CliOptions {
             switch_llm_system_prompt: None,
             switch_llm_short_term_goal: None,
             switch_llm_long_term_goal: None,
+            prompt_switches_json: None,
+            prompt_switches: Vec::new(),
         }
     }
 }
@@ -388,36 +411,34 @@ fn main() {
     println!("ticks: {}", options.ticks);
 
     let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
-    let mut prompt_switch_applied = false;
+    let mut next_prompt_switch_idx = 0usize;
 
     for idx in 0..options.ticks {
         let tick = idx + 1;
-        if !prompt_switch_applied {
-            if let Some(switch_tick) = options.prompt_switch_tick {
-                if tick >= switch_tick {
-                    for agent_id in runner.agent_ids() {
-                        if let Some(agent) = runner.get_mut(agent_id.as_str()) {
-                            let current = agent.behavior.prompt_overrides();
-                            agent.behavior.apply_prompt_overrides(
-                                options
-                                    .switch_llm_system_prompt
-                                    .clone()
-                                    .or(current.system_prompt),
-                                options
-                                    .switch_llm_short_term_goal
-                                    .clone()
-                                    .or(current.short_term_goal),
-                                options
-                                    .switch_llm_long_term_goal
-                                    .clone()
-                                    .or(current.long_term_goal),
-                            );
-                        }
-                    }
-                    prompt_switch_applied = true;
-                    println!("tick={} prompt_switch_applied=true", tick);
+        while next_prompt_switch_idx < options.prompt_switches.len()
+            && tick >= options.prompt_switches[next_prompt_switch_idx].tick
+        {
+            let switch = options.prompt_switches[next_prompt_switch_idx].clone();
+            for agent_id in runner.agent_ids() {
+                if let Some(agent) = runner.get_mut(agent_id.as_str()) {
+                    let current = agent.behavior.prompt_overrides();
+                    agent.behavior.apply_prompt_overrides(
+                        switch.llm_system_prompt.clone().or(current.system_prompt),
+                        switch
+                            .llm_short_term_goal
+                            .clone()
+                            .or(current.short_term_goal),
+                        switch.llm_long_term_goal.clone().or(current.long_term_goal),
+                    );
                 }
             }
+            println!(
+                "tick={} prompt_switch_applied=true switch_index={} switch_tick={}",
+                tick,
+                next_prompt_switch_idx + 1,
+                switch.tick
+            );
+            next_prompt_switch_idx += 1;
         }
 
         match runner.tick(&mut kernel) {
@@ -550,6 +571,43 @@ fn write_report_json(path: &str, run_report: &DemoRunReport) -> Result<(), Strin
     })
 }
 
+fn normalize_prompt_switches(
+    mut switches: Vec<PromptSwitchSpec>,
+    source_hint: &str,
+) -> Result<Vec<PromptSwitchSpec>, String> {
+    if switches.is_empty() {
+        return Err(format!("{source_hint} requires at least one switch entry"));
+    }
+
+    switches.sort_by_key(|entry| entry.tick);
+    let mut previous_tick: Option<u64> = None;
+    for entry in &switches {
+        if entry.tick == 0 {
+            return Err(format!("{source_hint} tick must be a positive integer"));
+        }
+        if !entry.has_override() {
+            return Err(format!(
+                "{source_hint} tick={} requires at least one llm_* override field",
+                entry.tick
+            ));
+        }
+        if previous_tick == Some(entry.tick) {
+            return Err(format!(
+                "{source_hint} contains duplicated tick={}",
+                entry.tick
+            ));
+        }
+        previous_tick = Some(entry.tick);
+    }
+    Ok(switches)
+}
+
+fn parse_prompt_switches_json(raw: &str) -> Result<Vec<PromptSwitchSpec>, String> {
+    let parsed: Vec<PromptSwitchSpec> = serde_json::from_str(raw)
+        .map_err(|err| format!("invalid --prompt-switches-json: {err}"))?;
+    normalize_prompt_switches(parsed, "--prompt-switches-json")
+}
+
 fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
     let mut options = CliOptions::default();
     let mut scenario_arg: Option<&str> = None;
@@ -661,6 +719,13 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         .to_string(),
                 );
             }
+            "--prompt-switches-json" => {
+                options.prompt_switches_json = Some(
+                    iter.next()
+                        .ok_or_else(|| "--prompt-switches-json requires a JSON string".to_string())?
+                        .to_string(),
+                );
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -680,15 +745,39 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
         })?;
     }
 
-    if options.has_switch_prompt_override() && options.prompt_switch_tick.is_none() {
+    if options.prompt_switches_json.is_some()
+        && (options.prompt_switch_tick.is_some() || options.has_switch_prompt_override())
+    {
         return Err(
-            "--prompt-switch-tick is required when switch prompt overrides are set".to_string(),
+            "cannot combine --prompt-switches-json with --prompt-switch-tick/--switch-llm-*"
+                .to_string(),
         );
     }
-    if options.prompt_switch_tick.is_some() && !options.has_switch_prompt_override() {
-        return Err(
-            "--prompt-switch-tick requires at least one --switch-llm-* override".to_string(),
-        );
+
+    if let Some(raw_json) = options.prompt_switches_json.as_ref() {
+        options.prompt_switches = parse_prompt_switches_json(raw_json)?;
+    } else {
+        if options.has_switch_prompt_override() && options.prompt_switch_tick.is_none() {
+            return Err(
+                "--prompt-switch-tick is required when switch prompt overrides are set".to_string(),
+            );
+        }
+        if options.prompt_switch_tick.is_some() && !options.has_switch_prompt_override() {
+            return Err(
+                "--prompt-switch-tick requires at least one --switch-llm-* override".to_string(),
+            );
+        }
+        if let Some(tick) = options.prompt_switch_tick {
+            options.prompt_switches = normalize_prompt_switches(
+                vec![PromptSwitchSpec {
+                    tick,
+                    llm_system_prompt: options.switch_llm_system_prompt.clone(),
+                    llm_short_term_goal: options.switch_llm_short_term_goal.clone(),
+                    llm_long_term_goal: options.switch_llm_long_term_goal.clone(),
+                }],
+                "legacy --prompt-switch-tick",
+            )?;
+        }
     }
 
     Ok(options)
@@ -716,6 +805,9 @@ fn print_help() {
         "  --switch-llm-long-term-goal <text>  Long-term goal used after --prompt-switch-tick"
     );
     println!(
+        "  --prompt-switches-json <json>  Multi-stage switch plan (array of {{\"tick\":n,\"llm_*\":...}}); cannot be mixed with legacy --prompt-switch-* options"
+    );
+    println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
     );
@@ -740,6 +832,8 @@ mod tests {
         assert_eq!(options.switch_llm_system_prompt, None);
         assert_eq!(options.switch_llm_short_term_goal, None);
         assert_eq!(options.switch_llm_long_term_goal, None);
+        assert_eq!(options.prompt_switches_json, None);
+        assert!(options.prompt_switches.is_empty());
     }
 
     #[test]
@@ -816,6 +910,62 @@ mod tests {
             Some("short2")
         );
         assert_eq!(options.switch_llm_long_term_goal.as_deref(), Some("long2"));
+        assert_eq!(options.prompt_switches.len(), 1);
+        assert_eq!(options.prompt_switches[0].tick, 9);
+    }
+
+    #[test]
+    fn parse_options_accepts_prompt_switches_json() {
+        let options = parse_options(
+            [
+                "--prompt-switches-json",
+                r#"[{"tick":12,"llm_short_term_goal":"mid"},{"tick":24,"llm_long_term_goal":"late"}]"#,
+            ]
+            .into_iter(),
+        )
+        .expect("prompt switches json");
+        assert_eq!(options.prompt_switches.len(), 2);
+        assert_eq!(options.prompt_switches[0].tick, 12);
+        assert_eq!(
+            options.prompt_switches[0].llm_short_term_goal.as_deref(),
+            Some("mid")
+        );
+        assert_eq!(options.prompt_switches[1].tick, 24);
+        assert_eq!(
+            options.prompt_switches[1].llm_long_term_goal.as_deref(),
+            Some("late")
+        );
+    }
+
+    #[test]
+    fn parse_options_rejects_invalid_prompt_switches_json() {
+        let err = parse_options(["--prompt-switches-json", "not-json"].into_iter())
+            .expect_err("invalid prompt switches json");
+        assert!(err.contains("invalid --prompt-switches-json"));
+    }
+
+    #[test]
+    fn parse_options_rejects_prompt_switches_json_without_override_fields() {
+        let err = parse_options(["--prompt-switches-json", r#"[{"tick":12}]"#].into_iter())
+            .expect_err("missing switch override fields");
+        assert!(err.contains("requires at least one llm_* override"));
+    }
+
+    #[test]
+    fn parse_options_rejects_mixed_legacy_and_prompt_switches_json() {
+        let err = parse_options(
+            [
+                "--prompt-switch-tick",
+                "9",
+                "--switch-llm-short-term-goal",
+                "short2",
+                "--prompt-switches-json",
+                r#"[{"tick":12,"llm_short_term_goal":"mid"}]"#,
+            ]
+            .into_iter(),
+        )
+        .expect_err("mixed legacy and json switch options");
+        assert!(err.contains("cannot combine --prompt-switches-json"));
     }
 
     #[test]

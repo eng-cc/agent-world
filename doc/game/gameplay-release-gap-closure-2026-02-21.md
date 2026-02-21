@@ -32,6 +32,9 @@
 - 新增运行期 prompt 切换输入（world_llm_agent_demo / stress 脚本透传）：
   - 切换触发 tick。
   - 切换后的 `system_prompt` / `short_term_goal` / `long_term_goal`。
+- 新增多阶段切换输入（用于千 tick 级长周期）：
+  - `--prompt-switches-json`：按 tick 序列声明多次切换（每项至少包含一个 `llm_*` 覆盖字段）。
+  - 与单次切换参数互斥，避免配置歧义。
 - 新增游戏发展测试 prompt 套件（stress 脚本内置 `--prompt-pack`）：
   - `story_balanced`（默认推荐）
   - `frontier_builder`
@@ -64,6 +67,7 @@
 - M2：release gate profile 与玩法覆盖口径落地并通过脚本回归。
 - M3：LLM 经济动作 schema/parser/tests 收口。
 - M4：m5 规则增强 + runtime/模块测试回归通过。
+- M5：长周期（>=1000 ticks）多阶段 prompt 切换能力落地并通过脚本/解析回归。
 
 ## 风险
 - Prompt 调整可能引入动作漂移，导致既有工业闭环退化。
@@ -72,3 +76,5 @@
   - 缓解：提供 profile 分层与清晰失败诊断信息。
 - 规则增强可能触发历史测试断言漂移。
   - 缓解：先补测试再改规则，保持协议字段兼容。
+- 长周期切换配置可能出现参数冲突（单次切换与多次切换混用）。
+  - 缓解：CLI 显式互斥校验，脚本默认仅选择一种切换路径。

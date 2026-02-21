@@ -33,6 +33,13 @@
 - [x] 回写项目文档状态
 - [x] 回写 `doc/devlog/2026-02-21.md`
 
+### T6 千 tick 长周期演进（新增）
+- [x] `world_llm_agent_demo` 增加多阶段切换参数（`--prompt-switches-json`）并与单次切换参数做互斥校验
+- [x] `llm-longrun-stress.sh` 支持透传 `--prompt-switches-json`
+- [x] `story_balanced` 在长周期（中长/超长）自动生成多阶段切换计划
+- [x] 更新 `testing-manual.md` 长周期示例与参数说明
+- [x] 运行解析/脚本回归并记录日志
+
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
 - `doc/game/gameplay-module-driven-production-closure.md`
@@ -41,7 +48,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3、T4、T5
-- 本轮增量：已将 `story_balanced` 与 prompt assembly 的治理文案从“强制动作链”调整为“阶段叙事 + 局势驱动 + 去循环建议”。
-- 进行中：后续 gameplay gate 稳定性优化（非本轮拆解项）
+- 已完成：T0、T1、T2、T3、T4、T5、T6
+- 本轮增量：千 tick 长周期下支持多阶段 prompt 切换计划，`story_balanced` 可自动按阶段演进。
+- 进行中：后续 gameplay gate 稳定性优化（以多轮稳定性口径持续迭代）
 - 阻塞项：无
