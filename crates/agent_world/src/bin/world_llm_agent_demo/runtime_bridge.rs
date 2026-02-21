@@ -358,4 +358,9 @@ impl RuntimeGameplayBridge {
             event: simulator_event,
         })
     }
+
+    #[cfg(test)]
+    pub(crate) fn state(&self) -> &agent_world::runtime::WorldState {
+        self.world.state()
+    }
 }

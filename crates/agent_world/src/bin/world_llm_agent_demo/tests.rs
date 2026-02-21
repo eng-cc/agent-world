@@ -1,5 +1,9 @@
 use super::*;
-use agent_world::simulator::{Action, ResourceKind, WorldEvent, WorldEventKind};
+#[cfg(feature = "test_tier_full")]
+use agent_world::runtime::{EconomicContractStatus, GovernanceProposalStatus};
+#[cfg(feature = "test_tier_full")]
+use agent_world::simulator::ResourceKind;
+use agent_world::simulator::{Action, WorldEvent, WorldEventKind};
 
 #[cfg(feature = "test_tier_full")]
 fn tracked_baseline_fixture_dir() -> std::path::PathBuf {
@@ -373,7 +377,34 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
     let voter = agent_ids[1].clone();
     let progress_target = agent_ids[2].clone();
     let contract_counterparty = agent_ids[3].clone();
+    let proposal_key = "fixture.governance.smoke";
+    let contract_id = "fixture.contract.smoke";
+    let track = "civic";
+    let achievement_id = "fixture-governance-smoke";
     let mut tick = kernel.time().saturating_add(1);
+    let baseline_progress = runtime_bridge
+        .state()
+        .meta_progress
+        .get(progress_target.as_str())
+        .cloned();
+    let baseline_total_points = baseline_progress
+        .as_ref()
+        .map(|state| state.total_points)
+        .unwrap_or(0);
+    let baseline_track_points = baseline_progress
+        .as_ref()
+        .and_then(|state| state.track_points.get(track))
+        .copied()
+        .unwrap_or(0);
+    let baseline_achievement_known = baseline_progress
+        .as_ref()
+        .map(|state| {
+            state
+                .achievements
+                .iter()
+                .any(|item| item.as_str() == achievement_id)
+        })
+        .unwrap_or(false);
 
     let open_proposal = runtime_bridge
         .execute(
@@ -381,7 +412,7 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             proposer.as_str(),
             Action::OpenGovernanceProposal {
                 proposer_agent_id: proposer.clone(),
-                proposal_key: "fixture.governance.smoke".to_string(),
+                proposal_key: proposal_key.to_string(),
                 title: "fixture governance smoke".to_string(),
                 description: "verify governance continuation from tracked baseline".to_string(),
                 options: vec!["approve".to_string(), "reject".to_string()],
@@ -400,7 +431,7 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             voter.as_str(),
             Action::CastGovernanceVote {
                 voter_agent_id: voter.clone(),
-                proposal_key: "fixture.governance.smoke".to_string(),
+                proposal_key: proposal_key.to_string(),
                 option: "approve".to_string(),
                 weight: 1,
             },
@@ -416,9 +447,9 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             Action::GrantMetaProgress {
                 operator_agent_id: proposer.clone(),
                 target_agent_id: progress_target.clone(),
-                track: "civic".to_string(),
+                track: track.to_string(),
                 points: 5,
-                achievement_id: Some("fixture-governance-smoke".to_string()),
+                achievement_id: Some(achievement_id.to_string()),
             },
         )
         .expect("runtime bridge grant meta progress");
@@ -431,7 +462,7 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             proposer.as_str(),
             Action::OpenEconomicContract {
                 creator_agent_id: proposer.clone(),
-                contract_id: "fixture.contract.smoke".to_string(),
+                contract_id: contract_id.to_string(),
                 counterparty_agent_id: contract_counterparty.clone(),
                 settlement_kind: ResourceKind::Data,
                 settlement_amount: 10,
@@ -453,7 +484,7 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             contract_counterparty.as_str(),
             Action::AcceptEconomicContract {
                 accepter_agent_id: contract_counterparty.clone(),
-                contract_id: "fixture.contract.smoke".to_string(),
+                contract_id: contract_id.to_string(),
             },
         )
         .expect("runtime bridge accept economic contract");
@@ -469,7 +500,7 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
             proposer.as_str(),
             Action::SettleEconomicContract {
                 operator_agent_id: proposer.clone(),
-                contract_id: "fixture.contract.smoke".to_string(),
+                contract_id: contract_id.to_string(),
                 success: false,
                 notes: "offline smoke settlement".to_string(),
             },
@@ -479,6 +510,69 @@ fn runtime_bridge_continues_governance_from_tracked_baseline_fixture() {
         settle_contract.success,
         "settle economic contract should succeed"
     );
+
+    let runtime_state = runtime_bridge.state();
+    let proposal = runtime_state
+        .governance_proposals
+        .get(proposal_key)
+        .expect("proposal state should exist");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Open);
+
+    let votes = runtime_state
+        .governance_votes
+        .get(proposal_key)
+        .expect("governance vote state should exist");
+    assert_eq!(votes.total_weight, 1);
+    assert_eq!(votes.tallies.get("approve"), Some(&1_u64));
+    let ballot = votes
+        .votes_by_agent
+        .get(voter.as_str())
+        .expect("voter ballot should exist");
+    assert_eq!(ballot.option, "approve");
+    assert_eq!(ballot.weight, 1);
+
+    let progress = runtime_state
+        .meta_progress
+        .get(progress_target.as_str())
+        .expect("meta progress state should exist");
+    assert_eq!(progress.total_points, baseline_total_points + 5);
+    assert_eq!(
+        progress.track_points.get(track).copied(),
+        Some(baseline_track_points + 5)
+    );
+    assert!(
+        progress
+            .achievements
+            .iter()
+            .any(|item| item.as_str() == achievement_id),
+        "meta progress should contain smoke achievement id"
+    );
+    if !baseline_achievement_known {
+        let baseline_achievement_len = baseline_progress
+            .as_ref()
+            .map(|state| state.achievements.len())
+            .unwrap_or(0);
+        assert_eq!(
+            progress.achievements.len(),
+            baseline_achievement_len + 1,
+            "smoke achievement should append once when absent in baseline"
+        );
+    }
+
+    let contract = runtime_state
+        .economic_contracts
+        .get(contract_id)
+        .expect("economic contract state should exist");
+    assert_eq!(contract.status, EconomicContractStatus::Settled);
+    assert_eq!(contract.settlement_success, Some(false));
+    assert_eq!(contract.transfer_amount, 0);
+    assert_eq!(contract.tax_amount, 0);
+    assert_eq!(
+        contract.settlement_notes.as_deref(),
+        Some("offline smoke settlement")
+    );
+    assert!(contract.accepted_at.is_some());
+    assert!(contract.settled_at.is_some());
 
     advance_kernel_time_with_noop_move(&mut kernel, proposer.as_str());
 }
