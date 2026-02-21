@@ -908,6 +908,86 @@ fn location_style_override_enabled_detects_material_or_texture_override() {
     ));
 }
 
+#[test]
+fn parse_material_variant_preset_supports_aliases() {
+    assert_eq!(
+        parse_material_variant_preset("default"),
+        Some(ViewerMaterialVariantPreset::Default)
+    );
+    assert_eq!(
+        parse_material_variant_preset("MATTE"),
+        Some(ViewerMaterialVariantPreset::Matte)
+    );
+    assert_eq!(
+        parse_material_variant_preset("shine"),
+        Some(ViewerMaterialVariantPreset::Glossy)
+    );
+    assert_eq!(parse_material_variant_preset("unknown"), None);
+}
+
+#[test]
+fn resolve_material_variant_preview_state_defaults_when_missing_or_invalid() {
+    let missing = resolve_material_variant_preview_state_from(|_| None);
+    assert_eq!(missing.active, ViewerMaterialVariantPreset::Default);
+
+    let invalid = resolve_material_variant_preview_state_from(|_| Some("bad".to_string()));
+    assert_eq!(invalid.active, ViewerMaterialVariantPreset::Default);
+
+    let matte = resolve_material_variant_preview_state_from(|_| Some("matte".to_string()));
+    assert_eq!(matte.active, ViewerMaterialVariantPreset::Matte);
+}
+
+#[test]
+fn material_variant_preset_next_cycles_in_order() {
+    assert_eq!(
+        ViewerMaterialVariantPreset::Default.next(),
+        ViewerMaterialVariantPreset::Matte
+    );
+    assert_eq!(
+        ViewerMaterialVariantPreset::Matte.next(),
+        ViewerMaterialVariantPreset::Glossy
+    );
+    assert_eq!(
+        ViewerMaterialVariantPreset::Glossy.next(),
+        ViewerMaterialVariantPreset::Default
+    );
+}
+
+#[test]
+fn material_variant_scalars_follow_expected_direction() {
+    let matte = material_variant_scalars(ViewerMaterialVariantPreset::Matte);
+    assert!(matte.roughness_scale > 1.0);
+    assert!(matte.metallic_scale < 1.0);
+
+    let glossy = material_variant_scalars(ViewerMaterialVariantPreset::Glossy);
+    assert!(glossy.roughness_scale < 1.0);
+    assert!(glossy.metallic_scale > 1.0);
+}
+
+#[test]
+fn apply_material_variant_scalar_clamps_to_unit_range() {
+    assert!((apply_material_variant_scalar(0.5, 2.0) - 1.0).abs() < f32::EPSILON);
+    assert!((apply_material_variant_scalar(0.5, 0.5) - 0.25).abs() < f32::EPSILON);
+}
+
+#[test]
+fn apply_material_variant_to_material_updates_roughness_and_metallic() {
+    let mut materials = Assets::<StandardMaterial>::default();
+    let handle = materials.add(StandardMaterial::default());
+
+    apply_material_variant_to_material(
+        &mut materials,
+        &handle,
+        0.4,
+        0.6,
+        ViewerMaterialVariantPreset::Glossy,
+    );
+
+    let material = materials.get(&handle).expect("material exists");
+    assert!(material.perceptual_roughness < 0.4);
+    assert!(material.metallic > 0.6);
+}
+
 #[path = "tests_scene_entities.rs"]
 mod tests_scene_entities;
 

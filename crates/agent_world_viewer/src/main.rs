@@ -431,6 +431,34 @@ impl Default for ViewerPanelMode {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerMaterialVariantPreset {
+    Default,
+    Matte,
+    Glossy,
+}
+
+impl Default for ViewerMaterialVariantPreset {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+impl ViewerMaterialVariantPreset {
+    fn next(self) -> Self {
+        match self {
+            Self::Default => Self::Matte,
+            Self::Matte => Self::Glossy,
+            Self::Glossy => Self::Default,
+        }
+    }
+}
+
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct MaterialVariantPreviewState {
+    active: ViewerMaterialVariantPreset,
+}
+
 #[derive(Resource)]
 struct Viewer3dAssets {
     agent_mesh: Handle<Mesh>,
@@ -664,6 +692,109 @@ fn texture_slot_override_enabled(slot: &ViewerExternalTextureSlotConfig) -> bool
         || slot.normal_texture_asset.is_some()
         || slot.metallic_roughness_texture_asset.is_some()
         || slot.emissive_texture_asset.is_some()
+}
+
+#[derive(Clone, Copy, Debug)]
+struct MaterialVariantScalars {
+    roughness_scale: f32,
+    metallic_scale: f32,
+}
+
+fn parse_material_variant_preset(raw: &str) -> Option<ViewerMaterialVariantPreset> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "default" | "base" | "balanced" => Some(ViewerMaterialVariantPreset::Default),
+        "matte" | "flat" => Some(ViewerMaterialVariantPreset::Matte),
+        "glossy" | "shine" => Some(ViewerMaterialVariantPreset::Glossy),
+        _ => None,
+    }
+}
+
+fn resolve_material_variant_preview_state() -> MaterialVariantPreviewState {
+    resolve_material_variant_preview_state_from(|key| std::env::var(key).ok())
+}
+
+fn resolve_material_variant_preview_state_from<F>(lookup: F) -> MaterialVariantPreviewState
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let active = lookup("AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET")
+        .as_deref()
+        .and_then(parse_material_variant_preset)
+        .unwrap_or_default();
+    MaterialVariantPreviewState { active }
+}
+
+fn material_variant_scalars(preset: ViewerMaterialVariantPreset) -> MaterialVariantScalars {
+    match preset {
+        ViewerMaterialVariantPreset::Default => MaterialVariantScalars {
+            roughness_scale: 1.0,
+            metallic_scale: 1.0,
+        },
+        ViewerMaterialVariantPreset::Matte => MaterialVariantScalars {
+            roughness_scale: 1.35,
+            metallic_scale: 0.65,
+        },
+        ViewerMaterialVariantPreset::Glossy => MaterialVariantScalars {
+            roughness_scale: 0.65,
+            metallic_scale: 1.35,
+        },
+    }
+}
+
+fn apply_material_variant_scalar(base: f32, scale: f32) -> f32 {
+    (base * scale).clamp(0.0, 1.0)
+}
+
+fn apply_material_variant_to_material(
+    materials: &mut Assets<StandardMaterial>,
+    handle: &Handle<StandardMaterial>,
+    base_roughness: f32,
+    base_metallic: f32,
+    preset: ViewerMaterialVariantPreset,
+) {
+    let scalars = material_variant_scalars(preset);
+    let Some(material) = materials.get_mut(handle) else {
+        return;
+    };
+    material.perceptual_roughness =
+        apply_material_variant_scalar(base_roughness, scalars.roughness_scale);
+    material.metallic = apply_material_variant_scalar(base_metallic, scalars.metallic_scale);
+}
+
+fn apply_material_variant_to_scene_materials(
+    materials: &mut Assets<StandardMaterial>,
+    assets: &Viewer3dAssets,
+    config: &Viewer3dConfig,
+    preset: ViewerMaterialVariantPreset,
+) {
+    apply_material_variant_to_material(
+        materials,
+        &assets.agent_material,
+        config.materials.agent.roughness,
+        config.materials.agent.metallic,
+        preset,
+    );
+    apply_material_variant_to_material(
+        materials,
+        &assets.asset_material,
+        config.materials.asset.roughness,
+        config.materials.asset.metallic,
+        preset,
+    );
+    apply_material_variant_to_material(
+        materials,
+        &assets.power_plant_material,
+        config.materials.facility.roughness,
+        config.materials.facility.metallic,
+        preset,
+    );
+    apply_material_variant_to_material(
+        materials,
+        &assets.power_storage_material,
+        config.materials.facility.roughness,
+        config.materials.facility.metallic,
+        preset,
+    );
 }
 
 fn color_from_srgb(rgb: [f32; 3]) -> Color {
@@ -1021,6 +1152,7 @@ fn setup_3d_scene(
     external_mesh: Res<ViewerExternalMeshConfig>,
     external_material: Res<ViewerExternalMaterialConfig>,
     external_texture: Res<ViewerExternalTextureConfig>,
+    variant_preview: Res<MaterialVariantPreviewState>,
     camera_mode: Res<ViewerCameraMode>,
     mut scene: ResMut<Viewer3dScene>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -1077,6 +1209,31 @@ fn setup_3d_scene(
     let power_plant_texture = resolve_texture_slot(&asset_server, &external_texture.power_plant);
     let power_storage_texture =
         resolve_texture_slot(&asset_server, &external_texture.power_storage);
+    let variant_scalars = material_variant_scalars(variant_preview.active);
+    let agent_roughness = apply_material_variant_scalar(
+        config.materials.agent.roughness,
+        variant_scalars.roughness_scale,
+    );
+    let agent_metallic = apply_material_variant_scalar(
+        config.materials.agent.metallic,
+        variant_scalars.metallic_scale,
+    );
+    let asset_roughness = apply_material_variant_scalar(
+        config.materials.asset.roughness,
+        variant_scalars.roughness_scale,
+    );
+    let asset_metallic = apply_material_variant_scalar(
+        config.materials.asset.metallic,
+        variant_scalars.metallic_scale,
+    );
+    let facility_roughness = apply_material_variant_scalar(
+        config.materials.facility.roughness,
+        variant_scalars.roughness_scale,
+    );
+    let facility_metallic = apply_material_variant_scalar(
+        config.materials.facility.metallic,
+        variant_scalars.metallic_scale,
+    );
     let agent_base_color =
         resolve_srgb_slot_color([1.0, 0.42, 0.22], external_material.agent.base_color_srgb);
     let agent_emissive_color = resolve_srgb_slot_color(
@@ -1089,8 +1246,8 @@ fn setup_3d_scene(
         normal_map_texture: agent_texture.normal_map_texture,
         metallic_roughness_texture: agent_texture.metallic_roughness_texture,
         emissive_texture: agent_texture.emissive_texture,
-        perceptual_roughness: config.materials.agent.roughness,
-        metallic: config.materials.agent.metallic,
+        perceptual_roughness: agent_roughness,
+        metallic: agent_metallic,
         emissive: emissive_from_srgb_with_boost(
             agent_emissive_color,
             config.materials.agent.emissive_boost,
@@ -1116,8 +1273,8 @@ fn setup_3d_scene(
         normal_map_texture: asset_texture.normal_map_texture,
         metallic_roughness_texture: asset_texture.metallic_roughness_texture,
         emissive_texture: asset_texture.emissive_texture,
-        perceptual_roughness: config.materials.asset.roughness,
-        metallic: config.materials.asset.metallic,
+        perceptual_roughness: asset_roughness,
+        metallic: asset_metallic,
         emissive: emissive_from_srgb_with_boost(
             asset_emissive_color,
             config.materials.asset.emissive_boost,
@@ -1138,8 +1295,8 @@ fn setup_3d_scene(
         normal_map_texture: power_plant_texture.normal_map_texture,
         metallic_roughness_texture: power_plant_texture.metallic_roughness_texture,
         emissive_texture: power_plant_texture.emissive_texture,
-        perceptual_roughness: config.materials.facility.roughness,
-        metallic: config.materials.facility.metallic,
+        perceptual_roughness: facility_roughness,
+        metallic: facility_metallic,
         emissive: emissive_from_srgb_with_boost(
             power_plant_emissive_color,
             config.materials.facility.emissive_boost,
@@ -1160,8 +1317,8 @@ fn setup_3d_scene(
         normal_map_texture: power_storage_texture.normal_map_texture,
         metallic_roughness_texture: power_storage_texture.metallic_roughness_texture,
         emissive_texture: power_storage_texture.emissive_texture,
-        perceptual_roughness: config.materials.facility.roughness,
-        metallic: config.materials.facility.metallic,
+        perceptual_roughness: facility_roughness,
+        metallic: facility_metallic,
         emissive: emissive_from_srgb_with_boost(
             power_storage_emissive_color,
             config.materials.facility.emissive_boost,
@@ -1218,8 +1375,8 @@ fn setup_3d_scene(
             normal_map_texture: location_texture.normal_map_texture.clone(),
             metallic_roughness_texture: location_texture.metallic_roughness_texture.clone(),
             emissive_texture: location_texture.emissive_texture.clone(),
-            perceptual_roughness: config.materials.facility.roughness,
-            metallic: config.materials.facility.metallic,
+            perceptual_roughness: facility_roughness,
+            metallic: facility_metallic,
             emissive: color_from_srgb(location_emissive_color).into(),
             alpha_mode: AlphaMode::Blend,
             ..default()
@@ -1714,6 +1871,29 @@ fn poll_viewer_messages(
             }
         }
     }
+}
+
+fn handle_material_variant_preview_hotkey(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut preview_state: ResMut<MaterialVariantPreviewState>,
+    config: Res<Viewer3dConfig>,
+    assets: Option<Res<Viewer3dAssets>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if !keyboard.just_pressed(KeyCode::F8) {
+        return;
+    }
+
+    preview_state.active = preview_state.active.next();
+    let Some(assets) = assets else {
+        return;
+    };
+    apply_material_variant_to_scene_materials(
+        &mut materials,
+        &assets,
+        &config,
+        preview_state.active,
+    );
 }
 
 fn update_3d_scene(
