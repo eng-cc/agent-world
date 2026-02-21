@@ -155,6 +155,27 @@ extract_summary_value() {
   grep -E "^${key}=" "$file_path" | tail -n 1 | cut -d'=' -f2-
 }
 
+count_connected_captures() {
+  local capture_root=$1
+  local status_count=0
+  local connected_count=0
+  local capture_status_file=""
+  local status_value=""
+  local snapshot_ready_value=""
+
+  while IFS= read -r capture_status_file; do
+    [[ -z "$capture_status_file" ]] && continue
+    status_count=$((status_count + 1))
+    status_value=$(extract_summary_value "$capture_status_file" "connection_status")
+    snapshot_ready_value=$(extract_summary_value "$capture_status_file" "snapshot_ready")
+    if [[ "$status_value" == "connected" && "$snapshot_ready_value" == "1" ]]; then
+      connected_count=$((connected_count + 1))
+    fi
+  done < <(find "$capture_root" -type f -name 'capture_status.txt' | sort)
+
+  echo "$status_count $connected_count"
+}
+
 scenario="llm_bootstrap"
 theme_pack="industrial_v2"
 variants_raw="default,matte,glossy"
@@ -389,7 +410,16 @@ if (( skip_theme_preview == 0 )); then
       fail_step theme_preview_status theme_preview_note \
         "viewer.png count too small: got=$preview_count expected>=$expected_preview_count"
     else
-      theme_preview_note="viewer.png count=$preview_count expected>=$expected_preview_count"
+      read -r preview_status_count preview_connected_count <<<"$(count_connected_captures "$theme_preview_out")"
+      if (( preview_status_count < expected_preview_count )); then
+        fail_step theme_preview_status theme_preview_note \
+          "capture_status count too small: got=$preview_status_count expected>=$expected_preview_count"
+      elif (( preview_connected_count < expected_preview_count )); then
+        fail_step theme_preview_status theme_preview_note \
+          "connected captures too small: got=$preview_connected_count expected>=$expected_preview_count"
+      else
+        theme_preview_note="viewer.png count=$preview_count expected>=$expected_preview_count; connected captures=$preview_connected_count/$expected_preview_count"
+      fi
     fi
   fi
 fi
@@ -416,7 +446,16 @@ if (( skip_texture_inspector == 0 )); then
       fail_step texture_status texture_note \
         "viewer.png count too small: got=$texture_count expected>=$expected_texture_count"
     else
-      texture_note="viewer.png count=$texture_count expected>=$expected_texture_count"
+      read -r texture_status_count texture_connected_count <<<"$(count_connected_captures "$texture_out")"
+      if (( texture_status_count < expected_texture_count )); then
+        fail_step texture_status texture_note \
+          "capture_status count too small: got=$texture_status_count expected>=$expected_texture_count"
+      elif (( texture_connected_count < expected_texture_count )); then
+        fail_step texture_status texture_note \
+          "connected captures too small: got=$texture_connected_count expected>=$expected_texture_count"
+      else
+        texture_note="viewer.png count=$texture_count expected>=$expected_texture_count; connected captures=$texture_connected_count/$expected_texture_count"
+      fi
     fi
   fi
 fi

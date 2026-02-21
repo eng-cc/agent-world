@@ -241,6 +241,11 @@ bash "$PWCLI" close
 - 产物：
   - `output/playwright/viewer/release_full/<timestamp>/release-full-summary-*.md`
   - 子目录：`web_qa/`、`theme_preview/`、`texture_inspector/`、`gameplay_industrial/`、`gameplay_governance/`
+  - 视觉抓帧状态：`theme_preview/*/capture_status.txt`、`texture_inspector/*/*/capture_status.txt`
+- 视觉门禁新增硬条件：
+  - 主题/纹理截图不仅要求 `viewer.png` 存在；
+  - 还要求 `capture_status.txt` 满足 `connection_status=connected` 且 `snapshot_ready=1`；
+  - 任一截图断连或无快照时，full coverage 直接 FAIL（避免“有图但不可用”的假通过）。
 - 快速冒烟：
 ```bash
 ./scripts/viewer-release-full-coverage.sh --quick

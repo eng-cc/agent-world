@@ -30,6 +30,12 @@ run() {
   "$@"
 }
 
+capture_status_value() {
+  local status_file=$1
+  local key=$2
+  grep -E "^${key}=" "$status_file" | tail -n 1 | cut -d'=' -f2-
+}
+
 resolve_variants() {
   local raw=$1
   local normalized
@@ -172,9 +178,27 @@ for variant in "${variants[@]}"; do
       ${no_prewarm_arg:+$no_prewarm_arg}
   )
 
+  capture_status_file=".tmp/screens/capture_status.txt"
+  if [[ ! -s "$capture_status_file" ]]; then
+    echo "missing capture status file: $capture_status_file (variant=$variant)" >&2
+    exit 1
+  fi
+  capture_connection_status=$(capture_status_value "$capture_status_file" "connection_status")
+  capture_snapshot_ready=$(capture_status_value "$capture_status_file" "snapshot_ready")
+  capture_last_error=$(capture_status_value "$capture_status_file" "last_error")
+  if [[ "$capture_connection_status" != "connected" || "$capture_snapshot_ready" != "1" ]]; then
+    echo "theme preview capture connectivity gate failed: variant=$variant connection_status=${capture_connection_status:-unknown} snapshot_ready=${capture_snapshot_ready:-unknown}" >&2
+    if [[ -n "$capture_last_error" ]]; then
+      echo "last_error=$capture_last_error" >&2
+    fi
+    cat "$capture_status_file" >&2 || true
+    exit 1
+  fi
+
   cp .tmp/screens/window.png "$variant_dir/viewer.png"
   cp .tmp/screens/live_server.log "$variant_dir/live_server.log"
   cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
+  cp "$capture_status_file" "$variant_dir/capture_status.txt"
   cat >"$variant_dir/meta.txt" <<META
 scenario=$scenario
 variant=$variant
@@ -183,6 +207,8 @@ tick_ms=$tick_ms
 viewer_wait=$viewer_wait
 theme_pack=$theme_pack
 preset_file=$preset_file
+capture_connection_status=$capture_connection_status
+capture_snapshot_ready=$capture_snapshot_ready
 META
 
   index=$((index + 1))

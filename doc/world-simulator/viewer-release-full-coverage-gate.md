@@ -49,6 +49,11 @@
   - `gameplay_governance/`：治理/危机/经济链覆盖报告。
 - 汇总：
   - `release-full-summary-<timestamp>.md`
+- 视觉抓帧状态文件：
+  - `theme_preview/*/capture_status.txt`
+  - `texture_inspector/*/*/capture_status.txt`
+  - 关键字段：`connection_status`、`snapshot_ready`、`last_error`
+  - 发布门禁要求：`connection_status=connected` 且 `snapshot_ready=1`
 
 ### 玩法环节覆盖口径
 - 工业链：`harvest_radiation`、`mine_compound`、`refine_compound`、`build_factory`、`schedule_recipe`。
@@ -61,6 +66,7 @@
 - RFCG-2：实现 `viewer-release-full-coverage.sh` 编排脚本与汇总报告。
 - RFCG-3：更新 `testing-manual.md`，补充入口与口径。
 - RFCG-4：本地冒烟回归与状态收口。
+- RFCG-5：修复视觉门禁假阳性（connected 硬门禁 + 抓帧链路端口就绪等待）。
 
 ## 风险
 - 运行时长风险（多脚本编排）：
@@ -71,3 +77,5 @@
   - 缓解：明确 `--theme-pack`，默认对齐 `industrial_v2`。
 - 子脚本失败难定位风险：
   - 缓解：汇总报告按步骤记录状态、命令与产物路径，失败后仍保留已生成证据。
+- 视觉门禁假阳性风险（仅按截图存在判定）：
+  - 缓解：新增 `capture_status.txt` 连通性校验，未连接或无快照时直接 fail。

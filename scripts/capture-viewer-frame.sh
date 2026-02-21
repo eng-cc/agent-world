@@ -189,6 +189,37 @@ wait_for_file() {
   return 1
 }
 
+wait_for_tcp_port() {
+  local host=$1
+  local port=$2
+  local timeout_secs=$3
+  local step
+  for step in $(seq 1 "$timeout_secs"); do
+    if (echo >"/dev/tcp/$host/$port") >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+parse_addr_host_port() {
+  local raw=$1
+  if [[ "$raw" != *:* ]]; then
+    echo "invalid --addr: $raw (expected host:port)" >&2
+    exit 2
+  fi
+
+  local host=${raw%:*}
+  local port=${raw##*:}
+  if [[ -z "$host" || -z "$port" || ! "$port" =~ ^[0-9]+$ ]]; then
+    echo "invalid --addr: $raw (expected host:port)" >&2
+    exit 2
+  fi
+
+  printf '%s\n%s\n' "$host" "$port"
+}
+
 parse_truthy_flag() {
   local raw=${1:-}
   local normalized
@@ -252,6 +283,7 @@ capture_linux() {
   local auto_focus_force_3d=${15:-1}
   local auto_select_target=${16:-}
   local automation_steps=${17:-}
+  local capture_status_txt=${18:-}
 
   echo "+ Xvfb $display -screen 0 ${width}x${height}x24 > $xvfb_log"
   Xvfb "$display" -screen 0 "${width}x${height}x24" >"$xvfb_log" 2>&1 &
@@ -262,6 +294,7 @@ capture_linux() {
   if [[ "$auto_focus_enabled" == "1" ]]; then
     echo "+ DISPLAY=$display AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
+    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS="1" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET="${auto_focus_target:-first_fragment}" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
@@ -273,6 +306,7 @@ capture_linux() {
   else
     echo "+ DISPLAY=$display ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- $addr > $viewer_log"
     DISPLAY="$display" \
+    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
     AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET="$auto_select_target" \
     AGENT_WORLD_VIEWER_AUTOMATION_STEPS="$automation_steps" \
@@ -319,6 +353,7 @@ capture_macos() {
   local auto_focus_enabled=${13:-0}
   local auto_select_target=${14:-}
   local automation_steps=${15:-}
+  local capture_status_txt=${16:-}
 
   local capture_max_wait
   capture_max_wait=$(resolve_capture_max_wait "$viewer_wait" "$capture_max_wait_override")
@@ -331,6 +366,7 @@ capture_macos() {
   if [[ "$auto_focus_enabled" == "1" ]]; then
     echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png AGENT_WORLD_VIEWER_AUTO_FOCUS=1 AGENT_WORLD_VIEWER_AUTO_FOCUS_TARGET=${auto_focus_target:-first_fragment} AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D=$auto_focus_force_3d ${auto_focus_radius:+AGENT_WORLD_VIEWER_AUTO_FOCUS_RADIUS=$auto_focus_radius }${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
     AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
+    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
     AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
     AGENT_WORLD_VIEWER_AUTO_FOCUS_FORCE_3D="$auto_focus_force_3d" \
@@ -344,6 +380,7 @@ capture_macos() {
   else
     echo "+ AGENT_WORLD_VIEWER_CAPTURE_PATH=$window_png ${auto_select_target:+AGENT_WORLD_VIEWER_AUTO_SELECT=1 AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET=$auto_select_target }${automation_steps:+AGENT_WORLD_VIEWER_AUTOMATION_STEPS=$automation_steps }${viewer_cmd[*]} > $viewer_log"
     AGENT_WORLD_VIEWER_CAPTURE_PATH="$window_png" \
+    AGENT_WORLD_VIEWER_CAPTURE_STATUS_PATH="$capture_status_txt" \
     AGENT_WORLD_VIEWER_CAPTURE_DELAY_SECS="$viewer_wait" \
     AGENT_WORLD_VIEWER_CAPTURE_MAX_WAIT_SECS="$capture_max_wait" \
     AGENT_WORLD_VIEWER_AUTO_SELECT="${auto_select_target:+1}" \
@@ -502,6 +539,7 @@ root_png="$out_dir/root.png"
 window_png="$out_dir/window.png"
 window_line_txt="$out_dir/window_line.txt"
 window_geom_txt="$out_dir/window_geom.txt"
+capture_status_txt="$out_dir/capture_status.txt"
 
 cleanup() {
   local pid
@@ -523,14 +561,34 @@ echo "+ ${server_cmd[*]} > $server_log"
 "${server_cmd[@]}" >"$server_log" 2>&1 &
 SERVER_PID=$!
 
+run rm -f "$capture_status_txt"
+while IFS= read -r line; do
+  if [[ -z "${server_host:-}" ]]; then
+    server_host=$line
+  else
+    server_port=$line
+  fi
+done < <(parse_addr_host_port "$addr")
+echo "+ wait for viewer server $server_host:$server_port"
+if ! wait_for_tcp_port "$server_host" "$server_port" 60; then
+  echo "viewer server did not come up on $server_host:$server_port" >&2
+  if [[ -s "$server_log" ]]; then
+    echo "---- live_server.log tail ----" >&2
+    tail -n 80 "$server_log" >&2 || true
+    echo "------------------------------" >&2
+  fi
+  exit 4
+fi
+
 if [[ "$platform" == "linux" ]]; then
-  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_enabled" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_select_target" "$automation_steps"
+  capture_linux "$display" "$width" "$height" "$viewer_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_enabled" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_select_target" "$automation_steps" "$capture_status_txt"
 else
-  capture_macos "$viewer_wait" "$capture_max_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_focus_enabled" "$auto_select_target" "$automation_steps"
+  capture_macos "$viewer_wait" "$capture_max_wait" "$addr" "$viewer_log" "$xvfb_log" "$root_png" "$window_png" "$window_line_txt" "$window_geom_txt" "$auto_focus_target" "$auto_focus_radius" "$auto_focus_force_3d" "$auto_focus_enabled" "$auto_select_target" "$automation_steps" "$capture_status_txt"
 fi
 
 echo "capture complete"
 echo "  mode:   $platform"
 echo "  root:   $root_png"
 echo "  window: $window_png"
+echo "  status: $capture_status_txt"
 echo "  logs:   $server_log, $viewer_log"

@@ -130,6 +130,12 @@ set_or_unset_env() {
   fi
 }
 
+capture_status_value() {
+  local status_file=$1
+  local key=$2
+  grep -E "^${key}=" "$status_file" | tail -n 1 | cut -d'=' -f2-
+}
+
 preset_file="crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env"
 inspect_raw="all"
 variants_raw="all"
@@ -321,9 +327,27 @@ for entity in "${entities[@]}"; do
         --keep-tmp \
         ${no_prewarm_arg:+$no_prewarm_arg}
 
+      capture_status_file=".tmp/screens/capture_status.txt"
+      if [[ ! -s "$capture_status_file" ]]; then
+        echo "missing capture status file: $capture_status_file (entity=$entity variant=$variant)" >&2
+        exit 1
+      fi
+      capture_connection_status=$(capture_status_value "$capture_status_file" "connection_status")
+      capture_snapshot_ready=$(capture_status_value "$capture_status_file" "snapshot_ready")
+      capture_last_error=$(capture_status_value "$capture_status_file" "last_error")
+      if [[ "$capture_connection_status" != "connected" || "$capture_snapshot_ready" != "1" ]]; then
+        echo "texture inspector capture connectivity gate failed: entity=$entity variant=$variant connection_status=${capture_connection_status:-unknown} snapshot_ready=${capture_snapshot_ready:-unknown}" >&2
+        if [[ -n "$capture_last_error" ]]; then
+          echo "last_error=$capture_last_error" >&2
+        fi
+        cat "$capture_status_file" >&2 || true
+        exit 1
+      fi
+
       cp .tmp/screens/window.png "$variant_dir/viewer.png"
       cp .tmp/screens/live_server.log "$variant_dir/live_server.log"
       cp .tmp/screens/viewer.log "$variant_dir/viewer.log"
+      cp "$capture_status_file" "$variant_dir/capture_status.txt"
 
       cat >"$variant_dir/meta.txt" <<META
 preset_file=$preset_file
@@ -339,6 +363,8 @@ location_base_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_BASE_TEXTURE_ASSET:-}
 location_normal_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_NORMAL_TEXTURE_ASSET:-}
 location_metallic_roughness_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_METALLIC_ROUGHNESS_TEXTURE_ASSET:-}
 location_emissive_texture_asset=${AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_TEXTURE_ASSET:-}
+capture_connection_status=$capture_connection_status
+capture_snapshot_ready=$capture_snapshot_ready
 META
     )
 

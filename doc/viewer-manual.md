@@ -297,8 +297,9 @@ python3 scripts/validate-viewer-theme-pack.py \
 - `output/theme_preview/<timestamp>/default/viewer.png`
 - `output/theme_preview/<timestamp>/matte/viewer.png`
 - `output/theme_preview/<timestamp>/glossy/viewer.png`
-- 每个变体目录附带 `live_server.log`、`viewer.log`、`meta.txt`
+- 每个变体目录附带 `live_server.log`、`viewer.log`、`capture_status.txt`、`meta.txt`
 - `meta.txt` 记录 `theme_pack` 与实际 `preset_file`
+- `capture_status.txt` 必须为 `connection_status=connected` 且 `snapshot_ready=1`（否则脚本失败）
 
 常用参数：
 - `--theme-pack <industrial_v2|industrial_v1>`：选择主题包（默认 `industrial_v2`，推荐）。
@@ -335,7 +336,8 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 
 ### 输出目录
 - `output/texture_inspector/<timestamp>/<entity>/<variant>/viewer.png`
-- 同目录附带：`live_server.log`、`viewer.log`、`meta.txt`
+- 同目录附带：`live_server.log`、`viewer.log`、`capture_status.txt`、`meta.txt`
+- `capture_status.txt` 必须为 `connection_status=connected` 且 `snapshot_ready=1`（否则脚本失败）
 
 ## Web 闭环（默认，推荐调试/回归）
 
