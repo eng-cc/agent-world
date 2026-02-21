@@ -47,6 +47,7 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 - `2D/3D` 切换：在顶部按钮切换视角模式。
 - 控制区（观察模式）：默认仅显示 `播放/暂停` 单按钮；点击 `高级调试` 后展开 `单步` 与 `跳转 0`。
 - `F`：对“当前选中对象”执行聚焦（适合人工巡检细节）。
+- `F8`：循环切换材质变体预设（`default -> matte -> glossy -> default`），用于快速对比 roughness/metallic 观感。
 - 右侧综合面板：查看控制、状态、事件、分块、诊断等模块信息。
 - 最右侧 Chat 面板：独立承载 Agent Chat，不与综合面板混排；顶部区域展开时显示，可通过模块可见性中的 `Chat` 开关隐藏。面板内提供可展开的“预设 Prompt”小区域：支持聊天预设编辑并一键填充输入框，同时可编辑 `system prompt`、`短期目标`、`长期目标`，并直接应用到当前目标 Agent。三个字段会直接预填充当前生效值（未设置 override 时为系统默认值），可直接编辑；展开区内容过高时支持内部滚动。
 - Chat 输入：输入框聚焦时，`Enter` 直接发送；`Shift+Enter` 换行。
@@ -130,6 +131,7 @@ env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 - `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_ROUGHNESS=<0..1>`
 - `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_METALLIC=<0..1>`
 - `AGENT_WORLD_VIEWER_MATERIAL_FACILITY_EMISSIVE_BOOST=<>=0`
+- `AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET=default|matte|glossy`（可选，启动时指定材质变体预设；运行中可按 `F8` 切换）
 - 外部颜色覆盖（可选，值为严格 `#RRGGBB`，非法值自动回退默认）：
   - `AGENT_WORLD_VIEWER_AGENT_BASE_COLOR=<#RRGGBB>`
   - `AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR=<#RRGGBB>`
@@ -173,6 +175,11 @@ AGENT_WORLD_VIEWER_AGENT_BASE_COLOR=#FF6A38 \
 AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR=#E66230 \
 AGENT_WORLD_VIEWER_LOCATION_BASE_COLOR=#4B88D9 \
 AGENT_WORLD_VIEWER_LOCATION_EMISSIVE_COLOR=#B8D8FF \
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+- 材质变体预设示例：
+```bash
+AGENT_WORLD_VIEWER_MATERIAL_VARIANT_PRESET=matte \
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 - 贴图示例：
