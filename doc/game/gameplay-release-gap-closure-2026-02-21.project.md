@@ -23,10 +23,10 @@
 - [x] 补齐 `test_tier_required` 解析/边界测试
 
 ### T4 m5 规则深度优化（对应问题 5）
-- [ ] 增强 `m5_gameplay_war_core` 结算规则输出
-- [ ] 增强 `m5_gameplay_crisis_cycle` 动态危机生成/超时规则
-- [ ] 增强 `m5_gameplay_economic_overlay` 的经济事件联动
-- [ ] 补齐 gameplay 协议测试断言（required/full）
+- [x] 增强 `m5_gameplay_war_core` 结算规则输出
+- [x] 增强 `m5_gameplay_crisis_cycle` 动态危机生成/超时规则
+- [x] 增强 `m5_gameplay_economic_overlay` 的经济事件联动
+- [x] 补齐 gameplay 协议测试断言（required/full）
 
 ### T5 回归与收口
 - [ ] 运行定向测试与脚本回归（含 gate）
@@ -41,6 +41,6 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T3
-- 进行中：T1（覆盖复验中）、T4（规则优化中）
+- 已完成：T0、T3、T4
+- 进行中：T1（覆盖复验中）、T2（long-run 复验中）
 - 阻塞项：无

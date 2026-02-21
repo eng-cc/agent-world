@@ -19,20 +19,20 @@
     {
       "module_id": "m5.gameplay.crisis.cycle",
       "hash_tokens": [
-        "ea9edf66ef440b55c8e35da270f641341272bbb37afc4a4edc17d50043adb088"
+        "d34de0ee54916416be43cb4c8a1beb944ecde61c8196c33b628f870407281c97"
       ],
-      "source_hash": "78197b182441a86f1364e12878ccbfb9b9743c7656d30a4ba4b7056f7a376eb2",
+      "source_hash": "589702ef3b9b3d0b349c017d0b0c2cc8ba2a2ea2f12f7feb49ba4119ca801554",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "c1166c14f125a98ad9363946a483c134f764b0ebc4dc1db5bf47a7448f03c5a3"
+      "identity_hash": "f99e0059d02ad81a42e31374e9b5a2952d07f76dd9de5ea503527afde8e59a13"
     },
     {
       "module_id": "m5.gameplay.economic.overlay",
       "hash_tokens": [
-        "d5ae2c6a72328c359b9c3bdd4a4437fc2126a5a48bf4e0121618ad00346369ec"
+        "04540a5656d10f26c600096ccacd17ade030c72ddebb87bf693b418f7eb0002c"
       ],
-      "source_hash": "9804f2099d3ddb30d9bb04f027169865c6fdf557431b077805659ac8249cc96e",
+      "source_hash": "9bda17cbb77982d9850e5c7572bbbba7ccd80e81f4e3b39e14ebb785215f1333",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "c9d764bd286ccd10699a45b5b9a6fc0d38a91a5852857258f114f775f017dc6a"
+      "identity_hash": "c67013c6cfb9a04d644148e6c4890cdacc1f06e05c38d5f539c37a46816f0292"
     },
     {
       "module_id": "m5.gameplay.governance.council",
@@ -55,11 +55,11 @@
     {
       "module_id": "m5.gameplay.war.core",
       "hash_tokens": [
-        "86d793ce9bfc2c13bc79805f7a2f1ff6776db0aae96e875fa6aad4a58af05c04"
+        "d8bfe226e856e87050d37b7d22f1e7b3dd069ab2aacdf114c56223749e09042c"
       ],
-      "source_hash": "040406edeae7cbf1598a78c4b4ee557acd0aa710ac0448f69e792133fde77b19",
+      "source_hash": "994dfb22294a559a3f00383277023e5a706eb5bcb3c4b440863e051b5f7be0e6",
       "build_manifest_hash": "6f92432d2b79412ae7aabc9928de1631077d26748f1371444eb28f3e80c2baf7",
-      "identity_hash": "903ec143c8ce29416ca594e1a983606e6d6aac5c72f4af50b293e1d4340717a4"
+      "identity_hash": "dffdf03e09303e3a3bacf3e3bf4ce20002057b2ce0b4fc11d3423dfce45db2fd"
     }
   ]
 }
