@@ -4,7 +4,7 @@
 - [x] VCR4-0 文档建档：设计文档 + 项目管理文档
 - [x] VCR4-1 新增贴图风格覆盖配置（环境变量解析）
 - [x] VCR4-2 接入 3D 场景材质贴图逻辑并补测试
-- [ ] VCR4-3 更新手册/项目状态/devlog 并收口
+- [x] VCR4-3 更新手册/项目状态/devlog 并收口
 
 ## 依赖
 - `crates/agent_world_viewer/src/viewer_3d_config.rs`
@@ -14,6 +14,6 @@
 - `doc/viewer-manual.md`
 
 ## 状态
-- 当前阶段：VCR4-0、VCR4-1、VCR4-2 已完成，VCR4-3 进行中。
-- 下一步：更新 `doc/viewer-manual.md` 贴图环境变量说明并完成 Phase 4 收口。
+- 当前阶段：VCR4-0 ~ VCR4-3 全部完成，Phase 4 已收口。
+- 下一步：可进入下一阶段（normal/ORM/emissive 贴图、材质实例热切换与资产包流程）设计与任务拆解。
 - 最近更新：2026-02-21。
