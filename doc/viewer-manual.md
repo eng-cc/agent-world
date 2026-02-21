@@ -217,6 +217,48 @@ AGENT_WORLD_VIEWER_COLOR_GRADING_POST_SATURATION=1.08 \
 env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
 ```
 
+## 工业风主题包（industrial_v1）
+
+### 资产内容
+- 路径：`crates/agent_world_viewer/assets/themes/industrial_v1/`
+- 包含：
+  - 5 类实体 mesh（`*.gltf + *.bin`）
+  - 5 类实体 PBR 贴图（`base/normal/metallic_roughness/emissive`）
+  - 预设文件：`presets/industrial_default.env`、`presets/industrial_matte.env`、`presets/industrial_glossy.env`
+
+### 一键应用主题包
+```bash
+source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_default.env
+env -u RUSTC_WRAPPER cargo run -p agent_world_viewer -- 127.0.0.1:5023
+```
+
+切换变体（仅替换最后一行）：
+```bash
+source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_matte.env
+```
+```bash
+source crates/agent_world_viewer/assets/themes/industrial_v1/presets/industrial_glossy.env
+```
+
+### 批量预览（default/matte/glossy）
+```bash
+./scripts/viewer-theme-pack-preview.sh \
+  --scenario llm_bootstrap \
+  --variants all \
+  --base-port 5423
+```
+
+输出目录：
+- `output/theme_preview/<timestamp>/default/viewer.png`
+- `output/theme_preview/<timestamp>/matte/viewer.png`
+- `output/theme_preview/<timestamp>/glossy/viewer.png`
+- 每个变体目录附带 `live_server.log`、`viewer.log`、`meta.txt`
+
+### 资产重生成
+```bash
+python3 scripts/generate-viewer-industrial-theme-assets.py
+```
+
 ## Web 闭环（默认，推荐调试/回归）
 
 说明：该闭环用于可视化观察与交互取证，不等价于“浏览器作为完整分布式节点运行”。
