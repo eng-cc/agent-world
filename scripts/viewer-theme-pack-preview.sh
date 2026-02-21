@@ -132,9 +132,9 @@ for variant in "${variants[@]}"; do
     exit 1
   fi
 
-  no_prewarm_flag=()
+  no_prewarm_arg=""
   if [[ "$force_no_prewarm" -eq 1 || "$index" -gt 0 ]]; then
-    no_prewarm_flag+=(--no-prewarm)
+    no_prewarm_arg="--no-prewarm"
   fi
 
   (
@@ -147,7 +147,7 @@ for variant in "${variants[@]}"; do
       --auto-focus-target first_agent \
       --automation-steps "$automation_steps" \
       --keep-tmp \
-      "${no_prewarm_flag[@]}"
+      ${no_prewarm_arg:+$no_prewarm_arg}
   )
 
   cp .tmp/screens/window.png "$variant_dir/viewer.png"
