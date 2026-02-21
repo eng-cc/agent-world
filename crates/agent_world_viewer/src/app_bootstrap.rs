@@ -3,6 +3,13 @@ use super::*;
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
+#[path = "theme_runtime.rs"]
+mod theme_runtime;
+pub(super) use theme_runtime::{
+    apply_theme_runtime_updates, resolve_theme_runtime_state, ThemePresetSelection,
+    ThemeRuntimeState,
+};
+
 pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_3d_config = resolve_viewer_3d_config();
     let viewer_external_mesh_config = resolve_viewer_external_mesh_config();
@@ -15,6 +22,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_automation_config = viewer_automation_config_from_env();
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     let panel_mode = resolve_panel_mode_from_env();
+    let theme_runtime = resolve_theme_runtime_state();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
     let default_plugins = DefaultPlugins.set(WindowPlugin {
@@ -43,6 +51,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerCameraMode::default())
         .insert_resource(panel_mode)
+        .insert_resource(theme_runtime)
         .insert_resource(ViewerSelection::default())
         .insert_resource(ChatInputFocusSignal::default())
         .insert_resource(world_overlay_config_from_env())
@@ -114,6 +123,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
                 .chain(),
         )
         .add_systems(Update, track_step_loading_state)
+        .add_systems(Update, apply_theme_runtime_updates.before(update_3d_scene))
         .add_systems(
             Update,
             (
