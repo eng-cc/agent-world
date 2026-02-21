@@ -48,6 +48,8 @@ jobs:
             libudev-dev
       - name: Run required test tier
         run: CI_VERBOSE=1 ./scripts/ci-tests.sh required
+      - name: Run viewer visual baseline gate
+        run: ./scripts/viewer-visual-baseline.sh
 
   full-regression:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

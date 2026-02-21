@@ -51,6 +51,14 @@ run_agent_world_full_tier_tests() {
   run_cargo test -p agent_world --tests --features "test_tier_full,wasmtime,viewer_live_integration"
 }
 
+run_agent_world_viewer_tests() {
+  run_cargo test -p agent_world_viewer
+}
+
+run_agent_world_viewer_wasm_check() {
+  run_cargo check -p agent_world_viewer --target wasm32-unknown-unknown
+}
+
 run_required_builtin_wasm_checks() {
   run ./scripts/sync-m1-builtin-wasm-artifacts.sh --check
   run ./scripts/sync-m4-builtin-wasm-artifacts.sh --check
@@ -66,8 +74,12 @@ echo "+ ci test tier: $tier"
 run_required_gate_checks
 if [[ "$tier" == "required" ]]; then
   run_agent_world_required_tier_tests
+  run_agent_world_viewer_tests
+  run_agent_world_viewer_wasm_check
 else
   run_agent_world_full_tier_tests
+  run_agent_world_viewer_tests
+  run_agent_world_viewer_wasm_check
   run_cargo test -p agent_world --features wasmtime --lib --bins
   run_cargo test -p agent_world_net --features libp2p --lib
 fi
