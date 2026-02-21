@@ -10,12 +10,12 @@
 - [x] 优化默认 LLM `system_prompt` / `short_term_goal` / `long_term_goal`（改为游戏发展导向，去除强制动作链）
 - [x] 增加中途切换 prompt 能力（demo + stress 透传）
 - [x] 增加游戏发展测试 prompt 套件（`--prompt-pack`：`story_balanced/frontier_builder/civic_operator/resilience_drill`）
-- [ ] 增加定向测试，验证切换前后动作覆盖变化
+- [x] 增加定向测试，验证切换前后动作覆盖变化
 
 ### T2 Gate 覆盖补齐与复验（对应问题 2/3）
-- [ ] 扩展 `llm-longrun-stress.sh`：release gate profile（industrial/gameplay/hybrid）
-- [ ] 更新 `testing-manual.md` S8 发行口径示例
-- [ ] 跑 long-run 复验并记录 summary/report 产物
+- [x] 扩展 `llm-longrun-stress.sh`：release gate profile（industrial/gameplay/hybrid）
+- [x] 更新 `testing-manual.md` S8 发行口径示例
+- [x] 跑 long-run 复验并记录 summary/report 产物
 
 ### T3 经济治理动作协议补齐（对应问题 4）
 - [x] 扩展 OpenAI decision schema 增加经济合约动作
@@ -29,9 +29,9 @@
 - [x] 补齐 gameplay 协议测试断言（required/full）
 
 ### T5 回归与收口
-- [ ] 运行定向测试与脚本回归（含 gate）
-- [ ] 回写项目文档状态
-- [ ] 回写 `doc/devlog/2026-02-21.md`
+- [x] 运行定向测试与脚本回归（含 gate）
+- [x] 回写项目文档状态
+- [x] 回写 `doc/devlog/2026-02-21.md`
 
 ## 依赖
 - `doc/game/gameplay-release-production-closure.md`
@@ -41,6 +41,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T3、T4
-- 进行中：T1（覆盖复验中）、T2（long-run 复验中）
+- 已完成：T0、T1、T2、T3、T4、T5
+- 本轮增量：已将 `story_balanced` 与 prompt assembly 的治理文案从“强制动作链”调整为“阶段叙事 + 局势驱动 + 去循环建议”。
+- 进行中：后续 gameplay gate 稳定性优化（非本轮拆解项）
 - 阻塞项：无

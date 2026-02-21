@@ -219,13 +219,13 @@ apply_prompt_pack_defaults() {
   case "$pack" in
     story_balanced)
       if [[ -z "$llm_system_prompt" ]]; then
-        llm_system_prompt="你是硅基文明发展代理。以生存稳定、产业成长、治理协同、危机韧性四阶段推进世界演化，避免机械重复同一动作。"
+        llm_system_prompt="你是硅基文明叙事导演兼发展代理。按阶段推进文明：开局稳态（能源与位置）-> 产业组织（生产与协作）-> 公共治理（提案与投票）-> 韧性维护（危机处置与成长结算）；避免长期重复同一动作。每次只输出一个严格合法的决策 JSON 对象，不附加解释文本。"
       fi
       if [[ -z "$llm_short_goal" ]]; then
-        llm_short_goal="先确保资源与位置安全，再逐步建立可持续生产；当基础稳定后优先推进治理协商、风险处理与阶段性成长。"
+        llm_short_goal="把本轮 tick 视为一局完整剧情：前段稳住能源与位置，中段扩展生产与协作，后段转向治理议题与风险处置；根据局势自然切换动作，避免无意义重复。"
       fi
       if [[ -z "$llm_long_goal" ]]; then
-        llm_long_goal="形成可持续的文明闭环：资源可用、组织可治理、风险可恢复。"
+        llm_long_goal="形成可持续文明闭环：资源可用、组织可治理、危机可恢复，让行动呈现阶段递进而不是单一刷动作。"
       fi
       if [[ -z "$prompt_switch_tick" && -z "$switch_llm_system_prompt" && -z "$switch_llm_short_goal" && -z "$switch_llm_long_goal" ]]; then
         local auto_switch_tick
@@ -234,7 +234,9 @@ apply_prompt_pack_defaults() {
           auto_switch_tick=12
         fi
         prompt_switch_tick="$auto_switch_tick"
-        switch_llm_short_goal="进入中后期阶段：降低重复采集倾向，优先推进治理协作、危机响应与成果沉淀。"
+        switch_llm_system_prompt="你是中后期文明运营代理。让世界从资源扩张转向制度建设与韧性治理：围绕正在发生的议题推进提案、协商、危机处置与成长结算，避免陷入单一采集或单一治理动作循环。决策输出必须严格符合 JSON schema。"
+        switch_llm_short_goal="进入中后期剧情节点：先识别最紧迫的公共议题，再选择最合适的治理或韧性动作推进一格；若同类治理动作连续出现，主动切换到危机处置、成长结算或经济协作。"
+        switch_llm_long_goal="让文明从资源驱动转向制度与韧性驱动，使治理讨论、风险处理与成长反馈形成持续演化。"
       fi
       ;;
     frontier_builder)

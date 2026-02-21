@@ -265,6 +265,12 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack story_balanced
 ./scripts/llm-longrun-stress.sh --scenario llm_bootstrap --ticks 240 --prompt-pack civic_operator
 ```
+- Prompt 切换前后覆盖对比（用于 T1 定向验证）：
+```bash
+./scripts/llm-switch-coverage-diff.sh \
+  --log .tmp/llm_stress_story_gameplay_48_promptassembly2/run.log \
+  --switch-tick 24
+```
 - 说明：
   - `viewer-owr4-stress` 在无 `OPENAI_API_KEY` 时对 `llm_bootstrap` 会退化为 script_fallback；
   - `llm-longrun-stress.sh` 新增覆盖参数：
@@ -276,10 +282,11 @@ env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required wor
       - `gameplay`：玩法闭环 4 动作（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress`）。
       - `hybrid`（默认）：工业 + gameplay 全覆盖（9 动作）。
     - `--prompt-pack <story_balanced|frontier_builder|civic_operator|resilience_drill>`：
-      - `story_balanced`：默认推荐，按“稳定 -> 生产 -> 治理/韧性”阶段推进，并自动注入中途目标切换。
+      - `story_balanced`：默认推荐，按“稳定 -> 生产 -> 治理/韧性”阶段推进，并自动注入中途 system/goal 切换；强调局势驱动的剧情推进，不强制固定动作链。
       - `frontier_builder`：偏探索与基础设施扩张。
       - `civic_operator`：偏治理协同与组织秩序。
       - `resilience_drill`：偏危机恢复与经济协作抗压。
+  - `llm-switch-coverage-diff.sh` 用于抽取 `run.log` 在切换 tick 前后动作覆盖差异（新出现/消失动作种类）。
   - 若覆盖门禁失败，脚本会输出缺失项与当前 `action_kind_counts`，用于快速定位玩法漏覆盖；
   - 压测结果需保留 CSV/summary/log 产物。
 

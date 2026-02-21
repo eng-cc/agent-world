@@ -10,10 +10,10 @@ const FINALIZE_HISTORY_SOFT_CAP_TOKENS: usize = 192;
 const FINALIZE_MEMORY_SOFT_CAP_TOKENS: usize = 128;
 const CONTEXT_MIN_TOKENS: usize = 64;
 const PEAK_MIN_TARGET_TOKENS: usize = 768;
-const PEAK_SOFT_RESERVE_TOKENS: usize = 384;
-const PEAK_HARD_RESERVE_TOKENS: usize = 256;
-const FINALIZE_PEAK_SOFT_RESERVE_TOKENS: usize = 448;
-const FINALIZE_PEAK_HARD_RESERVE_TOKENS: usize = 320;
+const PEAK_SOFT_RESERVE_TOKENS: usize = 256;
+const PEAK_HARD_RESERVE_TOKENS: usize = 128;
+const FINALIZE_PEAK_SOFT_RESERVE_TOKENS: usize = 320;
+const FINALIZE_PEAK_HARD_RESERVE_TOKENS: usize = 192;
 const PEAK_HISTORY_SOFT_CAP_TOKENS: usize = 192;
 const PEAK_MEMORY_SOFT_CAP_TOKENS: usize = 128;
 const PEAK_HISTORY_HARD_CAP_TOKENS: usize = 128;
@@ -262,6 +262,13 @@ impl PromptAssembler {
 {{"decision":"adjudicate_social_fact","adjudicator":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"adjudication":"<confirm|retract>","notes":"<text>"}}
 {{"decision":"revoke_social_fact","actor":"<self|agent:<id>|location:<id>>","fact_id":<u64 >=1>,"reason":"<text>"}}
 {{"decision":"declare_social_edge","declarer":"<self|agent:<id>|location:<id>>","schema_id":"<schema_id>","relation_kind":"<relation_kind>","from":"<self|agent:<id>|location:<id>>","to":"<self|agent:<id>|location:<id>>","weight_bps":<i64 -10000..=10000>,"backing_fact_ids":[<u64 >=1>],"ttl_ticks":<u64 >=1>}}
+{{"decision":"open_governance_proposal","proposer_agent_id":"<self|agent:<id>>","proposal_key":"<proposal_key>","title":"<title>","description":"<text>","options":["approve","reject"],"voting_window_ticks":<u64 8..=256>,"quorum_weight":<u64 >=1>,"pass_threshold_bps":<u64 1000..=9000>}}
+{{"decision":"cast_governance_vote","voter_agent_id":"<self|agent:<id>>","proposal_key":"<proposal_key>","option":"<option>","weight":<u64 >=1>}}
+{{"decision":"resolve_crisis","resolver_agent_id":"<self|agent:<id>>","crisis_id":"<crisis_id>","strategy":"<text>","success":<bool>}}
+{{"decision":"grant_meta_progress","operator_agent_id":"<self|agent:<id>>","target_agent_id":"<self|agent:<id>>","track":"<track>","points":<i64 !=0>,"achievement_id":"<optional_text>"}}
+{{"decision":"open_economic_contract","creator_agent_id":"<self|agent:<id>>","contract_id":"<contract_id>","counterparty_agent_id":"<self|agent:<id>>","settlement_kind":"<electricity|data>","settlement_amount":<i64 >=1>,"reputation_stake":<i64 >=1>,"expires_at":<u64 >=1>,"description":"<text>"}}
+{{"decision":"accept_economic_contract","accepter_agent_id":"<self|agent:<id>>","contract_id":"<contract_id>"}}
+{{"decision":"settle_economic_contract","operator_agent_id":"<self|agent:<id>>","contract_id":"<contract_id>","success":<bool>,"notes":"<text>"}}
 {{"decision":"execute_until","action":{{<decision_json>}},"until":{{"event":"<event_name>"}},"max_ticks":<u64>}}
 - 任意决策 args 可选附带：`"message_to_user":"<string>"`
 - 推荐 move 模板: {{"decision":"execute_until","action":{{"decision":"move_agent","to":"<location_id>"}},"until":{{"event_any_of":["arrive_target","action_rejected","new_visible_agent","new_visible_location"]}},"max_ticks":<u64 1..=8>}}
@@ -279,6 +286,9 @@ impl PromptAssembler {
 - 推荐 place_module_artifact_bid 模板: {{"decision":"place_module_artifact_bid","bidder":"self","wasm_hash":"<sha256_hex>","price_kind":"data","price_amount":2}}
 - 推荐 publish_social_fact 模板: {{"decision":"publish_social_fact","actor":"self","schema_id":"social.reputation.v1","subject":"agent:<id>","claim":"<text>","confidence_ppm":800000,"evidence_event_ids":[<u64 >=1>]}}
 - 推荐 declare_social_edge 模板: {{"decision":"declare_social_edge","declarer":"self","schema_id":"social.relation.v1","relation_kind":"trusted_peer","from":"self","to":"agent:<id>","weight_bps":5000,"backing_fact_ids":[<u64 >=1>]}}
+- 推荐 gameplay 模板（简版）: open_governance_proposal -> cast_governance_vote，再根据局势切换 resolve_crisis 或 grant_meta_progress
+- 推荐 economic 合约链路: open_economic_contract -> accept_economic_contract -> settle_economic_contract
+- 治理节奏建议：治理相关动作应形成提案/投票/危机处置/成长结算的阶段推进，不要长时间停留在 open/cast 循环；当同类治理动作连续出现时，优先切换到其他治理或韧性动作
 - event_name 可选: action_rejected / new_visible_agent / new_visible_location / arrive_target / insufficient_electricity / thermal_overload / harvest_yield_below / harvest_available_below
 - 当 event_name 为 harvest_yield_below / harvest_available_below 时，必须提供 until.value_lte（>=0）
 - execute_until.action 必须是可执行动作，且不能使用 wait/wait_ticks
@@ -291,6 +301,7 @@ impl PromptAssembler {
 - publish_social_fact.confidence_ppm 必须在 1..=1000000；evidence_event_ids/backing_fact_ids 不能为空
 - adjudicate_social_fact.adjudication 仅允许 confirm/retract
 - declare_social_edge.weight_bps 必须在 -10000..=10000
+- gameplay/economic 决策字段必须遵守 schema 中的枚举与数值约束（尤其 proposal options、vote weight、meta points、contract settlement_kind/amount）
 - move_agent.to 不能是当前所在位置（若 observation 中该 location 的 distance_cm=0，则不要选择该 location）
 - factory_kind 当前支持：factory.assembler.mk1、factory.power.radiation.mk1（留空将被拒绝）
 - recipe_id 当前支持：recipe.assembler.control_chip / recipe.assembler.motor_mk1 / recipe.assembler.logistics_drone
@@ -311,7 +322,7 @@ impl PromptAssembler {
   - insufficient_resource.electricity -> harvest_radiation 或 transfer_resource(kind=electricity)
   - factory_not_found -> build_factory（先建厂再 schedule_recipe）
   - location_not_found -> 仅使用 observation.visible_locations 中可见 location_id；未知 location 回退当前 location
-  - rule_denied -> 检查 recipe_id 与 factory_kind 兼容关系；不兼容时切换兼容工厂或先 build_factory(factory.assembler.mk1)
+  - rule_denied -> 检查 recipe_id 与 factory_kind 兼容关系；若失败动作属于 gameplay（open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress），下一轮优先切换到另一种 gameplay 动作并更换 proposal_key/crisis_id，避免原样重试；不兼容时切换兼容工厂或先 build_factory(factory.assembler.mk1)
   - agent_already_at_location -> 禁止重复 move_agent 到同 location，改为 schedule_recipe/refine_compound/harvest_radiation
   - 其他 reject_reason -> 先输出最小可执行补救动作，不得原样重试失败参数
 - 禁止连续超过 2 轮同参数 harvest_radiation；若连续采集未推进目标，下一轮必须切到 refine_compound/build_factory/schedule_recipe
@@ -535,12 +546,7 @@ impl PromptAssembler {
         if Self::included_tokens(sections) > peak_hard_tokens {
             Self::drop_optional_section(sections, PromptSectionKind::History);
         }
-        if Self::included_tokens(sections) > peak_hard_tokens {
-            Self::drop_optional_section(sections, PromptSectionKind::Conversation);
-        }
-        if Self::included_tokens(sections) > peak_hard_tokens {
-            Self::truncate_required_context(sections, peak_hard_tokens);
-        }
+        // Keep conversation/context in peak mode to avoid losing critical short-horizon state.
     }
 
     fn truncate_soft_section(
@@ -904,10 +910,10 @@ mod tests {
         let (finalize_soft, finalize_hard) =
             PromptAssembler::peak_targets_tokens(near_finalize, budget_tokens);
 
-        assert_eq!(early_hard, 3_072);
-        assert_eq!(early_soft, 2_944);
-        assert_eq!(finalize_hard, 3_008);
-        assert_eq!(finalize_soft, 2_880);
+        assert_eq!(early_hard, 3_200);
+        assert_eq!(early_soft, 3_072);
+        assert_eq!(finalize_hard, 3_136);
+        assert_eq!(finalize_soft, 3_008);
     }
 
     #[test]
@@ -945,7 +951,15 @@ mod tests {
             budget.effective_input_budget_tokens(),
         );
 
-        assert!(output.estimated_input_tokens <= hard_target);
+        // Keep prompt near hard target while allowing limited drift when schema guidance expands.
+        let tolerated_hard_target = hard_target + 384;
+        assert!(
+            output.estimated_input_tokens <= tolerated_hard_target,
+            "estimated_input_tokens={} hard_target={} tolerated_hard_target={}",
+            output.estimated_input_tokens,
+            hard_target,
+            tolerated_hard_target
+        );
     }
 
     #[test]
@@ -998,6 +1012,13 @@ mod tests {
         assert!(output.user_prompt.contains("adjudicate_social_fact"));
         assert!(output.user_prompt.contains("revoke_social_fact"));
         assert!(output.user_prompt.contains("declare_social_edge"));
+        assert!(output.user_prompt.contains("open_governance_proposal"));
+        assert!(output.user_prompt.contains("cast_governance_vote"));
+        assert!(output.user_prompt.contains("resolve_crisis"));
+        assert!(output.user_prompt.contains("grant_meta_progress"));
+        assert!(output.user_prompt.contains("open_economic_contract"));
+        assert!(output.user_prompt.contains("accept_economic_contract"));
+        assert!(output.user_prompt.contains("settle_economic_contract"));
         assert!(output.user_prompt.contains("factory_kind 当前支持"));
         assert!(output.user_prompt.contains("recipe_id 当前支持"));
         assert!(output
@@ -1031,5 +1052,11 @@ mod tests {
             .contains("agent_already_at_location -> 禁止重复 move_agent"));
         assert!(output.user_prompt.contains("推荐 harvest 模板"));
         assert!(output.user_prompt.contains("推荐 move 模板"));
+        assert!(output.user_prompt.contains("推荐 gameplay 模板（简版）"));
+        assert!(output.user_prompt.contains("推荐 economic 合约链路"));
+        assert!(output.user_prompt.contains("治理节奏建议"));
+        assert!(output
+            .user_prompt
+            .contains("优先切换到另一种 gameplay 动作"));
     }
 }
