@@ -18,9 +18,9 @@
 - [ ] 跑 long-run 复验并记录 summary/report 产物
 
 ### T3 经济治理动作协议补齐（对应问题 4）
-- [ ] 扩展 OpenAI decision schema 增加经济合约动作
-- [ ] 扩展 parser 到 `Action::Open/Accept/SettleEconomicContract`
-- [ ] 补齐 `test_tier_required` 解析/边界测试
+- [x] 扩展 OpenAI decision schema 增加经济合约动作
+- [x] 扩展 parser 到 `Action::Open/Accept/SettleEconomicContract`
+- [x] 补齐 `test_tier_required` 解析/边界测试
 
 ### T4 m5 规则深度优化（对应问题 5）
 - [ ] 增强 `m5_gameplay_war_core` 结算规则输出
@@ -41,6 +41,6 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1（覆盖复验中）
+- 已完成：T0、T3
+- 进行中：T1（覆盖复验中）、T4（规则优化中）
 - 阻塞项：无

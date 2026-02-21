@@ -1055,6 +1055,9 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(decision_enum.contains(&"cast_governance_vote"));
     assert!(decision_enum.contains(&"resolve_crisis"));
     assert!(decision_enum.contains(&"grant_meta_progress"));
+    assert!(decision_enum.contains(&"open_economic_contract"));
+    assert!(decision_enum.contains(&"accept_economic_contract"));
+    assert!(decision_enum.contains(&"settle_economic_contract"));
 
     let properties = parameters
         .get("properties")
@@ -1075,6 +1078,12 @@ fn decision_tool_schema_includes_market_and_social_actions() {
     assert!(properties.contains_key("crisis_id"));
     assert!(properties.contains_key("target_agent_id"));
     assert!(properties.contains_key("points"));
+    assert!(properties.contains_key("contract_id"));
+    assert!(properties.contains_key("settlement_kind"));
+    assert!(properties.contains_key("settlement_amount"));
+    assert!(properties.contains_key("reputation_stake"));
+    assert!(properties.contains_key("expires_at"));
+    assert!(properties.contains_key("accepter_agent_id"));
 }
 
 #[test]
@@ -1560,6 +1569,94 @@ fn llm_agent_parse_grant_meta_progress_action() {
             achievement_id: Some("ach.first_blood".to_string()),
         })
     );
+}
+
+#[test]
+fn llm_agent_parse_open_economic_contract_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"open_economic_contract\",\"creator_agent_id\":\"self\",\"contract_id\":\"contract.alpha\",\"counterparty_agent_id\":\"agent:agent-2\",\"settlement_kind\":\"data\",\"settlement_amount\":12,\"reputation_stake\":4,\"expires_at\":88,\"description\":\"labeling batch\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::OpenEconomicContract {
+            creator_agent_id: "agent-1".to_string(),
+            contract_id: "contract.alpha".to_string(),
+            counterparty_agent_id: "agent-2".to_string(),
+            settlement_kind: ResourceKind::Data,
+            settlement_amount: 12,
+            reputation_stake: 4,
+            expires_at: 88,
+            description: "labeling batch".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_accept_economic_contract_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"accept_economic_contract\",\"accepter_agent_id\":\"self\",\"contract_id\":\"contract.alpha\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::AcceptEconomicContract {
+            accepter_agent_id: "agent-1".to_string(),
+            contract_id: "contract.alpha".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_parse_settle_economic_contract_action() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"settle_economic_contract\",\"operator_agent_id\":\"self\",\"contract_id\":\"contract.alpha\",\"success\":true,\"notes\":\"delivered\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+
+    assert_eq!(
+        decision,
+        AgentDecision::Act(Action::SettleEconomicContract {
+            operator_agent_id: "agent-1".to_string(),
+            contract_id: "contract.alpha".to_string(),
+            success: true,
+            notes: "delivered".to_string(),
+        })
+    );
+}
+
+#[test]
+fn llm_agent_rejects_open_economic_contract_invalid_settlement_kind() {
+    let client = MockClient {
+        output: Some(
+            "{\"decision\":\"open_economic_contract\",\"creator_agent_id\":\"self\",\"contract_id\":\"contract.alpha\",\"counterparty_agent_id\":\"agent:agent-2\",\"settlement_kind\":\"ore\",\"settlement_amount\":12,\"reputation_stake\":4,\"expires_at\":88,\"description\":\"labeling batch\"}".to_string(),
+        ),
+        err: None,
+    };
+    let mut behavior = LlmAgentBehavior::new("agent-1", base_config(), client);
+    let decision = behavior.decide(&make_observation());
+    assert_eq!(decision, AgentDecision::Wait);
+
+    let trace = behavior.take_decision_trace().expect("trace exists");
+    assert!(trace
+        .parse_error
+        .as_deref()
+        .unwrap_or_default()
+        .contains("invalid settlement_kind"));
 }
 
 #[test]

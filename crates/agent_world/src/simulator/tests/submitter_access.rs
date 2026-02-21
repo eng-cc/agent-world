@@ -115,3 +115,35 @@ fn agent_submitter_rejects_mismatched_gameplay_actor() {
         other => panic!("unexpected event: {other:?}"),
     }
 }
+
+#[test]
+fn agent_submitter_rejects_mismatched_economic_contract_actor() {
+    let mut kernel = WorldKernel::new();
+    kernel.submit_action_from_agent(
+        "agent-1",
+        Action::OpenEconomicContract {
+            creator_agent_id: "agent-2".to_string(),
+            contract_id: "contract.alpha".to_string(),
+            counterparty_agent_id: "agent-3".to_string(),
+            settlement_kind: ResourceKind::Data,
+            settlement_amount: 5,
+            reputation_stake: 2,
+            expires_at: 20,
+            description: "contract".to_string(),
+        },
+    );
+    let event = kernel.step().expect("event");
+    match event.kind {
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+        } => {
+            assert!(
+                notes
+                    .iter()
+                    .any(|note| note.contains("creator_agent_id must be the submitter agent")),
+                "missing economic actor rejection note: {notes:?}"
+            );
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}

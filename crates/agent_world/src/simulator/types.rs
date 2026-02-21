@@ -658,4 +658,24 @@ pub enum Action {
         points: i64,
         achievement_id: Option<String>,
     },
+    OpenEconomicContract {
+        creator_agent_id: AgentId,
+        contract_id: String,
+        counterparty_agent_id: AgentId,
+        settlement_kind: ResourceKind,
+        settlement_amount: i64,
+        reputation_stake: i64,
+        expires_at: u64,
+        description: String,
+    },
+    AcceptEconomicContract {
+        accepter_agent_id: AgentId,
+        contract_id: String,
+    },
+    SettleEconomicContract {
+        operator_agent_id: AgentId,
+        contract_id: String,
+        success: bool,
+        notes: String,
+    },
 }

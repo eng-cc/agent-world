@@ -205,6 +205,9 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             Action::CastGovernanceVote { .. } => "cast_governance_vote",
             Action::ResolveCrisis { .. } => "resolve_crisis",
             Action::GrantMetaProgress { .. } => "grant_meta_progress",
+            Action::OpenEconomicContract { .. } => "open_economic_contract",
+            Action::AcceptEconomicContract { .. } => "accept_economic_contract",
+            Action::SettleEconomicContract { .. } => "settle_economic_contract",
         }
     }
 

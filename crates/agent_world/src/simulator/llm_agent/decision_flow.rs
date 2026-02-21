@@ -153,6 +153,14 @@ struct LlmDecisionPayload {
     track: Option<String>,
     points: Option<i64>,
     achievement_id: Option<String>,
+    creator_agent_id: Option<String>,
+    contract_id: Option<String>,
+    counterparty_agent_id: Option<String>,
+    settlement_kind: Option<String>,
+    settlement_amount: Option<i64>,
+    reputation_stake: Option<i64>,
+    expires_at: Option<u64>,
+    accepter_agent_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -310,6 +310,33 @@ fn reject_reason_for_agent_submitter(agent_id: &str, action: &Action) -> Option<
                 denied("operator_agent_id must be the submitter agent")
             }
         }
+        Action::OpenEconomicContract {
+            creator_agent_id, ..
+        } => {
+            if creator_agent_id == agent_id {
+                None
+            } else {
+                denied("creator_agent_id must be the submitter agent")
+            }
+        }
+        Action::AcceptEconomicContract {
+            accepter_agent_id, ..
+        } => {
+            if accepter_agent_id == agent_id {
+                None
+            } else {
+                denied("accepter_agent_id must be the submitter agent")
+            }
+        }
+        Action::SettleEconomicContract {
+            operator_agent_id, ..
+        } => {
+            if operator_agent_id == agent_id {
+                None
+            } else {
+                denied("operator_agent_id must be the submitter agent")
+            }
+        }
         Action::TransferResource { from, .. } => {
             if resource_owner_is_agent(from, agent_id) {
                 None

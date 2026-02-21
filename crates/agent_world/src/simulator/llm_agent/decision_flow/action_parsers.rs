@@ -53,6 +53,9 @@ pub(super) fn parse_market_or_social_action(
         "cast_governance_vote" => Some(parse_cast_governance_vote(parsed, agent_id)),
         "resolve_crisis" => Some(parse_resolve_crisis(parsed, agent_id)),
         "grant_meta_progress" => Some(parse_grant_meta_progress(parsed, agent_id)),
+        "open_economic_contract" => Some(parse_open_economic_contract(parsed, agent_id)),
+        "accept_economic_contract" => Some(parse_accept_economic_contract(parsed, agent_id)),
+        "settle_economic_contract" => Some(parse_settle_economic_contract(parsed, agent_id)),
         _ => None,
     }
 }
@@ -914,6 +917,111 @@ fn parse_grant_meta_progress(
         track,
         points,
         achievement_id,
+    })
+}
+
+fn parse_open_economic_contract(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let creator_agent_id = parse_agent_identity_or_self(
+        parsed.creator_agent_id.as_deref(),
+        "open_economic_contract",
+        "creator_agent_id",
+        agent_id,
+    )?;
+    let contract_id = parse_required_text(
+        parsed.contract_id.as_deref(),
+        "open_economic_contract",
+        "contract_id",
+    )?;
+    let counterparty_agent_id = parse_agent_identity_or_self(
+        parsed.counterparty_agent_id.as_deref(),
+        "open_economic_contract",
+        "counterparty_agent_id",
+        agent_id,
+    )?;
+    let settlement_kind_raw = parse_required_text(
+        parsed.settlement_kind.as_deref(),
+        "open_economic_contract",
+        "settlement_kind",
+    )?;
+    let settlement_kind = parse_resource_kind(settlement_kind_raw.as_str()).ok_or_else(|| {
+        format!("open_economic_contract invalid settlement_kind: {settlement_kind_raw}")
+    })?;
+    let settlement_amount = parse_positive_i64(
+        parsed.settlement_amount,
+        "open_economic_contract",
+        "settlement_amount",
+    )?;
+    let reputation_stake = parse_positive_i64(
+        parsed.reputation_stake,
+        "open_economic_contract",
+        "reputation_stake",
+    )?;
+    let expires_at = parse_positive_u64(parsed.expires_at, "open_economic_contract", "expires_at")?;
+    let description = parse_required_text(
+        parsed.description.as_deref(),
+        "open_economic_contract",
+        "description",
+    )?;
+
+    Ok(Action::OpenEconomicContract {
+        creator_agent_id,
+        contract_id,
+        counterparty_agent_id,
+        settlement_kind,
+        settlement_amount,
+        reputation_stake,
+        expires_at,
+        description,
+    })
+}
+
+fn parse_accept_economic_contract(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let accepter_agent_id = parse_agent_identity_or_self(
+        parsed.accepter_agent_id.as_deref(),
+        "accept_economic_contract",
+        "accepter_agent_id",
+        agent_id,
+    )?;
+    let contract_id = parse_required_text(
+        parsed.contract_id.as_deref(),
+        "accept_economic_contract",
+        "contract_id",
+    )?;
+    Ok(Action::AcceptEconomicContract {
+        accepter_agent_id,
+        contract_id,
+    })
+}
+
+fn parse_settle_economic_contract(
+    parsed: &LlmDecisionPayload,
+    agent_id: &str,
+) -> Result<Action, String> {
+    let operator_agent_id = parse_agent_identity_or_self(
+        parsed.operator_agent_id.as_deref(),
+        "settle_economic_contract",
+        "operator_agent_id",
+        agent_id,
+    )?;
+    let contract_id = parse_required_text(
+        parsed.contract_id.as_deref(),
+        "settle_economic_contract",
+        "contract_id",
+    )?;
+    let notes = parse_required_text(parsed.notes.as_deref(), "settle_economic_contract", "notes")?;
+    let success = parsed.success.unwrap_or(true);
+
+    Ok(Action::SettleEconomicContract {
+        operator_agent_id,
+        contract_id,
+        success,
+        notes,
     })
 }
 

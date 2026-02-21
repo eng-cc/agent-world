@@ -538,6 +538,30 @@ fn action_signature(action: &Action) -> String {
         } => format!(
             "grant_meta_progress:{operator_agent_id}:{target_agent_id}:{track}:{points}:{achievement_id:?}"
         ),
+        Action::OpenEconomicContract {
+            creator_agent_id,
+            contract_id,
+            counterparty_agent_id,
+            settlement_kind,
+            settlement_amount,
+            reputation_stake,
+            expires_at,
+            description,
+        } => format!(
+            "open_economic_contract:{creator_agent_id}:{contract_id}:{counterparty_agent_id}:{settlement_kind:?}:{settlement_amount}:{reputation_stake}:{expires_at}:{description}"
+        ),
+        Action::AcceptEconomicContract {
+            accepter_agent_id,
+            contract_id,
+        } => format!("accept_economic_contract:{accepter_agent_id}:{contract_id}"),
+        Action::SettleEconomicContract {
+            operator_agent_id,
+            contract_id,
+            success,
+            notes,
+        } => format!(
+            "settle_economic_contract:{operator_agent_id}:{contract_id}:{success}:{notes}"
+        ),
         other => format!("other:{other:?}"),
     }
 }
@@ -1027,6 +1051,55 @@ fn actions_same(left: &Action, right: &Action) -> bool {
             left_operator == right_operator
                 && left_target == right_target
                 && left_track == right_track
+        }
+        (
+            Action::OpenEconomicContract {
+                creator_agent_id: left_creator,
+                contract_id: left_contract,
+                counterparty_agent_id: left_counterparty,
+                settlement_kind: left_kind,
+                ..
+            },
+            Action::OpenEconomicContract {
+                creator_agent_id: right_creator,
+                contract_id: right_contract,
+                counterparty_agent_id: right_counterparty,
+                settlement_kind: right_kind,
+                ..
+            },
+        ) => {
+            left_creator == right_creator
+                && left_contract == right_contract
+                && left_counterparty == right_counterparty
+                && left_kind == right_kind
+        }
+        (
+            Action::AcceptEconomicContract {
+                accepter_agent_id: left_accepter,
+                contract_id: left_contract,
+            },
+            Action::AcceptEconomicContract {
+                accepter_agent_id: right_accepter,
+                contract_id: right_contract,
+            },
+        ) => left_accepter == right_accepter && left_contract == right_contract,
+        (
+            Action::SettleEconomicContract {
+                operator_agent_id: left_operator,
+                contract_id: left_contract,
+                success: left_success,
+                ..
+            },
+            Action::SettleEconomicContract {
+                operator_agent_id: right_operator,
+                contract_id: right_contract,
+                success: right_success,
+                ..
+            },
+        ) => {
+            left_operator == right_operator
+                && left_contract == right_contract
+                && left_success == right_success
         }
         _ => false,
     }

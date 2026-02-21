@@ -1172,7 +1172,10 @@ impl WorldKernel {
             | Action::OpenGovernanceProposal { .. }
             | Action::CastGovernanceVote { .. }
             | Action::ResolveCrisis { .. }
-            | Action::GrantMetaProgress { .. } => WorldEventKind::ActionRejected {
+            | Action::GrantMetaProgress { .. }
+            | Action::OpenEconomicContract { .. }
+            | Action::AcceptEconomicContract { .. }
+            | Action::SettleEconomicContract { .. } => WorldEventKind::ActionRejected {
                 reason: RejectReason::RuleDenied {
                     notes: vec!["gameplay action is runtime-only in simulator kernel".to_string()],
                 },

@@ -43,6 +43,9 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
         "cast_governance_vote",
         "resolve_crisis",
         "grant_meta_progress",
+        "open_economic_contract",
+        "accept_economic_contract",
+        "settle_economic_contract",
         "execute_until"
       ]
     },
@@ -156,6 +159,14 @@ const AGENT_SUBMIT_DECISION_SCHEMA_JSON: &str = r#"{
     "track": { "type": "string" },
     "points": { "type": "integer" },
     "achievement_id": { "type": "string" },
+    "creator_agent_id": { "type": "string" },
+    "contract_id": { "type": "string" },
+    "counterparty_agent_id": { "type": "string" },
+    "settlement_kind": { "type": "string" },
+    "settlement_amount": { "type": "integer", "minimum": 1 },
+    "reputation_stake": { "type": "integer", "minimum": 1 },
+    "expires_at": { "type": "integer", "minimum": 1 },
+    "accepter_agent_id": { "type": "string" },
     "action": {
       "type": "object",
       "additionalProperties": true
