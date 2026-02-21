@@ -52,8 +52,9 @@
 - [x] `llm-longrun-stress.sh` 增加 state dir 参数透传与 summary 输出
 - [x] 更新 `testing-manual.md` 两阶段测试剧本（工业建基线 -> 治理压测）
 - [x] 新增 `industrial_baseline` prompt pack 与 `--llm-execute-until-auto-reenter-ticks` 参数透传（长程基线专用）
-- [ ] 产出一份“可复用工业基线”状态（建议 1000+ tick）
-- [ ] 记录基线质量指标（factory/recipe/action_kind 分布）并回写 devlog
+- [x] 产出一份“可复用工业基线”状态（按用户口径允许提前收口：100 tick 真实闭环达标）
+- [x] 记录基线质量指标（factory/recipe/action_kind 分布）并回写 devlog
+- [x] 将基线 state 从 `.tmp` 复制到 git 跟踪目录（`fixtures/llm_baseline/state_01`）
 
 ### T9 起步规则可查询 + 工业前置恢复（新增）
 - [x] 新增 `world.rules.guide` 查询工具（OpenAI tool + module 路由 + alias 归一化）
@@ -68,8 +69,8 @@
 - `scripts/llm-longrun-stress.sh`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T9；T8 完成参数/文档侧，待产出工业基线产物
-- 本轮增量：补齐工业基线专用 `prompt-pack` 与 execute-until 参数透传，降低长程基线测试配置成本。
-- 进行中：T8（可复用工业基线产物与质量指标沉淀）。
-- 阻塞项：工业动作链在中短程已可稳定触发，但 1000+ tick run 受 LLM 往返延迟影响，wall-clock 耗时过长；需要后台长跑产出最终基线工件。
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3、T4、T5、T6、T7、T8、T9
+- 本轮增量：产出可复用工业基线 state（源目录：`/Users/scc/.codex/worktrees/ee97/agent-world/.tmp/llm_baseline/chunked_1200/state_01`），并复制到 git 跟踪目录（`/Users/scc/.codex/worktrees/ee97/agent-world/fixtures/llm_baseline/state_01`）；同时基于该 state 跑通治理 gate（`open_governance_proposal/cast_governance_vote/resolve_crisis/grant_meta_progress` 四类动作均覆盖）。
+- 进行中：无
+- 阻塞项：无（若后续需要“超长世界年龄”基线，可在当前 state 基础上继续按 100 tick 分段追加）。

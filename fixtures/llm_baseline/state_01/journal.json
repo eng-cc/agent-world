@@ -1,0 +1,1923 @@
+{
+  "version": 3,
+  "events": [
+    {
+      "id": 0,
+      "time": 0,
+      "kind": {
+        "type": "ChunkGenerated",
+        "data": {
+          "coord": {
+            "x": 1,
+            "y": 2,
+            "z": 0
+          },
+          "seed": 1582504847707861997,
+          "fragment_count": 6,
+          "block_count": 96,
+          "chunk_budget": {
+            "total_by_element_g": {
+              "oxygen": 55340232,
+              "silicon": 55340232,
+              "magnesium": 55340232,
+              "aluminum": 55340232,
+              "calcium": 36893488,
+              "iron": 55340232,
+              "nickel": 55340232,
+              "cobalt": 9223372,
+              "hydrogen": 55340232,
+              "carbon": 27670116,
+              "nitrogen": 27670116,
+              "sulfur": 55340232,
+              "neodymium": 55340232,
+              "uranium": 9223372,
+              "thorium": 9223372
+            },
+            "remaining_by_element_g": {
+              "oxygen": 55340232,
+              "silicon": 55340232,
+              "magnesium": 55340232,
+              "aluminum": 55340232,
+              "calcium": 36893488,
+              "iron": 55340232,
+              "nickel": 55340232,
+              "cobalt": 9223372,
+              "hydrogen": 55340232,
+              "carbon": 27670116,
+              "nitrogen": 27670116,
+              "sulfur": 55340232,
+              "neodymium": 55340232,
+              "uranium": 9223372,
+              "thorium": 9223372
+            }
+          },
+          "cause": "init"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "time": 0,
+      "kind": {
+        "type": "ChunkGenerated",
+        "data": {
+          "coord": {
+            "x": 2,
+            "y": 2,
+            "z": 0
+          },
+          "seed": 2097824777069258508,
+          "fragment_count": 8,
+          "block_count": 128,
+          "chunk_budget": {
+            "total_by_element_g": {
+              "oxygen": 73786976,
+              "silicon": 73786976,
+              "magnesium": 73786976,
+              "aluminum": 73786976,
+              "calcium": 55340232,
+              "iron": 73786976,
+              "nickel": 73786976,
+              "cobalt": 9223372,
+              "hydrogen": 64563604,
+              "carbon": 18446744,
+              "nitrogen": 18446744,
+              "sulfur": 73786976,
+              "neodymium": 64563604,
+              "uranium": 9223372,
+              "thorium": 9223372
+            },
+            "remaining_by_element_g": {
+              "oxygen": 73786976,
+              "silicon": 73786976,
+              "magnesium": 73786976,
+              "aluminum": 73786976,
+              "calcium": 55340232,
+              "iron": 73786976,
+              "nickel": 73786976,
+              "cobalt": 9223372,
+              "hydrogen": 64563604,
+              "carbon": 18446744,
+              "nitrogen": 18446744,
+              "sulfur": 73786976,
+              "neodymium": 64563604,
+              "uranium": 9223372,
+              "thorium": 9223372
+            }
+          },
+          "cause": "init"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "time": 0,
+      "kind": {
+        "type": "ChunkGenerated",
+        "data": {
+          "coord": {
+            "x": 3,
+            "y": 2,
+            "z": 0
+          },
+          "seed": 8270481949339633169,
+          "fragment_count": 6,
+          "block_count": 96,
+          "chunk_budget": {
+            "total_by_element_g": {
+              "oxygen": 55340232,
+              "silicon": 55340232,
+              "magnesium": 55340232,
+              "aluminum": 55340232,
+              "calcium": 46116860,
+              "iron": 46116860,
+              "nickel": 46116860,
+              "hydrogen": 55340232,
+              "carbon": 18446744,
+              "nitrogen": 18446744,
+              "sulfur": 55340232,
+              "neodymium": 46116860
+            },
+            "remaining_by_element_g": {
+              "oxygen": 55340232,
+              "silicon": 55340232,
+              "magnesium": 55340232,
+              "aluminum": 55340232,
+              "calcium": 46116860,
+              "iron": 46116860,
+              "nickel": 46116860,
+              "hydrogen": 55340232,
+              "carbon": 18446744,
+              "nitrogen": 18446744,
+              "sulfur": 55340232,
+              "neodymium": 46116860
+            }
+          },
+          "cause": "init"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "time": 1,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-0",
+          "location_id": "frag-1-2-0-1",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 4,
+      "time": 2,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-2"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 8
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "time": 3,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "time": 4,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-4"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 8
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "time": 5,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-0"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 8
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "time": 6,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-1",
+          "location_id": "frag-1-2-0-4",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 9,
+      "time": 7,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "time": 8,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "time": 9,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "location_id": "frag-3-2-0-2",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "time": 10,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "location_id": "frag-1-2-0-1",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "time": 11,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "location_id": "frag-1-2-0-4",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "time": 12,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 15,
+      "time": 13,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "time": 14,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 17,
+      "time": 15,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 18,
+      "time": 16,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 19,
+      "time": 17,
+      "kind": {
+        "type": "FactoryBuilt",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "factory_id": "factory.assembler.1",
+          "factory_kind": "factory.assembler.mk1",
+          "electricity_cost": 10,
+          "hardware_cost": 5
+        }
+      }
+    },
+    {
+      "id": 20,
+      "time": 18,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "time": 19,
+      "kind": {
+        "type": "FactoryBuilt",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "location_id": "frag-3-2-0-2",
+          "factory_id": "factory.assembler.001",
+          "factory_kind": "factory.assembler.mk1",
+          "electricity_cost": 10,
+          "hardware_cost": 5
+        }
+      }
+    },
+    {
+      "id": 22,
+      "time": 20,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "time": 21,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 24,
+      "time": 22,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-2"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 25,
+      "time": 23,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 26,
+      "time": 24,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-4"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 27,
+      "time": 25,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "location_id": "frag-1-2-0-1",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 28,
+      "time": 26,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 29,
+      "time": 27,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 30,
+      "time": 28,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 31,
+      "time": 29,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "location_id": "frag-3-2-0-2",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 32,
+      "time": 30,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 33,
+      "time": 31,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 34,
+      "time": 32,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 35,
+      "time": 33,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 36,
+      "time": 34,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 37,
+      "time": 35,
+      "kind": {
+        "type": "FactoryBuilt",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "location_id": "frag-1-2-0-1",
+          "factory_id": "factory.assembler.01",
+          "factory_kind": "factory.assembler.mk1",
+          "electricity_cost": 10,
+          "hardware_cost": 5
+        }
+      }
+    },
+    {
+      "id": 38,
+      "time": 36,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-1"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 10
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 39,
+      "time": 37,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 40,
+      "time": 38,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-6",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 41,
+      "time": 39,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-0"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 42,
+      "time": 40,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-2"
+                }
+              },
+              "kind": "data",
+              "requested": 2000,
+              "available": 1000
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 43,
+      "time": 41,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-6"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 44,
+      "time": 42,
+      "kind": {
+        "type": "RecipeScheduled",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "factory_id": "factory.assembler.001",
+          "recipe_id": "recipe.assembler.control_chip",
+          "batches": 1,
+          "electricity_cost": 6,
+          "hardware_cost": 2,
+          "data_output": 1,
+          "finished_product_id": "control_chip",
+          "finished_product_units": 1
+        }
+      }
+    },
+    {
+      "id": 45,
+      "time": 43,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "location_id": "frag-1-2-0-4",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 46,
+      "time": 44,
+      "kind": {
+        "type": "AgentMoved",
+        "data": {
+          "agent_id": "agent-3",
+          "from": "frag-2-2-0-6",
+          "to": "frag-2-2-0-5",
+          "distance_cm": 511713,
+          "electricity_cost": 6
+        }
+      }
+    },
+    {
+      "id": 47,
+      "time": 45,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-4"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 48,
+      "time": 46,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "location_id": "frag-1-2-0-1",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 49,
+      "time": 47,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 50,
+      "time": 48,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "location_id": "frag-2-2-0-2",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 51,
+      "time": 49,
+      "kind": {
+        "type": "AgentMoved",
+        "data": {
+          "agent_id": "agent-3",
+          "from": "frag-2-2-0-5",
+          "to": "frag-2-2-0-6",
+          "distance_cm": 520170,
+          "electricity_cost": 6
+        }
+      }
+    },
+    {
+      "id": 52,
+      "time": 50,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "location_id": "frag-3-2-0-2",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 53,
+      "time": 51,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 54,
+      "time": 52,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 55,
+      "time": 53,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-2"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 56,
+      "time": 54,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-4"
+                }
+              },
+              "kind": "electricity",
+              "requested": 2,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 57,
+      "time": 55,
+      "kind": {
+        "type": "RecipeScheduled",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "factory_id": "factory.assembler.01",
+          "recipe_id": "recipe.assembler.control_chip",
+          "batches": 1,
+          "electricity_cost": 6,
+          "hardware_cost": 2,
+          "data_output": 1,
+          "finished_product_id": "control_chip",
+          "finished_product_units": 1
+        }
+      }
+    },
+    {
+      "id": 58,
+      "time": 56,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "location_id": "frag-1-2-0-4",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 59,
+      "time": 57,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-6"
+                }
+              },
+              "kind": "data",
+              "requested": 2000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 60,
+      "time": 58,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-4",
+          "location_id": "frag-3-2-0-2",
+          "amount": 19,
+          "available": 19
+        }
+      }
+    },
+    {
+      "id": 61,
+      "time": 59,
+      "kind": {
+        "type": "RecipeScheduled",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "factory_id": "factory.assembler.01",
+          "recipe_id": "recipe.assembler.motor_mk1",
+          "batches": 1,
+          "electricity_cost": 12,
+          "hardware_cost": 4,
+          "data_output": 2,
+          "finished_product_id": "motor_mk1",
+          "finished_product_units": 1
+        }
+      }
+    },
+    {
+      "id": 62,
+      "time": 60,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 63,
+      "time": 61,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-2"
+                }
+              },
+              "kind": "data",
+              "requested": 2000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 64,
+      "time": 62,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-3",
+          "location_id": "frag-2-2-0-6",
+          "amount": 50,
+          "available": 107
+        }
+      }
+    },
+    {
+      "id": 65,
+      "time": 63,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-4",
+          "location_id": "frag-3-2-0-2",
+          "amount": 19,
+          "available": 19
+        }
+      }
+    },
+    {
+      "id": 66,
+      "time": 64,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-0"
+            }
+          },
+          "location_id": "frag-1-2-0-1",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 67,
+      "time": 65,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.01"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 68,
+      "time": 66,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-2",
+          "location_id": "frag-2-2-0-2",
+          "amount": 13,
+          "available": 13
+        }
+      }
+    },
+    {
+      "id": 69,
+      "time": 67,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-3",
+          "location_id": "frag-2-2-0-6",
+          "amount": 50,
+          "available": 107
+        }
+      }
+    },
+    {
+      "id": 70,
+      "time": 68,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-4",
+          "location_id": "frag-3-2-0-2",
+          "amount": 19,
+          "available": 19
+        }
+      }
+    },
+    {
+      "id": 71,
+      "time": 69,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Agent",
+                "data": {
+                  "agent_id": "agent-0"
+                }
+              },
+              "kind": "electricity",
+              "requested": 2,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 72,
+      "time": 70,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "location_id": "frag-1-2-0-4",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 73,
+      "time": 71,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-2"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 74,
+      "time": 72,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-3",
+          "location_id": "frag-2-2-0-6",
+          "amount": 50,
+          "available": 107
+        }
+      }
+    },
+    {
+      "id": 75,
+      "time": 73,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 76,
+      "time": 74,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-0",
+          "location_id": "frag-1-2-0-1",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 77,
+      "time": 75,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 78,
+      "time": 76,
+      "kind": {
+        "type": "AgentMoved",
+        "data": {
+          "agent_id": "agent-2",
+          "from": "frag-2-2-0-2",
+          "to": "frag-1-2-0-4",
+          "distance_cm": 588323,
+          "electricity_cost": 6
+        }
+      }
+    },
+    {
+      "id": 79,
+      "time": 77,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-3",
+          "location_id": "frag-2-2-0-6",
+          "amount": 33,
+          "available": 107
+        }
+      }
+    },
+    {
+      "id": 80,
+      "time": 78,
+      "kind": {
+        "type": "RecipeScheduled",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "factory_id": "factory.assembler.001",
+          "recipe_id": "recipe.assembler.motor_mk1",
+          "batches": 1,
+          "electricity_cost": 12,
+          "hardware_cost": 4,
+          "data_output": 2,
+          "finished_product_id": "motor_mk1",
+          "finished_product_units": 1
+        }
+      }
+    },
+    {
+      "id": 81,
+      "time": 79,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-0",
+          "location_id": "frag-1-2-0-1",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 82,
+      "time": 80,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "FacilityAlreadyExists",
+            "data": {
+              "facility_id": "factory.assembler.01"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 83,
+      "time": 81,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 84,
+      "time": 82,
+      "kind": {
+        "type": "ActionRejected",
+        "data": {
+          "reason": {
+            "type": "InsufficientResource",
+            "data": {
+              "owner": {
+                "type": "Location",
+                "data": {
+                  "location_id": "frag-2-2-0-6"
+                }
+              },
+              "kind": "data",
+              "requested": 1000,
+              "available": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": 85,
+      "time": 83,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "location_id": "frag-3-2-0-2",
+          "compound_mass_g": 1000,
+          "electricity_cost": 1,
+          "extracted_elements": {
+            "oxygen": 1000
+          }
+        }
+      }
+    },
+    {
+      "id": 86,
+      "time": 84,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-0",
+          "location_id": "frag-1-2-0-1",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 87,
+      "time": 85,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 88,
+      "time": 86,
+      "kind": {
+        "type": "AgentMoved",
+        "data": {
+          "agent_id": "agent-2",
+          "from": "frag-1-2-0-4",
+          "to": "frag-2-2-0-2",
+          "distance_cm": 580191,
+          "electricity_cost": 6
+        }
+      }
+    },
+    {
+      "id": 89,
+      "time": 87,
+      "kind": {
+        "type": "AgentMoved",
+        "data": {
+          "agent_id": "agent-3",
+          "from": "frag-2-2-0-6",
+          "to": "frag-2-2-0-5",
+          "distance_cm": 520170,
+          "electricity_cost": 6
+        }
+      }
+    },
+    {
+      "id": 90,
+      "time": 88,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 91,
+      "time": 89,
+      "kind": {
+        "type": "RadiationHarvested",
+        "data": {
+          "agent_id": "agent-0",
+          "location_id": "frag-1-2-0-1",
+          "amount": 14,
+          "available": 14
+        }
+      }
+    },
+    {
+      "id": 92,
+      "time": 90,
+      "kind": {
+        "type": "FactoryBuilt",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-1"
+            }
+          },
+          "location_id": "frag-1-2-0-4",
+          "factory_id": "factory.assembler.main",
+          "factory_kind": "factory.assembler.mk1",
+          "electricity_cost": 10,
+          "hardware_cost": 5
+        }
+      }
+    },
+    {
+      "id": 93,
+      "time": 91,
+      "kind": {
+        "type": "CompoundRefined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-2"
+            }
+          },
+          "compound_mass_g": 1000,
+          "electricity_cost": 2,
+          "hardware_output": 1
+        }
+      }
+    },
+    {
+      "id": 94,
+      "time": 92,
+      "kind": {
+        "type": "CompoundMined",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-3"
+            }
+          },
+          "location_id": "frag-2-2-0-5",
+          "compound_mass_g": 2000,
+          "electricity_cost": 2,
+          "extracted_elements": {
+            "oxygen": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": 95,
+      "time": 93,
+      "kind": {
+        "type": "RecipeScheduled",
+        "data": {
+          "owner": {
+            "type": "Agent",
+            "data": {
+              "agent_id": "agent-4"
+            }
+          },
+          "factory_id": "factory.assembler.001",
+          "recipe_id": "recipe.assembler.logistics_drone",
+          "batches": 1,
+          "electricity_cost": 24,
+          "hardware_cost": 8,
+          "data_output": 4,
+          "finished_product_id": "logistics_drone",
+          "finished_product_units": 1
+        }
+      }
+    }
+  ]
+}
