@@ -17,6 +17,13 @@ struct CliOptions {
     report_json: Option<String>,
     print_llm_io: bool,
     llm_io_max_chars: Option<usize>,
+    llm_system_prompt: Option<String>,
+    llm_short_term_goal: Option<String>,
+    llm_long_term_goal: Option<String>,
+    prompt_switch_tick: Option<u64>,
+    switch_llm_system_prompt: Option<String>,
+    switch_llm_short_term_goal: Option<String>,
+    switch_llm_long_term_goal: Option<String>,
 }
 
 impl Default for CliOptions {
@@ -27,7 +34,28 @@ impl Default for CliOptions {
             report_json: None,
             print_llm_io: false,
             llm_io_max_chars: None,
+            llm_system_prompt: None,
+            llm_short_term_goal: None,
+            llm_long_term_goal: None,
+            prompt_switch_tick: None,
+            switch_llm_system_prompt: None,
+            switch_llm_short_term_goal: None,
+            switch_llm_long_term_goal: None,
         }
+    }
+}
+
+impl CliOptions {
+    fn has_initial_prompt_override(&self) -> bool {
+        self.llm_system_prompt.is_some()
+            || self.llm_short_term_goal.is_some()
+            || self.llm_long_term_goal.is_some()
+    }
+
+    fn has_switch_prompt_override(&self) -> bool {
+        self.switch_llm_system_prompt.is_some()
+            || self.switch_llm_short_term_goal.is_some()
+            || self.switch_llm_long_term_goal.is_some()
     }
 }
 
@@ -337,13 +365,20 @@ fn main() {
     }
 
     for agent_id in &agent_ids {
-        let behavior = match LlmAgentBehavior::from_env(agent_id.clone()) {
+        let mut behavior = match LlmAgentBehavior::from_env(agent_id.clone()) {
             Ok(behavior) => behavior,
             Err(err) => {
                 eprintln!("failed to create llm behavior for {agent_id}: {err}");
                 process::exit(1);
             }
         };
+        if options.has_initial_prompt_override() {
+            behavior.apply_prompt_overrides(
+                options.llm_system_prompt.clone(),
+                options.llm_short_term_goal.clone(),
+                options.llm_long_term_goal.clone(),
+            );
+        }
         runner.register(behavior);
     }
 
@@ -353,8 +388,38 @@ fn main() {
     println!("ticks: {}", options.ticks);
 
     let mut run_report = DemoRunReport::new(options.scenario.as_str().to_string(), options.ticks);
+    let mut prompt_switch_applied = false;
 
     for idx in 0..options.ticks {
+        let tick = idx + 1;
+        if !prompt_switch_applied {
+            if let Some(switch_tick) = options.prompt_switch_tick {
+                if tick >= switch_tick {
+                    for agent_id in runner.agent_ids() {
+                        if let Some(agent) = runner.get_mut(agent_id.as_str()) {
+                            let current = agent.behavior.prompt_overrides();
+                            agent.behavior.apply_prompt_overrides(
+                                options
+                                    .switch_llm_system_prompt
+                                    .clone()
+                                    .or(current.system_prompt),
+                                options
+                                    .switch_llm_short_term_goal
+                                    .clone()
+                                    .or(current.short_term_goal),
+                                options
+                                    .switch_llm_long_term_goal
+                                    .clone()
+                                    .or(current.long_term_goal),
+                            );
+                        }
+                    }
+                    prompt_switch_applied = true;
+                    println!("tick={} prompt_switch_applied=true", tick);
+                }
+            }
+        }
+
         match runner.tick(&mut kernel) {
             Some(result) => {
                 run_report.active_ticks += 1;
@@ -364,7 +429,7 @@ fn main() {
                     run_report.observe_trace(trace);
                     if options.print_llm_io {
                         print_llm_io_trace(
-                            idx + 1,
+                            tick,
                             result.agent_id.as_str(),
                             trace,
                             options.llm_io_max_chars,
@@ -376,30 +441,23 @@ fn main() {
                     run_report.observe_action_result(idx + 1, action_result);
                     println!(
                         "tick={} agent={} success={} action={:?}",
-                        idx + 1,
-                        result.agent_id,
-                        action_result.success,
-                        action_result.action
+                        tick, result.agent_id, action_result.success, action_result.action
                     );
                     if let Some(reason) = action_result.reject_reason() {
                         println!(
                             "tick={} agent={} reject_reason={:?}",
-                            idx + 1,
-                            result.agent_id,
-                            reason
+                            tick, result.agent_id, reason
                         );
                     }
                 } else {
                     println!(
                         "tick={} agent={} decision={:?}",
-                        idx + 1,
-                        result.agent_id,
-                        result.decision
+                        tick, result.agent_id, result.decision
                     );
                 }
             }
             None => {
-                println!("tick={} idle", idx + 1);
+                println!("tick={} idle", tick);
                 break;
             }
         }
@@ -542,6 +600,67 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
                         })?,
                 );
             }
+            "--llm-system-prompt" => {
+                options.llm_system_prompt = Some(
+                    iter.next()
+                        .ok_or_else(|| "--llm-system-prompt requires prompt text".to_string())?
+                        .to_string(),
+                );
+            }
+            "--llm-short-term-goal" => {
+                options.llm_short_term_goal = Some(
+                    iter.next()
+                        .ok_or_else(|| "--llm-short-term-goal requires goal text".to_string())?
+                        .to_string(),
+                );
+            }
+            "--llm-long-term-goal" => {
+                options.llm_long_term_goal = Some(
+                    iter.next()
+                        .ok_or_else(|| "--llm-long-term-goal requires goal text".to_string())?
+                        .to_string(),
+                );
+            }
+            "--prompt-switch-tick" => {
+                let raw = iter.next().ok_or_else(|| {
+                    "--prompt-switch-tick requires a positive integer".to_string()
+                })?;
+                options.prompt_switch_tick = Some(
+                    raw.parse::<u64>()
+                        .ok()
+                        .filter(|value| *value > 0)
+                        .ok_or_else(|| {
+                            "--prompt-switch-tick requires a positive integer".to_string()
+                        })?,
+                );
+            }
+            "--switch-llm-system-prompt" => {
+                options.switch_llm_system_prompt = Some(
+                    iter.next()
+                        .ok_or_else(|| {
+                            "--switch-llm-system-prompt requires prompt text".to_string()
+                        })?
+                        .to_string(),
+                );
+            }
+            "--switch-llm-short-term-goal" => {
+                options.switch_llm_short_term_goal = Some(
+                    iter.next()
+                        .ok_or_else(|| {
+                            "--switch-llm-short-term-goal requires goal text".to_string()
+                        })?
+                        .to_string(),
+                );
+            }
+            "--switch-llm-long-term-goal" => {
+                options.switch_llm_long_term_goal = Some(
+                    iter.next()
+                        .ok_or_else(|| {
+                            "--switch-llm-long-term-goal requires goal text".to_string()
+                        })?
+                        .to_string(),
+                );
+            }
             _ => {
                 if scenario_arg.is_none() {
                     scenario_arg = Some(arg);
@@ -561,12 +680,23 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
         })?;
     }
 
+    if options.has_switch_prompt_override() && options.prompt_switch_tick.is_none() {
+        return Err(
+            "--prompt-switch-tick is required when switch prompt overrides are set".to_string(),
+        );
+    }
+    if options.prompt_switch_tick.is_some() && !options.has_switch_prompt_override() {
+        return Err(
+            "--prompt-switch-tick requires at least one --switch-llm-* override".to_string(),
+        );
+    }
+
     Ok(options)
 }
 
 fn print_help() {
     println!(
-        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io] [--llm-io-max-chars <n>]"
+        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io] [--llm-io-max-chars <n>] [prompt overrides]"
     );
     println!("Options:");
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");
@@ -574,6 +704,17 @@ fn print_help() {
     println!("  --report-json <path>  Persist run summary as JSON report");
     println!("  --print-llm-io     Print LLM input/output to stdout for each tick");
     println!("  --llm-io-max-chars <n>  Truncate each LLM input/output block to n chars");
+    println!("  --llm-system-prompt <text>  Override default system prompt for this run");
+    println!("  --llm-short-term-goal <text>  Override default short-term goal for this run");
+    println!("  --llm-long-term-goal <text>  Override default long-term goal for this run");
+    println!("  --prompt-switch-tick <n>  Apply switch prompt overrides at tick n (1-based)");
+    println!("  --switch-llm-system-prompt <text>  System prompt used after --prompt-switch-tick");
+    println!(
+        "  --switch-llm-short-term-goal <text>  Short-term goal used after --prompt-switch-tick"
+    );
+    println!(
+        "  --switch-llm-long-term-goal <text>  Long-term goal used after --prompt-switch-tick"
+    );
     println!(
         "Available scenarios: {}",
         WorldScenario::variants().join(", ")
@@ -592,6 +733,13 @@ mod tests {
         assert_eq!(options.ticks, 20);
         assert!(!options.print_llm_io);
         assert_eq!(options.llm_io_max_chars, None);
+        assert_eq!(options.llm_system_prompt, None);
+        assert_eq!(options.llm_short_term_goal, None);
+        assert_eq!(options.llm_long_term_goal, None);
+        assert_eq!(options.prompt_switch_tick, None);
+        assert_eq!(options.switch_llm_system_prompt, None);
+        assert_eq!(options.switch_llm_short_term_goal, None);
+        assert_eq!(options.switch_llm_long_term_goal, None);
     }
 
     #[test]
@@ -627,6 +775,50 @@ mod tests {
     }
 
     #[test]
+    fn parse_options_accepts_initial_prompt_overrides() {
+        let options = parse_options(
+            [
+                "--llm-system-prompt",
+                "sys",
+                "--llm-short-term-goal",
+                "short",
+                "--llm-long-term-goal",
+                "long",
+            ]
+            .into_iter(),
+        )
+        .expect("prompt overrides");
+        assert_eq!(options.llm_system_prompt.as_deref(), Some("sys"));
+        assert_eq!(options.llm_short_term_goal.as_deref(), Some("short"));
+        assert_eq!(options.llm_long_term_goal.as_deref(), Some("long"));
+    }
+
+    #[test]
+    fn parse_options_accepts_switch_prompt_overrides() {
+        let options = parse_options(
+            [
+                "--prompt-switch-tick",
+                "9",
+                "--switch-llm-system-prompt",
+                "sys2",
+                "--switch-llm-short-term-goal",
+                "short2",
+                "--switch-llm-long-term-goal",
+                "long2",
+            ]
+            .into_iter(),
+        )
+        .expect("switch prompt overrides");
+        assert_eq!(options.prompt_switch_tick, Some(9));
+        assert_eq!(options.switch_llm_system_prompt.as_deref(), Some("sys2"));
+        assert_eq!(
+            options.switch_llm_short_term_goal.as_deref(),
+            Some("short2")
+        );
+        assert_eq!(options.switch_llm_long_term_goal.as_deref(), Some("long2"));
+    }
+
+    #[test]
     fn parse_options_rejects_missing_report_json_path() {
         let err = parse_options(["--report-json"].into_iter()).expect_err("missing report path");
         assert!(err.contains("file path"));
@@ -643,6 +835,20 @@ mod tests {
         let err = parse_options(["--llm-io-max-chars", "0"].into_iter())
             .expect_err("reject zero llm io max chars");
         assert!(err.contains("positive integer"));
+    }
+
+    #[test]
+    fn parse_options_rejects_switch_prompt_without_tick() {
+        let err = parse_options(["--switch-llm-system-prompt", "sys2"].into_iter())
+            .expect_err("switch prompt without tick");
+        assert!(err.contains("--prompt-switch-tick"));
+    }
+
+    #[test]
+    fn parse_options_rejects_switch_tick_without_switch_prompt() {
+        let err = parse_options(["--prompt-switch-tick", "4"].into_iter())
+            .expect_err("switch tick without switch prompt");
+        assert!(err.contains("--switch-llm-"));
     }
 
     #[test]
