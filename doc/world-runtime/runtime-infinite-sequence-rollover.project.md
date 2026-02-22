@@ -17,9 +17,9 @@
 - [x] 补充对应拒绝路径/边界测试
 
 ### T3 回归与收口
-- [ ] 运行 runtime 与相关 crate 定向测试
-- [ ] 更新设计/项目文档状态
-- [ ] 更新 `doc/devlog/2026-02-22.md`
+- [x] 运行 runtime 与相关 crate 定向测试
+- [x] 更新设计/项目文档状态
+- [x] 更新 `doc/devlog/2026-02-22.md`
 
 ## 依赖
 - Runtime world 核心：
@@ -40,8 +40,8 @@
   - `crates/agent_world_net/src/execution_storage.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
