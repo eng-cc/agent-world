@@ -489,7 +489,11 @@ impl MembershipSyncClient {
         for node_id in queried_nodes {
             if policy.include_hot {
                 let hot = hot_archive_store.list(&normalized_world_id, &node_id)?;
-                scanned_hot = scanned_hot.saturating_add(hot.len());
+                scanned_hot = checked_usize_add(
+                    scanned_hot,
+                    hot.len(),
+                    "membership revocation governance aggregate scanned_hot",
+                )?;
                 append_aggregate_records(
                     &mut records,
                     &normalized_world_id,
@@ -501,7 +505,11 @@ impl MembershipSyncClient {
             }
             if policy.include_cold {
                 let cold = cold_archive_store.list(&normalized_world_id, &node_id)?;
-                scanned_cold = scanned_cold.saturating_add(cold.len());
+                scanned_cold = checked_usize_add(
+                    scanned_cold,
+                    cold.len(),
+                    "membership revocation governance aggregate scanned_cold",
+                )?;
                 append_aggregate_records(
                     &mut records,
                     &normalized_world_id,
@@ -969,6 +977,13 @@ fn validate_governance_recovery_drill_alert_event_aggregate_query_args(
     Ok(())
 }
 
+fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, WorldError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("{context} overflow: lhs={lhs}, rhs={rhs}"),
+        })
+}
+
 fn compare_composite_sequence_cursor(
     left_since_event_at_ms: i64,
     left_since_node_id: Option<&str>,
@@ -1131,5 +1146,29 @@ fn alert_event_from_run_report(
         outcome,
         reasons: run_report.reasons.clone(),
         severity,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checked_usize_add_rejects_overflow() {
+        let err = checked_usize_add(
+            usize::MAX,
+            1,
+            "membership replay federated aggregate checked add",
+        )
+        .expect_err("overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(
+                    reason.contains("membership replay federated aggregate checked add overflow"),
+                    "{reason}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }

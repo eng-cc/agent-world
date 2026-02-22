@@ -7,8 +7,8 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase15.project.md`
 
 ### T1 Federated 聚合扫描计数受检化
-- [ ] `scanned_hot` / `scanned_cold` 从饱和累加改为受检累加。
-- [ ] 增加对应 overflow 单元测试并验证错误语义一致。
+- [x] `scanned_hot` / `scanned_cold` 从饱和累加改为受检累加。
+- [x] 增加对应 overflow 单元测试并验证错误语义一致。
 
 ### T2 复合游标偏移计数受检化
 - [ ] `node_event_offset` 递进从饱和递进改为受检递进。
@@ -25,7 +25,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
