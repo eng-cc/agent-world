@@ -198,6 +198,53 @@ fn governance_recovery_drill_schedule_state_store_file_round_trip() {
 }
 
 #[test]
+fn governance_audit_archive_prune_rejects_age_overflow_without_mutation() {
+    let client = sample_client();
+    let store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::new();
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::append(
+        &store,
+        "w1",
+        "node-a",
+        &sample_governance_audit_record(
+            "w1",
+            "node-a",
+            i64::MAX,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Normal,
+            0,
+        ),
+    )
+    .expect("append extreme governance audit");
+
+    let retention_policy =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy {
+            max_records: 8,
+            max_age_ms: 1_000,
+        };
+    let err = client
+        .prune_revocation_dead_letter_replay_rollback_governance_audit_archive(
+            "w1",
+            "node-a",
+            i64::MIN,
+            &retention_policy,
+            &store,
+        )
+        .expect_err("age overflow should fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { ref reason }
+            if reason.contains("audit age overflow")
+    ));
+
+    let records = MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::list(
+        &store, "w1", "node-a",
+    )
+    .expect("list records after overflow");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].audited_at_ms, i64::MAX);
+}
+
+#[test]
 fn governance_recovery_drill_schedule_executes_when_due_and_persists_state() {
     let client = sample_client();
     let schedule_state_store =
@@ -321,6 +368,56 @@ fn governance_recovery_drill_schedule_executes_when_due_and_persists_state() {
         .load_state("w1", "node-a")
         .expect("load schedule state");
     assert_eq!(state.last_drill_at_ms, Some(1_100));
+}
+
+#[test]
+fn governance_recovery_drill_schedule_rejects_next_due_overflow_without_mutation() {
+    let client = sample_client();
+    let schedule_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleStateStore::new();
+    schedule_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduleState {
+                last_drill_at_ms: Some(i64::MAX - 1),
+            },
+        )
+        .expect("seed schedule state");
+    let rollback_alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore::new();
+    let rollback_governance_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore::new();
+    let rollback_governance_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::new();
+
+    let policy =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillSchedulePolicy {
+            drill_interval_ms: 100,
+            recent_audit_limit: 1,
+        };
+    let err = client
+        .run_revocation_dead_letter_replay_rollback_governance_recovery_drill_schedule(
+            "w1",
+            "node-a",
+            i64::MAX - 1,
+            &policy,
+            &schedule_state_store,
+            &rollback_alert_state_store,
+            &rollback_governance_state_store,
+            &rollback_governance_audit_store,
+        )
+        .expect_err("next due overflow should fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { ref reason }
+            if reason.contains("next_due_at_ms overflow")
+    ));
+
+    let state = schedule_state_store
+        .load_state("w1", "node-a")
+        .expect("load schedule state after overflow");
+    assert_eq!(state.last_drill_at_ms, Some(i64::MAX - 1));
 }
 
 #[test]

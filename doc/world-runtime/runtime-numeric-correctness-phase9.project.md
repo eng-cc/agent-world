@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase9.project.md`
 
 ### T1 调度与保留时间算术受检化
-- [ ] `membership_recovery/replay_archive.rs` 的 drill schedule 时间算术改为受检语义。
-- [ ] `membership_recovery/replay_archive.rs` 的 audit retention 年龄计算改为受检语义。
-- [ ] 新增 schedule/retention 溢出拒绝测试并验证无状态污染。
+- [x] `membership_recovery/replay_archive.rs` 的 drill schedule 时间算术改为受检语义。
+- [x] `membership_recovery/replay_archive.rs` 的 audit retention 年龄计算改为受检语义。
+- [x] 新增 schedule/retention 溢出拒绝测试并验证无状态污染。
 
 ### T2 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -22,7 +22,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：无
 - 阻塞项：无

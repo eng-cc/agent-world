@@ -486,7 +486,7 @@ impl MembershipSyncClient {
         let records = rollback_governance_audit_store.list(&world_id, &node_id)?;
         let before = records.len();
         let (retained, pruned_by_age, pruned_by_capacity) =
-            apply_governance_audit_retention(records, pruned_at_ms, retention_policy);
+            apply_governance_audit_retention(records, pruned_at_ms, retention_policy)?;
         let after = retained.len();
         rollback_governance_audit_store.replace(&world_id, &node_id, &retained)?;
         Ok(
@@ -527,13 +527,30 @@ impl MembershipSyncClient {
         validate_recovery_drill_schedule_policy(policy)?;
         let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
         let mut schedule_state = schedule_state_store.load_state(&world_id, &node_id)?;
-        let drill_due = schedule_state
-            .last_drill_at_ms
-            .map(|last| scheduled_at_ms.saturating_sub(last) >= policy.drill_interval_ms)
-            .unwrap_or(true);
-        let next_due_at_ms = schedule_state
-            .last_drill_at_ms
-            .map(|last| last.saturating_add(policy.drill_interval_ms));
+        let (drill_due, next_due_at_ms) = match schedule_state.last_drill_at_ms {
+            Some(last_drill_at_ms) => {
+                let elapsed_since_last_drill = scheduled_at_ms
+                    .checked_sub(last_drill_at_ms)
+                    .ok_or_else(|| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter rollback governance recovery drill schedule elapsed overflow: scheduled_at_ms={scheduled_at_ms}, last_drill_at_ms={last_drill_at_ms}"
+                        ),
+                    })?;
+                let next_due_at_ms = last_drill_at_ms
+                    .checked_add(policy.drill_interval_ms)
+                    .ok_or_else(|| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter rollback governance recovery drill schedule next_due_at_ms overflow: last_drill_at_ms={last_drill_at_ms}, drill_interval_ms={}",
+                            policy.drill_interval_ms
+                        ),
+                    })?;
+                (
+                    elapsed_since_last_drill >= policy.drill_interval_ms,
+                    Some(next_due_at_ms),
+                )
+            }
+            None => (true, None),
+        };
         if !drill_due {
             return Ok(
                 MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduledRunReport {
@@ -567,7 +584,16 @@ impl MembershipSyncClient {
                 scheduled_at_ms,
                 drill_due,
                 drill_executed: true,
-                next_due_at_ms: Some(scheduled_at_ms.saturating_add(policy.drill_interval_ms)),
+                next_due_at_ms: Some(
+                    scheduled_at_ms.checked_add(policy.drill_interval_ms).ok_or_else(|| {
+                        WorldError::DistributedValidationFailed {
+                            reason: format!(
+                                "membership revocation dead-letter rollback governance recovery drill schedule next_due_at_ms overflow: scheduled_at_ms={scheduled_at_ms}, drill_interval_ms={}",
+                                policy.drill_interval_ms
+                            ),
+                        }
+                    })?,
+                ),
                 drill_report: Some(drill_report),
             },
         )
@@ -672,24 +698,35 @@ fn apply_governance_audit_retention(
     records: Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
     now_ms: i64,
     policy: &MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionPolicy,
-) -> (
-    Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
-    usize,
-    usize,
-) {
+) -> Result<
+    (
+        Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
+        usize,
+        usize,
+    ),
+    WorldError,
+> {
     let mut retained = Vec::with_capacity(records.len());
     let mut pruned_by_age = 0usize;
     for record in records {
-        if now_ms.saturating_sub(record.audited_at_ms) > policy.max_age_ms {
+        let record_age_ms = now_ms.checked_sub(record.audited_at_ms).ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter rollback governance audit age overflow: now_ms={now_ms}, audited_at_ms={}",
+                    record.audited_at_ms
+                ),
+            }
+        })?;
+        if record_age_ms > policy.max_age_ms {
             pruned_by_age = pruned_by_age.saturating_add(1);
         } else {
             retained.push(record);
         }
     }
     if retained.len() <= policy.max_records {
-        return (retained, pruned_by_age, 0);
+        return Ok((retained, pruned_by_age, 0));
     }
     let pruned_by_capacity = retained.len().saturating_sub(policy.max_records);
     let retained = retained.split_off(pruned_by_capacity);
-    (retained, pruned_by_age, pruned_by_capacity)
+    Ok((retained, pruned_by_age, pruned_by_capacity))
 }
