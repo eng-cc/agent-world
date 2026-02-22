@@ -32,6 +32,28 @@
 - M4：完成 Web Playwright 闭环，产出截图与运行证据。
 - M5：完成文档回写、devlog 记录和结论收口。
 
+## 里程碑状态（2026-02-22 收口）
+- [x] M1：完成。
+- [x] M2：完成。
+- [x] M3：完成。
+- [x] M4：完成。
+- [x] M5：完成。
+
+## 可操作性对比结论（重构前 vs 重构后）
+- 代码结构：
+  - 重构前：`agent_world_viewer` 存在 7 个超限文件（最大 `main.rs = 2231` 行，`egui_right_panel_chat.rs = 1904` 行）。
+  - 重构后：超限文件清零，关键文件降至 `main.rs = 915`、`egui_right_panel_chat.rs = 935`，其余均 `<= 1200`。
+- Web 闭环可操作性：
+  - 重构前基线（语义目标）：需要保持此前已修复的窄屏可操作、连接容错与聊天链路行为不回退。
+  - 重构后实测（Playwright）：
+    - `window.__AW_TEST__` 可用；
+    - `runSteps(mode=3d;focus=first_location;zoom=0.85;select=first_agent)` 可执行；
+    - `getState()` 返回 `connectionStatus=connected`、`selectedKind=agent`、`selectedId=agent-0`；
+    - console `Errors = 0`，无新增运行时错误。
+- 结论：
+  - 本次重构主要改善可维护性与可测试性（文件体量显著下降），未引入可操作性回退。
+  - 用户可见交互链路（连接、选择、控制、状态读取）与重构前保持一致。
+
 ## 风险
 - 大文件拆分时容易出现可见性（module visibility）与 re-export 漏洞，导致编译/测试失败。
 - `main.rs` 拆分涉及系统调度函数，若符号迁移不完整会影响启动链路。

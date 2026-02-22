@@ -6,7 +6,7 @@
 - [x] VFL2：完成高体量拆分，覆盖 `egui_right_panel_chat`、`main`。
 - [x] VFL3：执行 viewer 相关回归（viewer crate 单测 + wasm check + 必要定向测试）。
 - [x] VFL4：执行 Web Playwright 闭环（S6）并沉淀证据。
-- [ ] VFL5：回写文档状态、更新 devlog、给出可操作性对比结论并收口。
+- [x] VFL5：回写文档状态、更新 devlog、给出可操作性对比结论并收口。
 
 ## 依赖
 - `crates/agent_world_viewer/src/main.rs`
@@ -19,6 +19,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VFL4 完成，VFL5 进行中。
+- 当前阶段：VFL0~VFL5 全部完成（已收口）。
 - 阻塞项：无。
-- 最近更新：2026-02-22 22:44 CST。
+- 最近更新：2026-02-22 22:47 CST。
