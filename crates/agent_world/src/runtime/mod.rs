@@ -103,8 +103,8 @@ pub use modules::{
 
 // Node points
 pub use node_points::{
-    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
-    NodePointsLedgerSnapshot, NodeSettlement,
+    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsError,
+    NodePointsLedger, NodePointsLedgerSnapshot, NodeSettlement,
 };
 pub use node_points_runtime::{
     measure_directory_storage_bytes, NodePointsRuntimeAccumulatorSnapshot,

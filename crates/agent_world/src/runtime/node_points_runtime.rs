@@ -6,8 +6,8 @@ use agent_world_node::{NodeRole, NodeSnapshot};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsLedger,
-    NodePointsLedgerSnapshot,
+    EpochSettlementReport, NodeContributionSample, NodePointsConfig, NodePointsError,
+    NodePointsLedger, NodePointsLedgerSnapshot,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,7 +315,7 @@ impl NodePointsRuntimeCollector {
     pub fn observe(
         &mut self,
         observation: NodePointsRuntimeObservation,
-    ) -> Option<EpochSettlementReport> {
+    ) -> Result<Option<EpochSettlementReport>, NodePointsError> {
         if self.epoch_started_at_unix_ms.is_none() {
             self.epoch_started_at_unix_ms = Some(observation.observed_at_unix_ms);
         }
@@ -328,13 +328,13 @@ impl NodePointsRuntimeCollector {
                 let elapsed_ms =
                     observation_time_delta(start_ms, self.latest_observed_at_unix_ms());
                 if elapsed_ms >= epoch_ms {
-                    let report = self.settle_epoch_internal();
+                    let report = self.settle_epoch_internal()?;
                     self.epoch_started_at_unix_ms = Some(self.latest_observed_at_unix_ms());
-                    return report;
+                    return Ok(report);
                 }
             }
         }
-        None
+        Ok(None)
     }
 
     pub fn observe_snapshot(
@@ -342,7 +342,7 @@ impl NodePointsRuntimeCollector {
         snapshot: &NodeSnapshot,
         effective_storage_bytes: u64,
         observed_at_unix_ms: i64,
-    ) -> Option<EpochSettlementReport> {
+    ) -> Result<Option<EpochSettlementReport>, NodePointsError> {
         self.observe(NodePointsRuntimeObservation::from_snapshot(
             snapshot,
             effective_storage_bytes,
@@ -350,24 +350,24 @@ impl NodePointsRuntimeCollector {
         ))
     }
 
-    pub fn force_settle(&mut self) -> Option<EpochSettlementReport> {
+    pub fn force_settle(&mut self) -> Result<Option<EpochSettlementReport>, NodePointsError> {
         if self.current_epoch.is_empty() {
-            return None;
+            return Ok(None);
         }
-        let report = self.settle_epoch_internal();
+        let report = self.settle_epoch_internal()?;
         self.epoch_started_at_unix_ms = Some(self.latest_observed_at_unix_ms());
-        report
+        Ok(report)
     }
 
-    fn settle_epoch_internal(&mut self) -> Option<EpochSettlementReport> {
+    fn settle_epoch_internal(&mut self) -> Result<Option<EpochSettlementReport>, NodePointsError> {
         let samples = self.build_epoch_samples();
         if samples.is_empty() {
             self.current_epoch.clear();
-            return None;
+            return Ok(None);
         }
-        let report = self.ledger.settle_epoch(samples.as_slice());
+        let report = self.ledger.settle_epoch(samples.as_slice())?;
         self.current_epoch.clear();
-        Some(report)
+        Ok(Some(report))
     }
 
     fn build_epoch_samples(&self) -> Vec<NodeContributionSample> {
@@ -583,10 +583,13 @@ mod tests {
             ..first.clone()
         };
 
-        assert!(collector.observe(first).is_none());
-        assert!(collector.observe(second).is_none());
+        assert!(collector.observe(first).expect("observe").is_none());
+        assert!(collector.observe(second).expect("observe").is_none());
 
-        let report = collector.force_settle().expect("report");
+        let report = collector
+            .force_settle()
+            .expect("force settle")
+            .expect("report");
         assert_eq!(report.settlements.len(), 1);
         let settlement = &report.settlements[0];
         assert!(settlement.compute_score > 0.0 || settlement.storage_score > 0.0);
@@ -621,15 +624,18 @@ mod tests {
             observed_at_unix_ms: 8_100,
             ..first.clone()
         };
-        assert!(collector.observe(first).is_none());
-        assert!(collector.observe(second).is_none());
+        assert!(collector.observe(first).expect("observe").is_none());
+        assert!(collector.observe(second).expect("observe").is_none());
 
         let snapshot = collector.snapshot();
         let mut restored = NodePointsRuntimeCollector::from_snapshot(snapshot.clone());
         let restored_snapshot: NodePointsRuntimeCollectorSnapshot = restored.snapshot();
         assert_eq!(restored_snapshot, snapshot);
 
-        let report = restored.force_settle().expect("settle from restored");
+        let report = restored
+            .force_settle()
+            .expect("force settle")
+            .expect("settle from restored");
         assert_eq!(report.pool_points, 100);
         assert_eq!(report.distributed_points, 100);
         assert_eq!(report.settlements.len(), 1);
@@ -665,8 +671,11 @@ mod tests {
             ..first.clone()
         };
 
-        assert!(collector.observe(first).is_none());
-        let report = collector.observe(second).expect("epoch report");
+        assert!(collector.observe(first).expect("observe").is_none());
+        let report = collector
+            .observe(second)
+            .expect("observe")
+            .expect("epoch report");
         assert_eq!(report.pool_points, 50);
         assert_eq!(report.distributed_points, 50);
     }
@@ -718,12 +727,15 @@ mod tests {
             ..node_b_first.clone()
         };
 
-        assert!(collector.observe(node_a_first).is_none());
-        assert!(collector.observe(node_a_second).is_none());
-        assert!(collector.observe(node_b_first).is_none());
-        assert!(collector.observe(node_b_second).is_none());
+        assert!(collector.observe(node_a_first).expect("observe").is_none());
+        assert!(collector.observe(node_a_second).expect("observe").is_none());
+        assert!(collector.observe(node_b_first).expect("observe").is_none());
+        assert!(collector.observe(node_b_second).expect("observe").is_none());
 
-        let report = collector.force_settle().expect("settlement");
+        let report = collector
+            .force_settle()
+            .expect("force settle")
+            .expect("settlement");
         let settlement_a = report
             .settlements
             .iter()
@@ -792,12 +804,15 @@ mod tests {
             ..node_b_first.clone()
         };
 
-        assert!(collector.observe(node_a_first).is_none());
-        assert!(collector.observe(node_a_second).is_none());
-        assert!(collector.observe(node_b_first).is_none());
-        assert!(collector.observe(node_b_second).is_none());
+        assert!(collector.observe(node_a_first).expect("observe").is_none());
+        assert!(collector.observe(node_a_second).expect("observe").is_none());
+        assert!(collector.observe(node_b_first).expect("observe").is_none());
+        assert!(collector.observe(node_b_second).expect("observe").is_none());
 
-        let report = collector.force_settle().expect("settlement");
+        let report = collector
+            .force_settle()
+            .expect("force settle")
+            .expect("settlement");
         let settlement_a = report
             .settlements
             .iter()

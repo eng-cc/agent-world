@@ -51,7 +51,13 @@ pub(super) fn observe_reward_observation_trace(
         }
     };
     let observer_role = observation.role;
-    let report = collector.observe(observation);
+    let report = match collector.observe(observation) {
+        Ok(report) => report,
+        Err(err) => {
+            eprintln!("reward runtime apply observation failed ({source}): {err}");
+            return None;
+        }
+    };
     applied_trace_ids.insert(trace_id.clone());
     epoch_observer_nodes.insert(observer_node_id.clone());
     Some(ObservationTraceApplyResult {

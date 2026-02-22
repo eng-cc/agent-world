@@ -126,6 +126,19 @@ pub struct EpochSettlementReport {
     pub settlements: Vec<NodeSettlement>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodePointsError {
+    pub reason: String,
+}
+
+impl std::fmt::Display for NodePointsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.reason.as_str())
+    }
+}
+
+impl std::error::Error for NodePointsError {}
+
 /// Serializable snapshot for restoring a node points ledger.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NodePointsLedgerSnapshot {
@@ -186,7 +199,10 @@ impl NodePointsLedger {
         }
     }
 
-    pub fn settle_epoch(&mut self, samples: &[NodeContributionSample]) -> EpochSettlementReport {
+    pub fn settle_epoch(
+        &mut self,
+        samples: &[NodeContributionSample],
+    ) -> Result<EpochSettlementReport, NodePointsError> {
         let mut settlements = samples
             .iter()
             .map(|sample| self.build_settlement(sample))
@@ -196,25 +212,55 @@ impl NodePointsLedger {
             &mut settlements,
             settlement_total_score,
             settlement_main_award_mut,
-        );
+        )?;
         let storage_distributed_points = allocate_awards_for_score(
             self.config.storage_pool_points,
             &mut settlements,
             settlement_storage_reward_score,
             settlement_storage_award_mut,
-        );
+        )?;
+
+        let mut cumulative_updates = Vec::with_capacity(settlements.len());
 
         for settlement in &mut settlements {
             settlement.awarded_points = settlement
                 .main_awarded_points
-                .saturating_add(settlement.storage_awarded_points);
-            let cumulative = self
-                .cumulative_points
-                .entry(settlement.node_id.clone())
-                .or_insert(0);
-            *cumulative = cumulative.saturating_add(settlement.awarded_points);
-            settlement.cumulative_points = *cumulative;
+                .checked_add(settlement.storage_awarded_points)
+                .ok_or_else(|| NodePointsError {
+                    reason: format!(
+                        "awarded points overflow for {}: main={} storage={}",
+                        settlement.node_id,
+                        settlement.main_awarded_points,
+                        settlement.storage_awarded_points
+                    ),
+                })?;
+            let current = self.cumulative_points(settlement.node_id.as_str());
+            let next = current
+                .checked_add(settlement.awarded_points)
+                .ok_or_else(|| NodePointsError {
+                    reason: format!(
+                        "cumulative points overflow for {}: current={} delta={}",
+                        settlement.node_id, current, settlement.awarded_points
+                    ),
+                })?;
+            settlement.cumulative_points = next;
+            cumulative_updates.push((settlement.node_id.clone(), next));
         }
+
+        let total_distributed_points = distributed_points
+            .checked_add(storage_distributed_points)
+            .ok_or_else(|| NodePointsError {
+            reason: format!(
+                "total distributed points overflow: main={} storage={}",
+                distributed_points, storage_distributed_points
+            ),
+        })?;
+        let next_epoch_index = self
+            .epoch_index
+            .checked_add(1)
+            .ok_or_else(|| NodePointsError {
+                reason: format!("epoch index overflow at {}", self.epoch_index),
+            })?;
 
         let report = EpochSettlementReport {
             epoch_index: self.epoch_index,
@@ -222,11 +268,16 @@ impl NodePointsLedger {
             storage_pool_points: self.config.storage_pool_points,
             distributed_points,
             storage_distributed_points,
-            total_distributed_points: distributed_points.saturating_add(storage_distributed_points),
+            total_distributed_points,
             settlements,
         };
-        self.epoch_index = self.epoch_index.saturating_add(1);
-        report
+
+        for (node_id, next) in cumulative_updates {
+            self.cumulative_points.insert(node_id, next);
+        }
+        self.epoch_index = next_epoch_index;
+
+        Ok(report)
     }
 
     fn build_settlement(&self, sample: &NodeContributionSample) -> NodeSettlement {
@@ -377,12 +428,12 @@ fn allocate_awards_for_score(
     settlements: &mut [NodeSettlement],
     score_of: fn(&NodeSettlement) -> f64,
     award_mut: for<'a> fn(&'a mut NodeSettlement) -> &'a mut u64,
-) -> u64 {
+) -> Result<u64, NodePointsError> {
     for settlement in settlements.iter_mut() {
         *award_mut(settlement) = 0;
     }
     if pool_points == 0 || settlements.is_empty() {
-        return 0;
+        return Ok(0);
     }
 
     let total_score = settlements
@@ -390,7 +441,7 @@ fn allocate_awards_for_score(
         .map(|settlement| score_of(settlement).max(0.0))
         .sum::<f64>();
     if total_score <= f64::EPSILON {
-        return 0;
+        return Ok(0);
     }
 
     let mut distributed = 0u64;
@@ -410,7 +461,14 @@ fn allocate_awards_for_score(
         let exact_points = (pool_points as f64) * score / total_score;
         let floor_points = exact_points.floor() as u64;
         *award_mut(settlement) = floor_points;
-        distributed = distributed.saturating_add(floor_points);
+        distributed = distributed
+            .checked_add(floor_points)
+            .ok_or_else(|| NodePointsError {
+                reason: format!(
+                    "award distribution overflow for {}: distributed={} floor_points={}",
+                    settlement.node_id, distributed, floor_points
+                ),
+            })?;
         remainders.push(RemainderEntry {
             settlement_index: index,
             node_id: settlement.node_id.clone(),
@@ -418,7 +476,14 @@ fn allocate_awards_for_score(
         });
     }
 
-    let mut remaining = pool_points.saturating_sub(distributed);
+    let mut remaining = pool_points
+        .checked_sub(distributed)
+        .ok_or_else(|| NodePointsError {
+            reason: format!(
+                "distributed points exceed pool: pool={} distributed={}",
+                pool_points, distributed
+            ),
+        })?;
     remainders.sort_by(|left, right| {
         right
             .fractional
@@ -434,13 +499,21 @@ fn allocate_awards_for_score(
         if score_of(&settlements[entry.settlement_index]) <= 0.0 {
             continue;
         }
+        let node_id = entry.node_id;
         let award = award_mut(&mut settlements[entry.settlement_index]);
-        *award = award.saturating_add(1);
-        distributed = distributed.saturating_add(1);
-        remaining = remaining.saturating_sub(1);
+        *award = award.checked_add(1).ok_or_else(|| NodePointsError {
+            reason: format!("award overflow for {}", node_id),
+        })?;
+        distributed = distributed.checked_add(1).ok_or_else(|| NodePointsError {
+            reason: format!(
+                "distributed points overflow while assigning remainder to {}",
+                node_id
+            ),
+        })?;
+        remaining -= 1;
     }
 
-    distributed
+    Ok(distributed)
 }
 
 fn clamp_ratio(value: f64) -> f64 {
@@ -471,6 +544,7 @@ mod tests {
         DEFAULT_WEIGHT_COMPUTE, DEFAULT_WEIGHT_RELIABILITY, DEFAULT_WEIGHT_STORAGE,
         DEFAULT_WEIGHT_UPTIME,
     };
+    use std::collections::BTreeMap;
 
     fn sample(node_id: &str) -> NodeContributionSample {
         NodeContributionSample {
@@ -516,7 +590,7 @@ mod tests {
         let mut baseline = sample("node-baseline");
         baseline.self_sim_compute_units = 100;
 
-        let report = ledger.settle_epoch(&[high, baseline]);
+        let report = ledger.settle_epoch(&[high, baseline]).expect("settlement");
         assert_eq!(report.distributed_points, 100);
         assert_eq!(report.settlements[0].awarded_points, 100);
         assert_eq!(report.settlements[1].awarded_points, 0);
@@ -539,7 +613,7 @@ mod tests {
         good.self_sim_compute_units = 3;
         good.delegated_sim_compute_units = 6;
 
-        let report = ledger.settle_epoch(&[weak, good]);
+        let report = ledger.settle_epoch(&[weak, good]).expect("settlement");
         assert_eq!(report.distributed_points, 100);
         assert!(!report.settlements[0].obligation_met);
         assert!(report.settlements[1].obligation_met);
@@ -570,7 +644,9 @@ mod tests {
         nine_gib_half.effective_storage_bytes = gib(9);
         nine_gib_half.availability_ratio = 0.5;
 
-        let report = ledger.settle_epoch(&[one_gib, four_gib, nine_gib_half]);
+        let report = ledger
+            .settle_epoch(&[one_gib, four_gib, nine_gib_half])
+            .expect("settlement");
         assert_eq!(report.distributed_points, 100);
         assert_eq!(report.settlements[0].storage_score, 1.0);
         assert_eq!(report.settlements[1].storage_score, 2.0);
@@ -590,7 +666,7 @@ mod tests {
         let mut c = sample("node-c");
         c.delegated_sim_compute_units = 1;
 
-        let report = ledger.settle_epoch(&[a, b, c]);
+        let report = ledger.settle_epoch(&[a, b, c]).expect("settlement");
         assert_eq!(report.distributed_points, 10);
         assert_eq!(report.settlements[0].awarded_points, 4);
         assert_eq!(report.settlements[1].awarded_points, 3);
@@ -603,12 +679,12 @@ mod tests {
         let mut a = sample("node-a");
         a.delegated_sim_compute_units = 1;
 
-        let first = ledger.settle_epoch(&[a.clone()]);
+        let first = ledger.settle_epoch(&[a.clone()]).expect("settlement");
         assert_eq!(first.epoch_index, 0);
         assert_eq!(first.settlements[0].awarded_points, 10);
         assert_eq!(first.settlements[0].cumulative_points, 10);
 
-        let second = ledger.settle_epoch(&[a]);
+        let second = ledger.settle_epoch(&[a]).expect("settlement");
         assert_eq!(second.epoch_index, 1);
         assert_eq!(second.settlements[0].awarded_points, 10);
         assert_eq!(second.settlements[0].cumulative_points, 20);
@@ -624,7 +700,9 @@ mod tests {
         let mut b = sample("node-b");
         b.delegated_sim_compute_units = 1;
 
-        let _ = ledger.settle_epoch(&[a.clone(), b.clone()]);
+        let _ = ledger
+            .settle_epoch(&[a.clone(), b.clone()])
+            .expect("settlement");
         let snapshot = ledger.snapshot();
         let restored = NodePointsLedger::from_snapshot(snapshot.clone());
 
@@ -659,7 +737,9 @@ mod tests {
         let mut rich_storage = sample("node-storage");
         rich_storage.effective_storage_bytes = gib(16);
 
-        let report = ledger.settle_epoch(&[rich_compute, rich_storage]);
+        let report = ledger
+            .settle_epoch(&[rich_compute, rich_storage])
+            .expect("settlement");
         assert_eq!(report.distributed_points, 100);
         let compute_settlement = &report.settlements[0];
         let storage_settlement = &report.settlements[1];
@@ -711,7 +791,9 @@ mod tests {
         node_c.availability_ratio = 0.4;
         node_c.explicit_penalty_points = 20.0;
 
-        let epoch0 = ledger.settle_epoch(&[node_a.clone(), node_b.clone(), node_c.clone()]);
+        let epoch0 = ledger
+            .settle_epoch(&[node_a.clone(), node_b.clone(), node_c.clone()])
+            .expect("settlement");
         assert_eq!(epoch0.epoch_index, 0);
         assert_eq!(epoch0.pool_points, 1000);
         assert_eq!(epoch0.distributed_points, 1000);
@@ -749,7 +831,9 @@ mod tests {
         node_c.uptime_seconds = 90;
         node_c.explicit_penalty_points = 5.0;
 
-        let epoch1 = ledger.settle_epoch(&[node_a, node_b, node_c]);
+        let epoch1 = ledger
+            .settle_epoch(&[node_a, node_b, node_c])
+            .expect("settlement");
         assert_eq!(epoch1.epoch_index, 1);
         assert_eq!(epoch1.pool_points, 1000);
         assert_eq!(epoch1.distributed_points, 1000);
@@ -790,7 +874,7 @@ mod tests {
         weak.storage_valid_checks = 8;
         weak.storage_total_checks = 10;
 
-        let report = ledger.settle_epoch(&[good, weak]);
+        let report = ledger.settle_epoch(&[good, weak]).expect("settlement");
         assert_eq!(report.pool_points, 0);
         assert_eq!(report.storage_pool_points, 100);
         assert_eq!(report.distributed_points, 0);
@@ -823,7 +907,9 @@ mod tests {
         pass.storage_valid_checks = 3;
         pass.storage_total_checks = 3;
 
-        let report = ledger.settle_epoch(&[low_checks, pass]);
+        let report = ledger
+            .settle_epoch(&[low_checks, pass])
+            .expect("settlement");
         assert_eq!(report.storage_distributed_points, 50);
         assert_eq!(report.settlements[0].storage_reward_score, 0.0);
         assert_eq!(report.settlements[0].storage_awarded_points, 0);
@@ -852,7 +938,9 @@ mod tests {
         uncapped.storage_valid_checks = 1;
         uncapped.storage_total_checks = 1;
 
-        let report = ledger.settle_epoch(&[capped, uncapped]);
+        let report = ledger
+            .settle_epoch(&[capped, uncapped])
+            .expect("settlement");
         assert_eq!(report.storage_distributed_points, 100);
         assert_eq!(report.settlements[0].rewardable_storage_bytes, gib(10));
         assert_eq!(report.settlements[1].rewardable_storage_bytes, gib(20));
@@ -883,7 +971,7 @@ mod tests {
         above.uptime_valid_checks = 9;
         above.uptime_total_checks = 10;
 
-        let report = ledger.settle_epoch(&[below, above]);
+        let report = ledger.settle_epoch(&[below, above]).expect("settlement");
         assert_eq!(report.distributed_points, 100);
         assert_eq!(report.settlements[0].uptime_score, 0.0);
         assert!(
@@ -916,11 +1004,86 @@ mod tests {
         b.uptime_valid_checks = 0;
         b.uptime_total_checks = 0;
 
-        let report = ledger.settle_epoch(&[a, b]);
+        let report = ledger.settle_epoch(&[a, b]).expect("settlement");
         assert!(
             (report.settlements[0].uptime_score - 0.6).abs() <= 1e-9,
             "fallback uptime score should use uptime seconds ratio"
         );
         assert!(report.settlements[0].awarded_points > report.settlements[1].awarded_points);
+    }
+
+    #[test]
+    fn settle_epoch_rejects_cumulative_overflow_without_state_mutation() {
+        let mut cumulative_points = BTreeMap::new();
+        cumulative_points.insert("node-a".to_string(), u64::MAX);
+        let snapshot = NodePointsLedgerSnapshot {
+            config: compute_only_config(1),
+            epoch_index: 7,
+            cumulative_points,
+        };
+        let mut ledger = NodePointsLedger::from_snapshot(snapshot);
+
+        let mut node_a = sample("node-a");
+        node_a.delegated_sim_compute_units = 1;
+        let err = ledger
+            .settle_epoch(&[node_a])
+            .expect_err("must reject cumulative overflow");
+        assert!(err.reason.contains("cumulative points overflow"));
+        assert_eq!(ledger.epoch_index(), 7);
+        assert_eq!(ledger.cumulative_points("node-a"), u64::MAX);
+    }
+
+    #[test]
+    fn settle_epoch_rejects_epoch_index_overflow_without_state_mutation() {
+        let snapshot = NodePointsLedgerSnapshot {
+            config: compute_only_config(1),
+            epoch_index: u64::MAX,
+            cumulative_points: BTreeMap::new(),
+        };
+        let mut ledger = NodePointsLedger::from_snapshot(snapshot);
+
+        let mut node_a = sample("node-a");
+        node_a.delegated_sim_compute_units = 1;
+        let err = ledger
+            .settle_epoch(&[node_a])
+            .expect_err("must reject epoch overflow");
+        assert!(err.reason.contains("epoch index overflow"));
+        assert_eq!(ledger.epoch_index(), u64::MAX);
+        assert_eq!(ledger.cumulative_points("node-a"), 0);
+    }
+
+    #[test]
+    fn settle_epoch_rejects_total_distributed_overflow_without_state_mutation() {
+        let mut config = NodePointsConfig::default();
+        config.epoch_pool_points = u64::MAX;
+        config.storage_pool_points = u64::MAX;
+        config.weight_compute = 1.0;
+        config.weight_storage = 0.0;
+        config.weight_uptime = 0.0;
+        config.weight_reliability = 0.0;
+
+        let snapshot = NodePointsLedgerSnapshot {
+            config,
+            epoch_index: 3,
+            cumulative_points: BTreeMap::new(),
+        };
+        let mut ledger = NodePointsLedger::from_snapshot(snapshot);
+
+        let mut node_main = sample("node-main");
+        node_main.delegated_sim_compute_units = 1;
+
+        let mut node_storage = sample("node-storage");
+        node_storage.effective_storage_bytes = gib(8);
+        node_storage.staked_storage_bytes = gib(8);
+        node_storage.storage_valid_checks = 1;
+        node_storage.storage_total_checks = 1;
+
+        let err = ledger
+            .settle_epoch(&[node_main, node_storage])
+            .expect_err("must reject total distributed overflow");
+        assert!(err.reason.contains("total distributed points overflow"));
+        assert_eq!(ledger.epoch_index(), 3);
+        assert_eq!(ledger.cumulative_points("node-main"), 0);
+        assert_eq!(ledger.cumulative_points("node-storage"), 0);
     }
 }

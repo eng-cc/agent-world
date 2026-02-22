@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase2.project.md`
 
 ### T1 Node Points 账本显式溢出语义
-- [ ] `NodePointsLedger::settle_epoch` 改为可失败接口，移除关键路径静默饱和。
-- [ ] `NodePointsRuntimeCollector` 结算路径透传错误，避免吞错。
-- [ ] 增加溢出拒绝与原子性测试。
+- [x] `NodePointsLedger::settle_epoch` 改为可失败接口，移除关键路径静默饱和。
+- [x] `NodePointsRuntimeCollector` 结算路径透传错误，避免吞错。
+- [x] 增加溢出拒绝与原子性测试。
 
 ### T2 Node PoS 票权与 slot 递进显式溢出语义
 - [ ] `insert_attestation` 改为 `checked_add` 并返回可观测错误。
@@ -35,7 +35,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

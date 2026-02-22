@@ -55,7 +55,10 @@ fn node_runtime_multi_node_points_closure_settles_rewards() {
         thread::sleep(Duration::from_millis(80));
     }
 
-    let epoch0 = collector.force_settle().expect("epoch0 report");
+    let epoch0 = collector
+        .force_settle()
+        .expect("force settle")
+        .expect("epoch0 report");
     assert_eq!(epoch0.pool_points, 300);
     assert_eq!(epoch0.distributed_points, 300);
     assert_eq!(epoch0.settlements.len(), 3);
@@ -69,7 +72,10 @@ fn node_runtime_multi_node_points_closure_settles_rewards() {
         thread::sleep(Duration::from_millis(70));
     }
 
-    let epoch1 = collector.force_settle().expect("epoch1 report");
+    let epoch1 = collector
+        .force_settle()
+        .expect("force settle")
+        .expect("epoch1 report");
     assert_eq!(epoch1.pool_points, 300);
     assert_eq!(epoch1.distributed_points, 300);
     assert_eq!(epoch1.settlements.len(), 3);
@@ -103,7 +109,9 @@ fn sample_runtime(
 ) {
     let snapshot = runtime.snapshot();
     let storage_bytes = measure_directory_storage_bytes(replication_root);
-    collector.observe_snapshot(&snapshot, storage_bytes, now_unix_ms());
+    let _ = collector
+        .observe_snapshot(&snapshot, storage_bytes, now_unix_ms())
+        .expect("observe snapshot");
 }
 
 fn build_runtime(
