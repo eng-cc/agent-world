@@ -119,33 +119,58 @@ impl PosNodeEngine {
         }
     }
 
-    pub(super) fn restore_state_snapshot(&mut self, snapshot: PosNodeStateSnapshot) {
-        self.pending = None;
-        self.pending_consensus_actions.clear();
-        self.committed_height = snapshot.committed_height;
-        self.network_committed_height = snapshot
-            .network_committed_height
-            .max(snapshot.committed_height);
-        self.next_height = snapshot
-            .next_height
-            .max(snapshot.committed_height.saturating_add(1))
-            .max(1);
-        self.next_slot = snapshot.next_slot;
-        self.last_broadcast_proposal_height = snapshot.last_broadcast_proposal_height;
-        self.last_broadcast_local_attestation_height =
-            snapshot.last_broadcast_local_attestation_height;
-        self.last_broadcast_committed_height = snapshot.last_broadcast_committed_height;
-        self.last_committed_block_hash = snapshot.last_committed_block_hash.or_else(|| {
-            if snapshot.committed_height > 0 {
-                Some(format!("legacy-height-{}", snapshot.committed_height))
+    pub(super) fn restore_state_snapshot(
+        &mut self,
+        snapshot: PosNodeStateSnapshot,
+    ) -> Result<(), NodeError> {
+        let PosNodeStateSnapshot {
+            next_height: snapshot_next_height,
+            next_slot,
+            committed_height,
+            network_committed_height: snapshot_network_committed_height,
+            last_broadcast_proposal_height,
+            last_broadcast_local_attestation_height,
+            last_broadcast_committed_height,
+            last_committed_block_hash,
+            last_execution_height,
+            last_execution_block_hash,
+            last_execution_state_root,
+        } = snapshot;
+        let committed_successor =
+            committed_height
+                .checked_add(1)
+                .ok_or_else(|| NodeError::Replication {
+                    reason: format!(
+                        "restore node pos state overflow: committed_height={} has no successor",
+                        committed_height
+                    ),
+                })?;
+        let restored_next_height = snapshot_next_height.max(committed_successor).max(1);
+        let restored_network_committed_height =
+            snapshot_network_committed_height.max(committed_height);
+        let restored_committed_hash = last_committed_block_hash.or_else(|| {
+            if committed_height > 0 {
+                Some(format!("legacy-height-{}", committed_height))
             } else {
                 None
             }
         });
-        self.last_execution_height = snapshot.last_execution_height;
-        self.last_execution_block_hash = snapshot.last_execution_block_hash;
-        self.last_execution_state_root = snapshot.last_execution_state_root;
+
+        self.pending = None;
+        self.pending_consensus_actions.clear();
+        self.committed_height = committed_height;
+        self.network_committed_height = restored_network_committed_height;
+        self.next_height = restored_next_height;
+        self.next_slot = next_slot;
+        self.last_broadcast_proposal_height = last_broadcast_proposal_height;
+        self.last_broadcast_local_attestation_height = last_broadcast_local_attestation_height;
+        self.last_broadcast_committed_height = last_broadcast_committed_height;
+        self.last_committed_block_hash = restored_committed_hash;
+        self.last_execution_height = last_execution_height;
+        self.last_execution_block_hash = last_execution_block_hash;
+        self.last_execution_state_root = last_execution_state_root;
         self.execution_bindings.clear();
         self.remember_execution_binding_for_height(self.last_execution_height);
+        Ok(())
     }
 }

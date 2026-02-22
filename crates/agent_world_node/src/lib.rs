@@ -247,7 +247,12 @@ impl NodeRuntime {
             .map(PosNodeStateStore::from_replication);
         if let Some(store) = pos_state_store.as_ref() {
             match store.load() {
-                Ok(Some(snapshot)) => engine.restore_state_snapshot(snapshot),
+                Ok(Some(snapshot)) => {
+                    if let Err(err) = engine.restore_state_snapshot(snapshot) {
+                        self.running.store(false, Ordering::SeqCst);
+                        return Err(err);
+                    }
+                }
                 Ok(None) => {}
                 Err(err) => {
                     self.running.store(false, Ordering::SeqCst);

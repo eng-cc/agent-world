@@ -247,6 +247,45 @@ fn runtime_start_fails_when_pos_state_snapshot_is_corrupted() {
 }
 
 #[test]
+fn runtime_start_fails_when_pos_state_snapshot_height_overflows() {
+    let dir = temp_dir("pos-state-overflow");
+    fs::create_dir_all(&dir).expect("create dir");
+    let snapshot = super::pos_state_store::PosNodeStateSnapshot {
+        next_height: 0,
+        next_slot: 0,
+        committed_height: u64::MAX,
+        network_committed_height: u64::MAX,
+        last_broadcast_proposal_height: 0,
+        last_broadcast_local_attestation_height: 0,
+        last_broadcast_committed_height: 0,
+        last_committed_block_hash: None,
+        last_execution_height: 0,
+        last_execution_block_hash: None,
+        last_execution_state_root: None,
+    };
+    fs::write(
+        dir.join("node_pos_state.json"),
+        serde_json::to_vec(&snapshot).expect("encode snapshot"),
+    )
+    .expect("write overflow snapshot");
+
+    let config = NodeConfig::new("node-a", "world-pos-overflow", NodeRole::Observer)
+        .expect("config")
+        .with_replication(signed_replication_config(dir.clone(), 72));
+    let mut runtime = NodeRuntime::new(config);
+
+    let err = runtime.start().expect_err("start should fail");
+    assert!(
+        matches!(err, NodeError::Replication { reason } if reason.contains("committed_height"))
+    );
+    let snapshot = runtime.snapshot();
+    assert!(!snapshot.running);
+    assert_eq!(snapshot.consensus.committed_height, 0);
+
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_on_invalid_message()
 {
     let world_id = "world-repl-hardening";

@@ -425,6 +425,62 @@ fn pos_engine_ingest_proposal_rejects_slot_overflow_without_partial_state() {
 }
 
 #[test]
+fn pos_engine_restore_state_snapshot_rejects_overflow_without_partial_state() {
+    let config =
+        NodeConfig::new("node-a", "world-overflow-restore", NodeRole::Observer).expect("config");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    engine.committed_height = 9;
+    engine.network_committed_height = 10;
+    engine.next_height = 11;
+    engine.next_slot = 3;
+    engine.pending = Some(PendingProposal {
+        height: 11,
+        slot: 3,
+        epoch: 0,
+        proposer_id: "node-a".to_string(),
+        block_hash: "pending-restore".to_string(),
+        action_root: empty_action_root(),
+        committed_actions: Vec::new(),
+        attestations: std::collections::BTreeMap::new(),
+        approved_stake: 100,
+        rejected_stake: 0,
+        status: PosConsensusStatus::Pending,
+    });
+
+    let snapshot = super::pos_state_store::PosNodeStateSnapshot {
+        next_height: 0,
+        next_slot: 77,
+        committed_height: u64::MAX,
+        network_committed_height: u64::MAX,
+        last_broadcast_proposal_height: 0,
+        last_broadcast_local_attestation_height: 0,
+        last_broadcast_committed_height: 0,
+        last_committed_block_hash: Some("unexpected".to_string()),
+        last_execution_height: 0,
+        last_execution_block_hash: None,
+        last_execution_state_root: None,
+    };
+
+    let err = engine
+        .restore_state_snapshot(snapshot)
+        .expect_err("committed height overflow must fail");
+    assert!(
+        matches!(err, NodeError::Replication { reason } if reason.contains("committed_height"))
+    );
+    assert_eq!(engine.committed_height, 9);
+    assert_eq!(engine.network_committed_height, 10);
+    assert_eq!(engine.next_height, 11);
+    assert_eq!(engine.next_slot, 3);
+    assert_eq!(
+        engine
+            .pending
+            .as_ref()
+            .map(|proposal| proposal.block_hash.as_str()),
+        Some("pending-restore")
+    );
+}
+
+#[test]
 fn sequencer_commit_requires_execution_hook() {
     let config = NodeConfig::new("sequencer-a", "world-a", NodeRole::Sequencer)
         .expect("config")

@@ -12,8 +12,8 @@
 - [x] proposal 摄取路径 `next_slot` 递进改为显式溢出错误。
 
 ### T2 快照恢复边界与测试
-- [ ] `restore_state_snapshot` 对 `committed_height + 1` 改为受检语义并透传启动错误。
-- [ ] 新增边界测试：溢出拒绝且状态不被部分更新。
+- [x] `restore_state_snapshot` 对 `committed_height + 1` 改为受检语义并透传启动错误。
+- [x] 新增边界测试：溢出拒绝且状态不被部分更新。
 
 ### T3 回归与收口
 - [ ] 运行 `test_tier_required` 口径的 node 定向测试与编译检查。
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无
