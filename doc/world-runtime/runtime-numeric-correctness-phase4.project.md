@@ -12,8 +12,8 @@
 - [x] 新增 replication 模块溢出边界测试（3 类路径）。
 
 ### T2 回归与收口
-- [ ] 运行 node 定向测试并确认 required-tier 门禁通过。
-- [ ] 更新设计/项目文档状态与 `doc/devlog/2026-02-23.md` 收口记录。
+- [x] 运行 node 定向测试并确认 required-tier 门禁通过。
+- [x] 更新设计/项目文档状态与 `doc/devlog/2026-02-23.md` 收口记录。
 
 ## 依赖
 - `crates/agent_world_node/src/replication.rs`
@@ -22,8 +22,8 @@
 - `crates/agent_world_node/src/tests_hardening.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
