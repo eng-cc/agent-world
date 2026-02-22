@@ -703,6 +703,82 @@ fn poll_viewer_messages_applies_event_window_sampling_policy() {
 }
 
 #[test]
+fn friendly_connection_error_maps_transport_messages() {
+    assert_eq!(
+        friendly_connection_error("websocket closed: code=1006 reason="),
+        "connection closed (code 1006), retrying..."
+    );
+    assert_eq!(
+        friendly_connection_error("Connection refused (os error 61)"),
+        "viewer server unreachable, retrying..."
+    );
+    assert_eq!(
+        friendly_connection_error("disconnected"),
+        "viewer disconnected, retrying..."
+    );
+    assert_eq!(friendly_connection_error("offline mode"), "offline mode");
+}
+
+#[test]
+fn reconnectable_error_signature_skips_non_transport_messages() {
+    assert_eq!(
+        reconnectable_error_signature("websocket closed: code=1006 reason=").as_deref(),
+        Some("websocket")
+    );
+    assert_eq!(
+        reconnectable_error_signature("Connection refused (os error 61)").as_deref(),
+        Some("connection_refused")
+    );
+    assert!(reconnectable_error_signature("offline mode").is_none());
+    assert!(reconnectable_error_signature("agent chat error: invalid auth (401)").is_none());
+}
+
+#[test]
+fn attempt_viewer_reconnect_transitions_error_status_back_to_connecting() {
+    let mut app = App::new();
+    app.add_systems(Update, attempt_viewer_reconnect);
+    app.world_mut().insert_resource(ViewerConfig {
+        addr: "127.0.0.1:0".to_string(),
+        max_events: 8,
+        event_window: EventWindowPolicy::new(8, 4, 2),
+    });
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Error("disconnected".to_string()),
+        ..ViewerState::default()
+    });
+
+    app.update();
+
+    let state = app.world().resource::<ViewerState>();
+    assert_eq!(state.status, ConnectionStatus::Connecting);
+    assert!(app.world().contains_resource::<ViewerClient>());
+}
+
+#[test]
+fn attempt_viewer_reconnect_ignores_non_transport_errors() {
+    let mut app = App::new();
+    app.add_systems(Update, attempt_viewer_reconnect);
+    app.world_mut().insert_resource(ViewerConfig {
+        addr: "127.0.0.1:0".to_string(),
+        max_events: 8,
+        event_window: EventWindowPolicy::new(8, 4, 2),
+    });
+    app.world_mut().insert_resource(ViewerState {
+        status: ConnectionStatus::Error("agent chat error: invalid auth (401)".to_string()),
+        ..ViewerState::default()
+    });
+
+    app.update();
+
+    let state = app.world().resource::<ViewerState>();
+    assert_eq!(
+        state.status,
+        ConnectionStatus::Error("agent chat error: invalid auth (401)".to_string())
+    );
+    assert!(!app.world().contains_resource::<ViewerClient>());
+}
+
+#[test]
 fn decide_offline_defaults_headless_and_respects_overrides() {
     assert!(decide_offline(true, false, false));
     assert!(!decide_offline(false, false, false));

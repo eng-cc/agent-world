@@ -130,6 +130,12 @@ pub(super) fn run_ui(addr: String, offline: bool) {
             )
                 .chain(),
         )
+        .add_systems(
+            Update,
+            attempt_viewer_reconnect
+                .after(poll_viewer_messages)
+                .before(sync_timeline_state_from_world),
+        )
         .add_systems(Update, track_step_loading_state)
         .add_systems(Update, apply_theme_runtime_updates.before(update_3d_scene))
         .add_systems(
@@ -244,6 +250,7 @@ pub(super) fn run_headless(addr: String, offline: bool) {
             Update,
             (
                 poll_viewer_messages,
+                attempt_viewer_reconnect,
                 headless_auto_play_once,
                 headless_report,
             )

@@ -188,6 +188,8 @@ const WORLD_GRID_LINE_THICKNESS_3D: f32 = 0.014;
 const CHUNK_GRID_LINE_THICKNESS_2D: f32 = 0.012;
 const CHUNK_GRID_LINE_THICKNESS_3D: f32 = 0.022;
 const MAX_EMISSIVE_COLOR_COMPONENT: f32 = 4.0;
+const RECONNECT_BACKOFF_BASE_SECS: f64 = 0.8;
+const RECONNECT_BACKOFF_MAX_SECS: f64 = 12.0;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
@@ -237,6 +239,21 @@ impl std::fmt::Display for WasmQueueSendError {
 
 #[cfg(target_arch = "wasm32")]
 impl std::error::Error for WasmQueueSendError {}
+
+#[derive(Default)]
+struct ViewerReconnectRuntime {
+    attempt: u32,
+    next_retry_at_secs: Option<f64>,
+    last_error_signature: Option<String>,
+}
+
+impl ViewerReconnectRuntime {
+    fn reset(&mut self) {
+        self.attempt = 0;
+        self.next_retry_at_secs = None;
+        self.last_error_signature = None;
+    }
+}
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Copy, Default)]
@@ -884,15 +901,113 @@ fn camera_post_process_components(
 #[derive(Component, Copy, Clone)]
 struct BaseScale(Vec3);
 
-fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
-    let (tx, rx) = spawn_viewer_client(config.addr.clone());
+fn reconnect_backoff_secs(attempt: u32) -> f64 {
+    let exponential = 2_f64.powi(attempt.saturating_sub(1).min(4) as i32);
+    (RECONNECT_BACKOFF_BASE_SECS * exponential).min(RECONNECT_BACKOFF_MAX_SECS)
+}
+
+fn reconnectable_error_signature(message: &str) -> Option<String> {
+    let normalized = message.trim().to_ascii_lowercase();
+    if normalized.is_empty()
+        || normalized == "offline mode"
+        || normalized.starts_with("agent chat error:")
+    {
+        return None;
+    }
+
+    if normalized.contains("websocket") {
+        return Some("websocket".to_string());
+    }
+    if normalized.contains("connection refused") {
+        return Some("connection_refused".to_string());
+    }
+    if normalized.contains("timed out") {
+        return Some("timed_out".to_string());
+    }
+    if normalized.contains("connection reset") {
+        return Some("connection_reset".to_string());
+    }
+    if normalized.contains("broken pipe") {
+        return Some("broken_pipe".to_string());
+    }
+    if normalized.contains("disconnected") {
+        return Some("disconnected".to_string());
+    }
+    if normalized.contains("viewer receiver poisoned") {
+        return Some("receiver_poisoned".to_string());
+    }
+
+    None
+}
+
+fn websocket_close_code(message: &str) -> Option<u16> {
+    let marker = "code=";
+    let start = message.find(marker)? + marker.len();
+    let digits = message[start..]
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .collect::<String>();
+    if digits.is_empty() {
+        return None;
+    }
+    digits.parse::<u16>().ok()
+}
+
+fn friendly_connection_error(message: &str) -> String {
+    let trimmed = message.trim();
+    if trimmed.is_empty() {
+        return "connection error".to_string();
+    }
+
+    let lowered = trimmed.to_ascii_lowercase();
+    if lowered == "offline mode" || lowered.starts_with("agent chat error:") {
+        return trimmed.to_string();
+    }
+    if lowered.starts_with("websocket closed:") {
+        if let Some(code) = websocket_close_code(trimmed) {
+            return format!("connection closed (code {code}), retrying...");
+        }
+        return "connection closed, retrying...".to_string();
+    }
+    if lowered.contains("connection refused") || lowered.contains("err_connection_refused") {
+        return "viewer server unreachable, retrying...".to_string();
+    }
+    if lowered.contains("timed out") {
+        return "connection timed out, retrying...".to_string();
+    }
+    if lowered.contains("connection reset") || lowered.contains("broken pipe") {
+        return "connection interrupted, retrying...".to_string();
+    }
+    if lowered.contains("disconnected") {
+        return "viewer disconnected, retrying...".to_string();
+    }
+    if lowered.contains("websocket error") {
+        return "network error, retrying...".to_string();
+    }
+    if lowered.contains("viewer receiver poisoned") {
+        return "viewer channel unavailable, retrying...".to_string();
+    }
+
+    trimmed.to_string()
+}
+
+fn viewer_client_from_addr(addr: String) -> ViewerClient {
+    let (tx, rx) = spawn_viewer_client(addr);
     #[cfg(not(target_arch = "wasm32"))]
-    commands.insert_resource(ViewerClient {
-        tx,
-        rx: Mutex::new(rx),
-    });
+    {
+        ViewerClient {
+            tx,
+            rx: Mutex::new(rx),
+        }
+    }
     #[cfg(target_arch = "wasm32")]
-    commands.insert_resource(ViewerClient { tx, rx });
+    {
+        ViewerClient { tx, rx }
+    }
+}
+
+fn setup_connection(mut commands: Commands, config: Res<ViewerConfig>) {
+    commands.insert_resource(viewer_client_from_addr(config.addr.clone()));
     commands.insert_resource(ViewerState::default());
 }
 
@@ -1828,7 +1943,8 @@ fn poll_viewer_messages(
     let receiver = match client.rx.lock() {
         Ok(receiver) => receiver,
         Err(_) => {
-            state.status = ConnectionStatus::Error("viewer receiver poisoned".to_string());
+            state.status =
+                ConnectionStatus::Error(friendly_connection_error("viewer receiver poisoned"));
             return;
         }
     };
@@ -1858,7 +1974,7 @@ fn poll_viewer_messages(
                     state.metrics = Some(metrics);
                 }
                 ViewerResponse::Error { message } => {
-                    state.status = ConnectionStatus::Error(message);
+                    state.status = ConnectionStatus::Error(friendly_connection_error(&message));
                 }
                 ViewerResponse::PromptControlAck { .. } => {}
                 ViewerResponse::PromptControlError { .. } => {}
@@ -1873,12 +1989,66 @@ fn poll_viewer_messages(
             Err(mpsc::TryRecvError::Empty) => break,
             Err(mpsc::TryRecvError::Disconnected) => {
                 if !matches!(state.status, ConnectionStatus::Error(_)) {
-                    state.status = ConnectionStatus::Error("disconnected".to_string());
+                    state.status =
+                        ConnectionStatus::Error(friendly_connection_error("disconnected"));
                 }
                 break;
             }
         }
     }
+}
+
+fn attempt_viewer_reconnect(
+    mut commands: Commands,
+    config: Res<ViewerConfig>,
+    offline: Option<Res<OfflineConfig>>,
+    time: Option<Res<Time>>,
+    state: Option<ResMut<ViewerState>>,
+    mut reconnect: Local<ViewerReconnectRuntime>,
+) {
+    if offline.as_deref().is_some_and(|cfg| cfg.offline) {
+        reconnect.reset();
+        return;
+    }
+
+    let Some(mut state) = state else {
+        reconnect.reset();
+        return;
+    };
+
+    let ConnectionStatus::Error(message) = &state.status else {
+        reconnect.reset();
+        return;
+    };
+
+    let Some(signature) = reconnectable_error_signature(message) else {
+        reconnect.reset();
+        return;
+    };
+
+    let now = time
+        .as_deref()
+        .map(Time::elapsed_secs_f64)
+        .unwrap_or_default();
+    let is_new_error = reconnect.last_error_signature.as_deref() != Some(signature.as_str());
+    if is_new_error {
+        reconnect.attempt = 0;
+        reconnect.next_retry_at_secs = Some(now);
+        reconnect.last_error_signature = Some(signature);
+    }
+
+    let should_retry = reconnect
+        .next_retry_at_secs
+        .map(|next| now >= next)
+        .unwrap_or(true);
+    if !should_retry {
+        return;
+    }
+
+    commands.insert_resource(viewer_client_from_addr(config.addr.clone()));
+    state.status = ConnectionStatus::Connecting;
+    reconnect.attempt = reconnect.attempt.saturating_add(1);
+    reconnect.next_retry_at_secs = Some(now + reconnect_backoff_secs(reconnect.attempt));
 }
 
 fn handle_material_variant_preview_hotkey(
