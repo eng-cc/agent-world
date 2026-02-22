@@ -8,10 +8,10 @@ use super::membership::{
 use super::membership_logic;
 use super::membership_reconciliation::{
     MembershipRevocationAlertDedupPolicy, MembershipRevocationAlertDedupState,
-    MembershipRevocationAlertPolicy, MembershipRevocationAlertSink,
-    MembershipRevocationAnomalyAlert, MembershipRevocationReconcilePolicy,
-    MembershipRevocationReconcileSchedulePolicy, MembershipRevocationScheduleCoordinator,
-    MembershipRevocationScheduleStateStore,
+    MembershipRevocationAlertPolicy, MembershipRevocationAlertSeverity,
+    MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
+    MembershipRevocationReconcilePolicy, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationScheduleCoordinator, MembershipRevocationScheduleStateStore,
 };
 
 mod dead_letter;
@@ -179,7 +179,12 @@ impl MembershipSyncClient {
         let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
 
         let mut pending = recovery_store.load_pending(&world_id, &node_id)?;
-        let mut buffered = Vec::with_capacity(pending.len().saturating_add(new_alerts.len()));
+        let buffered_capacity = checked_usize_add(
+            pending.len(),
+            new_alerts.len(),
+            "recovery buffered capacity",
+        )?;
+        let mut buffered = Vec::with_capacity(buffered_capacity);
         let mut report = MembershipRevocationAlertRecoveryReport {
             recovered: 0,
             emitted_new: 0,
@@ -194,7 +199,10 @@ impl MembershipSyncClient {
 
         for item in pending.drain(..) {
             if item.attempt >= policy.max_retry_attempts {
-                report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                report.dropped_retry_limit = checked_usize_increment(
+                    report.dropped_retry_limit,
+                    "recovery report dropped_retry_limit",
+                )?;
                 archive_dead_letter(
                     dead_letter_store,
                     &world_id,
@@ -207,7 +215,8 @@ impl MembershipSyncClient {
                 continue;
             }
             if item.next_retry_at_ms > now_ms {
-                report.deferred = report.deferred.saturating_add(1);
+                report.deferred =
+                    checked_usize_increment(report.deferred, "recovery report deferred")?;
                 buffered.push(item);
                 continue;
             }
@@ -216,22 +225,29 @@ impl MembershipSyncClient {
                 continue;
             }
 
-            metrics.attempted = metrics.attempted.saturating_add(1);
+            metrics.attempted =
+                checked_usize_increment(metrics.attempted, "delivery metrics attempted")?;
             match sink.emit(&item.alert) {
                 Ok(()) => {
-                    report.recovered = report.recovered.saturating_add(1);
-                    metrics.succeeded = metrics.succeeded.saturating_add(1);
+                    report.recovered =
+                        checked_usize_increment(report.recovered, "recovery report recovered")?;
+                    metrics.succeeded =
+                        checked_usize_increment(metrics.succeeded, "delivery metrics succeeded")?;
                 }
                 Err(error) => {
                     transport_failed = true;
-                    metrics.failed = metrics.failed.saturating_add(1);
+                    metrics.failed =
+                        checked_usize_increment(metrics.failed, "delivery metrics failed")?;
                     let retried = item.with_retry_failure(
                         now_ms,
                         policy.retry_backoff_ms,
                         format!("{error:?}"),
                     )?;
                     if retried.attempt >= policy.max_retry_attempts {
-                        report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                        report.dropped_retry_limit = checked_usize_increment(
+                            report.dropped_retry_limit,
+                            "recovery report dropped_retry_limit",
+                        )?;
                         archive_dead_letter(
                             dead_letter_store,
                             &world_id,
@@ -254,15 +270,19 @@ impl MembershipSyncClient {
                 continue;
             }
 
-            metrics.attempted = metrics.attempted.saturating_add(1);
+            metrics.attempted =
+                checked_usize_increment(metrics.attempted, "delivery metrics attempted")?;
             match sink.emit(&alert) {
                 Ok(()) => {
-                    report.emitted_new = report.emitted_new.saturating_add(1);
-                    metrics.succeeded = metrics.succeeded.saturating_add(1);
+                    report.emitted_new =
+                        checked_usize_increment(report.emitted_new, "recovery report emitted_new")?;
+                    metrics.succeeded =
+                        checked_usize_increment(metrics.succeeded, "delivery metrics succeeded")?;
                 }
                 Err(error) => {
                     transport_failed = true;
-                    metrics.failed = metrics.failed.saturating_add(1);
+                    metrics.failed =
+                        checked_usize_increment(metrics.failed, "delivery metrics failed")?;
                     let retried = MembershipRevocationPendingAlert::new(alert, now_ms)
                         .with_retry_failure(
                             now_ms,
@@ -270,7 +290,10 @@ impl MembershipSyncClient {
                             format!("{error:?}"),
                         )?;
                     if retried.attempt >= policy.max_retry_attempts {
-                        report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
+                        report.dropped_retry_limit = checked_usize_increment(
+                            report.dropped_retry_limit,
+                            "recovery report dropped_retry_limit",
+                        )?;
                         archive_dead_letter(
                             dead_letter_store,
                             &world_id,
@@ -719,6 +742,8 @@ fn archive_dead_letter(
     pending_alert: MembershipRevocationPendingAlert,
     metrics: &mut MembershipRevocationAlertDeliveryMetrics,
 ) -> Result<(), WorldError> {
+    let next_dead_lettered =
+        checked_usize_increment(metrics.dead_lettered, "delivery metrics dead_lettered")?;
     dead_letter_store.append(&MembershipRevocationAlertDeadLetterRecord {
         world_id: world_id.to_string(),
         node_id: node_id.to_string(),
@@ -726,8 +751,19 @@ fn archive_dead_letter(
         reason,
         pending_alert,
     })?;
-    metrics.dead_lettered = metrics.dead_lettered.saturating_add(1);
+    metrics.dead_lettered = next_dead_lettered;
     Ok(())
+}
+
+fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, WorldError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("membership revocation {context} overflow: lhs={lhs}, rhs={rhs}"),
+        })
+}
+
+fn checked_usize_increment(value: usize, context: &str) -> Result<usize, WorldError> {
+    checked_usize_add(value, 1, context)
 }
 
 fn dead_letter_reason_priority(reason: MembershipRevocationAlertDeadLetterReason) -> u8 {
@@ -837,4 +873,69 @@ fn normalized_dead_letter_replay_coordination_world_id(
     membership_logic::normalized_world_id(&format!(
         "{world_id}::revocation-dead-letter-replay::{target_node_id}"
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_pending_alert() -> MembershipRevocationPendingAlert {
+        MembershipRevocationPendingAlert {
+            alert: MembershipRevocationAnomalyAlert {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                detected_at_ms: 1000,
+                severity: MembershipRevocationAlertSeverity::Warn,
+                code: "reconcile_diverged".to_string(),
+                message: "membership revocation reconcile diverged".to_string(),
+                drained: 1,
+                diverged: 1,
+                rejected: 0,
+            },
+            attempt: 1,
+            next_retry_at_ms: 1000,
+            last_error: None,
+        }
+    }
+
+    #[test]
+    fn checked_usize_add_rejects_overflow() {
+        let err = checked_usize_add(usize::MAX, 1, "test field").expect_err("overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(reason.contains("test field overflow"), "{reason}");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn archive_dead_letter_rejects_dead_lettered_overflow_without_mutation() {
+        let store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+        let mut metrics = MembershipRevocationAlertDeliveryMetrics::default();
+        metrics.dead_lettered = usize::MAX;
+
+        let err = archive_dead_letter(
+            &store,
+            "w1",
+            "node-a",
+            1000,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            sample_pending_alert(),
+            &mut metrics,
+        )
+        .expect_err("dead-letter metric overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(reason.contains("dead_lettered"), "{reason}");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+
+        assert_eq!(metrics.dead_lettered, usize::MAX);
+        let dead_letters = store
+            .list("w1", "node-a")
+            .expect("list dead letters after overflow");
+        assert!(dead_letters.is_empty());
+    }
 }

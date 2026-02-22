@@ -11,8 +11,8 @@
 - [x] 新增 overflow 拒绝测试并验证 `last_replay_at_ms` 不被污染。
 
 ### T2 Recovery 计数/容量受检化
-- [ ] `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter` 的关键 `saturating_add` 改为受检语义。
-- [ ] 补齐计数边界 overflow 测试并验证 pending/dead-letter 不被部分更新。
+- [x] `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter` 的关键 `saturating_add` 改为受检语义。
+- [x] 补齐计数边界 overflow 测试并验证 pending/dead-letter 不被部分更新。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -25,7 +25,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无
