@@ -2,7 +2,6 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
@@ -26,7 +25,7 @@ use agent_world_proto::distributed_net::{
     NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription,
 };
 
-use crate::util::to_canonical_cbor;
+use crate::util::{to_canonical_cbor, unix_now_ms_i64};
 
 #[derive(Debug, Clone)]
 pub struct Libp2pNetworkConfig {
@@ -1082,10 +1081,7 @@ fn decode_membership_directory(bytes: &[u8]) -> Result<MembershipDirectorySnapsh
 }
 
 fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as i64)
-        .unwrap_or(0)
+    unix_now_ms_i64()
 }
 
 fn should_republish(last_ms: i64, now_ms: i64, interval_ms: i64) -> bool {

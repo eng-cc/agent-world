@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_proto::distributed::WorldHeadAnnounce;
 
@@ -88,10 +87,7 @@ impl DistributedIndexStore for InMemoryIndexStore {
 }
 
 fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as i64)
-        .unwrap_or(0)
+    super::util::unix_now_ms_i64()
 }
 
 #[cfg(test)]

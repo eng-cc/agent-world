@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_world_proto::distributed::WorldHeadAnnounce;
 use agent_world_proto::distributed_dht as proto_dht;
@@ -92,6 +92,23 @@ impl proto_dht::DistributedDht<WorldError> for InMemoryDht {
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as i64)
+        .map(duration_millis_to_i64_saturating)
         .unwrap_or(0)
+}
+
+fn duration_millis_to_i64_saturating(duration: Duration) -> i64 {
+    i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duration_millis_to_i64_saturating_clamps_on_overflow() {
+        assert_eq!(
+            duration_millis_to_i64_saturating(Duration::from_secs(u64::MAX)),
+            i64::MAX
+        );
+    }
 }

@@ -12,9 +12,9 @@
 - [x] 新增溢出拒绝且状态不变测试。
 
 ### T2 时间源毫秒窄化受检转换
-- [ ] 收口 phase6 范围内 `as_millis() as i64`（consensus/net/node）。
-- [ ] 统一 helper 与错误/夹逼语义，避免隐式截断。
-- [ ] 新增边界测试覆盖超大 `Duration`。
+- [x] 收口 phase6 范围内 `as_millis() as i64`（consensus/net/node）。
+- [x] 统一 helper 与错误/夹逼语义，避免隐式截断。
+- [x] 新增边界测试覆盖超大 `Duration`。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus`、`agent_world_net`、`agent_world_node` 定向回归测试。
@@ -37,7 +37,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

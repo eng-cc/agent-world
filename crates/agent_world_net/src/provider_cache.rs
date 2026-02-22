@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::distributed_dht::{DistributedDht, ProviderRecord};
 use super::distributed_index_store::DistributedIndexStore;
@@ -186,10 +185,7 @@ impl ProviderCache {
 }
 
 fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as i64)
-        .unwrap_or(0)
+    super::util::unix_now_ms_i64()
 }
 
 #[cfg(test)]
