@@ -1,0 +1,43 @@
+# Agent World Runtime：Membership 协调租约与时间源窄化数值语义硬化（15 点清单第六阶段）项目管理文档
+
+## 任务拆解
+
+### T0 建档
+- [x] 新建设计文档：`doc/world-runtime/runtime-numeric-correctness-phase6.md`
+- [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase6.project.md`
+
+### T1 Membership 协调器 lease 受检加法
+- [ ] `membership_reconciliation` 的 in-memory coordinator `expires_at_ms` 改为受检加法。
+- [ ] `membership_recovery/stores` 的 store-backed coordinator `expires_at_ms` 改为受检加法。
+- [ ] 新增溢出拒绝且状态不变测试。
+
+### T2 时间源毫秒窄化受检转换
+- [ ] 收口 phase6 范围内 `as_millis() as i64`（consensus/net/node）。
+- [ ] 统一 helper 与错误/夹逼语义，避免隐式截断。
+- [ ] 新增边界测试覆盖超大 `Duration`。
+
+### T3 回归与收口
+- [ ] 运行 `agent_world_consensus`、`agent_world_net`、`agent_world_node` 定向回归测试。
+- [ ] 回写设计文档状态（M0~M3）。
+- [ ] 回写项目状态与 `doc/devlog/2026-02-23.md`。
+
+## 依赖
+- `crates/agent_world_consensus/src/membership_reconciliation.rs`
+- `crates/agent_world_consensus/src/membership_recovery/stores.rs`
+- `crates/agent_world_consensus/src/membership_reconciliation_tests.rs`
+- `crates/agent_world_consensus/src/membership_recovery_tests.rs`
+- `crates/agent_world_net/src/dht.rs`
+- `crates/agent_world_net/src/provider_cache.rs`
+- `crates/agent_world_net/src/libp2p_net.rs`
+- `crates/agent_world_net/src/gateway.rs`
+- `crates/agent_world_net/src/index_store.rs`
+- `crates/agent_world_net/src/dht_cache.rs`
+- `crates/agent_world_node/src/runtime_util.rs`
+- `crates/agent_world_consensus/src/dht.rs`
+
+## 状态
+- 当前状态：`进行中`
+- 已完成：T0
+- 进行中：T1
+- 未开始：T2、T3
+- 阻塞项：无
