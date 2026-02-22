@@ -12,8 +12,8 @@
 - [x] `crates/agent_world_node/src/pos_validation.rs` 同步改造。
 
 ### T2 边界测试补齐
-- [ ] 新增大整数比率边界测试（`denominator = u64::MAX`）验证不会误拒绝。
-- [ ] 校验 proto/consensus/node 三层行为一致。
+- [x] 新增大整数比率边界测试（`denominator = u64::MAX`）验证不会误拒绝。
+- [x] 校验 proto/consensus/node 三层行为一致。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_proto`、`agent_world_consensus`、`agent_world_node` 定向回归测试。
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

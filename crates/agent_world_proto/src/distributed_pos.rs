@@ -104,6 +104,15 @@ mod tests {
     }
 
     #[test]
+    fn required_supermajority_accepts_extreme_ratio_just_above_half() {
+        let denominator = u64::MAX;
+        let numerator = denominator / 2 + 1;
+        let required =
+            required_supermajority_stake(10, numerator, denominator).expect("required stake");
+        assert_eq!(required, 6);
+    }
+
+    #[test]
     fn decide_pos_status_transitions() {
         assert_eq!(
             decide_pos_status(100, 67, 67, 0),

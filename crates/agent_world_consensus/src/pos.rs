@@ -998,6 +998,20 @@ mod tests {
     }
 
     #[test]
+    fn pos_accepts_extreme_supermajority_ratio_just_above_half() {
+        let denominator = u64::MAX;
+        let numerator = denominator / 2 + 1;
+        let consensus = PosConsensus::new(PosConsensusConfig {
+            validators: validators(),
+            supermajority_numerator: numerator,
+            supermajority_denominator: denominator,
+            epoch_length_slots: 32,
+        })
+        .expect("extreme ratio should be valid");
+        assert_eq!(consensus.required_stake(), 51);
+    }
+
+    #[test]
     fn pos_rejects_when_remaining_stake_cannot_reach_supermajority() {
         let mut consensus = sample_consensus();
         let proposer = consensus.expected_proposer(1).expect("proposer");

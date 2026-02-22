@@ -112,6 +112,31 @@ fn config_rejects_invalid_pos_config() {
 }
 
 #[test]
+fn config_accepts_extreme_supermajority_ratio_just_above_half() {
+    let denominator = u64::MAX;
+    let numerator = denominator / 2 + 1;
+    let mut pos_config = NodePosConfig::ethereum_like(vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ]);
+    pos_config.supermajority_numerator = numerator;
+    pos_config.supermajority_denominator = denominator;
+
+    let config = NodeConfig::new("node-a", "world-a", NodeRole::Observer)
+        .expect("base config")
+        .with_pos_config(pos_config)
+        .expect("extreme ratio should be valid");
+    assert_eq!(config.pos_config.supermajority_numerator, numerator);
+    assert_eq!(config.pos_config.supermajority_denominator, denominator);
+}
+
+#[test]
 fn config_rejects_duplicate_validator_player_bindings() {
     let mut validator_player_ids = BTreeMap::new();
     validator_player_ids.insert("node-a".to_string(), "player-1".to_string());
