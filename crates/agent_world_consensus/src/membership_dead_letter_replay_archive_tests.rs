@@ -679,6 +679,80 @@ fn governance_audit_tiered_offload_respects_rate_limit() {
 }
 
 #[test]
+fn governance_audit_tiered_offload_rejects_age_overflow_without_mutation() {
+    let client = sample_client();
+    let hot_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::new();
+    let cold_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::new();
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::append(
+        &hot_store,
+        "w1",
+        "node-a",
+        &sample_governance_audit_record(
+            "w1",
+            "node-a",
+            1,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Stable,
+            1,
+        ),
+    )
+    .expect("append hot record");
+    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::append(
+        &cold_store,
+        "w1",
+        "node-a",
+        &sample_governance_audit_record(
+            "w1",
+            "node-a",
+            800,
+            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Normal,
+            0,
+        ),
+    )
+    .expect("append cold record");
+
+    let offload_policy =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPolicy {
+            hot_max_records: 1,
+            offload_min_age_ms: 100,
+            max_offload_records: 10,
+        };
+    let error = client
+        .offload_revocation_dead_letter_replay_rollback_governance_audit_archive_tiered(
+            "w1",
+            "node-a",
+            i64::MIN,
+            &offload_policy,
+            &hot_store,
+            &cold_store,
+        )
+        .expect_err("offload age underflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("tiered offload audit age overflow"),
+        "unexpected error: {message}"
+    );
+
+    let hot_records =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::list(
+            &hot_store, "w1", "node-a",
+        )
+        .expect("list hot after overflow");
+    assert_eq!(hot_records.len(), 1);
+    assert_eq!(hot_records[0].audited_at_ms, 1);
+    let cold_records =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRetentionStore::list(
+            &cold_store,
+            "w1",
+            "node-a",
+        )
+        .expect("list cold after overflow");
+    assert_eq!(cold_records.len(), 1);
+    assert_eq!(cold_records[0].audited_at_ms, 800);
+}
+
+#[test]
 fn governance_audit_tiered_offload_rolls_back_cold_layer_when_hot_replace_fails() {
     let client = sample_client();
     let hot_store = ReplaceFailingGovernanceAuditRetentionStore::new();
@@ -823,6 +897,161 @@ fn governance_recovery_drill_alert_emits_and_honors_cooldown() {
     let alerts = alert_sink.list().expect("list emitted alerts");
     assert_eq!(alerts.len(), 1);
     assert_eq!(alerts[0].code, "rollback_governance_recovery_drill_anomaly");
+}
+
+#[test]
+fn governance_recovery_drill_alert_rejects_silence_age_overflow_without_mutation() {
+    let client = sample_client();
+    let alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+    let alert_policy =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertPolicy {
+            max_alert_silence_ms: 100,
+            rollback_streak_threshold: 2,
+            alert_cooldown_ms: 200,
+        };
+    let drill_run_report =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduledRunReport {
+            world_id: "w1".to_string(),
+            node_id: "node-a".to_string(),
+            scheduled_at_ms: 1_000,
+            drill_due: true,
+            drill_executed: true,
+            next_due_at_ms: Some(1_100),
+            drill_report: Some(
+                MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport {
+                    world_id: "w1".to_string(),
+                    node_id: "node-a".to_string(),
+                    drill_at_ms: 1_000,
+                    alert_state: MembershipRevocationDeadLetterReplayRollbackAlertState {
+                        last_alert_at_ms: Some(1),
+                    },
+                    governance_state: MembershipRevocationDeadLetterReplayRollbackGovernanceState {
+                        rollback_streak: 3,
+                        last_level:
+                            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+                        last_level_updated_at_ms: Some(980),
+                    },
+                    recent_audits: vec![sample_governance_audit_record(
+                        "w1",
+                        "node-a",
+                        990,
+                        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+                        3,
+                    )],
+                    has_emergency_history: true,
+                },
+            ),
+        };
+
+    let error = client
+        .emit_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_if_needed(
+            "w1",
+            "node-a",
+            i64::MIN,
+            &drill_run_report,
+            &alert_policy,
+            &alert_state_store,
+            &alert_sink,
+        )
+        .expect_err("silence age underflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("alert silence age overflow"),
+        "unexpected error: {message}"
+    );
+
+    let stored = alert_state_store
+        .load_state("w1", "node-a")
+        .expect("load drill alert state after overflow");
+    assert_eq!(stored.last_alert_at_ms, None);
+    assert!(
+        alert_sink.list().expect("list emitted alerts").is_empty(),
+        "overflow should not emit alerts"
+    );
+}
+
+#[test]
+fn governance_recovery_drill_alert_rejects_cooldown_age_overflow_without_mutation() {
+    let client = sample_client();
+    let alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertStateStore::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+    let alert_policy =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertPolicy {
+            max_alert_silence_ms: 100,
+            rollback_streak_threshold: 2,
+            alert_cooldown_ms: 200,
+        };
+    alert_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertState {
+                last_alert_at_ms: Some(1),
+            },
+        )
+        .expect("seed drill alert state");
+    let drill_run_report =
+        MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillScheduledRunReport {
+            world_id: "w1".to_string(),
+            node_id: "node-a".to_string(),
+            scheduled_at_ms: 1_000,
+            drill_due: true,
+            drill_executed: true,
+            next_due_at_ms: Some(1_100),
+            drill_report: Some(
+                MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport {
+                    world_id: "w1".to_string(),
+                    node_id: "node-a".to_string(),
+                    drill_at_ms: 1_000,
+                    alert_state: MembershipRevocationDeadLetterReplayRollbackAlertState {
+                        last_alert_at_ms: None,
+                    },
+                    governance_state: MembershipRevocationDeadLetterReplayRollbackGovernanceState {
+                        rollback_streak: 3,
+                        last_level:
+                            MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+                        last_level_updated_at_ms: Some(980),
+                    },
+                    recent_audits: vec![sample_governance_audit_record(
+                        "w1",
+                        "node-a",
+                        990,
+                        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+                        3,
+                    )],
+                    has_emergency_history: true,
+                },
+            ),
+        };
+
+    let error = client
+        .emit_revocation_dead_letter_replay_rollback_governance_recovery_drill_alert_if_needed(
+            "w1",
+            "node-a",
+            i64::MIN,
+            &drill_run_report,
+            &alert_policy,
+            &alert_state_store,
+            &alert_sink,
+        )
+        .expect_err("cooldown age underflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("alert cooldown age overflow"),
+        "unexpected error: {message}"
+    );
+
+    let stored = alert_state_store
+        .load_state("w1", "node-a")
+        .expect("load drill alert state after overflow");
+    assert_eq!(stored.last_alert_at_ms, Some(1));
+    assert!(
+        alert_sink.list().expect("list emitted alerts").is_empty(),
+        "overflow should not emit alerts"
+    );
 }
 
 #[test]

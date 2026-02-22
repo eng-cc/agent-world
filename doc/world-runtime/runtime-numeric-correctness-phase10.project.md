@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase10.project.md`
 
 ### T1 Tiered Offload/Drill Alert 受检化
-- [ ] `membership_recovery/replay_archive_tiered.rs` 的 offload/silence/cooldown 时间差改为受检减法。
-- [ ] 去除 `plan_governance_audit_tiered_offload` 中不必要饱和计数语义。
-- [ ] 补齐 underflow/overflow 拒绝测试并验证无状态污染。
+- [x] `membership_recovery/replay_archive_tiered.rs` 的 offload/silence/cooldown 时间差改为受检减法。
+- [x] 去除 `plan_governance_audit_tiered_offload` 中不必要饱和计数语义。
+- [x] 补齐 underflow/overflow 拒绝测试并验证无状态污染。
 
 ### T2 Rollback Audit/Governance 受检化
 - [ ] `membership_recovery/replay_audit.rs` 的 rollback streak 递进改为受检加法。
@@ -29,7 +29,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

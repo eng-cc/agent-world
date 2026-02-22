@@ -276,7 +276,7 @@ impl MembershipSyncClient {
             hot_records_before.clone(),
             offloaded_at_ms,
             offload_policy,
-        );
+        )?;
         if plan.offloaded_records.is_empty() {
             return Ok(
                 MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadReport {
@@ -369,7 +369,7 @@ impl MembershipSyncClient {
                 reason: "membership revocation dead-letter rollback governance recovery drill scheduled report missing drill_report while drill_executed is true".to_string(),
             })?;
         let reasons =
-            evaluate_recovery_drill_alert_reasons(drill_report, evaluated_at_ms, alert_policy);
+            evaluate_recovery_drill_alert_reasons(drill_report, evaluated_at_ms, alert_policy)?;
         if reasons.is_empty() {
             return Ok(
                 MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertRunReport {
@@ -386,10 +386,19 @@ impl MembershipSyncClient {
         }
 
         let mut alert_state = alert_state_store.load_state(&world_id, &node_id)?;
-        let cooldown_blocked = alert_state
-            .last_alert_at_ms
-            .map(|last| evaluated_at_ms.saturating_sub(last) < alert_policy.alert_cooldown_ms)
-            .unwrap_or(false);
+        let cooldown_blocked = match alert_state.last_alert_at_ms {
+            Some(last_alert_at_ms) => {
+                let cooldown_elapsed = evaluated_at_ms.checked_sub(last_alert_at_ms).ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter rollback governance recovery drill alert cooldown age overflow: evaluated_at_ms={evaluated_at_ms}, last_alert_at_ms={last_alert_at_ms}"
+                        ),
+                    }
+                })?;
+                cooldown_elapsed < alert_policy.alert_cooldown_ms
+            }
+            None => false,
+        };
         if cooldown_blocked {
             return Ok(
                 MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertRunReport {
@@ -584,12 +593,21 @@ fn plan_governance_audit_tiered_offload(
     records: Vec<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditRecord>,
     now_ms: i64,
     policy: &MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPolicy,
-) -> MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPlan {
+) -> Result<MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPlan, WorldError>
+{
     let mut selected = vec![false; records.len()];
     let mut selected_by_age = vec![false; records.len()];
     let mut selected_by_capacity = vec![false; records.len()];
     for (index, record) in records.iter().enumerate() {
-        if now_ms.saturating_sub(record.audited_at_ms) >= policy.offload_min_age_ms {
+        let record_age_ms = now_ms.checked_sub(record.audited_at_ms).ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter rollback governance tiered offload audit age overflow: now_ms={now_ms}, audited_at_ms={}",
+                    record.audited_at_ms
+                ),
+            }
+        })?;
+        if record_age_ms >= policy.offload_min_age_ms {
             selected[index] = true;
             selected_by_age[index] = true;
         }
@@ -597,7 +615,7 @@ fn plan_governance_audit_tiered_offload(
 
     let unselected_count = selected.iter().filter(|marked| !**marked).count();
     if unselected_count > policy.hot_max_records {
-        let mut need_move = unselected_count.saturating_sub(policy.hot_max_records);
+        let mut need_move = unselected_count - policy.hot_max_records;
         for (index, marked) in selected.iter_mut().enumerate() {
             if need_move == 0 {
                 break;
@@ -605,7 +623,7 @@ fn plan_governance_audit_tiered_offload(
             if !*marked {
                 *marked = true;
                 selected_by_capacity[index] = true;
-                need_move = need_move.saturating_sub(1);
+                need_move -= 1;
             }
         }
     }
@@ -618,39 +636,49 @@ fn plan_governance_audit_tiered_offload(
     for (index, record) in records.into_iter().enumerate() {
         if selected[index] && offloaded_records.len() < policy.max_offload_records {
             if selected_by_age[index] {
-                offloaded_by_age = offloaded_by_age.saturating_add(1);
+                offloaded_by_age += 1;
             } else if selected_by_capacity[index] {
-                offloaded_by_capacity = offloaded_by_capacity.saturating_add(1);
+                offloaded_by_capacity += 1;
             }
             offloaded_records.push(record);
         } else {
             if selected[index] {
-                kept_due_to_rate_limit = kept_due_to_rate_limit.saturating_add(1);
+                kept_due_to_rate_limit += 1;
             }
             hot_records_after.push(record);
         }
     }
 
-    MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPlan {
-        hot_records_after,
-        offloaded_records,
-        offloaded_by_age,
-        offloaded_by_capacity,
-        kept_due_to_rate_limit,
-    }
+    Ok(
+        MembershipRevocationDeadLetterReplayRollbackGovernanceAuditTieredOffloadPlan {
+            hot_records_after,
+            offloaded_records,
+            offloaded_by_age,
+            offloaded_by_capacity,
+            kept_due_to_rate_limit,
+        },
+    )
 }
 
 fn evaluate_recovery_drill_alert_reasons(
     drill_report: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillReport,
     now_ms: i64,
     policy: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertPolicy,
-) -> Vec<String> {
+) -> Result<Vec<String>, WorldError> {
     let mut reasons = Vec::new();
-    let silence_exceeded = drill_report
-        .alert_state
-        .last_alert_at_ms
-        .map(|last| now_ms.saturating_sub(last) > policy.max_alert_silence_ms)
-        .unwrap_or(true);
+    let silence_exceeded = match drill_report.alert_state.last_alert_at_ms {
+        Some(last_alert_at_ms) => {
+            let silence_elapsed = now_ms.checked_sub(last_alert_at_ms).ok_or_else(|| {
+                WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "membership revocation dead-letter rollback governance recovery drill alert silence age overflow: now_ms={now_ms}, last_alert_at_ms={last_alert_at_ms}"
+                    ),
+                }
+            })?;
+            silence_elapsed > policy.max_alert_silence_ms
+        }
+        None => true,
+    };
     if silence_exceeded {
         reasons.push("alert_state_silence_exceeded".to_string());
     }
@@ -663,5 +691,5 @@ fn evaluate_recovery_drill_alert_reasons(
     {
         reasons.push("emergency_history_detected".to_string());
     }
-    reasons
+    Ok(reasons)
 }
