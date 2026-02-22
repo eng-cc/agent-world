@@ -189,6 +189,7 @@ fn prompt_control_preview_reports_fields_and_next_version() {
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("系统提示".to_string())),
@@ -218,6 +219,7 @@ fn prompt_control_apply_requires_llm_mode() {
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -272,6 +274,7 @@ fn prompt_control_preview_requires_non_empty_player_id() {
             agent_id: "agent-0".to_string(),
             player_id: "   ".to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -300,6 +303,7 @@ fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
             agent_id: "agent-0".to_string(),
             player_id: "player-b".to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -332,6 +336,7 @@ fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound()
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -346,6 +351,7 @@ fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound()
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
             public_key: Some("pubkey-b".to_string()),
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -360,6 +366,7 @@ fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound()
             agent_id: "agent-0".to_string(),
             player_id: "player-a".to_string(),
             public_key: Some("pubkey-a".to_string()),
+            auth: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -382,6 +389,7 @@ fn agent_chat_requires_player_id() {
             message: "hello".to_string(),
             player_id: None,
             public_key: None,
+            auth: None,
         })
         .expect_err("missing player_id should be rejected");
 
@@ -408,6 +416,7 @@ fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
             message: "hello".to_string(),
             player_id: Some("player-a".to_string()),
             public_key: Some("pubkey-a".to_string()),
+            auth: None,
         })
         .expect("chat should be accepted");
 

@@ -2,6 +2,23 @@ use serde::{Deserialize, Serialize};
 
 pub const VIEWER_PROTOCOL_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerAuthScheme {
+    #[default]
+    Ed25519,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerAuthProof {
+    #[serde(default)]
+    pub scheme: PlayerAuthScheme,
+    pub player_id: String,
+    pub public_key: String,
+    pub nonce: u64,
+    pub signature: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ViewerRequest {
@@ -47,6 +64,8 @@ pub struct PromptControlApplyRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<PlayerAuthProof>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_by: Option<String>,
@@ -84,6 +103,8 @@ pub struct PromptControlRollbackRequest {
     pub player_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<PlayerAuthProof>,
     pub to_version: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
@@ -99,6 +120,8 @@ pub struct AgentChatRequest {
     pub player_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<PlayerAuthProof>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -249,6 +272,13 @@ mod tests {
                     agent_id: "agent-0".to_string(),
                     player_id: "player-1".to_string(),
                     public_key: Some("pk-1".to_string()),
+                    auth: Some(PlayerAuthProof {
+                        scheme: PlayerAuthScheme::Ed25519,
+                        player_id: "player-1".to_string(),
+                        public_key: "pk-1".to_string(),
+                        nonce: 7,
+                        signature: "awviewauth:v1:deadbeef".to_string(),
+                    }),
                     expected_version: Some(3),
                     updated_by: Some("tester".to_string()),
                     system_prompt_override: Some(Some("system".to_string())),
@@ -270,6 +300,13 @@ mod tests {
                 message: "go to loc-2".to_string(),
                 player_id: Some("player-1".to_string()),
                 public_key: Some("pk-1".to_string()),
+                auth: Some(PlayerAuthProof {
+                    scheme: PlayerAuthScheme::Ed25519,
+                    player_id: "player-1".to_string(),
+                    public_key: "pk-1".to_string(),
+                    nonce: 9,
+                    signature: "awviewauth:v1:deadbeef".to_string(),
+                }),
             },
         };
         let json = serde_json::to_string(&request).expect("serialize request");
@@ -297,6 +334,25 @@ mod tests {
             panic!("expected apply command");
         };
         assert_eq!(request.public_key, None);
+        assert_eq!(request.auth, None);
+    }
+
+    #[test]
+    fn viewer_agent_chat_request_legacy_without_auth_is_accepted() {
+        let json = r#"{
+            "type":"agent_chat",
+            "request":{
+                "agent_id":"agent-0",
+                "message":"hello",
+                "player_id":"player-1",
+                "public_key":"pk-1"
+            }
+        }"#;
+        let parsed: ViewerRequest = serde_json::from_str(json).expect("deserialize legacy request");
+        let ViewerRequest::AgentChat { request } = parsed else {
+            panic!("expected agent_chat request");
+        };
+        assert_eq!(request.auth, None);
     }
 
     #[test]

@@ -230,6 +230,7 @@ pub(super) fn render_chat_section(
                         message,
                         player_id: Some(VIEWER_PLAYER_ID.to_string()),
                         public_key: None,
+                        auth: None,
                     },
                 };
                 match client.tx.send(request) {
@@ -705,6 +706,7 @@ fn build_prompt_profile_apply_request(
         agent_id: selected_agent_id.to_string(),
         player_id: VIEWER_PLAYER_ID.to_string(),
         public_key: None,
+        auth: None,
         expected_version: Some(current_profile.version),
         updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
         system_prompt_override: patch_override_with_default(
@@ -1585,6 +1587,7 @@ mod tests {
             agent_id: "agent-a".to_string(),
             player_id: VIEWER_PLAYER_ID.to_string(),
             public_key: None,
+            auth: None,
             expected_version: Some(1),
             updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
             system_prompt_override: None,

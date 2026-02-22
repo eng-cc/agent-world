@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/nonviewer-onchain-auth-protocol-hardening.project.md`
 
 ### T1 协议与鉴权内核
-- [ ] 扩展 `agent_world_proto::viewer` 请求结构，新增 `PlayerAuthProof`
-- [ ] 在 `agent_world::viewer` 实现 canonical payload + ed25519 签名/验签工具
-- [ ] 补协议与鉴权内核测试（roundtrip + tamper）
+- [x] 扩展 `agent_world_proto::viewer` 请求结构，新增 `PlayerAuthProof`
+- [x] 在 `agent_world::viewer` 实现 canonical payload + ed25519 签名/验签工具
+- [x] 补协议与鉴权内核测试（roundtrip + tamper）
 
 ### T2 Live 服务端强制鉴权 + 防重放
 - [ ] live 请求链路强制 `auth proof` 校验，补全错误码
@@ -27,7 +27,7 @@
 
 ## 状态
 - 当前状态：进行中
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
