@@ -869,7 +869,7 @@ impl MembershipSyncClient {
                 &policy_state.last_stable_policy,
                 rollback_governance_policy,
                 &mut governance_state,
-            );
+            )?;
         if governed_policy != applied_policy {
             policy_state.active_policy = governed_policy.clone();
             policy_state.last_policy_update_at_ms = Some(now_ms);
@@ -1104,15 +1104,27 @@ fn apply_dead_letter_replay_rollback_governance_policy(
     stable_policy: &MembershipRevocationDeadLetterReplayPolicy,
     policy: &MembershipRevocationDeadLetterReplayRollbackGovernancePolicy,
     state: &mut MembershipRevocationDeadLetterReplayRollbackGovernanceState,
-) -> (
-    MembershipRevocationDeadLetterReplayPolicy,
-    MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
-) {
-    state.rollback_streak = if rolled_back {
-        state.rollback_streak.saturating_add(1)
+) -> Result<
+    (
+        MembershipRevocationDeadLetterReplayPolicy,
+        MembershipRevocationDeadLetterReplayRollbackGovernanceLevel,
+    ),
+    WorldError,
+> {
+    let next_rollback_streak = if rolled_back {
+        state
+            .rollback_streak
+            .checked_add(1)
+            .ok_or_else(|| WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter rollback governance rollback_streak overflow: current={}",
+                    state.rollback_streak
+                ),
+            })?
     } else {
         0
     };
+    state.rollback_streak = next_rollback_streak;
     let level = if state.rollback_streak >= policy.level_two_rollback_streak {
         MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency
     } else if state.rollback_streak >= policy.level_one_rollback_streak {
@@ -1134,7 +1146,7 @@ fn apply_dead_letter_replay_rollback_governance_policy(
             policy.level_two_emergency_policy.clone()
         }
     };
-    (governed_policy, level)
+    Ok((governed_policy, level))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1155,21 +1167,40 @@ fn emit_dead_letter_replay_rollback_alert_if_needed(
     }
 
     let records = replay_policy_audit_store.list(world_id, node_id)?;
-    let rollback_count = records
-        .iter()
-        .filter(|record| {
-            record.rollback_triggered
-                && now_ms.saturating_sub(record.audited_at_ms) <= policy.rollback_window_ms
-        })
-        .count();
+    let mut rollback_count = 0usize;
+    for record in &records {
+        if !record.rollback_triggered {
+            continue;
+        }
+        let rollback_age_ms = now_ms.checked_sub(record.audited_at_ms).ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation dead-letter replay rollback alert rollback window age overflow: now_ms={now_ms}, audited_at_ms={}",
+                    record.audited_at_ms
+                ),
+            }
+        })?;
+        if rollback_age_ms <= policy.rollback_window_ms {
+            rollback_count += 1;
+        }
+    }
     if rollback_count < policy.max_rollbacks_per_window {
         return Ok(false);
     }
 
-    let in_cooldown = state
-        .last_alert_at_ms
-        .map(|last| now_ms.saturating_sub(last) < policy.alert_cooldown_ms)
-        .unwrap_or(false);
+    let in_cooldown = match state.last_alert_at_ms {
+        Some(last_alert_at_ms) => {
+            let cooldown_elapsed = now_ms.checked_sub(last_alert_at_ms).ok_or_else(|| {
+                WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "membership revocation dead-letter replay rollback alert cooldown age overflow: now_ms={now_ms}, last_alert_at_ms={last_alert_at_ms}"
+                    ),
+                }
+            })?;
+            cooldown_elapsed < policy.alert_cooldown_ms
+        }
+        None => false,
+    };
     if in_cooldown {
         return Ok(false);
     }

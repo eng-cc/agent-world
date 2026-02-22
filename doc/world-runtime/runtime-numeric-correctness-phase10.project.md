@@ -12,9 +12,9 @@
 - [x] 补齐 underflow/overflow 拒绝测试并验证无状态污染。
 
 ### T2 Rollback Audit/Governance 受检化
-- [ ] `membership_recovery/replay_audit.rs` 的 rollback streak 递进改为受检加法。
-- [ ] rollback alert 窗口/cooldown 时间差改为受检减法。
-- [ ] 补齐 overflow/underflow 测试并验证治理状态不被部分更新。
+- [x] `membership_recovery/replay_audit.rs` 的 rollback streak 递进改为受检加法。
+- [x] rollback alert 窗口/cooldown 时间差改为受检减法。
+- [x] 补齐 overflow/underflow 测试并验证治理状态不被部分更新。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -29,7 +29,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

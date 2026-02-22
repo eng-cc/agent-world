@@ -394,6 +394,210 @@ fn run_with_audit_emits_rollback_alert_and_honors_cooldown() {
 }
 
 #[test]
+fn run_with_audit_rejects_rollback_window_age_overflow_without_mutating_alert_state() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy_store = InMemoryMembershipRevocationDeadLetterReplayPolicyStore::new();
+    let replay_policy_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator = InMemoryMembershipRevocationScheduleCoordinator::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+    let mut rollback_alert_state =
+        MembershipRevocationDeadLetterReplayRollbackAlertState::default();
+
+    replay_policy_store
+        .save_policy_state("w1", "node-a", &unstable_policy_state(Some(900)))
+        .expect("seed unstable policy state");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1_000,
+            4,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+    dead_letter_store
+        .append_delivery_metrics("w1", "node-a", 1_000, &unhealthy_metrics())
+        .expect("append metrics");
+    replay_policy_audit_store
+        .append(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayPolicyAdoptionAuditRecord {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                audited_at_ms: i64::MIN,
+                decision:
+                    MembershipRevocationDeadLetterReplayPolicyAdoptionAuditDecision::RolledBackToStable,
+                recommended_policy: MembershipRevocationDeadLetterReplayPolicy {
+                    max_replay_per_run: 4,
+                    max_retry_limit_exceeded_streak: 2,
+                },
+                applied_policy: MembershipRevocationDeadLetterReplayPolicy {
+                    max_replay_per_run: 4,
+                    max_retry_limit_exceeded_streak: 2,
+                },
+                stable_policy: MembershipRevocationDeadLetterReplayPolicy {
+                    max_replay_per_run: 4,
+                    max_retry_limit_exceeded_streak: 2,
+                },
+                backlog_dead_letters: 1,
+                backlog_pending: 0,
+                metrics: unhealthy_metrics(),
+                rollback_triggered: true,
+            },
+        )
+        .expect("seed historical audit");
+
+    let fallback_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let rollback_guard = MembershipRevocationDeadLetterReplayRollbackGuard {
+        min_attempted: 4,
+        failure_ratio_per_mille: 500,
+        dead_letter_ratio_per_mille: 350,
+        rollback_cooldown_ms: 100,
+    };
+    let rollback_alert_policy = MembershipRevocationDeadLetterReplayRollbackAlertPolicy {
+        rollback_window_ms: 5_000,
+        max_rollbacks_per_window: 1,
+        min_attempted: 4,
+        alert_cooldown_ms: 500,
+    };
+
+    let error = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(
+            "w1",
+            "node-a",
+            "coordinator-1",
+            1_000,
+            1,
+            &fallback_policy,
+            &replay_state_store,
+            &replay_policy_store,
+            &replay_policy_audit_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            4,
+            2,
+            16,
+            4,
+            20,
+            4,
+            2,
+            &rollback_guard,
+            &rollback_alert_policy,
+            &mut rollback_alert_state,
+            &alert_sink,
+        )
+        .expect_err("rollback window overflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("rollback window age overflow"),
+        "unexpected error: {message}"
+    );
+    assert_eq!(rollback_alert_state.last_alert_at_ms, None);
+    assert!(
+        alert_sink.list().expect("list alerts").is_empty(),
+        "overflow should not emit alerts"
+    );
+}
+
+#[test]
+fn run_with_audit_rejects_cooldown_age_overflow_without_mutating_alert_state() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy_store = InMemoryMembershipRevocationDeadLetterReplayPolicyStore::new();
+    let replay_policy_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator = InMemoryMembershipRevocationScheduleCoordinator::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+    let mut rollback_alert_state = MembershipRevocationDeadLetterReplayRollbackAlertState {
+        last_alert_at_ms: Some(i64::MIN),
+    };
+
+    replay_policy_store
+        .save_policy_state("w1", "node-a", &unstable_policy_state(Some(900)))
+        .expect("seed unstable policy state");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1_000,
+            4,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+    dead_letter_store
+        .append_delivery_metrics("w1", "node-a", 1_000, &unhealthy_metrics())
+        .expect("append metrics");
+
+    let fallback_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let rollback_guard = MembershipRevocationDeadLetterReplayRollbackGuard {
+        min_attempted: 4,
+        failure_ratio_per_mille: 500,
+        dead_letter_ratio_per_mille: 350,
+        rollback_cooldown_ms: 100,
+    };
+    let rollback_alert_policy = MembershipRevocationDeadLetterReplayRollbackAlertPolicy {
+        rollback_window_ms: 5_000,
+        max_rollbacks_per_window: 1,
+        min_attempted: 4,
+        alert_cooldown_ms: 500,
+    };
+
+    let error = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_and_alert(
+            "w1",
+            "node-a",
+            "coordinator-1",
+            1_000,
+            1,
+            &fallback_policy,
+            &replay_state_store,
+            &replay_policy_store,
+            &replay_policy_audit_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            4,
+            2,
+            16,
+            4,
+            20,
+            4,
+            2,
+            &rollback_guard,
+            &rollback_alert_policy,
+            &mut rollback_alert_state,
+            &alert_sink,
+        )
+        .expect_err("cooldown overflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("alert cooldown age overflow"),
+        "unexpected error: {message}"
+    );
+    assert_eq!(rollback_alert_state.last_alert_at_ms, Some(i64::MIN));
+    assert!(
+        alert_sink.list().expect("list alerts").is_empty(),
+        "overflow should not emit alerts"
+    );
+}
+
+#[test]
 fn run_with_audit_rejects_invalid_rollback_alert_policy() {
     let client = sample_client();
     let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
@@ -624,6 +828,123 @@ fn run_with_governance_archive_appends_audit_record() {
     assert_eq!(records[0].governance_level, governance_level);
     assert_eq!(records[0].applied_policy, policy);
     assert!(records[0].rolled_back);
+}
+
+#[test]
+fn run_with_governance_archive_rejects_rollback_streak_overflow_without_mutation() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy_store = InMemoryMembershipRevocationDeadLetterReplayPolicyStore::new();
+    let replay_policy_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayPolicyAuditStore::new();
+    let rollback_alert_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackAlertStateStore::new();
+    let rollback_governance_state_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceStateStore::new();
+    let rollback_governance_audit_store =
+        InMemoryMembershipRevocationDeadLetterReplayRollbackGovernanceAuditStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let coordinator = InMemoryMembershipRevocationScheduleCoordinator::new();
+    let alert_sink = InMemoryMembershipRevocationAlertSink::new();
+
+    replay_policy_store
+        .save_policy_state("w1", "node-a", &unstable_policy_state(Some(1000)))
+        .expect("seed unstable policy state");
+    rollback_governance_state_store
+        .save_governance_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayRollbackGovernanceState {
+                rollback_streak: usize::MAX,
+                last_level: MembershipRevocationDeadLetterReplayRollbackGovernanceLevel::Emergency,
+                last_level_updated_at_ms: Some(1100),
+            },
+        )
+        .expect("seed governance state");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1200,
+            4,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+    dead_letter_store
+        .append_delivery_metrics("w1", "node-a", 1200, &unhealthy_metrics())
+        .expect("append metrics");
+
+    let fallback_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 2,
+    };
+    let rollback_guard = MembershipRevocationDeadLetterReplayRollbackGuard {
+        min_attempted: 4,
+        failure_ratio_per_mille: 500,
+        dead_letter_ratio_per_mille: 350,
+        rollback_cooldown_ms: 100,
+    };
+    let rollback_alert_policy = MembershipRevocationDeadLetterReplayRollbackAlertPolicy {
+        rollback_window_ms: 5_000,
+        max_rollbacks_per_window: 10,
+        min_attempted: 4,
+        alert_cooldown_ms: 500,
+    };
+    let rollback_governance_policy = MembershipRevocationDeadLetterReplayRollbackGovernancePolicy {
+        level_one_rollback_streak: 1,
+        level_two_rollback_streak: 3,
+        level_two_emergency_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 1,
+            max_retry_limit_exceeded_streak: 1,
+        },
+    };
+
+    let error = client
+        .run_revocation_dead_letter_replay_schedule_coordinated_with_state_store_and_persisted_guarded_policy_with_audit_alert_store_governance_and_archive(
+            "w1",
+            "node-a",
+            "coordinator-1",
+            1200,
+            1,
+            &fallback_policy,
+            &replay_state_store,
+            &replay_policy_store,
+            &replay_policy_audit_store,
+            &rollback_alert_state_store,
+            &rollback_governance_state_store,
+            &rollback_governance_audit_store,
+            &recovery_store,
+            &dead_letter_store,
+            &coordinator,
+            500,
+            4,
+            2,
+            16,
+            4,
+            20,
+            4,
+            2,
+            &rollback_guard,
+            &rollback_alert_policy,
+            &rollback_governance_policy,
+            &alert_sink,
+        )
+        .expect_err("rollback streak overflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("rollback_streak overflow"),
+        "unexpected error: {message}"
+    );
+
+    let governance_state = rollback_governance_state_store
+        .load_governance_state("w1", "node-a")
+        .expect("load governance state after overflow");
+    assert_eq!(governance_state.rollback_streak, usize::MAX);
+    let governance_records = rollback_governance_audit_store
+        .list("w1", "node-a")
+        .expect("list governance audit records after overflow");
+    assert!(governance_records.is_empty());
 }
 
 #[test]
