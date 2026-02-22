@@ -146,10 +146,12 @@ impl ActionMempool {
                 self.remove_action(&action.action_id);
                 continue;
             }
-            if total_bytes.saturating_add(size_bytes) > rules.max_payload_bytes {
+            let next_total_bytes =
+                checked_usize_add(total_bytes, size_bytes, "mempool batch payload bytes")?;
+            if next_total_bytes > rules.max_payload_bytes {
                 break;
             }
-            total_bytes = total_bytes.saturating_add(size_bytes);
+            total_bytes = next_total_bytes;
             actions.push(action);
         }
 
@@ -195,6 +197,13 @@ fn batch_id_for_actions(actions: &[ActionEnvelope]) -> Result<String, WorldError
 fn action_size_bytes(action: &ActionEnvelope) -> Result<usize, WorldError> {
     let bytes = to_canonical_cbor(action)?;
     Ok(bytes.len())
+}
+
+fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, WorldError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("{context} overflow: lhs={lhs}, rhs={rhs}"),
+        })
 }
 
 fn to_canonical_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, WorldError> {
@@ -301,5 +310,17 @@ mod tests {
 
         assert_eq!(batch.actions.len(), 1);
         assert_eq!(batch.actions[0].action_id, "a2");
+    }
+
+    #[test]
+    fn checked_usize_add_rejects_overflow() {
+        let err =
+            checked_usize_add(usize::MAX, 1, "mempool checked add").expect_err("must overflow");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(reason.contains("mempool checked add overflow"), "{reason}");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }

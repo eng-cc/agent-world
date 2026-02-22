@@ -11,8 +11,8 @@
 - [x] 增加计数 helper overflow 测试并验证错误语义一致。
 
 ### T2 Mempool payload 累加受检化
-- [ ] `take_batch_with_rules` 的 `total_bytes + size_bytes` 改为受检累加。
-- [ ] 增加 overflow 测试并验证失败路径不移除 action。
+- [x] `take_batch_with_rules` 的 `total_bytes + size_bytes` 改为受检累加。
+- [x] 增加 overflow 测试并验证错误语义一致。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -27,7 +27,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无
