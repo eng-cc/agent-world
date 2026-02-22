@@ -1114,6 +1114,12 @@ impl WorldKernel {
                     kind
                 ),
             },
+            StockError::Overflow { current, delta, .. } => PersistError::ReplayConflict {
+                message: format!(
+                    "resource overflow for {:?}: current={current} delta={delta}",
+                    kind
+                ),
+            },
         })
     }
 
@@ -1155,6 +1161,12 @@ impl WorldKernel {
             },
             StockError::Insufficient { .. } => PersistError::ReplayConflict {
                 message: format!("invalid transfer amount: {amount}"),
+            },
+            StockError::Overflow { current, delta, .. } => PersistError::ReplayConflict {
+                message: format!(
+                    "resource overflow for {:?}: current={current} delta={delta}",
+                    kind
+                ),
             },
         })
     }

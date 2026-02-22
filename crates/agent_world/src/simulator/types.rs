@@ -309,7 +309,12 @@ impl ResourceStock {
             return Err(StockError::NegativeAmount { amount });
         }
         let current = self.get(kind);
-        self.set(kind, current.saturating_add(amount))
+        let next = current.checked_add(amount).ok_or(StockError::Overflow {
+            kind,
+            current,
+            delta: amount,
+        })?;
+        self.set(kind, next)
     }
 
     pub fn remove(&mut self, kind: ResourceKind, amount: i64) -> Result<(), StockError> {
@@ -332,6 +337,11 @@ impl ResourceStock {
 pub enum StockError {
     NegativeAmount {
         amount: i64,
+    },
+    Overflow {
+        kind: ResourceKind,
+        current: i64,
+        delta: i64,
     },
     Insufficient {
         kind: ResourceKind,

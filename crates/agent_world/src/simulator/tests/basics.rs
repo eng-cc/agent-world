@@ -15,14 +15,24 @@ fn resource_stock_add_remove() {
 }
 
 #[test]
-fn resource_stock_add_saturates_on_overflow() {
+fn resource_stock_add_rejects_overflow() {
     let mut stock = ResourceStock::new();
     stock
         .set(ResourceKind::Electricity, i64::MAX - 1)
         .expect("seed");
-    stock.add(ResourceKind::Electricity, 10).expect("add");
+    let err = stock
+        .add(ResourceKind::Electricity, 10)
+        .expect_err("overflow should be rejected");
 
-    assert_eq!(stock.get(ResourceKind::Electricity), i64::MAX);
+    assert!(matches!(
+        err,
+        StockError::Overflow {
+            kind: ResourceKind::Electricity,
+            current: _,
+            delta: 10
+        }
+    ));
+    assert_eq!(stock.get(ResourceKind::Electricity), i64::MAX - 1);
 }
 
 #[test]

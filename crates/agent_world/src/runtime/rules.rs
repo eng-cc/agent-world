@@ -16,12 +16,27 @@ pub struct ResourceDelta {
     pub entries: BTreeMap<ResourceKind, i64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceDeltaOverflowError {
+    pub kind: ResourceKind,
+    pub current: i64,
+    pub delta: i64,
+}
+
 impl ResourceDelta {
-    pub fn add_assign(&mut self, other: &ResourceDelta) {
+    pub fn add_assign(&mut self, other: &ResourceDelta) -> Result<(), ResourceDeltaOverflowError> {
         for (key, value) in &other.entries {
             let current = self.entries.get(key).copied().unwrap_or(0);
-            self.entries.insert(*key, current.saturating_add(*value));
+            let next = current
+                .checked_add(*value)
+                .ok_or(ResourceDeltaOverflowError {
+                    kind: *key,
+                    current,
+                    delta: *value,
+                })?;
+            self.entries.insert(*key, next);
         }
+        Ok(())
     }
 
     pub fn deficits(&self, balances: &BTreeMap<ResourceKind, i64>) -> BTreeMap<ResourceKind, i64> {
@@ -105,9 +120,22 @@ pub struct ActionOverrideRecord {
 /// Errors that can occur when merging rule decisions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuleDecisionMergeError {
-    ActionIdMismatch { expected: ActionId, got: ActionId },
-    MissingOverride { action_id: ActionId },
-    ConflictingOverride { action_id: ActionId },
+    ActionIdMismatch {
+        expected: ActionId,
+        got: ActionId,
+    },
+    MissingOverride {
+        action_id: ActionId,
+    },
+    ConflictingOverride {
+        action_id: ActionId,
+    },
+    CostOverflow {
+        action_id: ActionId,
+        kind: ResourceKind,
+        current: i64,
+        delta: i64,
+    },
 }
 
 /// Merge decisions for a single action, applying deny > modify > allow.
@@ -135,7 +163,14 @@ where
             });
         }
 
-        merged.cost.add_assign(&decision.cost);
+        merged.cost.add_assign(&decision.cost).map_err(|overflow| {
+            RuleDecisionMergeError::CostOverflow {
+                action_id,
+                kind: overflow.kind,
+                current: overflow.current,
+                delta: overflow.delta,
+            }
+        })?;
         merged.notes.extend(decision.notes);
 
         match decision.verdict {
@@ -253,16 +288,20 @@ mod tests {
     }
 
     #[test]
-    fn resource_delta_add_assign_saturates_on_overflow() {
+    fn resource_delta_add_assign_returns_overflow_error() {
         let mut left = ResourceDelta::default();
         left.entries.insert(ResourceKind::Electricity, i64::MAX);
         let mut right = ResourceDelta::default();
         right.entries.insert(ResourceKind::Electricity, 5);
 
-        left.add_assign(&right);
+        let err = left.add_assign(&right).expect_err("overflow");
         assert_eq!(
-            left.entries.get(&ResourceKind::Electricity),
-            Some(&i64::MAX)
+            err,
+            ResourceDeltaOverflowError {
+                kind: ResourceKind::Electricity,
+                current: i64::MAX,
+                delta: 5,
+            }
         );
     }
 

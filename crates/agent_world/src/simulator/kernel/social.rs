@@ -592,6 +592,9 @@ impl WorldKernel {
                 crate::simulator::types::StockError::Insufficient { requested, .. } => {
                     RejectReason::InvalidAmount { amount: requested }
                 }
+                crate::simulator::types::StockError::Overflow { delta, .. } => {
+                    RejectReason::InvalidAmount { amount: delta }
+                }
             })
     }
 

@@ -381,6 +381,9 @@ impl WorldKernel {
                                     requested,
                                     available,
                                 },
+                                StockError::Overflow { delta, .. } => {
+                                    RejectReason::InvalidAmount { amount: delta }
+                                }
                             },
                         };
                     }
@@ -470,6 +473,9 @@ impl WorldKernel {
                                 }
                                 StockError::Insufficient { .. } => {
                                     RejectReason::InvalidAmount { amount: harvested }
+                                }
+                                StockError::Overflow { delta, .. } => {
+                                    RejectReason::InvalidAmount { amount: delta }
                                 }
                             },
                         };
@@ -2276,6 +2282,7 @@ impl WorldKernel {
                 requested,
                 available,
             },
+            StockError::Overflow { delta, .. } => RejectReason::InvalidAmount { amount: delta },
         })
     }
 
@@ -2314,6 +2321,7 @@ impl WorldKernel {
         stock.add(kind, amount).map_err(|err| match err {
             StockError::NegativeAmount { amount } => RejectReason::InvalidAmount { amount },
             StockError::Insufficient { .. } => RejectReason::InvalidAmount { amount },
+            StockError::Overflow { delta, .. } => RejectReason::InvalidAmount { amount: delta },
         })
     }
 }

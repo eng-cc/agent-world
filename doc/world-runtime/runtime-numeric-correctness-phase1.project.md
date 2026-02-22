@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase1.project.md`
 
 ### T1 数值语义（显式溢出错误）
-- [ ] `ResourceStock::add` 改为 `checked_add` 并增加 `StockError::Overflow`
-- [ ] `ResourceDelta::add_assign` 改为可失败聚合，`merge_rule_decisions` 透传 `CostOverflow`
-- [ ] `World::adjust_resource_balance` / `apply_resource_delta` 改为可失败接口
+- [x] `ResourceStock::add` 改为 `checked_add` 并增加 `StockError::Overflow`
+- [x] `ResourceDelta::add_assign` 改为可失败聚合，`merge_rule_decisions` 透传 `CostOverflow`
+- [x] `World::adjust_resource_balance` / `apply_resource_delta` 改为可失败接口
 
 ### T2 状态转移原子性
 - [ ] `ResourceTransferred`：先校验余额与目标上界，再统一提交
@@ -40,8 +40,8 @@
   - `crates/agent_world/src/simulator/tests/basics.rs`
 
 ## 状态
-- 当前状态：`T1 进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3、T4
+- 当前状态：`T2 进行中`
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3、T4
 - 阻塞项：无

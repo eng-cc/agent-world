@@ -183,5 +183,13 @@ fn format_rule_merge_error(err: &RuleDecisionMergeError) -> String {
         RuleDecisionMergeError::ConflictingOverride { action_id } => {
             format!("rule decision conflicting override for action {action_id}")
         }
+        RuleDecisionMergeError::CostOverflow {
+            action_id,
+            kind,
+            current,
+            delta,
+        } => format!(
+            "rule decision cost overflow for action {action_id}: kind={kind:?} current={current} delta={delta}"
+        ),
     }
 }

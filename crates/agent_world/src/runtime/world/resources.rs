@@ -568,10 +568,22 @@ impl World {
         self.state.resources.insert(kind, amount);
     }
 
-    pub fn adjust_resource_balance(&mut self, kind: ResourceKind, delta: i64) -> i64 {
+    pub fn adjust_resource_balance(
+        &mut self,
+        kind: ResourceKind,
+        delta: i64,
+    ) -> Result<i64, WorldError> {
         let entry = self.state.resources.entry(kind).or_insert(0);
-        *entry = entry.saturating_add(delta);
-        *entry
+        let next = entry
+            .checked_add(delta)
+            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "resource balance overflow: kind={kind:?} current={} delta={delta}",
+                    *entry
+                ),
+            })?;
+        *entry = next;
+        Ok(*entry)
     }
 
     pub fn material_balance(&self, material_kind: &str) -> i64 {
@@ -720,10 +732,11 @@ impl World {
         Ok(())
     }
 
-    pub(super) fn apply_resource_delta(&mut self, delta: &ResourceDelta) {
+    pub(super) fn apply_resource_delta(&mut self, delta: &ResourceDelta) -> Result<(), WorldError> {
         for (kind, amount) in &delta.entries {
-            self.adjust_resource_balance(*kind, *amount);
+            self.adjust_resource_balance(*kind, *amount)?;
         }
+        Ok(())
     }
 
     pub fn agent_resource_balance(
@@ -787,11 +800,11 @@ impl World {
                 .resources
                 .remove(kind, amount)
                 .map_err(|err| match err {
-                    StockError::NegativeAmount { .. } | StockError::Insufficient { .. } => {
-                        WorldError::ResourceBalanceInvalid {
-                            reason: format!("remove resource failed: {err:?}"),
-                        }
-                    }
+                    StockError::NegativeAmount { .. }
+                    | StockError::Insufficient { .. }
+                    | StockError::Overflow { .. } => WorldError::ResourceBalanceInvalid {
+                        reason: format!("remove resource failed: {err:?}"),
+                    },
                 })?;
         }
         Ok(cell.state.resources.get(kind))

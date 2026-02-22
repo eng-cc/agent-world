@@ -154,11 +154,16 @@ fn event_id_rolls_over_into_next_era() {
 }
 
 #[test]
-fn adjust_resource_balance_saturates_on_overflow() {
+fn adjust_resource_balance_rejects_overflow() {
     let mut world = World::new();
     world.set_resource_balance(ResourceKind::Data, i64::MAX - 1);
-    let next = world.adjust_resource_balance(ResourceKind::Data, 9);
+    let err = world
+        .adjust_resource_balance(ResourceKind::Data, 9)
+        .expect_err("overflow should be rejected");
 
-    assert_eq!(next, i64::MAX);
-    assert_eq!(world.resource_balance(ResourceKind::Data), i64::MAX);
+    assert!(
+        matches!(err, WorldError::ResourceBalanceInvalid { .. }),
+        "unexpected error: {err:?}"
+    );
+    assert_eq!(world.resource_balance(ResourceKind::Data), i64::MAX - 1);
 }
