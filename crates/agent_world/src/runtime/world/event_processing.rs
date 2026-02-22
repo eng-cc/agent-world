@@ -30,6 +30,7 @@ const CRISIS_BASE_IMPACT_PER_SEVERITY: i64 = 10;
 const GAMEPLAY_POLICY_MAX_TAX_BPS: u16 = 10_000;
 const GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA: u16 = 1;
 const GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA: u16 = 64;
+const GAMEPLAY_POLICY_UPDATE_MIN_GOVERNANCE_TOTAL_WEIGHT: u64 = 3;
 const ECONOMIC_CONTRACT_MAX_REPUTATION_STAKE: i64 = 10_000;
 
 mod action_to_event_core;
@@ -55,6 +56,15 @@ impl World {
             war.active
                 && (war.aggressor_alliance_id == alliance_id
                     || war.defender_alliance_id == alliance_id)
+        })
+    }
+
+    fn has_policy_update_governance_authorization(&self, operator_agent_id: &str) -> bool {
+        self.state.governance_proposals.values().any(|proposal| {
+            proposal.proposer_agent_id == operator_agent_id
+                && proposal.status == GovernanceProposalStatus::Passed
+                && proposal.total_weight_at_finalize
+                    >= GAMEPLAY_POLICY_UPDATE_MIN_GOVERNANCE_TOTAL_WEIGHT
         })
     }
 

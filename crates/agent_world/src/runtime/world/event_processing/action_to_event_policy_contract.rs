@@ -22,6 +22,17 @@ impl World {
                         },
                     }));
                 }
+                if !self.has_policy_update_governance_authorization(operator_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "update gameplay policy requires passed governance proposal total_weight >= {}",
+                                GAMEPLAY_POLICY_UPDATE_MIN_GOVERNANCE_TOTAL_WEIGHT
+                            )],
+                        },
+                    }));
+                }
                 if *electricity_tax_bps > GAMEPLAY_POLICY_MAX_TAX_BPS {
                     return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
                         action_id,

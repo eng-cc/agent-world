@@ -81,15 +81,36 @@ fn last_domain_event(world: &World) -> &DomainEvent {
     domain_event
 }
 
-fn open_governance_proposal(
+fn assert_latest_rule_denied_contains(world: &World, needle: &str) {
+    let notes = world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                reason: RejectReason::RuleDenied { notes },
+                ..
+            }) => Some(notes),
+            _ => None,
+        })
+        .expect("rule denied event");
+    assert!(
+        notes.iter().any(|note| note.contains(needle)),
+        "expected reject note containing '{needle}', got {notes:?}"
+    );
+}
+
+fn open_governance_proposal_by(
     world: &mut World,
+    proposer_agent_id: &str,
     proposal_key: &str,
     window_ticks: u64,
     quorum_weight: u64,
     pass_threshold_bps: u16,
 ) {
     world.submit_action(Action::OpenGovernanceProposal {
-        proposer_agent_id: "a".to_string(),
+        proposer_agent_id: proposer_agent_id.to_string(),
         proposal_key: proposal_key.to_string(),
         title: format!("title.{proposal_key}"),
         description: "runtime proposal".to_string(),
@@ -99,6 +120,59 @@ fn open_governance_proposal(
         pass_threshold_bps,
     });
     world.step().expect("open governance proposal");
+}
+
+fn open_governance_proposal(
+    world: &mut World,
+    proposal_key: &str,
+    window_ticks: u64,
+    quorum_weight: u64,
+    pass_threshold_bps: u16,
+) {
+    open_governance_proposal_by(
+        world,
+        "a",
+        proposal_key,
+        window_ticks,
+        quorum_weight,
+        pass_threshold_bps,
+    );
+}
+
+fn authorize_policy_update(world: &mut World, operator_agent_id: &str, proposal_key: &str) {
+    open_governance_proposal_by(world, operator_agent_id, proposal_key, 1, 3, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: operator_agent_id.to_string(),
+        proposal_key: proposal_key.to_string(),
+        option: "approve".to_string(),
+        weight: 3,
+    });
+    world
+        .step()
+        .expect("cast governance vote for policy authorization");
+
+    for _ in 0..2 {
+        let proposal = world
+            .state()
+            .governance_proposals
+            .get(proposal_key)
+            .expect("policy authorization proposal exists");
+        if proposal.status != GovernanceProposalStatus::Open {
+            break;
+        }
+        world
+            .step()
+            .expect("advance governance proposal to finalize");
+    }
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get(proposal_key)
+        .expect("policy authorization proposal finalized");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
+    assert!(proposal.total_weight_at_finalize >= 3);
 }
 
 fn advance_until_auto_crisis(world: &mut World) -> String {
@@ -712,9 +786,32 @@ fn meta_progress_unlocks_track_tiers() {
 }
 
 #[test]
+fn update_gameplay_policy_requires_governance_authorization() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 1_000,
+        max_open_contracts_per_agent: 4,
+        blocked_agents: vec!["b".to_string()],
+    });
+    world
+        .step()
+        .expect("reject unauthorized gameplay policy update");
+
+    assert_latest_rule_denied_contains(
+        &world,
+        "requires passed governance proposal total_weight >=",
+    );
+}
+
+#[test]
 fn economic_contract_settlement_applies_tax_and_reputation() {
     let mut world = World::new();
     register_agents(&mut world, &["a", "b"]);
+    authorize_policy_update(&mut world, "a", "proposal.policy.tax");
     world
         .set_agent_resource_balance("a", ResourceKind::Data, 100)
         .expect("seed creator data");
@@ -789,16 +886,21 @@ fn economic_contract_settlement_applies_tax_and_reputation() {
     );
     assert_eq!(world.state().reputation_scores.get("a"), Some(&8));
     assert_eq!(world.state().reputation_scores.get("b"), Some(&8));
-    assert!(matches!(
-        last_domain_event(&world),
-        DomainEvent::EconomicContractSettled { .. }
-    ));
+    let has_settled_event = world.journal().events.iter().any(|event| {
+        matches!(
+            &event.body,
+            WorldEventBody::Domain(DomainEvent::EconomicContractSettled { contract_id, .. })
+                if contract_id == "contract.data.1"
+        )
+    });
+    assert!(has_settled_event, "expected EconomicContractSettled event");
 }
 
 #[test]
 fn economic_contract_respects_policy_quota_and_block_list() {
     let mut world = World::new();
     register_agents(&mut world, &["a", "b", "c"]);
+    authorize_policy_update(&mut world, "a", "proposal.policy.quota");
 
     world.submit_action(Action::UpdateGameplayPolicy {
         operator_agent_id: "a".to_string(),
@@ -833,17 +935,7 @@ fn economic_contract_respects_policy_quota_and_block_list() {
         description: "second contract".to_string(),
     });
     world.step().expect("reject quota overflow");
-    match last_domain_event(&world) {
-        DomainEvent::ActionRejected {
-            reason: RejectReason::RuleDenied { notes },
-            ..
-        } => {
-            assert!(notes
-                .iter()
-                .any(|note| note.contains("quota exceeded for creator")));
-        }
-        other => panic!("unexpected event: {other:?}"),
-    }
+    assert_latest_rule_denied_contains(&world, "quota exceeded for creator");
 
     world.submit_action(Action::OpenEconomicContract {
         creator_agent_id: "a".to_string(),
@@ -856,17 +948,7 @@ fn economic_contract_respects_policy_quota_and_block_list() {
         description: "blocked counterparty".to_string(),
     });
     world.step().expect("reject blocked counterparty");
-    match last_domain_event(&world) {
-        DomainEvent::ActionRejected {
-            reason: RejectReason::RuleDenied { notes },
-            ..
-        } => {
-            assert!(notes
-                .iter()
-                .any(|note| note.contains("blocked by gameplay policy")));
-        }
-        other => panic!("unexpected event: {other:?}"),
-    }
+    assert_latest_rule_denied_contains(&world, "blocked by gameplay policy");
 }
 
 #[test]
