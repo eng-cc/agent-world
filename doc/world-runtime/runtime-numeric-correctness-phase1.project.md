@@ -17,8 +17,8 @@
 - [x] `EconomicContractSettled`：先校验借贷双方资源，再统一提交
 
 ### T3 执行流接线
-- [ ] `step_with_modules` 处理资源 delta 溢出为 `ActionRejected`，不提交部分状态
-- [ ] 错误信息收敛为可观测原因（便于后续告警）
+- [x] `step_with_modules` 处理资源 delta 溢出为 `ActionRejected`，不提交部分状态
+- [x] 错误信息收敛为可观测原因（便于后续告警）
 
 ### T4 回归与收口
 - [ ] 补充溢出拒绝与原子性测试
@@ -40,8 +40,8 @@
   - `crates/agent_world/src/simulator/tests/basics.rs`
 
 ## 状态
-- 当前状态：`T3 进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
-- 未开始：T4
+- 当前状态：`T4 进行中`
+- 已完成：T0、T1、T2、T3
+- 进行中：T4
+- 未开始：无
 - 阻塞项：无

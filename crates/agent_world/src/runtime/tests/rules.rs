@@ -559,6 +559,123 @@ fn rule_decision_rejects_on_insufficient_resources() {
     }
 }
 
+#[test]
+fn rule_decision_cost_overflow_rejected_without_partial_apply() {
+    let mut world = World::new();
+    world.set_policy(PolicySet::allow_all());
+    world.set_resource_balance(ResourceKind::Electricity, 5);
+    world.set_resource_balance(ResourceKind::Data, i64::MAX);
+
+    let wasm_bytes = b"rule-decision-cost-overflow";
+    let wasm_hash = util::sha256_hex(wasm_bytes);
+    world
+        .register_module_artifact(wasm_hash.clone(), wasm_bytes)
+        .unwrap();
+
+    let module_manifest = ModuleManifest {
+        module_id: "m.rule.cost.overflow".to_string(),
+        name: "RuleCostOverflow".to_string(),
+        version: "0.1.0".to_string(),
+        kind: ModuleKind::Pure,
+        role: ModuleRole::Rule,
+        wasm_hash,
+        interface_version: "wasm-1".to_string(),
+        abi_contract: ModuleAbiContract::default(),
+        exports: vec!["call".to_string()],
+        subscriptions: vec![ModuleSubscription {
+            event_kinds: Vec::new(),
+            action_kinds: vec!["action.register_agent".to_string()],
+            stage: Some(ModuleSubscriptionStage::PreAction),
+            filters: None,
+        }],
+        required_caps: Vec::new(),
+        artifact_identity: None,
+        limits: ModuleLimits {
+            max_mem_bytes: 1024,
+            max_gas: 10_000,
+            max_call_rate: 1,
+            max_output_bytes: 1024,
+            max_effects: 0,
+            max_emits: 1,
+        },
+    };
+
+    let changes = ModuleChangeSet {
+        register: vec![module_manifest.clone()],
+        activate: vec![ModuleActivation {
+            module_id: module_manifest.module_id.clone(),
+            version: module_manifest.version.clone(),
+        }],
+        ..ModuleChangeSet::default()
+    };
+
+    let mut content = serde_json::Map::new();
+    content.insert(
+        "module_changes".to_string(),
+        serde_json::to_value(&changes).unwrap(),
+    );
+    let manifest = Manifest {
+        version: 2,
+        content: serde_json::Value::Object(content),
+    };
+
+    let proposal_id = world.propose_manifest_update(manifest, "alice").unwrap();
+    world.shadow_proposal(proposal_id).unwrap();
+    world
+        .approve_proposal(proposal_id, "bob", ProposalDecision::Approve)
+        .unwrap();
+    world.apply_proposal(proposal_id).unwrap();
+
+    let mut cost = ResourceDelta::default();
+    cost.entries.insert(ResourceKind::Electricity, -1);
+    cost.entries.insert(ResourceKind::Data, 1);
+    let decision = RuleDecision {
+        action_id: 1,
+        verdict: RuleVerdict::Allow,
+        override_action: None,
+        cost,
+        notes: Vec::new(),
+    };
+    let output = ModuleOutput {
+        new_state: None,
+        effects: Vec::new(),
+        emits: vec![ModuleEmit {
+            kind: "rule.decision".to_string(),
+            payload: serde_json::to_value(&decision).unwrap(),
+        }],
+        tick_lifecycle: None,
+        output_bytes: 128,
+    };
+    let mut sandbox = FixedSandbox::succeed(output);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world
+        .step_with_modules(&mut sandbox)
+        .expect("overflow cost should be rejected, not fatal");
+
+    assert!(world.state().agents.get("agent-1").is_none());
+    assert_eq!(world.resource_balance(ResourceKind::Electricity), 5);
+    assert_eq!(world.resource_balance(ResourceKind::Data), i64::MAX);
+    let last = world.journal().events.last().unwrap();
+    match &last.body {
+        WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => match reason {
+            RejectReason::RuleDenied { notes } => {
+                assert!(
+                    notes
+                        .iter()
+                        .any(|note| note.contains("rule decision cost apply rejected")),
+                    "expected overflow rejection reason, got {notes:?}"
+                );
+            }
+            other => panic!("unexpected reject reason: {other:?}"),
+        },
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
 #[cfg(feature = "wasmtime")]
 #[test]
 fn m1_move_rule_rejects_when_insufficient_resources() {

@@ -733,8 +733,22 @@ impl World {
     }
 
     pub(super) fn apply_resource_delta(&mut self, delta: &ResourceDelta) -> Result<(), WorldError> {
+        let mut planned = Vec::with_capacity(delta.entries.len());
         for (kind, amount) in &delta.entries {
-            self.adjust_resource_balance(*kind, *amount)?;
+            let current = self.resource_balance(*kind);
+            let next =
+                current
+                    .checked_add(*amount)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                        "resource balance overflow: kind={kind:?} current={current} delta={amount}"
+                    ),
+                    })?;
+            planned.push((*kind, next));
+        }
+
+        for (kind, next) in planned {
+            self.state.resources.insert(kind, next);
         }
         Ok(())
     }

@@ -95,10 +95,26 @@ impl World {
                         Some(CausedBy::Action(envelope.id)),
                     )?;
                 } else {
-                    self.apply_resource_delta(&decision.cost)?;
-                    if !self.try_apply_runtime_module_action(&action_envelope)? {
-                        let event_body = self.action_to_event(&action_envelope)?;
-                        self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
+                    match self.apply_resource_delta(&decision.cost) {
+                        Ok(()) => {
+                            if !self.try_apply_runtime_module_action(&action_envelope)? {
+                                let event_body = self.action_to_event(&action_envelope)?;
+                                self.append_event(event_body, Some(CausedBy::Action(envelope.id)))?;
+                            }
+                        }
+                        Err(err) => {
+                            self.append_event(
+                                WorldEventBody::Domain(super::super::DomainEvent::ActionRejected {
+                                    action_id: envelope.id,
+                                    reason: RejectReason::RuleDenied {
+                                        notes: vec![format!(
+                                            "rule decision cost apply rejected: {err:?}"
+                                        )],
+                                    },
+                                }),
+                                Some(CausedBy::Action(envelope.id)),
+                            )?;
+                        }
                     }
                 }
             }
