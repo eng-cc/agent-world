@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase3.project.md`
 
 ### T1 Node 引擎高度/Slot 显式溢出语义
-- [ ] `apply_decision` / `record_synced_replication_height` 改为可失败接口，移除关键路径 `saturating_add(1)`。
-- [ ] 复制摄取与 gap sync 对 `committed_height + 1`、`next_height + 1` 统一受检处理。
-- [ ] proposal 摄取路径 `next_slot` 递进改为显式溢出错误。
+- [x] `apply_decision` / `record_synced_replication_height` 改为可失败接口，移除关键路径 `saturating_add(1)`。
+- [x] 复制摄取与 gap sync 对 `committed_height + 1`、`next_height + 1` 统一受检处理。
+- [x] proposal 摄取路径 `next_slot` 递进改为显式溢出错误。
 
 ### T2 快照恢复边界与测试
 - [ ] `restore_state_snapshot` 对 `committed_height + 1` 改为受检语义并透传启动错误。
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

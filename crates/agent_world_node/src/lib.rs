@@ -114,6 +114,18 @@ fn node_consensus_error(err: NodeConsensusError) -> NodeError {
     NodeError::Consensus { reason: err.reason }
 }
 
+fn checked_consensus_successor(value: u64, field: &str, context: &str) -> Result<u64, NodeError> {
+    value.checked_add(1).ok_or_else(|| NodeError::Consensus {
+        reason: format!("{field} overflow while {context}: current={value}"),
+    })
+}
+
+fn checked_replication_successor(value: u64, field: &str, context: &str) -> Result<u64, NodeError> {
+    value.checked_add(1).ok_or_else(|| NodeError::Replication {
+        reason: format!("{field} overflow while {context}: current={value}"),
+    })
+}
+
 pub fn compute_consensus_action_root(actions: &[NodeConsensusAction]) -> Result<String, NodeError> {
     core_compute_consensus_action_root(actions).map_err(node_consensus_error)
 }
@@ -741,7 +753,7 @@ impl PosNodeEngine {
 
         let prev_committed_height = self.committed_height;
         self.apply_committed_execution(node_id, world_id, now_ms, &decision, execution_hook)?;
-        self.apply_decision(&decision);
+        self.apply_decision(&decision)?;
         if matches!(decision.status, PosConsensusStatus::Committed)
             && decision.height > prev_committed_height
         {
@@ -884,25 +896,36 @@ impl PosNodeEngine {
         .map_err(node_pos_error)
     }
 
-    fn apply_decision(&mut self, decision: &PosDecision) {
+    fn apply_decision(&mut self, decision: &PosDecision) -> Result<(), NodeError> {
         match decision.status {
             PosConsensusStatus::Pending => {}
             PosConsensusStatus::Committed => {
+                let next_height = checked_consensus_successor(
+                    decision.height,
+                    "decision.height",
+                    "applying committed decision",
+                )?;
                 self.committed_height = decision.height;
                 self.network_committed_height = self.network_committed_height.max(decision.height);
                 self.last_committed_block_hash = Some(decision.block_hash.clone());
-                self.next_height = decision.height.saturating_add(1);
+                self.next_height = next_height;
                 self.pending = None;
             }
             PosConsensusStatus::Rejected => {
+                let next_height = checked_consensus_successor(
+                    decision.height,
+                    "decision.height",
+                    "applying rejected decision",
+                )?;
                 let _ = merge_pending_consensus_actions(
                     &mut self.pending_consensus_actions,
                     decision.committed_actions.clone(),
                 );
-                self.next_height = decision.height.saturating_add(1);
+                self.next_height = next_height;
                 self.pending = None;
             }
         }
+        Ok(())
     }
 
     fn apply_committed_execution(
@@ -1261,6 +1284,11 @@ impl PosNodeEngine {
         let messages = endpoint.drain_replications()?;
         let mut rejected = Vec::new();
         for message in messages {
+            let committed_successor = checked_replication_successor(
+                self.committed_height,
+                "committed_height",
+                "ingesting replication message",
+            )?;
             let payload_view = parse_replication_commit_payload_view(message.payload.as_slice());
             match replication_runtime
                 .validate_remote_message_for_observe(node_id, world_id, &message)
@@ -1294,7 +1322,7 @@ impl PosNodeEngine {
             }
             let should_apply = payload_view
                 .as_ref()
-                .map(|payload| payload.height <= self.committed_height.saturating_add(1))
+                .map(|payload| payload.height <= committed_successor)
                 .unwrap_or(true);
             if !should_apply {
                 continue;
@@ -1302,7 +1330,7 @@ impl PosNodeEngine {
             match replication_runtime.apply_remote_message(node_id, world_id, &message) {
                 Ok(()) => {
                     if let Some(payload) = payload_view {
-                        if payload.height == self.committed_height.saturating_add(1)
+                        if payload.height == committed_successor
                             && replication_runtime
                                 .load_commit_message_by_height(world_id, payload.height)?
                                 .is_some()
@@ -1311,7 +1339,7 @@ impl PosNodeEngine {
                                 payload.height,
                                 payload.block_hash,
                                 payload.committed_at_ms,
-                            );
+                            )?;
                         }
                     }
                 }
@@ -1368,7 +1396,11 @@ impl PosNodeEngine {
             return Ok(());
         }
 
-        let mut next_height = self.committed_height.saturating_add(1);
+        let mut next_height = checked_replication_successor(
+            self.committed_height,
+            "committed_height",
+            "starting replication gap sync",
+        )?;
         while next_height <= self.network_committed_height {
             let mut synced_commit: Option<(String, i64)> = None;
             let mut not_found = false;
@@ -1401,8 +1433,12 @@ impl PosNodeEngine {
                 }
             }
             if let Some((block_hash, committed_at_ms)) = synced_commit {
-                self.record_synced_replication_height(next_height, block_hash, committed_at_ms);
-                next_height = next_height.saturating_add(1);
+                self.record_synced_replication_height(next_height, block_hash, committed_at_ms)?;
+                next_height = checked_replication_successor(
+                    next_height,
+                    "next_height",
+                    "advancing replication gap sync cursor",
+                )?;
                 continue;
             }
             if not_found {
@@ -1554,15 +1590,18 @@ impl PosNodeEngine {
         height: u64,
         block_hash: String,
         committed_at_ms: i64,
-    ) {
+    ) -> Result<(), NodeError> {
         if height <= self.committed_height {
-            return;
+            return Ok(());
         }
+        let next_synced_height =
+            checked_replication_successor(height, "height", "recording synced replication height")?;
         self.committed_height = height;
         self.last_committed_at_ms = Some(committed_at_ms);
-        self.next_height = self.next_height.max(height.saturating_add(1));
+        self.next_height = self.next_height.max(next_synced_height);
         self.last_committed_block_hash = Some(block_hash);
         self.pending = None;
+        Ok(())
     }
 
     fn ingest_proposal_message(
@@ -1635,12 +1674,17 @@ impl PosNodeEngine {
             message.epoch,
             Some(format!("proposal gossiped from {}", message.node_id)),
         )?;
-        if proposal.height > self.next_height {
-            self.next_height = proposal.height;
-        }
+        let next_height = self.next_height.max(proposal.height);
+        let mut next_slot = self.next_slot;
         if proposal.slot >= self.next_slot {
-            self.next_slot = proposal.slot.saturating_add(1);
+            next_slot = checked_consensus_successor(
+                proposal.slot,
+                "proposal.slot",
+                "ingesting proposal message",
+            )?;
         }
+        self.next_height = next_height;
+        self.next_slot = next_slot;
         self.pending = Some(proposal);
         Ok(())
     }

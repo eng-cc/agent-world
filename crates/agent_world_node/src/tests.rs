@@ -296,6 +296,135 @@ fn pos_engine_stays_pending_without_peer_votes_when_auto_attest_disabled() {
 }
 
 #[test]
+fn pos_engine_apply_decision_rejects_height_overflow_without_state_mutation() {
+    let config =
+        NodeConfig::new("node-a", "world-overflow-apply", NodeRole::Observer).expect("config");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    engine.committed_height = 41;
+    engine.network_committed_height = 43;
+    engine.next_height = 44;
+    engine.pending = Some(PendingProposal {
+        height: 44,
+        slot: 7,
+        epoch: 0,
+        proposer_id: "node-a".to_string(),
+        block_hash: "pending-block".to_string(),
+        action_root: empty_action_root(),
+        committed_actions: Vec::new(),
+        attestations: std::collections::BTreeMap::new(),
+        approved_stake: 100,
+        rejected_stake: 0,
+        status: PosConsensusStatus::Pending,
+    });
+
+    let decision = PosDecision {
+        height: u64::MAX,
+        slot: 8,
+        epoch: 0,
+        status: PosConsensusStatus::Committed,
+        block_hash: "overflow-block".to_string(),
+        action_root: empty_action_root(),
+        committed_actions: Vec::new(),
+        approved_stake: 100,
+        rejected_stake: 0,
+        required_stake: 67,
+        total_stake: 100,
+    };
+
+    let err = engine
+        .apply_decision(&decision)
+        .expect_err("height overflow must fail");
+    assert!(
+        matches!(err, NodeError::Consensus { reason } if reason.contains("decision.height overflow"))
+    );
+    assert_eq!(engine.committed_height, 41);
+    assert_eq!(engine.network_committed_height, 43);
+    assert_eq!(engine.next_height, 44);
+    assert_eq!(
+        engine
+            .pending
+            .as_ref()
+            .map(|proposal| proposal.block_hash.as_str()),
+        Some("pending-block")
+    );
+    assert!(engine.last_committed_block_hash.is_none());
+}
+
+#[test]
+fn pos_engine_record_synced_replication_height_rejects_overflow_without_partial_state() {
+    let config =
+        NodeConfig::new("node-a", "world-overflow-sync", NodeRole::Observer).expect("config");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    engine.committed_height = 9;
+    engine.next_height = 10;
+    engine.pending = Some(PendingProposal {
+        height: 10,
+        slot: 1,
+        epoch: 0,
+        proposer_id: "node-a".to_string(),
+        block_hash: "pending-sync".to_string(),
+        action_root: empty_action_root(),
+        committed_actions: Vec::new(),
+        attestations: std::collections::BTreeMap::new(),
+        approved_stake: 100,
+        rejected_stake: 0,
+        status: PosConsensusStatus::Pending,
+    });
+
+    let err = engine
+        .record_synced_replication_height(u64::MAX, "overflow-block".to_string(), 7_700)
+        .expect_err("height overflow must fail");
+    assert!(matches!(err, NodeError::Replication { reason } if reason.contains("height overflow")));
+    assert_eq!(engine.committed_height, 9);
+    assert_eq!(engine.next_height, 10);
+    assert_eq!(
+        engine
+            .pending
+            .as_ref()
+            .map(|proposal| proposal.block_hash.as_str()),
+        Some("pending-sync")
+    );
+    assert!(engine.last_committed_block_hash.is_none());
+    assert!(engine.last_committed_at_ms.is_none());
+}
+
+#[test]
+fn pos_engine_ingest_proposal_rejects_slot_overflow_without_partial_state() {
+    let config =
+        NodeConfig::new("node-a", "world-overflow-proposal", NodeRole::Observer).expect("config");
+    let mut engine = PosNodeEngine::new(&config).expect("engine");
+    engine.next_height = 5;
+    engine.next_slot = 3;
+
+    let message = GossipProposalMessage {
+        version: 1,
+        world_id: config.world_id.clone(),
+        node_id: config.node_id.clone(),
+        player_id: config.player_id.clone(),
+        proposer_id: config.node_id.clone(),
+        height: 8,
+        slot: u64::MAX,
+        epoch: 0,
+        block_hash: "proposal-overflow".to_string(),
+        action_root: empty_action_root(),
+        actions: Vec::new(),
+        proposed_at_ms: 1_234,
+        public_key_hex: None,
+        signature_hex: None,
+    };
+
+    let err = engine
+        .ingest_proposal_message(config.world_id.as_str(), &message)
+        .expect_err("slot overflow must fail");
+    assert!(
+        matches!(err, NodeError::Consensus { reason } if reason.contains("proposal.slot overflow"))
+    );
+    assert_eq!(engine.next_height, 5);
+    assert_eq!(engine.next_slot, 3);
+    assert!(engine.pending.is_none());
+}
+
+#[test]
 fn sequencer_commit_requires_execution_hook() {
     let config = NodeConfig::new("sequencer-a", "world-a", NodeRole::Sequencer)
         .expect("config")
