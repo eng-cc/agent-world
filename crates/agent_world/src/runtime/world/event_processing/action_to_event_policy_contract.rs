@@ -400,11 +400,16 @@ impl World {
                             },
                         }));
                     }
+                    let success_reputation_reward =
+                        Self::economic_contract_success_reputation_reward(
+                            contract.settlement_amount,
+                            contract.reputation_stake,
+                        );
                     (
                         contract.settlement_amount,
                         tax_amount,
-                        contract.reputation_stake,
-                        contract.reputation_stake,
+                        success_reputation_reward,
+                        success_reputation_reward,
                     )
                 } else {
                     (0, 0, -contract.reputation_stake, 0)

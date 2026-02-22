@@ -884,8 +884,8 @@ fn economic_contract_settlement_applies_tax_and_reputation() {
         world.state().resources.get(&ResourceKind::Data).copied(),
         Some(3)
     );
-    assert_eq!(world.state().reputation_scores.get("a"), Some(&8));
-    assert_eq!(world.state().reputation_scores.get("b"), Some(&8));
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&3));
+    assert_eq!(world.state().reputation_scores.get("b"), Some(&3));
     let has_settled_event = world.journal().events.iter().any(|event| {
         matches!(
             &event.body,
@@ -894,6 +894,79 @@ fn economic_contract_settlement_applies_tax_and_reputation() {
         )
     });
     assert!(has_settled_event, "expected EconomicContractSettled event");
+}
+
+#[test]
+fn economic_contract_success_reputation_reward_respects_stake_and_cap() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c"]);
+    authorize_policy_update(&mut world, "a", "proposal.policy.reputation");
+    world
+        .set_agent_resource_balance("a", ResourceKind::Data, 2_000)
+        .expect("seed creator data");
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 0,
+        max_open_contracts_per_agent: 8,
+        blocked_agents: Vec::new(),
+    });
+    world.step().expect("update gameplay policy");
+
+    let expires_at = world.state().time.saturating_add(10);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.stake.bound".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 200,
+        reputation_stake: 5,
+        expires_at,
+        description: "stake bound contract".to_string(),
+    });
+    world.step().expect("open stake-bound contract");
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.stake.bound".to_string(),
+    });
+    world.step().expect("accept stake-bound contract");
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.stake.bound".to_string(),
+        success: true,
+        notes: "settle stake bound".to_string(),
+    });
+    world.step().expect("settle stake-bound contract");
+
+    let second_expires_at = world.state().time.saturating_add(10);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.cap.bound".to_string(),
+        counterparty_agent_id: "c".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 500,
+        reputation_stake: 80,
+        expires_at: second_expires_at,
+        description: "cap bound contract".to_string(),
+    });
+    world.step().expect("open cap-bound contract");
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "c".to_string(),
+        contract_id: "contract.cap.bound".to_string(),
+    });
+    world.step().expect("accept cap-bound contract");
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.cap.bound".to_string(),
+        success: true,
+        notes: "settle cap bound".to_string(),
+    });
+    world.step().expect("settle cap-bound contract");
+
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&17));
+    assert_eq!(world.state().reputation_scores.get("b"), Some(&5));
+    assert_eq!(world.state().reputation_scores.get("c"), Some(&12));
 }
 
 #[test]

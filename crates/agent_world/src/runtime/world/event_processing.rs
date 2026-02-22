@@ -32,6 +32,8 @@ const GAMEPLAY_POLICY_MIN_CONTRACT_QUOTA: u16 = 1;
 const GAMEPLAY_POLICY_MAX_CONTRACT_QUOTA: u16 = 64;
 const GAMEPLAY_POLICY_UPDATE_MIN_GOVERNANCE_TOTAL_WEIGHT: u64 = 3;
 const ECONOMIC_CONTRACT_MAX_REPUTATION_STAKE: i64 = 10_000;
+const ECONOMIC_CONTRACT_SUCCESS_REPUTATION_AMOUNT_DIVISOR: i64 = 10;
+const ECONOMIC_CONTRACT_SUCCESS_REPUTATION_REWARD_CAP: i64 = 12;
 
 mod action_to_event_core;
 mod action_to_event_economy;
@@ -75,6 +77,18 @@ impl World {
         let data = WAR_DECLARE_BASE_DATA_COST
             .saturating_add(intensity.saturating_mul(WAR_DECLARE_DATA_COST_PER_INTENSITY));
         (electricity, data)
+    }
+
+    fn economic_contract_success_reputation_reward(
+        settlement_amount: i64,
+        reputation_stake: i64,
+    ) -> i64 {
+        let amount_based_reward = settlement_amount
+            .saturating_div(ECONOMIC_CONTRACT_SUCCESS_REPUTATION_AMOUNT_DIVISOR)
+            .max(1);
+        amount_based_reward
+            .min(reputation_stake)
+            .min(ECONOMIC_CONTRACT_SUCCESS_REPUTATION_REWARD_CAP)
     }
 
     pub(super) fn replay_from(&mut self, start_index: usize) -> Result<(), WorldError> {
