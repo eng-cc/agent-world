@@ -16,9 +16,9 @@
 - [x] 校验 proto/consensus/node 三层行为一致。
 
 ### T3 回归与收口
-- [ ] 运行 `agent_world_proto`、`agent_world_consensus`、`agent_world_node` 定向回归测试。
-- [ ] 回写设计文档状态（M0~M3）。
-- [ ] 回写项目状态与 `doc/devlog/2026-02-23.md`。
+- [x] 运行 `agent_world_proto`、`agent_world_consensus`、`agent_world_node` 定向回归测试。
+- [x] 回写设计文档状态（M0~M3）。
+- [x] 回写项目状态与 `doc/devlog/2026-02-23.md`。
 
 ## 依赖
 - `crates/agent_world_proto/src/distributed_pos.rs`
@@ -27,8 +27,8 @@
 - `crates/agent_world_node/src/tests_hardening.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
