@@ -207,6 +207,36 @@ fn sign_agent_chat_request(
     attach_agent_chat_auth(request, &signer, nonce)
 }
 
+fn sync_viewer_auth_nonce_from_state(state: &ViewerState) {
+    let Ok(player_id) = resolve_viewer_player_id_from(&|key| std::env::var(key).ok()) else {
+        return;
+    };
+    let Some(snapshot) = state.snapshot.as_ref() else {
+        return;
+    };
+    let Some(last_nonce) = snapshot
+        .model
+        .player_auth_last_nonce
+        .get(player_id.as_str())
+    else {
+        return;
+    };
+
+    let desired = last_nonce.saturating_add(1).max(1);
+    let mut current = VIEWER_AUTH_NONCE_COUNTER.load(Ordering::SeqCst);
+    while current < desired {
+        match VIEWER_AUTH_NONCE_COUNTER.compare_exchange(
+            current,
+            desired,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        ) {
+            Ok(_) => break,
+            Err(next) => current = next,
+        }
+    }
+}
+
 pub(super) fn render_chat_section(
     ui: &mut egui::Ui,
     locale: crate::i18n::UiLocale,
@@ -349,6 +379,7 @@ pub(super) fn render_chat_section(
         if can_send && (submit_by_button || submit_by_enter) {
             let message = draft.input_message.trim().to_string();
             if let Some(client) = client {
+                sync_viewer_auth_nonce_from_state(state);
                 let send_result: Result<(), String> = (|| {
                     let mut request = agent_world::viewer::AgentChatRequest {
                         agent_id: selected_agent_id.clone(),
@@ -729,6 +760,7 @@ fn render_prompt_preset_editor(
                 if apply_profile {
                     match send_prompt_profile_apply_command(
                         client,
+                        state,
                         selected_agent_id,
                         &current_profile,
                         draft,
@@ -804,6 +836,7 @@ fn current_prompt_profile_for_agent(state: &ViewerState, agent_id: &str) -> Agen
 
 fn send_prompt_profile_apply_command(
     client: Option<&ViewerClient>,
+    state: &ViewerState,
     selected_agent_id: &str,
     current_profile: &AgentPromptProfile,
     draft: &AgentChatDraftState,
@@ -815,6 +848,7 @@ fn send_prompt_profile_apply_command(
     if !prompt_apply_request_has_patch(&request) {
         return Err("no prompt profile changes".to_string());
     }
+    sync_viewer_auth_nonce_from_state(state);
     sign_prompt_control_apply_request(
         &mut request,
         agent_world::viewer::PromptControlAuthIntent::Apply,
@@ -1395,7 +1429,8 @@ fn collect_chat_messages_for_agent(
 mod tests {
     use super::*;
     use agent_world::simulator::{
-        AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldEvent,
+        initialize_kernel, AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldConfig,
+        WorldEvent, WorldInitConfig, WorldScenario,
     };
     use ed25519_dalek::SigningKey;
 
@@ -1831,6 +1866,24 @@ mod tests {
         assert_eq!(verified.player_id, signer.player_id);
         assert_eq!(verified.public_key, signer.public_key);
         assert_eq!(verified.nonce, 42);
+    }
+
+    #[test]
+    fn sync_viewer_auth_nonce_from_state_tracks_persisted_nonce() {
+        let config = WorldConfig::default();
+        let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+        let (mut kernel, _) = initialize_kernel(config, init).expect("init world");
+        kernel
+            .consume_player_auth_nonce(VIEWER_PLAYER_ID, 1_000_000)
+            .expect("seed nonce");
+
+        let mut state = ViewerState::default();
+        state.snapshot = Some(kernel.snapshot());
+
+        let baseline = VIEWER_AUTH_NONCE_COUNTER.load(Ordering::SeqCst);
+        sync_viewer_auth_nonce_from_state(&state);
+        let current = VIEWER_AUTH_NONCE_COUNTER.load(Ordering::SeqCst);
+        assert!(current >= baseline.max(1_000_001));
     }
 
     #[test]
