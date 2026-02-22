@@ -7,8 +7,8 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase12.project.md`
 
 ### T1 调度时间门控受检化
-- [ ] `run_revocation_dead_letter_replay_schedule` 的 interval gate 改为受检减法。
-- [ ] 新增 overflow 拒绝测试并验证 `last_replay_at_ms` 不被污染。
+- [x] `run_revocation_dead_letter_replay_schedule` 的 interval gate 改为受检减法。
+- [x] 新增 overflow 拒绝测试并验证 `last_replay_at_ms` 不被污染。
 
 ### T2 Recovery 计数/容量受检化
 - [ ] `emit_revocation_reconcile_alerts_with_recovery_and_ack_retry_with_dead_letter` 的关键 `saturating_add` 改为受检语义。
@@ -25,7 +25,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

@@ -389,6 +389,55 @@ fn run_revocation_dead_letter_replay_schedule_respects_interval() {
 }
 
 #[test]
+fn run_revocation_dead_letter_replay_schedule_rejects_interval_overflow_without_mutation() {
+    let client = sample_client();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+
+    let mut last_replay = Some(i64::MIN);
+    let err = client
+        .run_revocation_dead_letter_replay_schedule(
+            "w1",
+            "node-a",
+            1000,
+            100,
+            1,
+            &mut last_replay,
+            &recovery_store,
+            &dead_letter_store,
+        )
+        .expect_err("interval overflow should fail");
+    match err {
+        WorldError::DistributedValidationFailed { reason } => {
+            assert!(
+                reason.contains("replay schedule elapsed overflow"),
+                "{reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    assert_eq!(last_replay, Some(i64::MIN));
+    let pending = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after overflow");
+    assert!(pending.is_empty());
+    let dead_letters = dead_letter_store
+        .list("w1", "node-a")
+        .expect("list dead letters after overflow");
+    assert_eq!(dead_letters.len(), 1);
+}
+
+#[test]
 fn store_backed_schedule_coordinator_blocks_until_expired_or_released() {
     let store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
         Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
