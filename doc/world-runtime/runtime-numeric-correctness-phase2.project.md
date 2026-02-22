@@ -12,9 +12,9 @@
 - [x] 增加溢出拒绝与原子性测试。
 
 ### T2 Node PoS 票权与 slot 递进显式溢出语义
-- [ ] `insert_attestation` 改为 `checked_add` 并返回可观测错误。
-- [ ] `propose_next_head` 的 `next_slot` 递进改为 `checked_add`。
-- [ ] 增加 PoS 溢出拒绝测试并保证失败不污染 pending 状态。
+- [x] `insert_attestation` 改为 `checked_add` 并返回可观测错误。
+- [x] `propose_next_head` 的 `next_slot` 递进改为 `checked_add`。
+- [x] 增加 PoS 溢出拒绝测试并保证失败不污染 pending 状态。
 
 ### T3 回归与收口
 - [ ] 运行对应 `test_tier_required` 口径的定向测试。
@@ -35,7 +35,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

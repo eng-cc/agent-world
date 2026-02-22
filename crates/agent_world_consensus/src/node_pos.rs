@@ -105,6 +105,40 @@ pub fn insert_attestation<TAction, TStatus: NodePosStatusAdapter>(
         return Ok(());
     }
 
+    let (next_approved_stake, next_rejected_stake) = if approve {
+        (
+            proposal
+                .approved_stake
+                .checked_add(stake)
+                .ok_or_else(|| NodePosError {
+                    reason: format!(
+                        "approved stake overflow: validator={} current={} delta={}",
+                        validator_id, proposal.approved_stake, stake
+                    ),
+                })?,
+            proposal.rejected_stake,
+        )
+    } else {
+        (
+            proposal.approved_stake,
+            proposal
+                .rejected_stake
+                .checked_add(stake)
+                .ok_or_else(|| NodePosError {
+                    reason: format!(
+                        "rejected stake overflow: validator={} current={} delta={}",
+                        validator_id, proposal.rejected_stake, stake
+                    ),
+                })?,
+        )
+    };
+    let next_status = decide_status(
+        total_stake,
+        required_stake,
+        next_approved_stake,
+        next_rejected_stake,
+    );
+
     proposal.attestations.insert(
         validator_id.to_string(),
         NodePosAttestation {
@@ -116,17 +150,9 @@ pub fn insert_attestation<TAction, TStatus: NodePosStatusAdapter>(
             reason,
         },
     );
-    if approve {
-        proposal.approved_stake = proposal.approved_stake.saturating_add(stake);
-    } else {
-        proposal.rejected_stake = proposal.rejected_stake.saturating_add(stake);
-    }
-    proposal.status = decide_status(
-        total_stake,
-        required_stake,
-        proposal.approved_stake,
-        proposal.rejected_stake,
-    );
+    proposal.approved_stake = next_approved_stake;
+    proposal.rejected_stake = next_rejected_stake;
+    proposal.status = next_status;
     Ok(())
 }
 
@@ -174,7 +200,10 @@ pub fn propose_next_head<TAction: Clone, TStatus: NodePosStatusAdapter>(
         Some(format!("proposal accepted by {accepted_by_node_id}")),
     )?;
 
-    *next_slot = next_slot.saturating_add(1);
+    let next_slot_value = next_slot.checked_add(1).ok_or_else(|| NodePosError {
+        reason: format!("slot overflow at {}", *next_slot),
+    })?;
+    *next_slot = next_slot_value;
     let decision = decision_from_proposal(&proposal, required_stake, total_stake);
     *pending = Some(proposal);
     Ok(decision)
@@ -253,4 +282,100 @@ fn decide_status<TStatus: NodePosStatusAdapter>(
 
 fn is_terminal_status<TStatus: NodePosStatusAdapter>(status: TStatus) -> bool {
     status == TStatus::committed() || status == TStatus::rejected()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum TestStatus {
+        Pending,
+        Committed,
+        Rejected,
+    }
+
+    impl NodePosStatusAdapter for TestStatus {
+        fn pending() -> Self {
+            TestStatus::Pending
+        }
+
+        fn committed() -> Self {
+            TestStatus::Committed
+        }
+
+        fn rejected() -> Self {
+            TestStatus::Rejected
+        }
+    }
+
+    fn sample_proposal() -> NodePosPendingProposal<(), TestStatus> {
+        NodePosPendingProposal {
+            height: 1,
+            slot: 0,
+            epoch: 0,
+            proposer_id: "val-a".to_string(),
+            block_hash: "b1".to_string(),
+            action_root: "a1".to_string(),
+            committed_actions: Vec::new(),
+            attestations: BTreeMap::new(),
+            approved_stake: 0,
+            rejected_stake: 0,
+            status: TestStatus::Pending,
+        }
+    }
+
+    #[test]
+    fn insert_attestation_rejects_overflow_without_mutating_proposal() {
+        let validators = BTreeMap::from([("val-a".to_string(), u64::MAX)]);
+        let mut proposal = sample_proposal();
+        proposal.approved_stake = 1;
+
+        let err = insert_attestation(
+            &validators,
+            u64::MAX,
+            1,
+            &mut proposal,
+            "val-a",
+            true,
+            10,
+            0,
+            0,
+            None,
+        )
+        .expect_err("must reject stake overflow");
+        assert!(err.reason.contains("approved stake overflow"));
+        assert!(proposal.attestations.is_empty());
+        assert_eq!(proposal.approved_stake, 1);
+        assert_eq!(proposal.rejected_stake, 0);
+        assert_eq!(proposal.status, TestStatus::Pending);
+    }
+
+    #[test]
+    fn propose_next_head_rejects_slot_overflow_without_pending_mutation() {
+        let validators = BTreeMap::from([("val-a".to_string(), 10_u64)]);
+        let mut next_height = 1;
+        let mut next_slot = u64::MAX;
+        let mut pending: Option<NodePosPendingProposal<(), TestStatus>> = None;
+
+        let err = propose_next_head(
+            &validators,
+            10,
+            7,
+            32,
+            &mut next_height,
+            &mut next_slot,
+            &mut pending,
+            "val-a".to_string(),
+            "block-hash".to_string(),
+            "action-root".to_string(),
+            Vec::new(),
+            "node-a",
+            100,
+        )
+        .expect_err("must reject slot overflow");
+        assert!(err.reason.contains("slot overflow"));
+        assert_eq!(next_slot, u64::MAX);
+        assert!(pending.is_none());
+    }
 }
