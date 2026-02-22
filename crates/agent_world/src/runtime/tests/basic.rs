@@ -167,3 +167,50 @@ fn adjust_resource_balance_rejects_overflow() {
     );
     assert_eq!(world.resource_balance(ResourceKind::Data), i64::MAX - 1);
 }
+
+#[test]
+fn emit_resource_transfer_overflow_keeps_balances_atomic() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "from".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "to".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("register agents");
+    world
+        .set_agent_resource_balance("from", ResourceKind::Data, 10)
+        .expect("seed from data");
+    world
+        .set_agent_resource_balance("to", ResourceKind::Data, i64::MAX)
+        .expect("seed to data at boundary");
+    let events_before = world.journal().len();
+
+    world.submit_action(Action::EmitResourceTransfer {
+        from_agent_id: "from".to_string(),
+        to_agent_id: "to".to_string(),
+        kind: ResourceKind::Data,
+        amount: 1,
+    });
+    let err = world.step().expect_err("transfer overflow must fail");
+    assert!(
+        matches!(err, WorldError::ResourceBalanceInvalid { .. }),
+        "unexpected error: {err:?}"
+    );
+
+    assert_eq!(
+        world
+            .agent_resource_balance("from", ResourceKind::Data)
+            .expect("query from balance"),
+        10
+    );
+    assert_eq!(
+        world
+            .agent_resource_balance("to", ResourceKind::Data)
+            .expect("query to balance"),
+        i64::MAX
+    );
+    assert_eq!(world.journal().len(), events_before);
+}

@@ -897,6 +897,100 @@ fn economic_contract_settlement_applies_tax_and_reputation() {
 }
 
 #[test]
+fn economic_contract_settlement_overflow_keeps_state_atomic() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    authorize_policy_update(&mut world, "a", "proposal.policy.atomicity");
+    world
+        .set_agent_resource_balance("a", ResourceKind::Data, 100)
+        .expect("seed creator data");
+    world
+        .set_agent_resource_balance("b", ResourceKind::Data, i64::MAX)
+        .expect("seed counterparty data at boundary");
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 0,
+        max_open_contracts_per_agent: 4,
+        blocked_agents: Vec::new(),
+    });
+    world.step().expect("update gameplay policy");
+
+    let expires_at = world.state().time.saturating_add(10);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.atomic.overflow".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 1,
+        reputation_stake: 5,
+        expires_at,
+        description: "overflow settlement".to_string(),
+    });
+    world.step().expect("open economic contract");
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.atomic.overflow".to_string(),
+    });
+    world.step().expect("accept economic contract");
+    let events_before = world.journal().len();
+
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.atomic.overflow".to_string(),
+        success: true,
+        notes: "attempt overflow settle".to_string(),
+    });
+    let err = world.step().expect_err("overflow settlement must fail");
+    assert!(
+        matches!(err, WorldError::ResourceBalanceInvalid { .. }),
+        "unexpected error: {err:?}"
+    );
+
+    let contract = world
+        .state()
+        .economic_contracts
+        .get("contract.atomic.overflow")
+        .expect("contract should still exist");
+    assert_eq!(contract.status, EconomicContractStatus::Accepted);
+    assert_eq!(contract.settled_at, None);
+    assert_eq!(contract.settlement_success, None);
+    assert_eq!(contract.transfer_amount, 0);
+    assert_eq!(contract.tax_amount, 0);
+    assert_eq!(contract.settlement_notes, None);
+    assert_eq!(
+        world
+            .state()
+            .agents
+            .get("a")
+            .expect("creator agent")
+            .state
+            .resources
+            .get(ResourceKind::Data),
+        100
+    );
+    assert_eq!(
+        world
+            .state()
+            .agents
+            .get("b")
+            .expect("counterparty agent")
+            .state
+            .resources
+            .get(ResourceKind::Data),
+        i64::MAX
+    );
+    assert_eq!(
+        world.state().resources.get(&ResourceKind::Data).copied(),
+        None
+    );
+    assert_eq!(world.state().reputation_scores.get("a"), None);
+    assert_eq!(world.state().reputation_scores.get("b"), None);
+    assert_eq!(world.journal().len(), events_before);
+}
+
+#[test]
 fn economic_contract_success_reputation_reward_respects_stake_and_cap() {
     let mut world = World::new();
     register_agents(&mut world, &["a", "b", "c"]);

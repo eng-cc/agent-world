@@ -154,6 +154,14 @@ impl WorldState {
                         ),
                     });
                 }
+                if !self.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+
+                // Precompute all mutable outcomes first so settlement writes are atomic.
+                let mut settlement_apply: Option<(i64, i64, i64)> = None;
                 if *success {
                     if *transfer_amount <= 0 {
                         return Err(WorldError::ResourceBalanceInvalid {
@@ -171,56 +179,195 @@ impl WorldState {
                             ),
                         });
                     }
-                    let debit_total = transfer_amount.saturating_add(*tax_amount);
-                    let creator_cell = self.agents.get_mut(&creator_agent_id).ok_or_else(|| {
-                        WorldError::AgentNotFound {
-                            agent_id: creator_agent_id.clone(),
-                        }
-                    })?;
-                    creator_cell
-                        .state
-                        .resources
-                        .remove(settlement_kind, debit_total)
-                        .map_err(|err| WorldError::ResourceBalanceInvalid {
-                            reason: format!(
-                                "economic contract settlement debit failed agent={} kind={:?} amount={} err={:?}",
-                                creator_agent_id, settlement_kind, debit_total, err
+                    let debit_total =
+                        transfer_amount.checked_add(*tax_amount).ok_or_else(|| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                "economic contract settlement debit overflow transfer={} tax={}",
+                                transfer_amount, tax_amount
                             ),
+                            }
                         })?;
 
-                    let counterparty_cell = self
+                    let creator_current = self
                         .agents
-                        .get_mut(&counterparty_agent_id)
+                        .get(&creator_agent_id)
                         .ok_or_else(|| WorldError::AgentNotFound {
-                            agent_id: counterparty_agent_id.clone(),
-                        })?;
-                    counterparty_cell
+                            agent_id: creator_agent_id.clone(),
+                        })?
                         .state
                         .resources
-                        .add(settlement_kind, *transfer_amount)
-                        .map_err(|err| WorldError::ResourceBalanceInvalid {
+                        .get(settlement_kind);
+                    if creator_current < debit_total {
+                        return Err(WorldError::ResourceBalanceInvalid {
                             reason: format!(
-                                "economic contract settlement credit failed agent={} kind={:?} amount={} err={:?}",
-                                counterparty_agent_id, settlement_kind, transfer_amount, err
+                                "economic contract settlement debit failed agent={} kind={:?} amount={} available={}",
+                                creator_agent_id, settlement_kind, debit_total, creator_current
                             ),
-                        })?;
-                    let treasury = self.resources.entry(settlement_kind).or_insert(0);
-                    *treasury = treasury.saturating_add(*tax_amount);
+                        });
+                    }
+                    let creator_after_debit = creator_current - debit_total;
+                    let counterparty_next = if creator_agent_id == counterparty_agent_id {
+                        creator_after_debit.checked_add(*transfer_amount).ok_or_else(|| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "economic contract settlement credit failed agent={} kind={:?} amount={} overflow",
+                                    counterparty_agent_id, settlement_kind, transfer_amount
+                                ),
+                            }
+                        })?
+                    } else {
+                        let counterparty_current = self
+                            .agents
+                            .get(&counterparty_agent_id)
+                            .ok_or_else(|| WorldError::AgentNotFound {
+                                agent_id: counterparty_agent_id.clone(),
+                            })?
+                            .state
+                            .resources
+                            .get(settlement_kind);
+                        counterparty_current
+                            .checked_add(*transfer_amount)
+                            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "economic contract settlement credit failed agent={} kind={:?} amount={} overflow",
+                                    counterparty_agent_id, settlement_kind, transfer_amount
+                                ),
+                            })?
+                    };
+                    let treasury_current =
+                        self.resources.get(&settlement_kind).copied().unwrap_or(0);
+                    let treasury_next =
+                        treasury_current
+                            .checked_add(*tax_amount)
+                            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "economic contract settlement treasury overflow kind={:?} current={} delta={}",
+                                    settlement_kind, treasury_current, tax_amount
+                                ),
+                            })?;
+                    settlement_apply =
+                        Some((creator_after_debit, counterparty_next, treasury_next));
                 }
 
-                if *creator_reputation_delta != 0 {
-                    let score = self
+                let creator_score_next = if *creator_reputation_delta != 0 {
+                    let current = self
                         .reputation_scores
-                        .entry(creator_agent_id.clone())
-                        .or_insert(0);
-                    *score = score.saturating_add(*creator_reputation_delta);
+                        .get(&creator_agent_id)
+                        .copied()
+                        .unwrap_or(0);
+                    Some(
+                        current
+                            .checked_add(*creator_reputation_delta)
+                            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "creator reputation overflow agent={} current={} delta={}",
+                                    creator_agent_id, current, creator_reputation_delta
+                                ),
+                            })?,
+                    )
+                } else {
+                    None
+                };
+                let counterparty_score_next = if *counterparty_reputation_delta != 0 {
+                    let current = self
+                        .reputation_scores
+                        .get(&counterparty_agent_id)
+                        .copied()
+                        .unwrap_or(0);
+                    Some(
+                        current
+                            .checked_add(*counterparty_reputation_delta)
+                            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "counterparty reputation overflow agent={} current={} delta={}",
+                                    counterparty_agent_id, current, counterparty_reputation_delta
+                                ),
+                            })?,
+                    )
+                } else {
+                    None
+                };
+
+                if let Some((creator_after_debit, counterparty_next, treasury_next)) =
+                    settlement_apply
+                {
+                    if creator_agent_id == counterparty_agent_id {
+                        let creator_cell =
+                            self.agents.get_mut(&creator_agent_id).ok_or_else(|| {
+                                WorldError::AgentNotFound {
+                                    agent_id: creator_agent_id.clone(),
+                                }
+                            })?;
+                        if counterparty_next == 0 {
+                            creator_cell
+                                .state
+                                .resources
+                                .amounts
+                                .remove(&settlement_kind);
+                        } else {
+                            creator_cell
+                                .state
+                                .resources
+                                .amounts
+                                .insert(settlement_kind, counterparty_next);
+                        }
+                    } else {
+                        let creator_cell =
+                            self.agents.get_mut(&creator_agent_id).ok_or_else(|| {
+                                WorldError::AgentNotFound {
+                                    agent_id: creator_agent_id.clone(),
+                                }
+                            })?;
+                        if creator_after_debit == 0 {
+                            creator_cell
+                                .state
+                                .resources
+                                .amounts
+                                .remove(&settlement_kind);
+                        } else {
+                            creator_cell
+                                .state
+                                .resources
+                                .amounts
+                                .insert(settlement_kind, creator_after_debit);
+                        }
+
+                        let counterparty_cell = self
+                            .agents
+                            .get_mut(&counterparty_agent_id)
+                            .ok_or_else(|| WorldError::AgentNotFound {
+                                agent_id: counterparty_agent_id.clone(),
+                            })?;
+                        if counterparty_next == 0 {
+                            counterparty_cell
+                                .state
+                                .resources
+                                .amounts
+                                .remove(&settlement_kind);
+                        } else {
+                            counterparty_cell
+                                .state
+                                .resources
+                                .amounts
+                                .insert(settlement_kind, counterparty_next);
+                        }
+                    }
+
+                    if treasury_next == 0 {
+                        self.resources.remove(&settlement_kind);
+                    } else {
+                        self.resources.insert(settlement_kind, treasury_next);
+                    }
                 }
-                if *counterparty_reputation_delta != 0 {
-                    let score = self
-                        .reputation_scores
-                        .entry(counterparty_agent_id.clone())
-                        .or_insert(0);
-                    *score = score.saturating_add(*counterparty_reputation_delta);
+
+                if let Some(next) = creator_score_next {
+                    self.reputation_scores
+                        .insert(creator_agent_id.clone(), next);
+                }
+                if let Some(next) = counterparty_score_next {
+                    self.reputation_scores
+                        .insert(counterparty_agent_id.clone(), next);
                 }
 
                 let contract = self
@@ -236,13 +383,10 @@ impl WorldState {
                 contract.tax_amount = *tax_amount;
                 contract.settlement_notes = Some(notes.clone());
 
-                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
-                    cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: operator_agent_id.clone(),
-                    });
-                }
+                self.agents
+                    .get_mut(operator_agent_id)
+                    .expect("operator existence prechecked")
+                    .last_active = now;
             }
             DomainEvent::EconomicContractExpired {
                 contract_id,

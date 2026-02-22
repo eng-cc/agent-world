@@ -12,9 +12,9 @@
 - [x] `World::adjust_resource_balance` / `apply_resource_delta` 改为可失败接口
 
 ### T2 状态转移原子性
-- [ ] `ResourceTransferred`：先校验余额与目标上界，再统一提交
-- [ ] `PowerRedeemed`：先校验目标资源上界与储备约束，再执行扣减与写入
-- [ ] `EconomicContractSettled`：先校验借贷双方资源，再统一提交
+- [x] `ResourceTransferred`：先校验余额与目标上界，再统一提交
+- [x] `PowerRedeemed`：先校验目标资源上界与储备约束，再执行扣减与写入
+- [x] `EconomicContractSettled`：先校验借贷双方资源，再统一提交
 
 ### T3 执行流接线
 - [ ] `step_with_modules` 处理资源 delta 溢出为 `ActionRejected`，不提交部分状态
@@ -40,8 +40,8 @@
   - `crates/agent_world/src/simulator/tests/basics.rs`
 
 ## 状态
-- 当前状态：`T2 进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3、T4
+- 当前状态：`T3 进行中`
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：T4
 - 阻塞项：无

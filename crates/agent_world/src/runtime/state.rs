@@ -812,25 +812,6 @@ fn remove_resource_balance(
     Ok(())
 }
 
-fn remove_node_power_credits(
-    balances: &mut BTreeMap<String, NodeAssetBalance>,
-    node_id: &str,
-    amount: u64,
-) -> Result<(), String> {
-    let Some(balance) = balances.get_mut(node_id) else {
-        return Err(format!("node balance not found: {node_id}"));
-    };
-    if balance.power_credit_balance < amount {
-        return Err(format!(
-            "insufficient power credits: balance={} burn={}",
-            balance.power_credit_balance, amount
-        ));
-    }
-    balance.power_credit_balance -= amount;
-    balance.total_burned_credits = balance.total_burned_credits.saturating_add(amount);
-    Ok(())
-}
-
 fn verify_reward_mint_record_signature_with_state(
     state: &WorldState,
     record: &NodeRewardMintRecord,

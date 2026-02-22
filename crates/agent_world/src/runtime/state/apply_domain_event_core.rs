@@ -586,32 +586,49 @@ impl WorldState {
                     })?;
                     cell.last_active = now;
                 } else {
-                    let mut from = self.agents.remove(from_agent_id).ok_or_else(|| {
+                    // Validate and precompute both sides first so transfer is atomic.
+                    let (next_from_resources, next_to_resources) = {
+                        let from = self.agents.get(from_agent_id).ok_or_else(|| {
+                            WorldError::AgentNotFound {
+                                agent_id: from_agent_id.clone(),
+                            }
+                        })?;
+                        let to = self.agents.get(to_agent_id).ok_or_else(|| {
+                            WorldError::AgentNotFound {
+                                agent_id: to_agent_id.clone(),
+                            }
+                        })?;
+
+                        let mut next_from = from.state.resources.clone();
+                        let mut next_to = to.state.resources.clone();
+                        next_from.remove(*kind, *amount).map_err(|err| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!("transfer remove failed: {err:?}"),
+                            }
+                        })?;
+                        next_to.add(*kind, *amount).map_err(|err| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!("transfer add failed: {err:?}"),
+                            }
+                        })?;
+                        (next_from, next_to)
+                    };
+
+                    let from = self.agents.get_mut(from_agent_id).ok_or_else(|| {
                         WorldError::AgentNotFound {
                             agent_id: from_agent_id.clone(),
                         }
                     })?;
-                    let mut to = self.agents.remove(to_agent_id).ok_or_else(|| {
+                    from.state.resources = next_from_resources;
+                    from.last_active = now;
+
+                    let to = self.agents.get_mut(to_agent_id).ok_or_else(|| {
                         WorldError::AgentNotFound {
                             agent_id: to_agent_id.clone(),
                         }
                     })?;
-
-                    from.state.resources.remove(*kind, *amount).map_err(|err| {
-                        WorldError::ResourceBalanceInvalid {
-                            reason: format!("transfer remove failed: {err:?}"),
-                        }
-                    })?;
-                    to.state.resources.add(*kind, *amount).map_err(|err| {
-                        WorldError::ResourceBalanceInvalid {
-                            reason: format!("transfer add failed: {err:?}"),
-                        }
-                    })?;
-                    from.last_active = now;
+                    to.state.resources = next_to_resources;
                     to.last_active = now;
-
-                    self.agents.insert(from_agent_id.clone(), from);
-                    self.agents.insert(to_agent_id.clone(), to);
                 }
             }
             DomainEvent::PowerRedeemed {
@@ -665,15 +682,36 @@ impl WorldState {
                         });
                     }
                 }
-                remove_node_power_credits(
-                    &mut self.node_asset_balances,
-                    node_id.as_str(),
-                    *burned_credits,
-                )
-                .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                    reason: format!("power redeem burn failed: {reason}"),
-                })?;
-
+                let (next_power_credit_balance, next_total_burned_credits) = {
+                    let node_balance = self.node_asset_balances.get(node_id).ok_or_else(|| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "power redeem burn failed: node balance not found: {node_id}"
+                            ),
+                        }
+                    })?;
+                    if node_balance.power_credit_balance < *burned_credits {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "power redeem burn failed: insufficient power credits: balance={} burn={}",
+                                node_balance.power_credit_balance, burned_credits
+                            ),
+                        });
+                    }
+                    let next_total_burned_credits = node_balance
+                        .total_burned_credits
+                        .checked_add(*burned_credits)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "power redeem burn failed: total_burned_credits overflow: current={} burn={}",
+                                node_balance.total_burned_credits, burned_credits
+                            ),
+                        })?;
+                    (
+                        node_balance.power_credit_balance - *burned_credits,
+                        next_total_burned_credits,
+                    )
+                };
                 if self.protocol_power_reserve.available_power_units < *granted_power_units {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
@@ -714,6 +752,35 @@ impl WorldState {
                         ),
                     });
                 }
+                let next_target_electricity = {
+                    let target = self.agents.get(target_agent_id).ok_or_else(|| {
+                        WorldError::AgentNotFound {
+                            agent_id: target_agent_id.clone(),
+                        }
+                    })?;
+                    let current = target.state.resources.get(ResourceKind::Electricity);
+                    current.checked_add(*granted_power_units).ok_or_else(|| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "power redeem add electricity failed: overflow current={current} delta={}",
+                                granted_power_units
+                            ),
+                        }
+                    })?
+                };
+
+                {
+                    let node_balance =
+                        self.node_asset_balances.get_mut(node_id).ok_or_else(|| {
+                            WorldError::ResourceBalanceInvalid {
+                                reason: format!(
+                                    "power redeem burn failed: node balance not found: {node_id}"
+                                ),
+                            }
+                        })?;
+                    node_balance.power_credit_balance = next_power_credit_balance;
+                    node_balance.total_burned_credits = next_total_burned_credits;
+                }
                 self.protocol_power_reserve.available_power_units = next_reserve;
                 self.protocol_power_reserve.redeemed_power_units = next_redeemed;
                 self.node_redeem_nonces.insert(node_id.clone(), *nonce);
@@ -723,13 +790,19 @@ impl WorldState {
                         agent_id: target_agent_id.clone(),
                     }
                 })?;
-                target
-                    .state
-                    .resources
-                    .add(ResourceKind::Electricity, *granted_power_units)
-                    .map_err(|err| WorldError::ResourceBalanceInvalid {
-                        reason: format!("power redeem add electricity failed: {err:?}"),
-                    })?;
+                if next_target_electricity == 0 {
+                    target
+                        .state
+                        .resources
+                        .amounts
+                        .remove(&ResourceKind::Electricity);
+                } else {
+                    target
+                        .state
+                        .resources
+                        .amounts
+                        .insert(ResourceKind::Electricity, next_target_electricity);
+                }
                 target.last_active = now;
                 if let Some(cell) = self.agents.get_mut(node_id) {
                     cell.last_active = now;

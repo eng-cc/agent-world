@@ -922,6 +922,61 @@ fn reward_asset_redeem_power_action_updates_balances_and_reserve() {
 }
 
 #[test]
+fn reward_asset_redeem_power_overflow_keeps_state_atomic() {
+    let mut world = World::new();
+    bind_node_identity(&mut world, "node-a");
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    world.step().expect("register target agent");
+    world
+        .set_agent_resource_balance(
+            "agent-1",
+            crate::simulator::ResourceKind::Electricity,
+            i64::MAX,
+        )
+        .expect("seed target electricity at boundary");
+    world.set_reward_asset_config(RewardAssetConfig {
+        credits_per_power_unit: 1,
+        ..RewardAssetConfig::default()
+    });
+    world.set_protocol_power_reserve(ProtocolPowerReserve {
+        epoch_index: 2,
+        available_power_units: 50,
+        redeemed_power_units: 0,
+    });
+    world
+        .mint_node_power_credits("node-a", 20)
+        .expect("mint node credits");
+    let events_before = world.journal().len();
+
+    world.submit_action(Action::RedeemPower {
+        node_id: "node-a".to_string(),
+        target_agent_id: "agent-1".to_string(),
+        redeem_credits: 1,
+        nonce: 1,
+    });
+    let err = world.step().expect_err("redeem overflow must fail");
+    assert!(
+        matches!(err, WorldError::ResourceBalanceInvalid { .. }),
+        "unexpected error: {err:?}"
+    );
+
+    assert_eq!(world.node_power_credit_balance("node-a"), 20);
+    assert_eq!(world.protocol_power_reserve().available_power_units, 50);
+    assert_eq!(world.protocol_power_reserve().redeemed_power_units, 0);
+    assert_eq!(world.node_last_redeem_nonce("node-a"), None);
+    assert_eq!(
+        world
+            .agent_resource_balance("agent-1", crate::simulator::ResourceKind::Electricity)
+            .expect("query target electricity"),
+        i64::MAX
+    );
+    assert_eq!(world.journal().len(), events_before);
+}
+
+#[test]
 fn reward_asset_redeem_power_rejected_when_reserve_insufficient() {
     let mut world = World::new();
     bind_node_identity(&mut world, "node-a");
