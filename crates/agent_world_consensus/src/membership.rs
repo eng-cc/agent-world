@@ -1107,7 +1107,8 @@ impl MembershipSyncClient {
         let mut applied = 0usize;
         for revocation in revocations {
             if keyring.revoke_key(&revocation.key_id)? {
-                applied = applied.saturating_add(1);
+                applied =
+                    checked_usize_increment(applied, "membership sync_key_revocations applied")?;
             }
         }
         Ok(applied)
@@ -1145,16 +1146,25 @@ impl MembershipSyncClient {
                 policy,
                 accepted_signature_signer_public_keys.as_ref(),
             ) {
-                report.rejected = report.rejected.saturating_add(1);
+                report.rejected = checked_usize_increment(
+                    report.rejected,
+                    "membership revocation report rejected",
+                )?;
                 continue;
             }
             if keyring.revoke_key(&revocation.key_id)? {
-                report.applied = report.applied.saturating_add(1);
+                report.applied = checked_usize_increment(
+                    report.applied,
+                    "membership revocation report applied",
+                )?;
                 if let Some(verifier) = verification_keyring.as_mut() {
                     let _ = verifier.revoke_key(&revocation.key_id);
                 }
             } else {
-                report.ignored = report.ignored.saturating_add(1);
+                report.ignored = checked_usize_increment(
+                    report.ignored,
+                    "membership revocation report ignored",
+                )?;
             }
         }
         Ok(report)
@@ -1183,9 +1193,11 @@ impl MembershipSyncClient {
             };
             let result = consensus.apply_membership_change(&request)?;
             if result.applied {
-                report.applied = report.applied.saturating_add(1);
+                report.applied =
+                    checked_usize_increment(report.applied, "membership directory report applied")?;
             } else {
-                report.ignored = report.ignored.saturating_add(1);
+                report.ignored =
+                    checked_usize_increment(report.ignored, "membership directory report ignored")?;
             }
         }
         Ok(report)
@@ -1362,9 +1374,41 @@ fn restore_result_from_audit(
         }),
     }
 }
+
+fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, WorldError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("{context} overflow: lhs={lhs}, rhs={rhs}"),
+        })
+}
+
+fn checked_usize_increment(value: usize, context: &str) -> Result<usize, WorldError> {
+    checked_usize_add(value, 1, context)
+}
+
 fn world_error_reason(error: &WorldError) -> String {
     match error {
         WorldError::DistributedValidationFailed { reason } => reason.clone(),
         _ => format!("{error:?}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checked_usize_add_rejects_overflow() {
+        let err = checked_usize_add(usize::MAX, 1, "membership checked add")
+            .expect_err("overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(
+                    reason.contains("membership checked add overflow"),
+                    "{reason}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }
