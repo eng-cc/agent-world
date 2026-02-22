@@ -61,9 +61,10 @@ use egui_right_panel_controls::send_control_request;
 use egui_right_panel_controls::{
     render_control_buttons, render_module_toggle_button, ControlPanelUiState,
 };
+#[cfg(test)]
+use egui_right_panel_env::env_toggle_enabled;
 use egui_right_panel_env::{
-    env_toggle_enabled, is_ops_nav_panel_enabled, is_product_style_enabled,
-    is_product_style_motion_enabled,
+    is_ops_nav_panel_enabled, is_product_style_enabled, is_product_style_motion_enabled,
 };
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
