@@ -572,6 +572,42 @@ fn emit_revocation_reconcile_alerts_with_ack_retry_defers_until_backoff_elapsed(
 }
 
 #[test]
+fn emit_revocation_reconcile_alerts_with_ack_retry_rejects_retry_timestamp_overflow_without_mutation(
+) {
+    let client = sample_client();
+    let sink = AlwaysFailAlertSink::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let policy = MembershipRevocationAlertAckRetryPolicy {
+        max_pending_alerts: 8,
+        max_retry_attempts: 3,
+        retry_backoff_ms: 1,
+    };
+
+    let err = client
+        .emit_revocation_reconcile_alerts_with_recovery_and_ack_retry(
+            "w1",
+            "node-a",
+            i64::MAX,
+            &sink,
+            &recovery_store,
+            vec![sample_alert("w1", "node-a", i64::MAX)],
+            &policy,
+        )
+        .expect_err("retry timestamp overflow should fail");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { ref reason }
+            if reason.contains("retry timestamp overflow")
+    ));
+
+    let pending = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after overflow");
+    assert!(pending.is_empty());
+    assert_eq!(sink.attempts(), 1);
+}
+
+#[test]
 fn emit_revocation_reconcile_alerts_with_ack_retry_drops_when_retry_limit_reached() {
     let client = sample_client();
     let sink = AlwaysFailAlertSink::new();

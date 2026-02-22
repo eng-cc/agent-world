@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::error::WorldError;
+
 use super::super::membership_reconciliation::{
     MembershipRevocationAnomalyAlert, MembershipRevocationScheduledRunReport,
 };
@@ -97,11 +99,25 @@ impl MembershipRevocationPendingAlert {
         now_ms: i64,
         retry_backoff_ms: i64,
         error: String,
-    ) -> Self {
-        self.attempt = self.attempt.saturating_add(1);
-        self.next_retry_at_ms = now_ms.saturating_add(retry_backoff_ms);
+    ) -> Result<Self, WorldError> {
+        self.attempt =
+            self.attempt
+                .checked_add(1)
+                .ok_or_else(|| WorldError::DistributedValidationFailed {
+                    reason: format!(
+                        "membership revocation pending alert attempt overflow: attempt={}",
+                        self.attempt
+                    ),
+                })?;
+        self.next_retry_at_ms = now_ms.checked_add(retry_backoff_ms).ok_or_else(|| {
+            WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "membership revocation pending alert retry timestamp overflow: now_ms={now_ms}, retry_backoff_ms={retry_backoff_ms}"
+                ),
+            }
+        })?;
         self.last_error = Some(error);
-        self
+        Ok(self)
     }
 }
 
@@ -129,5 +145,55 @@ impl MembershipRevocationAlertAckRetryPolicy {
             max_retry_attempts: usize::MAX,
             retry_backoff_ms: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_alert() -> MembershipRevocationAnomalyAlert {
+        MembershipRevocationAnomalyAlert {
+            world_id: "w1".to_string(),
+            node_id: "node-a".to_string(),
+            detected_at_ms: 1000,
+            severity: crate::membership_reconciliation::MembershipRevocationAlertSeverity::Warn,
+            code: "reconcile_diverged".to_string(),
+            message: "membership revocation reconcile diverged".to_string(),
+            drained: 1,
+            diverged: 1,
+            rejected: 0,
+        }
+    }
+
+    #[test]
+    fn with_retry_failure_rejects_attempt_overflow() {
+        let pending = MembershipRevocationPendingAlert {
+            alert: sample_alert(),
+            attempt: usize::MAX,
+            next_retry_at_ms: 1000,
+            last_error: None,
+        };
+        let err = pending
+            .with_retry_failure(1000, 1, "transport failed".to_string())
+            .expect_err("attempt overflow should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("attempt overflow")
+        ));
+    }
+
+    #[test]
+    fn with_retry_failure_rejects_retry_timestamp_overflow() {
+        let pending = MembershipRevocationPendingAlert::new(sample_alert(), 1000);
+        let err = pending
+            .with_retry_failure(i64::MAX, 1, "transport failed".to_string())
+            .expect_err("retry timestamp overflow should fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("retry timestamp overflow")
+        ));
     }
 }

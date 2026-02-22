@@ -229,7 +229,7 @@ impl MembershipSyncClient {
                         now_ms,
                         policy.retry_backoff_ms,
                         format!("{error:?}"),
-                    );
+                    )?;
                     if retried.attempt >= policy.max_retry_attempts {
                         report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
                         archive_dead_letter(
@@ -264,7 +264,11 @@ impl MembershipSyncClient {
                     transport_failed = true;
                     metrics.failed = metrics.failed.saturating_add(1);
                     let retried = MembershipRevocationPendingAlert::new(alert, now_ms)
-                        .with_retry_failure(now_ms, policy.retry_backoff_ms, format!("{error:?}"));
+                        .with_retry_failure(
+                            now_ms,
+                            policy.retry_backoff_ms,
+                            format!("{error:?}"),
+                        )?;
                     if retried.attempt >= policy.max_retry_attempts {
                         report.dropped_retry_limit = report.dropped_retry_limit.saturating_add(1);
                         archive_dead_letter(
