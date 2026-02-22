@@ -12,8 +12,8 @@
 - [x] 增加 overflow 拒绝测试并验证 `schedule_state` / `dedup_state` 不被污染。
 
 ### T2 对账报告计数受检化
-- [ ] `reconcile_revocations_with_policy` 的关键计数累加改为受检语义。
-- [ ] 增加计数 helper overflow 测试并验证错误语义一致。
+- [x] `reconcile_revocations_with_policy` 的关键计数累加改为受检语义。
+- [x] 增加计数 helper overflow 测试并验证错误语义一致。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -26,7 +26,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

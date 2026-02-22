@@ -493,22 +493,26 @@ impl MembershipSyncClient {
             let remote = match validate_revocation_checkpoint(world_id, &checkpoint, policy) {
                 Ok(remote) => remote,
                 Err(_) => {
-                    report.rejected = report.rejected.saturating_add(1);
+                    report.rejected =
+                        checked_usize_increment(report.rejected, "reconcile report rejected")?;
                     continue;
                 }
             };
             let local: BTreeSet<String> = keyring.revoked_keys().into_iter().collect();
 
             if local == remote {
-                report.in_sync = report.in_sync.saturating_add(1);
+                report.in_sync =
+                    checked_usize_increment(report.in_sync, "reconcile report in_sync")?;
                 continue;
             }
 
-            report.diverged = report.diverged.saturating_add(1);
+            report.diverged =
+                checked_usize_increment(report.diverged, "reconcile report diverged")?;
             if policy.auto_revoke_missing_keys {
                 for key_id in remote.difference(&local) {
                     if keyring.revoke_key(key_id)? {
-                        report.merged = report.merged.saturating_add(1);
+                        report.merged =
+                            checked_usize_increment(report.merged, "reconcile report merged")?;
                     }
                 }
             }
@@ -922,6 +926,17 @@ fn checked_elapsed_ms(now_ms: i64, last_run_ms: i64, context: &str) -> Result<i6
         })
 }
 
+fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, WorldError> {
+    lhs.checked_add(rhs)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("{context} overflow: lhs={lhs}, rhs={rhs}"),
+        })
+}
+
+fn checked_usize_increment(value: usize, context: &str) -> Result<usize, WorldError> {
+    checked_usize_add(value, 1, context)
+}
+
 fn schedule_due(
     last_run_ms: Option<i64>,
     now_ms: i64,
@@ -946,4 +961,24 @@ fn normalized_schedule_key(world_id: &str, node_id: &str) -> Result<(String, Str
 
 fn alert_dedup_key(alert: &MembershipRevocationAnomalyAlert) -> String {
     format!("{}:{}:{}", alert.world_id, alert.node_id, alert.code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checked_usize_add_rejects_overflow() {
+        let err = checked_usize_add(usize::MAX, 1, "membership reconcile checked add")
+            .expect_err("overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(
+                    reason.contains("membership reconcile checked add overflow"),
+                    "{reason}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
 }
