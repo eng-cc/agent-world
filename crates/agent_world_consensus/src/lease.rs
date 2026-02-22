@@ -69,15 +69,35 @@ impl LeaseManager {
         }
 
         let term = self.next_term;
-        self.next_term = self.next_term.saturating_add(1);
+        let next_term = match checked_lease_term_increment(term) {
+            Ok(next_term) => next_term,
+            Err(reason) => {
+                return LeaseDecision {
+                    granted: false,
+                    lease: self.lease.clone(),
+                    reason: Some(reason),
+                };
+            }
+        };
+        let expires_at_ms = match checked_lease_expiry(now_ms, ttl_ms) {
+            Ok(expires_at_ms) => expires_at_ms,
+            Err(reason) => {
+                return LeaseDecision {
+                    granted: false,
+                    lease: self.lease.clone(),
+                    reason: Some(reason),
+                };
+            }
+        };
         let lease_id = lease_id_for(holder_id, now_ms, term);
         let lease = LeaseState {
             holder_id: holder_id.to_string(),
             lease_id,
             acquired_at_ms: now_ms,
-            expires_at_ms: now_ms.saturating_add(ttl_ms),
+            expires_at_ms,
             term,
         };
+        self.next_term = next_term;
         self.lease = Some(lease.clone());
 
         LeaseDecision {
@@ -117,7 +137,17 @@ impl LeaseManager {
             };
         }
 
-        lease.expires_at_ms = now_ms.saturating_add(ttl_ms);
+        let expires_at_ms = match checked_lease_expiry(now_ms, ttl_ms) {
+            Ok(expires_at_ms) => expires_at_ms,
+            Err(reason) => {
+                return LeaseDecision {
+                    granted: false,
+                    lease: Some(lease.clone()),
+                    reason: Some(reason),
+                };
+            }
+        };
+        lease.expires_at_ms = expires_at_ms;
         LeaseDecision {
             granted: true,
             lease: Some(lease.clone()),
@@ -143,6 +173,18 @@ impl LeaseManager {
         }
         None
     }
+}
+
+fn checked_lease_term_increment(value: u64) -> Result<u64, String> {
+    value
+        .checked_add(1)
+        .ok_or_else(|| format!("lease term overflow at {value}"))
+}
+
+fn checked_lease_expiry(now_ms: i64, ttl_ms: i64) -> Result<i64, String> {
+    now_ms
+        .checked_add(ttl_ms)
+        .ok_or_else(|| format!("lease expires_at overflow: now_ms={now_ms}, ttl_ms={ttl_ms}"))
 }
 
 fn lease_id_for(holder_id: &str, now_ms: i64, term: u64) -> String {
@@ -191,5 +233,53 @@ mod tests {
         let renewed = manager.renew(&lease.lease_id, 105, 20);
         assert!(renewed.granted);
         assert!(manager.is_active(115));
+    }
+
+    #[test]
+    fn try_acquire_rejects_term_overflow_without_mutation() {
+        let mut manager = LeaseManager::new();
+        manager.next_term = u64::MAX;
+
+        let decision = manager.try_acquire("seq-1", 100, 10);
+        assert!(!decision.granted);
+        assert!(decision
+            .reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("term overflow")));
+        assert!(manager.current().is_none());
+        assert_eq!(manager.next_term, u64::MAX);
+    }
+
+    #[test]
+    fn try_acquire_rejects_expiry_overflow_without_mutation() {
+        let mut manager = LeaseManager::new();
+
+        let decision = manager.try_acquire("seq-1", i64::MAX - 1, 10);
+        assert!(!decision.granted);
+        assert!(decision
+            .reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("expires_at overflow")));
+        assert!(manager.current().is_none());
+        assert_eq!(manager.next_term, 1);
+    }
+
+    #[test]
+    fn renew_rejects_expiry_overflow_without_mutation() {
+        let mut manager = LeaseManager::new();
+        let first = manager.try_acquire("seq-1", i64::MAX - 20, 10);
+        let lease = first.lease.expect("lease");
+        let previous_expiry = lease.expires_at_ms;
+
+        let renewed = manager.renew(&lease.lease_id, i64::MAX - 15, 20);
+        assert!(!renewed.granted);
+        assert!(renewed
+            .reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("expires_at overflow")));
+        assert_eq!(
+            manager.current().expect("active lease").expires_at_ms,
+            previous_expiry
+        );
     }
 }
