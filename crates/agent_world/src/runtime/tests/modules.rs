@@ -479,6 +479,11 @@ fn module_output_limits_reject_excess() {
         .validate_module_output_limits("m.test", &limits, 1, 1, 12)
         .unwrap_err();
     assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
+
+    let err = world
+        .validate_module_output_limits("m.test", &limits, usize::MAX, 0, 4)
+        .unwrap_err();
+    assert!(matches!(err, WorldError::ModuleChangeInvalid { .. }));
 }
 
 #[test]

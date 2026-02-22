@@ -67,7 +67,11 @@ pub fn store_execution_result(
     let action_root = hash_actions(journal)?;
     let event_root = hash_events(journal)?;
     let receipts_root = hash_receipts(journal)?;
-    let timestamp_ms = snapshot.state.time as i64;
+    let timestamp_ms = i64::try_from(snapshot.state.time).map_err(|_| {
+        WorldError::DistributedValidationFailed {
+            reason: format!("snapshot time exceeds i64 range: {}", snapshot.state.time),
+        }
+    })?;
 
     let block = WorldBlock {
         world_id: world_id.to_string(),
@@ -420,6 +424,41 @@ mod tests {
 
         let result = store_execution_result_with_path_index(
             "bad/world",
+            1,
+            "genesis",
+            "exec-1",
+            1,
+            &snapshot,
+            &journal,
+            &store,
+            ExecutionWriteConfig::default(),
+        );
+        assert!(matches!(
+            result,
+            Err(WorldError::DistributedValidationFailed { .. })
+        ));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn store_execution_result_rejects_snapshot_time_overflow() {
+        let dir = temp_dir("exec-store-time-overflow");
+        let store = LocalCasStore::new(&dir);
+        let mut world = World::new();
+
+        world.submit_action(Action::RegisterAgent {
+            agent_id: "agent-1".to_string(),
+            pos: GeoPos::new(0.0, 0.0, 0.0),
+        });
+        world.step().expect("step world");
+
+        let mut snapshot = world.snapshot();
+        snapshot.state.time = i64::MAX as u64 + 1;
+        let journal = world.journal().clone();
+
+        let result = store_execution_result(
+            "w1",
             1,
             "genesis",
             "exec-1",

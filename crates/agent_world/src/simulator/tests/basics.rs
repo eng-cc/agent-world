@@ -15,6 +15,17 @@ fn resource_stock_add_remove() {
 }
 
 #[test]
+fn resource_stock_add_saturates_on_overflow() {
+    let mut stock = ResourceStock::new();
+    stock
+        .set(ResourceKind::Electricity, i64::MAX - 1)
+        .expect("seed");
+    stock.add(ResourceKind::Electricity, 10).expect("add");
+
+    assert_eq!(stock.get(ResourceKind::Electricity), i64::MAX);
+}
+
+#[test]
 fn agent_and_location_defaults() {
     let position = pos(0.0, 0.0);
     let location = Location::new("loc-1", "base", position);

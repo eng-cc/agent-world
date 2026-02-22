@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use crate::simulator::ResourceKind;
 
 #[test]
 fn register_and_move_agent() {
@@ -150,4 +151,14 @@ fn event_id_rolls_over_into_next_era() {
     let rolled = world.snapshot();
     assert_eq!(rolled.event_id_era, 4);
     assert_eq!(rolled.last_event_id, 1);
+}
+
+#[test]
+fn adjust_resource_balance_saturates_on_overflow() {
+    let mut world = World::new();
+    world.set_resource_balance(ResourceKind::Data, i64::MAX - 1);
+    let next = world.adjust_resource_balance(ResourceKind::Data, 9);
+
+    assert_eq!(next, i64::MAX);
+    assert_eq!(world.resource_balance(ResourceKind::Data), i64::MAX);
 }

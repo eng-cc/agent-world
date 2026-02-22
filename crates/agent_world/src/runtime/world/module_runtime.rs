@@ -19,6 +19,13 @@ use super::module_runtime_labels::{
 use super::World;
 use crate::simulator::ModuleInstallTarget;
 
+fn count_exceeds_limit(count: usize, limit: u32) -> bool {
+    match u32::try_from(count) {
+        Ok(value) => value > limit,
+        Err(_) => true,
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct ActiveModuleInvocation {
     pub(super) instance_id: String,
@@ -84,12 +91,12 @@ impl World {
         emit_count: usize,
         output_bytes: u64,
     ) -> Result<(), WorldError> {
-        if effect_count as u32 > limits.max_effects {
+        if count_exceeds_limit(effect_count, limits.max_effects) {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!("module output effects exceeded {module_id}"),
             });
         }
-        if emit_count as u32 > limits.max_emits {
+        if count_exceeds_limit(emit_count, limits.max_emits) {
             return Err(WorldError::ModuleChangeInvalid {
                 reason: format!("module output emits exceeded {module_id}"),
             });
@@ -529,7 +536,7 @@ impl World {
                 detail: "pure module returned new_state".to_string(),
             });
         }
-        if output.effects.len() as u32 > manifest.limits.max_effects {
+        if count_exceeds_limit(output.effects.len(), manifest.limits.max_effects) {
             return self.module_call_failed(ModuleCallFailure {
                 module_id: module_id.to_string(),
                 trace_id: trace_id.to_string(),
@@ -537,7 +544,7 @@ impl World {
                 detail: "effects exceeded".to_string(),
             });
         }
-        if output.emits.len() as u32 > manifest.limits.max_emits {
+        if count_exceeds_limit(output.emits.len(), manifest.limits.max_emits) {
             return self.module_call_failed(ModuleCallFailure {
                 module_id: module_id.to_string(),
                 trace_id: trace_id.to_string(),

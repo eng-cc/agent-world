@@ -19,7 +19,8 @@ pub struct ResourceDelta {
 impl ResourceDelta {
     pub fn add_assign(&mut self, other: &ResourceDelta) {
         for (key, value) in &other.entries {
-            *self.entries.entry(*key).or_insert(0) += value;
+            let current = self.entries.get(key).copied().unwrap_or(0);
+            self.entries.insert(*key, current.saturating_add(*value));
         }
     }
 
@@ -30,9 +31,9 @@ impl ResourceDelta {
                 continue;
             }
             let available = balances.get(kind).copied().unwrap_or(0);
-            let remaining = available + delta;
+            let remaining = available.saturating_add(*delta);
             if remaining < 0 {
-                deficits.insert(*kind, -remaining);
+                deficits.insert(*kind, remaining.saturating_abs());
             }
         }
         deficits
@@ -249,6 +250,30 @@ mod tests {
 
         let err = delta.ensure_affordable(&balances).unwrap_err();
         assert_eq!(err.deficits.get(&ResourceKind::Electricity), Some(&3));
+    }
+
+    #[test]
+    fn resource_delta_add_assign_saturates_on_overflow() {
+        let mut left = ResourceDelta::default();
+        left.entries.insert(ResourceKind::Electricity, i64::MAX);
+        let mut right = ResourceDelta::default();
+        right.entries.insert(ResourceKind::Electricity, 5);
+
+        left.add_assign(&right);
+        assert_eq!(
+            left.entries.get(&ResourceKind::Electricity),
+            Some(&i64::MAX)
+        );
+    }
+
+    #[test]
+    fn resource_delta_deficits_saturates_abs_of_i64_min() {
+        let balances = BTreeMap::new();
+        let mut delta = ResourceDelta::default();
+        delta.entries.insert(ResourceKind::Electricity, i64::MIN);
+
+        let deficits = delta.deficits(&balances);
+        assert_eq!(deficits.get(&ResourceKind::Electricity), Some(&i64::MAX));
     }
 
     #[test]

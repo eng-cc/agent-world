@@ -309,7 +309,7 @@ impl ResourceStock {
             return Err(StockError::NegativeAmount { amount });
         }
         let current = self.get(kind);
-        self.set(kind, current + amount)
+        self.set(kind, current.saturating_add(amount))
     }
 
     pub fn remove(&mut self, kind: ResourceKind, amount: i64) -> Result<(), StockError> {

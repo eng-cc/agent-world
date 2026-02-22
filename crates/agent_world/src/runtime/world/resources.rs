@@ -570,7 +570,7 @@ impl World {
 
     pub fn adjust_resource_balance(&mut self, kind: ResourceKind, delta: i64) -> i64 {
         let entry = self.state.resources.entry(kind).or_insert(0);
-        *entry += delta;
+        *entry = entry.saturating_add(delta);
         *entry
     }
 

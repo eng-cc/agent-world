@@ -14,6 +14,13 @@ use std::path::PathBuf;
 #[cfg(feature = "wasmtime")]
 use std::sync::{Arc, Mutex};
 
+fn count_exceeds_limit(count: usize, limit: u32) -> bool {
+    match u32::try_from(count) {
+        Ok(value) => value > limit,
+        Err(_) => true,
+    }
+}
+
 /// A sandbox stub that always returns a fixed result.
 #[derive(Debug, Clone)]
 pub struct FixedSandbox {
@@ -287,14 +294,14 @@ impl WasmExecutor {
         output: &ModuleOutput,
     ) -> Result<(), ModuleCallFailure> {
         let limits = &request.limits;
-        if output.effects.len() as u32 > limits.max_effects {
+        if count_exceeds_limit(output.effects.len(), limits.max_effects) {
             return Err(self.failure(
                 request,
                 ModuleCallErrorCode::EffectLimitExceeded,
                 "effects exceeded",
             ));
         }
-        if output.emits.len() as u32 > limits.max_emits {
+        if count_exceeds_limit(output.emits.len(), limits.max_emits) {
             return Err(self.failure(
                 request,
                 ModuleCallErrorCode::EmitLimitExceeded,
@@ -771,6 +778,12 @@ mod tests {
             .validate_output_limits(&request, &output)
             .unwrap_err();
         assert_eq!(err.code, ModuleCallErrorCode::OutputTooLarge);
+    }
+
+    #[test]
+    fn count_exceeds_limit_treats_usize_overflow_as_exceeded() {
+        assert!(count_exceeds_limit(usize::MAX, 1));
+        assert!(!count_exceeds_limit(1, 1));
     }
 
     #[test]
