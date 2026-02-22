@@ -213,7 +213,7 @@ struct WasmWsRuntime {
     _sender_loop: Interval,
     _on_open: Closure<dyn FnMut(Event)>,
     _on_message: Closure<dyn FnMut(MessageEvent)>,
-    _on_error: Closure<dyn FnMut(ErrorEvent)>,
+    _on_error: Closure<dyn FnMut(Event)>,
     _on_close: Closure<dyn FnMut(CloseEvent)>,
 }
 
@@ -1003,9 +1003,14 @@ fn spawn_viewer_client(addr: String) -> (WasmViewerRequestTx, WasmViewerResponse
     socket.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
 
     let error_tx = tx_in.clone();
-    let on_error = Closure::wrap(Box::new(move |event: ErrorEvent| {
+    let on_error = Closure::wrap(Box::new(move |event: Event| {
+        let detail = event
+            .dyn_ref::<ErrorEvent>()
+            .map(|error| error.message())
+            .filter(|message| !message.trim().is_empty())
+            .unwrap_or_else(|| "network error".to_string());
         let _ = error_tx.send(ViewerResponse::Error {
-            message: format!("websocket error: {}", event.message()),
+            message: format!("websocket error: {detail}"),
         });
     }) as Box<dyn FnMut(_)>);
     socket.set_onerror(Some(on_error.as_ref().unchecked_ref()));
