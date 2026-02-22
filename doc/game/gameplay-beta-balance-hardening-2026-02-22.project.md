@@ -7,8 +7,8 @@
 - [x] 新建项目管理文档：`doc/game/gameplay-beta-balance-hardening-2026-02-22.project.md`
 
 ### T1 治理投票权重上限
-- [ ] 为 `CastGovernanceVote.weight` 增加上限校验
-- [ ] 补充/更新拒绝路径测试
+- [x] 为 `CastGovernanceVote.weight` 增加上限校验
+- [x] 补充/更新拒绝路径测试
 
 ### T2 策略更新治理授权
 - [ ] 为 `UpdateGameplayPolicy` 增加治理授权门槛（已通过提案 + 最小总票重）
@@ -30,7 +30,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3、T4
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3、T4
 - 阻塞项：无

@@ -301,6 +301,42 @@ fn governance_vote_recast_replaces_previous_tally() {
 }
 
 #[test]
+fn governance_vote_rejects_weight_above_cap() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    open_governance_proposal(&mut world, "proposal.vote_cap", 6, 1, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.vote_cap".to_string(),
+        option: "approve".to_string(),
+        weight: 101,
+    });
+    world.step().expect("reject vote weight overflow");
+
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("vote weight must be <= 100")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.vote_cap")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, 0);
+    assert!(governance.votes_by_agent.is_empty());
+    assert!(governance.tallies.is_empty());
+}
+
+#[test]
 fn governance_proposal_finalizes_and_rejects_late_votes() {
     let mut world = World::new();
     register_agents(&mut world, &["a", "b", "c"]);

@@ -799,6 +799,16 @@ impl World {
                         },
                     }));
                 }
+                if *weight > GOVERNANCE_MAX_VOTE_WEIGHT {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "vote weight must be <= {GOVERNANCE_MAX_VOTE_WEIGHT}"
+                            )],
+                        },
+                    }));
+                }
                 Ok(WorldEventBody::Domain(DomainEvent::GovernanceVoteCast {
                     voter_agent_id: voter_agent_id.clone(),
                     proposal_key: proposal_key.to_string(),
