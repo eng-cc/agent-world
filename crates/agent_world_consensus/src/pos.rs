@@ -164,7 +164,7 @@ impl PosConsensus {
                 ),
             });
         }
-        if config.supermajority_numerator.saturating_mul(2) <= config.supermajority_denominator {
+        if config.supermajority_numerator <= config.supermajority_denominator / 2 {
             return Err(WorldError::DistributedValidationFailed {
                 reason: format!(
                     "unsafe supermajority ratio {}/{}; requires > 1/2",

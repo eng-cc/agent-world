@@ -42,8 +42,7 @@ pub(crate) fn validated_pos_state(
             ),
         });
     }
-    if pos_config.supermajority_numerator.saturating_mul(2) <= pos_config.supermajority_denominator
-    {
+    if pos_config.supermajority_numerator <= pos_config.supermajority_denominator / 2 {
         return Err(NodeError::InvalidConfig {
             reason: "supermajority ratio must be greater than 1/2".to_string(),
         });

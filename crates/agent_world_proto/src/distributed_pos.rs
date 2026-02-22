@@ -24,7 +24,7 @@ pub fn required_supermajority_stake(
             numerator, denominator
         ));
     }
-    if numerator.saturating_mul(2) <= denominator {
+    if numerator <= denominator / 2 {
         return Err("supermajority ratio must be greater than 1/2".to_string());
     }
 

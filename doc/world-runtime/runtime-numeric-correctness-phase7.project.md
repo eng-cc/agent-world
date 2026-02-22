@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase7.project.md`
 
 ### T1 PoS 比率判定去饱和化
-- [ ] `crates/agent_world_proto/src/distributed_pos.rs` 超多数比率判定改为无溢出实现。
-- [ ] `crates/agent_world_consensus/src/pos.rs` 同步改造。
-- [ ] `crates/agent_world_node/src/pos_validation.rs` 同步改造。
+- [x] `crates/agent_world_proto/src/distributed_pos.rs` 超多数比率判定改为无溢出实现。
+- [x] `crates/agent_world_consensus/src/pos.rs` 同步改造。
+- [x] `crates/agent_world_node/src/pos_validation.rs` 同步改造。
 
 ### T2 边界测试补齐
 - [ ] 新增大整数比率边界测试（`denominator = u64::MAX`）验证不会误拒绝。
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
