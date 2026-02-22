@@ -298,7 +298,7 @@ impl ReplicationRuntime {
             .as_ref()
             .map(|signer| signer.public_key_hex.as_str())
             .unwrap_or(node_id);
-        let (writer_epoch, sequence) = self.next_local_record_position(writer_id);
+        let (writer_epoch, sequence) = self.next_local_record_position(writer_id)?;
         let path = format!("{COMMIT_FILE_PREFIX}/{:020}.json", decision.height);
         let record = build_replication_record_with_epoch(
             world_id,
@@ -394,7 +394,7 @@ impl ReplicationRuntime {
         )
     }
 
-    fn next_local_record_position(&self, writer_id: &str) -> (u64, u64) {
+    fn next_local_record_position(&self, writer_id: &str) -> Result<(u64, u64), NodeError> {
         let guard_epoch = self.guard.writer_epoch.max(DEFAULT_WRITER_EPOCH);
         let state_epoch = self.writer_state.writer_epoch.max(DEFAULT_WRITER_EPOCH);
         match self.guard.writer_id.as_deref() {
@@ -410,23 +410,33 @@ impl ReplicationRuntime {
                 } else {
                     0
                 };
-                (
-                    writer_epoch,
-                    guard_sequence.max(writer_state_sequence).saturating_add(1),
-                )
+                let sequence = checked_replication_counter_increment(
+                    guard_sequence.max(writer_state_sequence),
+                    "sequence",
+                    "advancing local replication record for existing writer",
+                )?;
+                Ok((writer_epoch, sequence))
             }
             Some(_) => {
-                let writer_epoch = guard_epoch.max(state_epoch).saturating_add(1);
-                (writer_epoch, 1)
+                let writer_epoch = checked_replication_counter_increment(
+                    guard_epoch.max(state_epoch),
+                    "writer_epoch",
+                    "switching local replication writer",
+                )?;
+                Ok((writer_epoch, 1))
             }
             None => {
                 let writer_epoch = state_epoch;
                 let sequence = if self.writer_state.writer_epoch == writer_epoch {
-                    self.writer_state.last_sequence.saturating_add(1)
+                    checked_replication_counter_increment(
+                        self.writer_state.last_sequence,
+                        "sequence",
+                        "advancing local replication record without guard writer",
+                    )?
                 } else {
                     1
                 };
-                (writer_epoch, sequence)
+                Ok((writer_epoch, sequence))
             }
         }
     }
@@ -499,7 +509,7 @@ impl ReplicationRuntime {
                     samples.push(content_hash.to_string());
                 }
             }
-            height = height.saturating_sub(1);
+            height -= 1;
         }
         Ok(samples)
     }
@@ -629,10 +639,23 @@ fn decode_hex_array<const N: usize>(value: &str, label: &str) -> Result<[u8; N],
     })
 }
 
+fn checked_replication_counter_increment(
+    current: u64,
+    field: &str,
+    context: &str,
+) -> Result<u64, NodeError> {
+    current
+        .checked_add(1)
+        .ok_or_else(|| NodeError::Replication {
+            reason: format!("{field} overflow while {context}: current={current}"),
+        })
+}
+
 fn seeded_writer_epoch() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as u64)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
         .unwrap_or(DEFAULT_WRITER_EPOCH)
         .max(DEFAULT_WRITER_EPOCH)
 }
@@ -723,5 +746,97 @@ where
 {
     NodeError::Replication {
         reason: format!("{err:?}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("duration")
+            .as_nanos();
+        std::env::temp_dir().join(format!("agent-world-replication-tests-{prefix}-{unique}"))
+    }
+
+    #[test]
+    fn next_local_record_position_rejects_sequence_overflow_for_existing_writer() {
+        let dir = temp_dir("existing-writer-sequence-overflow");
+        let config = NodeReplicationConfig::new(&dir).expect("config");
+        let mut runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+        runtime.guard = SingleWriterReplicationGuard {
+            writer_id: Some("node-a".to_string()),
+            writer_epoch: 7,
+            last_sequence: u64::MAX,
+        };
+        runtime.writer_state = LocalWriterState {
+            writer_epoch: 7,
+            last_sequence: u64::MAX,
+            last_replicated_height: 0,
+        };
+
+        let err = runtime
+            .next_local_record_position("node-a")
+            .expect_err("sequence overflow should fail");
+        assert!(
+            matches!(err, NodeError::Replication { reason } if reason.contains("sequence overflow"))
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn next_local_record_position_rejects_writer_epoch_overflow_on_writer_switch() {
+        let dir = temp_dir("writer-switch-epoch-overflow");
+        let config = NodeReplicationConfig::new(&dir).expect("config");
+        let mut runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+        runtime.guard = SingleWriterReplicationGuard {
+            writer_id: Some("node-b".to_string()),
+            writer_epoch: u64::MAX,
+            last_sequence: 8,
+        };
+        runtime.writer_state = LocalWriterState {
+            writer_epoch: u64::MAX,
+            last_sequence: 12,
+            last_replicated_height: 0,
+        };
+
+        let err = runtime
+            .next_local_record_position("node-a")
+            .expect_err("writer epoch overflow should fail");
+        assert!(
+            matches!(err, NodeError::Replication { reason } if reason.contains("writer_epoch overflow"))
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn next_local_record_position_rejects_sequence_overflow_without_guard_writer() {
+        let dir = temp_dir("no-guard-sequence-overflow");
+        let config = NodeReplicationConfig::new(&dir).expect("config");
+        let mut runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+        runtime.guard = SingleWriterReplicationGuard {
+            writer_id: None,
+            writer_epoch: DEFAULT_WRITER_EPOCH,
+            last_sequence: 0,
+        };
+        runtime.writer_state = LocalWriterState {
+            writer_epoch: 19,
+            last_sequence: u64::MAX,
+            last_replicated_height: 0,
+        };
+
+        let err = runtime
+            .next_local_record_position("node-a")
+            .expect_err("sequence overflow should fail");
+        assert!(
+            matches!(err, NodeError::Replication { reason } if reason.contains("sequence overflow"))
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase4.project.md`
 
 ### T1 Replication Writer 递进显式溢出语义
-- [ ] `next_local_record_position` 改为可失败接口，移除关键路径 `saturating_add`。
-- [ ] `build_local_commit_message` 透传位置计算失败错误。
-- [ ] 新增 replication 模块溢出边界测试（3 类路径）。
+- [x] `next_local_record_position` 改为可失败接口，移除关键路径 `saturating_add`。
+- [x] `build_local_commit_message` 透传位置计算失败错误。
+- [x] 新增 replication 模块溢出边界测试（3 类路径）。
 
 ### T2 回归与收口
 - [ ] 运行 node 定向测试并确认 required-tier 门禁通过。
@@ -23,7 +23,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：无
 - 阻塞项：无
