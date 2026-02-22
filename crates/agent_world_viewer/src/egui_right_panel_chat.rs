@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use agent_world::simulator::{
     AgentPromptProfile, LlmChatMessageTrace, LlmChatRole, WorldEventKind,
@@ -18,7 +19,11 @@ const TOOL_CALL_CARD_MAX_WIDTH: f32 = 380.0;
 const PROMPT_PRESET_DEFAULT_CONTENT_ROWS: usize = 4;
 const PROMPT_PRESET_SCROLL_MAX_HEIGHT: f32 = 320.0;
 const VIEWER_PLAYER_ID: &str = "viewer-player";
-const PROMPT_UPDATED_BY_VIEWER_CHAT: &str = VIEWER_PLAYER_ID;
+const VIEWER_PLAYER_ID_ENV: &str = "AGENT_WORLD_VIEWER_PLAYER_ID";
+const VIEWER_AUTH_PUBLIC_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY";
+const VIEWER_AUTH_PRIVATE_KEY_ENV: &str = "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY";
+
+static VIEWER_AUTH_NONCE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ToolCallView {
@@ -80,6 +85,126 @@ impl Default for AgentChatDraftState {
             profile_long_term_goal: String::new(),
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ViewerAuthSigner {
+    player_id: String,
+    public_key: String,
+    private_key: String,
+}
+
+fn resolve_required_env_trimmed<F>(get_env: &F, key: &str) -> Result<String, String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let Some(raw) = get_env(key) else {
+        return Err(format!("{key} is not set"));
+    };
+    let value = raw.trim();
+    if value.is_empty() {
+        return Err(format!("{key} is empty"));
+    }
+    Ok(value.to_string())
+}
+
+fn resolve_viewer_player_id_from<F>(get_env: &F) -> Result<String, String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    match get_env(VIEWER_PLAYER_ID_ENV) {
+        Some(raw) => {
+            let value = raw.trim();
+            if value.is_empty() {
+                Err(format!("{VIEWER_PLAYER_ID_ENV} is empty"))
+            } else {
+                Ok(value.to_string())
+            }
+        }
+        None => Ok(VIEWER_PLAYER_ID.to_string()),
+    }
+}
+
+fn resolve_viewer_auth_signer_from<F>(get_env: F) -> Result<ViewerAuthSigner, String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let player_id = resolve_viewer_player_id_from(&get_env)?;
+    let public_key = resolve_required_env_trimmed(&get_env, VIEWER_AUTH_PUBLIC_KEY_ENV)?;
+    let private_key = resolve_required_env_trimmed(&get_env, VIEWER_AUTH_PRIVATE_KEY_ENV)?;
+    Ok(ViewerAuthSigner {
+        player_id,
+        public_key,
+        private_key,
+    })
+}
+
+fn resolve_viewer_auth_signer() -> Result<ViewerAuthSigner, String> {
+    resolve_viewer_auth_signer_from(|key| std::env::var(key).ok())
+}
+
+fn next_viewer_auth_nonce() -> Result<u64, String> {
+    let nonce = VIEWER_AUTH_NONCE_COUNTER.fetch_add(1, Ordering::SeqCst);
+    if nonce == 0 {
+        return Err("viewer auth nonce exhausted".to_string());
+    }
+    Ok(nonce)
+}
+
+fn attach_prompt_control_apply_auth(
+    request: &mut agent_world::viewer::PromptControlApplyRequest,
+    signer: &ViewerAuthSigner,
+    nonce: u64,
+    intent: agent_world::viewer::PromptControlAuthIntent,
+) -> Result<(), String> {
+    request.player_id = signer.player_id.clone();
+    request.updated_by = Some(signer.player_id.clone());
+    request.public_key = Some(signer.public_key.clone());
+    request.auth = None;
+    let proof = agent_world::viewer::sign_prompt_control_apply_auth_proof(
+        intent,
+        request,
+        nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )?;
+    request.auth = Some(proof);
+    Ok(())
+}
+
+fn attach_agent_chat_auth(
+    request: &mut agent_world::viewer::AgentChatRequest,
+    signer: &ViewerAuthSigner,
+    nonce: u64,
+) -> Result<(), String> {
+    request.player_id = Some(signer.player_id.clone());
+    request.public_key = Some(signer.public_key.clone());
+    request.auth = None;
+    let proof = agent_world::viewer::sign_agent_chat_auth_proof(
+        request,
+        nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )?;
+    request.auth = Some(proof);
+    Ok(())
+}
+
+fn sign_prompt_control_apply_request(
+    request: &mut agent_world::viewer::PromptControlApplyRequest,
+    intent: agent_world::viewer::PromptControlAuthIntent,
+) -> Result<(), String> {
+    let signer = resolve_viewer_auth_signer()?;
+    let nonce = next_viewer_auth_nonce()?;
+    attach_prompt_control_apply_auth(request, &signer, nonce, intent)
+}
+
+fn sign_agent_chat_request(
+    request: &mut agent_world::viewer::AgentChatRequest,
+) -> Result<(), String> {
+    let signer = resolve_viewer_auth_signer()?;
+    let nonce = next_viewer_auth_nonce()?;
+    attach_agent_chat_auth(request, &signer, nonce)
 }
 
 pub(super) fn render_chat_section(
@@ -224,16 +349,21 @@ pub(super) fn render_chat_section(
         if can_send && (submit_by_button || submit_by_enter) {
             let message = draft.input_message.trim().to_string();
             if let Some(client) = client {
-                let request = agent_world::viewer::ViewerRequest::AgentChat {
-                    request: agent_world::viewer::AgentChatRequest {
+                let send_result: Result<(), String> = (|| {
+                    let mut request = agent_world::viewer::AgentChatRequest {
                         agent_id: selected_agent_id.clone(),
                         message,
                         player_id: Some(VIEWER_PLAYER_ID.to_string()),
                         public_key: None,
                         auth: None,
-                    },
-                };
-                match client.tx.send(request) {
+                    };
+                    sign_agent_chat_request(&mut request)?;
+                    client
+                        .tx
+                        .send(agent_world::viewer::ViewerRequest::AgentChat { request })
+                        .map_err(|err| err.to_string())
+                })();
+                match send_result {
                     Ok(()) => {
                         draft.status_message = if locale.is_zh() {
                             "消息已发送（等待 Agent 下一轮决策回显）".to_string()
@@ -681,10 +811,14 @@ fn send_prompt_profile_apply_command(
     let Some(client) = client else {
         return Err("viewer client unavailable".to_string());
     };
-    let request = build_prompt_profile_apply_request(selected_agent_id, current_profile, draft);
+    let mut request = build_prompt_profile_apply_request(selected_agent_id, current_profile, draft);
     if !prompt_apply_request_has_patch(&request) {
         return Err("no prompt profile changes".to_string());
     }
+    sign_prompt_control_apply_request(
+        &mut request,
+        agent_world::viewer::PromptControlAuthIntent::Apply,
+    )?;
     client
         .tx
         .send(agent_world::viewer::ViewerRequest::PromptControl {
@@ -701,14 +835,16 @@ fn build_prompt_profile_apply_request(
     let next_system = normalize_prompt_text(draft.profile_system_prompt.as_str());
     let next_short = normalize_prompt_text(draft.profile_short_term_goal.as_str());
     let next_long = normalize_prompt_text(draft.profile_long_term_goal.as_str());
+    let player_id = resolve_viewer_player_id_from(&|key| std::env::var(key).ok())
+        .unwrap_or_else(|_| VIEWER_PLAYER_ID.to_string());
 
     agent_world::viewer::PromptControlApplyRequest {
         agent_id: selected_agent_id.to_string(),
-        player_id: VIEWER_PLAYER_ID.to_string(),
+        player_id: player_id.clone(),
         public_key: None,
         auth: None,
         expected_version: Some(current_profile.version),
-        updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
+        updated_by: Some(player_id),
         system_prompt_override: patch_override_with_default(
             current_profile.system_prompt_override.as_ref(),
             DEFAULT_LLM_SYSTEM_PROMPT,
@@ -1261,6 +1397,7 @@ mod tests {
     use agent_world::simulator::{
         AgentDecision, AgentDecisionTrace, PromptUpdateOperation, WorldEvent,
     };
+    use ed25519_dalek::SigningKey;
 
     fn message(agent_id: &str, time: u64, role: LlmChatRole, content: &str) -> LlmChatMessageTrace {
         LlmChatMessageTrace {
@@ -1325,6 +1462,16 @@ mod tests {
                 digest: "digest".to_string(),
                 rolled_back_to_version: None,
             },
+        }
+    }
+
+    fn test_signer(seed: u8) -> ViewerAuthSigner {
+        let private_key = [seed; 32];
+        let signing_key = SigningKey::from_bytes(&private_key);
+        ViewerAuthSigner {
+            player_id: "player-a".to_string(),
+            public_key: hex::encode(signing_key.verifying_key().to_bytes()),
+            private_key: hex::encode(private_key),
         }
     }
 
@@ -1582,6 +1729,111 @@ mod tests {
     }
 
     #[test]
+    fn resolve_viewer_auth_signer_from_uses_default_player_and_required_keys() {
+        let signer = test_signer(31);
+        let mut env = std::collections::BTreeMap::<String, String>::new();
+        env.insert(
+            VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
+            signer.public_key.clone(),
+        );
+        env.insert(
+            VIEWER_AUTH_PRIVATE_KEY_ENV.to_string(),
+            signer.private_key.clone(),
+        );
+
+        let resolved =
+            resolve_viewer_auth_signer_from(|key| env.get(key).cloned()).expect("resolve signer");
+        assert_eq!(resolved.player_id, VIEWER_PLAYER_ID);
+        assert_eq!(resolved.public_key, signer.public_key);
+        assert_eq!(resolved.private_key, signer.private_key);
+    }
+
+    #[test]
+    fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
+        let signer = test_signer(32);
+        let mut env = std::collections::BTreeMap::<String, String>::new();
+        env.insert(
+            VIEWER_AUTH_PUBLIC_KEY_ENV.to_string(),
+            signer.public_key.clone(),
+        );
+
+        let err = resolve_viewer_auth_signer_from(|key| env.get(key).cloned())
+            .expect_err("missing private key should fail");
+        assert!(err.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
+    }
+
+    #[test]
+    fn attach_agent_chat_auth_sets_claims_and_verifiable_proof() {
+        let signer = test_signer(33);
+        let mut request = agent_world::viewer::AgentChatRequest {
+            agent_id: "agent-a".to_string(),
+            message: "hello".to_string(),
+            player_id: None,
+            public_key: None,
+            auth: None,
+        };
+
+        attach_agent_chat_auth(&mut request, &signer, 41).expect("attach auth");
+        assert_eq!(
+            request.player_id.as_deref(),
+            Some(signer.player_id.as_str())
+        );
+        assert_eq!(
+            request.public_key.as_deref(),
+            Some(signer.public_key.as_str())
+        );
+        let proof = request.auth.as_ref().expect("proof attached").clone();
+        let verified = agent_world::viewer::verify_agent_chat_auth_proof(&request, &proof)
+            .expect("proof verify");
+        assert_eq!(verified.player_id, signer.player_id);
+        assert_eq!(verified.public_key, signer.public_key);
+        assert_eq!(verified.nonce, 41);
+    }
+
+    #[test]
+    fn attach_prompt_control_apply_auth_sets_updated_by_and_verifiable_proof() {
+        let signer = test_signer(34);
+        let mut request = agent_world::viewer::PromptControlApplyRequest {
+            agent_id: "agent-a".to_string(),
+            player_id: "legacy-player".to_string(),
+            public_key: None,
+            auth: None,
+            expected_version: Some(3),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        };
+
+        attach_prompt_control_apply_auth(
+            &mut request,
+            &signer,
+            42,
+            agent_world::viewer::PromptControlAuthIntent::Apply,
+        )
+        .expect("attach auth");
+        assert_eq!(request.player_id, signer.player_id);
+        assert_eq!(
+            request.updated_by.as_deref(),
+            Some(signer.player_id.as_str())
+        );
+        assert_eq!(
+            request.public_key.as_deref(),
+            Some(signer.public_key.as_str())
+        );
+        let proof = request.auth.as_ref().expect("proof attached").clone();
+        let verified = agent_world::viewer::verify_prompt_control_apply_auth_proof(
+            agent_world::viewer::PromptControlAuthIntent::Apply,
+            &request,
+            &proof,
+        )
+        .expect("proof verify");
+        assert_eq!(verified.player_id, signer.player_id);
+        assert_eq!(verified.public_key, signer.public_key);
+        assert_eq!(verified.nonce, 42);
+    }
+
+    #[test]
     fn prompt_apply_request_has_patch_returns_false_for_noop_request() {
         let request = agent_world::viewer::PromptControlApplyRequest {
             agent_id: "agent-a".to_string(),
@@ -1589,7 +1841,7 @@ mod tests {
             public_key: None,
             auth: None,
             expected_version: Some(1),
-            updated_by: Some(PROMPT_UPDATED_BY_VIEWER_CHAT.to_string()),
+            updated_by: Some(VIEWER_PLAYER_ID.to_string()),
             system_prompt_override: None,
             short_term_goal_override: None,
             long_term_goal_override: None,

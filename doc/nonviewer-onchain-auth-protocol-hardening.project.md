@@ -17,17 +17,17 @@
 - [x] 补 live/persist 测试（重放拒绝、snapshot 保留）
 
 ### T3 客户端接入与收口
-- [ ] `agent_world_viewer` 非视觉发送链路接入签名 proof
-- [ ] 跑定向回归 + required tier 测试
-- [ ] 回写设计/项目文档状态与 devlog 收口
+- [x] `agent_world_viewer` 非视觉发送链路接入签名 proof
+- [x] 跑定向回归 + required tier 测试
+- [x] 回写设计/项目文档状态与 devlog 收口
 
 ## 依赖
 - T2 依赖 T1（先冻结协议与签名负载，后接入 live 验签）。
 - T3 依赖 T2（服务端校验上线后再接入客户端签名）。
 
 ## 状态
-- 当前状态：进行中
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 当前状态：已完成
+- 已完成：T0、T1、T2、T3
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
