@@ -12,9 +12,9 @@
 - [x] 补协议与鉴权内核测试（roundtrip + tamper）
 
 ### T2 Live 服务端强制鉴权 + 防重放
-- [ ] live 请求链路强制 `auth proof` 校验，补全错误码
-- [ ] `WorldModel` 持久化 `player_auth_last_nonce` 并实现 nonce 消费校验
-- [ ] 补 live/persist 测试（重放拒绝、snapshot 保留）
+- [x] live 请求链路强制 `auth proof` 校验，补全错误码
+- [x] `WorldModel` 持久化 `player_auth_last_nonce` 并实现 nonce 消费校验
+- [x] 补 live/persist 测试（重放拒绝、snapshot 保留）
 
 ### T3 客户端接入与收口
 - [ ] `agent_world_viewer` 非视觉发送链路接入签名 proof
@@ -27,7 +27,7 @@
 
 ## 状态
 - 当前状态：进行中
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

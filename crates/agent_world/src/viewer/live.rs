@@ -22,6 +22,10 @@ mod consensus_bridge;
 use consensus_bridge::*;
 mod seek;
 
+use super::auth::{
+    verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
+    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent,
+};
 use super::protocol::{
     viewer_event_kind_matches, AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck,
     PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
@@ -389,12 +393,16 @@ impl LiveWorld {
     }
 
     fn prompt_control_preview(
-        &self,
+        &mut self,
         request: PromptControlApplyRequest,
     ) -> Result<PromptControlAck, PromptControlError> {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
         let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        self.verify_and_consume_prompt_control_apply_auth(
+            PromptControlAuthIntent::Preview,
+            &request,
+        )?;
         ensure_agent_player_access(
             self.kernel(),
             request.agent_id.as_str(),
@@ -436,6 +444,10 @@ impl LiveWorld {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
         let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        self.verify_and_consume_prompt_control_apply_auth(
+            PromptControlAuthIntent::Apply,
+            &request,
+        )?;
         ensure_agent_player_access(
             self.kernel(),
             request.agent_id.as_str(),
@@ -510,6 +522,7 @@ impl LiveWorld {
         let player_id =
             normalize_required_player_id(request.player_id.as_str(), request.agent_id.as_str())?;
         let public_key = normalize_optional_public_key(request.public_key.as_deref());
+        self.verify_and_consume_prompt_control_rollback_auth(&request)?;
         ensure_agent_player_access(
             self.kernel(),
             request.agent_id.as_str(),
@@ -614,6 +627,7 @@ impl LiveWorld {
                 agent_id: Some(request.agent_id),
             });
         }
+        self.verify_and_consume_agent_chat_auth(&request)?;
 
         if matches!(self.driver, LiveDriver::Script(_)) {
             return Err(AgentChatError {
@@ -655,6 +669,106 @@ impl LiveWorld {
             message_len: message.chars().count(),
             player_id: Some(player_id),
         })
+    }
+
+    fn verify_and_consume_prompt_control_apply_auth(
+        &mut self,
+        intent: PromptControlAuthIntent,
+        request: &PromptControlApplyRequest,
+    ) -> Result<(), PromptControlError> {
+        let Some(auth) = request.auth.as_ref() else {
+            return Err(PromptControlError {
+                code: "auth_proof_required".to_string(),
+                message: "prompt_control requires auth proof".to_string(),
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
+            });
+        };
+        let verified =
+            verify_prompt_control_apply_auth_proof(intent, request, auth).map_err(|message| {
+                PromptControlError {
+                    code: map_auth_verify_error_code(message.as_str()).to_string(),
+                    message,
+                    agent_id: Some(request.agent_id.clone()),
+                    current_version: self.current_prompt_version(request.agent_id.as_str()),
+                }
+            })?;
+        self.kernel
+            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
+            .map_err(|message| PromptControlError {
+                code: "auth_nonce_replay".to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
+            })?;
+        Ok(())
+    }
+
+    fn verify_and_consume_prompt_control_rollback_auth(
+        &mut self,
+        request: &PromptControlRollbackRequest,
+    ) -> Result<(), PromptControlError> {
+        let Some(auth) = request.auth.as_ref() else {
+            return Err(PromptControlError {
+                code: "auth_proof_required".to_string(),
+                message: "prompt_control rollback requires auth proof".to_string(),
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
+            });
+        };
+        let verified =
+            verify_prompt_control_rollback_auth_proof(request, auth).map_err(|message| {
+                PromptControlError {
+                    code: map_auth_verify_error_code(message.as_str()).to_string(),
+                    message,
+                    agent_id: Some(request.agent_id.clone()),
+                    current_version: self.current_prompt_version(request.agent_id.as_str()),
+                }
+            })?;
+        self.kernel
+            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
+            .map_err(|message| PromptControlError {
+                code: "auth_nonce_replay".to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+                current_version: self.current_prompt_version(request.agent_id.as_str()),
+            })?;
+        Ok(())
+    }
+
+    fn verify_and_consume_agent_chat_auth(
+        &mut self,
+        request: &AgentChatRequest,
+    ) -> Result<(), AgentChatError> {
+        let Some(auth) = request.auth.as_ref() else {
+            return Err(AgentChatError {
+                code: "auth_proof_required".to_string(),
+                message: "agent_chat requires auth proof".to_string(),
+                agent_id: Some(request.agent_id.clone()),
+            });
+        };
+        let verified =
+            verify_agent_chat_auth_proof(request, auth).map_err(|message| AgentChatError {
+                code: map_auth_verify_error_code(message.as_str()).to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+            })?;
+        self.kernel
+            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
+            .map_err(|message| AgentChatError {
+                code: "auth_nonce_replay".to_string(),
+                message,
+                agent_id: Some(request.agent_id.clone()),
+            })?;
+        Ok(())
+    }
+
+    fn current_prompt_version(&self, agent_id: &str) -> Option<u64> {
+        self.kernel
+            .model()
+            .agent_prompt_profiles
+            .get(agent_id)
+            .map(|profile| profile.version)
     }
 
     fn current_prompt_profile(
@@ -799,6 +913,22 @@ impl LiveWorld {
         }
         Ok(())
     }
+}
+
+fn map_auth_verify_error_code(message: &str) -> &'static str {
+    if message.contains("nonce") {
+        return "auth_nonce_invalid";
+    }
+    if message.contains("signature") || message.contains("awviewauth:v1") {
+        return "auth_signature_invalid";
+    }
+    if message.contains("player_id") || message.contains("public_key") {
+        return "auth_claim_mismatch";
+    }
+    if message.contains("required") || message.contains("empty") {
+        return "auth_claim_invalid";
+    }
+    "auth_invalid"
 }
 
 #[derive(Debug, Clone)]

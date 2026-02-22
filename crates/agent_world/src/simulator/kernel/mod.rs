@@ -344,6 +344,38 @@ impl WorldKernel {
             .map(String::as_str)
     }
 
+    pub fn player_auth_last_nonce(&self, player_id: &str) -> Option<u64> {
+        let player_id = player_id.trim();
+        if player_id.is_empty() {
+            return None;
+        }
+        self.model.player_auth_last_nonce.get(player_id).copied()
+    }
+
+    pub fn consume_player_auth_nonce(&mut self, player_id: &str, nonce: u64) -> Result<(), String> {
+        let player_id = player_id.trim();
+        if player_id.is_empty() {
+            return Err("player_id cannot be empty".to_string());
+        }
+        if nonce == 0 {
+            return Err("auth nonce must be greater than zero".to_string());
+        }
+
+        if let Some(last_nonce) = self.model.player_auth_last_nonce.get(player_id) {
+            if nonce <= *last_nonce {
+                return Err(format!(
+                    "auth nonce replay for {}: expected nonce > {}, received {}",
+                    player_id, last_nonce, nonce
+                ));
+            }
+        }
+
+        self.model
+            .player_auth_last_nonce
+            .insert(player_id.to_string(), nonce);
+        Ok(())
+    }
+
     pub fn bind_agent_player(
         &mut self,
         agent_id: &str,

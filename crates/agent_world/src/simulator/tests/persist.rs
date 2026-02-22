@@ -45,6 +45,32 @@ fn kernel_snapshot_roundtrip_preserves_agent_long_term_memories() {
 }
 
 #[test]
+fn kernel_snapshot_roundtrip_preserves_player_auth_nonce_state() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let (mut kernel, _) = initialize_kernel(config, init).expect("init ok");
+
+    kernel
+        .consume_player_auth_nonce("player-a", 11)
+        .expect("consume nonce a");
+    kernel
+        .consume_player_auth_nonce("player-b", 4)
+        .expect("consume nonce b");
+
+    let snapshot = kernel.snapshot();
+    let journal = kernel.journal_snapshot();
+    let mut restored = WorldKernel::from_snapshot(snapshot, journal).expect("restore ok");
+
+    assert_eq!(restored.player_auth_last_nonce("player-a"), Some(11));
+    assert_eq!(restored.player_auth_last_nonce("player-b"), Some(4));
+
+    let replay_err = restored
+        .consume_player_auth_nonce("player-a", 11)
+        .expect_err("replay should fail");
+    assert!(replay_err.contains("replay"));
+}
+
+#[test]
 fn kernel_snapshot_roundtrip_keeps_fragment_profile() {
     let mut config = WorldConfig::default();
     config.space = SpaceConfig {

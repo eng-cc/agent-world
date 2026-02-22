@@ -3,6 +3,7 @@ use agent_world_node::{
     NodeConfig, NodeExecutionCommitContext, NodeExecutionCommitResult, NodeExecutionHook, NodeRole,
     NodeRuntime,
 };
+use ed25519_dalek::SigningKey;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,6 +16,49 @@ fn set_test_llm_env() {
         "https://api.openai.com/v1",
     );
     std::env::set_var(crate::simulator::ENV_LLM_API_KEY, "test-api-key");
+}
+
+fn test_signer(seed: u8) -> (String, String) {
+    let private_key = [seed; 32];
+    let signing_key = SigningKey::from_bytes(&private_key);
+    (
+        hex::encode(signing_key.verifying_key().to_bytes()),
+        hex::encode(private_key),
+    )
+}
+
+fn signed_prompt_control_apply_request(
+    mut request: PromptControlApplyRequest,
+    intent: PromptControlAuthIntent,
+    nonce: u64,
+    public_key_hex: &str,
+    private_key_hex: &str,
+) -> PromptControlApplyRequest {
+    request.public_key = Some(public_key_hex.to_string());
+    let proof = crate::viewer::sign_prompt_control_apply_auth_proof(
+        intent,
+        &request,
+        nonce,
+        public_key_hex,
+        private_key_hex,
+    )
+    .expect("sign prompt_control apply auth");
+    request.auth = Some(proof);
+    request
+}
+
+fn signed_agent_chat_request(
+    mut request: AgentChatRequest,
+    nonce: u64,
+    public_key_hex: &str,
+    private_key_hex: &str,
+) -> AgentChatRequest {
+    request.public_key = Some(public_key_hex.to_string());
+    let proof =
+        crate::viewer::sign_agent_chat_auth_proof(&request, nonce, public_key_hex, private_key_hex)
+            .expect("sign agent_chat auth");
+    request.auth = Some(proof);
+    request
 }
 
 #[derive(Default)]
@@ -182,20 +226,27 @@ fn live_world_llm_bootstrap_script_mode_advances_tick() {
 fn prompt_control_preview_reports_fields_and_next_version() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-    let world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, private_key) = test_signer(11);
 
     let ack = world
-        .prompt_control_preview(PromptControlApplyRequest {
-            agent_id: "agent-0".to_string(),
-            player_id: "player-a".to_string(),
-            public_key: None,
-            auth: None,
-            expected_version: Some(0),
-            updated_by: None,
-            system_prompt_override: Some(Some("系统提示".to_string())),
-            short_term_goal_override: None,
-            long_term_goal_override: None,
-        })
+        .prompt_control_preview(signed_prompt_control_apply_request(
+            PromptControlApplyRequest {
+                agent_id: "agent-0".to_string(),
+                player_id: "player-a".to_string(),
+                public_key: None,
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("系统提示".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            PromptControlAuthIntent::Preview,
+            1,
+            public_key.as_str(),
+            private_key.as_str(),
+        ))
         .expect("preview ack");
 
     assert!(ack.preview);
@@ -213,19 +264,26 @@ fn prompt_control_apply_requires_llm_mode() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, private_key) = test_signer(12);
 
     let err = world
-        .prompt_control_apply(PromptControlApplyRequest {
-            agent_id: "agent-0".to_string(),
-            player_id: "player-a".to_string(),
-            public_key: None,
-            auth: None,
-            expected_version: Some(0),
-            updated_by: None,
-            system_prompt_override: Some(Some("system".to_string())),
-            short_term_goal_override: None,
-            long_term_goal_override: None,
-        })
+        .prompt_control_apply(signed_prompt_control_apply_request(
+            PromptControlApplyRequest {
+                agent_id: "agent-0".to_string(),
+                player_id: "player-a".to_string(),
+                public_key: None,
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            PromptControlAuthIntent::Apply,
+            2,
+            public_key.as_str(),
+            private_key.as_str(),
+        ))
         .expect_err("script mode should reject apply");
 
     assert_eq!(err.code, "llm_mode_required");
@@ -267,7 +325,7 @@ fn prompt_profile_version_lookup_reads_from_journal() {
 fn prompt_control_preview_requires_non_empty_player_id() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
-    let world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
 
     let err = world
         .prompt_control_preview(PromptControlApplyRequest {
@@ -287,10 +345,103 @@ fn prompt_control_preview_requires_non_empty_player_id() {
 }
 
 #[test]
+fn prompt_control_preview_requires_auth_proof() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, _) = test_signer(21);
+
+    let err = world
+        .prompt_control_preview(PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some(public_key),
+            auth: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        })
+        .expect_err("missing proof should be rejected");
+
+    assert_eq!(err.code, "auth_proof_required");
+}
+
+#[test]
+fn prompt_control_preview_rejects_tampered_auth_signature() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, private_key) = test_signer(22);
+
+    let request = signed_prompt_control_apply_request(
+        PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        },
+        PromptControlAuthIntent::Preview,
+        7,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let mut tampered = request.clone();
+    tampered.system_prompt_override = Some(Some("tampered".to_string()));
+
+    let err = world
+        .prompt_control_preview(tampered)
+        .expect_err("tampered payload should be rejected");
+    assert_eq!(err.code, "auth_signature_invalid");
+}
+
+#[test]
+fn prompt_control_preview_rejects_replayed_nonce() {
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, private_key) = test_signer(23);
+    let request = signed_prompt_control_apply_request(
+        PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        },
+        PromptControlAuthIntent::Preview,
+        8,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+
+    let first = world
+        .prompt_control_preview(request.clone())
+        .expect("first request accepted");
+    assert!(first.preview);
+
+    let replay = world
+        .prompt_control_preview(request)
+        .expect_err("replay request should be rejected");
+    assert_eq!(replay.code, "auth_nonce_replay");
+}
+
+#[test]
 fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (public_key, private_key) = test_signer(13);
 
     let bind_event = world
         .kernel
@@ -299,17 +450,23 @@ fn prompt_control_preview_rejects_unbound_player_when_agent_already_bound() {
     assert!(bind_event.is_some());
 
     let err = world
-        .prompt_control_preview(PromptControlApplyRequest {
-            agent_id: "agent-0".to_string(),
-            player_id: "player-b".to_string(),
-            public_key: None,
-            auth: None,
-            expected_version: Some(0),
-            updated_by: None,
-            system_prompt_override: Some(Some("system".to_string())),
-            short_term_goal_override: None,
-            long_term_goal_override: None,
-        })
+        .prompt_control_preview(signed_prompt_control_apply_request(
+            PromptControlApplyRequest {
+                agent_id: "agent-0".to_string(),
+                player_id: "player-b".to_string(),
+                public_key: None,
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            PromptControlAuthIntent::Preview,
+            3,
+            public_key.as_str(),
+            private_key.as_str(),
+        ))
         .expect_err("mismatched player should be rejected");
 
     assert_eq!(err.code, "agent_control_forbidden");
@@ -324,10 +481,12 @@ fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound()
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Script).expect("init ok");
+    let (bound_public_key, bound_private_key) = test_signer(14);
+    let (wrong_public_key, wrong_private_key) = test_signer(15);
 
     let bind_event = world
         .kernel
-        .bind_agent_player("agent-0", "player-a", Some("pubkey-a"))
+        .bind_agent_player("agent-0", "player-a", Some(bound_public_key.as_str()))
         .expect("bind ok");
     assert!(bind_event.is_some());
 
@@ -344,35 +503,47 @@ fn prompt_control_preview_requires_matching_public_key_when_agent_is_key_bound()
             long_term_goal_override: None,
         })
         .expect_err("missing public key should be rejected");
-    assert_eq!(missing_key.code, "agent_control_forbidden");
+    assert_eq!(missing_key.code, "auth_proof_required");
 
     let wrong_key = world
-        .prompt_control_preview(PromptControlApplyRequest {
-            agent_id: "agent-0".to_string(),
-            player_id: "player-a".to_string(),
-            public_key: Some("pubkey-b".to_string()),
-            auth: None,
-            expected_version: Some(0),
-            updated_by: None,
-            system_prompt_override: Some(Some("system".to_string())),
-            short_term_goal_override: None,
-            long_term_goal_override: None,
-        })
+        .prompt_control_preview(signed_prompt_control_apply_request(
+            PromptControlApplyRequest {
+                agent_id: "agent-0".to_string(),
+                player_id: "player-a".to_string(),
+                public_key: Some(wrong_public_key.clone()),
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            PromptControlAuthIntent::Preview,
+            4,
+            wrong_public_key.as_str(),
+            wrong_private_key.as_str(),
+        ))
         .expect_err("mismatched public key should be rejected");
     assert_eq!(wrong_key.code, "agent_control_forbidden");
 
     let ack = world
-        .prompt_control_preview(PromptControlApplyRequest {
-            agent_id: "agent-0".to_string(),
-            player_id: "player-a".to_string(),
-            public_key: Some("pubkey-a".to_string()),
-            auth: None,
-            expected_version: Some(0),
-            updated_by: None,
-            system_prompt_override: Some(Some("system".to_string())),
-            short_term_goal_override: None,
-            long_term_goal_override: None,
-        })
+        .prompt_control_preview(signed_prompt_control_apply_request(
+            PromptControlApplyRequest {
+                agent_id: "agent-0".to_string(),
+                player_id: "player-a".to_string(),
+                public_key: Some(bound_public_key.clone()),
+                auth: None,
+                expected_version: Some(0),
+                updated_by: None,
+                system_prompt_override: Some(Some("system".to_string())),
+                short_term_goal_override: None,
+                long_term_goal_override: None,
+            },
+            PromptControlAuthIntent::Preview,
+            5,
+            bound_public_key.as_str(),
+            bound_private_key.as_str(),
+        ))
         .expect("matching public key should pass");
     assert!(ack.preview);
 }
@@ -397,11 +568,43 @@ fn agent_chat_requires_player_id() {
 }
 
 #[test]
+fn agent_chat_rejects_replayed_nonce() {
+    set_test_llm_env();
+    let config = WorldConfig::default();
+    let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
+    let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+    let (public_key, private_key) = test_signer(24);
+    let request = signed_agent_chat_request(
+        AgentChatRequest {
+            agent_id: "agent-0".to_string(),
+            message: "hello".to_string(),
+            player_id: Some("player-a".to_string()),
+            public_key: None,
+            auth: None,
+        },
+        9,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+
+    let first = world
+        .agent_chat(request.clone())
+        .expect("first request accepted");
+    assert_eq!(first.player_id.as_deref(), Some("player-a"));
+
+    let replay = world
+        .agent_chat(request)
+        .expect_err("replay request should be rejected");
+    assert_eq!(replay.code, "auth_nonce_replay");
+}
+
+#[test]
 fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
     set_test_llm_env();
     let config = WorldConfig::default();
     let init = WorldInitConfig::from_scenario(WorldScenario::Minimal, &config);
     let mut world = LiveWorld::new(config, init, ViewerLiveDecisionMode::Llm).expect("init ok");
+    let (public_key, private_key) = test_signer(16);
 
     let bind_event = world
         .kernel
@@ -411,19 +614,24 @@ fn agent_chat_upgrades_legacy_player_binding_with_public_key() {
     assert_eq!(world.kernel.public_key_binding_for_agent("agent-0"), None);
 
     let ack = world
-        .agent_chat(AgentChatRequest {
-            agent_id: "agent-0".to_string(),
-            message: "hello".to_string(),
-            player_id: Some("player-a".to_string()),
-            public_key: Some("pubkey-a".to_string()),
-            auth: None,
-        })
+        .agent_chat(signed_agent_chat_request(
+            AgentChatRequest {
+                agent_id: "agent-0".to_string(),
+                message: "hello".to_string(),
+                player_id: Some("player-a".to_string()),
+                public_key: Some(public_key.clone()),
+                auth: None,
+            },
+            6,
+            public_key.as_str(),
+            private_key.as_str(),
+        ))
         .expect("chat should be accepted");
 
     assert_eq!(ack.player_id.as_deref(), Some("player-a"));
     assert_eq!(
         world.kernel.public_key_binding_for_agent("agent-0"),
-        Some("pubkey-a")
+        Some(public_key.as_str())
     );
 }
 
