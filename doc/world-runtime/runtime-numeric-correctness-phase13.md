@@ -41,4 +41,4 @@
 - 需重点保证失败路径不污染状态（尤其 `last_checkpoint_at_ms`、`last_reconcile_at_ms` 与 dedup state）。
 
 ## 当前状态
-- 截至 2026-02-23：M0 已完成；M1、M2、M3 待执行。
+- 截至 2026-02-23：M0、M1、M2、M3 已完成（Phase13 收口完成）。
