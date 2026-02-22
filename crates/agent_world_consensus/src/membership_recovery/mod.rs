@@ -8,10 +8,10 @@ use super::membership::{
 use super::membership_logic;
 use super::membership_reconciliation::{
     MembershipRevocationAlertDedupPolicy, MembershipRevocationAlertDedupState,
-    MembershipRevocationAlertPolicy, MembershipRevocationAlertSeverity,
-    MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
-    MembershipRevocationReconcilePolicy, MembershipRevocationReconcileSchedulePolicy,
-    MembershipRevocationScheduleCoordinator, MembershipRevocationScheduleStateStore,
+    MembershipRevocationAlertPolicy, MembershipRevocationAlertSink,
+    MembershipRevocationAnomalyAlert, MembershipRevocationReconcilePolicy,
+    MembershipRevocationReconcileSchedulePolicy, MembershipRevocationScheduleCoordinator,
+    MembershipRevocationScheduleStateStore,
 };
 
 mod dead_letter;
@@ -878,6 +878,7 @@ fn normalized_dead_letter_replay_coordination_world_id(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::membership_reconciliation::MembershipRevocationAlertSeverity;
 
     fn sample_pending_alert() -> MembershipRevocationPendingAlert {
         MembershipRevocationPendingAlert {
