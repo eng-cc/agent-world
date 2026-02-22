@@ -250,6 +250,65 @@ fn run_replay_schedule_with_state_store_persists_interval_gate() {
 }
 
 #[test]
+fn run_replay_schedule_with_state_store_rejects_interval_overflow_without_mutation() {
+    let client = sample_client();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 1,
+        max_retry_limit_exceeded_streak: 2,
+    };
+
+    replay_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayScheduleState {
+                last_replay_at_ms: Some(i64::MIN),
+                prefer_capacity_evicted: false,
+            },
+        )
+        .expect("seed replay state");
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            1,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append dead letter");
+
+    let error = client
+        .run_revocation_dead_letter_replay_schedule_with_state_store(
+            "w1",
+            "node-a",
+            1000,
+            100,
+            &replay_policy,
+            &recovery_store,
+            &dead_letter_store,
+            &replay_state_store,
+        )
+        .expect_err("interval overflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("replay schedule elapsed overflow"),
+        "unexpected error: {message}"
+    );
+
+    let state = replay_state_store
+        .load_state("w1", "node-a")
+        .expect("load replay state after overflow");
+    assert_eq!(state.last_replay_at_ms, Some(i64::MIN));
+    let pending = recovery_store
+        .load_pending("w1", "node-a")
+        .expect("load pending after overflow");
+    assert!(pending.is_empty());
+}
+
+#[test]
 fn run_replay_schedule_coordinated_with_state_store_respects_lease() {
     let client = sample_client();
     let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
@@ -675,6 +734,57 @@ fn recommend_guarded_policy_respects_cooldown_window() {
         guarded, current_policy,
         "guard should hold policy when cooldown window is active"
     );
+}
+
+#[test]
+fn recommend_guarded_policy_rejects_cooldown_overflow_without_mutation() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    replay_state_store
+        .save_state(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayScheduleState {
+                last_replay_at_ms: Some(i64::MIN),
+                prefer_capacity_evicted: false,
+            },
+        )
+        .expect("seed replay state");
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 3,
+        max_retry_limit_exceeded_streak: 3,
+    };
+
+    let error = client
+        .recommend_revocation_dead_letter_replay_policy_with_adaptive_guard(
+            "w1",
+            "node-a",
+            1000,
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            32,
+            8,
+            500,
+            4,
+            2,
+        )
+        .expect_err("cooldown overflow should fail");
+    let message = format!("{error:?}");
+    assert!(
+        message.contains("policy cooldown elapsed overflow"),
+        "unexpected error: {message}"
+    );
+
+    let state = replay_state_store
+        .load_state("w1", "node-a")
+        .expect("load replay state after overflow");
+    assert_eq!(state.last_replay_at_ms, Some(i64::MIN));
 }
 
 #[test]

@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase11.project.md`
 
 ### T1 调度与策略冷却时间门控受检化
-- [ ] `run_revocation_dead_letter_replay_schedule_with_state_store` 的 interval gate 改为受检减法。
-- [ ] `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard` 的 policy cooldown 改为受检减法。
-- [ ] 补齐对应 overflow 拒绝测试并验证 replay state 不被污染。
+- [x] `run_revocation_dead_letter_replay_schedule_with_state_store` 的 interval gate 改为受检减法。
+- [x] `recommend_revocation_dead_letter_replay_policy_with_adaptive_guard` 的 policy cooldown 改为受检减法。
+- [x] 补齐对应 overflow 拒绝测试并验证 replay state 不被污染。
 
 ### T2 Rollback 冷却门控受检化
 - [ ] `should_rollback_to_stable_policy` 的 rollback cooldown 改为受检减法并沿调用链显式失败。
@@ -27,7 +27,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

@@ -378,10 +378,19 @@ impl MembershipSyncClient {
         validate_dead_letter_replay_policy(replay_policy)?;
 
         let mut state = replay_state_store.load_state(world_id, node_id)?;
-        let should_run = state
-            .last_replay_at_ms
-            .map(|last| now_ms.saturating_sub(last) >= replay_interval_ms)
-            .unwrap_or(true);
+        let should_run = match state.last_replay_at_ms {
+            Some(last_replay_at_ms) => {
+                let elapsed_since_last_replay = now_ms.checked_sub(last_replay_at_ms).ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter replay schedule elapsed overflow: now_ms={now_ms}, last_replay_at_ms={last_replay_at_ms}"
+                        ),
+                    }
+                })?;
+                elapsed_since_last_replay >= replay_interval_ms
+            }
+            None => true,
+        };
         if !should_run {
             return Ok(0);
         }
@@ -627,10 +636,19 @@ impl MembershipSyncClient {
             max_retry_limit_exceeded_streak,
         )?;
         let state = replay_state_store.load_state(world_id, node_id)?;
-        let within_cooldown = state
-            .last_replay_at_ms
-            .map(|last| now_ms.saturating_sub(last) < policy_cooldown_ms)
-            .unwrap_or(false);
+        let within_cooldown = match state.last_replay_at_ms {
+            Some(last_replay_at_ms) => {
+                let elapsed_since_last_replay = now_ms.checked_sub(last_replay_at_ms).ok_or_else(|| {
+                    WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter policy cooldown elapsed overflow: now_ms={now_ms}, last_replay_at_ms={last_replay_at_ms}"
+                        ),
+                    }
+                })?;
+                elapsed_since_last_replay < policy_cooldown_ms
+            }
+            None => false,
+        };
         if within_cooldown {
             return Ok(current_policy.clone());
         }
