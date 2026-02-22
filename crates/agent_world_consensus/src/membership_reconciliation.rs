@@ -590,11 +590,16 @@ impl MembershipSyncClient {
         let mut filtered = Vec::new();
         for alert in alerts {
             let key = alert_dedup_key(&alert);
-            let suppressed = state
-                .last_emitted_at_by_key
-                .get(&key)
-                .map(|last| now_ms.saturating_sub(*last) < policy.suppress_window_ms)
-                .unwrap_or(false);
+            let suppressed = match state.last_emitted_at_by_key.get(&key) {
+                Some(last) => {
+                    checked_elapsed_ms(
+                        now_ms,
+                        *last,
+                        "membership revocation dedup suppress window",
+                    )? < policy.suppress_window_ms
+                }
+                None => false,
+            };
             if suppressed {
                 continue;
             }
@@ -640,7 +645,7 @@ impl MembershipSyncClient {
             schedule_state.last_checkpoint_at_ms,
             now_ms,
             schedule_policy.checkpoint_interval_ms,
-        ) {
+        )? {
             self.publish_revocation_checkpoint(world_id, node_id, now_ms, keyring)?;
             schedule_state.last_checkpoint_at_ms = Some(now_ms);
             report.checkpoint_published = true;
@@ -650,7 +655,7 @@ impl MembershipSyncClient {
             schedule_state.last_reconcile_at_ms,
             now_ms,
             schedule_policy.reconcile_interval_ms,
-        ) {
+        )? {
             let reconcile_report = self.reconcile_revocations_with_policy(
                 world_id,
                 subscription,
@@ -907,10 +912,28 @@ fn checked_coordinator_lease_expiry(now_ms: i64, lease_ttl_ms: i64) -> Result<i6
     })
 }
 
-fn schedule_due(last_run_ms: Option<i64>, now_ms: i64, interval_ms: i64) -> bool {
+fn checked_elapsed_ms(now_ms: i64, last_run_ms: i64, context: &str) -> Result<i64, WorldError> {
+    now_ms
+        .checked_sub(last_run_ms)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!(
+                "{context} elapsed overflow: now_ms={now_ms}, last_run_ms={last_run_ms}"
+            ),
+        })
+}
+
+fn schedule_due(
+    last_run_ms: Option<i64>,
+    now_ms: i64,
+    interval_ms: i64,
+) -> Result<bool, WorldError> {
     match last_run_ms {
-        None => true,
-        Some(last_run_ms) => now_ms.saturating_sub(last_run_ms) >= interval_ms,
+        None => Ok(true),
+        Some(last_run_ms) => Ok(checked_elapsed_ms(
+            now_ms,
+            last_run_ms,
+            "membership revocation reconcile schedule due",
+        )? >= interval_ms),
     }
 }
 

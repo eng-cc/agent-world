@@ -84,6 +84,39 @@ fn deduplicate_revocation_alerts_suppresses_within_window() {
 }
 
 #[test]
+fn deduplicate_revocation_alerts_rejects_suppress_window_overflow_without_mutation() {
+    let client = sample_client();
+    let policy = MembershipRevocationAlertDedupPolicy {
+        suppress_window_ms: 1,
+    };
+    let mut state = MembershipRevocationAlertDedupState::default();
+    state
+        .last_emitted_at_by_key
+        .insert("w1:node-a:reconcile_diverged".to_string(), i64::MIN);
+    let snapshot = state.clone();
+
+    let err = client
+        .deduplicate_revocation_alerts(
+            vec![sample_alert("w1", "node-a", "reconcile_diverged")],
+            i64::MAX,
+            &policy,
+            &mut state,
+        )
+        .expect_err("overflow should fail");
+    match err {
+        WorldError::DistributedValidationFailed { reason } => {
+            assert!(
+                reason.contains("dedup suppress window elapsed overflow"),
+                "{reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    assert_eq!(state, snapshot);
+}
+
+#[test]
 fn in_memory_alert_sink_emits_and_lists() {
     let sink = InMemoryMembershipRevocationAlertSink::new();
     let alert = sample_alert("w1", "node-a", "reconcile_diverged");
@@ -181,6 +214,48 @@ fn run_revocation_reconcile_schedule_reconciles_due_and_merges() {
     assert_eq!(reconcile_report.diverged, 1);
     assert_eq!(reconcile_report.merged, 1);
     assert!(local_keyring.is_key_revoked("k2"));
+}
+
+#[test]
+fn run_revocation_reconcile_schedule_rejects_interval_overflow_without_mutation() {
+    let client = sample_client();
+    let subscription = client.subscribe("w1").expect("subscribe");
+    let mut keyring = sample_keyring();
+
+    let reconcile_policy = MembershipRevocationReconcilePolicy {
+        trusted_nodes: vec!["node-a".to_string()],
+        auto_revoke_missing_keys: false,
+    };
+    let schedule_policy = MembershipRevocationReconcileSchedulePolicy {
+        checkpoint_interval_ms: 300,
+        reconcile_interval_ms: 300,
+    };
+    let mut schedule_state = MembershipRevocationReconcileScheduleState {
+        last_checkpoint_at_ms: Some(i64::MIN),
+        last_reconcile_at_ms: Some(1000),
+    };
+    let snapshot = schedule_state.clone();
+
+    let err = client
+        .run_revocation_reconcile_schedule(
+            "w1",
+            "node-a",
+            i64::MAX,
+            &subscription,
+            &mut keyring,
+            &reconcile_policy,
+            &schedule_policy,
+            &mut schedule_state,
+        )
+        .expect_err("overflow should fail");
+    match err {
+        WorldError::DistributedValidationFailed { reason } => {
+            assert!(reason.contains("schedule due elapsed overflow"), "{reason}");
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    assert_eq!(schedule_state, snapshot);
 }
 
 #[test]
