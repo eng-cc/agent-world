@@ -6,7 +6,7 @@
 - [x] VWU2：修复 websocket `onerror` 事件类型不匹配导致的运行时异常。
 - [x] VWU3：实现连接异常自动重连（退避）与友好错误文案。
 - [x] VWU4：补充/更新测试并执行 required 相关回归。
-- [ ] VWU5：回顾设计文档与项目文档，更新状态并收口。
+- [x] VWU5：回顾设计文档与项目文档，更新状态并收口。
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
@@ -17,6 +17,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VWU4 完成，VWU5 进行中。
+- 当前阶段：VWU0~VWU5 全部完成（已收口）。
 - 阻塞项：无。
-- 最近更新：2026-02-22 21:57 CST。
+- 最近更新：2026-02-22 22:00 CST。
