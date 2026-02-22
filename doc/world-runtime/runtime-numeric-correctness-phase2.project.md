@@ -17,8 +17,8 @@
 - [x] 增加 PoS 溢出拒绝测试并保证失败不污染 pending 状态。
 
 ### T3 回归与收口
-- [ ] 运行对应 `test_tier_required` 口径的定向测试。
-- [ ] 更新设计/项目文档状态与 `doc/devlog/2026-02-22.md`。
+- [x] 运行对应 `test_tier_required` 口径的定向测试。
+- [x] 更新设计/项目文档状态与 `doc/devlog/2026-02-22.md`。
 
 ## 依赖
 - Runtime：
@@ -34,8 +34,8 @@
   - `crates/agent_world_consensus/src/pos.rs`（内联 tests）
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
