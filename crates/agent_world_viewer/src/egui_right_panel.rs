@@ -49,6 +49,8 @@ mod egui_observe_section_card;
 mod egui_right_panel_chat;
 #[path = "egui_right_panel_controls.rs"]
 mod egui_right_panel_controls;
+#[path = "egui_right_panel_env.rs"]
+mod egui_right_panel_env;
 #[path = "egui_right_panel_theme_runtime.rs"]
 mod egui_right_panel_theme_runtime;
 
@@ -58,6 +60,10 @@ use egui_right_panel_chat::{render_chat_section, AgentChatDraftState};
 use egui_right_panel_controls::send_control_request;
 use egui_right_panel_controls::{
     render_control_buttons, render_module_toggle_button, ControlPanelUiState,
+};
+use egui_right_panel_env::{
+    env_toggle_enabled, is_ops_nav_panel_enabled, is_product_style_enabled,
+    is_product_style_motion_enabled,
 };
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
@@ -77,24 +83,6 @@ const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
-
-fn env_toggle_enabled(raw: Option<&str>) -> bool {
-    raw.map(|value| value.trim().to_ascii_lowercase())
-        .map(|value| matches!(value.as_str(), "1" | "true" | "yes" | "on"))
-        .unwrap_or(false)
-}
-
-fn is_ops_nav_panel_enabled() -> bool {
-    env_toggle_enabled(std::env::var(OPS_NAV_PANEL_ENV).ok().as_deref())
-}
-
-fn is_product_style_enabled() -> bool {
-    env_toggle_enabled(std::env::var(PRODUCT_STYLE_ENV).ok().as_deref())
-}
-
-fn is_product_style_motion_enabled() -> bool {
-    env_toggle_enabled(std::env::var(PRODUCT_STYLE_MOTION_ENV).ok().as_deref())
-}
 
 fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
     if available_width.is_finite() && available_width > 0.0 {
