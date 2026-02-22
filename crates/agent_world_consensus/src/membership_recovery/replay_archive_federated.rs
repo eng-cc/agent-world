@@ -736,7 +736,10 @@ impl MembershipSyncClient {
         for event in events {
             let next_offset_entry = node_offsets.entry(event.node_id.clone()).or_insert(0usize);
             let node_event_offset = *next_offset_entry;
-            *next_offset_entry = next_offset_entry.saturating_add(1);
+            *next_offset_entry = checked_usize_increment(
+                *next_offset_entry,
+                "membership revocation governance composite sequence cursor node_event_offset",
+            )?;
             cursor_rows.push((event, node_event_offset));
         }
         cursor_rows.retain(|(event, node_event_offset)| {
@@ -984,6 +987,10 @@ fn checked_usize_add(lhs: usize, rhs: usize, context: &str) -> Result<usize, Wor
         })
 }
 
+fn checked_usize_increment(value: usize, context: &str) -> Result<usize, WorldError> {
+    checked_usize_add(value, 1, context)
+}
+
 fn compare_composite_sequence_cursor(
     left_since_event_at_ms: i64,
     left_since_node_id: Option<&str>,
@@ -1165,6 +1172,26 @@ mod tests {
             WorldError::DistributedValidationFailed { reason } => {
                 assert!(
                     reason.contains("membership replay federated aggregate checked add overflow"),
+                    "{reason}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn checked_usize_increment_rejects_overflow() {
+        let err = checked_usize_increment(
+            usize::MAX,
+            "membership replay federated composite cursor checked increment",
+        )
+        .expect_err("overflow should fail");
+        match err {
+            WorldError::DistributedValidationFailed { reason } => {
+                assert!(
+                    reason.contains(
+                        "membership replay federated composite cursor checked increment overflow"
+                    ),
                     "{reason}"
                 );
             }
