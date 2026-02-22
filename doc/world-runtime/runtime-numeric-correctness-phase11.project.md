@@ -12,8 +12,8 @@
 - [x] 补齐对应 overflow 拒绝测试并验证 replay state 不被污染。
 
 ### T2 Rollback 冷却门控受检化
-- [ ] `should_rollback_to_stable_policy` 的 rollback cooldown 改为受检减法并沿调用链显式失败。
-- [ ] 补齐 rollback cooldown overflow 测试并验证 policy state 不被部分更新。
+- [x] `should_rollback_to_stable_policy` 的 rollback cooldown 改为受检减法并沿调用链显式失败。
+- [x] 补齐 rollback cooldown overflow 测试并验证 policy state 不被部分更新。
 
 ### T3 回归与收口
 - [ ] 运行 `agent_world_consensus` 定向回归测试。
@@ -27,7 +27,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

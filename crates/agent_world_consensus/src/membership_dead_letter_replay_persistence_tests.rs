@@ -259,6 +259,94 @@ fn recommend_with_persistence_rolls_back_when_metrics_unhealthy() {
 }
 
 #[test]
+fn recommend_with_persistence_rejects_rollback_cooldown_overflow_without_partial_update() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let replay_policy_store = InMemoryMembershipRevocationDeadLetterReplayPolicyStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+
+    let seeded_state = MembershipRevocationDeadLetterReplayPolicyState {
+        active_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 9,
+            max_retry_limit_exceeded_streak: 1,
+        },
+        last_stable_policy: MembershipRevocationDeadLetterReplayPolicy {
+            max_replay_per_run: 3,
+            max_retry_limit_exceeded_streak: 3,
+        },
+        last_policy_update_at_ms: Some(1000),
+        last_stable_at_ms: Some(900),
+        last_rollback_at_ms: Some(i64::MIN),
+    };
+    replay_policy_store
+        .save_policy_state("w1", "node-a", &seeded_state)
+        .expect("seed policy state");
+
+    dead_letter_store
+        .append_delivery_metrics(
+            "w1",
+            "node-a",
+            1200,
+            &MembershipRevocationAlertDeliveryMetrics {
+                attempted: 12,
+                succeeded: 1,
+                failed: 8,
+                deferred: 0,
+                buffered: 0,
+                dropped_capacity: 1,
+                dropped_retry_limit: 1,
+                dead_lettered: 2,
+            },
+        )
+        .expect("append unhealthy metrics");
+
+    let rollback_guard = MembershipRevocationDeadLetterReplayRollbackGuard {
+        min_attempted: 8,
+        failure_ratio_per_mille: 500,
+        dead_letter_ratio_per_mille: 120,
+        rollback_cooldown_ms: 100,
+    };
+    let fallback_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 3,
+    };
+    let error = client
+        .recommend_revocation_dead_letter_replay_policy_with_persistence_and_rollback_guard(
+            "w1",
+            "node-a",
+            1300,
+            &fallback_policy,
+            &replay_state_store,
+            &replay_policy_store,
+            &recovery_store,
+            &dead_letter_store,
+            8,
+            1,
+            16,
+            8,
+            100,
+            3,
+            2,
+            &rollback_guard,
+        )
+        .expect_err("rollback cooldown overflow should fail");
+    let reason = match error {
+        WorldError::DistributedValidationFailed { reason } => reason,
+        other => panic!("unexpected error: {other:?}"),
+    };
+    assert!(
+        reason.contains("rollback cooldown elapsed overflow"),
+        "unexpected error: {reason}"
+    );
+
+    let state = replay_policy_store
+        .load_policy_state("w1", "node-a")
+        .expect("load policy state after overflow");
+    assert_eq!(state, seeded_state);
+}
+
+#[test]
 fn run_coordinated_replay_with_persisted_guarded_policy_reports_rollback() {
     let client = sample_client();
     let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();

@@ -772,7 +772,7 @@ impl MembershipSyncClient {
         let metrics = aggregate_recent_delivery_metrics(&metric_lines, metrics_lookback);
 
         let rolled_back =
-            should_rollback_to_stable_policy(&policy_state, now_ms, &metrics, rollback_guard);
+            should_rollback_to_stable_policy(&policy_state, now_ms, &metrics, rollback_guard)?;
 
         let applied_policy = if rolled_back {
             let stable = policy_state.last_stable_policy.clone();
@@ -992,24 +992,34 @@ fn should_rollback_to_stable_policy(
     now_ms: i64,
     metrics: &super::MembershipRevocationAlertDeliveryMetrics,
     guard: &MembershipRevocationDeadLetterReplayRollbackGuard,
-) -> bool {
+) -> Result<bool, WorldError> {
     if state.active_policy == state.last_stable_policy {
-        return false;
+        return Ok(false);
     }
     if metrics.attempted < guard.min_attempted {
-        return false;
+        return Ok(false);
     }
     let failure_ratio_per_mille = ratio_per_mille(metrics.failed, metrics.attempted);
     let dead_letter_ratio_per_mille = ratio_per_mille(metrics.dead_lettered, metrics.attempted);
     let unhealthy = failure_ratio_per_mille >= guard.failure_ratio_per_mille
         || dead_letter_ratio_per_mille >= guard.dead_letter_ratio_per_mille;
     if !unhealthy {
-        return false;
+        return Ok(false);
     }
-    state
-        .last_rollback_at_ms
-        .map(|last| now_ms.saturating_sub(last) >= guard.rollback_cooldown_ms)
-        .unwrap_or(true)
+    match state.last_rollback_at_ms {
+        Some(last_rollback_at_ms) => {
+            let elapsed_since_last_rollback =
+                now_ms
+                    .checked_sub(last_rollback_at_ms)
+                    .ok_or_else(|| WorldError::DistributedValidationFailed {
+                        reason: format!(
+                            "membership revocation dead-letter rollback cooldown elapsed overflow: now_ms={now_ms}, last_rollback_at_ms={last_rollback_at_ms}"
+                        ),
+                    })?;
+            Ok(elapsed_since_last_rollback >= guard.rollback_cooldown_ms)
+        }
+        None => Ok(true),
+    }
 }
 
 fn is_replay_policy_stable(
