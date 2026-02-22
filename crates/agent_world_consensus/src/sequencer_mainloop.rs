@@ -211,6 +211,7 @@ impl SequencerMainloop {
 
         let slot = self.next_slot;
         let height = self.next_height;
+        let next_slot = checked_sequencer_counter_increment(self.next_slot, "next_slot")?;
         let Some(batch) = self.mempool.take_batch_with_rules(
             &self.config.world_id,
             &self.config.node_id,
@@ -261,9 +262,8 @@ impl SequencerMainloop {
         )?;
 
         decision = self.drive_attestations_for_head(dht, &head, decision, now_ms)?;
-        self.next_slot = self.next_slot.saturating_add(1);
-
-        self.apply_finalized_status(&head.block_hash, decision.status);
+        self.apply_finalized_status(&head.block_hash, decision.status)?;
+        self.next_slot = next_slot;
 
         Ok(SequencerTickReport {
             world_id: self.config.world_id.clone(),
@@ -358,7 +358,7 @@ impl SequencerMainloop {
 
         let mut decision = self.decision_from_record(&record)?;
         decision = self.drive_attestations_for_head(dht, &record.head, decision, now_ms)?;
-        self.apply_finalized_status(&record.head.block_hash, decision.status);
+        self.apply_finalized_status(&record.head.block_hash, decision.status)?;
 
         Ok(Some(SequencerTickReport {
             world_id: self.config.world_id.clone(),
@@ -418,15 +418,24 @@ impl SequencerMainloop {
         Ok(decision)
     }
 
-    fn apply_finalized_status(&mut self, block_hash: &str, status: PosConsensusStatus) {
+    fn apply_finalized_status(
+        &mut self,
+        block_hash: &str,
+        status: PosConsensusStatus,
+    ) -> Result<(), WorldError> {
         match status {
-            PosConsensusStatus::Pending => {}
+            PosConsensusStatus::Pending => Ok(()),
             PosConsensusStatus::Committed => {
+                let next_height =
+                    checked_sequencer_counter_increment(self.next_height, "next_height")?;
                 self.prev_block_hash = block_hash.to_string();
-                self.next_height = self.next_height.saturating_add(1);
+                self.next_height = next_height;
+                Ok(())
             }
             PosConsensusStatus::Rejected => {
-                self.next_height = self.next_height.saturating_add(1);
+                self.next_height =
+                    checked_sequencer_counter_increment(self.next_height, "next_height")?;
+                Ok(())
             }
         }
     }
@@ -456,6 +465,14 @@ fn tick_state_from_status(status: PosConsensusStatus) -> SequencerTickState {
         PosConsensusStatus::Committed => SequencerTickState::Committed,
         PosConsensusStatus::Rejected => SequencerTickState::Rejected,
     }
+}
+
+fn checked_sequencer_counter_increment(value: u64, field: &str) -> Result<u64, WorldError> {
+    value
+        .checked_add(1)
+        .ok_or_else(|| WorldError::DistributedValidationFailed {
+            reason: format!("sequencer {field} overflow at {value}"),
+        })
 }
 
 fn block_hash_for_batch(
@@ -597,6 +614,56 @@ mod tests {
         assert_eq!(report.height, None);
         assert_eq!(loop_state.next_height(), 1);
         assert_eq!(loop_state.next_slot(), 0);
+    }
+
+    #[test]
+    fn sequencer_tick_rejects_slot_overflow_without_partial_state() {
+        let mut loop_state =
+            SequencerMainloop::new(SequencerMainloopConfig::default(), test_pos_config())
+                .expect("create loop");
+        let dht = InMemoryDht::new();
+        loop_state.next_slot = u64::MAX;
+        assert!(loop_state.submit_action(action("a-slot-overflow", 20)));
+
+        let err = loop_state
+            .tick(&dht, 100)
+            .expect_err("slot overflow must fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("next_slot overflow")
+        ));
+        assert_eq!(loop_state.next_slot(), u64::MAX);
+        assert_eq!(loop_state.next_height(), 1);
+        assert_eq!(
+            dht.get_world_head("w1").expect("head query"),
+            None,
+            "slot overflow should fail before proposal publish"
+        );
+    }
+
+    #[test]
+    fn sequencer_tick_rejects_height_overflow_without_partial_state() {
+        let mut loop_state =
+            SequencerMainloop::new(SequencerMainloopConfig::default(), test_pos_config())
+                .expect("create loop");
+        let dht = InMemoryDht::new();
+        loop_state.next_height = u64::MAX;
+        loop_state.next_slot = 7;
+        loop_state.prev_block_hash = "prev-hash".to_string();
+        assert!(loop_state.submit_action(action("a-height-overflow", 21)));
+
+        let err = loop_state
+            .tick(&dht, 100)
+            .expect_err("height overflow must fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason }
+                if reason.contains("next_height overflow")
+        ));
+        assert_eq!(loop_state.next_height(), u64::MAX);
+        assert_eq!(loop_state.next_slot(), 7);
+        assert_eq!(loop_state.prev_block_hash, "prev-hash");
     }
 
     #[test]

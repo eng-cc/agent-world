@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase5.project.md`
 
 ### T1 Sequencer 递进语义硬化
-- [ ] `sequencer_mainloop` 的 `next_slot`/`next_height` 递进改为受检溢出语义。
-- [ ] 终态更新改为“先计算后提交”，失败时避免局部状态写入。
-- [ ] 新增对应溢出拒绝测试。
+- [x] `sequencer_mainloop` 的 `next_slot`/`next_height` 递进改为受检溢出语义。
+- [x] 终态更新改为“先计算后提交”，失败时避免局部状态写入。
+- [x] 新增对应溢出拒绝测试。
 
 ### T2 Lease 递进语义硬化
 - [ ] `lease` 的 `next_term` 与 `expires_at_ms` 递进改为受检语义。
@@ -29,7 +29,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
