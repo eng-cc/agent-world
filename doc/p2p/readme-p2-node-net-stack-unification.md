@@ -16,6 +16,10 @@
     - 在封装层补齐 node 语义（轮换/重试/回退）。
   - `crates/agent_world_node/Cargo.toml`
     - 增加 `agent_world_net`（仅 native 目标依赖）。
+  - `crates/agent_world_net/Cargo.toml`
+    - 移除 `agent_world_net -> agent_world` 的包级依赖边，根因级打破 `agent_world -> agent_world_node -> agent_world_net -> agent_world` 循环。
+  - `crates/agent_world_net/src/lib.rs`
+    - 收口 runtime_bridge 相关导出，确保 `agent_world_net` 基础网络层不再反向耦合 runtime crate。
   - `crates/agent_world_node/src/libp2p_replication_network_wasm.rs`
     - 增加注释，明确 wasm32 非 full node。
   - 文档
@@ -51,6 +55,10 @@
   - 命中则视为远端处理失败，触发重试或返回 `NetworkRequestFailed`；
   - 未命中则视为业务 payload 成功。
 
+### 4) 依赖图约束
+- `agent_world_net` 作为基础网络 crate，不再直接依赖 `agent_world`。
+- `runtime_bridge` 在 `agent_world_net` 中保留 feature 名称占位，但不再承载 runtime 绑定实现，避免再次引入包级循环依赖。
+
 ## 里程碑
 - M1：完成设计文档 + 项目管理文档，冻结迁移边界。
 - M2：完成 node replication 底层迁移与封装层语义补齐。
@@ -60,3 +68,4 @@
 - 兼容风险：迁移后底层 transport 语义由 `agent_world_net` 承担，需通过回归测试确保 node 的重试/回退行为不回退。
 - 误判风险：远端错误以 `ErrorResponse` 识别，需避免将正常 payload 误判为错误响应。
 - 构建风险：`agent_world_node` 新增 `agent_world_net` 依赖时，需限制在 native 目标，避免影响 wasm32 编译路径。
+- 演进风险：runtime bridge 相关能力不再由 `agent_world_net` 直接导出，后续若需要恢复需在独立桥接层实现，避免重新耦合到基础网络层。

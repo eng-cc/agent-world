@@ -1,28 +1,14 @@
 //! Network-focused facade for distributed runtime capabilities.
 
-#[cfg(feature = "runtime_bridge")]
-mod bootstrap;
 mod client;
 mod dht;
 mod dht_cache;
-#[cfg(feature = "runtime_bridge")]
-mod execution_storage;
 mod gateway;
-#[cfg(feature = "runtime_bridge")]
-mod head_follow;
 mod head_sync;
 mod head_tracking;
-#[cfg(feature = "runtime_bridge")]
-mod head_validation;
 mod index;
 mod index_store;
 mod network;
-#[cfg(feature = "runtime_bridge")]
-mod observer;
-#[cfg(feature = "runtime_bridge")]
-mod observer_metrics;
-#[cfg(feature = "runtime_bridge")]
-mod observer_replay;
 mod provider_cache;
 mod replay_flow;
 mod util;
@@ -46,22 +32,6 @@ pub mod distributed_client {
     pub use super::client::*;
 }
 
-#[cfg(feature = "runtime_bridge")]
-pub mod distributed_bootstrap {
-    pub use super::bootstrap::*;
-}
-
-#[cfg(feature = "runtime_bridge")]
-pub mod distributed_head_follow {
-    pub use super::head_follow::*;
-    pub use super::head_tracking::HeadUpdateDecision;
-}
-
-#[cfg(feature = "runtime_bridge")]
-pub mod distributed_observer_replay {
-    pub use super::observer_replay::*;
-}
-
 pub mod distributed_index_store {
     pub use super::index_store::*;
 }
@@ -83,18 +53,6 @@ pub mod observer_replay_flow {
 
 pub mod distributed_storage {
     pub use agent_world_proto::distributed_storage::{ExecutionWriteConfig, ExecutionWriteResult};
-
-    #[cfg(feature = "runtime_bridge")]
-    pub use super::execution_storage::{
-        load_block_by_height_from_path_index, load_latest_head_from_path_index,
-        store_execution_result, store_execution_result_with_path_index,
-    };
-}
-
-#[cfg(feature = "runtime_bridge")]
-pub mod distributed_validation {
-    pub use super::head_validation::HeadValidationResult;
-    pub use super::head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
 }
 
 pub mod error {
@@ -124,41 +82,6 @@ pub use network::{DistributedNetwork, InMemoryNetwork};
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 pub use provider_cache::{ProviderCache, ProviderCacheConfig};
-
-#[cfg(feature = "runtime_bridge")]
-pub use bootstrap::{
-    bootstrap_world_from_dht, bootstrap_world_from_head, bootstrap_world_from_head_with_dht,
-    bootstrap_world_from_head_with_path_index, bootstrap_world_from_latest_path_index,
-};
-#[cfg(feature = "runtime_bridge")]
-pub use distributed_storage::{
-    load_block_by_height_from_path_index, load_latest_head_from_path_index, store_execution_result,
-    store_execution_result_with_path_index,
-};
-#[cfg(feature = "runtime_bridge")]
-pub use head_follow::HeadFollower;
-#[cfg(feature = "runtime_bridge")]
-pub use head_validation::{assemble_journal, assemble_snapshot, validate_head_update};
-#[cfg(feature = "runtime_bridge")]
-pub use observer::{
-    HeadFollowReport, HeadSyncModeReport, HeadSyncModeWithDhtReport, HeadSyncReport,
-    HeadSyncResult, HeadSyncSourceMode, HeadSyncSourceModeWithDht, ObserverClient,
-    ObserverSubscription,
-};
-#[cfg(feature = "runtime_bridge")]
-pub use observer_metrics::{
-    ObserverModeCounters, ObserverModeRuntimeMetricsSnapshot,
-    ObserverModeWithDhtRuntimeMetricsSnapshot, ObserverRuntimeMetrics,
-    ObserverRuntimeMetricsSnapshot,
-};
-#[cfg(feature = "runtime_bridge")]
-pub use observer_replay::{
-    replay_validate_head, replay_validate_head_with_dht, replay_validate_with_head,
-    replay_validate_with_head_and_dht,
-};
-
-#[cfg(feature = "runtime_bridge")]
-pub use head_validation::HeadValidationResult;
 
 #[cfg(feature = "libp2p")]
 pub use libp2p_net::{Libp2pNetwork, Libp2pNetworkConfig};

@@ -9,11 +9,12 @@ path = "src/lib.rs"
 [features]
 default = ["self_tests", "libp2p"]
 libp2p = ["dep:libp2p", "dep:futures", "dep:async-std"]
-runtime_bridge = ["dep:agent_world", "dep:agent_world_distfs"]
+# Reserved for backward-compatible feature flags; runtime bridge logic no longer
+# lives in this crate to avoid package-level dependency cycles.
+runtime_bridge = []
 self_tests = []
 
 [dependencies]
-agent_world = { path = "../agent_world", optional = true }
 agent_world_distfs = { path = "../agent_world_distfs", optional = true }
 agent_world_proto = { path = "../agent_world_proto" }
 agent_world_wasm_abi = { path = "../agent_world_wasm_abi" }

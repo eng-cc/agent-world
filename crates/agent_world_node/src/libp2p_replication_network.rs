@@ -1,20 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use agent_world_proto::distributed::DistributedErrorCode;
-use agent_world_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
+use agent_world_net::{Libp2pNetwork, Libp2pNetworkConfig};
+use agent_world_proto::distributed::ErrorResponse;
+use agent_world_proto::distributed_net::{
+    DistributedNetwork as ProtoDistributedNetwork, NetworkSubscription,
+};
 use agent_world_proto::world_error::WorldError;
-use futures::channel::{mpsc, oneshot};
-use futures::{FutureExt, StreamExt};
-use libp2p::gossipsub::{self, IdentTopic, MessageAuthenticity, TopicHash};
 use libp2p::identity::Keypair;
-use libp2p::noise;
-use libp2p::request_response::{self, ProtocolSupport};
-use libp2p::swarm::{dial_opts::DialOpts, NetworkBehaviour, Swarm, SwarmEvent};
-use libp2p::{Multiaddr, PeerId, StreamProtocol, Transport as _};
-use serde::{Deserialize, Serialize};
-
-const RR_STREAM_PROTOCOL: &str = "/aw/node/replication/rr/1.0.0";
+use libp2p::{Multiaddr, PeerId};
 
 type Handler = Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>;
 
@@ -39,432 +34,132 @@ impl Default for Libp2pReplicationNetworkConfig {
 
 #[derive(Clone)]
 pub struct Libp2pReplicationNetwork {
-    peer_id: PeerId,
-    command_tx: mpsc::UnboundedSender<Command>,
-    inbox: Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>,
-    #[cfg_attr(not(test), allow(dead_code))]
-    listening_addrs: Arc<Mutex<Vec<Multiaddr>>>,
-    #[cfg_attr(not(test), allow(dead_code))]
-    connected_peers: Arc<Mutex<HashSet<PeerId>>>,
-    #[cfg_attr(not(test), allow(dead_code))]
-    errors: Arc<Mutex<Vec<String>>>,
-}
-
-enum Command {
-    Publish {
-        topic: String,
-        payload: Vec<u8>,
-    },
-    Subscribe {
-        topic: String,
-    },
-    Dial {
-        addr: Multiaddr,
-    },
-    Request {
-        protocol: String,
-        payload: Vec<u8>,
-        response: oneshot::Sender<Result<Vec<u8>, WorldError>>,
-    },
-    RegisterHandler {
-        protocol: String,
-        handler: Handler,
-    },
-    Shutdown,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct ReplicationRequest {
-    protocol: String,
-    payload: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct ReplicationResponse {
-    ok: bool,
-    payload: Vec<u8>,
-    error: Option<String>,
-}
-
-struct PendingRequest {
-    request: ReplicationRequest,
-    remaining_peers: Vec<PeerId>,
-    response: oneshot::Sender<Result<Vec<u8>, WorldError>>,
+    inner: Libp2pNetwork,
+    allow_local_handler_fallback_when_no_peers: bool,
+    handlers: Arc<Mutex<HashMap<String, Handler>>>,
+    request_peer_cursor: Arc<AtomicUsize>,
 }
 
 impl Libp2pReplicationNetwork {
     pub fn new(config: Libp2pReplicationNetworkConfig) -> Self {
-        let keypair = config
-            .keypair
-            .clone()
-            .unwrap_or_else(Keypair::generate_ed25519);
-        let peer_id = PeerId::from(keypair.public());
-        let inbox = Arc::new(Mutex::new(HashMap::<String, Vec<Vec<u8>>>::new()));
-        let listening_addrs = Arc::new(Mutex::new(Vec::<Multiaddr>::new()));
-        let connected_peers = Arc::new(Mutex::new(HashSet::<PeerId>::new()));
-        let errors = Arc::new(Mutex::new(Vec::<String>::new()));
-        let (command_tx, command_rx) = mpsc::unbounded();
-        let inbox_for_thread = Arc::clone(&inbox);
-        let listening_addrs_for_thread = Arc::clone(&listening_addrs);
-        let connected_peers_for_thread = Arc::clone(&connected_peers);
-        let errors_for_thread = Arc::clone(&errors);
-        let bootstrap_peers = config.bootstrap_peers.clone();
-        let listen_addrs = config.listen_addrs.clone();
-        let allow_local_handler_fallback_when_no_peers =
-            config.allow_local_handler_fallback_when_no_peers;
-
-        std::thread::spawn(move || {
-            let mut swarm = build_swarm(&keypair);
-            let mut subscribed = HashSet::<String>::new();
-            let mut topic_map: HashMap<TopicHash, String> = HashMap::new();
-            let mut handlers: HashMap<String, Handler> = HashMap::new();
-            let mut pending: HashMap<request_response::OutboundRequestId, PendingRequest> =
-                HashMap::new();
-            let mut peers = Vec::<PeerId>::new();
-            let mut request_peer_cursor = 0usize;
-
-            for addr in listen_addrs {
-                if let Err(err) = swarm.listen_on(addr) {
-                    errors_for_thread
-                        .lock()
-                        .expect("lock libp2p errors")
-                        .push(format!("libp2p replication listen failed: {err}"));
-                }
-            }
-
-            async_std::task::block_on(async move {
-                let mut command_rx = command_rx;
-                loop {
-                    futures::select! {
-                        command = command_rx.next().fuse() => {
-                            match command {
-                                Some(Command::Publish { topic, payload }) => {
-                                    let topic_handle = IdentTopic::new(topic);
-                                    let _ = swarm.behaviour_mut().gossipsub.publish(topic_handle, payload);
-                                }
-                                Some(Command::Subscribe { topic }) => {
-                                    if subscribed.insert(topic.clone()) {
-                                        let topic_handle = IdentTopic::new(topic.clone());
-                                        if swarm.behaviour_mut().gossipsub.subscribe(&topic_handle).is_ok() {
-                                            topic_map.insert(topic_handle.hash(), topic);
-                                        }
-                                    }
-                                }
-                                Some(Command::Dial { addr }) => {
-                                    if let Err(err) = dial_addr_with_optional_peer_id(&mut swarm, addr) {
-                                        errors_for_thread
-                                            .lock()
-                                            .expect("lock libp2p errors")
-                                            .push(format!("libp2p replication dial failed: {err}"));
-                                    }
-                                }
-                                Some(Command::Request { protocol, payload, response }) => {
-                                    if peers.is_empty() {
-                                        if allow_local_handler_fallback_when_no_peers {
-                                            if let Some(handler) = handlers.get(protocol.as_str()) {
-                                                let _ = response.send(handler(payload.as_slice()));
-                                            } else {
-                                                let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
-                                                    protocol: format!(
-                                                        "libp2p-replication handler missing: {protocol}"
-                                                    ),
-                                                }));
-                                            }
-                                        } else {
-                                            let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
-                                                protocol: format!(
-                                                    "libp2p-replication no connected peers for protocol {protocol}"
-                                                ),
-                                            }));
-                                        }
-                                        continue;
-                                    }
-
-                                    let mut request_peers =
-                                        rotated_peers(peers.as_slice(), request_peer_cursor);
-                                    request_peer_cursor = request_peer_cursor.wrapping_add(1);
-                                    let Some(first_peer) = request_peers.first().copied() else {
-                                        let _ = response.send(Err(WorldError::NetworkProtocolUnavailable {
-                                            protocol: format!(
-                                                "libp2p-replication no connected peers for protocol {protocol}"
-                                            ),
-                                        }));
-                                        continue;
-                                    };
-                                    request_peers.remove(0);
-
-                                    let request = ReplicationRequest {
-                                        protocol,
-                                        payload,
-                                    };
-                                    let request_id = swarm
-                                        .behaviour_mut()
-                                        .request_response
-                                        .send_request(&first_peer, request.clone());
-                                    pending.insert(
-                                        request_id,
-                                        PendingRequest {
-                                            request,
-                                            remaining_peers: request_peers,
-                                            response,
-                                        },
-                                    );
-                                }
-                                Some(Command::RegisterHandler { protocol, handler }) => {
-                                    handlers.insert(protocol, handler);
-                                }
-                                Some(Command::Shutdown) | None => break,
-                            }
-                        }
-                        event = swarm.select_next_some().fuse() => {
-                            match event {
-                                SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(
-                                    gossipsub::Event::Message { message, .. }
-                                )) => {
-                                    let topic = topic_map
-                                        .get(&message.topic)
-                                        .cloned()
-                                        .unwrap_or_else(|| message.topic.as_str().to_string());
-                                    let mut inbox = inbox_for_thread.lock().expect("lock inbox");
-                                    inbox.entry(topic).or_default().push(message.data);
-                                }
-                                SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(event)) => {
-                                    match event {
-                                        request_response::Event::Message { message, .. } => {
-                                            match message {
-                                                request_response::Message::Request { request, channel, .. } => {
-                                                    let response = match handlers.get(request.protocol.as_str()) {
-                                                        Some(handler) => match handler(request.payload.as_slice()) {
-                                                            Ok(payload) => ReplicationResponse {
-                                                                ok: true,
-                                                                payload,
-                                                                error: None,
-                                                            },
-                                                            Err(err) => ReplicationResponse {
-                                                                ok: false,
-                                                                payload: Vec::new(),
-                                                                error: Some(format!("{err:?}")),
-                                                            },
-                                                        },
-                                                        None => ReplicationResponse {
-                                                            ok: false,
-                                                            payload: Vec::new(),
-                                                            error: Some(format!(
-                                                                "libp2p-replication handler missing: {}",
-                                                                request.protocol
-                                                            )),
-                                                        },
-                                                    };
-                                                    if swarm
-                                                        .behaviour_mut()
-                                                        .request_response
-                                                        .send_response(channel, response)
-                                                        .is_err()
-                                                    {
-                                                        errors_for_thread
-                                                            .lock()
-                                                            .expect("lock libp2p errors")
-                                                            .push(
-                                                                "libp2p replication send_response failed"
-                                                                    .to_string(),
-                                                            );
-                                                    }
-                                                }
-                                                request_response::Message::Response { request_id, response } => {
-                                                    if let Some(mut pending_request) = pending.remove(&request_id) {
-                                                        if response.ok {
-                                                            let _ = pending_request.response.send(Ok(response.payload));
-                                                        } else {
-                                                            let retry_peer = pending_request.remaining_peers.first().copied();
-                                                            if let Some(peer_id) = retry_peer {
-                                                                pending_request.remaining_peers.remove(0);
-                                                                let next_request_id = swarm
-                                                                    .behaviour_mut()
-                                                                    .request_response
-                                                                    .send_request(&peer_id, pending_request.request.clone());
-                                                                pending.insert(next_request_id, pending_request);
-                                                            } else {
-                                                                let _ = pending_request.response.send(Err(WorldError::NetworkRequestFailed {
-                                                                    code: DistributedErrorCode::ErrNotFound,
-                                                                    message: response.error.unwrap_or_else(|| {
-                                                                        "libp2p replication remote handler failed".to_string()
-                                                                    }),
-                                                                    retryable: false,
-                                                                }));
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        request_response::Event::OutboundFailure { request_id, error, .. } => {
-                                            if let Some(mut pending_request) = pending.remove(&request_id) {
-                                                let retry_peer = pending_request.remaining_peers.first().copied();
-                                                if let Some(peer_id) = retry_peer {
-                                                    pending_request.remaining_peers.remove(0);
-                                                    let next_request_id = swarm
-                                                        .behaviour_mut()
-                                                        .request_response
-                                                        .send_request(&peer_id, pending_request.request.clone());
-                                                    pending.insert(next_request_id, pending_request);
-                                                } else {
-                                                    let _ = pending_request.response.send(Err(WorldError::NetworkProtocolUnavailable {
-                                                        protocol: format!(
-                                                            "libp2p-replication outbound request failed: {error:?}"
-                                                        ),
-                                                    }));
-                                                }
-                                            }
-                                        }
-                                        request_response::Event::InboundFailure { peer, error, .. } => {
-                                            errors_for_thread
-                                                .lock()
-                                                .expect("lock libp2p errors")
-                                                .push(format!(
-                                                    "libp2p replication inbound failure peer={peer}: {error:?}"
-                                                ));
-                                        }
-                                        request_response::Event::ResponseSent { .. } => {}
-                                    }
-                                }
-                                SwarmEvent::NewListenAddr { address, .. } => {
-                                    listening_addrs_for_thread
-                                        .lock()
-                                        .expect("lock listening addrs")
-                                        .push(address);
-                                }
-                                SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                                    if !peers.contains(&peer_id) {
-                                        peers.push(peer_id);
-                                    }
-                                    connected_peers_for_thread
-                                        .lock()
-                                        .expect("lock connected peers")
-                                        .insert(peer_id);
-                                }
-                                SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                                    peers.retain(|peer| peer != &peer_id);
-                                    connected_peers_for_thread
-                                        .lock()
-                                        .expect("lock connected peers")
-                                        .remove(&peer_id);
-                                }
-                                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                                    errors_for_thread
-                                        .lock()
-                                        .expect("lock libp2p errors")
-                                        .push(format!(
-                                            "libp2p replication outgoing connection error peer={peer_id:?}: {error:?}"
-                                        ));
-                                }
-                                SwarmEvent::IncomingConnectionError { error, .. } => {
-                                    errors_for_thread
-                                        .lock()
-                                        .expect("lock libp2p errors")
-                                        .push(format!(
-                                            "libp2p replication incoming connection error: {error:?}"
-                                        ));
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            });
+        let inner = Libp2pNetwork::new(Libp2pNetworkConfig {
+            keypair: config.keypair,
+            listen_addrs: config.listen_addrs,
+            bootstrap_peers: config.bootstrap_peers,
+            ..Libp2pNetworkConfig::default()
         });
 
-        for addr in bootstrap_peers {
-            let _ = command_tx.unbounded_send(Command::Dial { addr });
-        }
-
         Self {
-            peer_id,
-            command_tx,
-            inbox,
-            listening_addrs,
-            connected_peers,
-            errors,
+            inner,
+            allow_local_handler_fallback_when_no_peers: config
+                .allow_local_handler_fallback_when_no_peers,
+            handlers: Arc::new(Mutex::new(HashMap::new())),
+            request_peer_cursor: Arc::new(AtomicUsize::new(0)),
         }
     }
 
     pub fn peer_id(&self) -> PeerId {
-        self.peer_id
+        self.inner.peer_id()
     }
 
     #[cfg(test)]
     pub fn listening_addrs(&self) -> Vec<Multiaddr> {
-        self.listening_addrs
-            .lock()
-            .expect("lock listening addrs")
-            .clone()
+        self.inner.listening_addrs()
     }
 
     #[cfg(test)]
     pub fn connected_peers(&self) -> Vec<PeerId> {
-        self.connected_peers
-            .lock()
-            .expect("lock connected peers")
-            .iter()
-            .copied()
-            .collect()
+        self.inner.connected_peers()
     }
 
     #[cfg(test)]
     pub fn debug_errors(&self) -> Vec<String> {
-        self.errors.lock().expect("lock errors").clone()
+        self.inner.debug_errors()
+    }
+
+    fn local_handler(&self, protocol: &str) -> Option<Handler> {
+        self.handlers
+            .lock()
+            .expect("lock libp2p replication handlers")
+            .get(protocol)
+            .cloned()
+    }
+
+    fn call_local_handler(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
+        match self.local_handler(protocol) {
+            Some(handler) => handler(payload),
+            None => Err(WorldError::NetworkProtocolUnavailable {
+                protocol: format!("libp2p-replication handler missing: {protocol}"),
+            }),
+        }
+    }
+
+    fn request_via_peer(
+        &self,
+        protocol: &str,
+        payload: &[u8],
+        peer: PeerId,
+    ) -> Result<Vec<u8>, WorldError> {
+        let provider = peer.to_string();
+        let response = ProtoDistributedNetwork::request_with_providers(
+            &self.inner,
+            protocol,
+            payload,
+            &[provider],
+        )
+        .map_err(|err| WorldError::NetworkProtocolUnavailable {
+            protocol: format!("libp2p-replication outbound request failed: {err:?}"),
+        })?;
+
+        if let Some(remote_error) = decode_error_response(response.as_slice()) {
+            return Err(WorldError::NetworkRequestFailed {
+                code: remote_error.code,
+                message: remote_error.message,
+                retryable: remote_error.retryable,
+            });
+        }
+
+        Ok(response)
     }
 }
 
-impl Drop for Libp2pReplicationNetwork {
-    fn drop(&mut self) {
-        let _ = self.command_tx.unbounded_send(Command::Shutdown);
-    }
-}
-
-impl DistributedNetwork<WorldError> for Libp2pReplicationNetwork {
+impl ProtoDistributedNetwork<WorldError> for Libp2pReplicationNetwork {
     fn publish(&self, topic: &str, payload: &[u8]) -> Result<(), WorldError> {
-        self.command_tx
-            .unbounded_send(Command::Publish {
-                topic: topic.to_string(),
-                payload: payload.to_vec(),
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p-replication".to_string(),
-            })
+        self.inner.publish(topic, payload)
     }
 
     fn subscribe(&self, topic: &str) -> Result<NetworkSubscription, WorldError> {
-        self.command_tx
-            .unbounded_send(Command::Subscribe {
-                topic: topic.to_string(),
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p-replication".to_string(),
-            })?;
-        let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox.entry(topic.to_string()).or_default();
-        Ok(NetworkSubscription::new(
-            topic.to_string(),
-            Arc::clone(&self.inbox),
-        ))
+        self.inner.subscribe(topic)
     }
 
     fn request(&self, protocol: &str, payload: &[u8]) -> Result<Vec<u8>, WorldError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        self.command_tx
-            .unbounded_send(Command::Request {
-                protocol: protocol.to_string(),
-                payload: payload.to_vec(),
-                response: response_tx,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p-replication".to_string(),
-            })?;
-        futures::executor::block_on(response_rx).map_err(|_| {
-            WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p-replication".to_string(),
+        let mut peers = self.inner.connected_peers();
+        peers.sort_by_key(|peer| peer.to_string());
+
+        if peers.is_empty() {
+            if self.allow_local_handler_fallback_when_no_peers {
+                return self.call_local_handler(protocol, payload);
             }
-        })?
+            return Err(WorldError::NetworkProtocolUnavailable {
+                protocol: format!("libp2p-replication no connected peers for protocol {protocol}"),
+            });
+        }
+
+        let cursor = self.request_peer_cursor.fetch_add(1, Ordering::Relaxed);
+        let ordered_peers = rotated_peers(peers.as_slice(), cursor);
+        let mut last_error = None;
+        for peer in ordered_peers {
+            match self.request_via_peer(protocol, payload, peer) {
+                Ok(reply) => return Ok(reply),
+                Err(err) => last_error = Some(err),
+            }
+        }
+
+        Err(
+            last_error.unwrap_or_else(|| WorldError::NetworkProtocolUnavailable {
+                protocol: format!("libp2p-replication no connected peers for protocol {protocol}"),
+            }),
+        )
     }
 
     fn register_handler(
@@ -473,97 +168,24 @@ impl DistributedNetwork<WorldError> for Libp2pReplicationNetwork {
         handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
     ) -> Result<(), WorldError> {
         let handler: Handler = Arc::from(handler);
-        self.command_tx
-            .unbounded_send(Command::RegisterHandler {
-                protocol: protocol.to_string(),
-                handler,
-            })
-            .map_err(|_| WorldError::NetworkProtocolUnavailable {
-                protocol: "libp2p-replication".to_string(),
-            })
+        self.inner.register_handler(
+            protocol,
+            Box::new({
+                let handler = Arc::clone(&handler);
+                move |payload| handler(payload)
+            }),
+        )?;
+
+        self.handlers
+            .lock()
+            .expect("lock libp2p replication handlers")
+            .insert(protocol.to_string(), handler);
+        Ok(())
     }
 }
 
-#[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourEvent")]
-struct Behaviour {
-    gossipsub: gossipsub::Behaviour,
-    request_response: request_response::cbor::Behaviour<ReplicationRequest, ReplicationResponse>,
-}
-
-#[derive(Debug)]
-enum BehaviourEvent {
-    Gossipsub(gossipsub::Event),
-    RequestResponse(request_response::Event<ReplicationRequest, ReplicationResponse>),
-}
-
-impl From<gossipsub::Event> for BehaviourEvent {
-    fn from(event: gossipsub::Event) -> Self {
-        BehaviourEvent::Gossipsub(event)
-    }
-}
-
-impl From<request_response::Event<ReplicationRequest, ReplicationResponse>> for BehaviourEvent {
-    fn from(event: request_response::Event<ReplicationRequest, ReplicationResponse>) -> Self {
-        BehaviourEvent::RequestResponse(event)
-    }
-}
-
-fn build_swarm(keypair: &Keypair) -> Swarm<Behaviour> {
-    let swarm_config = libp2p::swarm::Config::with_async_std_executor()
-        .with_idle_connection_timeout(std::time::Duration::from_secs(30));
-    let peer_id = PeerId::from(keypair.public());
-    let gossipsub = gossipsub::Behaviour::new(
-        MessageAuthenticity::Signed(keypair.clone()),
-        gossipsub::Config::default(),
-    )
-    .expect("gossipsub config");
-    let protocols = vec![(
-        StreamProtocol::new(RR_STREAM_PROTOCOL),
-        ProtocolSupport::Full,
-    )];
-    let request_response =
-        request_response::cbor::Behaviour::new(protocols, request_response::Config::default());
-    let behaviour = Behaviour {
-        gossipsub,
-        request_response,
-    };
-
-    let transport = libp2p::tcp::async_io::Transport::new(libp2p::tcp::Config::default())
-        .upgrade(libp2p::core::upgrade::Version::V1)
-        .authenticate(noise::Config::new(keypair).expect("noise config"))
-        .multiplex(libp2p::yamux::Config::default())
-        .boxed();
-
-    Swarm::new(transport, behaviour, peer_id, swarm_config)
-}
-
-fn dial_addr_with_optional_peer_id(
-    swarm: &mut Swarm<Behaviour>,
-    addr: Multiaddr,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let (peer_id, dial_addr) = split_peer_id(addr);
-    if let Some(peer_id) = peer_id {
-        let opts = DialOpts::peer_id(peer_id)
-            .addresses(vec![dial_addr])
-            .build();
-        swarm.dial(opts)?;
-    } else {
-        swarm.dial(dial_addr)?;
-    }
-    Ok(())
-}
-
-fn split_peer_id(mut addr: Multiaddr) -> (Option<PeerId>, Multiaddr) {
-    let peer_id = match addr.pop() {
-        Some(libp2p::multiaddr::Protocol::P2p(peer_id)) => Some(peer_id),
-        Some(protocol) => {
-            addr.push(protocol);
-            None
-        }
-        None => None,
-    };
-    (peer_id, addr)
+fn decode_error_response(payload: &[u8]) -> Option<ErrorResponse> {
+    serde_cbor::from_slice(payload).ok()
 }
 
 fn rotated_peers(peers: &[PeerId], cursor: usize) -> Vec<PeerId> {
@@ -581,6 +203,7 @@ fn rotated_peers(peers: &[PeerId], cursor: usize) -> Vec<PeerId> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_world_proto::distributed::DistributedErrorCode;
     use std::time::{Duration, Instant};
 
     fn wait_until(what: &str, deadline: Instant, mut condition: impl FnMut() -> bool) {
