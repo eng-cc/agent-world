@@ -4,6 +4,7 @@
 - 修复 `agent_world_node` 在 `wasm32-unknown-unknown` 目标上的编译失败，避免阻塞 pre-commit 的 Web Viewer wasm 编译门禁。
 - 保持 native 目标下现有 libp2p replication 能力不变。
 - 稳定 `viewer::web_bridge` 相关回归测试，消除提交门禁中的偶发 `WouldBlock/Disconnected` 失败。
+- 明确 wasm32 节点网络定位：不做 full node 协议栈，只提供编译占位与显式 unavailable。
 
 ## 范围
 - `crates/agent_world_node/src/lib.rs`
@@ -14,7 +15,7 @@
 
 不在范围：
 - 调整 PoS/gossip 共识业务语义。
-- 为 wasm 端实现真实 libp2p 传输能力。
+- 为 wasm 端实现真实 libp2p 传输能力（即 full node 的传输/发现/复制协议栈）。
 
 ## 接口/数据
 - 对外接口保持不变：继续导出 `Libp2pReplicationNetwork` 与 `Libp2pReplicationNetworkConfig`。
