@@ -63,10 +63,14 @@ use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
 const MAIN_PANEL_DEFAULT_WIDTH: f32 = 320.0;
 const MAIN_PANEL_MIN_WIDTH: f32 = 240.0;
+const MAIN_PANEL_COMPACT_MIN_WIDTH: f32 = 160.0;
 const MAIN_PANEL_MAX_WIDTH_RATIO: f32 = 0.6;
 const CHAT_PANEL_DEFAULT_WIDTH: f32 = 360.0;
 const CHAT_PANEL_MIN_WIDTH: f32 = 280.0;
 const CHAT_PANEL_MAX_WIDTH_RATIO: f32 = 0.65;
+const MIN_INTERACTION_VIEWPORT_WIDTH: f32 = 240.0;
+const CHAT_SIDE_PANEL_COMPACT_BREAKPOINT: f32 =
+    MAIN_PANEL_MIN_WIDTH + CHAT_PANEL_MIN_WIDTH + MIN_INTERACTION_VIEWPORT_WIDTH;
 const EVENT_ROW_LIMIT: usize = 10;
 const MAX_TICK_LABELS: usize = 4;
 const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
@@ -118,6 +122,37 @@ fn adaptive_chat_panel_max_width(available_width: f32) -> f32 {
 fn adaptive_chat_panel_default_width(available_width: f32) -> f32 {
     let width = sanitize_available_width(available_width, CHAT_PANEL_DEFAULT_WIDTH);
     (width * 0.25).clamp(CHAT_PANEL_MIN_WIDTH, adaptive_chat_panel_max_width(width))
+}
+
+fn is_compact_chat_layout(available_width: f32) -> bool {
+    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
+    width < CHAT_SIDE_PANEL_COMPACT_BREAKPOINT
+}
+
+fn adaptive_main_panel_min_width(available_width: f32) -> f32 {
+    if is_compact_chat_layout(available_width) {
+        MAIN_PANEL_COMPACT_MIN_WIDTH
+    } else {
+        MAIN_PANEL_MIN_WIDTH
+    }
+}
+
+fn max_total_right_panel_width_budget(available_width: f32) -> f32 {
+    let width = sanitize_available_width(available_width, MAIN_PANEL_DEFAULT_WIDTH);
+    (width - MIN_INTERACTION_VIEWPORT_WIDTH).max(0.0)
+}
+
+fn adaptive_chat_panel_max_width_for_side_layout(available_width: f32) -> f32 {
+    let layout_budget = max_total_right_panel_width_budget(available_width);
+    let chat_budget = (layout_budget - MAIN_PANEL_MIN_WIDTH).max(0.0);
+    adaptive_chat_panel_max_width(available_width).min(chat_budget)
+}
+
+fn adaptive_main_panel_max_width_for_layout(available_width: f32, chat_panel_width: f32) -> f32 {
+    let layout_budget = max_total_right_panel_width_budget(available_width);
+    let panel_budget = (layout_budget - chat_panel_width).max(0.0);
+    let panel_min_width = adaptive_main_panel_min_width(available_width);
+    adaptive_panel_max_width(available_width).min(panel_budget.max(panel_min_width))
 }
 
 fn should_show_chat_panel(layout_state: &RightPanelLayoutState, show_chat: bool) -> bool {
@@ -213,14 +248,17 @@ pub(super) fn render_right_side_panel_egui(
     }
 
     let available_width = context.available_rect().width();
-    let show_chat_panel =
+    let show_chat_panel_requested =
         should_show_chat_panel(layout_state.as_ref(), module_visibility.show_chat);
-    let chat_panel_width = if show_chat_panel {
+    let compact_chat_layout = is_compact_chat_layout(available_width);
+    let chat_max_width = adaptive_chat_panel_max_width_for_side_layout(available_width);
+    let show_chat_side_panel =
+        show_chat_panel_requested && !compact_chat_layout && chat_max_width >= CHAT_PANEL_MIN_WIDTH;
+    let chat_panel_width = if show_chat_side_panel {
         let default_chat_width = adaptive_chat_panel_default_width(available_width);
-        let chat_max_width = adaptive_chat_panel_max_width(available_width);
         let chat_response = egui::SidePanel::right("viewer-chat-side-panel")
             .resizable(true)
-            .default_width(default_chat_width)
+            .default_width(default_chat_width.min(chat_max_width))
             .width_range(CHAT_PANEL_MIN_WIDTH..=chat_max_width)
             .show(context, |ui| {
                 ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
@@ -233,13 +271,16 @@ pub(super) fn render_right_side_panel_egui(
         0.0
     };
 
-    let default_panel_width = adaptive_panel_default_width(available_width);
-    let panel_max_width = adaptive_panel_max_width(available_width);
+    let panel_min_width = adaptive_main_panel_min_width(available_width);
+    let default_panel_width = adaptive_panel_default_width(available_width).max(panel_min_width);
+    let panel_max_width =
+        adaptive_main_panel_max_width_for_layout(available_width, chat_panel_width)
+            .max(panel_min_width);
     let mut hide_panel_requested = false;
     let panel_response = egui::SidePanel::right("viewer-right-side-panel")
         .resizable(true)
         .default_width(default_panel_width)
-        .width_range(MAIN_PANEL_MIN_WIDTH..=panel_max_width)
+        .width_range(panel_min_width..=panel_max_width)
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(6.0, 6.0);
 
@@ -364,6 +405,20 @@ pub(super) fn render_right_side_panel_egui(
                     client.as_deref(),
                 );
                 render_theme_runtime_section(ui, locale, theme_runtime.as_mut());
+            }
+
+            if module_visibility.show_chat && !show_chat_side_panel {
+                ui.separator();
+                if compact_chat_layout {
+                    ui.label(if locale.is_zh() {
+                        "窄屏模式：对话已内联到主面板"
+                    } else {
+                        "Compact mode: chat is embedded in main panel"
+                    });
+                }
+                ui.heading(if locale.is_zh() { "对话" } else { "Chat" });
+                chat_focus_signal.wants_ime_focus =
+                    render_chat_section(ui, locale, &state, client.as_deref(), &mut chat_draft);
             }
 
             if module_visibility.show_overview {

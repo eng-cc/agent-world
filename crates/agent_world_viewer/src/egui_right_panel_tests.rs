@@ -300,6 +300,45 @@ fn adaptive_chat_panel_max_width_scales_with_available_width() {
 }
 
 #[test]
+fn compact_chat_layout_switches_below_breakpoint() {
+    assert!(is_compact_chat_layout(390.0));
+    assert!(is_compact_chat_layout(
+        CHAT_SIDE_PANEL_COMPACT_BREAKPOINT - 1.0
+    ));
+    assert!(!is_compact_chat_layout(
+        CHAT_SIDE_PANEL_COMPACT_BREAKPOINT + 1.0
+    ));
+}
+
+#[test]
+fn adaptive_main_panel_min_width_uses_compact_floor_on_narrow_width() {
+    assert_eq!(
+        adaptive_main_panel_min_width(390.0),
+        MAIN_PANEL_COMPACT_MIN_WIDTH
+    );
+    assert_eq!(adaptive_main_panel_min_width(1280.0), MAIN_PANEL_MIN_WIDTH);
+}
+
+#[test]
+fn adaptive_chat_panel_max_width_for_side_layout_respects_viewport_budget() {
+    assert_eq!(adaptive_chat_panel_max_width_for_side_layout(500.0), 20.0);
+    assert_eq!(adaptive_chat_panel_max_width_for_side_layout(760.0), 280.0);
+    assert_eq!(adaptive_chat_panel_max_width_for_side_layout(1200.0), 720.0);
+}
+
+#[test]
+fn adaptive_main_panel_max_width_for_layout_respects_interaction_budget() {
+    assert_eq!(
+        adaptive_main_panel_max_width_for_layout(1365.0, 360.0),
+        765.0
+    );
+    assert_eq!(
+        adaptive_main_panel_max_width_for_layout(390.0, 0.0),
+        MAIN_PANEL_COMPACT_MIN_WIDTH
+    );
+}
+
+#[test]
 fn show_chat_panel_requires_expanded_top_and_visibility_enabled() {
     let expanded_layout = RightPanelLayoutState {
         top_panel_collapsed: false,
