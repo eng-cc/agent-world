@@ -19,9 +19,9 @@
 - [x] 更新既有数值断言测试
 
 ### T4 收口
-- [ ] 跑定向测试并记录结果
-- [ ] 回写项目状态与文档
-- [ ] 更新 `doc/devlog/2026-02-22.md`
+- [x] 跑定向测试并记录结果
+- [x] 回写项目状态与文档
+- [x] 更新 `doc/devlog/2026-02-22.md`
 
 ## 依赖
 - `crates/agent_world/src/runtime/world/event_processing/*`
@@ -29,8 +29,8 @@
 - `doc/game/gameplay-war-politics-mvp-baseline.md`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3
-- 进行中：T4
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3、T4
+- 进行中：无
 - 未开始：无
 - 阻塞项：无

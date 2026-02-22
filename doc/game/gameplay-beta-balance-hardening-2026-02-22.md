@@ -23,13 +23,15 @@
 - Viewer/UI 展示改造。
 
 ## 接口/数据
-- `Action::CastGovernanceVote`：新增 `weight` 上限规则（超出即拒绝）。
+- `Action::CastGovernanceVote`：新增 `weight` 上限规则（`weight <= 100`，超出即拒绝）。
 - `Action::UpdateGameplayPolicy`：新增授权规则：
-  - 操作方需具备已通过的治理提案历史（并满足最小有效总票重阈值）。
+  - 操作方需具备已通过的治理提案历史（`GovernanceProposalStatus::Passed`）；
+  - 且该提案 `total_weight_at_finalize >= 3`。
 - `Action::SettleEconomicContract(success=true)`：
   - `creator_reputation_delta/counterparty_reputation_delta` 由 `reputation_stake` 直接映射改为：
-    - 基于 `settlement_amount` 的基础奖励；
+    - 基于 `settlement_amount` 的基础奖励（`settlement_amount / 10`，最小为 `1`）；
     - 受 `reputation_stake` 和全局奖励上限双重约束；
+    - 当前全局奖励上限：`12`；
     - 失败路径保持惩罚逻辑。
 
 ## 里程碑
