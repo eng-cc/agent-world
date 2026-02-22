@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-numeric-correctness-phase6.project.md`
 
 ### T1 Membership 协调器 lease 受检加法
-- [ ] `membership_reconciliation` 的 in-memory coordinator `expires_at_ms` 改为受检加法。
-- [ ] `membership_recovery/stores` 的 store-backed coordinator `expires_at_ms` 改为受检加法。
-- [ ] 新增溢出拒绝且状态不变测试。
+- [x] `membership_reconciliation` 的 in-memory coordinator `expires_at_ms` 改为受检加法。
+- [x] `membership_recovery/stores` 的 store-backed coordinator `expires_at_ms` 改为受检加法。
+- [x] 新增溢出拒绝且状态不变测试。
 
 ### T2 时间源毫秒窄化受检转换
 - [ ] 收口 phase6 范围内 `as_millis() as i64`（consensus/net/node）。
@@ -37,7 +37,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

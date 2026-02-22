@@ -410,11 +410,13 @@ impl MembershipRevocationScheduleCoordinator for InMemoryMembershipRevocationSch
             }
         }
 
+        let expires_at_ms = checked_coordinator_lease_expiry(now_ms, lease_ttl_ms)?;
+
         guard.insert(
             world_id,
             InMemoryCoordinatorLease {
                 holder_node_id: node_id,
-                expires_at_ms: now_ms.saturating_add(lease_ttl_ms),
+                expires_at_ms,
             },
         );
         Ok(true)
@@ -893,6 +895,16 @@ fn validate_coordinator_lease_ttl_ms(lease_ttl_ms: i64) -> Result<(), WorldError
         });
     }
     Ok(())
+}
+
+fn checked_coordinator_lease_expiry(now_ms: i64, lease_ttl_ms: i64) -> Result<i64, WorldError> {
+    now_ms.checked_add(lease_ttl_ms).ok_or_else(|| {
+        WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation coordinator lease expiry overflow: now_ms={now_ms}, lease_ttl_ms={lease_ttl_ms}"
+            ),
+        }
+    })
 }
 
 fn schedule_due(last_run_ms: Option<i64>, now_ms: i64, interval_ms: i64) -> bool {

@@ -6,7 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::distributed_net::{DistributedNetwork, InMemoryNetwork};
 
 use crate::{
-    InMemoryMembershipRevocationAlertSink, InMemoryMembershipRevocationScheduleCoordinator,
+    error::WorldError, InMemoryMembershipRevocationAlertSink,
+    InMemoryMembershipRevocationScheduleCoordinator,
     InMemoryMembershipRevocationScheduleStateStore, MembershipDirectorySignerKeyring,
     MembershipRevocationAlertDedupPolicy, MembershipRevocationAlertDedupState,
     MembershipRevocationAlertPolicy, MembershipRevocationAlertSeverity,
@@ -232,6 +233,32 @@ fn run_revocation_reconcile_coordinated_reports_not_acquired_when_locked() {
     coordinator
         .release("w1", "node-a")
         .expect("release seed lock");
+}
+
+#[test]
+fn in_memory_schedule_coordinator_rejects_expiry_overflow_without_mutation() {
+    let coordinator = InMemoryMembershipRevocationScheduleCoordinator::new();
+    assert!(coordinator
+        .acquire("w1", "node-a", 1000, 500)
+        .expect("seed lease"));
+
+    let err = coordinator
+        .acquire("w1", "node-a", i64::MAX, 1)
+        .expect_err("overflow should fail");
+    match err {
+        WorldError::DistributedValidationFailed { reason } => {
+            assert!(reason.contains("lease expiry overflow"), "{reason}");
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    assert_eq!(
+        coordinator
+            .holder_node("w1")
+            .expect("load holder after overflow")
+            .as_deref(),
+        Some("node-a")
+    );
 }
 
 #[test]

@@ -414,6 +414,37 @@ fn store_backed_schedule_coordinator_blocks_until_expired_or_released() {
 }
 
 #[test]
+fn store_backed_schedule_coordinator_rejects_expiry_overflow_without_mutation() {
+    let store: Arc<dyn MembershipRevocationCoordinatorStateStore + Send + Sync> =
+        Arc::new(InMemoryMembershipRevocationCoordinatorStateStore::new());
+    let coordinator = StoreBackedMembershipRevocationScheduleCoordinator::new(Arc::clone(&store));
+
+    assert!(coordinator
+        .acquire("w1", "node-a", 1000, 500)
+        .expect("seed lease"));
+    let seeded = store
+        .load("w1")
+        .expect("load seeded lease")
+        .expect("seeded lease state");
+
+    let err = coordinator
+        .acquire("w1", "node-a", i64::MAX, 1)
+        .expect_err("overflow should fail");
+    match err {
+        WorldError::DistributedValidationFailed { reason } => {
+            assert!(reason.contains("lease expiry overflow"), "{reason}");
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+
+    let after = store
+        .load("w1")
+        .expect("load lease after overflow")
+        .expect("lease should remain");
+    assert_eq!(after, seeded);
+}
+
+#[test]
 fn emit_revocation_reconcile_alerts_with_recovery_buffers_and_recovers() {
     let client = sample_client();
     let sink = FailOnceAlertSink::new();

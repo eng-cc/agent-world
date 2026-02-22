@@ -289,11 +289,13 @@ impl super::super::membership_reconciliation::MembershipRevocationScheduleCoordi
             }
         }
 
+        let expires_at_ms = super::checked_coordinator_lease_expiry(now_ms, lease_ttl_ms)?;
+
         self.store.save(
             &world_id,
             &MembershipRevocationCoordinatorLeaseState {
                 holder_node_id: node_id,
-                expires_at_ms: now_ms.saturating_add(lease_ttl_ms),
+                expires_at_ms,
             },
         )?;
         Ok(true)

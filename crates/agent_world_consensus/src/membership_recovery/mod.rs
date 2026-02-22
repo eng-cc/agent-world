@@ -753,6 +753,19 @@ pub(super) fn validate_coordinator_lease_ttl_ms(lease_ttl_ms: i64) -> Result<(),
     Ok(())
 }
 
+pub(super) fn checked_coordinator_lease_expiry(
+    now_ms: i64,
+    lease_ttl_ms: i64,
+) -> Result<i64, WorldError> {
+    now_ms.checked_add(lease_ttl_ms).ok_or_else(|| {
+        WorldError::DistributedValidationFailed {
+            reason: format!(
+                "membership revocation coordinator lease expiry overflow: now_ms={now_ms}, lease_ttl_ms={lease_ttl_ms}"
+            ),
+        }
+    })
+}
+
 fn validate_ack_retry_policy(
     policy: &MembershipRevocationAlertAckRetryPolicy,
 ) -> Result<(), WorldError> {
