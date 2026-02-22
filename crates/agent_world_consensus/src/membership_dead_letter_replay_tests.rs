@@ -517,6 +517,60 @@ fn recommend_replay_policy_reduces_retry_streak_when_capacity_preferred() {
 }
 
 #[test]
+fn recommend_replay_policy_uses_large_ratio_without_saturation_distortion() {
+    let client = sample_client();
+    let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();
+    let recovery_store = InMemoryMembershipRevocationAlertRecoveryStore::new();
+    let dead_letter_store = InMemoryMembershipRevocationAlertDeadLetterStore::new();
+    dead_letter_store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            1,
+            MembershipRevocationAlertDeadLetterReason::CapacityEvicted,
+        ))
+        .expect("append capacity dead-letter");
+    dead_letter_store
+        .append_delivery_metrics(
+            "w1",
+            "node-a",
+            1200,
+            &MembershipRevocationAlertDeliveryMetrics {
+                attempted: usize::MAX,
+                succeeded: usize::MAX / 2,
+                failed: 0,
+                deferred: 0,
+                buffered: 0,
+                dropped_capacity: 0,
+                dropped_retry_limit: 0,
+                dead_lettered: usize::MAX / 2 + 1,
+            },
+        )
+        .expect("append large metrics");
+
+    let current_policy = MembershipRevocationDeadLetterReplayPolicy {
+        max_replay_per_run: 4,
+        max_retry_limit_exceeded_streak: 6,
+    };
+    let recommendation = client
+        .recommend_revocation_dead_letter_replay_policy(
+            "w1",
+            "node-a",
+            &current_policy,
+            &replay_state_store,
+            &recovery_store,
+            &dead_letter_store,
+            1,
+            1,
+            16,
+            8,
+        )
+        .expect("recommend policy");
+    assert_eq!(recommendation.max_retry_limit_exceeded_streak, 5);
+}
+
+#[test]
 fn run_coordinated_replay_with_adaptive_policy_returns_updated_policy() {
     let client = sample_client();
     let replay_state_store = InMemoryMembershipRevocationDeadLetterReplayStateStore::new();

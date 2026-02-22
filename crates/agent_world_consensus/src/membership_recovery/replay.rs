@@ -491,11 +491,8 @@ impl MembershipSyncClient {
         let dead_letter_ratio_per_mille = ratio_per_mille(metrics.dead_lettered, metrics.attempted);
         let failure_ratio_per_mille = ratio_per_mille(metrics.failed, metrics.attempted);
 
-        let high_backlog = backlog_total
-            > current_policy
-                .max_replay_per_run
-                .saturating_mul(2)
-                .max(min_replay_per_run);
+        let high_backlog = backlog_total > min_replay_per_run
+            && exceeds_double(backlog_total, current_policy.max_replay_per_run);
         if high_backlog || retry_backlog > current_policy.max_replay_per_run {
             let step = current_policy.max_replay_per_run.max(2) / 2;
             recommendation.max_replay_per_run = recommendation
@@ -524,7 +521,7 @@ impl MembershipSyncClient {
                     .max_retry_limit_exceeded_streak
                     .saturating_sub(1)
                     .max(1);
-            } else if retry_backlog > capacity_backlog.saturating_mul(2)
+            } else if exceeds_double(retry_backlog, capacity_backlog)
                 && failure_ratio_per_mille <= 350
             {
                 recommendation.max_retry_limit_exceeded_streak = recommendation
@@ -1071,7 +1068,12 @@ fn ratio_per_mille(numerator: usize, denominator: usize) -> usize {
     if denominator == 0 {
         return 0;
     }
-    numerator.saturating_mul(1000) / denominator
+    let scaled = (numerator as u128).saturating_mul(1000) / (denominator as u128);
+    usize::try_from(scaled).unwrap_or(usize::MAX)
+}
+
+fn exceeds_double(lhs: usize, rhs: usize) -> bool {
+    (lhs as u128) > (rhs as u128).saturating_mul(2)
 }
 
 fn fair_dead_letter_indices(
@@ -1153,6 +1155,24 @@ fn fair_dead_letter_indices(
     let next_prefer_capacity_evicted = capacity_remaining && capacity_selected == 0;
 
     (selected, next_prefer_capacity_evicted)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ratio_per_mille_handles_extreme_values_without_saturation_distortion() {
+        let denominator = usize::MAX;
+        let numerator = denominator / 2 + 1;
+        assert_eq!(ratio_per_mille(numerator, denominator), 500);
+    }
+
+    #[test]
+    fn exceeds_double_handles_extreme_values_without_overflow() {
+        assert!(exceeds_double(usize::MAX, usize::MAX / 2));
+        assert!(!exceeds_double(usize::MAX / 2, usize::MAX / 2));
+    }
 }
 
 fn sort_dead_letter_bucket(
