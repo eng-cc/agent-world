@@ -499,8 +499,7 @@ impl World {
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
         self.apply_event_body(&body, self.state.time)?;
-        let event_id = self.next_event_id;
-        self.next_event_id += 1;
+        let event_id = self.allocate_next_event_id();
         self.journal.append(WorldEvent {
             id: event_id,
             time: self.state.time,

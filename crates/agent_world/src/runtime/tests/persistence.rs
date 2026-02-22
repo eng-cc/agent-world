@@ -217,6 +217,31 @@ fn load_from_dir_falls_back_to_json_when_distfs_sidecar_is_invalid() {
 }
 
 #[test]
+fn snapshot_json_without_era_fields_keeps_backward_compatibility() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-legacy".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step");
+
+    let snapshot = world.snapshot();
+    let mut value = serde_json::to_value(&snapshot).expect("encode snapshot");
+    let object = value.as_object_mut().expect("snapshot object");
+    object.remove("event_id_era");
+    object.remove("action_id_era");
+    object.remove("intent_id_era");
+    object.remove("proposal_id_era");
+
+    let legacy_json = serde_json::to_string(&value).expect("legacy json");
+    let restored = Snapshot::from_json(&legacy_json).expect("decode legacy snapshot");
+    assert_eq!(restored.event_id_era, 0);
+    assert_eq!(restored.action_id_era, 0);
+    assert_eq!(restored.intent_id_era, 0);
+    assert_eq!(restored.proposal_id_era, 0);
+}
+
+#[test]
 fn rollback_to_snapshot_resets_state() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

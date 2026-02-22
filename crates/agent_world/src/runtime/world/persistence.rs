@@ -46,9 +46,13 @@ impl World {
             state: self.state.clone(),
             journal_len: self.journal.len(),
             last_event_id: self.next_event_id.saturating_sub(1),
+            event_id_era: self.next_event_id_era,
             next_action_id: self.next_action_id,
+            action_id_era: self.next_action_id_era,
             next_intent_id: self.next_intent_id,
+            intent_id_era: self.next_intent_id_era,
             next_proposal_id: self.next_proposal_id,
+            proposal_id_era: self.next_proposal_id_era,
             pending_actions: self.pending_actions.iter().cloned().collect(),
             pending_effects: self.pending_effects.iter().cloned().collect(),
             inflight_effects: self.inflight_effects.clone(),
@@ -181,10 +185,14 @@ impl World {
         world.module_cache = ModuleCache::default();
         world.module_limits_max = snapshot.module_limits_max;
         world.snapshot_catalog = snapshot.snapshot_catalog;
-        world.next_event_id = snapshot.last_event_id.saturating_add(1);
-        world.next_action_id = snapshot.next_action_id;
-        world.next_intent_id = snapshot.next_intent_id;
-        world.next_proposal_id = snapshot.next_proposal_id;
+        world.next_event_id = snapshot.last_event_id.saturating_add(1).max(1);
+        world.next_event_id_era = snapshot.event_id_era;
+        world.next_action_id = snapshot.next_action_id.max(1);
+        world.next_action_id_era = snapshot.action_id_era;
+        world.next_intent_id = snapshot.next_intent_id.max(1);
+        world.next_intent_id_era = snapshot.intent_id_era;
+        world.next_proposal_id = snapshot.next_proposal_id.max(1);
+        world.next_proposal_id_era = snapshot.proposal_id_era;
         world.pending_actions = VecDeque::from(snapshot.pending_actions);
         world.pending_effects = VecDeque::from(snapshot.pending_effects);
         world.inflight_effects = snapshot.inflight_effects;

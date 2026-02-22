@@ -19,8 +19,7 @@ impl World {
         manifest: Manifest,
         author: impl Into<String>,
     ) -> Result<ProposalId, WorldError> {
-        let proposal_id = self.next_proposal_id;
-        self.next_proposal_id += 1;
+        let proposal_id = self.allocate_next_proposal_id();
         let base_manifest_hash = self.current_manifest_hash()?;
         let event = GovernanceEvent::Proposed {
             proposal_id,
@@ -47,8 +46,7 @@ impl World {
         }
 
         let manifest = apply_manifest_patch(&self.manifest, &patch)?;
-        let proposal_id = self.next_proposal_id;
-        self.next_proposal_id += 1;
+        let proposal_id = self.allocate_next_proposal_id();
         let event = GovernanceEvent::Proposed {
             proposal_id,
             author: author.into(),

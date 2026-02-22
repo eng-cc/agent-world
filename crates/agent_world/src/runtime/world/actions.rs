@@ -7,8 +7,7 @@ impl World {
     // ---------------------------------------------------------------------
 
     pub fn submit_action(&mut self, action: Action) -> ActionId {
-        let action_id = self.next_action_id;
-        self.next_action_id += 1;
+        let action_id = self.allocate_next_action_id();
         self.pending_actions.push_back(ActionEnvelope {
             id: action_id,
             action,

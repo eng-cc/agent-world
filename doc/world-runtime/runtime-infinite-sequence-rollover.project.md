@@ -7,9 +7,9 @@
 - [x] 新建项目管理文档：`doc/world-runtime/runtime-infinite-sequence-rollover.project.md`
 
 ### T1 序列滚动与持久化
-- [ ] 为 runtime 四类 `next_*_id` 增加 era 状态与滚动分配逻辑
-- [ ] snapshot 增加 era 字段并保持旧快照兼容
-- [ ] 补充序列滚动与快照 roundtrip 测试
+- [x] 为 runtime 四类 `next_*_id` 增加 era 状态与滚动分配逻辑
+- [x] snapshot 增加 era 字段并保持旧快照兼容
+- [x] 补充序列滚动与快照 roundtrip 测试
 
 ### T2 数值防溢出加固
 - [ ] 修复关键未保护加法（资源与规则聚合）
@@ -41,7 +41,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

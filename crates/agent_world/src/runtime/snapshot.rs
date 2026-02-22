@@ -67,9 +67,17 @@ pub struct Snapshot {
     pub state: WorldState,
     pub journal_len: usize,
     pub last_event_id: WorldEventId,
+    #[serde(default)]
+    pub event_id_era: u64,
     pub next_action_id: ActionId,
+    #[serde(default)]
+    pub action_id_era: u64,
     pub next_intent_id: IntentSeq,
+    #[serde(default)]
+    pub intent_id_era: u64,
     pub next_proposal_id: ProposalId,
+    #[serde(default)]
+    pub proposal_id_era: u64,
     pub pending_actions: Vec<ActionEnvelope>,
     pub pending_effects: Vec<EffectIntent>,
     pub inflight_effects: BTreeMap<String, EffectIntent>,

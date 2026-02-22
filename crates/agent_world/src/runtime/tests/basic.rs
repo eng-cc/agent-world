@@ -98,3 +98,56 @@ fn new_world_migrates_legacy_world_materials_into_material_ledgers() {
     );
     assert_eq!(world.material_balance("iron_ingot"), 7);
 }
+
+#[test]
+fn action_id_rolls_over_into_next_era() {
+    let mut world = World::new();
+    let mut snapshot = world.snapshot();
+    snapshot.next_action_id = u64::MAX;
+    snapshot.action_id_era = 7;
+
+    world = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
+
+    let first_id = world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-max".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    let second_id = world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-wrap".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+
+    assert_eq!(first_id, u64::MAX);
+    assert_eq!(second_id, 1);
+    let rolled = world.snapshot();
+    assert_eq!(rolled.action_id_era, 8);
+    assert_eq!(rolled.next_action_id, 2);
+}
+
+#[test]
+fn event_id_rolls_over_into_next_era() {
+    let mut world = World::new();
+    let mut snapshot = world.snapshot();
+    snapshot.last_event_id = u64::MAX;
+    snapshot.event_id_era = 3;
+
+    world = World::from_snapshot(snapshot, world.journal().clone()).expect("restore");
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-max".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.step().expect("step 1");
+    assert_eq!(world.journal().events.last().expect("event").id, u64::MAX);
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-wrap".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    world.step().expect("step 2");
+    assert_eq!(world.journal().events.last().expect("event").id, 1);
+
+    let rolled = world.snapshot();
+    assert_eq!(rolled.event_id_era, 4);
+    assert_eq!(rolled.last_event_id, 1);
+}

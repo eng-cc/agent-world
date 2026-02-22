@@ -40,8 +40,7 @@ impl World {
     ) -> Result<EffectIntent, WorldError> {
         let kind = kind.into();
         let cap_ref = cap_ref.into();
-        let intent_id = format!("intent-{}", self.next_intent_id);
-        self.next_intent_id += 1;
+        let intent_id = format!("intent-{}", self.allocate_next_intent_seq());
 
         let intent = EffectIntent {
             intent_id: intent_id.clone(),

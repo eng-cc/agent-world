@@ -58,9 +58,17 @@ pub struct World {
     state: WorldState,
     journal: Journal,
     next_event_id: WorldEventId,
+    #[serde(default)]
+    next_event_id_era: u64,
     next_action_id: ActionId,
+    #[serde(default)]
+    next_action_id_era: u64,
     next_intent_id: IntentSeq,
+    #[serde(default)]
+    next_intent_id_era: u64,
     next_proposal_id: ProposalId,
+    #[serde(default)]
+    next_proposal_id_era: u64,
     pending_actions: VecDeque<ActionEnvelope>,
     pending_effects: VecDeque<EffectIntent>,
     inflight_effects: BTreeMap<String, EffectIntent>,
@@ -92,9 +100,13 @@ impl World {
             state,
             journal: Journal::new(),
             next_event_id: 1,
+            next_event_id_era: 0,
             next_action_id: 1,
+            next_action_id_era: 0,
             next_intent_id: 1,
+            next_intent_id_era: 0,
             next_proposal_id: 1,
+            next_proposal_id_era: 0,
             pending_actions: VecDeque::new(),
             pending_effects: VecDeque::new(),
             inflight_effects: BTreeMap::new(),
@@ -149,6 +161,39 @@ impl World {
 
     pub fn proposals(&self) -> &BTreeMap<ProposalId, Proposal> {
         &self.proposals
+    }
+
+    pub(super) fn allocate_next_event_id(&mut self) -> WorldEventId {
+        Self::allocate_rolling_sequence_id(&mut self.next_event_id, &mut self.next_event_id_era)
+    }
+
+    pub(super) fn allocate_next_action_id(&mut self) -> ActionId {
+        Self::allocate_rolling_sequence_id(&mut self.next_action_id, &mut self.next_action_id_era)
+    }
+
+    pub(super) fn allocate_next_intent_seq(&mut self) -> IntentSeq {
+        Self::allocate_rolling_sequence_id(&mut self.next_intent_id, &mut self.next_intent_id_era)
+    }
+
+    pub(super) fn allocate_next_proposal_id(&mut self) -> ProposalId {
+        Self::allocate_rolling_sequence_id(
+            &mut self.next_proposal_id,
+            &mut self.next_proposal_id_era,
+        )
+    }
+
+    fn allocate_rolling_sequence_id(next_id: &mut u64, era: &mut u64) -> u64 {
+        if *next_id == 0 {
+            *next_id = 1;
+        }
+        let allocated = *next_id;
+        if allocated == u64::MAX {
+            *next_id = 1;
+            *era = era.saturating_add(1);
+        } else {
+            *next_id = allocated + 1;
+        }
+        allocated
     }
 }
 
