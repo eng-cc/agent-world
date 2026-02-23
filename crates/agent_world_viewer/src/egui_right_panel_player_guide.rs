@@ -4,6 +4,10 @@ use crate::{RightPanelLayoutState, ViewerSelection};
 
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 
+const PLAYER_CINEMATIC_FADE_IN_TICKS: u64 = 6;
+const PLAYER_CINEMATIC_HOLD_END_TICKS: u64 = 28;
+const PLAYER_CINEMATIC_FADE_OUT_END_TICKS: u64 = 44;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct PlayerGuideProgressSnapshot {
     pub(super) connect_world_done: bool,
@@ -144,4 +148,116 @@ pub(super) fn player_onboarding_dismiss(locale: crate::i18n::UiLocale) -> &'stat
     } else {
         "Hide this tip"
     }
+}
+
+fn player_current_tick(state: &crate::ViewerState) -> u64 {
+    state
+        .snapshot
+        .as_ref()
+        .map(|snapshot| snapshot.time)
+        .or_else(|| state.metrics.as_ref().map(|metrics| metrics.total_ticks))
+        .unwrap_or(0)
+}
+
+pub(super) fn player_cinematic_intro_alpha(status: &crate::ConnectionStatus, tick: u64) -> f32 {
+    if !matches!(status, crate::ConnectionStatus::Connected)
+        || tick > PLAYER_CINEMATIC_FADE_OUT_END_TICKS
+    {
+        return 0.0;
+    }
+    if tick <= PLAYER_CINEMATIC_FADE_IN_TICKS {
+        ((tick + 1) as f32 / (PLAYER_CINEMATIC_FADE_IN_TICKS + 1) as f32).clamp(0.0, 1.0)
+    } else if tick <= PLAYER_CINEMATIC_HOLD_END_TICKS {
+        1.0
+    } else {
+        (1.0 - (tick - PLAYER_CINEMATIC_HOLD_END_TICKS) as f32
+            / (PLAYER_CINEMATIC_FADE_OUT_END_TICKS - PLAYER_CINEMATIC_HOLD_END_TICKS) as f32)
+            .clamp(0.0, 1.0)
+    }
+}
+
+fn player_cinematic_subtitle(step: PlayerGuideStep, locale: crate::i18n::UiLocale) -> &'static str {
+    match (step, locale.is_zh()) {
+        (PlayerGuideStep::ConnectWorld, true) => "世界链路建立中，准备接入前哨视角。",
+        (PlayerGuideStep::ConnectWorld, false) => {
+            "World link is stabilizing. Preparing outpost feed."
+        }
+        (PlayerGuideStep::OpenPanel, true) => "先展开指挥面板，领取第一条任务线。",
+        (PlayerGuideStep::OpenPanel, false) => {
+            "Open the control panel to claim your first mission loop."
+        }
+        (PlayerGuideStep::SelectTarget, true) => "锁定一个目标，你的行动将立刻改变世界。",
+        (PlayerGuideStep::SelectTarget, false) => {
+            "Lock a target. Your next action will change this world."
+        }
+        (PlayerGuideStep::ExploreAction, true) => "保持节奏推进任务，连续反馈会持续强化。",
+        (PlayerGuideStep::ExploreAction, false) => {
+            "Keep the loop moving. Feedback intensity will ramp up."
+        }
+    }
+}
+
+pub(super) fn render_player_cinematic_intro(
+    context: &egui::Context,
+    state: &crate::ViewerState,
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let tick = player_current_tick(state);
+    let alpha = player_cinematic_intro_alpha(&state.status, tick);
+    if alpha <= 0.01 {
+        return;
+    }
+    let pulse = ((now_secs * 1.6).sin() * 0.5 + 0.5) as f32;
+    let tone = player_goal_color(step);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
+    egui::Area::new(egui::Id::new("viewer-player-cinematic-intro"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 56.0))
+        .movable(false)
+        .interactable(false)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(
+                    8,
+                    16,
+                    24,
+                    to_u8(226.0 * alpha),
+                ))
+                .stroke(egui::Stroke::new(
+                    1.0 + 0.6 * pulse,
+                    egui::Color32::from_rgba_unmultiplied(
+                        tone.r(),
+                        tone.g(),
+                        tone.b(),
+                        to_u8((136.0 + 92.0 * pulse) * alpha),
+                    ),
+                ))
+                .corner_radius(egui::CornerRadius::same(12))
+                .inner_margin(egui::Margin::same(12))
+                .show(ui, |ui| {
+                    ui.set_max_width(560.0);
+                    ui.vertical_centered(|ui| {
+                        ui.small(
+                            egui::RichText::new(if locale.is_zh() {
+                                "沉浸开场"
+                            } else {
+                                "Immersive Intro"
+                            })
+                            .color(tone),
+                        );
+                        ui.strong(if locale.is_zh() {
+                            "前哨部署完成"
+                        } else {
+                            "Outpost Deployment Ready"
+                        });
+                        ui.label(player_cinematic_subtitle(step, locale));
+                        ui.small(if locale.is_zh() {
+                            "按 Tab 可随时展开控制面板"
+                        } else {
+                            "Press Tab to open the control panel anytime"
+                        });
+                    });
+                });
+        });
 }

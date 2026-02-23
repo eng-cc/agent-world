@@ -22,6 +22,8 @@ mod player_atmosphere_tests;
 mod player_card_motion_tests;
 #[path = "egui_right_panel_player_chatter_tests.rs"]
 mod player_chatter_tests;
+#[path = "egui_right_panel_player_cinematic_tests.rs"]
+mod player_cinematic_tests;
 #[path = "egui_right_panel_player_guide_progress_tests.rs"]
 mod player_guide_progress_tests;
 
