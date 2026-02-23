@@ -22,9 +22,9 @@
 - [x] 补充/更新单测
 
 ### T4 收口
-- [ ] 运行 required-tier 回归
-- [ ] 更新设计/项目文档状态
-- [ ] 更新 `doc/devlog/2026-02-23.md`
+- [x] 运行 required-tier 回归
+- [x] 更新设计/项目文档状态
+- [x] 更新 `doc/devlog/2026-02-23.md`
 
 ## 依赖
 - `crates/agent_world_net/src/libp2p_net.rs`
@@ -37,8 +37,8 @@
 - `crates/agent_world_wasm_executor/src/lib.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3
-- 进行中：T4
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3、T4
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
