@@ -25,6 +25,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     let viewer_automation_config = viewer_automation_config_from_env();
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     let panel_mode = resolve_panel_mode_from_env();
+    let experience_mode = resolve_experience_mode_from_env();
     let theme_runtime = resolve_theme_runtime_state();
     let (module_visibility_state, module_visibility_path) =
         resolve_right_panel_module_visibility_resources();
@@ -54,6 +55,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(Viewer3dScene::default())
         .insert_resource(ViewerCameraMode::default())
         .insert_resource(panel_mode)
+        .insert_resource(experience_mode)
         .insert_resource(theme_runtime)
         .insert_resource(ViewerSelection::default())
         .insert_resource(ChatInputFocusSignal::default())
@@ -233,6 +235,22 @@ fn resolve_panel_mode_from_env() -> ViewerPanelMode {
     }
 }
 
+fn resolve_experience_mode_from_env() -> ViewerExperienceMode {
+    let Some(raw) = std::env::var("AGENT_WORLD_VIEWER_EXPERIENCE_MODE").ok() else {
+        return ViewerExperienceMode::default();
+    };
+
+    parse_experience_mode(raw.as_str()).unwrap_or_default()
+}
+
+fn parse_experience_mode(raw: &str) -> Option<ViewerExperienceMode> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "player" => Some(ViewerExperienceMode::Player),
+        "director" => Some(ViewerExperienceMode::Director),
+        _ => None,
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn run_headless(addr: String, offline: bool) {
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
@@ -307,5 +325,23 @@ mod tests {
     #[test]
     fn decide_offline_force_online_overrides_other_flags() {
         assert!(!decide_offline(true, true, true));
+    }
+
+    #[test]
+    fn parse_experience_mode_accepts_player_and_director() {
+        assert_eq!(
+            parse_experience_mode("player"),
+            Some(ViewerExperienceMode::Player)
+        );
+        assert_eq!(
+            parse_experience_mode(" director "),
+            Some(ViewerExperienceMode::Director)
+        );
+    }
+
+    #[test]
+    fn parse_experience_mode_rejects_unknown_values() {
+        assert_eq!(parse_experience_mode(""), None);
+        assert_eq!(parse_experience_mode("ops"), None);
     }
 }

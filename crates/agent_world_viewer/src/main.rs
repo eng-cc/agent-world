@@ -453,6 +453,18 @@ impl Default for ViewerPanelMode {
     }
 }
 
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerExperienceMode {
+    Player,
+    Director,
+}
+
+impl Default for ViewerExperienceMode {
+    fn default() -> Self {
+        Self::Player
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ViewerMaterialVariantPreset {
     Default,
