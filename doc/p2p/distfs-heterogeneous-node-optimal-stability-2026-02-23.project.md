@@ -12,9 +12,9 @@
 - [x] 补齐兼容测试
 
 ### T2 评分排序与重试拉取
-- [ ] 新增 provider 评分策略模块（权重 + 归一化）
-- [ ] `DistributedClient::fetch_blob_from_dht` 升级为排序后逐 provider 重试
-- [ ] 补齐 `agent_world_net` 单测（排序、重试、回退）
+- [x] 新增 provider 评分策略模块（权重 + 归一化）
+- [x] `DistributedClient::fetch_blob_from_dht` 升级为排序后逐 provider 重试
+- [x] 补齐 `agent_world_net` 单测（排序、重试、回退）
 
 ### T3 收口
 - [ ] 运行回归：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
@@ -33,7 +33,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：无
 - 阻塞项：无

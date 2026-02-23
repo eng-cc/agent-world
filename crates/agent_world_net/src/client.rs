@@ -9,16 +9,31 @@ use super::distributed_dht::DistributedDht;
 use super::distributed_net::DistributedNetwork;
 use super::error::WorldError;
 use super::modules::{ModuleArtifact, ModuleManifest};
-use super::util::to_canonical_cbor;
+use super::provider_selection::ProviderSelectionPolicy;
+use super::util::{to_canonical_cbor, unix_now_ms_i64};
 
 #[derive(Clone)]
 pub struct DistributedClient {
     network: Arc<dyn DistributedNetwork + Send + Sync>,
+    provider_selection_policy: ProviderSelectionPolicy,
 }
 
 impl DistributedClient {
     pub fn new(network: Arc<dyn DistributedNetwork + Send + Sync>) -> Self {
-        Self { network }
+        Self {
+            network,
+            provider_selection_policy: ProviderSelectionPolicy::default(),
+        }
+    }
+
+    pub fn new_with_provider_selection_policy(
+        network: Arc<dyn DistributedNetwork + Send + Sync>,
+        provider_selection_policy: ProviderSelectionPolicy,
+    ) -> Self {
+        Self {
+            network,
+            provider_selection_policy,
+        }
     }
 
     pub fn get_world_head(&self, world_id: &str) -> Result<WorldHeadAnnounce, WorldError> {
@@ -97,14 +112,19 @@ impl DistributedClient {
             return self.fetch_blob(content_hash);
         }
 
-        let provider_ids: Vec<String> = providers
-            .into_iter()
-            .map(|record| record.provider_id)
-            .collect();
-        match self.fetch_blob_with_providers(content_hash, &provider_ids) {
-            Ok(bytes) => Ok(bytes),
-            Err(_) => self.fetch_blob(content_hash),
+        let now_ms = unix_now_ms_i64();
+        let ranked = self
+            .provider_selection_policy
+            .rank_providers(&providers, now_ms);
+
+        for record in ranked {
+            let provider = [record.provider_id];
+            if let Ok(bytes) = self.fetch_blob_with_providers(content_hash, &provider) {
+                return Ok(bytes);
+            }
         }
+
+        self.fetch_blob(content_hash)
     }
 
     pub fn get_journal_segment(

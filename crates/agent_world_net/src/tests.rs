@@ -22,6 +22,7 @@ fn net_exports_are_available() {
     let _ = std::any::type_name::<InMemoryIndexStore>();
     let _ = std::any::type_name::<ProviderCache>();
     let _ = std::any::type_name::<ProviderCacheConfig>();
+    let _ = std::any::type_name::<ProviderSelectionPolicy>();
     let _ = std::any::type_name::<IndexPublishResult>();
     let _ = std::any::type_name::<SubmitActionReceipt>();
 }
@@ -397,6 +398,8 @@ fn publish_execution_providers_cached_indexes_all_hashes() {
 #[derive(Default)]
 struct SpyNetwork {
     providers: Arc<Mutex<Vec<String>>>,
+    provider_attempts: Arc<Mutex<Vec<Vec<String>>>>,
+    provider_failures_remaining: Arc<Mutex<HashMap<String, usize>>>,
     blobs: Arc<Mutex<HashMap<String, Vec<u8>>>>,
 }
 
@@ -405,9 +408,24 @@ impl SpyNetwork {
         self.providers.lock().expect("lock providers").clone()
     }
 
+    fn provider_attempts(&self) -> Vec<Vec<String>> {
+        self.provider_attempts
+            .lock()
+            .expect("lock provider attempts")
+            .clone()
+    }
+
     fn set_blob(&self, content_hash: &str, bytes: Vec<u8>) {
         let mut blobs = self.blobs.lock().expect("lock blobs");
         blobs.insert(content_hash.to_string(), bytes);
+    }
+
+    fn fail_provider_requests(&self, provider_id: &str, failures: usize) {
+        let mut failures_remaining = self
+            .provider_failures_remaining
+            .lock()
+            .expect("lock provider failures");
+        failures_remaining.insert(provider_id.to_string(), failures);
     }
 }
 
@@ -437,6 +455,25 @@ impl proto_net::DistributedNetwork<WorldError> for SpyNetwork {
 
         match protocol {
             proto_distributed::RR_FETCH_BLOB => {
+                self.provider_attempts
+                    .lock()
+                    .expect("lock provider attempts")
+                    .push(providers.to_vec());
+                if let Some(provider_id) = providers.first() {
+                    let mut failures_remaining = self
+                        .provider_failures_remaining
+                        .lock()
+                        .expect("lock provider failures");
+                    if let Some(remaining) = failures_remaining.get_mut(provider_id) {
+                        if *remaining > 0 {
+                            *remaining -= 1;
+                            return Err(WorldError::NetworkProtocolUnavailable {
+                                protocol: format!("provider {provider_id} unavailable"),
+                            });
+                        }
+                    }
+                }
+
                 let request: proto_distributed::FetchBlobRequest = serde_cbor::from_slice(payload)?;
                 let blob = self
                     .blobs
@@ -489,6 +526,66 @@ impl proto_net::DistributedNetwork<WorldError> for SpyNetwork {
         _handler: Box<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>,
     ) -> Result<(), WorldError> {
         Ok(())
+    }
+}
+
+#[derive(Clone, Default)]
+struct StaticProvidersDht {
+    providers: Vec<ProviderRecord>,
+}
+
+impl StaticProvidersDht {
+    fn new(providers: Vec<ProviderRecord>) -> Self {
+        Self { providers }
+    }
+}
+
+impl proto_dht::DistributedDht<WorldError> for StaticProvidersDht {
+    fn publish_provider(
+        &self,
+        _world_id: &str,
+        _content_hash: &str,
+        _provider_id: &str,
+    ) -> Result<(), WorldError> {
+        Ok(())
+    }
+
+    fn get_providers(
+        &self,
+        _world_id: &str,
+        _content_hash: &str,
+    ) -> Result<Vec<ProviderRecord>, WorldError> {
+        Ok(self.providers.clone())
+    }
+
+    fn put_world_head(
+        &self,
+        _world_id: &str,
+        _head: &proto_distributed::WorldHeadAnnounce,
+    ) -> Result<(), WorldError> {
+        Ok(())
+    }
+
+    fn get_world_head(
+        &self,
+        _world_id: &str,
+    ) -> Result<Option<proto_distributed::WorldHeadAnnounce>, WorldError> {
+        Ok(None)
+    }
+
+    fn put_membership_directory(
+        &self,
+        _world_id: &str,
+        _snapshot: &MembershipDirectorySnapshot,
+    ) -> Result<(), WorldError> {
+        Ok(())
+    }
+
+    fn get_membership_directory(
+        &self,
+        _world_id: &str,
+    ) -> Result<Option<MembershipDirectorySnapshot>, WorldError> {
+        Ok(None)
     }
 }
 
@@ -559,6 +656,19 @@ fn client_fetch_blob_with_providers_passes_list() {
     assert_eq!(seen, providers);
 }
 
+fn provider_record(provider_id: &str, last_seen_ms: i64) -> ProviderRecord {
+    ProviderRecord {
+        provider_id: provider_id.to_string(),
+        last_seen_ms,
+        storage_total_bytes: None,
+        storage_available_bytes: None,
+        uptime_ratio_per_mille: None,
+        challenge_pass_ratio_per_mille: None,
+        load_ratio_per_mille: None,
+        p50_read_latency_ms: None,
+    }
+}
+
 #[test]
 fn client_fetch_blob_from_dht_uses_provider_list() {
     let spy = Arc::new(SpyNetwork::default());
@@ -575,6 +685,99 @@ fn client_fetch_blob_from_dht_uses_provider_list() {
 
     let seen = spy.providers();
     assert_eq!(seen, vec!["peer-1".to_string()]);
+}
+
+#[test]
+fn client_fetch_blob_from_dht_retries_ranked_providers_until_success() {
+    let spy = Arc::new(SpyNetwork::default());
+    spy.set_blob("hash-rank", b"ranked-success".to_vec());
+    spy.fail_provider_requests("peer-1", 1);
+
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let mut preferred = provider_record("peer-1", 1_000);
+    preferred.storage_total_bytes = Some(100);
+    preferred.storage_available_bytes = Some(90);
+    preferred.uptime_ratio_per_mille = Some(990);
+    preferred.challenge_pass_ratio_per_mille = Some(980);
+    preferred.load_ratio_per_mille = Some(80);
+    preferred.p50_read_latency_ms = Some(20);
+
+    let mut fallback = provider_record("peer-2", 1_000);
+    fallback.storage_total_bytes = Some(100);
+    fallback.storage_available_bytes = Some(10);
+    fallback.uptime_ratio_per_mille = Some(600);
+    fallback.challenge_pass_ratio_per_mille = Some(600);
+    fallback.load_ratio_per_mille = Some(900);
+    fallback.p50_read_latency_ms = Some(900);
+
+    let dht = StaticProvidersDht::new(vec![fallback, preferred]);
+    let blob = client
+        .fetch_blob_from_dht("w1", "hash-rank", &dht)
+        .expect("fetch");
+    assert_eq!(blob, b"ranked-success".to_vec());
+    assert_eq!(
+        spy.provider_attempts(),
+        vec![vec!["peer-1".to_string()], vec!["peer-2".to_string()]]
+    );
+}
+
+#[test]
+fn client_fetch_blob_from_dht_falls_back_after_ranked_provider_failures() {
+    let spy = Arc::new(SpyNetwork::default());
+    spy.set_blob("hash-fallback", b"fallback-success".to_vec());
+    spy.fail_provider_requests("peer-1", 1);
+    spy.fail_provider_requests("peer-2", 1);
+
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let mut preferred = provider_record("peer-1", 1_000);
+    preferred.uptime_ratio_per_mille = Some(980);
+    preferred.challenge_pass_ratio_per_mille = Some(980);
+
+    let mut fallback = provider_record("peer-2", 1_000);
+    fallback.uptime_ratio_per_mille = Some(800);
+    fallback.challenge_pass_ratio_per_mille = Some(800);
+
+    let dht = StaticProvidersDht::new(vec![fallback, preferred]);
+    let blob = client
+        .fetch_blob_from_dht("w1", "hash-fallback", &dht)
+        .expect("fetch");
+    assert_eq!(blob, b"fallback-success".to_vec());
+    assert_eq!(
+        spy.provider_attempts(),
+        vec![
+            vec!["peer-1".to_string()],
+            vec!["peer-2".to_string()],
+            Vec::<String>::new(),
+        ]
+    );
+    assert_eq!(spy.providers(), Vec::<String>::new());
+}
+
+#[test]
+fn client_fetch_blob_from_dht_supports_legacy_provider_records_without_capabilities() {
+    let spy = Arc::new(SpyNetwork::default());
+    spy.set_blob("hash-legacy", b"legacy-success".to_vec());
+    spy.fail_provider_requests("peer-fresh", 1);
+
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let fresh_legacy = provider_record("peer-fresh", i64::MAX);
+    let stale_legacy = provider_record("peer-stale", 0);
+    let dht = StaticProvidersDht::new(vec![stale_legacy, fresh_legacy]);
+
+    let blob = client
+        .fetch_blob_from_dht("w1", "hash-legacy", &dht)
+        .expect("fetch");
+    assert_eq!(blob, b"legacy-success".to_vec());
+    assert_eq!(
+        spy.provider_attempts(),
+        vec![
+            vec!["peer-fresh".to_string()],
+            vec!["peer-stale".to_string()]
+        ]
+    );
 }
 
 #[test]

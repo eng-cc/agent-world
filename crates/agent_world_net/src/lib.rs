@@ -10,6 +10,7 @@ mod index;
 mod index_store;
 mod network;
 mod provider_cache;
+mod provider_selection;
 mod replay_flow;
 mod util;
 
@@ -82,6 +83,7 @@ pub use network::{DistributedNetwork, InMemoryNetwork};
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 pub use provider_cache::{ProviderCache, ProviderCacheConfig};
+pub use provider_selection::ProviderSelectionPolicy;
 
 #[cfg(feature = "libp2p")]
 pub use libp2p_net::{Libp2pNetwork, Libp2pNetworkConfig};
