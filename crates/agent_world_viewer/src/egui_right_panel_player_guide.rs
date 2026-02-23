@@ -272,10 +272,14 @@ pub(super) fn render_player_layout_preset_strip(
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
+    if !should_show_player_layout_preset_strip(layout_state.panel_hidden) {
+        return;
+    }
     let active = resolve_player_layout_preset(layout_state, module_visibility);
+    let anchor_y = player_layout_preset_strip_anchor_y(layout_state.panel_hidden);
     let pulse = ((now_secs * 1.5).sin() * 0.5 + 0.5) as f32;
     egui::Area::new(egui::Id::new("viewer-player-layout-strip"))
-        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, anchor_y))
         .movable(false)
         .interactable(true)
         .show(context, |ui| {
@@ -310,15 +314,20 @@ pub(super) fn render_player_layout_preset_strip(
                             }
                         }
                     });
-                    if layout_state.panel_hidden {
-                        ui.small(if locale.is_zh() {
-                            "面板已隐藏：点“指挥”可直接回到命令视图"
-                        } else {
-                            "Panel hidden: choose Command to return to command view"
-                        });
-                    }
                 });
         });
+}
+
+pub(super) fn should_show_player_layout_preset_strip(panel_hidden: bool) -> bool {
+    !panel_hidden
+}
+
+pub(super) fn player_layout_preset_strip_anchor_y(panel_hidden: bool) -> f32 {
+    if should_show_player_layout_preset_strip(panel_hidden) {
+        58.0
+    } else {
+        0.0
+    }
 }
 
 fn player_current_tick(state: &crate::ViewerState) -> u64 {

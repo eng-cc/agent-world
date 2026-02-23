@@ -1,5 +1,6 @@
 use super::egui_right_panel_player_guide::{
-    apply_player_layout_preset, resolve_player_layout_preset, PlayerLayoutPreset,
+    apply_player_layout_preset, player_layout_preset_strip_anchor_y, resolve_player_layout_preset,
+    should_show_player_layout_preset_strip, PlayerLayoutPreset,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::RightPanelLayoutState;
@@ -82,4 +83,16 @@ fn resolve_player_layout_preset_tracks_command_and_intel_state() {
         resolve_player_layout_preset(&layout, &intel_visibility),
         PlayerLayoutPreset::Intel
     );
+}
+
+#[test]
+fn player_layout_strip_visibility_follows_panel_hidden_state() {
+    assert!(!should_show_player_layout_preset_strip(true));
+    assert!(should_show_player_layout_preset_strip(false));
+}
+
+#[test]
+fn player_layout_strip_anchor_moves_below_compact_hud() {
+    assert_eq!(player_layout_preset_strip_anchor_y(true), 0.0);
+    assert_eq!(player_layout_preset_strip_anchor_y(false), 58.0);
 }
