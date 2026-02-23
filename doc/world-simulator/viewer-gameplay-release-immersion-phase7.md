@@ -46,3 +46,21 @@
   - 对策：预设只调整面板与模块可见性，不改 guide step 判定语义。
 - 宽度收紧后信息阅读空间不足。
   - 对策：保留窄屏内联 chat 回退路径，并通过 Web 闭环截图校验可读性。
+
+## 验收与结论
+- 代码回归：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`（322 passed）
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+- Web 闭环（`testing-manual.md` S6）：
+  - `window.__AW_TEST__` 可用（`typeof window.__AW_TEST__ === "object"` 为 `true`）。
+  - `getState()` 返回 `tick/connectionStatus` 等字段；采样时 `connectionStatus=connected`。
+  - 控制链路可用：`runSteps(...)`、`sendControl("pause")`、键盘 `Tab` 展开/收起面板。
+  - console 采样：`Total messages: 12 (Errors: 0, Warnings: 2)`。
+- 验收截图（phase7）：
+  - `output/playwright/viewer/phase7/phase7-hidden-default.png`
+  - `output/playwright/viewer/phase7/phase7-hidden-focused.png`
+  - `output/playwright/viewer/phase7/phase7-panel-open-command-default.png`
+  - `output/playwright/viewer/phase7/phase7-panel-open-paused.png`
+  - `output/playwright/viewer/phase7/phase7-panel-hidden-after-toggle.png`
+- 结论：
+  - 第七阶段目标达成：Player 默认保持“世界优先”隐藏态，同时保留“直接指挥”与 Chat 可达性；右侧宽度预算收紧后，展开态不再像此前那样长期挤占主视野。
