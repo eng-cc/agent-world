@@ -7,9 +7,9 @@
 - [x] 项目文档：`doc/p2p/distfs-heterogeneous-node-optimal-stability-2026-02-23.project.md`
 
 ### T1 Provider 能力画像扩展
-- [ ] 扩展 `ProviderRecord` 可选能力字段并保持 serde 向后兼容
-- [ ] 更新 `agent_world_net` / `agent_world_consensus` 相关 DHT provider 构造路径
-- [ ] 补齐兼容测试
+- [x] 扩展 `ProviderRecord` 可选能力字段并保持 serde 向后兼容
+- [x] 更新 `agent_world_net` / `agent_world_consensus` 相关 DHT provider 构造路径
+- [x] 补齐兼容测试
 
 ### T2 评分排序与重试拉取
 - [ ] 新增 provider 评分策略模块（权重 + 归一化）
@@ -33,7 +33,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无

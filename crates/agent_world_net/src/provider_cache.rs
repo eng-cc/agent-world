@@ -71,6 +71,12 @@ impl ProviderCache {
         let record = ProviderRecord {
             provider_id: self.provider_id.clone(),
             last_seen_ms: now_ms,
+            storage_total_bytes: None,
+            storage_available_bytes: None,
+            uptime_ratio_per_mille: None,
+            challenge_pass_ratio_per_mille: None,
+            load_ratio_per_mille: None,
+            p50_read_latency_ms: None,
         };
         self.store
             .put_provider(world_id, content_hash, record.clone())?;
@@ -131,6 +137,12 @@ impl ProviderCache {
             let record = ProviderRecord {
                 provider_id: self.provider_id.clone(),
                 last_seen_ms: now_ms,
+                storage_total_bytes: None,
+                storage_available_bytes: None,
+                uptime_ratio_per_mille: None,
+                challenge_pass_ratio_per_mille: None,
+                load_ratio_per_mille: None,
+                p50_read_latency_ms: None,
             };
             self.store.put_provider(&world_id, &content_hash, record)?;
             let mut local = self.local_content.lock().expect("lock local content");
@@ -241,6 +253,12 @@ mod tests {
                 ProviderRecord {
                     provider_id: "old".to_string(),
                     last_seen_ms: 1,
+                    storage_total_bytes: None,
+                    storage_available_bytes: None,
+                    uptime_ratio_per_mille: None,
+                    challenge_pass_ratio_per_mille: None,
+                    load_ratio_per_mille: None,
+                    p50_read_latency_ms: None,
                 },
             )
             .expect("put provider");

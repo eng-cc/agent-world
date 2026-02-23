@@ -38,6 +38,12 @@ impl proto_dht::DistributedDht<WorldError> for InMemoryDht {
         let record = ProviderRecord {
             provider_id: provider_id.to_string(),
             last_seen_ms: now_ms(),
+            storage_total_bytes: None,
+            storage_available_bytes: None,
+            uptime_ratio_per_mille: None,
+            challenge_pass_ratio_per_mille: None,
+            load_ratio_per_mille: None,
+            p50_read_latency_ms: None,
         };
         providers
             .entry(key)

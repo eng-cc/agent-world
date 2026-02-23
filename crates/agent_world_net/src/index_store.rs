@@ -121,6 +121,12 @@ mod tests {
                 ProviderRecord {
                     provider_id: "p1".to_string(),
                     last_seen_ms: 1,
+                    storage_total_bytes: None,
+                    storage_available_bytes: None,
+                    uptime_ratio_per_mille: None,
+                    challenge_pass_ratio_per_mille: None,
+                    load_ratio_per_mille: None,
+                    p50_read_latency_ms: None,
                 },
             )
             .expect("put provider");
@@ -131,6 +137,12 @@ mod tests {
                 ProviderRecord {
                     provider_id: "p2".to_string(),
                     last_seen_ms: 2,
+                    storage_total_bytes: None,
+                    storage_available_bytes: None,
+                    uptime_ratio_per_mille: None,
+                    challenge_pass_ratio_per_mille: None,
+                    load_ratio_per_mille: None,
+                    p50_read_latency_ms: None,
                 },
             )
             .expect("put provider");

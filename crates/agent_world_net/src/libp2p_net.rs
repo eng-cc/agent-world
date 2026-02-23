@@ -968,6 +968,12 @@ fn handle_dht_progress(pending: &mut PendingDhtQuery, result: kad::QueryResult, 
                         .map(|peer| ProviderRecord {
                             provider_id: peer.to_string(),
                             last_seen_ms: now_ms(),
+                            storage_total_bytes: None,
+                            storage_available_bytes: None,
+                            uptime_ratio_per_mille: None,
+                            challenge_pass_ratio_per_mille: None,
+                            load_ratio_per_mille: None,
+                            p50_read_latency_ms: None,
                         })
                         .collect())
                 } else if let Some(err) = error.take() {

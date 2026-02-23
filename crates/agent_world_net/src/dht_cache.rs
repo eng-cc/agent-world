@@ -116,6 +116,12 @@ impl ProtoDistributedDht<WorldError> for CachedDht {
         let record = ProviderRecord {
             provider_id: provider_id.to_string(),
             last_seen_ms: now_ms(),
+            storage_total_bytes: None,
+            storage_available_bytes: None,
+            uptime_ratio_per_mille: None,
+            challenge_pass_ratio_per_mille: None,
+            load_ratio_per_mille: None,
+            p50_read_latency_ms: None,
         };
         self.store.put_provider(world_id, content_hash, record)
     }
@@ -264,6 +270,12 @@ mod tests {
             ProviderRecord {
                 provider_id: "peer-1".to_string(),
                 last_seen_ms: now_ms(),
+                storage_total_bytes: None,
+                storage_available_bytes: None,
+                uptime_ratio_per_mille: None,
+                challenge_pass_ratio_per_mille: None,
+                load_ratio_per_mille: None,
+                p50_read_latency_ms: None,
             },
         );
 
@@ -296,6 +308,12 @@ mod tests {
             ProviderRecord {
                 provider_id: "peer-1".to_string(),
                 last_seen_ms: 0,
+                storage_total_bytes: None,
+                storage_available_bytes: None,
+                uptime_ratio_per_mille: None,
+                challenge_pass_ratio_per_mille: None,
+                load_ratio_per_mille: None,
+                p50_read_latency_ms: None,
             },
         );
 
