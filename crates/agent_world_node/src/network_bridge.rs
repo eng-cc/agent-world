@@ -163,6 +163,7 @@ impl ReplicationNetworkEndpoint {
         })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn request_json_with_providers<Req, Resp>(
         &self,
         protocol: &str,

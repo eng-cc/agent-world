@@ -13,9 +13,9 @@
 - [x] 补齐单测（启用执行/缺失依赖跳过/非法配置）
 
 ### T2 收口
-- [ ] 回归：`agent_world_node`、`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`
-- [ ] 更新设计/项目文档状态
-- [ ] 追加 `doc/devlog/2026-02-23.md` 任务日志
+- [x] 回归：`agent_world_node`、`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`
+- [x] 更新设计/项目文档状态
+- [x] 追加 `doc/devlog/2026-02-23.md` 任务日志
 
 ## 依赖
 - `crates/agent_world_node/src/lib.rs`
@@ -25,8 +25,8 @@
 - `crates/agent_world_node/src/tests_split_part1.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2
+- 进行中：无
 - 未开始：无
 - 阻塞项：无

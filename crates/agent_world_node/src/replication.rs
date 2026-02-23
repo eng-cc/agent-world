@@ -720,6 +720,7 @@ impl ReplicationRuntime {
         load_blob_from_root(self.config.root_dir.as_path(), content_hash)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn store_blob_by_hash(
         &self,
         content_hash: &str,

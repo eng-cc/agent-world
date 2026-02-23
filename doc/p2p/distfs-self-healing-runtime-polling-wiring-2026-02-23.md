@@ -30,8 +30,12 @@
 - `NodeReplicaMaintenanceConfig`
   - `enabled: bool`
   - `max_content_hash_samples_per_round: usize`
-  - `maintenance_policy: ReplicaMaintenancePolicy`
-  - `polling_policy: ReplicaMaintenancePollingPolicy`
+  - `target_replicas_per_blob: usize`
+  - `max_repairs_per_round: usize`
+  - `max_rebalances_per_round: usize`
+  - `rebalance_source_load_min_per_mille: u16`
+  - `rebalance_target_load_max_per_mille: u16`
+  - `poll_interval_ms: i64`
 
 ### 2) Runtime 状态扩展
 - `RuntimeState` 增加副本维护轮询状态与最近一轮摘要（最小必要字段）。
@@ -62,7 +66,7 @@
   - 缓解：通过 `max_content_hash_samples_per_round` 与维护策略配额限制单轮开销。
 
 ## 当前状态
-- 状态：进行中
-- 已完成：M0
-- 进行中：M1
-- 未开始：M2
+- 状态：已完成
+- 已完成：M0、M1、M2
+- 进行中：无
+- 未开始：无
