@@ -18,6 +18,11 @@
 env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
 ```
 `world_viewer_live` 默认使用 LLM 决策（仍需先配置 LLM key）；`--llm` 可保留用于显式声明。
+如需临时回退到内置脚本决策，可显式传 `--no-llm`。
+
+```bash
+env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011 --tick-ms 300
+```
 
 ### 2）启动 viewer
 ```bash
