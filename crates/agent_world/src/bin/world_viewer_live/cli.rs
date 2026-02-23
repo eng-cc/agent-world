@@ -1,10 +1,12 @@
 use std::collections::BTreeSet;
+use std::fs;
 use std::net::SocketAddr;
 use std::process;
 
 use agent_world::runtime::RewardAssetConfig;
 use agent_world::simulator::WorldScenario;
 use agent_world_node::{NodeRole, PosValidator};
+use serde::Deserialize;
 
 use super::{
     parse_distfs_probe_runtime_option, DistfsProbeRuntimeConfig,
@@ -18,6 +20,8 @@ pub(super) enum NodeTopologyMode {
     Triad,
     TriadDistributed,
 }
+
+const RELEASE_CONFIG_FLAG: &str = "--release-config";
 
 impl NodeTopologyMode {
     fn parse(raw: &str) -> Result<Self, String> {
@@ -112,6 +116,137 @@ impl Default for CliOptions {
             reward_distfs_probe_config: DistfsProbeRuntimeConfig::default(),
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct ReleaseLockedArgsFile {
+    locked_args: Vec<String>,
+}
+
+#[derive(Debug, Default)]
+struct ReleaseModeCommandLine {
+    release_config_path: String,
+    bind_addr_override: Option<String>,
+    web_bind_addr_override: Option<String>,
+}
+
+pub(super) fn parse_launch_options<'a>(
+    args: impl Iterator<Item = &'a str>,
+) -> Result<CliOptions, String> {
+    let argv = args.map(str::to_string).collect::<Vec<_>>();
+    if !argv.iter().any(|arg| arg == RELEASE_CONFIG_FLAG) {
+        return parse_options(argv.iter().map(|arg| arg.as_str()));
+    }
+
+    let mode = parse_release_mode_command_line(argv.as_slice())?;
+    let mut options = load_release_locked_options(mode.release_config_path.as_str())?;
+    if let Some(bind_addr) = mode.bind_addr_override {
+        options.bind_addr = bind_addr;
+    }
+    if let Some(web_bind_addr) = mode.web_bind_addr_override {
+        options.web_bind_addr = Some(web_bind_addr);
+    }
+    Ok(options)
+}
+
+fn parse_release_mode_command_line(args: &[String]) -> Result<ReleaseModeCommandLine, String> {
+    let mut mode = ReleaseModeCommandLine::default();
+    let mut release_config_seen = false;
+    let mut unsupported = Vec::new();
+    let mut index = 0usize;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--help" | "-h" => {
+                print_help();
+                process::exit(0);
+            }
+            RELEASE_CONFIG_FLAG => {
+                let value = args
+                    .get(index + 1)
+                    .ok_or_else(|| "--release-config requires <path>".to_string())?;
+                let value = value.trim();
+                if value.is_empty() {
+                    return Err("--release-config requires non-empty <path>".to_string());
+                }
+                if release_config_seen {
+                    return Err("--release-config can only be specified once".to_string());
+                }
+                mode.release_config_path = value.to_string();
+                release_config_seen = true;
+                index += 2;
+            }
+            "--bind" => {
+                mode.bind_addr_override =
+                    Some(parse_release_mode_override_value(args, index, "--bind")?);
+                index += 2;
+            }
+            "--web-bind" => {
+                mode.web_bind_addr_override = Some(parse_release_mode_override_value(
+                    args,
+                    index,
+                    "--web-bind",
+                )?);
+                index += 2;
+            }
+            _ => {
+                unsupported.push(args[index].clone());
+                index += 1;
+            }
+        }
+    }
+
+    if !release_config_seen {
+        return Err("internal error: --release-config mode expected".to_string());
+    }
+    if !unsupported.is_empty() {
+        return Err(format!(
+            "--release-config mode only allows --bind/--web-bind/--help; unsupported argument(s): {}",
+            unsupported.join(", ")
+        ));
+    }
+    Ok(mode)
+}
+
+fn parse_release_mode_override_value(
+    args: &[String],
+    index: usize,
+    flag: &str,
+) -> Result<String, String> {
+    let value = args
+        .get(index + 1)
+        .ok_or_else(|| format!("{flag} requires a value in --release-config mode"))?;
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(format!(
+            "{flag} requires non-empty value in --release-config mode"
+        ));
+    }
+    Ok(value.to_string())
+}
+
+fn load_release_locked_options(path: &str) -> Result<CliOptions, String> {
+    let text = fs::read_to_string(path)
+        .map_err(|err| format!("failed to read release config `{path}`: {err}"))?;
+    let file: ReleaseLockedArgsFile = toml::from_str(text.as_str())
+        .map_err(|err| format!("failed to parse release config `{path}`: {err}"))?;
+    if file.locked_args.is_empty() {
+        return Err(format!(
+            "release config `{path}` must contain non-empty locked_args"
+        ));
+    }
+    if file
+        .locked_args
+        .iter()
+        .any(|arg| arg == RELEASE_CONFIG_FLAG || arg == "--help" || arg == "-h")
+    {
+        return Err(format!(
+            "release config `{path}` locked_args cannot contain --release-config/--help/-h"
+        ));
+    }
+
+    parse_options(file.locked_args.iter().map(|arg| arg.as_str()))
+        .map_err(|err| format!("invalid locked_args in release config `{path}`: {err}"))
 }
 
 pub(super) fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, String> {
@@ -515,6 +650,7 @@ pub(super) fn print_help() {
         "Usage: world_viewer_live [scenario] [--bind <addr>] [--web-bind <addr>] [--tick-ms <ms>] [--llm] [--no-node] [--node-validator <id:stake>...] [--node-gossip-bind <addr:port>] [--node-gossip-peer <addr:port>...]"
     );
     println!("Options:");
+    println!("  --release-config <path> Enable release-locked launch from TOML locked_args");
     println!("  --bind <addr>     Bind address (default: 127.0.0.1:5010)");
     println!("  --web-bind <addr> WebSocket bridge bind address (optional)");
     println!("  --tick-ms <ms>    Tick interval in milliseconds (default: 200)");

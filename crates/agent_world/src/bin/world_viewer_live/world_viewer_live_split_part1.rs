@@ -50,7 +50,8 @@ mod reward_runtime_network;
 #[path = "reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
 use cli::{
-    parse_options, print_help, resolve_triad_distributed_gossip, CliOptions, NodeTopologyMode,
+    parse_launch_options, parse_options, print_help, resolve_triad_distributed_gossip, CliOptions,
+    NodeTopologyMode,
 };
 use distfs_challenge_network::{
     storage_proof_hint_value_from_semantics, DistfsChallengeNetworkDriver,
@@ -156,7 +157,7 @@ struct ConsensusGateWorker {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let options = match parse_options(args.iter().skip(1).map(|arg| arg.as_str())) {
+    let options = match parse_launch_options(args.iter().skip(1).map(|arg| arg.as_str())) {
         Ok(options) => options,
         Err(err) => {
             eprintln!("{err}");
