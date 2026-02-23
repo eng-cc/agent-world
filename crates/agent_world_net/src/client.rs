@@ -109,7 +109,11 @@ impl DistributedClient {
     ) -> Result<Vec<u8>, WorldError> {
         let providers = dht.get_providers(world_id, content_hash)?;
         if providers.is_empty() {
-            return self.fetch_blob(content_hash);
+            return Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "dht providers missing for world={world_id}, content_hash={content_hash}"
+                ),
+            });
         }
 
         let now_ms = unix_now_ms_i64();
@@ -117,14 +121,23 @@ impl DistributedClient {
             .provider_selection_policy
             .rank_providers(&providers, now_ms);
 
+        let mut last_error: Option<WorldError> = None;
         for record in ranked {
             let provider = [record.provider_id];
-            if let Ok(bytes) = self.fetch_blob_with_providers(content_hash, &provider) {
-                return Ok(bytes);
+            match self.fetch_blob_with_providers(content_hash, &provider) {
+                Ok(bytes) => return Ok(bytes),
+                Err(error) => last_error = Some(error),
             }
         }
 
-        self.fetch_blob(content_hash)
+        match last_error {
+            Some(error) => Err(error),
+            None => Err(WorldError::DistributedValidationFailed {
+                reason: format!(
+                    "dht providers exhausted for world={world_id}, content_hash={content_hash}"
+                ),
+            }),
+        }
     }
 
     pub fn get_journal_segment(

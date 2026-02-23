@@ -723,7 +723,24 @@ fn client_fetch_blob_from_dht_retries_ranked_providers_until_success() {
 }
 
 #[test]
-fn client_fetch_blob_from_dht_falls_back_after_ranked_provider_failures() {
+fn client_fetch_blob_from_dht_fails_when_no_providers() {
+    let spy = Arc::new(SpyNetwork::default());
+    let network: Arc<dyn DistributedNetwork + Send + Sync> = spy.clone();
+    let client = DistributedClient::new(network);
+    let dht = InMemoryDht::new();
+
+    let err = client
+        .fetch_blob_from_dht("w1", "hash-missing", &dht)
+        .expect_err("must fail when dht has no provider");
+    assert!(matches!(
+        err,
+        WorldError::DistributedValidationFailed { .. }
+    ));
+    assert!(spy.provider_attempts().is_empty());
+}
+
+#[test]
+fn client_fetch_blob_from_dht_fails_after_ranked_provider_failures() {
     let spy = Arc::new(SpyNetwork::default());
     spy.set_blob("hash-fallback", b"fallback-success".to_vec());
     spy.fail_provider_requests("peer-1", 1);
@@ -740,19 +757,14 @@ fn client_fetch_blob_from_dht_falls_back_after_ranked_provider_failures() {
     fallback.challenge_pass_ratio_per_mille = Some(800);
 
     let dht = StaticProvidersDht::new(vec![fallback, preferred]);
-    let blob = client
+    let err = client
         .fetch_blob_from_dht("w1", "hash-fallback", &dht)
-        .expect("fetch");
-    assert_eq!(blob, b"fallback-success".to_vec());
+        .expect_err("all providers should fail");
+    assert!(matches!(err, WorldError::NetworkProtocolUnavailable { .. }));
     assert_eq!(
         spy.provider_attempts(),
-        vec![
-            vec!["peer-1".to_string()],
-            vec!["peer-2".to_string()],
-            Vec::<String>::new(),
-        ]
+        vec![vec!["peer-1".to_string()], vec!["peer-2".to_string()]]
     );
-    assert_eq!(spy.providers(), Vec::<String>::new());
 }
 
 #[test]

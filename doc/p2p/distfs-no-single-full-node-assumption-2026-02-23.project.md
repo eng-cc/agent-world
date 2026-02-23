@@ -7,8 +7,8 @@
 - [x] 项目文档：`doc/p2p/distfs-no-single-full-node-assumption-2026-02-23.project.md`
 
 ### T1 严格 DHT 拉取
-- [ ] `fetch_blob_from_dht` 去掉无 provider 回退路径
-- [ ] 增补 `agent_world_net` 单测：无 provider 失败 / provider 重试成功
+- [x] `fetch_blob_from_dht` 去掉无 provider 回退路径
+- [x] 增补 `agent_world_net` 单测：无 provider 失败 / provider 重试成功
 
 ### T2 覆盖审计与回放接线
 - [ ] 新增 provider 覆盖审计策略模块
@@ -28,7 +28,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2、T3
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：T3
 - 阻塞项：无
