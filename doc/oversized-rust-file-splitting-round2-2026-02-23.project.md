@@ -7,7 +7,7 @@
 - [x] T3：拆分 `crates/agent_world_consensus/src/membership_recovery/replay.rs` 的测试模块并回归
 - [x] T4：拆分 `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs` 的测试模块并回归
 - [x] T5：拆分 `crates/agent_world_node/src/replication.rs` 的测试模块并回归
-- [ ] T6：统一复核行数阈值、执行补充回归并收口文档/devlog
+- [x] T6：统一复核行数阈值、执行补充回归并收口文档/devlog
 
 ## 依赖
 - T1/T2/T3/T4/T5 依赖各文件测试模块准确迁移且 `mod tests;` 路径可解析。
@@ -15,6 +15,6 @@
 - T6 依赖 T1~T5 全部完成。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2/T3/T4/T5 已完成，T6 待执行）。
+- 当前阶段：已完成（T0~T6 全部完成）。
 - 阻塞项：无。
-- 下一步：执行 T6（统一复核与收口）。
+- 下一步：无（本轮拆分任务已收口）。
