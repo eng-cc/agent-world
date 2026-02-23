@@ -23,9 +23,9 @@
 - [x] 补充/更新单测
 
 ### T4 收口
-- [ ] required-tier 回归
-- [ ] 设计/项目文档状态更新
-- [ ] `doc/devlog/2026-02-23.md` 追加任务日志
+- [x] required-tier 回归
+- [x] 设计/项目文档状态更新
+- [x] `doc/devlog/2026-02-23.md` 追加任务日志
 
 ## 依赖
 - `crates/agent_world_node/src/node_runtime_core.rs`
@@ -41,8 +41,8 @@
 - `crates/agent_world_distfs/src/lib.rs`（复用）
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2、T3
-- 进行中：T4
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3、T4
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
