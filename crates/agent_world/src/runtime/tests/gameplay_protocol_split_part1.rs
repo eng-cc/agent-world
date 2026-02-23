@@ -1,0 +1,897 @@
+use super::super::*;
+use super::pos;
+use crate::simulator::ResourceKind;
+use agent_world_wasm_abi::{
+    ModuleCallFailure, ModuleCallRequest, ModuleEmit, ModuleOutput, ModuleSandbox,
+    ModuleTickLifecycleDirective,
+};
+
+struct GameplayDirectiveSandbox {
+    governance_directives: Vec<serde_json::Value>,
+}
+
+impl GameplayDirectiveSandbox {
+    fn empty() -> Self {
+        Self {
+            governance_directives: Vec::new(),
+        }
+    }
+
+    fn with_governance_directive(payload: serde_json::Value) -> Self {
+        Self {
+            governance_directives: vec![payload],
+        }
+    }
+}
+
+impl ModuleSandbox for GameplayDirectiveSandbox {
+    fn call(&mut self, request: &ModuleCallRequest) -> Result<ModuleOutput, ModuleCallFailure> {
+        let mut emits = Vec::new();
+        if request.module_id == M5_GAMEPLAY_GOVERNANCE_MODULE_ID
+            && (request.trace_id.starts_with("tick-")
+                || request.trace_id.starts_with("infra-tick-"))
+        {
+            if let Some(payload) = self.governance_directives.pop() {
+                emits.push(ModuleEmit {
+                    kind: "gameplay.lifecycle.directives".to_string(),
+                    payload,
+                });
+            }
+        }
+        Ok(ModuleOutput {
+            new_state: None,
+            effects: Vec::new(),
+            emits,
+            tick_lifecycle: Some(ModuleTickLifecycleDirective::WakeAfterTicks { ticks: 1 }),
+            output_bytes: 512,
+        })
+    }
+}
+
+fn register_agents(world: &mut World, agent_ids: &[&str]) {
+    for (index, agent_id) in agent_ids.iter().enumerate() {
+        world.submit_action(Action::RegisterAgent {
+            agent_id: (*agent_id).to_string(),
+            pos: pos(index as f64, 0.0),
+        });
+    }
+    world.step().expect("register agents");
+}
+
+fn set_agent_resources(world: &mut World, agent_id: &str, electricity: i64, data: i64) {
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Electricity, electricity)
+        .expect("set electricity");
+    world
+        .set_agent_resource_balance(agent_id, ResourceKind::Data, data)
+        .expect("set data");
+}
+
+fn seed_war_ready_resources(world: &mut World, agent_ids: &[&str]) {
+    for agent_id in agent_ids {
+        set_agent_resources(world, agent_id, 120, 120);
+    }
+}
+
+fn last_domain_event(world: &World) -> &DomainEvent {
+    let event = world.journal().events.last().expect("domain event");
+    let WorldEventBody::Domain(domain_event) = &event.body else {
+        panic!("expected domain event");
+    };
+    domain_event
+}
+
+fn assert_latest_rule_denied_contains(world: &World, needle: &str) {
+    let notes = world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected {
+                reason: RejectReason::RuleDenied { notes },
+                ..
+            }) => Some(notes),
+            _ => None,
+        })
+        .expect("rule denied event");
+    assert!(
+        notes.iter().any(|note| note.contains(needle)),
+        "expected reject note containing '{needle}', got {notes:?}"
+    );
+}
+
+fn open_governance_proposal_by(
+    world: &mut World,
+    proposer_agent_id: &str,
+    proposal_key: &str,
+    window_ticks: u64,
+    quorum_weight: u64,
+    pass_threshold_bps: u16,
+) {
+    world.submit_action(Action::OpenGovernanceProposal {
+        proposer_agent_id: proposer_agent_id.to_string(),
+        proposal_key: proposal_key.to_string(),
+        title: format!("title.{proposal_key}"),
+        description: "runtime proposal".to_string(),
+        options: vec!["approve".to_string(), "reject".to_string()],
+        voting_window_ticks: window_ticks,
+        quorum_weight,
+        pass_threshold_bps,
+    });
+    world.step().expect("open governance proposal");
+}
+
+fn open_governance_proposal(
+    world: &mut World,
+    proposal_key: &str,
+    window_ticks: u64,
+    quorum_weight: u64,
+    pass_threshold_bps: u16,
+) {
+    open_governance_proposal_by(
+        world,
+        "a",
+        proposal_key,
+        window_ticks,
+        quorum_weight,
+        pass_threshold_bps,
+    );
+}
+
+fn authorize_policy_update(world: &mut World, operator_agent_id: &str, proposal_key: &str) {
+    open_governance_proposal_by(world, operator_agent_id, proposal_key, 1, 3, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: operator_agent_id.to_string(),
+        proposal_key: proposal_key.to_string(),
+        option: "approve".to_string(),
+        weight: 3,
+    });
+    world
+        .step()
+        .expect("cast governance vote for policy authorization");
+
+    for _ in 0..2 {
+        let proposal = world
+            .state()
+            .governance_proposals
+            .get(proposal_key)
+            .expect("policy authorization proposal exists");
+        if proposal.status != GovernanceProposalStatus::Open {
+            break;
+        }
+        world
+            .step()
+            .expect("advance governance proposal to finalize");
+    }
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get(proposal_key)
+        .expect("policy authorization proposal finalized");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
+    assert!(proposal.total_weight_at_finalize >= 3);
+}
+
+fn advance_until_auto_crisis(world: &mut World) -> String {
+    for _ in 0..64 {
+        world.step().expect("advance for crisis cycle");
+        if let Some((crisis_id, _)) = world
+            .state()
+            .crises
+            .iter()
+            .find(|(_, crisis)| crisis.status == CrisisStatus::Active)
+        {
+            return crisis_id.clone();
+        }
+    }
+    panic!("expected an auto crisis to spawn");
+}
+
+#[test]
+fn gameplay_protocol_actions_drive_persisted_state() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "mutual defense".to_string(),
+    });
+    world.step().expect("form red alliance");
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "logistics pact".to_string(),
+    });
+    world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["a"]);
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.001".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "control asteroid belt".to_string(),
+        intensity: 2,
+    });
+    world.step().expect("declare war");
+
+    open_governance_proposal(&mut world, "proposal.energy_tax", 4, 2, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.energy_tax".to_string(),
+        option: "approve".to_string(),
+        weight: 3,
+    });
+    world.step().expect("cast governance vote");
+
+    let crisis_id = advance_until_auto_crisis(&mut world);
+    world.submit_action(Action::ResolveCrisis {
+        resolver_agent_id: "c".to_string(),
+        crisis_id: crisis_id.clone(),
+        strategy: "redistribute shield grid".to_string(),
+        success: true,
+    });
+    world.step().expect("resolve crisis");
+
+    world.submit_action(Action::GrantMetaProgress {
+        operator_agent_id: "a".to_string(),
+        target_agent_id: "b".to_string(),
+        track: "campaign".to_string(),
+        points: 15,
+        achievement_id: Some("first_alliance_win".to_string()),
+    });
+    world.step().expect("grant meta progress");
+
+    let red = world
+        .state()
+        .alliances
+        .get("alliance.red")
+        .expect("red alliance");
+    assert_eq!(red.members, vec!["a".to_string(), "b".to_string()]);
+
+    let war = world.state().wars.get("war.001").expect("war record");
+    assert_eq!(war.aggressor_alliance_id, "alliance.red");
+    assert_eq!(war.defender_alliance_id, "alliance.blue");
+    assert!(war.active);
+
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.energy_tax")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, 3);
+    assert_eq!(governance.tallies.get("approve"), Some(&3_u64));
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get("proposal.energy_tax")
+        .expect("governance proposal state");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
+
+    let crisis = world.state().crises.get(&crisis_id).expect("crisis state");
+    assert_eq!(crisis.status, CrisisStatus::Resolved);
+    assert_eq!(crisis.success, Some(true));
+    assert_eq!(crisis.impact, 20);
+
+    let progress = world.state().meta_progress.get("b").expect("meta progress");
+    assert_eq!(progress.total_points, 15);
+    assert_eq!(progress.track_points.get("campaign"), Some(&15));
+    assert_eq!(
+        progress.achievements,
+        vec!["first_alliance_win".to_string()]
+    );
+
+    assert!(matches!(
+        last_domain_event(&world),
+        DomainEvent::MetaProgressGranted { .. }
+    ));
+}
+
+#[test]
+fn declare_war_rejects_initiator_outside_aggressor_alliance() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "charter.red".to_string(),
+    });
+    world.step().expect("form red alliance");
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "charter.blue".to_string(),
+    });
+    world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["c"]);
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "c".to_string(),
+        war_id: "war.invalid".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "invalid".to_string(),
+        intensity: 1,
+    });
+    world.step().expect("reject invalid war declare");
+
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("is not a member of aggressor alliance")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn governance_vote_recast_replaces_previous_tally() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    open_governance_proposal(&mut world, "proposal.runtime", 6, 1, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.runtime".to_string(),
+        option: "approve".to_string(),
+        weight: 3,
+    });
+    world.step().expect("first vote");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.runtime".to_string(),
+        option: "reject".to_string(),
+        weight: 1,
+    });
+    world.step().expect("recast vote");
+
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.runtime")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, 1);
+    assert_eq!(governance.tallies.get("reject"), Some(&1_u64));
+    assert!(!governance.tallies.contains_key("approve"));
+    assert_eq!(governance.votes_by_agent.len(), 1);
+}
+
+#[test]
+fn governance_vote_rejects_weight_above_cap() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    open_governance_proposal(&mut world, "proposal.vote_cap", 6, 1, 5_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.vote_cap".to_string(),
+        option: "approve".to_string(),
+        weight: 101,
+    });
+    world.step().expect("reject vote weight overflow");
+
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("vote weight must be <= 100")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    let governance = world
+        .state()
+        .governance_votes
+        .get("proposal.vote_cap")
+        .expect("governance vote state");
+    assert_eq!(governance.total_weight, 0);
+    assert!(governance.votes_by_agent.is_empty());
+    assert!(governance.tallies.is_empty());
+}
+
+#[test]
+fn governance_proposal_finalizes_and_rejects_late_votes() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c"]);
+    open_governance_proposal(&mut world, "proposal.finalize", 2, 3, 6_000);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "a".to_string(),
+        proposal_key: "proposal.finalize".to_string(),
+        option: "approve".to_string(),
+        weight: 2,
+    });
+    world.step().expect("vote from a");
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "b".to_string(),
+        proposal_key: "proposal.finalize".to_string(),
+        option: "approve".to_string(),
+        weight: 1,
+    });
+    world.step().expect("vote from b and finalize");
+
+    let proposal = world
+        .state()
+        .governance_proposals
+        .get("proposal.finalize")
+        .expect("finalized proposal");
+    assert_eq!(proposal.status, GovernanceProposalStatus::Passed);
+    assert_eq!(proposal.winning_option.as_deref(), Some("approve"));
+    assert_eq!(proposal.total_weight_at_finalize, 3);
+
+    world.submit_action(Action::CastGovernanceVote {
+        voter_agent_id: "c".to_string(),
+        proposal_key: "proposal.finalize".to_string(),
+        option: "reject".to_string(),
+        weight: 5,
+    });
+    world.step().expect("late vote rejected");
+
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("proposal is not open")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+}
+
+#[test]
+fn crisis_cycle_spawns_and_times_out_if_unresolved() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a"]);
+    let crisis_id = advance_until_auto_crisis(&mut world);
+
+    let expires_at = world
+        .state()
+        .crises
+        .get(&crisis_id)
+        .expect("active crisis")
+        .expires_at;
+    while world.state().time <= expires_at {
+        world.step().expect("advance to crisis timeout");
+    }
+
+    let crisis = world
+        .state()
+        .crises
+        .get(&crisis_id)
+        .expect("timed out crisis");
+    assert_eq!(crisis.status, CrisisStatus::TimedOut);
+    assert_eq!(crisis.success, Some(false));
+    assert!(crisis.impact < 0);
+    assert!(matches!(
+        last_domain_event(&world),
+        DomainEvent::CrisisTimedOut { .. }
+    ));
+}
+
+#[test]
+fn war_auto_concludes_after_duration() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "charter.red".to_string(),
+    });
+    world.step().expect("form red alliance");
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "charter.blue".to_string(),
+    });
+    world.step().expect("form blue alliance");
+    seed_war_ready_resources(&mut world, &["a", "b", "c", "d"]);
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.auto".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "hold position".to_string(),
+        intensity: 2,
+    });
+    world.step().expect("declare war");
+
+    for _ in 0..12 {
+        world.step().expect("advance war lifecycle");
+    }
+
+    let war = world.state().wars.get("war.auto").expect("war state");
+    assert!(!war.active);
+    assert_eq!(war.winner_alliance_id.as_deref(), Some("alliance.red"));
+    assert_eq!(war.loser_alliance_id.as_deref(), Some("alliance.blue"));
+    assert!(!war.participant_outcomes.is_empty());
+    assert!(war.concluded_at.is_some());
+    assert!(war
+        .settlement_summary
+        .as_deref()
+        .unwrap_or_default()
+        .contains("auto settlement"));
+}
+
+#[test]
+fn alliance_join_leave_dissolve_lifecycle_updates_state() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        members: vec!["b".to_string()],
+        charter: "alpha charter".to_string(),
+    });
+    world.step().expect("form alliance");
+
+    world.submit_action(Action::JoinAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        member_agent_id: "c".to_string(),
+    });
+    world.step().expect("join alliance");
+    let alliance = world
+        .state()
+        .alliances
+        .get("alliance.alpha")
+        .expect("alliance after join");
+    assert_eq!(
+        alliance.members,
+        vec!["a".to_string(), "b".to_string(), "c".to_string()]
+    );
+
+    world.submit_action(Action::LeaveAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        member_agent_id: "c".to_string(),
+    });
+    world.step().expect("leave alliance");
+    let alliance = world
+        .state()
+        .alliances
+        .get("alliance.alpha")
+        .expect("alliance after leave");
+    assert_eq!(alliance.members, vec!["a".to_string(), "b".to_string()]);
+
+    world.submit_action(Action::DissolveAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.alpha".to_string(),
+        reason: "merge into coalition".to_string(),
+    });
+    world.step().expect("dissolve alliance");
+    assert!(!world.state().alliances.contains_key("alliance.alpha"));
+    assert!(matches!(
+        last_domain_event(&world),
+        DomainEvent::AllianceDissolved { .. }
+    ));
+}
+
+#[test]
+fn war_declaration_requires_mobilization_resources_and_conclusion_applies_outcomes() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b", "c", "d", "e"]);
+
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        members: vec!["b".to_string()],
+        charter: "charter.red".to_string(),
+    });
+    world.step().expect("form red alliance");
+    world.submit_action(Action::FormAlliance {
+        proposer_agent_id: "c".to_string(),
+        alliance_id: "alliance.blue".to_string(),
+        members: vec!["d".to_string()],
+        charter: "charter.blue".to_string(),
+    });
+    world.step().expect("form blue alliance");
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.reject.cost".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "no budget".to_string(),
+        intensity: 3,
+    });
+    world
+        .step()
+        .expect("reject war for insufficient mobilization");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason:
+                RejectReason::InsufficientResource {
+                    kind: ResourceKind::Electricity,
+                    ..
+                },
+            ..
+        } => {}
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    set_agent_resources(&mut world, "a", 120, 120);
+    set_agent_resources(&mut world, "b", 80, 60);
+    set_agent_resources(&mut world, "c", 90, 70);
+    set_agent_resources(&mut world, "d", 60, 50);
+    let before_a_electricity = world
+        .agent_resource_balance("a", ResourceKind::Electricity)
+        .expect("a electricity before war");
+    let before_a_data = world
+        .agent_resource_balance("a", ResourceKind::Data)
+        .expect("a data before war");
+
+    world.submit_action(Action::DeclareWar {
+        initiator_agent_id: "a".to_string(),
+        war_id: "war.outcome".to_string(),
+        aggressor_alliance_id: "alliance.red".to_string(),
+        defender_alliance_id: "alliance.blue".to_string(),
+        objective: "hold belt".to_string(),
+        intensity: 3,
+    });
+    world.step().expect("declare war with mobilization");
+    let war = world.state().wars.get("war.outcome").expect("war state");
+    assert_eq!(war.declared_mobilization_electricity_cost, 24);
+    assert_eq!(war.declared_mobilization_data_cost, 17);
+    let after_a_electricity = world
+        .agent_resource_balance("a", ResourceKind::Electricity)
+        .expect("a electricity after declare");
+    let after_a_data = world
+        .agent_resource_balance("a", ResourceKind::Data)
+        .expect("a data after declare");
+    assert_eq!(
+        before_a_electricity - after_a_electricity,
+        war.declared_mobilization_electricity_cost
+    );
+    assert_eq!(
+        before_a_data - after_a_data,
+        war.declared_mobilization_data_cost
+    );
+
+    world.submit_action(Action::JoinAlliance {
+        operator_agent_id: "a".to_string(),
+        alliance_id: "alliance.red".to_string(),
+        member_agent_id: "e".to_string(),
+    });
+    world.step().expect("join during active war rejected");
+    match last_domain_event(&world) {
+        DomainEvent::ActionRejected {
+            reason: RejectReason::RuleDenied { notes },
+            ..
+        } => {
+            assert!(notes
+                .iter()
+                .any(|note| note.contains("cannot change members")));
+        }
+        other => panic!("unexpected event: {other:?}"),
+    }
+
+    for _ in 0..12 {
+        world.step().expect("advance war lifecycle");
+    }
+    let war = world
+        .state()
+        .wars
+        .get("war.outcome")
+        .expect("war after conclude");
+    assert!(!war.active);
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.electricity_delta < 0));
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.electricity_delta > 0));
+    assert!(war
+        .participant_outcomes
+        .iter()
+        .any(|item| item.reputation_delta != 0));
+    let total_electricity_delta: i64 = war
+        .participant_outcomes
+        .iter()
+        .map(|item| item.electricity_delta)
+        .sum();
+    let total_data_delta: i64 = war
+        .participant_outcomes
+        .iter()
+        .map(|item| item.data_delta)
+        .sum();
+    assert_eq!(total_electricity_delta, 0);
+    assert_eq!(total_data_delta, 0);
+}
+
+#[test]
+fn meta_progress_unlocks_track_tiers() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+
+    world.submit_action(Action::GrantMetaProgress {
+        operator_agent_id: "a".to_string(),
+        target_agent_id: "b".to_string(),
+        track: "campaign".to_string(),
+        points: 20,
+        achievement_id: None,
+    });
+    world.step().expect("grant bronze points");
+
+    world.submit_action(Action::GrantMetaProgress {
+        operator_agent_id: "a".to_string(),
+        target_agent_id: "b".to_string(),
+        track: "campaign".to_string(),
+        points: 30,
+        achievement_id: None,
+    });
+    world.step().expect("grant silver points");
+
+    world.submit_action(Action::GrantMetaProgress {
+        operator_agent_id: "a".to_string(),
+        target_agent_id: "b".to_string(),
+        track: "campaign".to_string(),
+        points: 50,
+        achievement_id: None,
+    });
+    world.step().expect("grant gold points");
+
+    let progress = world.state().meta_progress.get("b").expect("meta progress");
+    assert_eq!(progress.track_points.get("campaign"), Some(&100));
+    let tiers = progress
+        .unlocked_tiers
+        .get("campaign")
+        .expect("campaign tiers");
+    assert!(tiers.iter().any(|tier| tier == "bronze"));
+    assert!(tiers.iter().any(|tier| tier == "silver"));
+    assert!(tiers.iter().any(|tier| tier == "gold"));
+    assert!(progress
+        .achievements
+        .iter()
+        .any(|value| value == "tier.campaign.bronze"));
+    assert!(progress
+        .achievements
+        .iter()
+        .any(|value| value == "tier.campaign.silver"));
+    assert!(progress
+        .achievements
+        .iter()
+        .any(|value| value == "tier.campaign.gold"));
+}
+
+#[test]
+fn update_gameplay_policy_requires_governance_authorization() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 1_000,
+        max_open_contracts_per_agent: 4,
+        blocked_agents: vec!["b".to_string()],
+    });
+    world
+        .step()
+        .expect("reject unauthorized gameplay policy update");
+
+    assert_latest_rule_denied_contains(
+        &world,
+        "requires passed governance proposal total_weight >=",
+    );
+}
+
+#[test]
+fn economic_contract_settlement_applies_tax_and_reputation() {
+    let mut world = World::new();
+    register_agents(&mut world, &["a", "b"]);
+    authorize_policy_update(&mut world, "a", "proposal.policy.tax");
+    world
+        .set_agent_resource_balance("a", ResourceKind::Data, 100)
+        .expect("seed creator data");
+
+    world.submit_action(Action::UpdateGameplayPolicy {
+        operator_agent_id: "a".to_string(),
+        electricity_tax_bps: 0,
+        data_tax_bps: 1_000,
+        max_open_contracts_per_agent: 4,
+        blocked_agents: Vec::new(),
+    });
+    world.step().expect("update gameplay policy");
+
+    let expires_at = world.state().time.saturating_add(10);
+    world.submit_action(Action::OpenEconomicContract {
+        creator_agent_id: "a".to_string(),
+        contract_id: "contract.data.1".to_string(),
+        counterparty_agent_id: "b".to_string(),
+        settlement_kind: ResourceKind::Data,
+        settlement_amount: 30,
+        reputation_stake: 8,
+        expires_at,
+        description: "data labeling batch".to_string(),
+    });
+    world.step().expect("open economic contract");
+
+    world.submit_action(Action::AcceptEconomicContract {
+        accepter_agent_id: "b".to_string(),
+        contract_id: "contract.data.1".to_string(),
+    });
+    world.step().expect("accept economic contract");
+
+    world.submit_action(Action::SettleEconomicContract {
+        operator_agent_id: "a".to_string(),
+        contract_id: "contract.data.1".to_string(),
+        success: true,
+        notes: "delivered on time".to_string(),
+    });
+    world.step().expect("settle economic contract");
+
+    let contract = world
+        .state()
+        .economic_contracts
+        .get("contract.data.1")
+        .expect("settled contract");
+    assert_eq!(contract.status, EconomicContractStatus::Settled);
+    assert_eq!(contract.transfer_amount, 30);
+    assert_eq!(contract.tax_amount, 3);
+    assert_eq!(contract.settlement_success, Some(true));
+
+    let creator_data = world
+        .state()
+        .agents
+        .get("a")
+        .expect("creator agent")
+        .state
+        .resources
+        .get(ResourceKind::Data);
+    let counterparty_data = world
+        .state()
+        .agents
+        .get("b")
+        .expect("counterparty agent")
+        .state
+        .resources
+        .get(ResourceKind::Data);
+    assert_eq!(creator_data, 67);
+    assert_eq!(counterparty_data, 30);
+    assert_eq!(
+        world.state().resources.get(&ResourceKind::Data).copied(),
+        Some(3)
+    );
+    assert_eq!(world.state().reputation_scores.get("a"), Some(&3));
+    assert_eq!(world.state().reputation_scores.get("b"), Some(&3));
+    let has_settled_event = world.journal().events.iter().any(|event| {
+        matches!(
+            &event.body,
+            WorldEventBody::Domain(DomainEvent::EconomicContractSettled { contract_id, .. })
+                if contract_id == "contract.data.1"
+        )
+    });
+    assert!(has_settled_event, "expected EconomicContractSettled event");
+}
