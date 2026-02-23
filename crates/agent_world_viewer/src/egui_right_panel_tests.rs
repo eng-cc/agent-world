@@ -18,6 +18,8 @@ const SNAPSHOT_WAIT_TIMEOUT: Duration = Duration::from_secs(10);
 mod player_achievements_tests;
 #[path = "egui_right_panel_player_atmosphere_tests.rs"]
 mod player_atmosphere_tests;
+#[path = "egui_right_panel_player_card_motion_tests.rs"]
+mod player_card_motion_tests;
 #[path = "egui_right_panel_player_chatter_tests.rs"]
 mod player_chatter_tests;
 

@@ -53,6 +53,8 @@ mod egui_right_panel_controls;
 mod egui_right_panel_env;
 #[path = "egui_right_panel_layout.rs"]
 mod egui_right_panel_layout;
+#[path = "egui_right_panel_player_card_motion.rs"]
+mod egui_right_panel_player_card_motion;
 #[path = "egui_right_panel_player_experience.rs"]
 mod egui_right_panel_player_experience;
 #[path = "egui_right_panel_text_utils.rs"]

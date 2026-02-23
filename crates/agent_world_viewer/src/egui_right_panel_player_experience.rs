@@ -1,3 +1,6 @@
+use super::egui_right_panel_player_card_motion::{
+    build_player_card_transition_snapshot, sync_player_guide_transition, PlayerGuideTransitionState,
+};
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 use std::collections::BTreeSet;
@@ -94,6 +97,7 @@ pub(crate) struct PlayerAchievementState {
 #[derive(Default)]
 pub(crate) struct PlayerOnboardingState {
     dismissed_step: Option<PlayerGuideStep>,
+    guide_transition: PlayerGuideTransitionState,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1072,18 +1076,39 @@ pub(super) fn player_agent_chatter_snapshot(
 
 pub(super) fn render_player_goal_hint(
     context: &egui::Context,
+    onboarding: &PlayerOnboardingState,
     step: PlayerGuideStep,
     locale: crate::i18n::UiLocale,
+    now_secs: f64,
 ) {
     let tone = player_goal_color(step);
+    let motion =
+        build_player_card_transition_snapshot(&onboarding.guide_transition, step, now_secs, 0.8);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
     egui::Area::new(egui::Id::new("viewer-player-next-goal"))
-        .anchor(egui::Align2::LEFT_BOTTOM, egui::vec2(14.0, -14.0))
+        .anchor(
+            egui::Align2::LEFT_BOTTOM,
+            egui::vec2(14.0, -14.0 + motion.slide_px),
+        )
         .movable(false)
         .interactable(false)
         .show(context, |ui| {
             egui::Frame::group(ui.style())
-                .fill(egui::Color32::from_rgb(15, 20, 30))
-                .stroke(egui::Stroke::new(1.0, tone))
+                .fill(egui::Color32::from_rgba_unmultiplied(
+                    15,
+                    20,
+                    30,
+                    to_u8(224.0 * motion.alpha),
+                ))
+                .stroke(egui::Stroke::new(
+                    1.0 + 0.4 * motion.pulse,
+                    egui::Color32::from_rgba_unmultiplied(
+                        tone.r(),
+                        tone.g(),
+                        tone.b(),
+                        to_u8((152.0 + 84.0 * motion.pulse) * motion.alpha),
+                    ),
+                ))
                 .corner_radius(egui::CornerRadius::same(8))
                 .inner_margin(egui::Margin::same(9))
                 .show(ui, |ui| {
@@ -1101,22 +1126,42 @@ pub(super) fn render_player_onboarding_card(
     step: PlayerGuideStep,
     layout_state: &mut RightPanelLayoutState,
     locale: crate::i18n::UiLocale,
+    now_secs: f64,
 ) {
     if !should_show_player_onboarding_card(onboarding, step) {
         return;
     }
 
     let tone = player_goal_color(step);
+    let motion =
+        build_player_card_transition_snapshot(&onboarding.guide_transition, step, now_secs, 1.2);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
     let mut primary_clicked = false;
     let mut dismiss_clicked = false;
     egui::Area::new(egui::Id::new("viewer-player-onboarding"))
-        .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, 14.0))
+        .anchor(
+            egui::Align2::LEFT_TOP,
+            egui::vec2(14.0, 14.0 - motion.slide_px),
+        )
         .movable(false)
         .interactable(true)
         .show(context, |ui| {
             egui::Frame::group(ui.style())
-                .fill(egui::Color32::from_rgb(19, 26, 38))
-                .stroke(egui::Stroke::new(1.0, tone))
+                .fill(egui::Color32::from_rgba_unmultiplied(
+                    19,
+                    26,
+                    38,
+                    to_u8(236.0 * motion.alpha),
+                ))
+                .stroke(egui::Stroke::new(
+                    1.0 + 0.45 * motion.pulse,
+                    egui::Color32::from_rgba_unmultiplied(
+                        tone.r(),
+                        tone.g(),
+                        tone.b(),
+                        to_u8((150.0 + 90.0 * motion.pulse) * motion.alpha),
+                    ),
+                ))
                 .corner_radius(egui::CornerRadius::same(10))
                 .inner_margin(egui::Margin::same(12))
                 .show(ui, |ui| {
@@ -1160,9 +1205,17 @@ pub(super) fn render_player_experience_layers(
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
     sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
+    sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
     render_player_achievement_popups(context, achievements, locale, now_secs);
     render_agent_chatter_bubbles(context, achievements, now_secs);
-    render_player_goal_hint(context, guide_step, locale);
-    render_player_onboarding_card(context, onboarding, guide_step, layout_state, locale);
+    render_player_goal_hint(context, onboarding, guide_step, locale, now_secs);
+    render_player_onboarding_card(
+        context,
+        onboarding,
+        guide_step,
+        layout_state,
+        locale,
+        now_secs,
+    );
 }
