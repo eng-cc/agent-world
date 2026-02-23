@@ -895,6 +895,14 @@ pub(super) fn dismiss_player_onboarding_step(
     onboarding.dismissed_step = Some(step);
 }
 
+pub(super) fn should_show_player_goal_hint(
+    onboarding: &PlayerOnboardingState,
+    step: PlayerGuideStep,
+    layout_state: &RightPanelLayoutState,
+) -> bool {
+    layout_state.panel_hidden && !should_show_player_onboarding_card(onboarding, step)
+}
+
 #[cfg(test)]
 pub(super) fn feedback_toast_cap() -> usize {
     FEEDBACK_TOAST_MAX
@@ -1151,14 +1159,16 @@ pub(super) fn render_player_experience_layers(
     );
     render_player_achievement_popups(context, achievements, locale, now_secs);
     render_agent_chatter_bubbles(context, achievements, now_secs);
-    render_player_goal_hint(
-        context,
-        onboarding,
-        guide_step,
-        guide_progress,
-        locale,
-        now_secs,
-    );
+    if should_show_player_goal_hint(onboarding, guide_step, layout_state) {
+        render_player_goal_hint(
+            context,
+            onboarding,
+            guide_step,
+            guide_progress,
+            locale,
+            now_secs,
+        );
+    }
     render_player_onboarding_card(
         context,
         onboarding,

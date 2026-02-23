@@ -759,6 +759,42 @@ fn player_onboarding_visibility_tracks_dismissed_step_only() {
 }
 
 #[test]
+fn player_goal_hint_visibility_requires_hidden_panel_and_dismissed_step() {
+    let hidden_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+        panel_hidden: true,
+    };
+    let open_layout = RightPanelLayoutState {
+        top_panel_collapsed: false,
+        panel_hidden: false,
+    };
+    let mut onboarding = PlayerOnboardingState::default();
+
+    assert!(!should_show_player_goal_hint(
+        &onboarding,
+        PlayerGuideStep::OpenPanel,
+        &hidden_layout
+    ));
+
+    dismiss_player_onboarding_step(&mut onboarding, PlayerGuideStep::OpenPanel);
+    assert!(should_show_player_goal_hint(
+        &onboarding,
+        PlayerGuideStep::OpenPanel,
+        &hidden_layout
+    ));
+    assert!(!should_show_player_goal_hint(
+        &onboarding,
+        PlayerGuideStep::OpenPanel,
+        &open_layout
+    ));
+    assert!(!should_show_player_goal_hint(
+        &onboarding,
+        PlayerGuideStep::SelectTarget,
+        &hidden_layout
+    ));
+}
+
+#[test]
 fn build_player_hud_snapshot_formats_connected_selected_state() {
     let state = sample_viewer_state(
         crate::ConnectionStatus::Connected,
