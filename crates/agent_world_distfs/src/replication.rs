@@ -198,7 +198,8 @@ pub fn apply_replication_record(
     record: &FileReplicationRecord,
     bytes: &[u8],
 ) -> Result<FileMetadata, WorldError> {
-    guard.validate_and_advance(record)?;
+    let mut next_guard = guard.clone();
+    next_guard.validate_and_advance(record)?;
 
     let computed_hash = blake3_hex(bytes);
     if computed_hash != record.content_hash {
@@ -219,6 +220,7 @@ pub fn apply_replication_record(
             ),
         });
     }
+    *guard = next_guard;
     Ok(metadata)
 }
 
@@ -455,5 +457,82 @@ mod tests {
         assert_eq!(store.read_file("docs/b.txt").expect("read b"), b"B");
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    struct AlwaysFailWriteStore;
+
+    impl FileStore for AlwaysFailWriteStore {
+        fn write_file(&self, _path: &str, _bytes: &[u8]) -> Result<FileMetadata, WorldError> {
+            Err(WorldError::DistributedValidationFailed {
+                reason: "forced write failure".to_string(),
+            })
+        }
+
+        fn read_file(&self, _path: &str) -> Result<Vec<u8>, WorldError> {
+            Err(WorldError::DistributedValidationFailed {
+                reason: "not implemented".to_string(),
+            })
+        }
+
+        fn delete_file(&self, _path: &str) -> Result<bool, WorldError> {
+            Err(WorldError::DistributedValidationFailed {
+                reason: "not implemented".to_string(),
+            })
+        }
+
+        fn stat_file(&self, _path: &str) -> Result<Option<FileMetadata>, WorldError> {
+            Err(WorldError::DistributedValidationFailed {
+                reason: "not implemented".to_string(),
+            })
+        }
+
+        fn list_files(&self) -> Result<Vec<FileMetadata>, WorldError> {
+            Err(WorldError::DistributedValidationFailed {
+                reason: "not implemented".to_string(),
+            })
+        }
+    }
+
+    #[test]
+    fn apply_replication_record_hash_mismatch_does_not_mutate_guard() {
+        let dir = temp_dir("guard-rollback-hash");
+        let store = LocalCasStore::new(&dir);
+        let original_guard = SingleWriterReplicationGuard {
+            writer_id: Some("writer-a".to_string()),
+            writer_epoch: 3,
+            last_sequence: 7,
+        };
+        let mut guard = original_guard.clone();
+        let record =
+            build_replication_record_with_epoch("w1", "writer-a", 3, 8, "a/file.txt", b"good", 10)
+                .expect("record");
+
+        let err = apply_replication_record(&store, &mut guard, &record, b"tampered")
+            .expect_err("hash mismatch must fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
+        assert_eq!(guard, original_guard);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_replication_record_write_failure_does_not_mutate_guard() {
+        let store = AlwaysFailWriteStore;
+        let original_guard = SingleWriterReplicationGuard::new();
+        let mut guard = original_guard.clone();
+        let record =
+            build_replication_record_with_epoch("w1", "writer-a", 1, 1, "a/file.txt", b"good", 10)
+                .expect("record");
+
+        let err = apply_replication_record(&store, &mut guard, &record, b"good")
+            .expect_err("write failure must fail");
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { reason } if reason.contains("forced write failure")
+        ));
+        assert_eq!(guard, original_guard);
     }
 }
