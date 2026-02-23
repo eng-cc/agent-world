@@ -189,6 +189,138 @@ pub(super) fn render_player_guide_progress_lines(
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PlayerLayoutPreset {
+    Mission,
+    Command,
+    Intel,
+}
+
+fn player_layout_preset_label(
+    preset: PlayerLayoutPreset,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (preset, locale.is_zh()) {
+        (PlayerLayoutPreset::Mission, true) => "任务",
+        (PlayerLayoutPreset::Mission, false) => "Mission",
+        (PlayerLayoutPreset::Command, true) => "指挥",
+        (PlayerLayoutPreset::Command, false) => "Command",
+        (PlayerLayoutPreset::Intel, true) => "情报",
+        (PlayerLayoutPreset::Intel, false) => "Intel",
+    }
+}
+
+pub(super) fn resolve_player_layout_preset(
+    layout_state: &RightPanelLayoutState,
+    module_visibility: &crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+) -> PlayerLayoutPreset {
+    if !layout_state.panel_hidden
+        && module_visibility.show_chat
+        && !module_visibility.show_timeline
+        && !module_visibility.show_details
+    {
+        return PlayerLayoutPreset::Command;
+    }
+
+    if module_visibility.show_timeline || module_visibility.show_details {
+        return PlayerLayoutPreset::Intel;
+    }
+
+    PlayerLayoutPreset::Mission
+}
+
+pub(super) fn apply_player_layout_preset(
+    layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    preset: PlayerLayoutPreset,
+) {
+    layout_state.panel_hidden = false;
+    layout_state.top_panel_collapsed = false;
+    module_visibility.show_controls = false;
+    module_visibility.show_overlay = false;
+    module_visibility.show_diagnosis = false;
+
+    match preset {
+        PlayerLayoutPreset::Mission => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = false;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = false;
+            module_visibility.show_details = false;
+        }
+        PlayerLayoutPreset::Command => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = true;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = false;
+            module_visibility.show_details = false;
+        }
+        PlayerLayoutPreset::Intel => {
+            module_visibility.show_overview = true;
+            module_visibility.show_chat = false;
+            module_visibility.show_event_link = true;
+            module_visibility.show_timeline = true;
+            module_visibility.show_details = true;
+        }
+    }
+}
+
+pub(super) fn render_player_layout_preset_strip(
+    context: &egui::Context,
+    layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let active = resolve_player_layout_preset(layout_state, module_visibility);
+    let pulse = ((now_secs * 1.5).sin() * 0.5 + 0.5) as f32;
+    egui::Area::new(egui::Id::new("viewer-player-layout-strip"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
+        .movable(false)
+        .interactable(true)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(16, 24, 37, 214))
+                .stroke(egui::Stroke::new(
+                    1.0 + 0.4 * pulse,
+                    egui::Color32::from_rgb(64, 106, 152),
+                ))
+                .corner_radius(egui::CornerRadius::same(10))
+                .inner_margin(egui::Margin::same(8))
+                .show(ui, |ui| {
+                    ui.small(if locale.is_zh() {
+                        "布局焦点"
+                    } else {
+                        "Layout Focus"
+                    });
+                    ui.horizontal_wrapped(|ui| {
+                        for preset in [
+                            PlayerLayoutPreset::Mission,
+                            PlayerLayoutPreset::Command,
+                            PlayerLayoutPreset::Intel,
+                        ] {
+                            if ui
+                                .selectable_label(
+                                    active == preset,
+                                    player_layout_preset_label(preset, locale),
+                                )
+                                .clicked()
+                            {
+                                apply_player_layout_preset(layout_state, module_visibility, preset);
+                            }
+                        }
+                    });
+                    if layout_state.panel_hidden {
+                        ui.small(if locale.is_zh() {
+                            "面板已隐藏：点“指挥”可直接回到命令视图"
+                        } else {
+                            "Panel hidden: choose Command to return to command view"
+                        });
+                    }
+                });
+        });
+}
+
 fn player_current_tick(state: &crate::ViewerState) -> u64 {
     state
         .snapshot

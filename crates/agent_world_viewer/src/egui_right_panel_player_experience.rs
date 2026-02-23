@@ -5,7 +5,7 @@ use super::egui_right_panel_player_guide::{
     build_player_guide_progress_snapshot, player_goal_badge, player_goal_color, player_goal_detail,
     player_goal_title, player_onboarding_dismiss, player_onboarding_primary_action,
     player_onboarding_title, render_player_cinematic_intro, render_player_guide_progress_lines,
-    render_player_mission_hud, PlayerGuideProgressSnapshot,
+    render_player_layout_preset_strip, render_player_mission_hud, PlayerGuideProgressSnapshot,
 };
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
@@ -1123,12 +1123,14 @@ pub(super) fn render_player_experience_layers(
     state: &ViewerState,
     selection: &ViewerSelection,
     layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     onboarding: &mut PlayerOnboardingState,
     achievements: &mut PlayerAchievementState,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
     render_player_atmosphere(context, now_secs);
+    render_player_layout_preset_strip(context, layout_state, module_visibility, locale, now_secs);
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
     sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);

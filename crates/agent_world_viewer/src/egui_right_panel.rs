@@ -208,6 +208,7 @@ pub(super) fn render_right_side_panel_egui(
             &state,
             &selection,
             layout_state.as_mut(),
+            module_visibility.as_mut(),
             &mut onboarding_state,
             &mut player_achievement_state,
             locale,
