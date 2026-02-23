@@ -29,14 +29,11 @@ fn membership_request(
 }
 
 fn sample_consensus() -> QuorumConsensus {
-    QuorumConsensus::new(ConsensusConfig {
-        validators: vec![
-            "seq-1".to_string(),
-            "seq-2".to_string(),
-            "seq-3".to_string(),
-        ],
-        quorum_threshold: 0,
-    })
+    QuorumConsensus::new(ConsensusConfig::majority(vec![
+        "seq-1".to_string(),
+        "seq-2".to_string(),
+        "seq-3".to_string(),
+    ]))
     .expect("consensus")
 }
 

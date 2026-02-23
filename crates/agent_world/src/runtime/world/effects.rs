@@ -12,6 +12,10 @@ impl World {
     // ---------------------------------------------------------------------
 
     pub fn take_next_effect(&mut self) -> Option<EffectIntent> {
+        if self.inflight_effect_capacity_reached() {
+            self.record_inflight_effect_dispatch_blocked();
+            return None;
+        }
         let intent = self.pending_effects.pop_front()?;
         self.inflight_effects
             .insert(intent.intent_id.clone(), intent.clone());

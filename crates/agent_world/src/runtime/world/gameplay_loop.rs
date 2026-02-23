@@ -78,14 +78,19 @@ impl World {
     ) -> Result<Vec<WorldEvent>, WorldError> {
         let has_gameplay_tick_modules = self.has_active_gameplay_tick_modules()?;
 
-        let journal_start = self.journal.events.len();
+        let journal_start_event_id = self
+            .journal
+            .events
+            .last()
+            .map(|event| event.id)
+            .unwrap_or(0);
         let _ = self.route_tick_to_modules(sandbox)?;
         if !has_gameplay_tick_modules {
             return self.process_gameplay_cycles();
         }
 
         let mut emitted = Vec::new();
-        for module_emit in self.collect_gameplay_tick_emits(journal_start) {
+        for module_emit in self.collect_gameplay_tick_emits(journal_start_event_id) {
             if module_emit.kind != GAMEPLAY_LIFECYCLE_EMIT_KIND {
                 continue;
             }
@@ -122,11 +127,11 @@ impl World {
             .unwrap_or(false)
     }
 
-    fn collect_gameplay_tick_emits(&self, journal_start: usize) -> Vec<ModuleEmitEvent> {
+    fn collect_gameplay_tick_emits(&self, journal_start_event_id: u64) -> Vec<ModuleEmitEvent> {
         self.journal
             .events
             .iter()
-            .skip(journal_start)
+            .filter(|event| event.id > journal_start_event_id)
             .filter_map(|event| match &event.body {
                 WorldEventBody::ModuleEmitted(module_emit)
                     if module_emit.trace_id.starts_with("tick-")

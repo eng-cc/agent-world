@@ -12,9 +12,9 @@
 - [x] 补充/更新单测
 
 ### T2 共识与运行时内存治理（对应 3/4）
-- [ ] `agent_world_consensus`：Quorum/PoS 历史有界保留
-- [ ] `agent_world` runtime：pending/inflight/journal 有界保留策略
-- [ ] 补充/更新单测
+- [x] `agent_world_consensus`：Quorum/PoS 历史有界保留
+- [x] `agent_world` runtime：pending/inflight/journal 有界保留策略
+- [x] 补充/更新单测
 
 ### T3 Dead-letter 与 wasm cache 安全（对应 5/6）
 - [ ] `membership_recovery/dead_letter`：保留上限 + 压缩
@@ -38,7 +38,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3、T4
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：T4
 - 阻塞项：无

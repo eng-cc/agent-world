@@ -14,6 +14,7 @@ use super::policy::PolicySet;
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId, WorldTime};
 use super::util::{read_json_from_path, write_json_to_path};
+use super::world::{WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits};
 use super::world_event::WorldEvent;
 
 /// Policy for how many snapshots to retain.
@@ -87,6 +88,10 @@ pub struct Snapshot {
     pub policies: PolicySet,
     pub proposals: BTreeMap<ProposalId, Proposal>,
     pub scheduler_cursor: Option<String>,
+    #[serde(default)]
+    pub runtime_memory_limits: WorldRuntimeMemoryLimits,
+    #[serde(default)]
+    pub runtime_backpressure_stats: WorldRuntimeBackpressureStats,
 }
 
 fn module_limits_unbounded() -> ModuleLimits {

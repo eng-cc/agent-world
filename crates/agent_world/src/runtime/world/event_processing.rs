@@ -92,6 +92,7 @@ impl World {
     }
 
     pub(super) fn replay_from(&mut self, start_index: usize) -> Result<(), WorldError> {
+        let start_index = start_index.min(self.journal.events.len());
         let events: Vec<WorldEvent> = self.journal.events[start_index..].to_vec();
         for event in events {
             self.apply_event_body(&event.body, event.time)?;
@@ -506,6 +507,7 @@ impl World {
             caused_by,
             body,
         });
+        self.enforce_journal_event_limit();
         Ok(event_id)
     }
 
@@ -563,7 +565,7 @@ impl World {
                 }
             }
             WorldEventBody::EffectQueued(intent) => {
-                self.pending_effects.push_back(intent.clone());
+                self.push_pending_effect_bounded(intent.clone());
             }
             WorldEventBody::ReceiptAppended(receipt) => {
                 let mut removed = false;

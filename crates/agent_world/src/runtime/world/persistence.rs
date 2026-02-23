@@ -61,6 +61,8 @@ impl World {
             policies: self.policies.clone(),
             proposals: self.proposals.clone(),
             scheduler_cursor: self.scheduler_cursor.clone(),
+            runtime_memory_limits: self.runtime_memory_limits.clone(),
+            runtime_backpressure_stats: self.runtime_backpressure_stats.clone(),
         }
     }
 
@@ -201,7 +203,13 @@ impl World {
         world.policies = snapshot.policies;
         world.proposals = snapshot.proposals;
         world.scheduler_cursor = snapshot.scheduler_cursor;
+        world.runtime_memory_limits = snapshot.runtime_memory_limits;
+        world.runtime_backpressure_stats = snapshot.runtime_backpressure_stats;
+        world.enforce_pending_action_limit();
+        world.enforce_pending_effect_limit();
+        world.enforce_inflight_effect_limit();
         world.replay_from(snapshot.journal_len)?;
+        world.enforce_journal_event_limit();
         Ok(world)
     }
 

@@ -214,3 +214,49 @@ fn emit_resource_transfer_overflow_keeps_balances_atomic() {
     );
     assert_eq!(world.journal().len(), events_before);
 }
+
+#[test]
+fn pending_actions_are_bounded_and_track_evictions() {
+    let mut world = World::new().with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+        max_pending_actions: 1,
+        ..WorldRuntimeMemoryLimits::default()
+    });
+
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-a".to_string(),
+        pos: pos(0.0, 0.0),
+    });
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "agent-b".to_string(),
+        pos: pos(1.0, 1.0),
+    });
+    assert_eq!(world.pending_actions_len(), 1);
+    assert_eq!(
+        world.runtime_backpressure_stats().pending_actions_evicted,
+        1
+    );
+
+    world.step().expect("step");
+    assert!(!world.state().agents.contains_key("agent-a"));
+    assert!(world.state().agents.contains_key("agent-b"));
+}
+
+#[test]
+fn journal_events_are_bounded_and_track_evictions() {
+    let mut world = World::new().with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+        max_journal_events: 2,
+        ..WorldRuntimeMemoryLimits::default()
+    });
+
+    for index in 0..3 {
+        world.submit_action(Action::RegisterAgent {
+            agent_id: format!("agent-{index}"),
+            pos: pos(index as f64, index as f64),
+        });
+        world.step().expect("step");
+    }
+
+    assert_eq!(world.journal().events.len(), 2);
+    assert_eq!(world.journal().events[0].id, 2);
+    assert_eq!(world.runtime_backpressure_stats().journal_events_evicted, 1);
+}

@@ -37,6 +37,17 @@ fn sample_consensus() -> PosConsensus {
     PosConsensus::new(PosConsensusConfig::ethereum_like(validators())).expect("pos consensus")
 }
 
+fn bounded_consensus(
+    max_records_per_world: usize,
+    max_history_per_validator: usize,
+) -> PosConsensus {
+    let mut config = PosConsensusConfig::ethereum_like(validators());
+    config.epoch_length_slots = 1;
+    config.max_records_per_world = max_records_per_world;
+    config.max_attestation_history_per_validator = max_history_per_validator;
+    PosConsensus::new(config).expect("bounded pos consensus")
+}
+
 fn find_slot_with_proposer(consensus: &PosConsensus, proposer: &str, start: u64) -> u64 {
     for slot in start..(start + 256) {
         if consensus.expected_proposer(slot).as_deref() == Some(proposer) {
@@ -99,6 +110,8 @@ fn pos_accepts_extreme_supermajority_ratio_just_above_half() {
         supermajority_numerator: numerator,
         supermajority_denominator: denominator,
         epoch_length_slots: 32,
+        max_records_per_world: 4096,
+        max_attestation_history_per_validator: 8192,
     })
     .expect("extreme ratio should be valid");
     assert_eq!(consensus.required_stake(), 51);
@@ -240,6 +253,89 @@ fn pos_detects_surround_vote_slashing_condition() {
         err,
         WorldError::DistributedValidationFailed { .. }
     ));
+}
+
+#[test]
+fn pos_prunes_finalized_records_by_world_limit() {
+    let mut consensus = bounded_consensus(2, 32);
+
+    for slot in 0..3_u64 {
+        let height = slot + 1;
+        let proposer = consensus.expected_proposer(slot).expect("proposer");
+        let block_hash = format!("b{height}");
+        let head = sample_head(height, block_hash.as_str());
+        let mut decision = consensus
+            .propose_head(&head, proposer.as_str(), slot, 5_000 + slot as i64)
+            .expect("propose");
+        let target_epoch = consensus.slot_epoch(slot);
+        for validator in consensus
+            .validators()
+            .into_iter()
+            .filter(|validator| validator.validator_id != proposer)
+        {
+            if matches!(decision.status, PosConsensusStatus::Committed) {
+                break;
+            }
+            decision = consensus
+                .attest_head(
+                    "w1",
+                    height,
+                    block_hash.as_str(),
+                    validator.validator_id.as_str(),
+                    true,
+                    5_100 + slot as i64,
+                    target_epoch.saturating_sub(1),
+                    target_epoch,
+                    None,
+                )
+                .expect("attest");
+        }
+        assert_eq!(decision.status, PosConsensusStatus::Committed);
+    }
+
+    assert!(consensus.record("w1", 1).is_none());
+    assert!(consensus.record("w1", 2).is_some());
+    assert!(consensus.record("w1", 3).is_some());
+}
+
+#[test]
+fn pos_attestation_history_is_bounded_per_validator() {
+    let mut consensus = bounded_consensus(16, 2);
+    let validator = "val-c";
+
+    for slot in 0..3_u64 {
+        let height = 100 + slot;
+        let proposer = consensus.expected_proposer(slot).expect("proposer");
+        let block_hash = format!("hist-{height}");
+        let head = sample_head(height, block_hash.as_str());
+        let _ = consensus
+            .propose_head(&head, proposer.as_str(), slot, 6_000 + slot as i64)
+            .expect("propose");
+        if proposer != validator {
+            let target_epoch = consensus.slot_epoch(slot);
+            let _ = consensus
+                .attest_head(
+                    "w1",
+                    height,
+                    block_hash.as_str(),
+                    validator,
+                    true,
+                    6_100 + slot as i64,
+                    target_epoch.saturating_sub(1),
+                    target_epoch,
+                    None,
+                )
+                .expect("attest");
+        }
+    }
+
+    let history = consensus
+        .attestation_history
+        .get(validator)
+        .expect("history for validator");
+    assert_eq!(history.len(), 2);
+    let epochs: Vec<u64> = history.iter().map(|entry| entry.target_epoch).collect();
+    assert_eq!(epochs, vec![1, 2]);
 }
 
 #[test]

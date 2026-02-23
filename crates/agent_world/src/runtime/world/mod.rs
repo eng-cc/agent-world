@@ -43,6 +43,39 @@ use super::snapshot::{Journal, SnapshotCatalog};
 use super::state::WorldState;
 use super::types::{ActionId, IntentSeq, ProposalId, WorldEventId};
 
+const DEFAULT_MAX_PENDING_ACTIONS: usize = 8_192;
+const DEFAULT_MAX_PENDING_EFFECTS: usize = 8_192;
+const DEFAULT_MAX_INFLIGHT_EFFECTS: usize = 8_192;
+const DEFAULT_MAX_JOURNAL_EVENTS: usize = 65_536;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldRuntimeMemoryLimits {
+    pub max_pending_actions: usize,
+    pub max_pending_effects: usize,
+    pub max_inflight_effects: usize,
+    pub max_journal_events: usize,
+}
+
+impl Default for WorldRuntimeMemoryLimits {
+    fn default() -> Self {
+        Self {
+            max_pending_actions: DEFAULT_MAX_PENDING_ACTIONS,
+            max_pending_effects: DEFAULT_MAX_PENDING_EFFECTS,
+            max_inflight_effects: DEFAULT_MAX_INFLIGHT_EFFECTS,
+            max_journal_events: DEFAULT_MAX_JOURNAL_EVENTS,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldRuntimeBackpressureStats {
+    pub pending_actions_evicted: u64,
+    pub pending_effects_evicted: u64,
+    pub inflight_effects_evicted: u64,
+    pub inflight_effect_dispatch_blocked: u64,
+    pub journal_events_evicted: u64,
+}
+
 /// The main World runtime that orchestrates the simulation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct World {
@@ -80,6 +113,10 @@ pub struct World {
     scheduler_cursor: Option<String>,
     #[serde(skip)]
     receipt_signer: Option<ReceiptSigner>,
+    #[serde(default)]
+    runtime_memory_limits: WorldRuntimeMemoryLimits,
+    #[serde(default)]
+    runtime_backpressure_stats: WorldRuntimeBackpressureStats,
 }
 
 impl World {
@@ -116,6 +153,8 @@ impl World {
             proposals: BTreeMap::new(),
             scheduler_cursor: None,
             receipt_signer: None,
+            runtime_memory_limits: WorldRuntimeMemoryLimits::default(),
+            runtime_backpressure_stats: WorldRuntimeBackpressureStats::default(),
         }
     }
 
@@ -163,6 +202,16 @@ impl World {
         &self.proposals
     }
 
+    pub fn runtime_backpressure_stats(&self) -> &WorldRuntimeBackpressureStats {
+        &self.runtime_backpressure_stats
+    }
+
+    pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {
+        self.runtime_memory_limits = limits;
+        self.enforce_runtime_memory_limits();
+        self
+    }
+
     pub(super) fn allocate_next_event_id(&mut self) -> WorldEventId {
         Self::allocate_rolling_sequence_id(&mut self.next_event_id, &mut self.next_event_id_era)
     }
@@ -194,6 +243,79 @@ impl World {
             *next_id = allocated + 1;
         }
         allocated
+    }
+
+    pub(super) fn enforce_pending_action_limit(&mut self) {
+        let max_len = self.runtime_memory_limits.max_pending_actions.max(1);
+        while self.pending_actions.len() > max_len {
+            let _ = self.pending_actions.pop_front();
+            self.runtime_backpressure_stats.pending_actions_evicted = self
+                .runtime_backpressure_stats
+                .pending_actions_evicted
+                .saturating_add(1);
+        }
+    }
+
+    pub(super) fn push_pending_effect_bounded(&mut self, intent: EffectIntent) {
+        self.pending_effects.push_back(intent);
+        self.enforce_pending_effect_limit();
+    }
+
+    pub(super) fn enforce_pending_effect_limit(&mut self) {
+        let max_len = self.runtime_memory_limits.max_pending_effects.max(1);
+        while self.pending_effects.len() > max_len {
+            let _ = self.pending_effects.pop_front();
+            self.runtime_backpressure_stats.pending_effects_evicted = self
+                .runtime_backpressure_stats
+                .pending_effects_evicted
+                .saturating_add(1);
+        }
+    }
+
+    pub(super) fn inflight_effect_capacity_reached(&self) -> bool {
+        self.inflight_effects.len() >= self.runtime_memory_limits.max_inflight_effects.max(1)
+    }
+
+    pub(super) fn record_inflight_effect_dispatch_blocked(&mut self) {
+        self.runtime_backpressure_stats
+            .inflight_effect_dispatch_blocked = self
+            .runtime_backpressure_stats
+            .inflight_effect_dispatch_blocked
+            .saturating_add(1);
+    }
+
+    pub(super) fn enforce_inflight_effect_limit(&mut self) {
+        let max_len = self.runtime_memory_limits.max_inflight_effects.max(1);
+        while self.inflight_effects.len() > max_len {
+            if let Some(first_key) = self.inflight_effects.keys().next().cloned() {
+                self.inflight_effects.remove(first_key.as_str());
+                self.runtime_backpressure_stats.inflight_effects_evicted = self
+                    .runtime_backpressure_stats
+                    .inflight_effects_evicted
+                    .saturating_add(1);
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub(super) fn enforce_journal_event_limit(&mut self) {
+        let max_len = self.runtime_memory_limits.max_journal_events.max(1);
+        let overflow = self.journal.events.len().saturating_sub(max_len);
+        if overflow > 0 {
+            self.journal.events.drain(0..overflow);
+            self.runtime_backpressure_stats.journal_events_evicted = self
+                .runtime_backpressure_stats
+                .journal_events_evicted
+                .saturating_add(overflow as u64);
+        }
+    }
+
+    pub(super) fn enforce_runtime_memory_limits(&mut self) {
+        self.enforce_pending_action_limit();
+        self.enforce_pending_effect_limit();
+        self.enforce_inflight_effect_limit();
+        self.enforce_journal_event_limit();
     }
 }
 

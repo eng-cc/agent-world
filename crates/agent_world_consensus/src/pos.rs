@@ -22,6 +22,16 @@ use super::node_pos_core::{
 use super::util::{read_json_from_path, write_json_to_path};
 
 pub const POS_CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
+const DEFAULT_MAX_RECORDS_PER_WORLD: usize = 4096;
+const DEFAULT_MAX_ATTESTATION_HISTORY_PER_VALIDATOR: usize = 8192;
+
+fn default_max_records_per_world() -> usize {
+    DEFAULT_MAX_RECORDS_PER_WORLD
+}
+
+fn default_max_attestation_history_per_validator() -> usize {
+    DEFAULT_MAX_ATTESTATION_HISTORY_PER_VALIDATOR
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PosValidator {
@@ -35,6 +45,10 @@ pub struct PosConsensusConfig {
     pub supermajority_numerator: u64,
     pub supermajority_denominator: u64,
     pub epoch_length_slots: u64,
+    #[serde(default = "default_max_records_per_world")]
+    pub max_records_per_world: usize,
+    #[serde(default = "default_max_attestation_history_per_validator")]
+    pub max_attestation_history_per_validator: usize,
 }
 
 impl PosConsensusConfig {
@@ -44,6 +58,8 @@ impl PosConsensusConfig {
             supermajority_numerator: 2,
             supermajority_denominator: 3,
             epoch_length_slots: 32,
+            max_records_per_world: default_max_records_per_world(),
+            max_attestation_history_per_validator: default_max_attestation_history_per_validator(),
         }
     }
 }
@@ -101,6 +117,10 @@ struct PosConsensusSnapshotFile {
     supermajority_numerator: u64,
     supermajority_denominator: u64,
     epoch_length_slots: u64,
+    #[serde(default = "default_max_records_per_world")]
+    max_records_per_world: usize,
+    #[serde(default = "default_max_attestation_history_per_validator")]
+    max_attestation_history_per_validator: usize,
     records: Vec<PosHeadRecord>,
 }
 
@@ -121,6 +141,8 @@ pub struct PosConsensus {
     supermajority_numerator: u64,
     supermajority_denominator: u64,
     epoch_length_slots: u64,
+    max_records_per_world: usize,
+    max_attestation_history_per_validator: usize,
     records: BTreeMap<(String, u64), PosHeadRecord>,
     attestation_history: BTreeMap<String, Vec<EpochAttestationRef>>,
 }
@@ -172,6 +194,16 @@ impl PosConsensus {
                 ),
             });
         }
+        if config.max_records_per_world == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "max_records_per_world must be positive".to_string(),
+            });
+        }
+        if config.max_attestation_history_per_validator == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "max_attestation_history_per_validator must be positive".to_string(),
+            });
+        }
 
         let mut validators = BTreeMap::new();
         let mut total_stake = 0u64;
@@ -220,6 +252,8 @@ impl PosConsensus {
             supermajority_numerator: config.supermajority_numerator,
             supermajority_denominator: config.supermajority_denominator,
             epoch_length_slots: config.epoch_length_slots,
+            max_records_per_world: config.max_records_per_world,
+            max_attestation_history_per_validator: config.max_attestation_history_per_validator,
             records: BTreeMap::new(),
             attestation_history: BTreeMap::new(),
         })
@@ -247,6 +281,14 @@ impl PosConsensus {
         self.epoch_length_slots
     }
 
+    pub fn max_records_per_world(&self) -> usize {
+        self.max_records_per_world
+    }
+
+    pub fn max_attestation_history_per_validator(&self) -> usize {
+        self.max_attestation_history_per_validator
+    }
+
     pub fn record(&self, world_id: &str, height: u64) -> Option<&PosHeadRecord> {
         self.records.get(&(world_id.to_string(), height))
     }
@@ -272,6 +314,8 @@ impl PosConsensus {
             supermajority_numerator: self.supermajority_numerator,
             supermajority_denominator: self.supermajority_denominator,
             epoch_length_slots: self.epoch_length_slots,
+            max_records_per_world: self.max_records_per_world,
+            max_attestation_history_per_validator: self.max_attestation_history_per_validator,
             records: self.records.values().cloned().collect(),
         };
         write_json_atomic(&snapshot, path)
@@ -292,6 +336,8 @@ impl PosConsensus {
             supermajority_numerator: snapshot.supermajority_numerator,
             supermajority_denominator: snapshot.supermajority_denominator,
             epoch_length_slots: snapshot.epoch_length_slots,
+            max_records_per_world: snapshot.max_records_per_world,
+            max_attestation_history_per_validator: snapshot.max_attestation_history_per_validator,
         })?;
         consensus.restore_records(snapshot.records)?;
         Ok(consensus)
@@ -362,7 +408,7 @@ impl PosConsensus {
             });
         }
 
-        self.attest_head(
+        let decision = self.attest_head(
             &head.world_id,
             head.height,
             &head.block_hash,
@@ -372,7 +418,9 @@ impl PosConsensus {
             epoch.saturating_sub(1),
             epoch,
             Some("proposal accepted".to_string()),
-        )
+        )?;
+        self.prune_world_records(head.world_id.as_str());
+        Ok(decision)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -480,6 +528,7 @@ impl PosConsensus {
             source_epoch,
             target_epoch,
         );
+        self.prune_world_records(world_id);
         Ok(decision)
     }
 
@@ -607,6 +656,14 @@ impl PosConsensus {
                 target_epoch,
             );
         }
+        let world_ids: Vec<String> = self
+            .records
+            .keys()
+            .map(|(world_id, _)| world_id.clone())
+            .collect();
+        for world_id in world_ids {
+            self.prune_world_records(world_id.as_str());
+        }
         Ok(())
     }
 
@@ -691,6 +748,39 @@ impl PosConsensus {
             return;
         }
         history.push(item);
+        let overflow = history
+            .len()
+            .saturating_sub(self.max_attestation_history_per_validator);
+        if overflow > 0 {
+            history.drain(0..overflow);
+        }
+    }
+
+    fn prune_world_records(&mut self, world_id: &str) {
+        let world_keys: Vec<(String, u64)> = self
+            .records
+            .keys()
+            .filter(|(candidate_world_id, _)| candidate_world_id == world_id)
+            .cloned()
+            .collect();
+        if world_keys.len() <= self.max_records_per_world {
+            return;
+        }
+        let mut overflow = world_keys.len() - self.max_records_per_world;
+        for key in world_keys {
+            if overflow == 0 {
+                break;
+            }
+            let should_remove = self
+                .records
+                .get(&key)
+                .map(|record| !matches!(record.status, PosConsensusStatus::Pending))
+                .unwrap_or(false);
+            if should_remove {
+                self.records.remove(&key);
+                overflow -= 1;
+            }
+        }
     }
 
     fn latest_committed_height(&self, world_id: &str) -> Option<u64> {

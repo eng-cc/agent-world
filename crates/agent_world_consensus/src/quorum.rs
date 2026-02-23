@@ -17,11 +17,18 @@ pub use agent_world_proto::distributed_consensus::{
 };
 
 pub const CONSENSUS_SNAPSHOT_VERSION: u64 = 1;
+const DEFAULT_MAX_RECORDS_PER_WORLD: usize = 4096;
+
+fn default_max_records_per_world() -> usize {
+    DEFAULT_MAX_RECORDS_PER_WORLD
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConsensusConfig {
     pub validators: Vec<String>,
     pub quorum_threshold: usize,
+    #[serde(default = "default_max_records_per_world")]
+    pub max_records_per_world: usize,
 }
 
 impl ConsensusConfig {
@@ -29,6 +36,7 @@ impl ConsensusConfig {
         Self {
             validators,
             quorum_threshold: 0,
+            max_records_per_world: default_max_records_per_world(),
         }
     }
 }
@@ -49,6 +57,8 @@ struct ConsensusSnapshotFile {
     version: u64,
     validators: Vec<String>,
     quorum_threshold: usize,
+    #[serde(default = "default_max_records_per_world")]
+    max_records_per_world: usize,
     records: Vec<HeadConsensusRecord>,
 }
 
@@ -56,6 +66,7 @@ struct ConsensusSnapshotFile {
 pub struct QuorumConsensus {
     validators: BTreeSet<String>,
     quorum_threshold: usize,
+    max_records_per_world: usize,
     records: BTreeMap<(String, u64), HeadConsensusRecord>,
 }
 
@@ -95,10 +106,16 @@ impl QuorumConsensus {
                 ),
             });
         }
+        if config.max_records_per_world == 0 {
+            return Err(WorldError::DistributedValidationFailed {
+                reason: "max_records_per_world must be positive".to_string(),
+            });
+        }
 
         Ok(Self {
             validators,
             quorum_threshold,
+            max_records_per_world: config.max_records_per_world,
             records: BTreeMap::new(),
         })
     }
@@ -109,6 +126,10 @@ impl QuorumConsensus {
 
     pub fn quorum_threshold(&self) -> usize {
         self.quorum_threshold
+    }
+
+    pub fn max_records_per_world(&self) -> usize {
+        self.max_records_per_world
     }
 
     pub fn record(&self, world_id: &str, height: u64) -> Option<&HeadConsensusRecord> {
@@ -135,6 +156,7 @@ impl QuorumConsensus {
             version: CONSENSUS_SNAPSHOT_VERSION,
             validators: self.validators(),
             quorum_threshold: self.quorum_threshold,
+            max_records_per_world: self.max_records_per_world,
             records: self.export_records(),
         };
         write_json_atomic(&snapshot, path)
@@ -154,6 +176,7 @@ impl QuorumConsensus {
         let mut consensus = Self::new(ConsensusConfig {
             validators: snapshot.validators,
             quorum_threshold: snapshot.quorum_threshold,
+            max_records_per_world: snapshot.max_records_per_world,
         })?;
         consensus.restore_records(snapshot.records)?;
         Ok(consensus)
@@ -193,6 +216,7 @@ impl QuorumConsensus {
                 self.apply_membership_config(ConsensusConfig {
                     validators,
                     quorum_threshold,
+                    max_records_per_world: self.max_records_per_world,
                 })
             }
             ConsensusMembershipChange::RemoveValidator { validator_id } => {
@@ -215,6 +239,7 @@ impl QuorumConsensus {
                 self.apply_membership_config(ConsensusConfig {
                     validators,
                     quorum_threshold,
+                    max_records_per_world: self.max_records_per_world,
                 })
             }
             ConsensusMembershipChange::ReplaceValidators {
@@ -223,6 +248,7 @@ impl QuorumConsensus {
             } => self.apply_membership_config(ConsensusConfig {
                 validators: validators.clone(),
                 quorum_threshold: *quorum_threshold,
+                max_records_per_world: self.max_records_per_world,
             }),
         }
     }
@@ -299,7 +325,7 @@ impl QuorumConsensus {
             });
         }
 
-        Self::apply_vote(
+        let decision = Self::apply_vote(
             record,
             record.validator_count,
             record.quorum_threshold,
@@ -307,7 +333,9 @@ impl QuorumConsensus {
             true,
             proposed_at_ms,
             Some("proposal accepted".to_string()),
-        )
+        )?;
+        self.prune_world_records(head.world_id.as_str());
+        Ok(decision)
     }
 
     pub fn vote_head(
@@ -338,7 +366,7 @@ impl QuorumConsensus {
             });
         }
 
-        Self::apply_vote(
+        let decision = Self::apply_vote(
             record,
             record.validator_count,
             record.quorum_threshold,
@@ -346,7 +374,9 @@ impl QuorumConsensus {
             approve,
             voted_at_ms,
             reason,
-        )
+        )?;
+        self.prune_world_records(world_id);
+        Ok(decision)
     }
 
     fn ensure_validator(&self, validator_id: &str) -> Result<(), WorldError> {
@@ -482,7 +512,42 @@ impl QuorumConsensus {
             restored.insert(key, record);
         }
         self.records = restored;
+        let world_ids: BTreeSet<String> = self
+            .records
+            .keys()
+            .map(|(world_id, _)| world_id.clone())
+            .collect();
+        for world_id in world_ids {
+            self.prune_world_records(world_id.as_str());
+        }
         Ok(())
+    }
+
+    fn prune_world_records(&mut self, world_id: &str) {
+        let world_keys: Vec<(String, u64)> = self
+            .records
+            .keys()
+            .filter(|(candidate_world_id, _)| candidate_world_id == world_id)
+            .cloned()
+            .collect();
+        if world_keys.len() <= self.max_records_per_world {
+            return;
+        }
+        let mut overflow = world_keys.len() - self.max_records_per_world;
+        for key in world_keys {
+            if overflow == 0 {
+                break;
+            }
+            let should_remove = self
+                .records
+                .get(&key)
+                .map(|record| !matches!(record.status, ConsensusStatus::Pending))
+                .unwrap_or(false);
+            if should_remove {
+                self.records.remove(&key);
+                overflow -= 1;
+            }
+        }
     }
 
     fn validate_record_vote(
@@ -714,6 +779,7 @@ mod tests {
                 "seq-3".to_string(),
             ],
             quorum_threshold: 0,
+            max_records_per_world: default_max_records_per_world(),
         })
         .expect("consensus")
     }
@@ -873,6 +939,76 @@ mod tests {
             err,
             WorldError::DistributedValidationFailed { .. }
         ));
+    }
+
+    #[test]
+    fn finalized_records_are_pruned_by_world_limit() {
+        let mut consensus = QuorumConsensus::new(ConsensusConfig {
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+            ],
+            quorum_threshold: 2,
+            max_records_per_world: 2,
+        })
+        .expect("consensus");
+
+        for height in 1..=3 {
+            let block_hash = format!("b{height}");
+            let head = sample_head(height, block_hash.as_str());
+            let _ = consensus
+                .propose_head(&head, "seq-1", height as i64)
+                .expect("propose");
+            let decision = consensus
+                .vote_head(
+                    "w1",
+                    height,
+                    block_hash.as_str(),
+                    "seq-2",
+                    true,
+                    height as i64 + 1,
+                    None,
+                )
+                .expect("vote");
+            assert_eq!(decision.status, ConsensusStatus::Committed);
+        }
+
+        assert!(consensus.record("w1", 1).is_none());
+        assert!(consensus.record("w1", 2).is_some());
+        assert!(consensus.record("w1", 3).is_some());
+    }
+
+    #[test]
+    fn pending_records_are_preserved_under_pruning_pressure() {
+        let mut consensus = QuorumConsensus::new(ConsensusConfig {
+            validators: vec![
+                "seq-1".to_string(),
+                "seq-2".to_string(),
+                "seq-3".to_string(),
+            ],
+            quorum_threshold: 2,
+            max_records_per_world: 1,
+        })
+        .expect("consensus");
+
+        let committed_head = sample_head(1, "b1");
+        let _ = consensus
+            .propose_head(&committed_head, "seq-1", 10)
+            .expect("propose committed");
+        let _ = consensus
+            .vote_head("w1", 1, "b1", "seq-2", true, 11, None)
+            .expect("commit");
+
+        let pending_head = sample_head(2, "b2");
+        let decision = consensus
+            .propose_head(&pending_head, "seq-1", 12)
+            .expect("propose pending");
+        assert_eq!(decision.status, ConsensusStatus::Pending);
+
+        assert!(consensus.record("w1", 1).is_none());
+        let pending = consensus.record("w1", 2).expect("pending record");
+        assert_eq!(pending.status, ConsensusStatus::Pending);
     }
 
     #[test]
@@ -1069,6 +1205,7 @@ mod tests {
                 "seq-3".to_string(),
             ],
             quorum_threshold: 2,
+            max_records_per_world: default_max_records_per_world(),
             records: vec![HeadConsensusRecord {
                 head: sample_head(8, "b8"),
                 proposer_id: "seq-1".to_string(),

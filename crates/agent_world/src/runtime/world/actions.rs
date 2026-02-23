@@ -12,6 +12,7 @@ impl World {
             id: action_id,
             action,
         });
+        self.enforce_pending_action_limit();
         action_id
     }
 

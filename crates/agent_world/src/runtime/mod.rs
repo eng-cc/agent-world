@@ -191,7 +191,9 @@ pub use state::{
 };
 
 // World
-pub use world::{M1ScenarioBootstrapConfig, World};
+pub use world::{
+    M1ScenarioBootstrapConfig, World, WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits,
+};
 
 // World event
 pub use world_event::{ModuleRuntimeChargeEvent, WorldEvent, WorldEventBody};
