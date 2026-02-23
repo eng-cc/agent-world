@@ -269,7 +269,7 @@ fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModu
         ViewerExperienceMode::Player => RightPanelModuleVisibilityState {
             show_controls: false,
             show_overview: true,
-            show_chat: false,
+            show_chat: true,
             show_overlay: false,
             show_diagnosis: false,
             show_event_link: true,
@@ -394,7 +394,7 @@ mod tests {
         let state = default_module_visibility_state(ViewerExperienceMode::Player);
         assert!(!state.show_controls);
         assert!(state.show_overview);
-        assert!(!state.show_chat);
+        assert!(state.show_chat);
         assert!(!state.show_overlay);
         assert!(!state.show_diagnosis);
         assert!(state.show_event_link);

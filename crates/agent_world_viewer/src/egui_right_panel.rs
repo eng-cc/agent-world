@@ -81,7 +81,8 @@ use egui_right_panel_layout::{
     adaptive_chat_panel_default_width, adaptive_chat_panel_max_width_for_side_layout,
     adaptive_main_panel_max_width_for_layout, adaptive_main_panel_min_width,
     adaptive_panel_default_width, is_compact_chat_layout, panel_toggle_shortcut_pressed,
-    player_main_panel_max_width_for_layout, should_show_chat_panel, total_right_panel_width,
+    player_chat_panel_max_width_for_side_layout, player_main_panel_max_width_for_layout,
+    should_show_chat_panel, total_right_panel_width,
 };
 #[cfg(test)]
 use egui_right_panel_layout::{adaptive_chat_panel_max_width, adaptive_panel_max_width};
@@ -238,7 +239,11 @@ pub(super) fn render_right_side_panel_egui(
     let show_chat_panel_requested =
         should_show_chat_panel(layout_state.as_ref(), module_visibility.show_chat);
     let compact_chat_layout = is_compact_chat_layout(available_width);
-    let chat_max_width = adaptive_chat_panel_max_width_for_side_layout(available_width);
+    let chat_max_width = if player_mode_enabled {
+        player_chat_panel_max_width_for_side_layout(available_width)
+    } else {
+        adaptive_chat_panel_max_width_for_side_layout(available_width)
+    };
     let show_chat_side_panel =
         show_chat_panel_requested && !compact_chat_layout && chat_max_width >= CHAT_PANEL_MIN_WIDTH;
     let chat_panel_width = if show_chat_side_panel {

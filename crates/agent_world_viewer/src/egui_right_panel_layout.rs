@@ -2,6 +2,9 @@ use bevy_egui::egui;
 
 use crate::RightPanelLayoutState;
 
+const PLAYER_TOTAL_RIGHT_PANEL_BUDGET_RATIO: f32 = 0.46;
+const PLAYER_MAIN_PANEL_IMMERSIVE_CAP_RATIO: f32 = 0.30;
+
 pub(super) fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
     if available_width.is_finite() && available_width > 0.0 {
         available_width
@@ -51,8 +54,20 @@ fn max_total_right_panel_width_budget(available_width: f32) -> f32 {
     (width - super::MIN_INTERACTION_VIEWPORT_WIDTH).max(0.0)
 }
 
+fn player_total_right_panel_width_budget(available_width: f32) -> f32 {
+    let width = sanitize_available_width(available_width, super::MAIN_PANEL_DEFAULT_WIDTH);
+    let side_layout_floor = super::MAIN_PANEL_MIN_WIDTH + super::CHAT_PANEL_MIN_WIDTH;
+    (width * PLAYER_TOTAL_RIGHT_PANEL_BUDGET_RATIO).max(side_layout_floor)
+}
+
 pub(super) fn adaptive_chat_panel_max_width_for_side_layout(available_width: f32) -> f32 {
     let layout_budget = max_total_right_panel_width_budget(available_width);
+    let chat_budget = (layout_budget - super::MAIN_PANEL_MIN_WIDTH).max(0.0);
+    adaptive_chat_panel_max_width(available_width).min(chat_budget)
+}
+
+pub(super) fn player_chat_panel_max_width_for_side_layout(available_width: f32) -> f32 {
+    let layout_budget = player_total_right_panel_width_budget(available_width);
     let chat_budget = (layout_budget - super::MAIN_PANEL_MIN_WIDTH).max(0.0);
     adaptive_chat_panel_max_width(available_width).min(chat_budget)
 }
@@ -72,10 +87,13 @@ pub(super) fn player_main_panel_max_width_for_layout(
     chat_panel_width: f32,
 ) -> f32 {
     let panel_min_width = adaptive_main_panel_min_width(available_width);
+    let layout_budget = player_total_right_panel_width_budget(available_width);
+    let panel_budget = (layout_budget - chat_panel_width).max(0.0);
     let panel_budget_max =
-        adaptive_main_panel_max_width_for_layout(available_width, chat_panel_width);
+        adaptive_panel_max_width(available_width).min(panel_budget.max(panel_min_width));
     let immersive_cap =
-        (sanitize_available_width(available_width, super::MAIN_PANEL_DEFAULT_WIDTH) * 0.34)
+        (sanitize_available_width(available_width, super::MAIN_PANEL_DEFAULT_WIDTH)
+            * PLAYER_MAIN_PANEL_IMMERSIVE_CAP_RATIO)
             .max(panel_min_width);
     panel_budget_max.min(immersive_cap.max(panel_min_width))
 }

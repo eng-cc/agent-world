@@ -376,6 +376,13 @@ fn adaptive_chat_panel_max_width_for_side_layout_respects_viewport_budget() {
 }
 
 #[test]
+fn player_chat_panel_max_width_for_side_layout_keeps_world_first_budget() {
+    assert_eq!(player_chat_panel_max_width_for_side_layout(760.0), 280.0);
+    let width = player_chat_panel_max_width_for_side_layout(1365.0);
+    assert!((width - 387.9).abs() < 0.1);
+}
+
+#[test]
 fn adaptive_main_panel_max_width_for_layout_respects_interaction_budget() {
     assert_eq!(
         adaptive_main_panel_max_width_for_layout(1365.0, 360.0),
@@ -390,7 +397,7 @@ fn adaptive_main_panel_max_width_for_layout_respects_interaction_budget() {
 #[test]
 fn player_main_panel_max_width_for_layout_keeps_world_first_budget() {
     let width = player_main_panel_max_width_for_layout(1365.0, 360.0);
-    assert!((width - 464.1).abs() < 0.1);
+    assert!((width - 267.9).abs() < 0.1);
     assert_eq!(
         player_main_panel_max_width_for_layout(390.0, 0.0),
         MAIN_PANEL_COMPACT_MIN_WIDTH
