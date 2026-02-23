@@ -5,7 +5,7 @@
 - [x] VRI1：实现事件驱动情绪反馈（toast/正负反馈层级）。
 - [x] VRI2：实现 Player 新手引导层与“下一步目标”提示。
 - [x] VRI3：实现 Player 轻量 HUD 与风格收敛。
-- [ ] VRI4：补充测试并执行 Web 闭环回归，完成收口。
+- [x] VRI4：补充测试并执行 Web 闭环回归，完成收口。
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel.rs`
@@ -14,6 +14,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VRI3 完成，VRI4 进行中。
+- 当前阶段：VRI0~VRI4 全部完成（阶段收口）。
 - 阻塞项：无。
-- 最近更新：已完成 Player 紧凑 HUD 与入口卡风格收敛，进入最终回归与 Web 闭环验收。
+- 最近更新：已完成回归与 Web 闭环验收，文档状态收口。

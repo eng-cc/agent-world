@@ -52,3 +52,18 @@
   - 对策：卡片化小体积布局，支持关闭/自动收起。
 - 快捷键与 egui 焦点冲突。
   - 对策：显式检查聊天输入聚焦，避免吞键/误触。
+
+## 里程碑状态（2026-02-23）
+- M1：完成（已建档）。
+- M2：完成（事件反馈 toast 已落地并有单测覆盖）。
+- M3：完成（Player 新手引导与“下一步目标”提示已落地）。
+- M4：完成（Player 紧凑 HUD 与入口卡风格收敛已落地）。
+- M5：完成（回归测试 + Web 闭环验收 + 文档收口已完成）。
+
+## 验收结论
+- Web 闭环链路可用：`window.__AW_TEST__` 可访问，`connectionStatus=connected`，`canvasCount=1`。
+- 关键视觉产物（Playwright 截图）：
+  - `output/playwright/viewer/viewer-web-vri4-player-hud-hidden.png`
+  - `output/playwright/viewer/viewer-web-vri4-player-hud-panel-open.png`
+  - `output/playwright/viewer/viewer-web-vri4-player-hud-panel-closed-again.png`
+- 阶段结论：Player 模式下已形成“反馈 + 引导 + HUD”的低噪声体验闭环，右侧技术面板回退为可选辅助路径。
