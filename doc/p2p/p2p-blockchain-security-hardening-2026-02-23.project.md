@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] T0：完成设计文档与项目管理文档建档。
 - [x] T1：实现 replication guard 原子化语义，并补“失败不污染状态”测试。
-- [ ] T2：实现 signed consensus 模式下 signer 绑定完整性强制，并完成 `world_viewer_live` signer 映射接线。
+- [x] T2：实现 signed consensus 模式下 signer 绑定完整性强制，并完成 `world_viewer_live` signer 映射接线。
 - [ ] T3：实现 replication 远端 writer allowlist 授权校验。
 - [ ] T4：实现 fetch-commit/fetch-blob 请求签名鉴权（客户端签名 + 服务端验签）。
 - [ ] T5：实现网络订阅有界缓存与 membership DHT 恢复默认策略收紧。
@@ -17,6 +17,6 @@
 - T6 依赖 T1~T5 全部完成。
 
 ## 状态
-- 当前阶段：T2 进行中。
+- 当前阶段：T3 进行中。
 - 阻塞项：无。
 - 最近更新：2026-02-23。

@@ -39,6 +39,32 @@ fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConf
         .expect("signing keypair")
 }
 
+fn signed_pos_config_with_signer_seeds(
+    validators: Vec<PosValidator>,
+    signer_seeds: &[(&str, u8)],
+) -> NodePosConfig {
+    let seed_map = signer_seeds
+        .iter()
+        .map(|(validator_id, seed)| ((*validator_id).to_string(), *seed))
+        .collect::<HashMap<_, _>>();
+    let mut signer_map = BTreeMap::new();
+    for validator in &validators {
+        let seed = seed_map
+            .get(validator.validator_id.as_str())
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing signer seed for validator {}",
+                    validator.validator_id
+                )
+            });
+        let (_, public_key_hex) = deterministic_keypair_hex(*seed);
+        signer_map.insert(validator.validator_id.clone(), public_key_hex);
+    }
+    NodePosConfig::ethereum_like(validators)
+        .with_validator_signer_public_keys(signer_map)
+        .expect("signed pos config")
+}
+
 fn empty_action_root() -> String {
     compute_consensus_action_root(&[]).expect("empty action root")
 }
@@ -176,7 +202,7 @@ fn pos_engine_rejects_signed_proposal_when_signer_binding_mismatches_validator()
         .expect("config b")
         .with_pos_config(pos_config)
         .expect("validators")
-        .with_replication(signed_replication_config(temp_dir("signer-binding"), 53));
+        .with_replication(signed_replication_config(temp_dir("signer-binding"), 52));
     let mut engine = PosNodeEngine::new(&config_b).expect("engine");
 
     let (wrong_private_hex, wrong_public_hex) = deterministic_keypair_hex(61);
@@ -229,6 +255,64 @@ fn pos_engine_rejects_signed_proposal_when_signer_binding_mismatches_validator()
 }
 
 #[test]
+fn pos_engine_rejects_signed_mode_without_complete_validator_signer_bindings() {
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let pos_config = NodePosConfig::ethereum_like(validators);
+    let config = NodeConfig::new("node-b", "world-signer-complete", NodeRole::Observer)
+        .expect("config")
+        .with_pos_config(pos_config)
+        .expect("pos config")
+        .with_replication(signed_replication_config(temp_dir("signer-complete"), 52));
+
+    let err = PosNodeEngine::new(&config).expect_err("engine should reject incomplete signer map");
+    assert!(matches!(
+        err,
+        NodeError::InvalidConfig { reason }
+            if reason.contains("requires signer bindings for all validators")
+    ));
+}
+
+#[test]
+fn pos_engine_rejects_signed_mode_when_local_signer_binding_mismatches() {
+    let validators = vec![
+        PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 60,
+        },
+        PosValidator {
+            validator_id: "node-b".to_string(),
+            stake: 40,
+        },
+    ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 51), ("node-b", 52)]);
+    let config = NodeConfig::new("node-b", "world-signer-local-mismatch", NodeRole::Observer)
+        .expect("config")
+        .with_pos_config(pos_config)
+        .expect("pos config")
+        .with_replication(signed_replication_config(
+            temp_dir("signer-local-mismatch"),
+            53,
+        ));
+
+    let err = PosNodeEngine::new(&config).expect_err("engine should reject local signer mismatch");
+    assert!(matches!(
+        err,
+        NodeError::InvalidConfig { reason }
+            if reason.contains("consensus signer binding mismatch for local validator")
+    ));
+}
+
+#[test]
 fn runtime_start_fails_when_pos_state_snapshot_is_corrupted() {
     let dir = temp_dir("pos-state-corrupt");
     fs::create_dir_all(&dir).expect("create dir");
@@ -236,7 +320,8 @@ fn runtime_start_fails_when_pos_state_snapshot_is_corrupted() {
 
     let config = NodeConfig::new("node-a", "world-pos-corrupt", NodeRole::Observer)
         .expect("config")
-        .with_replication(signed_replication_config(dir.clone(), 71));
+        .with_replication_root(dir.clone())
+        .expect("replication");
     let mut runtime = NodeRuntime::new(config);
 
     let err = runtime.start().expect_err("start should fail");
@@ -271,7 +356,8 @@ fn runtime_start_fails_when_pos_state_snapshot_height_overflows() {
 
     let config = NodeConfig::new("node-a", "world-pos-overflow", NodeRole::Observer)
         .expect("config")
-        .with_replication(signed_replication_config(dir.clone(), 72));
+        .with_replication_root(dir.clone())
+        .expect("replication");
     let mut runtime = NodeRuntime::new(config);
 
     let err = runtime.start().expect_err("start should fail");
@@ -300,6 +386,8 @@ fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 82), ("node-b", 81)]);
 
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
@@ -310,8 +398,8 @@ fn runtime_replication_ingest_reports_error_and_does_not_advance_network_height_
         .expect("config")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick")
-        .with_pos_validators(validators)
-        .expect("validators")
+        .with_pos_config(pos_config)
+        .expect("pos config")
         .with_replication(signed_replication_config(dir.clone(), 81));
     let mut runtime = NodeRuntime::new(config)
         .with_replication_network(NodeReplicationNetworkHandle::new(Arc::clone(&network)));

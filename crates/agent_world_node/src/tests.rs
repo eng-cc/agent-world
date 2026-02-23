@@ -8,7 +8,7 @@ use agent_world_distfs::{FileStore as _, LocalCasStore, SingleWriterReplicationG
 use agent_world_proto::distributed_net::NetworkSubscription;
 use agent_world_proto::world_error::WorldError;
 use ed25519_dalek::SigningKey;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::net::UdpSocket;
 use std::path::PathBuf;
@@ -60,6 +60,32 @@ fn signed_replication_config(root_dir: PathBuf, seed: u8) -> NodeReplicationConf
         .expect("replication config")
         .with_signing_keypair(private_hex, public_hex)
         .expect("signing keypair")
+}
+
+fn signed_pos_config_with_signer_seeds(
+    validators: Vec<PosValidator>,
+    signer_seeds: &[(&str, u8)],
+) -> NodePosConfig {
+    let seed_map = signer_seeds
+        .iter()
+        .map(|(validator_id, seed)| ((*validator_id).to_string(), *seed))
+        .collect::<HashMap<_, _>>();
+    let mut signer_map = BTreeMap::new();
+    for validator in &validators {
+        let seed = seed_map
+            .get(validator.validator_id.as_str())
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing signer seed for validator {}",
+                    validator.validator_id
+                )
+            });
+        let (_, public_key_hex) = deterministic_keypair_hex(*seed);
+        signer_map.insert(validator.validator_id.clone(), public_key_hex);
+    }
+    NodePosConfig::ethereum_like(validators)
+        .with_validator_signer_public_keys(signer_map)
+        .expect("signed pos config")
 }
 
 #[derive(Clone)]
@@ -573,10 +599,12 @@ fn pos_engine_signature_enforced_rejects_unsigned_proposal() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 203), ("node-b", 201)]);
     let config_b = NodeConfig::new("node-b", "world-sig-enforced", NodeRole::Observer)
         .expect("config b")
-        .with_pos_validators(validators)
-        .expect("validators")
+        .with_pos_config(pos_config)
+        .expect("pos config")
         .with_replication(signed_replication_config(temp_dir("sig-enforced"), 201));
     let mut engine = PosNodeEngine::new(&config_b).expect("engine");
 
@@ -637,21 +665,35 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 203), ("node-b", 202)]);
     let config_b = NodeConfig::new("node-b", "world-sig-accept", NodeRole::Observer)
         .expect("config b")
-        .with_pos_validators(validators)
-        .expect("validators")
+        .with_pos_config(pos_config)
+        .expect("pos config")
         .with_replication(signed_replication_config(temp_dir("sig-accept"), 202));
     let mut engine = PosNodeEngine::new(&config_b).expect("engine");
 
-    let (private_hex, public_hex) = deterministic_keypair_hex(203);
-    let signing_key = SigningKey::from_bytes(
-        &hex::decode(private_hex)
-            .expect("private decode")
+    let (proposal_private_hex, proposal_public_hex) = deterministic_keypair_hex(203);
+    let proposal_signing_key = SigningKey::from_bytes(
+        &hex::decode(proposal_private_hex)
+            .expect("proposal private decode")
             .try_into()
-            .expect("private len"),
+            .expect("proposal private len"),
     );
-    let signer = ConsensusMessageSigner::new(signing_key, public_hex).expect("signer");
+    let proposal_signer =
+        ConsensusMessageSigner::new(proposal_signing_key, proposal_public_hex).expect("signer");
+
+    let (attestation_private_hex, attestation_public_hex) = deterministic_keypair_hex(202);
+    let attestation_signing_key = SigningKey::from_bytes(
+        &hex::decode(attestation_private_hex)
+            .expect("attestation private decode")
+            .try_into()
+            .expect("attestation private len"),
+    );
+    let attestation_signer =
+        ConsensusMessageSigner::new(attestation_signing_key, attestation_public_hex)
+            .expect("attestation signer");
 
     let endpoint_a = GossipEndpoint::bind(&NodeGossipConfig {
         bind_addr: addr_a,
@@ -680,7 +722,7 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
         public_key_hex: None,
         signature_hex: None,
     };
-    sign_proposal_message(&mut proposal, &signer).expect("sign proposal");
+    sign_proposal_message(&mut proposal, &proposal_signer).expect("sign proposal");
     endpoint_a
         .broadcast_proposal(&proposal)
         .expect("broadcast signed proposal");
@@ -704,7 +746,7 @@ fn pos_engine_signature_enforced_accepts_signed_proposal_and_attestation() {
         public_key_hex: None,
         signature_hex: None,
     };
-    sign_attestation_message(&mut attestation, &signer).expect("sign attestation");
+    sign_attestation_message(&mut attestation, &attestation_signer).expect("sign attestation");
     endpoint_a
         .broadcast_attestation(&attestation)
         .expect("broadcast signed attestation");
@@ -1364,6 +1406,8 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 71), ("node-b", 72)]);
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
@@ -1372,16 +1416,16 @@ fn runtime_network_replication_syncs_distfs_commit_files() {
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 71));
     let config_b = NodeConfig::new("node-b", "world-network-repl", NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_replication(signed_replication_config(dir_b.clone(), 72));
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -1412,6 +1456,7 @@ fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
         validator_id: "node-a".to_string(),
         stake: 100,
     }];
+    let pos_config = signed_pos_config_with_signer_seeds(validators, &[("node-a", 77)]);
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
@@ -1420,8 +1465,8 @@ fn runtime_network_replication_fetch_handlers_serve_commit_and_blob() {
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators)
-        .expect("validators a")
+        .with_pos_config(pos_config)
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 77));
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -1494,6 +1539,8 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 78), ("node-b", 79)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
@@ -1503,16 +1550,16 @@ fn runtime_network_replication_gap_sync_fetches_missing_commits() {
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 78));
     let config_b = NodeConfig::new("node-b", world_id, NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_replication(signed_replication_config(dir_b.clone(), 79));
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -1661,6 +1708,8 @@ fn runtime_network_replication_gap_sync_not_found_is_non_fatal() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 87), ("node-b", 88)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
@@ -1670,16 +1719,16 @@ fn runtime_network_replication_gap_sync_not_found_is_non_fatal() {
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 87));
     let config_b = NodeConfig::new("node-b", world_id, NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_replication(signed_replication_config(dir_b.clone(), 88));
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -1777,6 +1826,8 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 89), ("node-b", 90)]);
     let network_impl = Arc::new(TestInMemoryNetwork::default());
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
@@ -1786,16 +1837,16 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 89));
     let config_b = NodeConfig::new("node-b", world_id, NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_replication(signed_replication_config(dir_b.clone(), 90));
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -1879,15 +1930,19 @@ fn runtime_network_replication_gap_sync_reports_error_after_retries_exhausted() 
 #[test]
 fn runtime_replication_storage_challenge_gate_blocks_on_local_probe_failure() {
     let dir = temp_dir("challenge-gate-local");
+    let pos_config = signed_pos_config_with_signer_seeds(
+        vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }],
+        &[("node-a", 83)],
+    );
     let config = NodeConfig::new("node-a", "world-challenge-local", NodeRole::Sequencer)
         .expect("config")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick")
-        .with_pos_validators(vec![PosValidator {
-            validator_id: "node-a".to_string(),
-            stake: 100,
-        }])
-        .expect("validators")
+        .with_pos_config(pos_config)
+        .expect("pos config")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir.clone(), 83));
     let mut runtime = with_noop_execution_hook(NodeRuntime::new(config));
@@ -1929,15 +1984,19 @@ fn runtime_replication_storage_challenge_gate_blocks_on_network_blob_mismatch() 
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
+    let pos_config = signed_pos_config_with_signer_seeds(
+        vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }],
+        &[("node-a", 84)],
+    );
     let config = NodeConfig::new("node-a", "world-challenge-network", NodeRole::Sequencer)
         .expect("config")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick")
-        .with_pos_validators(vec![PosValidator {
-            validator_id: "node-a".to_string(),
-            stake: 100,
-        }])
-        .expect("validators")
+        .with_pos_config(pos_config)
+        .expect("pos config")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir.clone(), 84));
     let mut runtime = with_noop_execution_hook(NodeRuntime::new(config))
@@ -1997,6 +2056,13 @@ fn runtime_replication_storage_challenge_gate_allows_when_network_matches_reach_
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
+    let pos_config = signed_pos_config_with_signer_seeds(
+        vec![PosValidator {
+            validator_id: "node-a".to_string(),
+            stake: 100,
+        }],
+        &[("node-a", 86)],
+    );
     let config = NodeConfig::new(
         "node-a",
         "world-challenge-threshold-pass",
@@ -2005,11 +2071,8 @@ fn runtime_replication_storage_challenge_gate_allows_when_network_matches_reach_
     .expect("config")
     .with_tick_interval(Duration::from_millis(10))
     .expect("tick")
-    .with_pos_validators(vec![PosValidator {
-        validator_id: "node-a".to_string(),
-        stake: 100,
-    }])
-    .expect("validators")
+    .with_pos_config(pos_config)
+    .expect("pos config")
     .with_auto_attest_all_validators(true)
     .with_replication(signed_replication_config(dir.clone(), 86));
     let mut runtime = with_noop_execution_hook(NodeRuntime::new(config))
@@ -2125,6 +2188,8 @@ fn runtime_network_replication_respects_topic_isolation() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 81), ("node-b", 82)]);
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
@@ -2133,16 +2198,16 @@ fn runtime_network_replication_respects_topic_isolation() {
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_auto_attest_all_validators(true)
         .with_replication(signed_replication_config(dir_a.clone(), 81));
     let config_b = NodeConfig::new("node-b", "world-topic-repl", NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_replication(signed_replication_config(dir_b.clone(), 82));
 
     let mut runtime_a = with_noop_execution_hook(NodeRuntime::new(config_a))
@@ -2192,21 +2257,23 @@ fn runtime_gossip_replication_with_signature_applies_files() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 11), ("node-b", 22)]);
 
     let config_a = NodeConfig::new("node-a", "world-signed", NodeRole::Sequencer)
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_gossip_optional(addr_a, vec![addr_b])
         .with_replication(signed_replication_config(dir_a.clone(), 11));
     let config_b = NodeConfig::new("node-b", "world-signed", NodeRole::Observer)
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_gossip_optional(addr_b, vec![addr_a])
         .with_replication(signed_replication_config(dir_b.clone(), 22));
 
@@ -2250,13 +2317,15 @@ fn runtime_gossip_replication_rejects_unsigned_when_signature_enforced() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 11), ("node-b", 33)]);
 
     let config_a = NodeConfig::new("node-a", "world-enforced", NodeRole::Sequencer)
         .expect("config a")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick a")
-        .with_pos_validators(validators.clone())
-        .expect("validators a")
+        .with_pos_config(pos_config.clone())
+        .expect("pos config a")
         .with_gossip_optional(addr_a, vec![addr_b])
         .with_replication_root(dir_a.clone())
         .expect("replication a");
@@ -2264,8 +2333,8 @@ fn runtime_gossip_replication_rejects_unsigned_when_signature_enforced() {
         .expect("config b")
         .with_tick_interval(Duration::from_millis(10))
         .expect("tick b")
-        .with_pos_validators(validators)
-        .expect("validators b")
+        .with_pos_config(pos_config)
+        .expect("pos config b")
         .with_gossip_optional(addr_b, vec![addr_a])
         .with_replication(signed_replication_config(dir_b.clone(), 33));
 
@@ -2307,14 +2376,16 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
             stake: 40,
         },
     ];
+    let pos_config =
+        signed_pos_config_with_signer_seeds(validators, &[("node-a", 55), ("node-b", 66)]);
 
     let build_config_a = || {
         NodeConfig::new("node-a", "world-restart", NodeRole::Sequencer)
             .expect("config a")
             .with_tick_interval(Duration::from_millis(10))
             .expect("tick a")
-            .with_pos_validators(validators.clone())
-            .expect("validators a")
+            .with_pos_config(pos_config.clone())
+            .expect("pos config a")
             .with_auto_attest_all_validators(true)
             .with_gossip_optional(addr_a, vec![addr_b])
             .with_replication(signed_replication_config(dir_a.clone(), 55))
@@ -2324,8 +2395,8 @@ fn runtime_gossip_replication_persists_guard_across_restart() {
             .expect("config b")
             .with_tick_interval(Duration::from_millis(10))
             .expect("tick b")
-            .with_pos_validators(validators.clone())
-            .expect("validators b")
+            .with_pos_config(pos_config.clone())
+            .expect("pos config b")
             .with_gossip_optional(addr_b, vec![addr_a])
             .with_replication(signed_replication_config(dir_b.clone(), 66))
     };
@@ -2404,6 +2475,10 @@ fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
             stake: 33,
         },
     ];
+    let pos_config = signed_pos_config_with_signer_seeds(
+        validators,
+        &[("node-a", 91), ("node-b", 92), ("node-c", 93)],
+    );
     let network: Arc<
         dyn agent_world_proto::distributed_net::DistributedNetwork<WorldError> + Send + Sync,
     > = Arc::new(TestInMemoryNetwork::default());
@@ -2413,8 +2488,8 @@ fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
             .expect("observer config")
             .with_tick_interval(Duration::from_millis(10))
             .expect("observer tick")
-            .with_pos_validators(validators.clone())
-            .expect("observer validators")
+            .with_pos_config(pos_config.clone())
+            .expect("observer pos config")
             .with_replication(signed_replication_config(dir_b.clone(), 92))
     };
     let build_sequencer_a = || {
@@ -2422,8 +2497,8 @@ fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
             .expect("sequencer a config")
             .with_tick_interval(Duration::from_millis(10))
             .expect("sequencer a tick")
-            .with_pos_validators(validators.clone())
-            .expect("sequencer a validators")
+            .with_pos_config(pos_config.clone())
+            .expect("sequencer a pos config")
             .with_auto_attest_all_validators(true)
             .with_replication(signed_replication_config(dir_a.clone(), 91))
     };
@@ -2432,8 +2507,8 @@ fn runtime_network_replication_accepts_writer_failover_with_epoch_rotation() {
             .expect("sequencer c config")
             .with_tick_interval(Duration::from_millis(10))
             .expect("sequencer c tick")
-            .with_pos_validators(validators.clone())
-            .expect("sequencer c validators")
+            .with_pos_config(pos_config.clone())
+            .expect("sequencer c pos config")
             .with_auto_attest_all_validators(true)
             .with_replication(signed_replication_config(dir_c.clone(), 93))
     };

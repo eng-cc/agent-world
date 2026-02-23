@@ -645,19 +645,59 @@ impl PosNodeEngine {
     fn new(config: &NodeConfig) -> Result<Self, NodeError> {
         let (validators, validator_players, validator_signers, total_stake, required_stake) =
             validated_pos_state(&config.pos_config)?;
-        let (consensus_signer, enforce_consensus_signature) =
+        let (consensus_signer, consensus_signer_public_key, enforce_consensus_signature) =
             if let Some(replication) = &config.replication {
-                let signer = replication
-                    .consensus_signer()?
+                let signer_keypair = replication.consensus_signer()?;
+                let signer_public_key = signer_keypair
+                    .as_ref()
+                    .map(|(_, public_key_hex)| public_key_hex.clone());
+                let signer = signer_keypair
                     .map(|(signing_key, public_key_hex)| {
                         NodeConsensusMessageSigner::new(signing_key, public_key_hex)
                     })
                     .transpose()
                     .map_err(node_consensus_error)?;
-                (signer, replication.enforce_consensus_signature())
+                (
+                    signer,
+                    signer_public_key,
+                    replication.enforce_consensus_signature(),
+                )
             } else {
-                (None, false)
+                (None, None, false)
             };
+        if enforce_consensus_signature && validator_signers.len() != validators.len() {
+            let missing_validator_signers = validators
+                .keys()
+                .filter(|validator_id| !validator_signers.contains_key(*validator_id))
+                .cloned()
+                .collect::<Vec<_>>();
+            return Err(NodeError::InvalidConfig {
+                reason: format!(
+                    "consensus signature enforcement requires signer bindings for all validators; missing={}",
+                    missing_validator_signers.join(",")
+                ),
+            });
+        }
+        if enforce_consensus_signature {
+            if let Some(expected_public_key) = validator_signers.get(config.node_id.as_str()) {
+                let Some(actual_public_key) = consensus_signer_public_key.as_deref() else {
+                    return Err(NodeError::InvalidConfig {
+                        reason: format!(
+                            "consensus signer binding missing local signer keypair for validator {}",
+                            config.node_id
+                        ),
+                    });
+                };
+                if actual_public_key != expected_public_key {
+                    return Err(NodeError::InvalidConfig {
+                        reason: format!(
+                            "consensus signer binding mismatch for local validator {}: expected={} actual={}",
+                            config.node_id, expected_public_key, actual_public_key
+                        ),
+                    });
+                }
+            }
+        }
         if let Some(bound_player_id) = validator_players.get(config.node_id.as_str()) {
             if bound_player_id != &config.player_id {
                 return Err(NodeError::InvalidConfig {

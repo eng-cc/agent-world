@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fmt;
 use std::fs;
@@ -24,9 +24,9 @@ use agent_world::viewer::{
 };
 use agent_world_distfs::StorageChallengeProbeCursorState;
 use agent_world_node::{
-    Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodeReplicationConfig,
-    NodeReplicationNetworkHandle, NodeRole, NodeRuntime, NodeSnapshot, PosConsensusStatus,
-    PosValidator,
+    Libp2pReplicationNetwork, Libp2pReplicationNetworkConfig, NodeConfig, NodePosConfig,
+    NodeReplicationConfig, NodeReplicationNetworkHandle, NodeRole, NodeRuntime, NodeSnapshot,
+    PosConsensusStatus, PosValidator,
 };
 use agent_world_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use agent_world_proto::world_error::WorldError as ProtoWorldError;
@@ -77,6 +77,7 @@ use reward_runtime_network::{
 use reward_runtime_settlement::{
     auto_redeem_runtime_rewards, build_reward_settlement_mint_records,
 };
+use sha2::{Digest, Sha256};
 
 const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 #[cfg(test)]
@@ -289,15 +290,72 @@ fn build_node_replication_config(
     node_id: &str,
     keypair: &node_keypair_config::NodeKeypairConfig,
 ) -> Result<NodeReplicationConfig, String> {
+    let signer_keypair = derive_node_consensus_signer_keypair(node_id, keypair)?;
     let replication_root = Path::new("output").join("node-distfs").join(node_id);
     NodeReplicationConfig::new(replication_root)
         .and_then(|cfg| {
             cfg.with_signing_keypair(
-                keypair.private_key_hex.clone(),
-                keypair.public_key_hex.clone(),
+                signer_keypair.private_key_hex,
+                signer_keypair.public_key_hex,
             )
         })
         .map_err(|err| format!("failed to build node replication config: {err:?}"))
+}
+
+fn derive_node_consensus_signer_keypair(
+    node_id: &str,
+    root_keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<node_keypair_config::NodeKeypairConfig, String> {
+    let node_id = node_id.trim();
+    if node_id.is_empty() {
+        return Err("node consensus signer derivation requires non-empty node_id".to_string());
+    }
+    let root_private_bytes = hex::decode(root_keypair.private_key_hex.as_str())
+        .map_err(|_| "root node.private_key must be valid hex".to_string())?;
+    let root_private: [u8; 32] = root_private_bytes
+        .try_into()
+        .map_err(|_| "root node.private_key must be 32-byte hex".to_string())?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"agent-world-node-consensus-signer-v1");
+    hasher.update(root_private);
+    hasher.update(b"|");
+    hasher.update(node_id.as_bytes());
+    let digest = hasher.finalize();
+
+    let mut derived_private = [0_u8; 32];
+    derived_private.copy_from_slice(&digest[..32]);
+    let signing_key = ed25519_dalek::SigningKey::from_bytes(&derived_private);
+    Ok(node_keypair_config::NodeKeypairConfig {
+        private_key_hex: hex::encode(signing_key.to_bytes()),
+        public_key_hex: hex::encode(signing_key.verifying_key().to_bytes()),
+    })
+}
+
+fn build_validator_signer_public_keys(
+    validators: &[PosValidator],
+    root_keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<BTreeMap<String, String>, String> {
+    let mut bindings = BTreeMap::new();
+    for validator in validators {
+        let validator_id = validator.validator_id.trim();
+        if validator_id.is_empty() {
+            return Err("validator_id cannot be empty when deriving signer bindings".to_string());
+        }
+        let keypair = derive_node_consensus_signer_keypair(validator_id, root_keypair)?;
+        bindings.insert(validator_id.to_string(), keypair.public_key_hex);
+    }
+    Ok(bindings)
+}
+
+fn build_signed_pos_config(
+    validators: Vec<PosValidator>,
+    root_keypair: &node_keypair_config::NodeKeypairConfig,
+) -> Result<NodePosConfig, String> {
+    let signer_bindings = build_validator_signer_public_keys(validators.as_slice(), root_keypair)?;
+    NodePosConfig::ethereum_like(validators)
+        .with_validator_signer_public_keys(signer_bindings)
+        .map_err(|err| format!("failed to apply validator signer bindings: {err:?}"))
 }
 
 fn attach_optional_replication_network(
@@ -551,11 +609,15 @@ fn start_single_live_node(
     )
     .and_then(|config| config.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
     .map_err(|err| format!("failed to build node config: {err:?}"))?;
-    if !options.node_validators.is_empty() {
-        config = config
-            .with_pos_validators(options.node_validators.clone())
-            .map_err(|err| format!("failed to apply node validators: {err:?}"))?;
-    }
+    let validators = if options.node_validators.is_empty() {
+        config.pos_config.validators.clone()
+    } else {
+        options.node_validators.clone()
+    };
+    let pos_config = build_signed_pos_config(validators, keypair)?;
+    config = config
+        .with_pos_config(pos_config)
+        .map_err(|err| format!("failed to apply node pos config: {err:?}"))?;
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
     config = config
         .with_require_execution_on_commit(true)
@@ -666,13 +728,14 @@ fn start_triad_live_nodes(
     let mut primary_reward_network: Option<
         Arc<dyn ProtoDistributedNetwork<ProtoWorldError> + Send + Sync>,
     > = None;
+    let triad_pos_config = build_signed_pos_config(validators.clone(), keypair)?;
     for (node_id, role, bind_addr, peers, attach_execution_hook) in node_specs {
         let mut config = NodeConfig::new(node_id.clone(), world_id.to_string(), role)
             .and_then(|cfg| cfg.with_tick_interval(Duration::from_millis(options.node_tick_ms)))
             .map_err(|err| format!("failed to build triad node config {node_id}: {err:?}"))?;
         config = config
-            .with_pos_validators(validators.clone())
-            .map_err(|err| format!("failed to apply triad validators for {node_id}: {err:?}"))?;
+            .with_pos_config(triad_pos_config.clone())
+            .map_err(|err| format!("failed to apply triad pos config for {node_id}: {err:?}"))?;
         config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
         config = config
             .with_require_execution_on_commit(true)
@@ -770,8 +833,9 @@ fn start_triad_distributed_live_node(
         .map_err(|err| {
             format!("failed to build triad_distributed node config {node_id}: {err:?}")
         })?;
-    config = config.with_pos_validators(validators).map_err(|err| {
-        format!("failed to apply triad_distributed validators for {node_id}: {err:?}")
+    let pos_config = build_signed_pos_config(validators, keypair)?;
+    config = config.with_pos_config(pos_config).map_err(|err| {
+        format!("failed to apply triad_distributed pos config for {node_id}: {err:?}")
     })?;
     config = config.with_auto_attest_all_validators(options.node_auto_attest_all_validators);
     config = config

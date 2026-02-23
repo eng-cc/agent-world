@@ -726,6 +726,15 @@ fn start_live_node_applies_pos_options() {
     assert_eq!(config.pos_config.validators[0].stake, 70);
     assert_eq!(config.pos_config.validators[1].validator_id, "node-backup");
     assert_eq!(config.pos_config.validators[1].stake, 30);
+    assert_eq!(config.pos_config.validator_signer_public_keys.len(), 2);
+    assert!(config
+        .pos_config
+        .validator_signer_public_keys
+        .contains_key("node-main"));
+    assert!(config
+        .pos_config
+        .validator_signer_public_keys
+        .contains_key("node-backup"));
     assert!(!config.auto_attest_all_validators);
     let gossip = config.gossip.as_ref().expect("gossip config");
     assert_eq!(
@@ -774,6 +783,14 @@ fn start_live_node_starts_triad_topology_by_default() {
         .snapshot();
     assert_eq!(primary_snapshot.role, NodeRole::Sequencer);
     assert_eq!(primary_snapshot.node_id, "viewer-live-node-sequencer");
+    {
+        let primary_runtime = runtime.primary_runtime.lock().expect("lock primary config");
+        let primary_config = primary_runtime.config();
+        assert_eq!(
+            primary_config.pos_config.validator_signer_public_keys.len(),
+            3
+        );
+    }
     assert_eq!(runtime.auxiliary_runtimes.len(), 2);
 
     let mut aux_roles = runtime
@@ -825,6 +842,7 @@ fn start_live_node_starts_triad_distributed_storage_role() {
         vec!["127.0.0.1:7401".parse::<SocketAddr>().expect("addr"),]
     );
     assert_eq!(config.pos_config.validators.len(), 3);
+    assert_eq!(config.pos_config.validator_signer_public_keys.len(), 3);
     assert_eq!(runtime.auxiliary_runtimes.len(), 0);
     locked.stop().expect("stop");
 }
