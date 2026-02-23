@@ -155,8 +155,15 @@ fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 
 }
 
 fn panel_toggle_shortcut_pressed(context: &egui::Context) -> bool {
-    context.input(|input| input.key_pressed(egui::Key::Tab) && !input.modifiers.any())
-        && !context.wants_keyboard_input()
+    let tab_pressed =
+        context.input(|input| input.key_pressed(egui::Key::Tab) && !input.modifiers.any());
+    if !tab_pressed {
+        return false;
+    }
+
+    let chat_input_focused =
+        context.memory(|memory| memory.has_focus(egui::Id::new(crate::EGUI_CHAT_INPUT_WIDGET_ID)));
+    !chat_input_focused
 }
 
 #[derive(SystemParam)]
