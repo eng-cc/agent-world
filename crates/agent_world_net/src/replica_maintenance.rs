@@ -59,6 +59,31 @@ pub struct ReplicaMaintenanceReport {
     pub failed_tasks: Vec<ReplicaMaintenanceFailedTask>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReplicaMaintenancePollingPolicy {
+    pub poll_interval_ms: i64,
+}
+
+impl Default for ReplicaMaintenancePollingPolicy {
+    fn default() -> Self {
+        Self {
+            poll_interval_ms: 60_000,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReplicaMaintenancePollingState {
+    pub last_polled_at_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplicaMaintenanceRoundResult {
+    pub polled_at_ms: i64,
+    pub plan: ReplicaMaintenancePlan,
+    pub report: ReplicaMaintenanceReport,
+}
+
 pub trait ReplicaTransferExecutor {
     fn execute_transfer(
         &self,
@@ -91,6 +116,35 @@ pub fn execute_replica_maintenance_plan(
     }
 
     report
+}
+
+pub fn run_replica_maintenance_poll(
+    dht: &impl DistributedDht,
+    executor: &impl ReplicaTransferExecutor,
+    world_id: &str,
+    content_hashes: &[String],
+    maintenance_policy: ReplicaMaintenancePolicy,
+    polling_policy: ReplicaMaintenancePollingPolicy,
+    state: &mut ReplicaMaintenancePollingState,
+    now_ms: i64,
+) -> Result<Option<ReplicaMaintenanceRoundResult>, WorldError> {
+    validate_polling_policy(polling_policy)?;
+    if !should_run_poll(
+        state.last_polled_at_ms,
+        now_ms,
+        polling_policy.poll_interval_ms,
+    ) {
+        return Ok(None);
+    }
+
+    let plan = plan_replica_maintenance(dht, world_id, content_hashes, maintenance_policy)?;
+    let report = execute_replica_maintenance_plan(dht, executor, world_id, &plan);
+    state.last_polled_at_ms = Some(now_ms);
+    Ok(Some(ReplicaMaintenanceRoundResult {
+        polled_at_ms: now_ms,
+        plan,
+        report,
+    }))
 }
 
 pub fn plan_replica_maintenance(
@@ -138,6 +192,22 @@ fn validate_policy(policy: ReplicaMaintenancePolicy) -> Result<(), WorldError> {
         });
     }
     Ok(())
+}
+
+fn validate_polling_policy(policy: ReplicaMaintenancePollingPolicy) -> Result<(), WorldError> {
+    if policy.poll_interval_ms <= 0 {
+        return Err(WorldError::DistributedValidationFailed {
+            reason: "replica maintenance polling policy requires poll_interval_ms > 0".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn should_run_poll(last_polled_at_ms: Option<i64>, now_ms: i64, poll_interval_ms: i64) -> bool {
+    match last_polled_at_ms {
+        Some(last_polled_at_ms) => now_ms.saturating_sub(last_polled_at_ms) >= poll_interval_ms,
+        None => true,
+    }
 }
 
 fn plan_repair_tasks(
@@ -658,6 +728,105 @@ mod tests {
             report.failed_tasks[0].error,
             WorldError::NetworkRequestFailed { .. }
         ));
+        assert!(dht.published().is_empty());
+    }
+
+    #[test]
+    fn run_replica_maintenance_poll_runs_first_round_and_updates_state() {
+        let dht = StaticProvidersDht::with_providers_by_hash(map(&[
+            ("hash-a", vec![provider("peer-1", Some(300))]),
+            ("hash-b", vec![provider("peer-2", Some(320))]),
+        ]));
+        let executor = ScriptedTransferExecutor::default();
+        let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+        let mut state = ReplicaMaintenancePollingState::default();
+
+        let result = run_replica_maintenance_poll(
+            &dht,
+            &executor,
+            "w1",
+            &hashes,
+            ReplicaMaintenancePolicy {
+                target_replicas_per_blob: 2,
+                max_repairs_per_round: 8,
+                max_rebalances_per_round: 0,
+                ..ReplicaMaintenancePolicy::default()
+            },
+            ReplicaMaintenancePollingPolicy {
+                poll_interval_ms: 100,
+            },
+            &mut state,
+            1_000,
+        )
+        .expect("poll result");
+
+        let round = result.expect("first round should run");
+        assert_eq!(round.polled_at_ms, 1_000);
+        assert!(round.report.succeeded_tasks >= 1);
+        assert_eq!(state.last_polled_at_ms, Some(1_000));
+        assert!(!dht.published().is_empty());
+    }
+
+    #[test]
+    fn run_replica_maintenance_poll_skips_when_interval_not_elapsed() {
+        let dht = StaticProvidersDht::with_providers_by_hash(map(&[
+            ("hash-a", vec![provider("peer-1", Some(300))]),
+            ("hash-b", vec![provider("peer-2", Some(320))]),
+        ]));
+        let executor = ScriptedTransferExecutor::default();
+        let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+        let mut state = ReplicaMaintenancePollingState {
+            last_polled_at_ms: Some(1_000),
+        };
+
+        let result = run_replica_maintenance_poll(
+            &dht,
+            &executor,
+            "w1",
+            &hashes,
+            ReplicaMaintenancePolicy::default(),
+            ReplicaMaintenancePollingPolicy {
+                poll_interval_ms: 100,
+            },
+            &mut state,
+            1_050,
+        )
+        .expect("poll result");
+
+        assert!(result.is_none());
+        assert_eq!(state.last_polled_at_ms, Some(1_000));
+        assert!(dht.published().is_empty());
+    }
+
+    #[test]
+    fn run_replica_maintenance_poll_rejects_non_positive_interval() {
+        let dht = StaticProvidersDht::with_providers_by_hash(map(&[
+            ("hash-a", vec![provider("peer-1", Some(300))]),
+            ("hash-b", vec![provider("peer-2", Some(320))]),
+        ]));
+        let executor = ScriptedTransferExecutor::default();
+        let hashes = vec!["hash-a".to_string(), "hash-b".to_string()];
+        let mut state = ReplicaMaintenancePollingState::default();
+
+        let err = run_replica_maintenance_poll(
+            &dht,
+            &executor,
+            "w1",
+            &hashes,
+            ReplicaMaintenancePolicy::default(),
+            ReplicaMaintenancePollingPolicy {
+                poll_interval_ms: 0,
+            },
+            &mut state,
+            1_000,
+        )
+        .expect_err("interval=0 should fail");
+
+        assert!(matches!(
+            err,
+            WorldError::DistributedValidationFailed { .. }
+        ));
+        assert_eq!(state.last_polled_at_ms, None);
         assert!(dht.published().is_empty());
     }
 }
