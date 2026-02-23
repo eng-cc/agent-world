@@ -1,6 +1,7 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
-    build_player_mission_loop_snapshot, PlayerGuideProgressSnapshot,
+    build_player_mission_loop_snapshot, player_mission_hud_anchor_y,
+    player_mission_hud_compact_mode, PlayerGuideProgressSnapshot,
 };
 
 #[test]
@@ -41,4 +42,17 @@ fn build_player_mission_loop_snapshot_reports_progress_and_objective() {
     assert_eq!(snapshot.objective, "Advance The Run");
     assert_eq!(snapshot.action_label, "Run one key action");
     assert!(!snapshot.action_opens_panel);
+}
+
+#[test]
+fn player_mission_hud_compact_mode_tracks_panel_visibility() {
+    assert!(player_mission_hud_compact_mode(false));
+    assert!(!player_mission_hud_compact_mode(true));
+}
+
+#[test]
+fn player_mission_hud_anchor_avoids_onboarding_overlap() {
+    assert_eq!(player_mission_hud_anchor_y(false, false), 96.0);
+    assert_eq!(player_mission_hud_anchor_y(true, false), 136.0);
+    assert_eq!(player_mission_hud_anchor_y(true, true), 214.0);
 }

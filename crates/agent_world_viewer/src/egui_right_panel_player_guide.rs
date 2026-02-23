@@ -696,6 +696,7 @@ pub(super) fn render_player_mission_hud(
     state: &crate::ViewerState,
     selection: &ViewerSelection,
     layout_state: &mut RightPanelLayoutState,
+    onboarding_visible: bool,
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
     locale: crate::i18n::UiLocale,
@@ -709,10 +710,13 @@ pub(super) fn render_player_mission_hud(
     } else {
         egui::Color32::from_rgb(74, 126, 184)
     };
+    let compact_mode = player_mission_hud_compact_mode(layout_state.panel_hidden);
+    let mission_anchor_y =
+        player_mission_hud_anchor_y(layout_state.panel_hidden, onboarding_visible);
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
-        .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, 136.0))
+        .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, mission_anchor_y))
         .movable(false)
         .interactable(true)
         .show(context, |ui| {
@@ -730,10 +734,12 @@ pub(super) fn render_player_mission_hud(
                 .corner_radius(egui::CornerRadius::same(10))
                 .inner_margin(egui::Margin::same(10))
                 .show(ui, |ui| {
-                    ui.set_max_width(320.0);
+                    ui.set_max_width(if compact_mode { 280.0 } else { 320.0 });
                     ui.small(egui::RichText::new(snapshot.title).color(tone).strong());
                     ui.strong(snapshot.objective);
-                    ui.small(player_goal_detail(step, locale));
+                    if !compact_mode {
+                        ui.small(player_goal_detail(step, locale));
+                    }
                     let progress_ratio = (snapshot.completed_steps as f32 / 4.0).clamp(0.0, 1.0);
                     ui.add(
                         egui::ProgressBar::new(progress_ratio)
@@ -748,21 +754,25 @@ pub(super) fn render_player_mission_hud(
                                 snapshot.completed_steps
                             )),
                     );
-                    egui::Frame::group(ui.style())
-                        .fill(egui::Color32::from_rgba_unmultiplied(
-                            reward_tone.r(),
-                            reward_tone.g(),
-                            reward_tone.b(),
-                            if reward.complete { 54 } else { 34 },
-                        ))
-                        .stroke(egui::Stroke::new(1.0, reward_tone))
-                        .corner_radius(egui::CornerRadius::same(8))
-                        .inner_margin(egui::Margin::same(8))
-                        .show(ui, |ui| {
-                            ui.small(egui::RichText::new(reward.badge).color(reward_tone));
-                            ui.strong(reward.title);
-                            ui.small(reward.detail.as_str());
-                        });
+                    if compact_mode {
+                        ui.small(egui::RichText::new(reward.badge).color(reward_tone));
+                    } else {
+                        egui::Frame::group(ui.style())
+                            .fill(egui::Color32::from_rgba_unmultiplied(
+                                reward_tone.r(),
+                                reward_tone.g(),
+                                reward_tone.b(),
+                                if reward.complete { 54 } else { 34 },
+                            ))
+                            .stroke(egui::Stroke::new(1.0, reward_tone))
+                            .corner_radius(egui::CornerRadius::same(8))
+                            .inner_margin(egui::Margin::same(8))
+                            .show(ui, |ui| {
+                                ui.small(egui::RichText::new(reward.badge).color(reward_tone));
+                                ui.strong(reward.title);
+                                ui.small(reward.detail.as_str());
+                            });
+                    }
                     action_clicked = ui.button(snapshot.action_label).clicked();
                 });
         });
@@ -773,4 +783,18 @@ pub(super) fn render_player_mission_hud(
 
     let points = build_player_minimap_snapshot(state, selection);
     render_player_minimap_card(context, &points, locale, now_secs);
+}
+
+pub(super) fn player_mission_hud_compact_mode(panel_hidden: bool) -> bool {
+    !panel_hidden
+}
+
+pub(super) fn player_mission_hud_anchor_y(panel_hidden: bool, onboarding_visible: bool) -> f32 {
+    if player_mission_hud_compact_mode(panel_hidden) {
+        96.0
+    } else if onboarding_visible {
+        214.0
+    } else {
+        136.0
+    }
 }

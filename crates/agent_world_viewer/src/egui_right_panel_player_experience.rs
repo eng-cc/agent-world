@@ -1144,6 +1144,7 @@ pub(super) fn render_player_experience_layers(
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
     let guide_progress =
         build_player_guide_progress_snapshot(&state.status, layout_state, selection);
+    let onboarding_visible = should_show_player_onboarding_card(onboarding, guide_step);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_cinematic_intro(context, state, guide_step, locale, now_secs);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
@@ -1152,6 +1153,7 @@ pub(super) fn render_player_experience_layers(
         state,
         selection,
         layout_state,
+        onboarding_visible,
         guide_step,
         guide_progress,
         locale,
@@ -1169,13 +1171,15 @@ pub(super) fn render_player_experience_layers(
             now_secs,
         );
     }
-    render_player_onboarding_card(
-        context,
-        onboarding,
-        guide_step,
-        guide_progress,
-        layout_state,
-        locale,
-        now_secs,
-    );
+    if onboarding_visible {
+        render_player_onboarding_card(
+            context,
+            onboarding,
+            guide_step,
+            guide_progress,
+            layout_state,
+            locale,
+            now_secs,
+        );
+    }
 }
