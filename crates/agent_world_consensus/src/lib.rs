@@ -19,6 +19,7 @@ mod pos;
 mod quorum;
 mod sequencer_mainloop;
 mod signature;
+mod tiered_file_log;
 
 pub mod distributed {
     pub use agent_world_proto::distributed::*;

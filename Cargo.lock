@@ -166,6 +166,7 @@ dependencies = [
 name = "agent_world_consensus"
 version = "0.1.0"
 dependencies = [
+ "agent_world_distfs",
  "agent_world_proto",
  "blake3",
  "ed25519-dalek",

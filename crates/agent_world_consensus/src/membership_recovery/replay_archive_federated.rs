@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use agent_world_distfs::LocalCasStore;
 use serde::{Deserialize, Serialize};
 
 use super::super::error::WorldError;
@@ -32,6 +32,7 @@ use super::replay_audit::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
 };
 use super::{normalized_schedule_key, MembershipSyncClient};
+use crate::tiered_file_log;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -377,13 +378,17 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEve
 #[derive(Debug, Clone)]
 pub struct FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus {
     root_dir: PathBuf,
+    cas_store: LocalCasStore,
 }
 
 impl FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus {
     pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
         let root_dir = root_dir.into();
         fs::create_dir_all(&root_dir)?;
-        Ok(Self { root_dir })
+        Ok(Self {
+            cas_store: LocalCasStore::new(root_dir.join("cas")),
+            root_dir,
+        })
     }
 
     fn event_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
@@ -392,7 +397,17 @@ impl FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAler
             "{world_id}.{node_id}.revocation-dead-letter-replay-rollback-governance-recovery-drill-alert-event.jsonl"
         )))
     }
+
+    fn event_cold_refs_path(&self, world_id: &str, node_id: &str) -> Result<PathBuf, WorldError> {
+        let (world_id, node_id) = normalized_schedule_key(world_id, node_id)?;
+        Ok(self.root_dir.join(format!(
+            "{world_id}.{node_id}.revocation-dead-letter-replay-rollback-governance-recovery-drill-alert-event.cold.refs.jsonl"
+        )))
+    }
 }
+
+const RECOVERY_DRILL_ALERT_EVENT_HOT_MAX_RECORDS: usize = 4096;
+const RECOVERY_DRILL_ALERT_EVENT_COLD_SEGMENT_MAX_LINES: usize = 256;
 
 impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
     for FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus
@@ -404,16 +419,16 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEve
         event: &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent,
     ) -> Result<(), WorldError> {
         let path = self.event_path(world_id, node_id)?;
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)?;
-            }
-        }
+        let cold_refs_path = self.event_cold_refs_path(world_id, node_id)?;
         let line = serde_json::to_string(event)?;
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        file.write_all(line.as_bytes())?;
-        file.write_all(b"\n")?;
-        Ok(())
+        tiered_file_log::append_jsonl_line_with_cas_offload(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+            RECOVERY_DRILL_ALERT_EVENT_HOT_MAX_RECORDS,
+            RECOVERY_DRILL_ALERT_EVENT_COLD_SEGMENT_MAX_LINES,
+            line.as_str(),
+        )
     }
 
     fn list(
@@ -425,18 +440,15 @@ impl MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEve
         WorldError,
     > {
         let path = self.event_path(world_id, node_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
+        let cold_refs_path = self.event_cold_refs_path(world_id, node_id)?;
+        let lines = tiered_file_log::collect_jsonl_lines_with_cas_refs(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+        )?;
         let mut events = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            events.push(serde_json::from_str(&line)?);
+        for line in lines {
+            events.push(serde_json::from_str(line.as_str())?);
         }
         Ok(events)
     }

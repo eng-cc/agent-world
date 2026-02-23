@@ -484,6 +484,50 @@ fn governance_recovery_drill_alert_event_bus_file_round_trip() {
 }
 
 #[test]
+fn governance_recovery_drill_alert_event_bus_file_lists_cold_and_hot_records() {
+    let root = temp_membership_dir("governance-recovery-drill-alert-event-bus-tiered");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let bus =
+        FileMembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventBus::new(
+            &root,
+        )
+        .expect("create event bus");
+
+    let total = 4_100_i64;
+    for event_at_ms in 0..total {
+        bus.publish(
+            "w1",
+            "node-a",
+            &MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEvent {
+                world_id: "w1".to_string(),
+                node_id: "node-a".to_string(),
+                event_at_ms,
+                outcome:
+                    MembershipRevocationDeadLetterReplayRollbackGovernanceRecoveryDrillAlertEventOutcome::Emitted,
+                reasons: vec![format!("reason-{event_at_ms}")],
+                severity: Some(MembershipRevocationAlertSeverity::Warn),
+            },
+        )
+        .expect("publish event");
+    }
+
+    let listed = bus.list("w1", "node-a").expect("list events");
+    assert_eq!(listed.len(), total as usize);
+    assert_eq!(listed.first().map(|event| event.event_at_ms), Some(0));
+    assert_eq!(
+        listed.last().map(|event| event.event_at_ms),
+        Some(total - 1)
+    );
+    assert!(
+        root.join("w1.node-a.revocation-dead-letter-replay-rollback-governance-recovery-drill-alert-event.cold.refs.jsonl")
+            .exists(),
+        "tiered offload should create cold refs when hot window overflows"
+    );
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn governance_archive_tiered_offload_drill_alert_event_bus_orchestration_publishes_event() {
     let client = sample_client();
     let hot_store =

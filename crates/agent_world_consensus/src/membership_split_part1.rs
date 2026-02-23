@@ -10,14 +10,14 @@ use super::distributed_net::{DistributedNetwork, NetworkSubscription};
 use super::error::WorldError;
 use super::membership_logic;
 use super::signature::ED25519_SIGNATURE_V1_PREFIX;
+use super::tiered_file_log;
 pub(super) use super::util::to_canonical_cbor;
+use agent_world_distfs::LocalCasStore;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -753,12 +753,15 @@ impl MembershipAuditStore for InMemoryMembershipAuditStore {
 #[derive(Debug, Clone)]
 pub struct FileMembershipAuditStore {
     root_dir: PathBuf,
+    cas_store: LocalCasStore,
 }
 
 impl FileMembershipAuditStore {
     pub fn new(root_dir: impl Into<PathBuf>) -> Self {
+        let root_dir = root_dir.into();
         Self {
-            root_dir: root_dir.into(),
+            cas_store: LocalCasStore::new(root_dir.join("cas")),
+            root_dir,
         }
     }
 
@@ -770,42 +773,42 @@ impl FileMembershipAuditStore {
         let world_id = membership_logic::normalized_world_id(world_id)?;
         Ok(self.root_dir.join(format!("{world_id}.jsonl")))
     }
+
+    fn world_cold_refs_path(&self, world_id: &str) -> Result<PathBuf, WorldError> {
+        let world_id = membership_logic::normalized_world_id(world_id)?;
+        Ok(self.root_dir.join(format!("{world_id}.cold.refs.jsonl")))
+    }
 }
+
+const MEMBERSHIP_AUDIT_HOT_MAX_RECORDS: usize = 4096;
+const MEMBERSHIP_AUDIT_COLD_SEGMENT_MAX_LINES: usize = 256;
 
 impl MembershipAuditStore for FileMembershipAuditStore {
     fn append(&self, record: &MembershipSnapshotAuditRecord) -> Result<(), WorldError> {
         let path = self.world_log_path(&record.world_id)?;
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)?;
-            }
-        }
-
+        let cold_refs_path = self.world_cold_refs_path(&record.world_id)?;
         let line = serde_json::to_string(record)?;
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        file.write_all(line.as_bytes())?;
-        file.write_all(
-            b"
-",
-        )?;
-        Ok(())
+        tiered_file_log::append_jsonl_line_with_cas_offload(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+            MEMBERSHIP_AUDIT_HOT_MAX_RECORDS,
+            MEMBERSHIP_AUDIT_COLD_SEGMENT_MAX_LINES,
+            line.as_str(),
+        )
     }
 
     fn list(&self, world_id: &str) -> Result<Vec<MembershipSnapshotAuditRecord>, WorldError> {
         let path = self.world_log_path(world_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
+        let cold_refs_path = self.world_cold_refs_path(world_id)?;
+        let lines = tiered_file_log::collect_jsonl_lines_with_cas_refs(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+        )?;
         let mut records = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            records.push(serde_json::from_str(&line)?);
+        for line in lines {
+            records.push(serde_json::from_str(line.as_str())?);
         }
         Ok(records)
     }

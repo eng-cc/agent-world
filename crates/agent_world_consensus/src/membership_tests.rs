@@ -1,4 +1,7 @@
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use agent_world_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use ed25519_dalek::SigningKey;
@@ -78,6 +81,14 @@ fn ed25519_signer(seed: u8) -> MembershipDirectorySigner {
     let (private_key_hex, public_key_hex) = ed25519_keypair_hex(seed);
     MembershipDirectorySigner::ed25519(private_key_hex.as_str(), public_key_hex.as_str())
         .expect("ed25519 signer")
+}
+
+fn temp_membership_dir(prefix: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time")
+        .as_nanos();
+    std::env::temp_dir().join(format!("agent_world-{prefix}-{nanos}"))
 }
 
 #[test]
@@ -178,6 +189,48 @@ fn publish_and_drain_membership_change_announcement() {
         .drain_announcements(&subscription)
         .expect("drain announcements");
     assert_eq!(drained, vec![published]);
+}
+
+#[test]
+fn file_membership_audit_store_tiered_offload_lists_cold_and_hot_records() {
+    let root = temp_membership_dir("membership-audit-store-tiered");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let store = crate::FileMembershipAuditStore::new(&root);
+
+    let total = 4_100_i64;
+    for requested_at_ms in 0..total {
+        crate::MembershipAuditStore::append(
+            &store,
+            &crate::MembershipSnapshotAuditRecord {
+                world_id: "w1".to_string(),
+                requester_id: Some(format!("seq-{}", requested_at_ms % 3)),
+                requested_at_ms: Some(requested_at_ms),
+                signature_key_id: Some("k1".to_string()),
+                outcome: crate::MembershipSnapshotAuditOutcome::Applied,
+                reason: format!("audit-{requested_at_ms}"),
+            },
+        )
+        .expect("append audit");
+    }
+
+    let records = crate::MembershipAuditStore::list(&store, "w1").expect("list audits");
+    assert_eq!(records.len(), total as usize);
+    assert_eq!(
+        records.first().and_then(|record| record.requested_at_ms),
+        Some(0)
+    );
+    assert_eq!(
+        records.last().and_then(|record| record.requested_at_ms),
+        Some(total - 1)
+    );
+
+    let cold_refs_path = root.join("w1.cold.refs.jsonl");
+    assert!(
+        cold_refs_path.exists(),
+        "tiered offload should create cold refs when hot window overflows"
+    );
+
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]

@@ -13,9 +13,9 @@
 - [x] 补充/更新单测
 
 ### T2 Consensus 日志与 dead-letter 冷归档（4/5）
-- [ ] `agent_world_consensus`：文件型 audit/alert/event 日志热窗口 + CAS 冷归档
-- [ ] `agent_world_consensus`：dead-letter archive 改 CAS 冷归档
-- [ ] 补充/更新单测
+- [x] `agent_world_consensus`：文件型 audit/alert/event 日志热窗口 + CAS 冷归档
+- [x] `agent_world_consensus`：dead-letter archive 改 CAS 冷归档
+- [x] 补充/更新单测
 
 ### T3 Node replication commit 冷归档（6）
 - [ ] `agent_world_node`：commit message 热窗口 + CAS 冷归档
@@ -42,7 +42,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1
-- 进行中：T2
-- 未开始：T3、T4
+- 已完成：T0、T1、T2
+- 进行中：T3
+- 未开始：T4
 - 阻塞项：无

@@ -355,3 +355,37 @@ fn file_schedule_state_store_round_trip() {
 
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn file_revocation_alert_sink_tiered_offload_lists_cold_and_hot_records() {
+    let root = temp_membership_dir("reconcile-alert-sink-tiered");
+    fs::create_dir_all(&root).expect("create temp dir");
+    let sink = crate::FileMembershipRevocationAlertSink::new(&root).expect("new sink");
+
+    let base_ms = 7_000_i64;
+    let total = 4_100_i64;
+    for offset in 0..total {
+        let mut alert = sample_alert("w1", "node-a", "reconcile_diverged");
+        alert.detected_at_ms = base_ms + offset;
+        sink.emit(&alert).expect("emit alert");
+    }
+
+    let alerts = sink.list("w1").expect("list alerts");
+    assert_eq!(alerts.len(), total as usize);
+    assert_eq!(
+        alerts.first().map(|alert| alert.detected_at_ms),
+        Some(base_ms)
+    );
+    assert_eq!(
+        alerts.last().map(|alert| alert.detected_at_ms),
+        Some(base_ms + total - 1)
+    );
+
+    let cold_refs_path = root.join("w1.revocation-alerts.cold.refs.jsonl");
+    assert!(
+        cold_refs_path.exists(),
+        "tiered offload should create cold refs when hot window overflows"
+    );
+
+    let _ = fs::remove_dir_all(root);
+}

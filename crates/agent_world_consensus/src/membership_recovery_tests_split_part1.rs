@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::distributed_net::{DistributedNetwork, InMemoryNetwork};
+use agent_world_distfs::LocalCasStore;
 
 use crate::{
     error::WorldError, FileMembershipRevocationAlertDeadLetterStore,
@@ -336,11 +337,13 @@ fn file_dead_letter_store_retention_compacts_records_to_archive() {
     assert_eq!(active[0].dropped_at_ms, 1001);
     assert_eq!(active[1].dropped_at_ms, 1002);
 
-    let archive_path = root.join("w1.node-a.revocation-alert-dead-letter.archive.jsonl");
-    let archive = fs::read_to_string(&archive_path).expect("read archive");
+    let archive_path = root.join("w1.node-a.revocation-alert-dead-letter.archive.refs.jsonl");
+    let cas_store = LocalCasStore::new(root.join("cas"));
+    let archive =
+        crate::tiered_file_log::collect_cold_jsonl_lines(archive_path.as_path(), &cas_store)
+            .expect("read archived dead-letter refs");
     let archived: Vec<MembershipRevocationAlertDeadLetterRecord> = archive
-        .lines()
-        .filter(|line| !line.trim().is_empty())
+        .iter()
         .map(|line| serde_json::from_str(line).expect("decode archived dead-letter line"))
         .collect();
     assert_eq!(archived.len(), 1);
@@ -380,11 +383,13 @@ fn file_dead_letter_store_retention_compacts_metrics_to_archive() {
     assert_eq!(active[0].0, 1201);
     assert_eq!(active[1].0, 1202);
 
-    let archive_path = root.join("w1.node-a.revocation-alert-delivery-metrics.archive.jsonl");
-    let archive = fs::read_to_string(&archive_path).expect("read metrics archive");
+    let archive_path = root.join("w1.node-a.revocation-alert-delivery-metrics.archive.refs.jsonl");
+    let cas_store = LocalCasStore::new(root.join("cas"));
+    let archive =
+        crate::tiered_file_log::collect_cold_jsonl_lines(archive_path.as_path(), &cas_store)
+            .expect("read archived metrics refs");
     let archived_export_times: Vec<i64> = archive
-        .lines()
-        .filter(|line| !line.trim().is_empty())
+        .iter()
         .map(|line| {
             let value: serde_json::Value =
                 serde_json::from_str(line).expect("decode archived metrics line");

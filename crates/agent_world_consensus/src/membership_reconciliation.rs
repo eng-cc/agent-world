@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use agent_world_distfs::LocalCasStore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -14,6 +14,7 @@ use super::membership::{
     MembershipSyncSubscription,
 };
 use super::membership_logic;
+use super::tiered_file_log;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MembershipRevocationCheckpointAnnounce {
@@ -176,13 +177,20 @@ impl MembershipRevocationAlertSink for InMemoryMembershipRevocationAlertSink {
 #[derive(Debug, Clone)]
 pub struct FileMembershipRevocationAlertSink {
     root_dir: PathBuf,
+    cas_store: LocalCasStore,
 }
+
+const REVOCATION_ALERT_HOT_MAX_RECORDS: usize = 4096;
+const REVOCATION_ALERT_COLD_SEGMENT_MAX_LINES: usize = 256;
 
 impl FileMembershipRevocationAlertSink {
     pub fn new(root_dir: impl Into<PathBuf>) -> Result<Self, WorldError> {
         let root_dir = root_dir.into();
         fs::create_dir_all(&root_dir)?;
-        Ok(Self { root_dir })
+        Ok(Self {
+            cas_store: LocalCasStore::new(root_dir.join("cas")),
+            root_dir,
+        })
     }
 
     pub fn root_dir(&self) -> &Path {
@@ -196,24 +204,27 @@ impl FileMembershipRevocationAlertSink {
             .join(format!("{world_id}.revocation-alerts.jsonl")))
     }
 
+    fn world_cold_refs_path(&self, world_id: &str) -> Result<PathBuf, WorldError> {
+        let world_id = membership_logic::normalized_world_id(world_id)?;
+        Ok(self
+            .root_dir
+            .join(format!("{world_id}.revocation-alerts.cold.refs.jsonl")))
+    }
+
     pub fn list(
         &self,
         world_id: &str,
     ) -> Result<Vec<MembershipRevocationAnomalyAlert>, WorldError> {
         let path = self.world_log_path(world_id)?;
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
+        let cold_refs_path = self.world_cold_refs_path(world_id)?;
+        let lines = tiered_file_log::collect_jsonl_lines_with_cas_refs(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+        )?;
         let mut alerts = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            alerts.push(serde_json::from_str(&line)?);
+        for line in lines {
+            alerts.push(serde_json::from_str(line.as_str())?);
         }
         Ok(alerts)
     }
@@ -222,17 +233,16 @@ impl FileMembershipRevocationAlertSink {
 impl MembershipRevocationAlertSink for FileMembershipRevocationAlertSink {
     fn emit(&self, alert: &MembershipRevocationAnomalyAlert) -> Result<(), WorldError> {
         let path = self.world_log_path(&alert.world_id)?;
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)?;
-            }
-        }
-
+        let cold_refs_path = self.world_cold_refs_path(&alert.world_id)?;
         let line = serde_json::to_string(alert)?;
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        file.write_all(line.as_bytes())?;
-        file.write_all(b"\n")?;
-        Ok(())
+        tiered_file_log::append_jsonl_line_with_cas_offload(
+            path.as_path(),
+            cold_refs_path.as_path(),
+            &self.cas_store,
+            REVOCATION_ALERT_HOT_MAX_RECORDS,
+            REVOCATION_ALERT_COLD_SEGMENT_MAX_LINES,
+            line.as_str(),
+        )
     }
 }
 

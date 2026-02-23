@@ -1,12 +1,14 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use agent_world_distfs::LocalCasStore;
 use serde::{Deserialize, Serialize};
 
 use super::super::error::WorldError;
+use crate::tiered_file_log;
 
 use super::types::{
     MembershipRevocationAlertDeadLetterRecord, MembershipRevocationAlertDeliveryMetrics,
@@ -14,6 +16,7 @@ use super::types::{
 
 const DEFAULT_MAX_DEAD_LETTER_RECORDS_PER_STREAM: usize = 10_000;
 const DEFAULT_MAX_DELIVERY_METRICS_PER_STREAM: usize = 10_000;
+const DEAD_LETTER_ARCHIVE_COLD_SEGMENT_MAX_LINES: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MembershipRevocationDeadLetterRetention {
@@ -260,6 +263,7 @@ struct FileMembershipRevocationAlertDeliveryMetricsLine {
 #[derive(Debug, Clone)]
 pub struct FileMembershipRevocationAlertDeadLetterStore {
     root_dir: PathBuf,
+    cas_store: LocalCasStore,
     retention: MembershipRevocationDeadLetterRetention,
 }
 
@@ -275,6 +279,7 @@ impl FileMembershipRevocationAlertDeadLetterStore {
         let root_dir = root_dir.into();
         fs::create_dir_all(&root_dir)?;
         Ok(Self {
+            cas_store: LocalCasStore::new(root_dir.join("cas")),
             root_dir,
             retention: retention.normalized(),
         })
@@ -298,7 +303,7 @@ impl FileMembershipRevocationAlertDeadLetterStore {
     ) -> Result<PathBuf, WorldError> {
         let (world_id, node_id) = super::normalized_schedule_key(world_id, node_id)?;
         Ok(self.root_dir.join(format!(
-            "{world_id}.{node_id}.revocation-alert-dead-letter.archive.jsonl"
+            "{world_id}.{node_id}.revocation-alert-dead-letter.archive.refs.jsonl"
         )))
     }
 
@@ -316,7 +321,7 @@ impl FileMembershipRevocationAlertDeadLetterStore {
     ) -> Result<PathBuf, WorldError> {
         let (world_id, node_id) = super::normalized_schedule_key(world_id, node_id)?;
         Ok(self.root_dir.join(format!(
-            "{world_id}.{node_id}.revocation-alert-delivery-metrics.archive.jsonl"
+            "{world_id}.{node_id}.revocation-alert-delivery-metrics.archive.refs.jsonl"
         )))
     }
 
@@ -326,60 +331,13 @@ impl FileMembershipRevocationAlertDeadLetterStore {
         archive_path: &Path,
         max_entries: usize,
     ) -> Result<(), WorldError> {
-        if !path.exists() {
-            return Ok(());
-        }
-
-        let max_entries = max_entries.max(1);
-        let mut retained = VecDeque::with_capacity(max_entries);
-        let mut overflowed = false;
-        let mut archive_file = None;
-
-        let file = OpenOptions::new().read(true).open(path)?;
-        let reader = BufReader::new(file);
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-
-            retained.push_back(line);
-            if retained.len() <= max_entries {
-                continue;
-            }
-
-            overflowed = true;
-            let dropped = retained.pop_front().ok_or_else(|| {
-                WorldError::Io("membership revocation dead-letter compaction underflow".into())
-            })?;
-
-            if archive_file.is_none() {
-                if let Some(parent) = archive_path.parent() {
-                    if !parent.as_os_str().is_empty() {
-                        fs::create_dir_all(parent)?;
-                    }
-                }
-                archive_file = Some(
-                    OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(archive_path)?,
-                );
-            }
-
-            let writer = archive_file.as_mut().ok_or_else(|| {
-                WorldError::Io("membership revocation dead-letter archive open failed".into())
-            })?;
-            writer.write_all(dropped.as_bytes())?;
-            writer.write_all(b"\n")?;
-        }
-
-        if !overflowed {
-            return Ok(());
-        }
-
-        let retained: Vec<String> = retained.into_iter().collect();
-        write_jsonl_lines(path, &retained)
+        tiered_file_log::compact_jsonl_with_cas_offload(
+            path,
+            archive_path,
+            &self.cas_store,
+            max_entries,
+            DEAD_LETTER_ARCHIVE_COLD_SEGMENT_MAX_LINES,
+        )
     }
 
     pub fn list(
@@ -532,20 +490,4 @@ impl MembershipRevocationAlertDeadLetterStore for FileMembershipRevocationAlertD
     ) -> Result<Vec<(i64, MembershipRevocationAlertDeliveryMetrics)>, WorldError> {
         FileMembershipRevocationAlertDeadLetterStore::list_delivery_metrics(self, world_id, node_id)
     }
-}
-
-fn write_jsonl_lines(path: &Path, lines: &[String]) -> Result<(), WorldError> {
-    if lines.is_empty() {
-        if path.exists() {
-            fs::remove_file(path)?;
-        }
-        return Ok(());
-    }
-    let mut payload = String::new();
-    for line in lines {
-        payload.push_str(line);
-        payload.push('\n');
-    }
-    fs::write(path, payload)?;
-    Ok(())
 }
