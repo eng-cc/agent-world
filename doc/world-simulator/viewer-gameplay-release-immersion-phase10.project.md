@@ -4,7 +4,7 @@
 - [x] VRI10P0：建立第十阶段设计文档与项目管理文档。
 - [x] VRI10P1：修复教程进度跳步并强化第 4 步动作文案（含单测）。
 - [x] VRI10P2：实现隐藏态引导层减噪策略并完成定向验证。
-- [ ] VRI10P3：执行回归与 Playwright 新手流程复测并完成文档收口。
+- [x] VRI10P3：执行回归与 Playwright 新手流程复测并完成文档收口。
 
 ## 依赖
 - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
@@ -15,6 +15,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VRI10P2 完成，VRI10P3 进行中。
+- 当前阶段：VRI10P3 完成（第十阶段收口）。
 - 阻塞项：无。
-- 最近更新：玩家模式隐藏态入口改为“仅边缘抽屉 + 任务 HUD 指挥入口”，右上大入口卡下线并完成定向测试验证。
+- 最近更新：S5 回归（`agent_world_viewer` 全量测试 + wasm check）与 S6 Playwright 新手流程复测完成，阶段任务全部闭环。

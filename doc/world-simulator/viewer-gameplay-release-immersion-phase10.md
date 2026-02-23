@@ -43,8 +43,22 @@
 
 ## 风险
 - 风险 1：第 4 步门槛提高后，部分场景下完成速度下降。
-  - 对策：采用“任一有效世界事件即可”策略，避免过严卡死。
+  - 对策：采用“历史事件不计入、仅新反馈事件计入”策略，避免首帧秒完成同时防止门槛过严。
 - 风险 2：隐藏态入口卡减弱后可发现性下降。
   - 对策：保留边缘呼出入口与任务 HUD 指挥按钮双入口。
 - 风险 3：文案更具体后中英文一致性回归。
   - 对策：同步更新中英文文案并覆盖关键断言测试。
+
+## 验收记录（VRI10P3）
+- 回归命令：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer`
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown`
+- Web 闭环（Playwright）：
+  - 使用 `world_viewer_live + run-viewer-web.sh + playwright_cli.sh` 复测新手流程（隐藏态 -> 展开面板 -> 选择目标 -> 隐藏态复查）。
+  - 控制台记录：`.playwright-cli/console-2026-02-23T13-41-21-606Z.log`（`Errors: 0`）。
+  - 截图产物：
+    - `output/playwright/viewer/phase10/step0-hidden-initial.png`
+    - `output/playwright/viewer/phase10/step1-open-panel-tab.png`
+    - `output/playwright/viewer/phase10/step2-selected-agent.png`
+    - `output/playwright/viewer/phase10/step3-after-play-feedback.png`
+    - `output/playwright/viewer/phase10/step4-hidden-no-top-card.png`
