@@ -7,10 +7,10 @@
 - [x] 项目文档：`doc/p2p/distfs-self-healing-runtime-polling-wiring-2026-02-23.project.md`
 
 ### T1 Runtime 接线实现
-- [ ] 新增 Node 级副本维护配置模型与校验
-- [ ] 增加 Runtime 轮询状态字段与 tick 调用链接线
-- [ ] 增加 Node 侧本地目标执行器（网络拉取 + 本地 CAS 写入）
-- [ ] 补齐单测（启用执行/缺失依赖跳过/非法配置）
+- [x] 新增 Node 级副本维护配置模型与校验
+- [x] 增加 Runtime 轮询状态字段与 tick 调用链接线
+- [x] 增加 Node 侧本地目标执行器（网络拉取 + 本地 CAS 写入）
+- [x] 补齐单测（启用执行/缺失依赖跳过/非法配置）
 
 ### T2 收口
 - [ ] 回归：`agent_world_node`、`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`
@@ -26,7 +26,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0
-- 进行中：T1
-- 未开始：T2
+- 已完成：T0、T1
+- 进行中：T2
+- 未开始：无
 - 阻塞项：无

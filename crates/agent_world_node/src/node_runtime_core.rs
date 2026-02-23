@@ -2,6 +2,9 @@ use std::fmt;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
+use agent_world_proto::distributed_dht as proto_dht;
+use agent_world_proto::world_error::WorldError as ProtoWorldError;
+
 use crate::{
     NodeCommittedActionBatch, NodeConfig, NodeConsensusAction, NodeConsensusSnapshot, NodeError,
     NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
@@ -11,6 +14,7 @@ use crate::{
 pub(super) struct RuntimeState {
     pub(super) tick_count: u64,
     pub(super) last_tick_unix_ms: Option<i64>,
+    pub(super) replica_maintenance_last_polled_at_ms: Option<i64>,
     pub(super) consensus: NodeConsensusSnapshot,
     pub(super) last_error: Option<String>,
 }
@@ -20,6 +24,7 @@ impl Default for RuntimeState {
         Self {
             tick_count: 0,
             last_tick_unix_ms: None,
+            replica_maintenance_last_polled_at_ms: None,
             consensus: NodeConsensusSnapshot::default(),
             last_error: None,
         }
@@ -49,6 +54,7 @@ impl NodeRuntime {
             pending_consensus_actions: Arc::new(Mutex::new(Vec::new())),
             committed_action_batches: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            replica_maintenance_dht: None,
             state: Arc::new(Mutex::new(RuntimeState::default())),
             stop_tx: None,
             worker: None,
@@ -65,6 +71,14 @@ impl NodeRuntime {
         T: NodeExecutionHook + 'static,
     {
         self.execution_hook = Some(Arc::new(Mutex::new(Box::new(hook))));
+        self
+    }
+
+    pub fn with_replica_maintenance_dht(
+        mut self,
+        dht: Arc<dyn proto_dht::DistributedDht<ProtoWorldError> + Send + Sync>,
+    ) -> Self {
+        self.replica_maintenance_dht = Some(dht);
         self
     }
 

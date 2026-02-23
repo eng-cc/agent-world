@@ -720,6 +720,16 @@ impl ReplicationRuntime {
         load_blob_from_root(self.config.root_dir.as_path(), content_hash)
     }
 
+    pub(crate) fn store_blob_by_hash(
+        &self,
+        content_hash: &str,
+        blob: &[u8],
+    ) -> Result<(), NodeError> {
+        self.store
+            .put(content_hash, blob)
+            .map_err(distfs_error_to_node_error)
+    }
+
     pub(crate) fn build_fetch_commit_request(
         &self,
         world_id: &str,

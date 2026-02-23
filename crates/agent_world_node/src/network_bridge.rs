@@ -162,6 +162,28 @@ impl ReplicationNetworkEndpoint {
             reason: format!("decode replication response {} failed: {}", protocol, err),
         })
     }
+
+    pub(crate) fn request_json_with_providers<Req, Resp>(
+        &self,
+        protocol: &str,
+        request: &Req,
+        providers: &[String],
+    ) -> Result<Resp, NodeError>
+    where
+        Req: Serialize,
+        Resp: DeserializeOwned,
+    {
+        let payload = serde_json::to_vec(request).map_err(|err| NodeError::Replication {
+            reason: format!("serialize replication request {} failed: {}", protocol, err),
+        })?;
+        let response_bytes = self
+            .network
+            .request_with_providers(protocol, payload.as_slice(), providers)
+            .map_err(network_err)?;
+        serde_json::from_slice::<Resp>(&response_bytes).map_err(|err| NodeError::Replication {
+            reason: format!("decode replication response {} failed: {}", protocol, err),
+        })
+    }
 }
 
 pub(crate) struct ConsensusNetworkEndpoint {

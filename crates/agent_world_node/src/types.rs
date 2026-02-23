@@ -14,6 +14,8 @@ const DEFAULT_MAX_CONSENSUS_ACTION_PAYLOAD_BYTES: usize = 256 * 1024;
 const DEFAULT_MAX_COMMITTED_ACTION_BATCHES: usize = 4096;
 const DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS: usize = 1024;
 const DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS: i64 = 10 * 60 * 1000;
+const DEFAULT_REPLICA_MAINTENANCE_MAX_CONTENT_HASH_SAMPLES: usize = 128;
+const DEFAULT_REPLICA_MAINTENANCE_POLL_INTERVAL_MS: i64 = 60_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -137,8 +139,37 @@ pub struct NodeConfig {
     pub max_committed_action_batches: usize,
     pub max_dynamic_gossip_peers: usize,
     pub dynamic_gossip_peer_ttl_ms: i64,
+    pub replica_maintenance: Option<NodeReplicaMaintenanceConfig>,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NodeReplicaMaintenanceConfig {
+    pub enabled: bool,
+    pub max_content_hash_samples_per_round: usize,
+    pub target_replicas_per_blob: usize,
+    pub max_repairs_per_round: usize,
+    pub max_rebalances_per_round: usize,
+    pub rebalance_source_load_min_per_mille: u16,
+    pub rebalance_target_load_max_per_mille: u16,
+    pub poll_interval_ms: i64,
+}
+
+impl Default for NodeReplicaMaintenanceConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_content_hash_samples_per_round:
+                DEFAULT_REPLICA_MAINTENANCE_MAX_CONTENT_HASH_SAMPLES,
+            target_replicas_per_blob: 3,
+            max_repairs_per_round: 32,
+            max_rebalances_per_round: 32,
+            rebalance_source_load_min_per_mille: 850,
+            rebalance_target_load_max_per_mille: 450,
+            poll_interval_ms: DEFAULT_REPLICA_MAINTENANCE_POLL_INTERVAL_MS,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,6 +221,7 @@ impl NodeConfig {
             max_committed_action_batches: DEFAULT_MAX_COMMITTED_ACTION_BATCHES,
             max_dynamic_gossip_peers: DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS,
             dynamic_gossip_peer_ttl_ms: DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS,
+            replica_maintenance: None,
             gossip: None,
             replication: None,
         })
@@ -369,6 +401,30 @@ impl NodeConfig {
     pub fn with_replication(mut self, replication: NodeReplicationConfig) -> Self {
         self.replication = Some(replication);
         self
+    }
+
+    pub fn with_replica_maintenance(
+        mut self,
+        replica_maintenance: NodeReplicaMaintenanceConfig,
+    ) -> Result<Self, NodeError> {
+        if replica_maintenance.max_content_hash_samples_per_round == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "replica_maintenance.max_content_hash_samples_per_round must be positive"
+                    .to_string(),
+            });
+        }
+        if replica_maintenance.target_replicas_per_blob == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "replica_maintenance.target_replicas_per_blob must be positive".to_string(),
+            });
+        }
+        if replica_maintenance.poll_interval_ms <= 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "replica_maintenance.poll_interval_ms must be positive".to_string(),
+            });
+        }
+        self.replica_maintenance = Some(replica_maintenance);
+        Ok(self)
     }
 
     fn refresh_gossip_limits(&mut self) {
