@@ -184,7 +184,7 @@ fn publish_and_drain_membership_change_announcement() {
 }
 
 #[test]
-fn restore_membership_from_dht_applies_replace_snapshot() {
+fn restore_membership_from_dht_rejects_unsigned_snapshot_by_default() {
     let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let dht = InMemoryDht::new();
     let sync_client = MembershipSyncClient::new(Arc::clone(&network));
@@ -193,13 +193,13 @@ fn restore_membership_from_dht_applies_replace_snapshot() {
     dht.put_membership_directory("w1", &snapshot)
         .expect("put snapshot");
 
-    let restored = sync_client
+    let err = sync_client
         .restore_membership_from_dht("w1", &mut consensus, &dht)
-        .expect("restore membership")
-        .expect("restored result");
-
-    assert!(restored.applied);
-    assert!(restored.validators.iter().any(|id| id == "seq-4"));
+        .expect_err("unsigned snapshot should be rejected by default policy");
+    let WorldError::DistributedValidationFailed { reason } = err else {
+        panic!("expected DistributedValidationFailed");
+    };
+    assert!(reason.contains("missing signature"));
 }
 
 #[test]

@@ -55,6 +55,29 @@ fn in_memory_publish_delivers_to_subscribers() {
 }
 
 #[test]
+fn in_memory_publish_bounded_subscription_inbox_evicts_oldest_messages() {
+    let network = InMemoryNetwork::new();
+    let subscription = network.subscribe("aw.w1.action").expect("subscribe");
+    let max_messages = proto_net::DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES;
+    let total_messages = max_messages + 8;
+
+    for idx in 0..total_messages {
+        let payload = format!("payload-{idx}");
+        network
+            .publish("aw.w1.action", payload.as_bytes())
+            .expect("publish");
+    }
+
+    let messages = subscription.drain();
+    assert_eq!(messages.len(), max_messages);
+    assert_eq!(messages.first(), Some(&b"payload-8".to_vec()));
+    assert_eq!(
+        messages.last(),
+        Some(&format!("payload-{}", total_messages - 1).into_bytes())
+    );
+}
+
+#[test]
 fn gateway_publishes_action() {
     let network: Arc<dyn DistributedNetwork + Send + Sync> = Arc::new(InMemoryNetwork::new());
     let subscription = network.subscribe("aw.w1.action").expect("subscribe");

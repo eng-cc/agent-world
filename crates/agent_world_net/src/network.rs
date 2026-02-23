@@ -39,11 +39,12 @@ impl proto_net::DistributedNetwork<WorldError> for InMemoryNetwork {
             let mut published = self.published.lock().expect("lock published");
             published.push(message.clone());
         }
-        let mut inbox = self.inbox.lock().expect("lock inbox");
-        inbox
-            .entry(topic.to_string())
-            .or_default()
-            .push(message.payload);
+        proto_net::push_bounded_inbox_message(
+            &self.inbox,
+            topic,
+            message.payload,
+            proto_net::DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES,
+        );
         Ok(())
     }
 

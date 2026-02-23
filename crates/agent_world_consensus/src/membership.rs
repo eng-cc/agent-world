@@ -1209,13 +1209,12 @@ impl MembershipSyncClient {
         consensus: &mut QuorumConsensus,
         dht: &(dyn DistributedDht + Send + Sync),
     ) -> Result<Option<ConsensusMembershipChangeResult>, WorldError> {
+        let policy = MembershipSnapshotRestorePolicy {
+            require_signature: true,
+            ..MembershipSnapshotRestorePolicy::default()
+        };
         let report = self.restore_membership_from_dht_verified_with_audit(
-            world_id,
-            consensus,
-            dht,
-            None,
-            None,
-            &MembershipSnapshotRestorePolicy::default(),
+            world_id, consensus, dht, None, None, &policy,
         )?;
         restore_result_from_audit(report)
     }

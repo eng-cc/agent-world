@@ -22,7 +22,8 @@ use agent_world_proto::distributed::{
 };
 use agent_world_proto::distributed_dht::{MembershipDirectorySnapshot, ProviderRecord};
 use agent_world_proto::distributed_net::{
-    NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription,
+    push_bounded_inbox_message, NetworkMessage, NetworkRequest, NetworkResponse,
+    NetworkSubscription, DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES,
 };
 
 use crate::util::{to_canonical_cbor, unix_now_ms_i64};
@@ -389,8 +390,12 @@ impl Libp2pNetwork {
                                         .get(&message.topic)
                                         .cloned()
                                         .unwrap_or_else(|| message.topic.as_str().to_string());
-                                    let mut inbox = event_inbox.lock().expect("lock inbox");
-                                    inbox.entry(topic).or_default().push(message.data);
+                                    push_bounded_inbox_message(
+                                        &event_inbox,
+                                        topic.as_str(),
+                                        message.data,
+                                        DEFAULT_SUBSCRIPTION_INBOX_MAX_MESSAGES,
+                                    );
                                 }
                                 SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(event)) => {
                                     match event {
