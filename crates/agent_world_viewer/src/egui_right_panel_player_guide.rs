@@ -1,4 +1,5 @@
 use bevy_egui::egui;
+use std::collections::HashMap;
 
 use crate::{RightPanelLayoutState, ViewerSelection};
 
@@ -150,6 +151,44 @@ pub(super) fn player_onboarding_dismiss(locale: crate::i18n::UiLocale) -> &'stat
     }
 }
 
+pub(super) fn render_player_guide_progress_lines(
+    ui: &mut egui::Ui,
+    locale: crate::i18n::UiLocale,
+    progress: PlayerGuideProgressSnapshot,
+    step: PlayerGuideStep,
+    tone: egui::Color32,
+) {
+    ui.small(format!(
+        "{} {}/4",
+        player_guide_progress_badge(locale),
+        progress.completed_steps()
+    ));
+    let steps = [
+        PlayerGuideStep::ConnectWorld,
+        PlayerGuideStep::OpenPanel,
+        PlayerGuideStep::SelectTarget,
+        PlayerGuideStep::ExploreAction,
+    ];
+    for item in steps {
+        let marker = if progress.is_step_complete(item) {
+            "✓"
+        } else if item == step {
+            "▶"
+        } else {
+            "·"
+        };
+        ui.small(
+            egui::RichText::new(format!("{marker} {}", player_goal_title(item, locale))).color(
+                if item == step {
+                    tone
+                } else {
+                    egui::Color32::from_gray(178)
+                },
+            ),
+        );
+    }
+}
+
 fn player_current_tick(state: &crate::ViewerState) -> u64 {
     state
         .snapshot
@@ -279,6 +318,13 @@ pub(super) struct PlayerRewardFeedbackSnapshot {
     pub(super) complete: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct PlayerMiniMapPoint {
+    pub(super) x: f32,
+    pub(super) y: f32,
+    pub(super) selected: bool,
+}
+
 pub(super) fn build_player_mission_loop_snapshot(
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
@@ -343,8 +389,180 @@ pub(super) fn build_player_reward_feedback_snapshot(
     }
 }
 
+pub(super) fn resolve_selected_location_id_for_minimap(
+    selection: &ViewerSelection,
+    agent_locations: &HashMap<String, String>,
+) -> Option<String> {
+    let current = selection.current.as_ref()?;
+    match current.kind {
+        crate::SelectionKind::Location => Some(current.id.clone()),
+        crate::SelectionKind::Agent => agent_locations.get(current.id.as_str()).cloned(),
+        _ => None,
+    }
+}
+
+pub(super) fn build_player_minimap_points(
+    raw_points: &[(String, f32, f32)],
+    selected_location_id: Option<&str>,
+) -> Vec<PlayerMiniMapPoint> {
+    if raw_points.is_empty() {
+        return Vec::new();
+    }
+
+    let mut sorted_points = raw_points.to_vec();
+    sorted_points.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let mut min_x = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut min_z = f32::INFINITY;
+    let mut max_z = f32::NEG_INFINITY;
+    for (_, x, z) in &sorted_points {
+        min_x = min_x.min(*x);
+        max_x = max_x.max(*x);
+        min_z = min_z.min(*z);
+        max_z = max_z.max(*z);
+    }
+
+    let span_x = (max_x - min_x).max(1.0);
+    let span_z = (max_z - min_z).max(1.0);
+    sorted_points
+        .into_iter()
+        .map(|(id, x, z)| PlayerMiniMapPoint {
+            x: ((x - min_x) / span_x).clamp(0.0, 1.0),
+            y: (1.0 - (z - min_z) / span_z).clamp(0.0, 1.0),
+            selected: selected_location_id == Some(id.as_str()),
+        })
+        .collect()
+}
+
+fn build_player_minimap_snapshot(
+    state: &crate::ViewerState,
+    selection: &ViewerSelection,
+) -> Vec<PlayerMiniMapPoint> {
+    let Some(snapshot) = state.snapshot.as_ref() else {
+        return Vec::new();
+    };
+    let agent_locations = snapshot
+        .model
+        .agents
+        .iter()
+        .map(|(agent_id, agent)| (agent_id.clone(), agent.location_id.clone()))
+        .collect::<HashMap<_, _>>();
+    let selected_location_id =
+        resolve_selected_location_id_for_minimap(selection, &agent_locations);
+    let raw_points = snapshot
+        .model
+        .locations
+        .iter()
+        .map(|(location_id, location)| {
+            (
+                location_id.clone(),
+                location.pos.x_cm as f32,
+                location.pos.z_cm as f32,
+            )
+        })
+        .collect::<Vec<_>>();
+    build_player_minimap_points(&raw_points, selected_location_id.as_deref())
+}
+
+fn render_player_minimap_card(
+    context: &egui::Context,
+    points: &[PlayerMiniMapPoint],
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let pulse = ((now_secs * 2.4).sin() * 0.5 + 0.5) as f32;
+    egui::Area::new(egui::Id::new("viewer-player-mini-map"))
+        .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-14.0, -14.0))
+        .movable(false)
+        .interactable(false)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgba_unmultiplied(13, 20, 32, 224))
+                .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(56, 96, 146)))
+                .corner_radius(egui::CornerRadius::same(10))
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_max_width(230.0);
+                    ui.small(if locale.is_zh() {
+                        "战术小地图"
+                    } else {
+                        "Tactical Mini-map"
+                    });
+                    let map_size = egui::vec2(190.0, 110.0);
+                    let (rect, _) = ui.allocate_exact_size(map_size, egui::Sense::hover());
+                    let painter = ui.painter_at(rect);
+                    painter.rect_filled(rect, 6.0, egui::Color32::from_rgb(20, 30, 46));
+                    painter.rect_stroke(
+                        rect,
+                        6.0,
+                        egui::Stroke::new(1.0, egui::Color32::from_rgb(48, 72, 108)),
+                        egui::StrokeKind::Outside,
+                    );
+                    painter.line_segment(
+                        [
+                            egui::pos2(rect.center().x, rect.top()),
+                            egui::pos2(rect.center().x, rect.bottom()),
+                        ],
+                        egui::Stroke::new(1.0, egui::Color32::from_rgb(40, 58, 86)),
+                    );
+                    painter.line_segment(
+                        [
+                            egui::pos2(rect.left(), rect.center().y),
+                            egui::pos2(rect.right(), rect.center().y),
+                        ],
+                        egui::Stroke::new(1.0, egui::Color32::from_rgb(40, 58, 86)),
+                    );
+
+                    let mut selected_count = 0usize;
+                    for point in points {
+                        let pos = egui::pos2(
+                            rect.left() + point.x * rect.width(),
+                            rect.top() + point.y * rect.height(),
+                        );
+                        if point.selected {
+                            selected_count = selected_count.saturating_add(1);
+                        }
+                        let radius = if point.selected {
+                            4.2 + 1.4 * pulse
+                        } else {
+                            2.8
+                        };
+                        let color = if point.selected {
+                            egui::Color32::from_rgb(244, 196, 96)
+                        } else {
+                            egui::Color32::from_rgb(92, 150, 218)
+                        };
+                        painter.circle_filled(pos, radius, color);
+                    }
+
+                    if points.is_empty() {
+                        ui.small(if locale.is_zh() {
+                            "等待位置数据..."
+                        } else {
+                            "Waiting for location data..."
+                        });
+                    } else {
+                        ui.small(format!(
+                            "{} {} | {} {}",
+                            if locale.is_zh() {
+                                "地点"
+                            } else {
+                                "Locations"
+                            },
+                            points.len(),
+                            if locale.is_zh() { "选中" } else { "Selected" },
+                            selected_count
+                        ));
+                    }
+                });
+        });
+}
+
 pub(super) fn render_player_mission_hud(
     context: &egui::Context,
+    state: &crate::ViewerState,
+    selection: &ViewerSelection,
     layout_state: &mut RightPanelLayoutState,
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
@@ -420,4 +638,7 @@ pub(super) fn render_player_mission_hud(
     if action_clicked && snapshot.action_opens_panel {
         layout_state.panel_hidden = false;
     }
+
+    let points = build_player_minimap_snapshot(state, selection);
+    render_player_minimap_card(context, &points, locale, now_secs);
 }

@@ -3,8 +3,8 @@ use super::egui_right_panel_player_card_motion::{
 };
 use super::egui_right_panel_player_guide::{
     build_player_guide_progress_snapshot, player_goal_badge, player_goal_color, player_goal_detail,
-    player_goal_title, player_guide_progress_badge, player_onboarding_dismiss,
-    player_onboarding_primary_action, player_onboarding_title, render_player_cinematic_intro,
+    player_goal_title, player_onboarding_dismiss, player_onboarding_primary_action,
+    player_onboarding_title, render_player_cinematic_intro, render_player_guide_progress_lines,
     render_player_mission_hud, PlayerGuideProgressSnapshot,
 };
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
@@ -997,44 +997,6 @@ pub(super) fn player_agent_chatter_snapshot(
     })
 }
 
-fn render_player_guide_progress_lines(
-    ui: &mut egui::Ui,
-    locale: crate::i18n::UiLocale,
-    progress: PlayerGuideProgressSnapshot,
-    step: PlayerGuideStep,
-    tone: egui::Color32,
-) {
-    ui.small(format!(
-        "{} {}/4",
-        player_guide_progress_badge(locale),
-        progress.completed_steps()
-    ));
-    let steps = [
-        PlayerGuideStep::ConnectWorld,
-        PlayerGuideStep::OpenPanel,
-        PlayerGuideStep::SelectTarget,
-        PlayerGuideStep::ExploreAction,
-    ];
-    for item in steps {
-        let marker = if progress.is_step_complete(item) {
-            "✓"
-        } else if item == step {
-            "▶"
-        } else {
-            "·"
-        };
-        ui.small(
-            egui::RichText::new(format!("{marker} {}", player_goal_title(item, locale))).color(
-                if item == step {
-                    tone
-                } else {
-                    egui::Color32::from_gray(178)
-                },
-            ),
-        );
-    }
-}
-
 pub(super) fn render_player_goal_hint(
     context: &egui::Context,
     onboarding: &PlayerOnboardingState,
@@ -1177,6 +1139,8 @@ pub(super) fn render_player_experience_layers(
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
     render_player_mission_hud(
         context,
+        state,
+        selection,
         layout_state,
         guide_step,
         guide_progress,
