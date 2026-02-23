@@ -48,3 +48,20 @@
   - 对策：采用低频、短位移动画，并支持衰减与静态回落。
 - 不同硬件下 Web 渲染差异导致观感不一致。
   - 对策：使用保守参数并在 Playwright Web 闭环中验证可见性与稳定性。
+
+## 验收与结论
+- 里程碑完成情况：
+  - M1/M2/M3/M4 全部完成。
+- 回归结果：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（307/307）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+- Web 闭环（S6）结果：
+  - `window.__AW_TEST__` 可访问，`getState()` 返回 `tick/connectionStatus`。
+  - 语义动作链可用：`runSteps(...)` + `sendControl("pause")` + `Tab` 面板切换。
+  - 控制台 `Errors: 0`（存在 2 条浏览器级 warning）。
+  - 验收截图：
+    - `output/playwright/viewer/viewer-web-vri4p3-player-overlays-panel-open.png`
+    - `output/playwright/viewer/viewer-web-vri4p3-player-overlays-panel-hidden.png`
+- 视觉观察（基于实际 Web 画面）：
+  - 氛围层与卡片描边脉冲已可见，目标/引导卡不再是纯静态工具感。
+  - 面板显隐场景均可看到 Player HUD 与“下一步目标”卡片，信息主次较第三阶段更清晰。
