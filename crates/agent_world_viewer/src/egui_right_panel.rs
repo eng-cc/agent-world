@@ -224,6 +224,7 @@ pub(super) fn render_right_side_panel_egui(
             locale,
             now_secs,
             layout_state.as_mut(),
+            module_visibility.as_mut(),
         );
         if layout_state.panel_hidden {
             if player_mode_enabled {

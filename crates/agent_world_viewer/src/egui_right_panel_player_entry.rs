@@ -3,9 +3,11 @@ use bevy_egui::egui;
 use crate::i18n::{
     panel_entry_hint_label, panel_toggle_shortcut_hint, right_panel_toggle_label, UiLocale,
 };
+use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 use crate::{RightPanelLayoutState, ViewerExperienceMode};
 
 use super::egui_right_panel_player_experience::player_entry_card_style;
+use super::egui_right_panel_player_guide::{apply_player_layout_preset, PlayerLayoutPreset};
 
 fn player_edge_drawer_hint(locale: UiLocale) -> &'static str {
     if locale.is_zh() {
@@ -15,12 +17,28 @@ fn player_edge_drawer_hint(locale: UiLocale) -> &'static str {
     }
 }
 
+fn player_command_entry_button_label(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "直接指挥"
+    } else {
+        "Command Now"
+    }
+}
+
+pub(super) fn activate_player_command_entry(
+    layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut RightPanelModuleVisibilityState,
+) {
+    apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
+}
+
 pub(super) fn render_hidden_panel_entry(
     context: &egui::Context,
     mode: ViewerExperienceMode,
     locale: UiLocale,
     now_secs: f64,
     layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut RightPanelModuleVisibilityState,
 ) {
     let player_mode_enabled = mode == ViewerExperienceMode::Player;
     let (entry_fill, entry_stroke) = if player_mode_enabled {
@@ -49,6 +67,13 @@ pub(super) fn render_hidden_panel_entry(
                     ui.small(panel_toggle_shortcut_hint(locale));
                     if ui.button(right_panel_toggle_label(false, locale)).clicked() {
                         layout_state.panel_hidden = false;
+                    }
+                    if player_mode_enabled
+                        && ui
+                            .button(player_command_entry_button_label(locale))
+                            .clicked()
+                    {
+                        activate_player_command_entry(layout_state, module_visibility);
                     }
                 });
         });
@@ -86,6 +111,12 @@ pub(super) fn render_hidden_panel_entry(
                         .clicked()
                     {
                         layout_state.panel_hidden = false;
+                    }
+                    if ui
+                        .small_button(if locale.is_zh() { "指挥" } else { "Command" })
+                        .clicked()
+                    {
+                        activate_player_command_entry(layout_state, module_visibility);
                     }
                 });
         });
