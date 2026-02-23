@@ -58,6 +58,8 @@ mod egui_right_panel_player_card_motion;
 mod egui_right_panel_player_entry;
 #[path = "egui_right_panel_player_experience.rs"]
 mod egui_right_panel_player_experience;
+#[path = "egui_right_panel_player_guide.rs"]
+mod egui_right_panel_player_guide;
 #[path = "egui_right_panel_text_utils.rs"]
 mod egui_right_panel_text_utils;
 #[path = "egui_right_panel_theme_runtime.rs"]

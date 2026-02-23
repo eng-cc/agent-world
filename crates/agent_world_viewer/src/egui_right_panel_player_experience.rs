@@ -1,6 +1,11 @@
 use super::egui_right_panel_player_card_motion::{
     build_player_card_transition_snapshot, sync_player_guide_transition, PlayerGuideTransitionState,
 };
+use super::egui_right_panel_player_guide::{
+    build_player_guide_progress_snapshot, player_goal_badge, player_goal_color, player_goal_detail,
+    player_goal_title, player_guide_progress_badge, player_onboarding_dismiss,
+    player_onboarding_primary_action, player_onboarding_title, PlayerGuideProgressSnapshot,
+};
 use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 use std::collections::BTreeSet;
@@ -702,89 +707,6 @@ pub(super) fn resolve_player_guide_step(
     }
 }
 
-fn player_goal_title(step: PlayerGuideStep, locale: crate::i18n::UiLocale) -> &'static str {
-    match (step, locale.is_zh()) {
-        (PlayerGuideStep::ConnectWorld, true) => "等待世界同步",
-        (PlayerGuideStep::ConnectWorld, false) => "Waiting For World Sync",
-        (PlayerGuideStep::OpenPanel, true) => "展开操作面板",
-        (PlayerGuideStep::OpenPanel, false) => "Open Control Panel",
-        (PlayerGuideStep::SelectTarget, true) => "选择一个目标",
-        (PlayerGuideStep::SelectTarget, false) => "Select A Target",
-        (PlayerGuideStep::ExploreAction, true) => "开始推进任务",
-        (PlayerGuideStep::ExploreAction, false) => "Advance The Run",
-    }
-}
-
-fn player_goal_detail(step: PlayerGuideStep, locale: crate::i18n::UiLocale) -> &'static str {
-    match (step, locale.is_zh()) {
-        (PlayerGuideStep::ConnectWorld, true) => "连接建立后，你将看到实时 Tick 与事件流。",
-        (PlayerGuideStep::ConnectWorld, false) => {
-            "Once connected, live ticks and events will start flowing."
-        }
-        (PlayerGuideStep::OpenPanel, true) => "按 Tab 或右上角入口按钮，打开面板查看操作入口。",
-        (PlayerGuideStep::OpenPanel, false) => {
-            "Press Tab or use the top-right toggle to open the panel."
-        }
-        (PlayerGuideStep::SelectTarget, true) => "点击场景中的 Agent 或地点，查看详情并触发联动。",
-        (PlayerGuideStep::SelectTarget, false) => {
-            "Click an agent or location in the scene to inspect and interact."
-        }
-        (PlayerGuideStep::ExploreAction, true) => "保持观察目标状态，按需执行移动、采集或建造。",
-        (PlayerGuideStep::ExploreAction, false) => {
-            "Track your target and execute move, harvest, or build actions."
-        }
-    }
-}
-
-fn player_goal_color(step: PlayerGuideStep) -> egui::Color32 {
-    match step {
-        PlayerGuideStep::ConnectWorld => egui::Color32::from_rgb(122, 88, 34),
-        PlayerGuideStep::OpenPanel => egui::Color32::from_rgb(44, 92, 152),
-        PlayerGuideStep::SelectTarget => egui::Color32::from_rgb(30, 112, 88),
-        PlayerGuideStep::ExploreAction => egui::Color32::from_rgb(38, 128, 74),
-    }
-}
-
-fn player_goal_badge(locale: crate::i18n::UiLocale) -> &'static str {
-    if locale.is_zh() {
-        "下一步目标"
-    } else {
-        "Next Goal"
-    }
-}
-
-fn player_onboarding_title(locale: crate::i18n::UiLocale) -> &'static str {
-    if locale.is_zh() {
-        "新手引导"
-    } else {
-        "Player Guide"
-    }
-}
-
-fn player_onboarding_primary_action(
-    step: PlayerGuideStep,
-    locale: crate::i18n::UiLocale,
-) -> &'static str {
-    match (step, locale.is_zh()) {
-        (PlayerGuideStep::ConnectWorld, true) => "知道了",
-        (PlayerGuideStep::ConnectWorld, false) => "Got it",
-        (PlayerGuideStep::OpenPanel, true) => "打开面板",
-        (PlayerGuideStep::OpenPanel, false) => "Open panel",
-        (PlayerGuideStep::SelectTarget, true) => "我来选择",
-        (PlayerGuideStep::SelectTarget, false) => "I'll select",
-        (PlayerGuideStep::ExploreAction, true) => "继续探索",
-        (PlayerGuideStep::ExploreAction, false) => "Keep playing",
-    }
-}
-
-fn player_onboarding_dismiss(locale: crate::i18n::UiLocale) -> &'static str {
-    if locale.is_zh() {
-        "关闭当前提示"
-    } else {
-        "Hide this tip"
-    }
-}
-
 fn player_connection_color(status: &crate::ConnectionStatus) -> egui::Color32 {
     match status {
         crate::ConnectionStatus::Connected => egui::Color32::from_rgb(36, 130, 72),
@@ -1074,10 +996,49 @@ pub(super) fn player_agent_chatter_snapshot(
     })
 }
 
+fn render_player_guide_progress_lines(
+    ui: &mut egui::Ui,
+    locale: crate::i18n::UiLocale,
+    progress: PlayerGuideProgressSnapshot,
+    step: PlayerGuideStep,
+    tone: egui::Color32,
+) {
+    ui.small(format!(
+        "{} {}/4",
+        player_guide_progress_badge(locale),
+        progress.completed_steps()
+    ));
+    let steps = [
+        PlayerGuideStep::ConnectWorld,
+        PlayerGuideStep::OpenPanel,
+        PlayerGuideStep::SelectTarget,
+        PlayerGuideStep::ExploreAction,
+    ];
+    for item in steps {
+        let marker = if progress.is_step_complete(item) {
+            "✓"
+        } else if item == step {
+            "▶"
+        } else {
+            "·"
+        };
+        ui.small(
+            egui::RichText::new(format!("{marker} {}", player_goal_title(item, locale))).color(
+                if item == step {
+                    tone
+                } else {
+                    egui::Color32::from_gray(178)
+                },
+            ),
+        );
+    }
+}
+
 pub(super) fn render_player_goal_hint(
     context: &egui::Context,
     onboarding: &PlayerOnboardingState,
     step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
 ) {
@@ -1116,6 +1077,7 @@ pub(super) fn render_player_goal_hint(
                     ui.small(egui::RichText::new(player_goal_badge(locale)).color(tone));
                     ui.strong(player_goal_title(step, locale));
                     ui.small(player_goal_detail(step, locale));
+                    render_player_guide_progress_lines(ui, locale, progress, step, tone);
                 });
         });
 }
@@ -1124,6 +1086,7 @@ pub(super) fn render_player_onboarding_card(
     context: &egui::Context,
     onboarding: &mut PlayerOnboardingState,
     step: PlayerGuideStep,
+    progress: PlayerGuideProgressSnapshot,
     layout_state: &mut RightPanelLayoutState,
     locale: crate::i18n::UiLocale,
     now_secs: f64,
@@ -1173,6 +1136,7 @@ pub(super) fn render_player_onboarding_card(
                     );
                     ui.strong(player_goal_title(step, locale));
                     ui.label(player_goal_detail(step, locale));
+                    render_player_guide_progress_lines(ui, locale, progress, step, tone);
                     ui.horizontal_wrapped(|ui| {
                         primary_clicked = ui
                             .button(player_onboarding_primary_action(step, locale))
@@ -1205,15 +1169,25 @@ pub(super) fn render_player_experience_layers(
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
     sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
+    let guide_progress =
+        build_player_guide_progress_snapshot(&state.status, layout_state, selection);
     sync_player_guide_transition(&mut onboarding.guide_transition, guide_step, now_secs);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
     render_player_achievement_popups(context, achievements, locale, now_secs);
     render_agent_chatter_bubbles(context, achievements, now_secs);
-    render_player_goal_hint(context, onboarding, guide_step, locale, now_secs);
+    render_player_goal_hint(
+        context,
+        onboarding,
+        guide_step,
+        guide_progress,
+        locale,
+        now_secs,
+    );
     render_player_onboarding_card(
         context,
         onboarding,
         guide_step,
+        guide_progress,
         layout_state,
         locale,
         now_secs,
