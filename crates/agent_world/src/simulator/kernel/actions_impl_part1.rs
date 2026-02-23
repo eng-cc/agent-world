@@ -261,101 +261,161 @@ impl WorldKernel {
                 {
                     return WorldEventKind::ActionRejected { reason };
                 }
-                let Some(location) = self.model.locations.get(&to) else {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::LocationNotFound { location_id: to },
-                    };
-                };
-                let Some(agent) = self.model.agents.get_mut(&agent_id) else {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::AgentNotFound { agent_id },
-                    };
-                };
-                if agent.power.is_shutdown() {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::AgentShutdown { agent_id },
-                    };
-                }
-                if agent.location_id == to {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::AgentAlreadyAtLocation {
-                            agent_id,
-                            location_id: to,
-                        },
-                    };
-                }
-                let from = agent.location_id.clone();
-                let distance_cm = space_distance_cm(agent.pos, location.pos);
-                let physics = &self.config.physics;
-                let max_move_distance_cm = physics.max_move_distance_cm_per_tick;
-                if max_move_distance_cm > 0 && distance_cm > max_move_distance_cm {
-                    return WorldEventKind::ActionRejected {
-                        reason: RejectReason::MoveDistanceExceeded {
-                            distance_cm,
-                            max_distance_cm: max_move_distance_cm,
-                        },
-                    };
-                }
-                let max_move_speed_cm_per_s = physics.max_move_speed_cm_per_s;
-                if max_move_speed_cm_per_s > 0 {
-                    let time_step_s = physics.time_step_s.max(1);
-                    let required_speed_cm_per_s =
-                        (distance_cm + time_step_s - 1).saturating_div(time_step_s);
-                    if required_speed_cm_per_s > max_move_speed_cm_per_s {
+                let (from, distance_cm, electricity_cost, should_continue) = {
+                    let Some(agent) = self.model.agents.get_mut(&agent_id) else {
                         return WorldEventKind::ActionRejected {
-                            reason: RejectReason::MoveSpeedExceeded {
-                                required_speed_cm_per_s,
-                                max_speed_cm_per_s: max_move_speed_cm_per_s,
-                                time_step_s,
+                            reason: RejectReason::AgentNotFound { agent_id },
+                        };
+                    };
+                    if agent.power.is_shutdown() {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentShutdown { agent_id },
+                        };
+                    }
+                    if agent.kinematics.speed_cm_per_tick <= 0 {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::InvalidAmount {
+                                amount: agent.kinematics.speed_cm_per_tick,
                             },
                         };
                     }
-                }
-                let electricity_cost = self.config.movement_cost(distance_cm);
-                if electricity_cost > 0 {
-                    let available = agent.resources.get(ResourceKind::Electricity);
-                    if available < electricity_cost {
-                        return WorldEventKind::ActionRejected {
-                            reason: RejectReason::InsufficientResource {
-                                owner: ResourceOwner::Agent {
-                                    agent_id: agent.id.clone(),
+
+                    let continuing_move = agent.kinematics.move_target_location_id.is_some();
+                    if let Some(active_target) = agent.kinematics.move_target_location_id.as_ref() {
+                        if active_target != &to {
+                            return WorldEventKind::ActionRejected {
+                                reason: RejectReason::RuleDenied {
+                                    notes: vec![format!(
+                                        "agent {agent_id} is already moving to {active_target}"
+                                    )],
                                 },
-                                kind: ResourceKind::Electricity,
-                                requested: electricity_cost,
-                                available,
+                            };
+                        }
+                    } else if agent.location_id == to {
+                        return WorldEventKind::ActionRejected {
+                            reason: RejectReason::AgentAlreadyAtLocation {
+                                agent_id,
+                                location_id: to,
                             },
                         };
                     }
-                    if let Err(err) = agent
-                        .resources
-                        .remove(ResourceKind::Electricity, electricity_cost)
-                    {
-                        return WorldEventKind::ActionRejected {
-                            reason: match err {
-                                StockError::NegativeAmount { amount } => {
-                                    RejectReason::InvalidAmount { amount }
-                                }
-                                StockError::Insufficient {
-                                    requested,
-                                    available,
-                                    ..
-                                } => RejectReason::InsufficientResource {
-                                    owner: ResourceOwner::Agent {
-                                        agent_id: agent.id.clone(),
+
+                    let from = agent.location_id.clone();
+                    let mut electricity_cost = 0_i64;
+                    if !continuing_move {
+                        let distance_cm = space_distance_cm(agent.pos, to_pos);
+                        let physics = &self.config.physics;
+                        let max_move_distance_cm = physics.max_move_distance_cm_per_tick;
+                        if max_move_distance_cm > 0 && distance_cm > max_move_distance_cm {
+                            return WorldEventKind::ActionRejected {
+                                reason: RejectReason::MoveDistanceExceeded {
+                                    distance_cm,
+                                    max_distance_cm: max_move_distance_cm,
+                                },
+                            };
+                        }
+                        let max_move_speed_cm_per_s = physics.max_move_speed_cm_per_s;
+                        if max_move_speed_cm_per_s > 0 {
+                            let time_step_s = physics.time_step_s.max(1);
+                            let required_speed_cm_per_s =
+                                (distance_cm + time_step_s - 1).saturating_div(time_step_s);
+                            if required_speed_cm_per_s > max_move_speed_cm_per_s {
+                                return WorldEventKind::ActionRejected {
+                                    reason: RejectReason::MoveSpeedExceeded {
+                                        required_speed_cm_per_s,
+                                        max_speed_cm_per_s: max_move_speed_cm_per_s,
+                                        time_step_s,
                                     },
-                                    kind: ResourceKind::Electricity,
-                                    requested,
-                                    available,
-                                },
-                                StockError::Overflow { delta, .. } => {
-                                    RejectReason::InvalidAmount { amount: delta }
-                                }
-                            },
-                        };
+                                };
+                            }
+                        }
+                        electricity_cost = self.config.movement_cost(distance_cm);
+                        if electricity_cost > 0 {
+                            let available = agent.resources.get(ResourceKind::Electricity);
+                            if available < electricity_cost {
+                                return WorldEventKind::ActionRejected {
+                                    reason: RejectReason::InsufficientResource {
+                                        owner: ResourceOwner::Agent {
+                                            agent_id: agent.id.clone(),
+                                        },
+                                        kind: ResourceKind::Electricity,
+                                        requested: electricity_cost,
+                                        available,
+                                    },
+                                };
+                            }
+                            if let Err(err) = agent
+                                .resources
+                                .remove(ResourceKind::Electricity, electricity_cost)
+                            {
+                                return WorldEventKind::ActionRejected {
+                                    reason: match err {
+                                        StockError::NegativeAmount { amount } => {
+                                            RejectReason::InvalidAmount { amount }
+                                        }
+                                        StockError::Insufficient {
+                                            requested,
+                                            available,
+                                            ..
+                                        } => RejectReason::InsufficientResource {
+                                            owner: ResourceOwner::Agent {
+                                                agent_id: agent.id.clone(),
+                                            },
+                                            kind: ResourceKind::Electricity,
+                                            requested,
+                                            available,
+                                        },
+                                        StockError::Overflow { delta, .. } => {
+                                            RejectReason::InvalidAmount { amount: delta }
+                                        }
+                                    },
+                                };
+                            }
+                        }
+
+                        let speed_per_tick = agent.kinematics.speed_cm_per_tick.max(1);
+                        let eta_ticks = distance_cm
+                            .saturating_add(speed_per_tick.saturating_sub(1))
+                            .saturating_div(speed_per_tick)
+                            .max(1) as u64;
+                        agent.kinematics.move_target_location_id = Some(to.clone());
+                        agent.kinematics.move_target = Some(to_pos);
+                        agent.kinematics.move_started_at_tick = Some(self.time);
+                        agent.kinematics.move_eta_tick = Some(self.time.saturating_add(eta_ticks));
+                        agent.kinematics.move_remaining_cm = distance_cm;
                     }
+
+                    let target_pos = agent.kinematics.move_target.unwrap_or(to_pos);
+                    let remaining_cm = space_distance_cm(agent.pos, target_pos).max(0);
+                    let step_distance_cm =
+                        remaining_cm.min(agent.kinematics.speed_cm_per_tick.max(1));
+                    if step_distance_cm <= 0 {
+                        agent.pos = target_pos;
+                        agent.location_id = to.clone();
+                        agent.kinematics.clear_motion_state();
+                        (from, 0, electricity_cost, false)
+                    } else {
+                        let arrived = step_distance_cm >= remaining_cm;
+                        agent.pos = if arrived {
+                            target_pos
+                        } else {
+                            move_towards_geo_pos(agent.pos, target_pos, step_distance_cm)
+                        };
+                        if arrived {
+                            agent.location_id = to.clone();
+                            agent.kinematics.clear_motion_state();
+                        } else {
+                            agent.kinematics.move_remaining_cm = remaining_cm - step_distance_cm;
+                        }
+                        (from, step_distance_cm, electricity_cost, !arrived)
+                    }
+                };
+                if should_continue {
+                    self.submit_action_from_system(Action::MoveAgent {
+                        agent_id: agent_id.clone(),
+                        to: to.clone(),
+                    });
                 }
-                agent.location_id = to.clone();
-                agent.pos = location.pos;
                 WorldEventKind::AgentMoved {
                     agent_id,
                     from,
@@ -1153,5 +1213,24 @@ impl WorldKernel {
                 },
             },
         }
+    }
+}
+
+fn move_towards_geo_pos(from: GeoPos, to: GeoPos, step_cm: i64) -> GeoPos {
+    if step_cm <= 0 {
+        return from;
+    }
+    let dx = to.x_cm - from.x_cm;
+    let dy = to.y_cm - from.y_cm;
+    let dz = to.z_cm - from.z_cm;
+    let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+    if !distance.is_finite() || distance <= f64::EPSILON {
+        return to;
+    }
+    let ratio = (step_cm as f64 / distance).clamp(0.0, 1.0);
+    GeoPos {
+        x_cm: from.x_cm + dx * ratio,
+        y_cm: from.y_cm + dy * ratio,
+        z_cm: from.z_cm + dz * ratio,
     }
 }

@@ -524,6 +524,134 @@ fn kernel_rejects_move_to_same_location() {
 }
 
 #[test]
+fn kernel_move_agent_progresses_over_multiple_ticks_when_speed_is_low() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 0;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
+
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "target".to_string(),
+        pos: pos(300.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    let mut snapshot = kernel.snapshot();
+    snapshot
+        .model
+        .agents
+        .get_mut("agent-1")
+        .expect("agent exists")
+        .kinematics
+        .speed_cm_per_tick = 100;
+    kernel = WorldKernel::from_snapshot(snapshot, kernel.journal_snapshot()).expect("restore");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+
+    let first = kernel.step().expect("first move segment");
+    assert!(matches!(
+        first.kind,
+        WorldEventKind::AgentMoved {
+            distance_cm: 100,
+            electricity_cost: 0,
+            ..
+        }
+    ));
+    let agent = kernel.model().agents.get("agent-1").expect("agent exists");
+    assert_eq!(agent.location_id, "loc-1");
+
+    let second = kernel.step().expect("second move segment");
+    assert!(matches!(
+        second.kind,
+        WorldEventKind::AgentMoved {
+            distance_cm: 100,
+            electricity_cost: 0,
+            ..
+        }
+    ));
+    let agent = kernel.model().agents.get("agent-1").expect("agent exists");
+    assert_eq!(agent.location_id, "loc-1");
+
+    let third = kernel.step().expect("arrival segment");
+    assert!(matches!(
+        third.kind,
+        WorldEventKind::AgentMoved {
+            distance_cm: 100,
+            electricity_cost: 0,
+            ..
+        }
+    ));
+    let agent = kernel.model().agents.get("agent-1").expect("agent exists");
+    assert_eq!(agent.location_id, "loc-2");
+    assert_eq!(agent.pos, pos(300.0, 0.0));
+}
+
+#[test]
+fn kernel_rejects_move_with_non_positive_agent_speed() {
+    let mut config = WorldConfig::default();
+    config.move_cost_per_km_electricity = 0;
+    config.physics.max_move_distance_cm_per_tick = i64::MAX;
+    config.physics.max_move_speed_cm_per_s = i64::MAX;
+
+    let mut kernel = WorldKernel::with_config(config);
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-1".to_string(),
+        name: "base".to_string(),
+        pos: pos(0.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterLocation {
+        location_id: "loc-2".to_string(),
+        name: "target".to_string(),
+        pos: pos(10.0, 0.0),
+        profile: LocationProfile::default(),
+    });
+    kernel.submit_action(Action::RegisterAgent {
+        agent_id: "agent-1".to_string(),
+        location_id: "loc-1".to_string(),
+    });
+    kernel.step_until_empty();
+
+    let mut snapshot = kernel.snapshot();
+    snapshot
+        .model
+        .agents
+        .get_mut("agent-1")
+        .expect("agent exists")
+        .kinematics
+        .speed_cm_per_tick = 0;
+    kernel = WorldKernel::from_snapshot(snapshot, kernel.journal_snapshot()).expect("restore");
+
+    kernel.submit_action(Action::MoveAgent {
+        agent_id: "agent-1".to_string(),
+        to: "loc-2".to_string(),
+    });
+    let event = kernel.step().expect("reject event");
+    assert!(matches!(
+        event.kind,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::InvalidAmount { amount: 0 }
+        }
+    ));
+}
+
+#[test]
 fn kernel_observe_visibility_range() {
     let mut kernel = WorldKernel::new();
     kernel.submit_action(Action::RegisterLocation {

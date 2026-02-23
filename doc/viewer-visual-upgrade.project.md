@@ -3,7 +3,7 @@
 ## 任务拆解
 - [x] VVU-P0：修订设计文档，完成 Phase 10 后增量定位与数据语义对齐。
 - [x] VVU-P1：在模拟层新增 Agent 运动学字段与默认序列化兼容（`serde(default)`）。
-- [ ] VVU-P2：将 Agent 移动改造为耗时推进（按 tick 更新），补齐内核边界测试。
+- [x] VVU-P2：将 Agent 移动改造为耗时推进（按 tick 更新），补齐内核边界测试。
 - [ ] VVU-P3：打通快照到 Viewer 的速度/方向数据链路，并落地方向与速度视觉反馈。
 - [ ] VVU-P4：按 `fragment_budget` 落地 Location 破损映射，移除旧口径分支。
 - [ ] VVU-P5：完成材料差异化增强（重点收敛 Carbon/Composite 专属效果）。
@@ -21,6 +21,6 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：VVU-P1 完成。
-- 下一阶段：VVU-P2（Agent 耗时移动改造）待启动。
+- 当前阶段：VVU-P2 完成。
+- 下一阶段：VVU-P3（快照到 Viewer 的速度/方向链路）进行中。
 - 阻塞项：无。

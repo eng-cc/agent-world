@@ -31,6 +31,8 @@ pub use module_market::{
 
 const MOVE_COST_REFERENCE_TIME_STEP_S: i64 = 10;
 const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
+const DEFAULT_AGENT_SPEED_CM_PER_TICK: i64 =
+    DEFAULT_CLOUD_WIDTH_CM + DEFAULT_CLOUD_DEPTH_CM + DEFAULT_CLOUD_HEIGHT_CM;
 
 // ============================================================================
 // World Entities
@@ -41,6 +43,9 @@ const MOVE_COST_REFERENCE_POWER_UNIT_J: i64 = 1_000;
 pub struct AgentKinematics {
     /// Planned movement speed used by time-based movement semantics.
     pub speed_cm_per_tick: i64,
+    /// Optional movement target location id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_target_location_id: Option<LocationId>,
     /// Optional movement target in absolute world position.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub move_target: Option<GeoPos>,
@@ -57,12 +62,23 @@ pub struct AgentKinematics {
 impl Default for AgentKinematics {
     fn default() -> Self {
         Self {
-            speed_cm_per_tick: 1_000,
+            speed_cm_per_tick: DEFAULT_AGENT_SPEED_CM_PER_TICK,
+            move_target_location_id: None,
             move_target: None,
             move_started_at_tick: None,
             move_eta_tick: None,
             move_remaining_cm: 0,
         }
+    }
+}
+
+impl AgentKinematics {
+    pub fn clear_motion_state(&mut self) {
+        self.move_target_location_id = None;
+        self.move_target = None;
+        self.move_started_at_tick = None;
+        self.move_eta_tick = None;
+        self.move_remaining_cm = 0;
     }
 }
 

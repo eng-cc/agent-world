@@ -73,6 +73,7 @@
 ```rust
 pub struct AgentKinematics {
     pub speed_cm_per_tick: i64,            // 速度下限保护 >0
+    pub move_target_location_id: Option<LocationId>, // 目标 Location（用于多 tick 续走）
     pub move_target: Option<GeoPos>,       // 当前目标点
     pub move_started_at_tick: Option<u64>,
     pub move_eta_tick: Option<u64>,        // 预计到达 tick
