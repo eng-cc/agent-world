@@ -718,6 +718,45 @@ fn player_onboarding_visibility_tracks_dismissed_step_only() {
 }
 
 #[test]
+fn build_player_hud_snapshot_formats_connected_selected_state() {
+    let state = sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![sample_rejected_event(1, 1), sample_agent_moved_event(2, 2)],
+    );
+    let selection = sample_selected_viewer_selection();
+    let snapshot = build_player_hud_snapshot(
+        &state,
+        &selection,
+        PlayerGuideStep::ExploreAction,
+        crate::i18n::UiLocale::EnUs,
+    );
+
+    assert_eq!(snapshot.connection, "Connected");
+    assert_eq!(snapshot.tick, 0);
+    assert_eq!(snapshot.events, 2);
+    assert_eq!(snapshot.objective, "Advance The Run");
+    assert!(snapshot.selection.contains("agent-1"));
+}
+
+#[test]
+fn build_player_hud_snapshot_uses_unselected_fallback_text() {
+    let state = sample_viewer_state(crate::ConnectionStatus::Connecting, Vec::new());
+    let selection = crate::ViewerSelection::default();
+    let snapshot = build_player_hud_snapshot(
+        &state,
+        &selection,
+        PlayerGuideStep::OpenPanel,
+        crate::i18n::UiLocale::ZhCn,
+    );
+
+    assert_eq!(snapshot.connection, "连接中");
+    assert_eq!(snapshot.tick, 0);
+    assert_eq!(snapshot.events, 0);
+    assert_eq!(snapshot.selection, "未选择");
+    assert_eq!(snapshot.objective, "展开操作面板");
+}
+
+#[test]
 fn truncate_observe_text_keeps_short_text() {
     let text = "观察";
     assert_eq!(truncate_observe_text(text, 8), text);

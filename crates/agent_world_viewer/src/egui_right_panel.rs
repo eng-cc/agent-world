@@ -1,4 +1,3 @@
-use agent_world::simulator::WorldEventKind;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -56,6 +55,8 @@ mod egui_right_panel_env;
 mod egui_right_panel_layout;
 #[path = "egui_right_panel_player_experience.rs"]
 mod egui_right_panel_player_experience;
+#[path = "egui_right_panel_text_utils.rs"]
+mod egui_right_panel_text_utils;
 #[path = "egui_right_panel_theme_runtime.rs"]
 mod egui_right_panel_theme_runtime;
 
@@ -72,12 +73,15 @@ use egui_right_panel_env::{
     is_ops_nav_panel_enabled, is_product_style_enabled, is_product_style_motion_enabled,
 };
 use egui_right_panel_layout::{
-    adaptive_chat_panel_default_width, adaptive_chat_panel_max_width,
-    adaptive_chat_panel_max_width_for_side_layout, adaptive_main_panel_max_width_for_layout,
-    adaptive_main_panel_min_width, adaptive_panel_default_width, adaptive_panel_max_width,
-    is_compact_chat_layout, panel_toggle_shortcut_pressed, should_show_chat_panel,
-    total_right_panel_width,
+    adaptive_chat_panel_default_width, adaptive_chat_panel_max_width_for_side_layout,
+    adaptive_main_panel_max_width_for_layout, adaptive_main_panel_min_width,
+    adaptive_panel_default_width, is_compact_chat_layout, panel_toggle_shortcut_pressed,
+    should_show_chat_panel, total_right_panel_width,
 };
+#[cfg(test)]
+use egui_right_panel_layout::{adaptive_chat_panel_max_width, adaptive_panel_max_width};
+#[cfg(test)]
+use egui_right_panel_player_experience::build_player_hud_snapshot;
 #[cfg(test)]
 use egui_right_panel_player_experience::{
     dismiss_player_onboarding_step, feedback_last_seen_event_id, feedback_toast_cap,
@@ -85,9 +89,11 @@ use egui_right_panel_player_experience::{
     push_feedback_toast, should_show_player_onboarding_card, FeedbackTone, PlayerGuideStep,
 };
 use egui_right_panel_player_experience::{
-    render_feedback_toasts, render_player_goal_hint, render_player_onboarding_card,
-    resolve_player_guide_step, sync_feedback_toasts, FeedbackToastState, PlayerOnboardingState,
+    player_entry_card_style, render_feedback_toasts, render_player_compact_hud,
+    render_player_goal_hint, render_player_onboarding_card, resolve_player_guide_step,
+    sync_feedback_toasts, FeedbackToastState, PlayerOnboardingState,
 };
+use egui_right_panel_text_utils::{rejection_event_count, truncate_observe_text};
 use egui_right_panel_theme_runtime::render_theme_runtime_section;
 
 const MAIN_PANEL_DEFAULT_WIDTH: f32 = 320.0;
@@ -191,6 +197,7 @@ pub(super) fn render_right_side_panel_egui(
     if player_mode_enabled {
         let guide_step =
             resolve_player_guide_step(&state.status, layout_state.as_ref(), &selection);
+        render_player_compact_hud(context, &state, &selection, guide_step, locale, now_secs);
         render_player_goal_hint(context, guide_step, locale);
         render_player_onboarding_card(
             context,
@@ -203,13 +210,22 @@ pub(super) fn render_right_side_panel_egui(
 
     if layout_state.panel_hidden {
         panel_width.width_px = 0.0;
+        let (entry_fill, entry_stroke) = if player_mode_enabled {
+            player_entry_card_style(now_secs)
+        } else {
+            (
+                egui::Color32::from_rgb(15, 19, 29),
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(34, 40, 56)),
+            )
+        };
         egui::Area::new(egui::Id::new("viewer-right-panel-show-toggle"))
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 12.0))
             .movable(false)
             .interactable(true)
             .show(context, |ui| {
                 egui::Frame::group(ui.style())
-                    .fill(egui::Color32::from_rgb(15, 19, 29))
+                    .fill(entry_fill)
+                    .stroke(entry_stroke)
                     .corner_radius(egui::CornerRadius::same(8))
                     .inner_margin(egui::Margin::same(10))
                     .show(ui, |ui| {
@@ -818,25 +834,6 @@ fn mode_signal(
             egui::Color32::from_rgb(38, 94, 148),
         )
     }
-}
-
-fn rejection_event_count(events: &[agent_world::simulator::WorldEvent]) -> usize {
-    events
-        .iter()
-        .filter(|event| matches!(event.kind, WorldEventKind::ActionRejected { .. }))
-        .count()
-}
-
-fn truncate_observe_text(text: &str, max_chars: usize) -> String {
-    if text.chars().count() <= max_chars {
-        return text.to_string();
-    }
-    let mut out = String::new();
-    for ch in text.chars().take(max_chars.saturating_sub(1)) {
-        out.push(ch);
-    }
-    out.push('…');
-    out
 }
 
 fn render_overlay_section(

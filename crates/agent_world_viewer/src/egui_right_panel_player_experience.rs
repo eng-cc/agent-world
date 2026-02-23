@@ -2,6 +2,7 @@ use agent_world::simulator::{WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 
 use crate::event_click_list::event_row_label;
+use crate::selection_linking::selection_kind_label;
 use crate::{RightPanelLayoutState, ViewerSelection, ViewerState};
 
 const FEEDBACK_TOAST_MAX: usize = 3;
@@ -9,6 +10,7 @@ const FEEDBACK_TOAST_TTL_SECS: f64 = 4.2;
 const FEEDBACK_TOAST_FADE_SECS: f64 = 0.8;
 const PLAYER_GOAL_HINT_MAX_WIDTH: f32 = 320.0;
 const PLAYER_ONBOARDING_MAX_WIDTH: f32 = 360.0;
+const PLAYER_HUD_MAX_WIDTH: f32 = 760.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FeedbackTone {
@@ -43,6 +45,15 @@ pub(super) enum PlayerGuideStep {
 #[derive(Default)]
 pub(crate) struct PlayerOnboardingState {
     dismissed_step: Option<PlayerGuideStep>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct PlayerHudSnapshot {
+    pub connection: String,
+    pub tick: u64,
+    pub events: usize,
+    pub selection: String,
+    pub objective: &'static str,
 }
 
 pub(super) fn feedback_tone_for_event(event: &WorldEventKind) -> FeedbackTone {
@@ -268,6 +279,179 @@ fn player_onboarding_dismiss(locale: crate::i18n::UiLocale) -> &'static str {
     } else {
         "Hide this tip"
     }
+}
+
+fn player_connection_color(status: &crate::ConnectionStatus) -> egui::Color32 {
+    match status {
+        crate::ConnectionStatus::Connected => egui::Color32::from_rgb(36, 130, 72),
+        crate::ConnectionStatus::Connecting => egui::Color32::from_rgb(160, 116, 40),
+        crate::ConnectionStatus::Error(_) => egui::Color32::from_rgb(170, 58, 58),
+    }
+}
+
+fn player_connection_text(
+    status: &crate::ConnectionStatus,
+    locale: crate::i18n::UiLocale,
+) -> &'static str {
+    match (status, locale.is_zh()) {
+        (crate::ConnectionStatus::Connected, true) => "已连接",
+        (crate::ConnectionStatus::Connected, false) => "Connected",
+        (crate::ConnectionStatus::Connecting, true) => "连接中",
+        (crate::ConnectionStatus::Connecting, false) => "Connecting",
+        (crate::ConnectionStatus::Error(_), true) => "连接异常",
+        (crate::ConnectionStatus::Error(_), false) => "Connection Error",
+    }
+}
+
+fn player_selection_text(selection: &ViewerSelection, locale: crate::i18n::UiLocale) -> String {
+    let Some(current) = selection.current.as_ref() else {
+        return if locale.is_zh() {
+            "未选择".to_string()
+        } else {
+            "None".to_string()
+        };
+    };
+    let id = super::truncate_observe_text(&current.id, 16);
+    format!("{} {id}", selection_kind_label(current.kind))
+}
+
+fn player_current_tick(state: &ViewerState) -> u64 {
+    state
+        .snapshot
+        .as_ref()
+        .map(|snapshot| snapshot.time)
+        .or_else(|| state.metrics.as_ref().map(|metrics| metrics.total_ticks))
+        .unwrap_or(0)
+}
+
+pub(super) fn build_player_hud_snapshot(
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+) -> PlayerHudSnapshot {
+    PlayerHudSnapshot {
+        connection: player_connection_text(&state.status, locale).to_string(),
+        tick: player_current_tick(state),
+        events: state.events.len(),
+        selection: player_selection_text(selection, locale),
+        objective: player_goal_title(step, locale),
+    }
+}
+
+fn render_hud_chip(
+    ui: &mut egui::Ui,
+    label: &str,
+    value: &str,
+    tone: egui::Color32,
+    emphasized: bool,
+) {
+    egui::Frame::group(ui.style())
+        .fill(egui::Color32::from_rgb(22, 31, 45))
+        .stroke(egui::Stroke::new(1.0, tone))
+        .corner_radius(egui::CornerRadius::same(8))
+        .inner_margin(egui::Margin::same(7))
+        .show(ui, |ui| {
+            ui.small(egui::RichText::new(label).color(tone));
+            if emphasized {
+                ui.strong(value);
+            } else {
+                ui.small(value);
+            }
+        });
+}
+
+pub(super) fn player_entry_card_style(now_secs: f64) -> (egui::Color32, egui::Stroke) {
+    let pulse = ((now_secs * 2.0).sin() * 0.5 + 0.5) as f32;
+    let fill = egui::Color32::from_rgb(
+        18,
+        (28.0 + pulse * 8.0).round() as u8,
+        (40.0 + pulse * 12.0).round() as u8,
+    );
+    let stroke = egui::Stroke::new(
+        1.0,
+        egui::Color32::from_rgb(
+            (58.0 + pulse * 32.0).round() as u8,
+            (106.0 + pulse * 28.0).round() as u8,
+            (152.0 + pulse * 40.0).round() as u8,
+        ),
+    );
+    (fill, stroke)
+}
+
+pub(super) fn render_player_compact_hud(
+    context: &egui::Context,
+    state: &ViewerState,
+    selection: &ViewerSelection,
+    step: PlayerGuideStep,
+    locale: crate::i18n::UiLocale,
+    now_secs: f64,
+) {
+    let snapshot = build_player_hud_snapshot(state, selection, step, locale);
+    let objective_color = player_goal_color(step);
+    let pulse = ((now_secs * 1.6).sin() * 0.5 + 0.5) as f32;
+    let accent = egui::Color32::from_rgba_unmultiplied(
+        objective_color.r(),
+        objective_color.g(),
+        objective_color.b(),
+        (136.0 + 72.0 * pulse) as u8,
+    );
+
+    egui::Area::new(egui::Id::new("viewer-player-compact-hud"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 10.0))
+        .movable(false)
+        .interactable(false)
+        .show(context, |ui| {
+            egui::Frame::group(ui.style())
+                .fill(egui::Color32::from_rgb(12, 20, 30))
+                .stroke(egui::Stroke::new(1.0, accent))
+                .corner_radius(egui::CornerRadius::same(12))
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_max_width(PLAYER_HUD_MAX_WIDTH);
+                    ui.horizontal_wrapped(|ui| {
+                        render_hud_chip(
+                            ui,
+                            if locale.is_zh() { "连接" } else { "Conn" },
+                            snapshot.connection.as_str(),
+                            player_connection_color(&state.status),
+                            false,
+                        );
+                        render_hud_chip(
+                            ui,
+                            if locale.is_zh() { "Tick" } else { "Tick" },
+                            snapshot.tick.to_string().as_str(),
+                            egui::Color32::from_rgb(112, 160, 224),
+                            true,
+                        );
+                        render_hud_chip(
+                            ui,
+                            if locale.is_zh() { "事件" } else { "Events" },
+                            snapshot.events.to_string().as_str(),
+                            egui::Color32::from_rgb(114, 188, 166),
+                            false,
+                        );
+                        render_hud_chip(
+                            ui,
+                            if locale.is_zh() { "目标" } else { "Target" },
+                            snapshot.selection.as_str(),
+                            egui::Color32::from_rgb(152, 178, 232),
+                            false,
+                        );
+                        render_hud_chip(
+                            ui,
+                            if locale.is_zh() {
+                                "当前目标"
+                            } else {
+                                "Objective"
+                            },
+                            snapshot.objective,
+                            objective_color,
+                            false,
+                        );
+                    });
+                });
+        });
 }
 
 pub(super) fn should_show_player_onboarding_card(
