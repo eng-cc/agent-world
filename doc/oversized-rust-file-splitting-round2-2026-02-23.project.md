@@ -4,7 +4,7 @@
 - [x] T0：输出设计文档（`doc/oversized-rust-file-splitting-round2-2026-02-23.md`）与本项目管理文档
 - [x] T1：拆分 `crates/agent_world_distfs/src/challenge.rs` 的测试模块并回归
 - [x] T2：拆分 `crates/agent_world_consensus/src/pos.rs` 的测试模块并回归
-- [ ] T3：拆分 `crates/agent_world_consensus/src/membership_recovery/replay.rs` 的测试模块并回归
+- [x] T3：拆分 `crates/agent_world_consensus/src/membership_recovery/replay.rs` 的测试模块并回归
 - [ ] T4：拆分 `crates/agent_world_consensus/src/membership_recovery/replay_archive_federated.rs` 的测试模块并回归
 - [ ] T5：拆分 `crates/agent_world_node/src/replication.rs` 的测试模块并回归
 - [ ] T6：统一复核行数阈值、执行补充回归并收口文档/devlog
@@ -15,6 +15,6 @@
 - T6 依赖 T1~T5 全部完成。
 
 ## 状态
-- 当前阶段：进行中（T0/T1/T2 已完成，T3 待执行）。
+- 当前阶段：进行中（T0/T1/T2/T3 已完成，T4 待执行）。
 - 阻塞项：无。
-- 下一步：执行 T3（`membership_recovery/replay.rs` 测试模块拆分）。
+- 下一步：执行 T4（`membership_recovery/replay_archive_federated.rs` 测试模块拆分）。

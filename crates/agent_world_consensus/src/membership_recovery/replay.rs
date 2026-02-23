@@ -1,4 +1,3 @@
-use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -7,6 +6,10 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 
 use super::super::error::WorldError;
+
+mod sort;
+
+use sort::sort_dead_letter_bucket;
 
 use super::{
     normalized_schedule_key, validate_coordinator_lease_ttl_ms,
@@ -1186,33 +1189,4 @@ fn fair_dead_letter_indices(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ratio_per_mille_handles_extreme_values_without_saturation_distortion() {
-        let denominator = usize::MAX;
-        let numerator = denominator / 2 + 1;
-        assert_eq!(ratio_per_mille(numerator, denominator), 500);
-    }
-
-    #[test]
-    fn exceeds_double_handles_extreme_values_without_overflow() {
-        assert!(exceeds_double(usize::MAX, usize::MAX / 2));
-        assert!(!exceeds_double(usize::MAX / 2, usize::MAX / 2));
-    }
-}
-
-fn sort_dead_letter_bucket(
-    dead_letters: &[MembershipRevocationAlertDeadLetterRecord],
-    indices: &mut [usize],
-) {
-    indices.sort_by_key(|index| {
-        let record = &dead_letters[*index];
-        (
-            Reverse(record.pending_alert.attempt),
-            record.dropped_at_ms,
-            *index,
-        )
-    });
-}
+mod tests;
