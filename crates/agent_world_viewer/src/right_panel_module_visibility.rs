@@ -119,7 +119,9 @@ fn persisted_version() -> u32 {
     MODULE_VISIBILITY_VERSION
 }
 
-pub(super) fn resolve_right_panel_module_visibility_resources() -> (
+pub(super) fn resolve_right_panel_module_visibility_resources(
+    default_state: RightPanelModuleVisibilityState,
+) -> (
     RightPanelModuleVisibilityState,
     RightPanelModuleVisibilityPath,
 ) {
@@ -128,7 +130,7 @@ pub(super) fn resolve_right_panel_module_visibility_resources() -> (
         std::env::var("HOME").ok(),
     );
 
-    let state = load_right_panel_module_visibility(path.as_path()).unwrap_or_default();
+    let state = load_right_panel_module_visibility(path.as_path()).unwrap_or(default_state);
     (state, RightPanelModuleVisibilityPath { path })
 }
 

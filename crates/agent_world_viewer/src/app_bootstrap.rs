@@ -2,6 +2,7 @@ use super::web_test_api::{
     consume_web_test_api_commands, publish_web_test_api_state, setup_web_test_api,
 };
 use super::*;
+use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
 #[cfg(target_arch = "wasm32")]
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
@@ -26,9 +27,11 @@ pub(super) fn run_ui(addr: String, offline: bool) {
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
     let panel_mode = resolve_panel_mode_from_env();
     let experience_mode = resolve_experience_mode_from_env();
+    let right_panel_layout_state = default_right_panel_layout_state(experience_mode);
+    let module_visibility_defaults = default_module_visibility_state(experience_mode);
     let theme_runtime = resolve_theme_runtime_state();
     let (module_visibility_state, module_visibility_path) =
-        resolve_right_panel_module_visibility_resources();
+        resolve_right_panel_module_visibility_resources(module_visibility_defaults);
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(primary_window_config()),
         ..default()
@@ -81,7 +84,7 @@ pub(super) fn run_ui(addr: String, offline: bool) {
         .insert_resource(SelectionEmphasisState::default())
         .insert_resource(internal_capture_config_from_env())
         .insert_resource(InternalCaptureState::default())
-        .insert_resource(RightPanelLayoutState::default())
+        .insert_resource(right_panel_layout_state)
         .insert_resource(RightPanelWidthState::default())
         .insert_resource(RenderPerfSummary::default())
         .insert_resource(RenderPerfHistory::default())
@@ -251,6 +254,32 @@ fn parse_experience_mode(raw: &str) -> Option<ViewerExperienceMode> {
     }
 }
 
+fn default_right_panel_layout_state(mode: ViewerExperienceMode) -> RightPanelLayoutState {
+    match mode {
+        ViewerExperienceMode::Player => RightPanelLayoutState {
+            top_panel_collapsed: false,
+            panel_hidden: true,
+        },
+        ViewerExperienceMode::Director => RightPanelLayoutState::default(),
+    }
+}
+
+fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModuleVisibilityState {
+    match mode {
+        ViewerExperienceMode::Player => RightPanelModuleVisibilityState {
+            show_controls: false,
+            show_overview: true,
+            show_chat: false,
+            show_overlay: false,
+            show_diagnosis: false,
+            show_event_link: true,
+            show_timeline: false,
+            show_details: false,
+        },
+        ViewerExperienceMode::Director => RightPanelModuleVisibilityState::default(),
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn run_headless(addr: String, offline: bool) {
     let event_window = event_window_policy_from_env(DEFAULT_MAX_EVENTS);
@@ -343,5 +372,33 @@ mod tests {
     fn parse_experience_mode_rejects_unknown_values() {
         assert_eq!(parse_experience_mode(""), None);
         assert_eq!(parse_experience_mode("ops"), None);
+    }
+
+    #[test]
+    fn default_right_panel_layout_state_matches_experience_mode() {
+        assert_eq!(
+            default_right_panel_layout_state(ViewerExperienceMode::Player),
+            RightPanelLayoutState {
+                top_panel_collapsed: false,
+                panel_hidden: true,
+            }
+        );
+        assert_eq!(
+            default_right_panel_layout_state(ViewerExperienceMode::Director),
+            RightPanelLayoutState::default()
+        );
+    }
+
+    #[test]
+    fn default_module_visibility_state_player_is_lightweight() {
+        let state = default_module_visibility_state(ViewerExperienceMode::Player);
+        assert!(!state.show_controls);
+        assert!(state.show_overview);
+        assert!(!state.show_chat);
+        assert!(!state.show_overlay);
+        assert!(!state.show_diagnosis);
+        assert!(state.show_event_link);
+        assert!(!state.show_timeline);
+        assert!(!state.show_details);
     }
 }
