@@ -1,4 +1,4 @@
-use agent_world::simulator::{WorldEvent, WorldEventKind};
+use agent_world::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
 use bevy_egui::egui;
 use std::collections::BTreeSet;
 
@@ -13,6 +13,10 @@ const PLAYER_ACHIEVEMENT_MAX: usize = 3;
 const PLAYER_ACHIEVEMENT_TTL_SECS: f64 = 5.2;
 const PLAYER_ACHIEVEMENT_FADE_SECS: f64 = 1.0;
 const PLAYER_ACHIEVEMENT_MAX_WIDTH: f32 = 320.0;
+const AGENT_CHATTER_MAX: usize = 4;
+const AGENT_CHATTER_TTL_SECS: f64 = 5.0;
+const AGENT_CHATTER_FADE_SECS: f64 = 0.9;
+const AGENT_CHATTER_MAX_WIDTH: f32 = 320.0;
 const PLAYER_GOAL_HINT_MAX_WIDTH: f32 = 320.0;
 const PLAYER_ONBOARDING_MAX_WIDTH: f32 = 360.0;
 const PLAYER_HUD_MAX_WIDTH: f32 = 760.0;
@@ -62,11 +66,27 @@ struct PlayerAchievementToast {
     expires_at_secs: f64,
 }
 
+#[derive(Clone, Debug)]
+struct PlayerAgentChatterBubble {
+    id: u64,
+    speaker: String,
+    line: String,
+    tone: FeedbackTone,
+    expires_at_secs: f64,
+}
+
+#[derive(Default)]
+struct PlayerAgentChatterState {
+    bubbles: Vec<PlayerAgentChatterBubble>,
+    last_seen_event_id: Option<u64>,
+}
+
 #[derive(Default)]
 pub(crate) struct PlayerAchievementState {
     unlocked: BTreeSet<PlayerAchievementMilestone>,
     toasts: Vec<PlayerAchievementToast>,
     next_toast_id: u64,
+    chatter: PlayerAgentChatterState,
 }
 
 #[derive(Default)]
@@ -377,6 +397,221 @@ pub(super) fn render_player_achievement_popups(
                     });
             });
         vertical_offset += 86.0;
+    }
+}
+
+fn owner_agent_id(owner: &ResourceOwner) -> Option<&str> {
+    match owner {
+        ResourceOwner::Agent { agent_id } => Some(agent_id.as_str()),
+        ResourceOwner::Location { .. } => None,
+    }
+}
+
+fn chatter_line_for_event(
+    event: &WorldEvent,
+    locale: crate::i18n::UiLocale,
+) -> Option<(String, String, FeedbackTone)> {
+    match &event.kind {
+        WorldEventKind::AgentMoved { agent_id, to, .. } => Some((
+            super::truncate_observe_text(agent_id, 14),
+            if locale.is_zh() {
+                format!("已移动至 {}", super::truncate_observe_text(to, 14))
+            } else {
+                format!("Moved to {}", super::truncate_observe_text(to, 14))
+            },
+            FeedbackTone::Positive,
+        )),
+        WorldEventKind::RadiationHarvested {
+            agent_id, amount, ..
+        } => Some((
+            super::truncate_observe_text(agent_id, 14),
+            if locale.is_zh() {
+                format!("采集辐照 +{amount}")
+            } else {
+                format!("Harvested radiation +{amount}")
+            },
+            FeedbackTone::Positive,
+        )),
+        WorldEventKind::CompoundMined {
+            owner,
+            compound_mass_g,
+            ..
+        } => owner_agent_id(owner).map(|agent_id| {
+            (
+                super::truncate_observe_text(agent_id, 14),
+                if locale.is_zh() {
+                    format!("开采复合物 {compound_mass_g}g")
+                } else {
+                    format!("Mined compound {compound_mass_g}g")
+                },
+                FeedbackTone::Positive,
+            )
+        }),
+        WorldEventKind::CompoundRefined {
+            owner,
+            hardware_output,
+            ..
+        } => owner_agent_id(owner).map(|agent_id| {
+            (
+                super::truncate_observe_text(agent_id, 14),
+                if locale.is_zh() {
+                    format!("精炼产出硬件 +{hardware_output}")
+                } else {
+                    format!("Refined hardware +{hardware_output}")
+                },
+                FeedbackTone::Positive,
+            )
+        }),
+        WorldEventKind::FactoryBuilt {
+            owner,
+            factory_kind,
+            ..
+        } => owner_agent_id(owner).map(|agent_id| {
+            (
+                super::truncate_observe_text(agent_id, 14),
+                if locale.is_zh() {
+                    format!("建成 {}", super::truncate_observe_text(factory_kind, 18))
+                } else {
+                    format!("Built {}", super::truncate_observe_text(factory_kind, 18))
+                },
+                FeedbackTone::Info,
+            )
+        }),
+        WorldEventKind::RecipeScheduled {
+            owner, recipe_id, ..
+        } => owner_agent_id(owner).map(|agent_id| {
+            (
+                super::truncate_observe_text(agent_id, 14),
+                if locale.is_zh() {
+                    format!("启动配方 {}", super::truncate_observe_text(recipe_id, 18))
+                } else {
+                    format!(
+                        "Started recipe {}",
+                        super::truncate_observe_text(recipe_id, 18)
+                    )
+                },
+                FeedbackTone::Info,
+            )
+        }),
+        WorldEventKind::ActionRejected { .. } => Some((
+            if locale.is_zh() {
+                "系统".to_string()
+            } else {
+                "System".to_string()
+            },
+            super::truncate_observe_text(&event_row_label(event, false, locale), 58),
+            FeedbackTone::Warning,
+        )),
+        _ => None,
+    }
+}
+
+fn chatter_stroke_color(tone: FeedbackTone, alpha: f32) -> egui::Color32 {
+    let alpha = alpha.clamp(0.0, 1.0);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
+    match tone {
+        FeedbackTone::Positive => {
+            egui::Color32::from_rgba_unmultiplied(72, 180, 118, to_u8(236.0 * alpha))
+        }
+        FeedbackTone::Warning => {
+            egui::Color32::from_rgba_unmultiplied(214, 104, 82, to_u8(232.0 * alpha))
+        }
+        FeedbackTone::Info => {
+            egui::Color32::from_rgba_unmultiplied(108, 166, 230, to_u8(224.0 * alpha))
+        }
+    }
+}
+
+fn push_agent_chatter_bubble(
+    achievements: &mut PlayerAchievementState,
+    event: &WorldEvent,
+    speaker: String,
+    line: String,
+    tone: FeedbackTone,
+    now_secs: f64,
+) {
+    achievements.chatter.bubbles.push(PlayerAgentChatterBubble {
+        id: event.id,
+        speaker: super::truncate_observe_text(&speaker, 14),
+        line: super::truncate_observe_text(&line, 68),
+        tone,
+        expires_at_secs: now_secs + AGENT_CHATTER_TTL_SECS,
+    });
+    while achievements.chatter.bubbles.len() > AGENT_CHATTER_MAX {
+        achievements.chatter.bubbles.remove(0);
+    }
+}
+
+pub(super) fn sync_agent_chatter_bubbles(
+    achievements: &mut PlayerAchievementState,
+    state: &ViewerState,
+    now_secs: f64,
+    locale: crate::i18n::UiLocale,
+) {
+    achievements
+        .chatter
+        .bubbles
+        .retain(|bubble| bubble.expires_at_secs > now_secs);
+
+    let newest_event_id = state.events.last().map(|event| event.id);
+    let Some(newest_event_id) = newest_event_id else {
+        return;
+    };
+
+    let Some(last_seen) = achievements.chatter.last_seen_event_id else {
+        achievements.chatter.last_seen_event_id = Some(newest_event_id);
+        return;
+    };
+
+    if newest_event_id <= last_seen {
+        return;
+    }
+
+    let mut seen_max = last_seen;
+    for event in state.events.iter().filter(|event| event.id > last_seen) {
+        if let Some((speaker, line, tone)) = chatter_line_for_event(event, locale) {
+            push_agent_chatter_bubble(achievements, event, speaker, line, tone, now_secs);
+        }
+        seen_max = seen_max.max(event.id);
+    }
+    achievements.chatter.last_seen_event_id = Some(seen_max);
+}
+
+pub(super) fn render_agent_chatter_bubbles(
+    context: &egui::Context,
+    achievements: &PlayerAchievementState,
+    now_secs: f64,
+) {
+    let mut vertical_offset = 14.0;
+    for bubble in achievements.chatter.bubbles.iter().rev() {
+        let remaining = (bubble.expires_at_secs - now_secs).max(0.0);
+        let alpha = if remaining < AGENT_CHATTER_FADE_SECS {
+            (remaining / AGENT_CHATTER_FADE_SECS) as f32
+        } else {
+            1.0
+        };
+        let accent = chatter_stroke_color(bubble.tone, alpha);
+
+        egui::Area::new(egui::Id::new(("viewer-agent-chatter", bubble.id)))
+            .anchor(
+                egui::Align2::RIGHT_BOTTOM,
+                egui::vec2(-14.0, -vertical_offset),
+            )
+            .movable(false)
+            .interactable(false)
+            .show(context, |ui| {
+                egui::Frame::group(ui.style())
+                    .fill(feedback_fill_color(bubble.tone, 0.82 * alpha))
+                    .stroke(egui::Stroke::new(1.0, accent))
+                    .corner_radius(egui::CornerRadius::same(9))
+                    .inner_margin(egui::Margin::same(9))
+                    .show(ui, |ui| {
+                        ui.set_max_width(AGENT_CHATTER_MAX_WIDTH);
+                        ui.small(egui::RichText::new(bubble.speaker.as_str()).color(accent));
+                        ui.label(bubble.line.as_str());
+                    });
+            });
+        vertical_offset += 74.0;
     }
 }
 
@@ -726,6 +961,48 @@ pub(super) fn player_achievement_is_unlocked(
     achievements.unlocked.contains(&milestone)
 }
 
+#[cfg(test)]
+pub(super) fn player_agent_chatter_cap() -> usize {
+    AGENT_CHATTER_MAX
+}
+
+#[cfg(test)]
+pub(super) fn player_agent_chatter_len(achievements: &PlayerAchievementState) -> usize {
+    achievements.chatter.bubbles.len()
+}
+
+#[cfg(test)]
+pub(super) fn player_agent_chatter_last_seen_event_id(
+    achievements: &PlayerAchievementState,
+) -> Option<u64> {
+    achievements.chatter.last_seen_event_id
+}
+
+#[cfg(test)]
+pub(super) fn player_agent_chatter_ids(achievements: &PlayerAchievementState) -> Vec<u64> {
+    achievements
+        .chatter
+        .bubbles
+        .iter()
+        .map(|bubble| bubble.id)
+        .collect()
+}
+
+#[cfg(test)]
+pub(super) fn player_agent_chatter_snapshot(
+    achievements: &PlayerAchievementState,
+    index: usize,
+) -> Option<(u64, FeedbackTone, String, String)> {
+    achievements.chatter.bubbles.get(index).map(|bubble| {
+        (
+            bubble.id,
+            bubble.tone,
+            bubble.speaker.clone(),
+            bubble.line.clone(),
+        )
+    })
+}
+
 pub(super) fn render_player_goal_hint(
     context: &egui::Context,
     step: PlayerGuideStep,
@@ -813,9 +1090,11 @@ pub(super) fn render_player_experience_layers(
     now_secs: f64,
 ) {
     sync_player_achievements(achievements, state, selection, layout_state, now_secs);
+    sync_agent_chatter_bubbles(achievements, state, now_secs, locale);
     let guide_step = resolve_player_guide_step(&state.status, layout_state, selection);
     render_player_compact_hud(context, state, selection, guide_step, locale, now_secs);
     render_player_achievement_popups(context, achievements, locale, now_secs);
+    render_agent_chatter_bubbles(context, achievements, now_secs);
     render_player_goal_hint(context, guide_step, locale);
     render_player_onboarding_card(context, onboarding, guide_step, layout_state, locale);
 }
