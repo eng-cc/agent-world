@@ -799,7 +799,7 @@ fn runtime_replica_maintenance_poll_executes_local_target_tasks() {
         .with_replica_maintenance(NodeReplicaMaintenanceConfig {
             max_content_hash_samples_per_round: 2,
             target_replicas_per_blob: 2,
-            max_repairs_per_round: 1,
+            max_repairs_per_round: 2,
             max_rebalances_per_round: 0,
             poll_interval_ms: 10,
             ..NodeReplicaMaintenanceConfig::default()
@@ -811,11 +811,21 @@ fn runtime_replica_maintenance_poll_executes_local_target_tasks() {
         .with_replication_network(NodeReplicationNetworkHandle::new(network))
         .with_replica_maintenance_dht(dht.clone());
     runtime.start().expect("start");
-    thread::sleep(Duration::from_millis(240));
+    let committed_ready = wait_until(Instant::now() + Duration::from_secs(2), || {
+        runtime.snapshot().consensus.committed_height >= 2
+    });
+    let published_ready = wait_until(Instant::now() + Duration::from_secs(2), || {
+        !dht.published_records().is_empty()
+    });
     runtime.stop().expect("stop");
 
     let snapshot = runtime.snapshot();
     assert!(snapshot.last_error.is_none(), "{:?}", snapshot.last_error);
+    assert!(
+        committed_ready,
+        "expected at least 2 committed heights before maintenance checks"
+    );
+    assert!(published_ready, "expected maintenance publish records");
     let published = dht.published_records();
     assert!(
         !published.is_empty(),
