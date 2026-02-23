@@ -271,6 +271,14 @@ pub(super) struct PlayerMissionLoopSnapshot {
     pub(super) action_opens_panel: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct PlayerRewardFeedbackSnapshot {
+    pub(super) badge: &'static str,
+    pub(super) title: &'static str,
+    pub(super) detail: String,
+    pub(super) complete: bool,
+}
+
 pub(super) fn build_player_mission_loop_snapshot(
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
@@ -299,6 +307,42 @@ pub(super) fn build_player_mission_loop_snapshot(
     }
 }
 
+pub(super) fn build_player_reward_feedback_snapshot(
+    progress: PlayerGuideProgressSnapshot,
+    locale: crate::i18n::UiLocale,
+) -> PlayerRewardFeedbackSnapshot {
+    let completed_steps = progress.completed_steps();
+    match (completed_steps, locale.is_zh()) {
+        (4, true) => PlayerRewardFeedbackSnapshot {
+            badge: "任务奖励",
+            title: "闭环达成",
+            detail: "你已打通完整上手路径，可持续推进行动循环。".to_string(),
+            complete: true,
+        },
+        (4, false) => PlayerRewardFeedbackSnapshot {
+            badge: "Reward",
+            title: "Loop Completed",
+            detail: "You finished the onboarding loop and unlocked the full play rhythm."
+                .to_string(),
+            complete: true,
+        },
+        (_, true) => PlayerRewardFeedbackSnapshot {
+            badge: "进度奖励",
+            title: "节奏提升中",
+            detail: format!("已完成 {completed_steps}/4 步，继续推进可触发闭环达成反馈。"),
+            complete: false,
+        },
+        (_, false) => PlayerRewardFeedbackSnapshot {
+            badge: "Progress Reward",
+            title: "Momentum Building",
+            detail: format!(
+                "{completed_steps}/4 steps completed. Keep pushing to trigger completion feedback."
+            ),
+            complete: false,
+        },
+    }
+}
+
 pub(super) fn render_player_mission_hud(
     context: &egui::Context,
     layout_state: &mut RightPanelLayoutState,
@@ -308,7 +352,13 @@ pub(super) fn render_player_mission_hud(
     now_secs: f64,
 ) {
     let snapshot = build_player_mission_loop_snapshot(step, progress, locale);
+    let reward = build_player_reward_feedback_snapshot(progress, locale);
     let tone = player_goal_color(step);
+    let reward_tone = if reward.complete {
+        egui::Color32::from_rgb(54, 166, 96)
+    } else {
+        egui::Color32::from_rgb(74, 126, 184)
+    };
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
@@ -348,6 +398,21 @@ pub(super) fn render_player_mission_hud(
                                 snapshot.completed_steps
                             )),
                     );
+                    egui::Frame::group(ui.style())
+                        .fill(egui::Color32::from_rgba_unmultiplied(
+                            reward_tone.r(),
+                            reward_tone.g(),
+                            reward_tone.b(),
+                            if reward.complete { 54 } else { 34 },
+                        ))
+                        .stroke(egui::Stroke::new(1.0, reward_tone))
+                        .corner_radius(egui::CornerRadius::same(8))
+                        .inner_margin(egui::Margin::same(8))
+                        .show(ui, |ui| {
+                            ui.small(egui::RichText::new(reward.badge).color(reward_tone));
+                            ui.strong(reward.title);
+                            ui.small(reward.detail.as_str());
+                        });
                     action_clicked = ui.button(snapshot.action_label).clicked();
                 });
         });
