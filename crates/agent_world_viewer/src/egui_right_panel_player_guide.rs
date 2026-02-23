@@ -705,6 +705,7 @@ pub(super) fn render_player_mission_hud(
     state: &crate::ViewerState,
     selection: &ViewerSelection,
     layout_state: &mut RightPanelLayoutState,
+    module_visibility: &mut crate::right_panel_module_visibility::RightPanelModuleVisibilityState,
     onboarding_visible: bool,
     step: PlayerGuideStep,
     progress: PlayerGuideProgressSnapshot,
@@ -722,8 +723,10 @@ pub(super) fn render_player_mission_hud(
     let compact_mode = player_mission_hud_compact_mode(layout_state.panel_hidden);
     let mission_anchor_y =
         player_mission_hud_anchor_y(layout_state.panel_hidden, onboarding_visible);
+    let show_command_action = player_mission_hud_show_command_action(layout_state.panel_hidden);
     let pulse = ((now_secs * 1.8).sin() * 0.5 + 0.5) as f32;
     let mut action_clicked = false;
+    let mut command_clicked = false;
     egui::Area::new(egui::Id::new("viewer-player-mission-hud"))
         .anchor(egui::Align2::LEFT_TOP, egui::vec2(14.0, mission_anchor_y))
         .movable(false)
@@ -782,12 +785,26 @@ pub(super) fn render_player_mission_hud(
                                 ui.small(reward.detail.as_str());
                             });
                     }
-                    action_clicked = ui.button(snapshot.action_label).clicked();
+                    ui.horizontal_wrapped(|ui| {
+                        action_clicked = ui.button(snapshot.action_label).clicked();
+                        if show_command_action {
+                            command_clicked = ui
+                                .button(if locale.is_zh() {
+                                    "直接指挥 Agent"
+                                } else {
+                                    "Command Agent"
+                                })
+                                .clicked();
+                        }
+                    });
                 });
         });
 
     if action_clicked && snapshot.action_opens_panel {
         layout_state.panel_hidden = false;
+    }
+    if command_clicked {
+        apply_player_layout_preset(layout_state, module_visibility, PlayerLayoutPreset::Command);
     }
 
     let points = build_player_minimap_snapshot(state, selection);
@@ -806,4 +823,8 @@ pub(super) fn player_mission_hud_anchor_y(panel_hidden: bool, onboarding_visible
     } else {
         136.0
     }
+}
+
+pub(super) fn player_mission_hud_show_command_action(panel_hidden: bool) -> bool {
+    panel_hidden
 }

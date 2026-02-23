@@ -1,7 +1,8 @@
 use super::egui_right_panel_player_experience::PlayerGuideStep;
 use super::egui_right_panel_player_guide::{
     build_player_mission_loop_snapshot, player_mission_hud_anchor_y,
-    player_mission_hud_compact_mode, PlayerGuideProgressSnapshot,
+    player_mission_hud_compact_mode, player_mission_hud_show_command_action,
+    PlayerGuideProgressSnapshot,
 };
 
 #[test]
@@ -55,4 +56,10 @@ fn player_mission_hud_anchor_avoids_onboarding_overlap() {
     assert_eq!(player_mission_hud_anchor_y(false, false), 96.0);
     assert_eq!(player_mission_hud_anchor_y(true, false), 136.0);
     assert_eq!(player_mission_hud_anchor_y(true, true), 214.0);
+}
+
+#[test]
+fn player_mission_hud_command_action_only_visible_when_hidden() {
+    assert!(player_mission_hud_show_command_action(true));
+    assert!(!player_mission_hud_show_command_action(false));
 }

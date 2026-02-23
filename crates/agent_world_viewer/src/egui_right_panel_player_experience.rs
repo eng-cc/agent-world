@@ -1153,6 +1153,7 @@ pub(super) fn render_player_experience_layers(
         state,
         selection,
         layout_state,
+        module_visibility,
         onboarding_visible,
         guide_step,
         guide_progress,
