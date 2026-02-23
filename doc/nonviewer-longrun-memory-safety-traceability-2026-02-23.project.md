@@ -17,9 +17,9 @@
 - [x] 补充/更新单测
 
 ### T3 Dead-letter 与 wasm cache 安全（对应 5/6）
-- [ ] `membership_recovery/dead_letter`：保留上限 + 压缩
-- [ ] `agent_world_wasm_executor`：移除 `unsafe deserialize` 依赖路径
-- [ ] 补充/更新单测
+- [x] `membership_recovery/dead_letter`：保留上限 + 压缩
+- [x] `agent_world_wasm_executor`：移除 `unsafe deserialize` 依赖路径
+- [x] 补充/更新单测
 
 ### T4 收口
 - [ ] 运行 required-tier 回归
@@ -38,7 +38,7 @@
 
 ## 状态
 - 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
-- 未开始：T4
+- 已完成：T0、T1、T2、T3
+- 进行中：T4
+- 未开始：无
 - 阻塞项：无

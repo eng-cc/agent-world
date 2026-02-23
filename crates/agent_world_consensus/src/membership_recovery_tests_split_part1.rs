@@ -18,10 +18,11 @@ use crate::{
     MembershipRevocationAlertRecoveryStore, MembershipRevocationAlertSeverity,
     MembershipRevocationAlertSink, MembershipRevocationAnomalyAlert,
     MembershipRevocationCoordinatorLeaseState, MembershipRevocationCoordinatorStateStore,
-    MembershipRevocationPendingAlert, MembershipRevocationReconcilePolicy,
-    MembershipRevocationReconcileSchedulePolicy, MembershipRevocationReconcileScheduleState,
-    MembershipRevocationScheduleCoordinator, MembershipRevocationScheduleStateStore,
-    MembershipSyncClient, StoreBackedMembershipRevocationScheduleCoordinator,
+    MembershipRevocationDeadLetterRetention, MembershipRevocationPendingAlert,
+    MembershipRevocationReconcilePolicy, MembershipRevocationReconcileSchedulePolicy,
+    MembershipRevocationReconcileScheduleState, MembershipRevocationScheduleCoordinator,
+    MembershipRevocationScheduleStateStore, MembershipSyncClient,
+    StoreBackedMembershipRevocationScheduleCoordinator,
 };
 
 fn sample_client() -> MembershipSyncClient {
@@ -244,6 +245,155 @@ fn file_dead_letter_store_metrics_export_round_trip() {
         .list_delivery_metrics("w1", "node-a")
         .expect("list metrics");
     assert_eq!(listed, vec![(1200, metrics)]);
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn in_memory_dead_letter_store_retention_keeps_recent_entries() {
+    let store = InMemoryMembershipRevocationAlertDeadLetterStore::with_retention(
+        MembershipRevocationDeadLetterRetention {
+            max_dead_letter_records_per_stream: 2,
+            max_delivery_metrics_per_stream: 2,
+        },
+    );
+
+    store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1000,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append record 1");
+    store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1001,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append record 2");
+    store
+        .append(&sample_dead_letter(
+            "w1",
+            "node-a",
+            1002,
+            MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+        ))
+        .expect("append record 3");
+
+    let dead_letters = store.list("w1", "node-a").expect("list retained records");
+    assert_eq!(dead_letters.len(), 2);
+    assert_eq!(dead_letters[0].dropped_at_ms, 1001);
+    assert_eq!(dead_letters[1].dropped_at_ms, 1002);
+
+    for exported_at_ms in [2000_i64, 2001_i64, 2002_i64] {
+        let metrics = MembershipRevocationAlertDeliveryMetrics {
+            attempted: exported_at_ms as usize,
+            ..MembershipRevocationAlertDeliveryMetrics::default()
+        };
+        store
+            .append_delivery_metrics("w1", "node-a", exported_at_ms, &metrics)
+            .expect("append metrics");
+    }
+
+    let listed_metrics = store
+        .list_delivery_metrics("w1", "node-a")
+        .expect("list retained metrics");
+    assert_eq!(listed_metrics.len(), 2);
+    assert_eq!(listed_metrics[0].0, 2001);
+    assert_eq!(listed_metrics[1].0, 2002);
+}
+
+#[test]
+fn file_dead_letter_store_retention_compacts_records_to_archive() {
+    let root = temp_membership_dir("revocation-alert-dead-letter-retention");
+    fs::create_dir_all(&root).expect("create temp dir");
+
+    let store = FileMembershipRevocationAlertDeadLetterStore::with_retention(
+        &root,
+        MembershipRevocationDeadLetterRetention {
+            max_dead_letter_records_per_stream: 2,
+            max_delivery_metrics_per_stream: 2,
+        },
+    )
+    .expect("create store");
+
+    for dropped_at_ms in [1000_i64, 1001_i64, 1002_i64] {
+        store
+            .append(&sample_dead_letter(
+                "w1",
+                "node-a",
+                dropped_at_ms,
+                MembershipRevocationAlertDeadLetterReason::RetryLimitExceeded,
+            ))
+            .expect("append record");
+    }
+
+    let active = store.list("w1", "node-a").expect("list active records");
+    assert_eq!(active.len(), 2);
+    assert_eq!(active[0].dropped_at_ms, 1001);
+    assert_eq!(active[1].dropped_at_ms, 1002);
+
+    let archive_path = root.join("w1.node-a.revocation-alert-dead-letter.archive.jsonl");
+    let archive = fs::read_to_string(&archive_path).expect("read archive");
+    let archived: Vec<MembershipRevocationAlertDeadLetterRecord> = archive
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str(line).expect("decode archived dead-letter line"))
+        .collect();
+    assert_eq!(archived.len(), 1);
+    assert_eq!(archived[0].dropped_at_ms, 1000);
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn file_dead_letter_store_retention_compacts_metrics_to_archive() {
+    let root = temp_membership_dir("revocation-alert-metrics-retention");
+    fs::create_dir_all(&root).expect("create temp dir");
+
+    let store = FileMembershipRevocationAlertDeadLetterStore::with_retention(
+        &root,
+        MembershipRevocationDeadLetterRetention {
+            max_dead_letter_records_per_stream: 2,
+            max_delivery_metrics_per_stream: 2,
+        },
+    )
+    .expect("create store");
+
+    for exported_at_ms in [1200_i64, 1201_i64, 1202_i64] {
+        let metrics = MembershipRevocationAlertDeliveryMetrics {
+            attempted: exported_at_ms as usize,
+            ..MembershipRevocationAlertDeliveryMetrics::default()
+        };
+        store
+            .append_delivery_metrics("w1", "node-a", exported_at_ms, &metrics)
+            .expect("append metrics");
+    }
+
+    let active = store
+        .list_delivery_metrics("w1", "node-a")
+        .expect("list active metrics");
+    assert_eq!(active.len(), 2);
+    assert_eq!(active[0].0, 1201);
+    assert_eq!(active[1].0, 1202);
+
+    let archive_path = root.join("w1.node-a.revocation-alert-delivery-metrics.archive.jsonl");
+    let archive = fs::read_to_string(&archive_path).expect("read metrics archive");
+    let archived_export_times: Vec<i64> = archive
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            let value: serde_json::Value =
+                serde_json::from_str(line).expect("decode archived metrics line");
+            value["exported_at_ms"]
+                .as_i64()
+                .expect("archived exported_at_ms should be i64")
+        })
+        .collect();
+    assert_eq!(archived_export_times, vec![1200]);
 
     let _ = fs::remove_dir_all(root);
 }

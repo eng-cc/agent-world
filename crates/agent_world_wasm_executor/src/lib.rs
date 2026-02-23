@@ -188,7 +188,7 @@ impl WasmExecutor {
             )
         })?;
         let module = Arc::new(module);
-        self.store_compiled_module_to_disk(wasm_hash, &module);
+        self.store_compiled_module_to_disk(wasm_hash, wasm_bytes);
         let mut cache = self.compiled_cache.lock().expect("compiled cache poisoned");
         cache.insert(wasm_hash.to_string(), module.clone());
         Ok(module)
@@ -208,7 +208,7 @@ impl WasmExecutor {
                 return None;
             }
         };
-        match unsafe { wasmtime::Module::deserialize(&self.engine, &bytes) } {
+        match wasmtime::Module::new(&self.engine, &bytes) {
             Ok(module) => Some(Arc::new(module)),
             Err(_) => {
                 let _ = fs::remove_file(&path);
@@ -218,7 +218,7 @@ impl WasmExecutor {
     }
 
     #[cfg(feature = "wasmtime")]
-    fn store_compiled_module_to_disk(&self, wasm_hash: &str, module: &Arc<wasmtime::Module>) {
+    fn store_compiled_module_to_disk(&self, wasm_hash: &str, wasm_bytes: &[u8]) {
         let Some(disk_cache) = self.compiled_disk_cache.as_ref() else {
             return;
         };
@@ -229,11 +229,7 @@ impl WasmExecutor {
         if fs::create_dir_all(parent).is_err() {
             return;
         }
-        let serialized = match module.serialize() {
-            Ok(bytes) => bytes,
-            Err(_) => return,
-        };
-        let _ = fs::write(path, serialized);
+        let _ = fs::write(path, wasm_bytes);
     }
 
     #[cfg(all(feature = "wasmtime", test))]
@@ -635,7 +631,7 @@ impl DiskCompiledModuleCache {
 
     fn module_path(&self, wasm_hash: &str) -> PathBuf {
         let key = sanitize_cache_key(wasm_hash);
-        self.cache_dir().join(format!("{key}.cwasm"))
+        self.cache_dir().join(format!("{key}.wasm"))
     }
 }
 

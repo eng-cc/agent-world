@@ -189,8 +189,8 @@ pub use membership_recovery::{
     MembershipRevocationDeadLetterReplayRollbackGovernanceStateStore,
     MembershipRevocationDeadLetterReplayRollbackGuard,
     MembershipRevocationDeadLetterReplayScheduleState,
-    MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationPendingAlert,
-    NoopMembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationDeadLetterReplayStateStore, MembershipRevocationDeadLetterRetention,
+    MembershipRevocationPendingAlert, NoopMembershipRevocationAlertDeadLetterStore,
     StoreBackedMembershipRevocationScheduleCoordinator,
 };
 pub use mempool::{ActionBatchRules, ActionMempool, ActionMempoolConfig};

@@ -25,7 +25,8 @@ mod types;
 
 pub use dead_letter::{
     FileMembershipRevocationAlertDeadLetterStore, InMemoryMembershipRevocationAlertDeadLetterStore,
-    MembershipRevocationAlertDeadLetterStore, NoopMembershipRevocationAlertDeadLetterStore,
+    MembershipRevocationAlertDeadLetterStore, MembershipRevocationDeadLetterRetention,
+    NoopMembershipRevocationAlertDeadLetterStore,
 };
 #[rustfmt::skip]
 pub use replay::{
