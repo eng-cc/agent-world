@@ -11,7 +11,8 @@ use crate::event_click_list::{
 };
 use crate::i18n::{
     camera_mode_button_label, camera_mode_section_label, copyable_panel_toggle_label,
-    language_toggle_label, locale_or_default, module_switches_title, right_panel_toggle_label,
+    experience_mode_label, language_toggle_label, locale_or_default, module_switches_title,
+    panel_entry_hint_label, panel_toggle_shortcut_hint, right_panel_toggle_label,
     top_controls_label, top_panel_toggle_label, UiI18n,
 };
 use crate::right_panel_module_visibility::RightPanelModuleVisibilityState;
@@ -39,8 +40,8 @@ use crate::world_overlay::overlay_status_text_public;
 use crate::{
     grid_line_thickness, CopyableTextPanelState, DiagnosisState, EventObjectLinkState,
     GridLineKind, RenderPerfSummary, RightPanelLayoutState, RightPanelWidthState,
-    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerSelection,
-    ViewerState, WorldOverlayConfig,
+    TimelineMarkFilterState, Viewer3dConfig, ViewerCameraMode, ViewerClient, ViewerExperienceMode,
+    ViewerSelection, ViewerState, WorldOverlayConfig,
 };
 
 #[path = "egui_observe_section_card.rs"]
@@ -84,6 +85,7 @@ const EVENT_ROW_LABEL_MAX_CHARS: usize = 72;
 const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
+const PANEL_ENTRY_CARD_MAX_WIDTH: f32 = 280.0;
 
 fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
     if available_width.is_finite() && available_width > 0.0 {
@@ -152,10 +154,16 @@ fn total_right_panel_width(main_panel_width: f32, chat_panel_width: f32) -> f32 
     main_panel_width.max(0.0) + chat_panel_width.max(0.0)
 }
 
+fn panel_toggle_shortcut_pressed(context: &egui::Context) -> bool {
+    context.input(|input| input.key_pressed(egui::Key::Tab) && !input.modifiers.any())
+        && !context.wants_keyboard_input()
+}
+
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
     layout_state: ResMut<'w, RightPanelLayoutState>,
+    experience_mode: Res<'w, ViewerExperienceMode>,
     camera_mode: ResMut<'w, ViewerCameraMode>,
     i18n: Option<ResMut<'w, UiI18n>>,
     copyable_panel_state: ResMut<'w, CopyableTextPanelState>,
@@ -187,6 +195,7 @@ pub(super) fn render_right_side_panel_egui(
     let RightPanelParams {
         mut panel_width,
         mut layout_state,
+        experience_mode,
         mut camera_mode,
         mut i18n,
         mut copyable_panel_state,
@@ -215,6 +224,10 @@ pub(super) fn render_right_side_panel_egui(
     };
     ensure_egui_cjk_font(context, &mut cjk_font_initialized);
 
+    if panel_toggle_shortcut_pressed(context) {
+        layout_state.panel_hidden = !layout_state.panel_hidden;
+    }
+
     if copyable_panel_state.visible != module_visibility.show_details {
         copyable_panel_state.visible = module_visibility.show_details;
     }
@@ -227,9 +240,20 @@ pub(super) fn render_right_side_panel_egui(
             .movable(false)
             .interactable(true)
             .show(context, |ui| {
-                if ui.button(right_panel_toggle_label(false, locale)).clicked() {
-                    layout_state.panel_hidden = false;
-                }
+                egui::Frame::group(ui.style())
+                    .fill(egui::Color32::from_rgb(15, 19, 29))
+                    .corner_radius(egui::CornerRadius::same(8))
+                    .inner_margin(egui::Margin::same(10))
+                    .show(ui, |ui| {
+                        ui.set_max_width(PANEL_ENTRY_CARD_MAX_WIDTH);
+                        ui.strong(experience_mode_label(*experience_mode, locale));
+                        ui.label(panel_entry_hint_label(*experience_mode, locale));
+                        ui.small(panel_toggle_shortcut_hint(locale));
+
+                        if ui.button(right_panel_toggle_label(false, locale)).clicked() {
+                            layout_state.panel_hidden = false;
+                        }
+                    });
             });
         if layout_state.panel_hidden {
             return;
@@ -293,6 +317,8 @@ pub(super) fn render_right_side_panel_egui(
                         i18n.locale = i18n.locale.toggled();
                     }
                 }
+
+                ui.label(experience_mode_label(*experience_mode, locale));
 
                 ui.separator();
                 ui.label(camera_mode_section_label(locale));

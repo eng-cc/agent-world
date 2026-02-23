@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{SelectionKind, ViewerCameraMode, ViewerControl};
+use super::{SelectionKind, ViewerCameraMode, ViewerControl, ViewerExperienceMode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum UiLocale {
@@ -95,6 +95,40 @@ pub(super) fn right_panel_toggle_label(visible: bool, locale: UiLocale) -> &'sta
         (UiLocale::ZhCn, false) => "显示面板",
         (UiLocale::EnUs, true) => "Hide Panel",
         (UiLocale::EnUs, false) => "Show Panel",
+    }
+}
+
+pub(super) fn experience_mode_label(mode: ViewerExperienceMode, locale: UiLocale) -> &'static str {
+    match (mode, locale) {
+        (ViewerExperienceMode::Player, UiLocale::ZhCn) => "玩家模式",
+        (ViewerExperienceMode::Player, UiLocale::EnUs) => "Player Mode",
+        (ViewerExperienceMode::Director, UiLocale::ZhCn) => "导演模式",
+        (ViewerExperienceMode::Director, UiLocale::EnUs) => "Director Mode",
+    }
+}
+
+pub(super) fn panel_entry_hint_label(mode: ViewerExperienceMode, locale: UiLocale) -> &'static str {
+    match (mode, locale) {
+        (ViewerExperienceMode::Player, UiLocale::ZhCn) => {
+            "世界优先视图已启用。打开面板可查看任务、事件与更多控制。"
+        }
+        (ViewerExperienceMode::Player, UiLocale::EnUs) => {
+            "World-first view is active. Open the panel for tasks, events, and controls."
+        }
+        (ViewerExperienceMode::Director, UiLocale::ZhCn) => {
+            "可打开右侧面板查看完整运行状态与调试模块。"
+        }
+        (ViewerExperienceMode::Director, UiLocale::EnUs) => {
+            "Open the side panel for full runtime status and debug modules."
+        }
+    }
+}
+
+pub(super) fn panel_toggle_shortcut_hint(locale: UiLocale) -> &'static str {
+    if locale.is_zh() {
+        "快捷键：Tab"
+    } else {
+        "Shortcut: Tab"
     }
 }
 
@@ -309,6 +343,19 @@ mod tests {
             right_panel_toggle_label(false, UiLocale::EnUs),
             "Show Panel"
         );
+        assert_eq!(
+            experience_mode_label(ViewerExperienceMode::Player, UiLocale::ZhCn),
+            "玩家模式"
+        );
+        assert_eq!(
+            experience_mode_label(ViewerExperienceMode::Director, UiLocale::EnUs),
+            "Director Mode"
+        );
+        assert_eq!(
+            panel_entry_hint_label(ViewerExperienceMode::Player, UiLocale::EnUs),
+            "World-first view is active. Open the panel for tasks, events, and controls."
+        );
+        assert_eq!(panel_toggle_shortcut_hint(UiLocale::ZhCn), "快捷键：Tab");
     }
 
     #[test]
