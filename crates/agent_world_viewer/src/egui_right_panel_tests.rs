@@ -253,6 +253,20 @@ fn sample_rejected_event(id: u64, time: u64) -> WorldEvent {
     }
 }
 
+fn sample_agent_moved_event(id: u64, time: u64) -> WorldEvent {
+    WorldEvent {
+        id,
+        time,
+        kind: WorldEventKind::AgentMoved {
+            agent_id: format!("agent-{id}"),
+            from: "from-loc".to_string(),
+            to: "to-loc".to_string(),
+            distance_cm: 12,
+            electricity_cost: 3,
+        },
+    }
+}
+
 fn sample_viewer_state(
     status: crate::ConnectionStatus,
     events: Vec<WorldEvent>,
@@ -569,6 +583,64 @@ fn mode_signal_reflects_timeline_state() {
     let (manual_text, manual_color) = mode_signal(&manual_timeline, crate::i18n::UiLocale::ZhCn);
     assert_eq!(manual_text, "观察:手动");
     assert_eq!(manual_color, egui::Color32::from_rgb(125, 96, 28));
+}
+
+#[test]
+fn feedback_tone_for_event_maps_warning_positive_and_info() {
+    let warning = feedback_tone_for_event(&sample_rejected_event(1, 1).kind);
+    assert_eq!(warning, FeedbackTone::Warning);
+
+    let positive = feedback_tone_for_event(&sample_agent_moved_event(2, 2).kind);
+    assert_eq!(positive, FeedbackTone::Positive);
+
+    let info = feedback_tone_for_event(&WorldEventKind::LocationRegistered {
+        location_id: "loc-1".to_string(),
+        name: "alpha".to_string(),
+        pos: agent_world::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        profile: Default::default(),
+    });
+    assert_eq!(info, FeedbackTone::Info);
+}
+
+#[test]
+fn push_feedback_toast_clamps_queue_and_removes_oldest() {
+    let mut feedback = FeedbackToastState::default();
+    let locale = crate::i18n::UiLocale::EnUs;
+    for id in 1..=(FEEDBACK_TOAST_MAX as u64 + 2) {
+        push_feedback_toast(
+            &mut feedback,
+            &sample_rejected_event(id, id),
+            10.0 + id as f64,
+            locale,
+        );
+    }
+
+    assert_eq!(feedback.toasts.len(), FEEDBACK_TOAST_MAX);
+    let ids: Vec<u64> = feedback.toasts.iter().map(|toast| toast.id).collect();
+    assert_eq!(ids, vec![3, 4, 5]);
+}
+
+#[test]
+fn sync_feedback_toasts_skips_history_then_tracks_new_events_only() {
+    let mut feedback = FeedbackToastState::default();
+    let mut state = sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![sample_rejected_event(1, 1), sample_agent_moved_event(2, 2)],
+    );
+    let locale = crate::i18n::UiLocale::ZhCn;
+
+    sync_feedback_toasts(&mut feedback, &state, 20.0, locale);
+    assert!(feedback.toasts.is_empty());
+    assert_eq!(feedback.last_seen_event_id, Some(2));
+
+    state.events.push(sample_rejected_event(3, 3));
+    sync_feedback_toasts(&mut feedback, &state, 21.0, locale);
+
+    assert_eq!(feedback.last_seen_event_id, Some(3));
+    assert_eq!(feedback.toasts.len(), 1);
+    assert_eq!(feedback.toasts[0].id, 3);
+    assert_eq!(feedback.toasts[0].tone, FeedbackTone::Warning);
+    assert_eq!(feedback.toasts[0].title, "操作受阻");
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use agent_world::simulator::WorldEventKind;
+use agent_world::simulator::{WorldEvent, WorldEventKind};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -86,6 +86,31 @@ const OPS_NAV_PANEL_ENV: &str = "AGENT_WORLD_VIEWER_SHOW_OPS_NAV";
 const PRODUCT_STYLE_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE";
 const PRODUCT_STYLE_MOTION_ENV: &str = "AGENT_WORLD_VIEWER_PRODUCT_STYLE_MOTION";
 const PANEL_ENTRY_CARD_MAX_WIDTH: f32 = 280.0;
+const FEEDBACK_TOAST_MAX: usize = 3;
+const FEEDBACK_TOAST_TTL_SECS: f64 = 4.2;
+const FEEDBACK_TOAST_FADE_SECS: f64 = 0.8;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FeedbackTone {
+    Positive,
+    Warning,
+    Info,
+}
+
+#[derive(Clone, Debug)]
+struct FeedbackToast {
+    id: u64,
+    title: &'static str,
+    detail: String,
+    tone: FeedbackTone,
+    expires_at_secs: f64,
+}
+
+#[derive(Default)]
+pub(super) struct FeedbackToastState {
+    toasts: Vec<FeedbackToast>,
+    last_seen_event_id: Option<u64>,
+}
 
 fn sanitize_available_width(available_width: f32, fallback: f32) -> f32 {
     if available_width.is_finite() && available_width > 0.0 {
@@ -166,6 +191,128 @@ fn panel_toggle_shortcut_pressed(context: &egui::Context) -> bool {
     !chat_input_focused
 }
 
+fn feedback_tone_for_event(event: &WorldEventKind) -> FeedbackTone {
+    match event {
+        WorldEventKind::ActionRejected { .. } => FeedbackTone::Warning,
+        WorldEventKind::FactoryBuilt { .. }
+        | WorldEventKind::RecipeScheduled { .. }
+        | WorldEventKind::CompoundMined { .. }
+        | WorldEventKind::CompoundRefined { .. }
+        | WorldEventKind::RadiationHarvested { .. }
+        | WorldEventKind::AgentMoved { .. }
+        | WorldEventKind::ModuleArtifactSaleCompleted { .. } => FeedbackTone::Positive,
+        _ => FeedbackTone::Info,
+    }
+}
+
+fn feedback_title_for_event(tone: FeedbackTone, locale: crate::i18n::UiLocale) -> &'static str {
+    match (tone, locale.is_zh()) {
+        (FeedbackTone::Positive, true) => "进展达成",
+        (FeedbackTone::Positive, false) => "Progress",
+        (FeedbackTone::Warning, true) => "操作受阻",
+        (FeedbackTone::Warning, false) => "Action Blocked",
+        (FeedbackTone::Info, true) => "世界更新",
+        (FeedbackTone::Info, false) => "World Update",
+    }
+}
+
+fn push_feedback_toast(
+    feedback: &mut FeedbackToastState,
+    event: &WorldEvent,
+    now_secs: f64,
+    locale: crate::i18n::UiLocale,
+) {
+    let tone = feedback_tone_for_event(&event.kind);
+    let detail = truncate_observe_text(&event_row_label(event, false, locale), 64);
+    feedback.toasts.push(FeedbackToast {
+        id: event.id,
+        title: feedback_title_for_event(tone, locale),
+        detail,
+        tone,
+        expires_at_secs: now_secs + FEEDBACK_TOAST_TTL_SECS,
+    });
+    while feedback.toasts.len() > FEEDBACK_TOAST_MAX {
+        feedback.toasts.remove(0);
+    }
+}
+
+fn sync_feedback_toasts(
+    feedback: &mut FeedbackToastState,
+    state: &ViewerState,
+    now_secs: f64,
+    locale: crate::i18n::UiLocale,
+) {
+    feedback
+        .toasts
+        .retain(|toast| toast.expires_at_secs > now_secs);
+
+    let newest_event_id = state.events.last().map(|event| event.id);
+    let Some(newest_event_id) = newest_event_id else {
+        return;
+    };
+
+    let Some(last_seen) = feedback.last_seen_event_id else {
+        feedback.last_seen_event_id = Some(newest_event_id);
+        return;
+    };
+
+    if newest_event_id <= last_seen {
+        return;
+    }
+
+    let mut seen_max = last_seen;
+    for event in state.events.iter().filter(|event| event.id > last_seen) {
+        push_feedback_toast(feedback, event, now_secs, locale);
+        seen_max = seen_max.max(event.id);
+    }
+    feedback.last_seen_event_id = Some(seen_max);
+}
+
+fn feedback_fill_color(tone: FeedbackTone, alpha: f32) -> egui::Color32 {
+    let alpha = alpha.clamp(0.0, 1.0);
+    let to_u8 = |value: f32| (value.clamp(0.0, 255.0)) as u8;
+    match tone {
+        FeedbackTone::Positive => {
+            egui::Color32::from_rgba_unmultiplied(22, 69, 50, to_u8(232.0 * alpha))
+        }
+        FeedbackTone::Warning => {
+            egui::Color32::from_rgba_unmultiplied(99, 44, 32, to_u8(236.0 * alpha))
+        }
+        FeedbackTone::Info => {
+            egui::Color32::from_rgba_unmultiplied(24, 42, 66, to_u8(224.0 * alpha))
+        }
+    }
+}
+
+fn render_feedback_toasts(context: &egui::Context, feedback: &FeedbackToastState, now_secs: f64) {
+    let mut vertical_offset = 12.0;
+    for toast in feedback.toasts.iter().rev() {
+        let remaining = (toast.expires_at_secs - now_secs).max(0.0);
+        let alpha = if remaining < FEEDBACK_TOAST_FADE_SECS {
+            (remaining / FEEDBACK_TOAST_FADE_SECS) as f32
+        } else {
+            1.0
+        };
+
+        egui::Area::new(egui::Id::new(("viewer-feedback-toast", toast.id)))
+            .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, vertical_offset))
+            .movable(false)
+            .interactable(false)
+            .show(context, |ui| {
+                egui::Frame::group(ui.style())
+                    .fill(feedback_fill_color(toast.tone, alpha))
+                    .corner_radius(egui::CornerRadius::same(8))
+                    .inner_margin(egui::Margin::same(9))
+                    .show(ui, |ui| {
+                        ui.set_max_width(360.0);
+                        ui.strong(toast.title);
+                        ui.small(toast.detail.as_str());
+                    });
+            });
+        vertical_offset += 68.0;
+    }
+}
+
 #[derive(SystemParam)]
 pub(super) struct RightPanelParams<'w, 's> {
     panel_width: ResMut<'w, RightPanelWidthState>,
@@ -197,6 +344,7 @@ pub(super) fn render_right_side_panel_egui(
     mut cjk_font_initialized: Local<bool>,
     mut chat_draft: Local<AgentChatDraftState>,
     mut control_panel: Local<ControlPanelUiState>,
+    mut feedback_toast_state: Local<FeedbackToastState>,
     params: RightPanelParams,
 ) {
     let RightPanelParams {
@@ -230,6 +378,11 @@ pub(super) fn render_right_side_panel_egui(
         return;
     };
     ensure_egui_cjk_font(context, &mut cjk_font_initialized);
+    let now_secs = context.input(|input| input.time);
+    let player_feedback_enabled = *experience_mode == ViewerExperienceMode::Player;
+    if player_feedback_enabled {
+        sync_feedback_toasts(&mut feedback_toast_state, &state, now_secs, locale);
+    }
 
     if panel_toggle_shortcut_pressed(context) {
         layout_state.panel_hidden = !layout_state.panel_hidden;
@@ -263,6 +416,9 @@ pub(super) fn render_right_side_panel_egui(
                     });
             });
         if layout_state.panel_hidden {
+            if player_feedback_enabled {
+                render_feedback_toasts(context, &feedback_toast_state, now_secs);
+            }
             return;
         }
     }
@@ -629,6 +785,10 @@ pub(super) fn render_right_side_panel_egui(
 
     panel_width.width_px =
         total_right_panel_width(panel_response.response.rect.width(), chat_panel_width);
+
+    if player_feedback_enabled {
+        render_feedback_toasts(context, &feedback_toast_state, now_secs);
+    }
 }
 
 fn render_overview_section(
