@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -18,6 +18,7 @@ const REPLICATION_VERSION: u8 = 1;
 const COMMIT_FILE_PREFIX: &str = "consensus/commits";
 const COMMIT_MESSAGE_DIR: &str = "replication_commit_messages";
 const DEFAULT_WRITER_EPOCH: u64 = 1;
+const DEFAULT_MAX_HOT_COMMIT_MESSAGES: usize = 4096;
 
 pub(crate) const REPLICATION_FETCH_COMMIT_PROTOCOL: &str =
     "/aw/node/replication/fetch-commit/1.0.0";
@@ -30,6 +31,7 @@ pub struct NodeReplicationConfig {
     signing_public_key_hex: Option<String>,
     enforce_signature: bool,
     remote_writer_allowlist: BTreeSet<String>,
+    max_hot_commit_messages: usize,
 }
 
 impl NodeReplicationConfig {
@@ -46,6 +48,7 @@ impl NodeReplicationConfig {
             signing_public_key_hex: None,
             enforce_signature: false,
             remote_writer_allowlist: BTreeSet::new(),
+            max_hot_commit_messages: DEFAULT_MAX_HOT_COMMIT_MESSAGES,
         })
     }
 
@@ -82,6 +85,19 @@ impl NodeReplicationConfig {
             normalized.insert(normalized_writer_id);
         }
         self.remote_writer_allowlist = normalized;
+        Ok(self)
+    }
+
+    pub fn with_max_hot_commit_messages(
+        mut self,
+        max_hot_commit_messages: usize,
+    ) -> Result<Self, NodeError> {
+        if max_hot_commit_messages == 0 {
+            return Err(NodeError::InvalidConfig {
+                reason: "replication max_hot_commit_messages must be positive".to_string(),
+            });
+        }
+        self.max_hot_commit_messages = max_hot_commit_messages;
         Ok(self)
     }
 
@@ -244,6 +260,11 @@ impl NodeReplicationConfig {
             .join(COMMIT_MESSAGE_DIR)
             .join(format!("{:020}.json", height))
     }
+
+    fn commit_cold_index_path(&self) -> PathBuf {
+        self.root_dir
+            .join("replication_commit_messages_cold_index.json")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,6 +336,11 @@ struct LocalWriterState {
     writer_epoch: u64,
     last_sequence: u64,
     last_replicated_height: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+struct CommitMessageColdIndex {
+    by_height: BTreeMap<u64, String>,
 }
 
 impl Default for LocalWriterState {
@@ -608,7 +634,75 @@ impl ReplicationRuntime {
         height: u64,
         message: &GossipReplicationMessage,
     ) -> Result<(), NodeError> {
-        write_json_pretty(self.config.commit_message_path(height).as_path(), message)
+        write_json_pretty(self.config.commit_message_path(height).as_path(), message)?;
+        self.prune_hot_commit_messages()
+    }
+
+    fn prune_hot_commit_messages(&self) -> Result<(), NodeError> {
+        let commit_dir = self.config.root_dir.join(COMMIT_MESSAGE_DIR);
+        if !commit_dir.exists() {
+            return Ok(());
+        }
+        let max_hot_commit_messages = self.config.max_hot_commit_messages.max(1);
+        let mut commit_files = Vec::new();
+        let entries = fs::read_dir(&commit_dir).map_err(|err| NodeError::Replication {
+            reason: format!("list commit dir {} failed: {}", commit_dir.display(), err),
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|err| NodeError::Replication {
+                reason: format!("read commit dir entry failed: {}", err),
+            })?;
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                continue;
+            };
+            let Some(height_text) = file_name.strip_suffix(".json") else {
+                continue;
+            };
+            let Ok(height) = height_text.parse::<u64>() else {
+                continue;
+            };
+            if height == 0 {
+                continue;
+            }
+            commit_files.push((height, path));
+        }
+        if commit_files.len() <= max_hot_commit_messages {
+            return Ok(());
+        }
+        commit_files.sort_by_key(|(height, _)| *height);
+        let overflow = commit_files.len() - max_hot_commit_messages;
+        let mut offloaded = Vec::new();
+        for (height, path) in commit_files.into_iter().take(overflow) {
+            let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
+                reason: format!("read {} failed: {}", path.display(), err),
+            })?;
+            let content_hash = blake3_hex(bytes.as_slice());
+            self.store
+                .put(content_hash.as_str(), bytes.as_slice())
+                .map_err(distfs_error_to_node_error)?;
+            offloaded.push((height, content_hash, path));
+        }
+        if offloaded.is_empty() {
+            return Ok(());
+        }
+
+        let mut cold_index =
+            load_commit_message_cold_index_from_root(self.config.root_dir.as_path())?;
+        for (height, content_hash, _) in &offloaded {
+            cold_index.by_height.insert(*height, content_hash.clone());
+        }
+        write_json_pretty(self.config.commit_cold_index_path().as_path(), &cold_index)?;
+
+        for (_, _, path) in offloaded {
+            fs::remove_file(&path).map_err(|err| NodeError::Replication {
+                reason: format!("remove {} failed: {}", path.display(), err),
+            })?;
+        }
+        Ok(())
     }
 
     pub(crate) fn load_commit_message_by_height(
@@ -979,15 +1073,39 @@ pub(crate) fn load_commit_message_from_root(
     height: u64,
 ) -> Result<Option<GossipReplicationMessage>, NodeError> {
     let path = commit_message_path_from_root(root_dir, height);
-    if !path.exists() {
-        return Ok(None);
+    if path.exists() {
+        let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
+            reason: format!("read {} failed: {}", path.display(), err),
+        })?;
+        let message =
+            serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
+                NodeError::Replication {
+                    reason: format!("parse {} failed: {}", path.display(), err),
+                }
+            })?;
+        if message.version != REPLICATION_VERSION
+            || message.world_id != world_id
+            || message.record.world_id != world_id
+        {
+            return Ok(None);
+        }
+        return Ok(Some(message));
     }
-    let bytes = fs::read(&path).map_err(|err| NodeError::Replication {
-        reason: format!("read {} failed: {}", path.display(), err),
-    })?;
+
+    let cold_index = load_commit_message_cold_index_from_root(root_dir)?;
+    let Some(content_hash) = cold_index.by_height.get(&height) else {
+        return Ok(None);
+    };
+    let store = LocalCasStore::new(root_dir.join("store"));
+    let bytes = store
+        .get_verified(content_hash.as_str())
+        .map_err(distfs_error_to_node_error)?;
     let message = serde_json::from_slice::<GossipReplicationMessage>(&bytes).map_err(|err| {
         NodeError::Replication {
-            reason: format!("parse {} failed: {}", path.display(), err),
+            reason: format!(
+                "parse cold commit message for height {} hash {} failed: {}",
+                height, content_hash, err
+            ),
         }
     })?;
     if message.version != REPLICATION_VERSION
@@ -1015,6 +1133,18 @@ fn commit_message_path_from_root(root_dir: &Path, height: u64) -> PathBuf {
     root_dir
         .join(COMMIT_MESSAGE_DIR)
         .join(format!("{:020}.json", height))
+}
+
+fn commit_message_cold_index_path_from_root(root_dir: &Path) -> PathBuf {
+    root_dir.join("replication_commit_messages_cold_index.json")
+}
+
+fn load_commit_message_cold_index_from_root(
+    root_dir: &Path,
+) -> Result<CommitMessageColdIndex, NodeError> {
+    load_json_or_default::<CommitMessageColdIndex>(
+        commit_message_cold_index_path_from_root(root_dir).as_path(),
+    )
 }
 
 fn load_json_or_default<T>(path: &Path) -> Result<T, NodeError>

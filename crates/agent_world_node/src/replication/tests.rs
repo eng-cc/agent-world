@@ -264,3 +264,64 @@ fn authorize_fetch_blob_request_rejects_requester_outside_allowlist() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn load_commit_message_by_height_reads_from_cold_index_after_hot_prune() {
+    let dir = temp_dir("commit-cold-index");
+    let world_id = "world-commit-cold-index";
+    let config = NodeReplicationConfig::new(&dir)
+        .expect("config")
+        .with_max_hot_commit_messages(2)
+        .expect("hot commit cap");
+    let runtime = ReplicationRuntime::new(&config, "node-a").expect("runtime");
+
+    let message_1 = signed_remote_message(61, world_id, "node-b", 1);
+    let message_2 = signed_remote_message(62, world_id, "node-b", 2);
+    let message_3 = signed_remote_message(63, world_id, "node-b", 3);
+    runtime
+        .persist_commit_message(1, &message_1)
+        .expect("persist message 1");
+    runtime
+        .persist_commit_message(2, &message_2)
+        .expect("persist message 2");
+    runtime
+        .persist_commit_message(3, &message_3)
+        .expect("persist message 3");
+
+    let hot_1 = config.commit_message_path(1);
+    let hot_2 = config.commit_message_path(2);
+    let hot_3 = config.commit_message_path(3);
+    assert!(
+        !hot_1.exists(),
+        "oldest hot commit should be pruned after exceeding cap"
+    );
+    assert!(hot_2.exists(), "recent commit 2 should remain hot");
+    assert!(hot_3.exists(), "recent commit 3 should remain hot");
+
+    let cold_index = load_commit_message_cold_index_from_root(dir.as_path()).expect("cold index");
+    assert!(
+        cold_index.by_height.contains_key(&1),
+        "cold index should contain pruned height"
+    );
+
+    let loaded_1 = runtime
+        .load_commit_message_by_height(world_id, 1)
+        .expect("load commit height 1")
+        .expect("cold commit height 1 should exist");
+    assert_eq!(loaded_1.record.content_hash, message_1.record.content_hash);
+    assert_eq!(loaded_1.world_id, world_id);
+
+    let loaded_2 = runtime
+        .load_commit_message_by_height(world_id, 2)
+        .expect("load commit height 2")
+        .expect("hot commit height 2 should exist");
+    assert_eq!(loaded_2.record.content_hash, message_2.record.content_hash);
+
+    let loaded_3 = runtime
+        .load_commit_message_by_height(world_id, 3)
+        .expect("load commit height 3")
+        .expect("hot commit height 3 should exist");
+    assert_eq!(loaded_3.record.content_hash, message_3.record.content_hash);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
