@@ -88,6 +88,30 @@ fn defaults_match_rpa1_baseline() {
     assert!((config.physical.luminous_efficacy_lm_per_w - 120.0).abs() < f32::EPSILON);
     assert!((config.physical.exposure_ev100 - 13.5).abs() < f32::EPSILON);
     assert!((config.physical.reference_radiation_area_m2 - 1.0).abs() < f32::EPSILON);
+    assert_eq!(config.visual.level, ViewerVisualEffectsLevel::Standard);
+    assert_eq!(config.visual.agent_variant_palette, None);
+    assert_eq!(
+        config.visual.agent_direction_indicator,
+        DEFAULT_AGENT_DIRECTION_INDICATOR
+    );
+    assert_eq!(config.visual.agent_speed_effect, DEFAULT_AGENT_SPEED_EFFECT);
+    assert_eq!(
+        config.visual.agent_trail_enabled,
+        DEFAULT_AGENT_TRAIL_ENABLED
+    );
+    assert_eq!(
+        config.visual.location_radiation_glow,
+        DEFAULT_LOCATION_RADIATION_GLOW
+    );
+    assert_eq!(
+        config.visual.location_damage_visual,
+        DEFAULT_LOCATION_DAMAGE_VISUAL
+    );
+    assert_eq!(
+        config.visual.asset_quantity_visual,
+        DEFAULT_ASSET_QUANTITY_VISUAL
+    );
+    assert_eq!(config.visual.asset_type_color, DEFAULT_ASSET_TYPE_COLOR);
 }
 
 #[test]

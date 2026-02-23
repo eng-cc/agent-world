@@ -261,6 +261,30 @@ fn spawn_location_entity_renders_radiation_halo_details() {
 }
 
 #[test]
+fn spawn_location_entity_respects_radiation_glow_toggle() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_detail_halo_test_system);
+    let mut config = Viewer3dConfig::default();
+    config.visual.location_radiation_glow = false;
+    app.insert_resource(config);
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let halo_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:halo:loc-detail-halo:")
+        })
+        .count();
+    assert_eq!(halo_count, 0);
+}
+
+#[test]
 fn spawn_location_entity_renders_fragment_budget_damage_overlays() {
     let mut app = App::new();
     app.add_systems(Update, spawn_location_damage_detail_test_system);
@@ -280,6 +304,30 @@ fn spawn_location_entity_renders_fragment_budget_damage_overlays() {
         })
         .count();
     assert_eq!(damage_count, 3);
+}
+
+#[test]
+fn spawn_location_entity_respects_damage_visual_toggle() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_location_damage_detail_test_system);
+    let mut config = Viewer3dConfig::default();
+    config.visual.location_damage_visual = false;
+    app.insert_resource(config);
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    let damage_count = query
+        .iter(world)
+        .filter(|name| {
+            name.as_str()
+                .starts_with("location:detail:damage:loc-damage:")
+        })
+        .count();
+    assert_eq!(damage_count, 0);
 }
 
 #[test]
@@ -463,6 +511,52 @@ fn spawn_agent_entity_renders_direction_and_speed_feedback_when_moving() {
     assert!(speed_query
         .iter(world)
         .any(|name| name.as_str() == "agent:speed_effect:agent-motion"));
+}
+
+#[test]
+fn spawn_agent_entity_disables_motion_feedback_when_toggles_off() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_motion_feedback_test_system);
+    let mut config = Viewer3dConfig::default();
+    config.visual.agent_direction_indicator = false;
+    config.visual.agent_speed_effect = false;
+    config.visual.agent_trail_enabled = false;
+    app.insert_resource(config);
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    assert!(!query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:direction_indicator:agent-motion"));
+    assert!(!query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:speed_effect:agent-motion"));
+    assert!(!query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:trail:agent-motion"));
+}
+
+#[test]
+fn spawn_agent_entity_renders_trail_feedback_when_enabled() {
+    let mut app = App::new();
+    app.add_systems(Update, spawn_agent_motion_feedback_test_system);
+    let mut config = Viewer3dConfig::default();
+    config.visual.agent_trail_enabled = true;
+    app.insert_resource(config);
+    app.insert_resource(Viewer3dScene::default());
+    app.insert_resource(test_assets());
+
+    app.update();
+
+    let world = app.world_mut();
+    let mut query = world.query::<&Name>();
+    assert!(query
+        .iter(world)
+        .any(|name| name.as_str() == "agent:trail:agent-motion"));
 }
 
 #[test]

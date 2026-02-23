@@ -36,6 +36,8 @@ const AGENT_DIRECTION_INDICATOR_MIN_WIDTH: f32 = 0.005;
 const AGENT_SPEED_EFFECT_MIN_SCALE: f32 = 1.05;
 const AGENT_SPEED_EFFECT_MAX_SCALE: f32 = 2.4;
 const AGENT_SPEED_EFFECT_MIN_THICKNESS: f32 = 0.004;
+const AGENT_TRAIL_MIN_LENGTH: f32 = 0.02;
+const AGENT_TRAIL_MIN_THICKNESS: f32 = 0.003;
 const AGENT_SPEED_REFERENCE_CM_PER_TICK: f32 = 200_000.0;
 const AGENT_MODULE_LAYOUT_PRIMARY_SLOTS: [(i32, i32, i32); 16] = [
     (0, 4, 2),
@@ -258,7 +260,17 @@ pub(super) fn rebuild_scene_from_snapshot(
 
     for (asset_id, asset) in snapshot.model.assets.iter() {
         if let Some(anchor) = owner_anchor_pos(snapshot, &asset.owner) {
-            spawn_asset_entity(commands, config, assets, scene, origin, asset_id, anchor);
+            spawn_asset_entity(
+                commands,
+                config,
+                assets,
+                scene,
+                origin,
+                asset_id,
+                anchor,
+                asset.quantity,
+                Some(&asset.kind),
+            );
         }
     }
 
@@ -786,7 +798,14 @@ pub(super) fn spawn_agent_entity(
                 module_count,
                 cm_to_unit,
             );
-            spawn_agent_motion_feedback(parent, assets, agent_id, body_scale, motion_visual);
+            spawn_agent_motion_feedback(
+                parent,
+                config,
+                assets,
+                agent_id,
+                body_scale,
+                motion_visual,
+            );
             for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
                 parent.spawn((
                     Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -836,7 +855,7 @@ pub(super) fn spawn_agent_entity(
             module_count,
             cm_to_unit,
         );
-        spawn_agent_motion_feedback(parent, assets, agent_id, body_scale, motion_visual);
+        spawn_agent_motion_feedback(parent, config, assets, agent_id, body_scale, motion_visual);
         for (marker_idx, marker_translation) in module_markers.iter().enumerate() {
             parent.spawn((
                 Mesh3d(assets.agent_module_marker_mesh.clone()),
@@ -1036,46 +1055,75 @@ fn resolve_agent_motion_visual(
 
 fn spawn_agent_motion_feedback(
     parent: &mut ChildSpawnerCommands,
+    config: &Viewer3dConfig,
     assets: &Viewer3dAssets,
     agent_id: &str,
     body_scale: Vec3,
     motion_visual: Option<AgentMotionVisual>,
 ) {
+    if !config.visual.agent_direction_indicator
+        && !config.visual.agent_speed_effect
+        && !config.visual.agent_trail_enabled
+    {
+        return;
+    }
+
     let Some(motion_visual) = motion_visual else {
         return;
     };
 
-    let indicator_length = (body_scale.y * 0.92).max(AGENT_DIRECTION_INDICATOR_MIN_LENGTH);
-    let indicator_width = (body_scale.x * 0.22).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
-    let indicator_height = (indicator_width * 0.5).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
     let indicator_rotation = Quat::from_rotation_arc(Vec3::Z, motion_visual.direction);
-    parent.spawn((
-        Mesh3d(assets.world_box_mesh.clone()),
-        MeshMaterial3d(assets.chunk_generated_material.clone()),
-        Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.54, 0.0))
-            .with_rotation(indicator_rotation)
-            .with_scale(Vec3::new(
-                indicator_width,
-                indicator_height,
-                indicator_length,
-            )),
-        Name::new(format!("agent:direction_indicator:{agent_id}")),
-        DetailZoomEntity,
-    ));
+    if config.visual.agent_direction_indicator {
+        let indicator_length = (body_scale.y * 0.92).max(AGENT_DIRECTION_INDICATOR_MIN_LENGTH);
+        let indicator_width = (body_scale.x * 0.22).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
+        let indicator_height = (indicator_width * 0.5).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
+        parent.spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(assets.chunk_generated_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.54, 0.0))
+                .with_rotation(indicator_rotation)
+                .with_scale(Vec3::new(
+                    indicator_width,
+                    indicator_height,
+                    indicator_length,
+                )),
+            Name::new(format!("agent:direction_indicator:{agent_id}")),
+            DetailZoomEntity,
+        ));
+    }
 
-    let speed_radius = (body_scale.x.max(body_scale.z) * motion_visual.speed_scale).clamp(
-        body_scale.x * 0.9,
-        body_scale.x * AGENT_SPEED_EFFECT_MAX_SCALE,
-    );
-    let speed_thickness = (body_scale.y * 0.07).max(AGENT_SPEED_EFFECT_MIN_THICKNESS);
-    parent.spawn((
-        Mesh3d(assets.agent_module_marker_mesh.clone()),
-        MeshMaterial3d(assets.location_halo_material.clone()),
-        Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.22, 0.0))
-            .with_scale(Vec3::new(speed_radius, speed_thickness, speed_radius)),
-        Name::new(format!("agent:speed_effect:{agent_id}")),
-        DetailZoomEntity,
-    ));
+    if config.visual.agent_speed_effect {
+        let speed_radius = (body_scale.x.max(body_scale.z) * motion_visual.speed_scale).clamp(
+            body_scale.x * 0.9,
+            body_scale.x * AGENT_SPEED_EFFECT_MAX_SCALE,
+        );
+        let speed_thickness = (body_scale.y * 0.07).max(AGENT_SPEED_EFFECT_MIN_THICKNESS);
+        parent.spawn((
+            Mesh3d(assets.agent_module_marker_mesh.clone()),
+            MeshMaterial3d(assets.location_halo_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.22, 0.0))
+                .with_scale(Vec3::new(speed_radius, speed_thickness, speed_radius)),
+            Name::new(format!("agent:speed_effect:{agent_id}")),
+            DetailZoomEntity,
+        ));
+    }
+
+    if config.visual.agent_trail_enabled {
+        let trail_length =
+            (body_scale.y * motion_visual.speed_scale * 1.6).max(AGENT_TRAIL_MIN_LENGTH);
+        let trail_thickness = (body_scale.y * 0.05).max(AGENT_TRAIL_MIN_THICKNESS);
+        let trail_width = (body_scale.x * 0.18).max(AGENT_DIRECTION_INDICATOR_MIN_WIDTH);
+        let trail_offset = -motion_visual.direction * (trail_length * 0.35);
+        parent.spawn((
+            Mesh3d(assets.world_box_mesh.clone()),
+            MeshMaterial3d(assets.flow_power_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, body_scale.y * 0.36, 0.0) + trail_offset)
+                .with_rotation(indicator_rotation)
+                .with_scale(Vec3::new(trail_width, trail_thickness, trail_length)),
+            Name::new(format!("agent:trail:{agent_id}")),
+            DetailZoomEntity,
+        ));
+    }
 }
 
 fn agent_body_radius_m(height_cm: i64) -> f32 {

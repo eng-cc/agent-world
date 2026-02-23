@@ -53,6 +53,13 @@ const MAX_COLOR_GRADING_EXPOSURE: f32 = 8.0;
 const DEFAULT_COLOR_GRADING_POST_SATURATION: f32 = 1.0;
 const MIN_COLOR_GRADING_POST_SATURATION: f32 = 0.0;
 const MAX_COLOR_GRADING_POST_SATURATION: f32 = 2.0;
+const DEFAULT_AGENT_DIRECTION_INDICATOR: bool = true;
+const DEFAULT_AGENT_SPEED_EFFECT: bool = true;
+const DEFAULT_AGENT_TRAIL_ENABLED: bool = false;
+const DEFAULT_LOCATION_RADIATION_GLOW: bool = true;
+const DEFAULT_LOCATION_DAMAGE_VISUAL: bool = true;
+const DEFAULT_ASSET_QUANTITY_VISUAL: bool = false;
+const DEFAULT_ASSET_TYPE_COLOR: bool = false;
 
 #[derive(Clone, Copy, Debug, Resource)]
 pub(super) struct Viewer3dConfig {
@@ -68,6 +75,7 @@ pub(super) struct Viewer3dConfig {
     pub render_budget: ViewerRenderBudgetConfig,
     pub lighting: ViewerLightingConfig,
     pub physical: ViewerPhysicalRenderConfig,
+    pub visual: ViewerVisualEffectsConfig,
 }
 
 impl Viewer3dConfig {
@@ -95,6 +103,7 @@ impl Default for Viewer3dConfig {
             render_budget: ViewerRenderBudgetConfig::default(),
             lighting: ViewerLightingConfig::default(),
             physical: ViewerPhysicalRenderConfig::default(),
+            visual: ViewerVisualEffectsConfig::default(),
         }
     }
 }
@@ -179,6 +188,83 @@ pub(super) enum ViewerGeometryTier {
 impl Default for ViewerGeometryTier {
     fn default() -> Self {
         Self::Balanced
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ViewerVisualEffectsLevel {
+    Minimal,
+    Standard,
+    Enhanced,
+}
+
+impl Default for ViewerVisualEffectsLevel {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ViewerVisualEffectsConfig {
+    pub level: ViewerVisualEffectsLevel,
+    pub agent_variant_palette: Option<[[f32; 3]; 4]>,
+    pub agent_direction_indicator: bool,
+    pub agent_speed_effect: bool,
+    pub agent_trail_enabled: bool,
+    pub location_radiation_glow: bool,
+    pub location_damage_visual: bool,
+    pub asset_quantity_visual: bool,
+    pub asset_type_color: bool,
+}
+
+impl ViewerVisualEffectsConfig {
+    pub(super) fn apply_level(&mut self, level: ViewerVisualEffectsLevel) {
+        self.level = level;
+        match level {
+            ViewerVisualEffectsLevel::Minimal => {
+                self.agent_direction_indicator = false;
+                self.agent_speed_effect = false;
+                self.agent_trail_enabled = false;
+                self.location_radiation_glow = false;
+                self.location_damage_visual = false;
+                self.asset_quantity_visual = false;
+                self.asset_type_color = false;
+            }
+            ViewerVisualEffectsLevel::Standard => {
+                self.agent_direction_indicator = DEFAULT_AGENT_DIRECTION_INDICATOR;
+                self.agent_speed_effect = DEFAULT_AGENT_SPEED_EFFECT;
+                self.agent_trail_enabled = DEFAULT_AGENT_TRAIL_ENABLED;
+                self.location_radiation_glow = DEFAULT_LOCATION_RADIATION_GLOW;
+                self.location_damage_visual = DEFAULT_LOCATION_DAMAGE_VISUAL;
+                self.asset_quantity_visual = DEFAULT_ASSET_QUANTITY_VISUAL;
+                self.asset_type_color = DEFAULT_ASSET_TYPE_COLOR;
+            }
+            ViewerVisualEffectsLevel::Enhanced => {
+                self.agent_direction_indicator = true;
+                self.agent_speed_effect = true;
+                self.agent_trail_enabled = true;
+                self.location_radiation_glow = true;
+                self.location_damage_visual = true;
+                self.asset_quantity_visual = true;
+                self.asset_type_color = true;
+            }
+        }
+    }
+}
+
+impl Default for ViewerVisualEffectsConfig {
+    fn default() -> Self {
+        Self {
+            level: ViewerVisualEffectsLevel::Standard,
+            agent_variant_palette: None,
+            agent_direction_indicator: DEFAULT_AGENT_DIRECTION_INDICATOR,
+            agent_speed_effect: DEFAULT_AGENT_SPEED_EFFECT,
+            agent_trail_enabled: DEFAULT_AGENT_TRAIL_ENABLED,
+            location_radiation_glow: DEFAULT_LOCATION_RADIATION_GLOW,
+            location_damage_visual: DEFAULT_LOCATION_DAMAGE_VISUAL,
+            asset_quantity_visual: DEFAULT_ASSET_QUANTITY_VISUAL,
+            asset_type_color: DEFAULT_ASSET_TYPE_COLOR,
+        }
     }
 }
 
@@ -662,6 +748,35 @@ where
     if let Some(profile) = parse_render_profile(&lookup, "AGENT_WORLD_VIEWER_RENDER_PROFILE") {
         config.apply_render_profile(profile);
     }
+    if let Some(level) = parse_visual_effects_level(&lookup, "AGENT_WORLD_VIEWER_VISUAL_EFFECTS") {
+        config.visual.apply_level(level);
+    }
+    if let Some(value) =
+        parse_agent_variant_palette(&lookup, "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE")
+    {
+        config.visual.agent_variant_palette = Some(value);
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR") {
+        config.visual.agent_direction_indicator = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT") {
+        config.visual.agent_speed_effect = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED") {
+        config.visual.agent_trail_enabled = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW") {
+        config.visual.location_radiation_glow = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL") {
+        config.visual.location_damage_visual = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL") {
+        config.visual.asset_quantity_visual = value;
+    }
+    if let Some(value) = parse_bool(&lookup, "AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR") {
+        config.visual.asset_type_color = value;
+    }
     if let Some(value) = parse_f32(&lookup, "AGENT_WORLD_VIEWER_CM_TO_UNIT") {
         if value.is_finite() && value > 0.0 {
             config.cm_to_unit = value;
@@ -935,6 +1050,18 @@ where
     })
 }
 
+fn parse_visual_effects_level<F>(lookup: &F, key: &str) -> Option<ViewerVisualEffectsLevel>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    lookup(key).and_then(|raw| match raw.trim().to_ascii_lowercase().as_str() {
+        "minimal" | "min" | "low" => Some(ViewerVisualEffectsLevel::Minimal),
+        "standard" | "std" | "default" => Some(ViewerVisualEffectsLevel::Standard),
+        "enhanced" | "enhance" | "high" => Some(ViewerVisualEffectsLevel::Enhanced),
+        _ => None,
+    })
+}
+
 fn parse_fragment_material_strategy<F>(
     lookup: &F,
     key: &str,
@@ -1009,9 +1136,11 @@ fn parse_hex_srgb_color<F>(lookup: &F, key: &str) -> Option<[f32; 3]>
 where
     F: Fn(&str) -> Option<String>,
 {
-    let raw = lookup(key)?;
-    let hex = raw.trim();
-    let color_hex = hex.strip_prefix('#')?;
+    lookup(key).and_then(|raw| parse_hex_srgb_literal(raw.trim()))
+}
+
+fn parse_hex_srgb_literal(raw: &str) -> Option<[f32; 3]> {
+    let color_hex = raw.strip_prefix('#')?;
     if color_hex.len() != 6 {
         return None;
     }
@@ -1019,6 +1148,27 @@ where
     let g = u8::from_str_radix(&color_hex[2..4], 16).ok()?;
     let b = u8::from_str_radix(&color_hex[4..6], 16).ok()?;
     Some([r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0])
+}
+
+fn parse_agent_variant_palette<F>(lookup: &F, key: &str) -> Option<[[f32; 3]; 4]>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let raw = lookup(key)?;
+    let mut palette = [[0.0; 3]; 4];
+    let mut count = 0usize;
+    for color in raw.split(',').map(str::trim) {
+        if color.is_empty() || count >= palette.len() {
+            return None;
+        }
+        palette[count] = parse_hex_srgb_literal(color)?;
+        count += 1;
+    }
+    if count == palette.len() {
+        Some(palette)
+    } else {
+        None
+    }
 }
 
 fn parse_usize<F>(lookup: &F, key: &str) -> Option<usize>

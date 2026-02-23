@@ -109,8 +109,13 @@ pub(super) fn setup_3d_scene(
         ),
         ..default()
     });
+    let module_marker_color = config
+        .visual
+        .agent_variant_palette
+        .map(|palette| palette[0])
+        .unwrap_or([0.16, 0.92, 0.98]);
     let agent_module_marker_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.16, 0.92, 0.98),
+        base_color: color_from_srgb(module_marker_color),
         unlit: true,
         ..default()
     });

@@ -16,6 +16,18 @@ fn load_viewer_3d_config_applies_env_overrides() {
         ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "false"),
         ("AGENT_WORLD_VIEWER_SHOW_LOCATIONS", "0"),
         ("AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED", "no"),
+        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "enhanced"),
+        (
+            "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE",
+            "#112233,#445566,#778899,#AABBCC",
+        ),
+        ("AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR", "0"),
+        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "1"),
+        ("AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED", "1"),
+        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "0"),
+        ("AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL", "1"),
+        ("AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL", "1"),
+        ("AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR", "0"),
         (
             "AGENT_WORLD_VIEWER_AGENT_MESH_ASSET",
             "models/agents/worker.glb#Mesh0/Primitive0",
@@ -175,6 +187,22 @@ fn load_viewer_3d_config_applies_env_overrides() {
     assert!(!config.show_agents);
     assert!(!config.show_locations);
     assert!(!config.highlight_selected);
+    assert_eq!(config.visual.level, ViewerVisualEffectsLevel::Enhanced);
+    let palette = config
+        .visual
+        .agent_variant_palette
+        .expect("expected variant palette");
+    assert_rgb_approx_eq(Some(palette[0]), [0.06666667, 0.13333334, 0.2]);
+    assert_rgb_approx_eq(Some(palette[1]), [0.26666668, 0.33333334, 0.4]);
+    assert_rgb_approx_eq(Some(palette[2]), [0.46666667, 0.53333336, 0.6]);
+    assert_rgb_approx_eq(Some(palette[3]), [0.6666667, 0.73333335, 0.8]);
+    assert!(!config.visual.agent_direction_indicator);
+    assert!(config.visual.agent_speed_effect);
+    assert!(config.visual.agent_trail_enabled);
+    assert!(!config.visual.location_radiation_glow);
+    assert!(config.visual.location_damage_visual);
+    assert!(config.visual.asset_quantity_visual);
+    assert!(!config.visual.asset_type_color);
     assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Cinematic);
     assert!(config.assets.location_shell_enabled);
     assert_eq!(
@@ -402,6 +430,18 @@ fn load_viewer_3d_config_ignores_invalid_values() {
         ("AGENT_WORLD_VIEWER_CM_TO_UNIT", "0"),
         ("AGENT_WORLD_VIEWER_RENDER_PROFILE", "invalid"),
         ("AGENT_WORLD_VIEWER_SHOW_AGENTS", "invalid"),
+        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "hyper"),
+        (
+            "AGENT_WORLD_VIEWER_AGENT_VARIANT_PALETTE",
+            "#112233,#445566,#778899",
+        ),
+        ("AGENT_WORLD_VIEWER_AGENT_DIRECTION_INDICATOR", "invalid"),
+        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "invalid"),
+        ("AGENT_WORLD_VIEWER_AGENT_TRAIL_ENABLED", "2"),
+        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "maybe"),
+        ("AGENT_WORLD_VIEWER_LOCATION_DAMAGE_VISUAL", "??"),
+        ("AGENT_WORLD_VIEWER_ASSET_QUANTITY_VISUAL", "on-please"),
+        ("AGENT_WORLD_VIEWER_ASSET_TYPE_COLOR", "nah"),
         ("AGENT_WORLD_VIEWER_AGENT_NORMAL_TEXTURE_ASSET", " "),
         ("AGENT_WORLD_VIEWER_AGENT_BASE_COLOR", "#12345"),
         ("AGENT_WORLD_VIEWER_AGENT_EMISSIVE_COLOR", "123456"),
@@ -447,6 +487,30 @@ fn load_viewer_3d_config_ignores_invalid_values() {
     assert!((config.cm_to_unit - DEFAULT_CM_TO_UNIT).abs() < f32::EPSILON);
     assert_eq!(config.render_profile, ViewerRenderProfile::Balanced);
     assert!(config.show_agents);
+    assert_eq!(config.visual.level, ViewerVisualEffectsLevel::Standard);
+    assert_eq!(config.visual.agent_variant_palette, None);
+    assert_eq!(
+        config.visual.agent_direction_indicator,
+        DEFAULT_AGENT_DIRECTION_INDICATOR
+    );
+    assert_eq!(config.visual.agent_speed_effect, DEFAULT_AGENT_SPEED_EFFECT);
+    assert_eq!(
+        config.visual.agent_trail_enabled,
+        DEFAULT_AGENT_TRAIL_ENABLED
+    );
+    assert_eq!(
+        config.visual.location_radiation_glow,
+        DEFAULT_LOCATION_RADIATION_GLOW
+    );
+    assert_eq!(
+        config.visual.location_damage_visual,
+        DEFAULT_LOCATION_DAMAGE_VISUAL
+    );
+    assert_eq!(
+        config.visual.asset_quantity_visual,
+        DEFAULT_ASSET_QUANTITY_VISUAL
+    );
+    assert_eq!(config.visual.asset_type_color, DEFAULT_ASSET_TYPE_COLOR);
     assert_eq!(config.assets.geometry_tier, ViewerGeometryTier::Balanced);
     assert_eq!(
         config.assets.location_shell_enabled,
@@ -602,6 +666,55 @@ fn render_profile_sets_asset_defaults_and_allows_explicit_override() {
         ViewerTonemappingMode::BlenderFilmic
     );
     assert!(!cinematic_config.post_process.bloom_enabled);
+}
+
+#[test]
+fn visual_effects_level_sets_baseline_and_allows_explicit_toggle_override() {
+    let minimal_env = HashMap::from([("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "minimal")]);
+    let minimal_config =
+        load_viewer_3d_config_from(|key| minimal_env.get(key).map(|v| v.to_string()));
+    assert_eq!(
+        minimal_config.visual.level,
+        ViewerVisualEffectsLevel::Minimal
+    );
+    assert!(!minimal_config.visual.agent_direction_indicator);
+    assert!(!minimal_config.visual.agent_speed_effect);
+    assert!(!minimal_config.visual.agent_trail_enabled);
+    assert!(!minimal_config.visual.location_radiation_glow);
+    assert!(!minimal_config.visual.location_damage_visual);
+    assert!(!minimal_config.visual.asset_quantity_visual);
+    assert!(!minimal_config.visual.asset_type_color);
+
+    let minimal_override_env = HashMap::from([
+        ("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "minimal"),
+        ("AGENT_WORLD_VIEWER_AGENT_SPEED_EFFECT", "1"),
+        ("AGENT_WORLD_VIEWER_LOCATION_RADIATION_GLOW", "true"),
+    ]);
+    let minimal_override_config =
+        load_viewer_3d_config_from(|key| minimal_override_env.get(key).map(|v| v.to_string()));
+    assert_eq!(
+        minimal_override_config.visual.level,
+        ViewerVisualEffectsLevel::Minimal
+    );
+    assert!(!minimal_override_config.visual.agent_direction_indicator);
+    assert!(minimal_override_config.visual.agent_speed_effect);
+    assert!(!minimal_override_config.visual.agent_trail_enabled);
+    assert!(minimal_override_config.visual.location_radiation_glow);
+
+    let enhanced_env = HashMap::from([("AGENT_WORLD_VIEWER_VISUAL_EFFECTS", "enhanced")]);
+    let enhanced_config =
+        load_viewer_3d_config_from(|key| enhanced_env.get(key).map(|v| v.to_string()));
+    assert_eq!(
+        enhanced_config.visual.level,
+        ViewerVisualEffectsLevel::Enhanced
+    );
+    assert!(enhanced_config.visual.agent_direction_indicator);
+    assert!(enhanced_config.visual.agent_speed_effect);
+    assert!(enhanced_config.visual.agent_trail_enabled);
+    assert!(enhanced_config.visual.location_radiation_glow);
+    assert!(enhanced_config.visual.location_damage_visual);
+    assert!(enhanced_config.visual.asset_quantity_visual);
+    assert!(enhanced_config.visual.asset_type_color);
 }
 
 #[test]

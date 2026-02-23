@@ -1,4 +1,5 @@
 use super::*;
+use agent_world::simulator::{AssetKind, ResourceKind};
 
 const TWO_D_AGENT_MARKER_MIN_RADIUS_WORLD: f32 = 0.0003;
 const TWO_D_AGENT_MARKER_MIN_THICKNESS_WORLD: f32 = 0.00004;
@@ -183,7 +184,16 @@ pub(super) fn spawn_location_shell_details(
         return;
     }
 
-    let core_scale = Vec3::new(1.0, location_core_vertical_scale(damage_tier), 1.0);
+    let effective_damage_tier = if config.visual.location_damage_visual {
+        damage_tier
+    } else {
+        LocationDamageTier::Intact
+    };
+    let core_scale = Vec3::new(
+        1.0,
+        location_core_vertical_scale(effective_damage_tier),
+        1.0,
+    );
     parent.spawn((
         Mesh3d(assets.location_mesh.clone()),
         MeshMaterial3d(location_core_material(assets, material)),
@@ -207,7 +217,7 @@ pub(super) fn spawn_location_shell_details(
         ));
     }
 
-    if radiation_emission_per_tick > 0 {
+    if config.visual.location_radiation_glow && radiation_emission_per_tick > 0 {
         for halo_idx in 0..location_shell_halo_layers(config) {
             let halo_scale = Vec3::splat(1.24 + halo_idx as f32 * 0.18);
             parent.spawn((
@@ -221,7 +231,7 @@ pub(super) fn spawn_location_shell_details(
         }
     }
 
-    for overlay_idx in 0..location_damage_overlay_layers(damage_tier) {
+    for overlay_idx in 0..location_damage_overlay_layers(effective_damage_tier) {
         let overlay_scale = Vec3::new(
             1.05 + overlay_idx as f32 * 0.14,
             (0.085 - overlay_idx as f32 * 0.015).max(0.03),
@@ -456,14 +466,34 @@ pub(super) fn spawn_asset_entity(
     origin: GeoPos,
     asset_id: &str,
     owner_pos: GeoPos,
+    quantity: i64,
+    kind: Option<&AssetKind>,
 ) {
     let base = geo_to_vec3(owner_pos, origin, config.effective_cm_to_unit());
     let translation = asset_translation(base, asset_id);
+    let kind_label = asset_kind_label(kind);
+    let label = asset_label_text(config, asset_id, quantity, kind_label);
+    let marker = AssetMarker {
+        id: asset_id.to_string(),
+    };
 
     if let Some(entity) = scene.asset_entities.get(asset_id) {
-        commands
-            .entity(*entity)
-            .insert(Transform::from_translation(translation));
+        commands.entity(*entity).insert((
+            Transform::from_translation(translation),
+            marker,
+            BaseScale(Vec3::ONE),
+        ));
+        commands.entity(*entity).despawn_children();
+        commands.entity(*entity).with_children(|parent| {
+            spawn_label(
+                parent,
+                assets,
+                label,
+                AGENT_LABEL_OFFSET,
+                format!("label:asset:{asset_id}"),
+            );
+            spawn_asset_visual_details(parent, config, assets, asset_id, quantity, kind);
+        });
         return;
     }
 
@@ -473,9 +503,7 @@ pub(super) fn spawn_asset_entity(
             MeshMaterial3d(assets.asset_material.clone()),
             Transform::from_translation(translation),
             Name::new(format!("asset:{asset_id}")),
-            AssetMarker {
-                id: asset_id.to_string(),
-            },
+            marker,
             BaseScale(Vec3::ONE),
         ))
         .id();
@@ -484,12 +512,90 @@ pub(super) fn spawn_asset_entity(
         spawn_label(
             parent,
             assets,
-            format!("asset:{asset_id}"),
+            label,
             AGENT_LABEL_OFFSET,
             format!("label:asset:{asset_id}"),
         );
+        spawn_asset_visual_details(parent, config, assets, asset_id, quantity, kind);
     });
     scene.asset_entities.insert(asset_id.to_string(), entity);
+}
+
+fn asset_kind_label(kind: Option<&AssetKind>) -> Option<&'static str> {
+    match kind {
+        Some(AssetKind::Resource {
+            kind: ResourceKind::Electricity,
+        }) => Some("electricity"),
+        Some(AssetKind::Resource {
+            kind: ResourceKind::Data,
+        }) => Some("data"),
+        _ => None,
+    }
+}
+
+fn asset_label_text(
+    config: &Viewer3dConfig,
+    asset_id: &str,
+    quantity: i64,
+    kind_label: Option<&str>,
+) -> String {
+    let mut text = format!("asset:{asset_id}");
+    if config.visual.asset_quantity_visual {
+        text.push_str(format!(" q={}", quantity.max(0)).as_str());
+    }
+    if config.visual.asset_type_color {
+        if let Some(kind_label) = kind_label {
+            text.push_str(format!(" {kind_label}").as_str());
+        }
+    }
+    text
+}
+
+fn spawn_asset_visual_details(
+    parent: &mut ChildSpawnerCommands,
+    config: &Viewer3dConfig,
+    assets: &Viewer3dAssets,
+    asset_id: &str,
+    quantity: i64,
+    kind: Option<&AssetKind>,
+) {
+    if config.visual.asset_type_color {
+        let type_material = match kind {
+            Some(AssetKind::Resource {
+                kind: ResourceKind::Electricity,
+            }) => Some(assets.flow_power_material.clone()),
+            Some(AssetKind::Resource {
+                kind: ResourceKind::Data,
+            }) => Some(assets.flow_trade_material.clone()),
+            _ => None,
+        };
+        if let Some(type_material) = type_material {
+            let type_scale = Vec3::new(1.24, 0.09, 1.24);
+            parent.spawn((
+                Mesh3d(assets.world_box_mesh.clone()),
+                MeshMaterial3d(type_material),
+                Transform::from_translation(Vec3::new(0.0, -0.10, 0.0)).with_scale(type_scale),
+                BaseScale(type_scale),
+                Name::new(format!("asset:type_color:{asset_id}")),
+                DetailZoomEntity,
+            ));
+        }
+    }
+
+    if config.visual.asset_quantity_visual {
+        let capped_quantity = quantity.max(0).min(50_000) as f32;
+        let quantity_ratio = (capped_quantity / 50_000.0).sqrt();
+        let ring_radius = 0.66 + quantity_ratio * 0.84;
+        let quantity_scale = Vec3::new(ring_radius, 0.06, ring_radius);
+        parent.spawn((
+            Mesh3d(assets.agent_module_marker_mesh.clone()),
+            MeshMaterial3d(assets.chunk_generated_material.clone()),
+            Transform::from_translation(Vec3::new(0.0, 0.16, 0.0)).with_scale(quantity_scale),
+            BaseScale(quantity_scale),
+            Name::new(format!("asset:quantity:{asset_id}")),
+            DetailZoomEntity,
+        ));
+    }
 }
 
 fn chunk_coord_id(coord: ChunkCoord) -> String {
