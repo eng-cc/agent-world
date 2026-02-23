@@ -45,3 +45,22 @@
   - 对策：仅在隐藏态显示“直接指挥 Agent”，展开态不重复显示。
 - 风险 3：布局锚点调整引入新的 UI 叠压。
   - 对策：把显隐/锚点规则抽成纯函数并补充定向单测。
+
+## 验收结果（VRI9P3）
+- 回归结果：
+  - `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer` 通过（328 tests）。
+  - `env -u RUSTC_WRAPPER cargo check -p agent_world_viewer --target wasm32-unknown-unknown` 通过。
+- Web 闭环（Playwright，按 `testing-manual.md` S6）：
+  - 使用 `?test_api=1` 访问 viewer，`window.__AW_TEST__` 可用。
+  - 执行 `runSteps(...)` 与 `Tab` 展开/收起链路，采样 `getState()` 为已连接。
+  - Console 汇总：`Total messages: 11 (Errors: 0, Warnings: 1)`，无功能错误。
+- 验收产物：
+  - `output/playwright/viewer/phase9/phase9-hidden-default.png`
+  - `output/playwright/viewer/phase9/phase9-hidden-focused.png`
+  - `output/playwright/viewer/phase9/phase9-panel-open-command.png`
+  - `output/playwright/viewer/phase9/phase9-panel-hidden-after-toggle.png`
+  - `.playwright-cli/console-2026-02-23T13-04-48-150Z.log`
+- 结论：
+  - 隐藏态已移除布局预设条，首屏顶部竞争减弱。
+  - 展开态布局预设条下移后不再与 compact HUD 同位叠压。
+  - 隐藏态任务 HUD 已提供“直接指挥 Agent”入口，玩家可一键进入 Chat 指挥路径。
