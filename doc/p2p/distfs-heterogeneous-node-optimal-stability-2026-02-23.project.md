@@ -17,9 +17,9 @@
 - [x] 补齐 `agent_world_net` 单测（排序、重试、回退）
 
 ### T3 收口
-- [ ] 运行回归：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
-- [ ] 更新设计/项目文档状态
-- [ ] 追加 `doc/devlog/2026-02-23.md` 任务日志
+- [x] 运行回归：`agent_world_net`、`agent_world_distfs`、`agent_world_consensus`、`agent_world_node`
+- [x] 更新设计/项目文档状态
+- [x] 追加 `doc/devlog/2026-02-23.md` 任务日志
 
 ## 依赖
 - `crates/agent_world_proto/src/distributed_dht.rs`
@@ -32,8 +32,8 @@
 - `crates/agent_world_consensus/src/dht.rs`
 
 ## 状态
-- 当前状态：`进行中`
-- 已完成：T0、T1、T2
-- 进行中：T3
+- 当前状态：`已完成`
+- 已完成：T0、T1、T2、T3
+- 进行中：无
 - 未开始：无
 - 阻塞项：无
